@@ -134,10 +134,9 @@ export function CardTransportRuntime({
   /**
    * Endpoint-resolution retry buffer. When `from`/`to` anchors are not
    * yet present (gameplay surface still mounting), park the intent here
-   * instead of immediately calling `__markDropped`. A polling tick
-   * re-attempts resolution every RETRY_INTERVAL_MS until either it
-   * succeeds (intent promotes into `resolvedRef`) or MAX_PENDING_MS
-   * elapses (then we drop).
+   * instead of immediately calling `__markDropped`. Canonical DOM/layout
+   * readiness re-attempts resolution until it succeeds or the provider
+   * explicitly cancels the hand identity.
    *
    * Without this buffer, an intent that landed during a single
    * missing-endpoint frame was being fake-settled by
@@ -153,14 +152,42 @@ export function CardTransportRuntime({
   const active = ctx?.__activeIntents ?? [];
   const activeIds = useMemo(() => active.map((i) => i.id).join('|'), [active]);
 
-  const RETRY_INTERVAL_MS = 100;
-  const MAX_PENDING_MS = 3000;
+  // Preserve the existing non-Holm recovery contract. Holm alone has the
+  // exact hand cancellation/reconstruction owner required for indefinite
+  // pending intents, so only Holm removes elapsed-time fake settlement.
+  const NON_HOLM_RETRY_INTERVAL_MS = 100;
+  const NON_HOLM_MAX_PENDING_MS = 3000;
 
   useLayoutEffect(() => {
     if (!ctx) return;
     const container = containerRef.current;
     if (!container) {
       for (const intent of active) {
+        if (ctx.gameType !== 'holm-game') {
+          cardTransportDbgUpsert(intent.id, {
+            cardId: intent.cardId,
+            face: intent.face,
+            from: intent.from,
+            to: intent.to,
+            endpointResolveAttemptedAt: performance.now(),
+            endpointResolveAttemptCount: (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1,
+            droppedReason: 'no-runtime-container',
+            transportMounted: false,
+            lifecycleState: 'dropped',
+          });
+          recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
+            reason: 'no-runtime-container',
+            gameType: ctx.gameType ?? null,
+          });
+          ctx.__markDropped(intent, 'no-runtime-container');
+          continue;
+        }
+        const now = performance.now();
+        const existing = pendingRef.current.get(intent.id);
+        pendingRef.current.set(intent.id, {
+          intent,
+          firstSeenAt: existing?.firstSeenAt ?? now,
+        });
         cardTransportDbgUpsert(intent.id, {
           cardId: intent.cardId,
           face: intent.face,
@@ -168,15 +195,10 @@ export function CardTransportRuntime({
           to: intent.to,
           endpointResolveAttemptedAt: performance.now(),
           endpointResolveAttemptCount: (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1,
-          droppedReason: 'no-runtime-container',
+          droppedReason: null,
           transportMounted: false,
-          lifecycleState: 'dropped',
+          lifecycleState: 'queued',
         });
-        recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
-          reason: 'no-runtime-container',
-          gameType: ctx.gameType ?? null,
-        });
-        ctx.__markDropped(intent, 'no-runtime-container');
       }
       return;
     }
@@ -266,8 +288,7 @@ export function CardTransportRuntime({
           queuedAt: firstSeenAt,
           lifecycleState: 'queued',
         });
-
-        if (waited > MAX_PENDING_MS) {
+        if (ctx.gameType !== 'holm-game' && waited > NON_HOLM_MAX_PENDING_MS) {
           pendingRef.current.delete(intent.id);
           cardTransportDbgUpsert(intent.id, {
             droppedReason: 'missing-endpoint-after-retry',
@@ -277,7 +298,7 @@ export function CardTransportRuntime({
           });
           recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
             reason: 'missing-endpoint-after-retry',
-            timing: { waitedMs: waited, maxPendingMs: MAX_PENDING_MS },
+            timing: { waitedMs: waited, maxPendingMs: NON_HOLM_MAX_PENDING_MS },
             gameType: ctx.gameType ?? null,
           });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
@@ -454,16 +475,54 @@ export function CardTransportRuntime({
   }, [ctx, containerRef, activeIds, active, resolveTick]);
 
   // Retry tick — while pending intents exist, re-run the layout effect
-  // every RETRY_INTERVAL_MS so anchors that mount after dispatch
-  // (opp-stack / community / chucky / seat clusters appearing as the
-  // game phase advances) resolve instead of being fake-settled.
+  // Canonical DOM mutations and anchor resizes wake pending resolution;
+  // elapsed time never releases or fake-settles a card presentation.
   useEffect(() => {
+    if (
+      !ctx
+      || ctx.gameType !== 'holm-game'
+      || active.length === 0
+      || typeof document === 'undefined'
+    ) return;
+    let resizeObserver: ResizeObserver | null = null;
+    const observeCurrentAnchors = () => {
+      const container = containerRef.current;
+      if (!container || !resizeObserver) return;
+      resizeObserver.observe(container);
+      for (const node of container.querySelectorAll<HTMLElement>('[data-card-anchor]')) {
+        resizeObserver.observe(node);
+      }
+    };
+    const wake = () => {
+      if (pendingRef.current.size === 0) return;
+      observeCurrentAnchors();
+      setResolveTick((n) => n + 1);
+    };
+    const mutationObserver = new MutationObserver(wake);
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-card-anchor'],
+    });
+    resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(wake);
+    observeCurrentAnchors();
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, [active.length, activeIds, containerRef, ctx]);
+
+  useEffect(() => {
+    if (ctx?.gameType === 'holm-game') return;
     const id = window.setInterval(() => {
       if (pendingRef.current.size === 0) return;
       setResolveTick((n) => n + 1);
-    }, RETRY_INTERVAL_MS);
-    return () => { window.clearInterval(id); };
-  }, []);
+    }, NON_HOLM_RETRY_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [ctx?.gameType]);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;

@@ -2,6 +2,49 @@
 
 Date: 2026-08-14
 
+## Holm exact-hand presentation transaction
+
+- The paused production session `Aug 14 - Candyman`, game
+  `71bd8700-1614-4365-98e4-ef03822b4974`, dealer game
+  `07bff0e4-5226-49c3-b697-9fb4732d8990`, hand 1 proved that PostgreSQL
+  atomically dealt four private cards to both players and both browsers
+  selected their exact cards, while one browser never displayed them. The
+  frozen session was inspected read-only and remains unmodified.
+- The immediate regression was the August 11 ante-to-deal gate: it could
+  reopen only from a two-second balance-delta edge. A reordered delta or one
+  missing chip endpoint frame permanently closed that client's deal admission.
+  The wider Holm audit found the same edge-only failure shape in card-wave
+  dispatch, DealRuntime remount, cross-hand settle admission, Buck timing, and
+  prepared-successor acknowledgement.
+- Holm H1 admission now observes durable state for its exact authoritative
+  chip-transfer cursor. The ledger retains `queued`, `running`, `settled`,
+  `reconciling`, or `reconciled` state; historical/reconnected cursors baseline
+  without replay, while live cursors release only after their actual flight
+  settles. The transient signed delta remains visual decoration only.
+- Holm card waves are deterministic manifests. The persistent card provider
+  records each intent as active, settled, or dropped and can replay exact-hand
+  settled metadata into a remounted DealRuntime. Hands, community, and Chucky
+  reconcile unseen/active/settled IDs instead of setting one-shot dispatched
+  refs before acceptance. DealRuntime filters every settle by exact hand,
+  declared manifest, and generation; stale hand events cannot count.
+- Missing Holm chip/card anchors remain pending until canonical DOM/layout
+  readiness or explicit hand-identity cancellation. No elapsed-time release or
+  fake settlement exists in the Holm path. Other games retain their existing
+  endpoint-recovery behavior. Buck fires only when at least one new hands-wave
+  intent is accepted. Fresh historical betting mounts enter gameplay directly;
+  live or exact prepared-successor presentations deal normally.
+- The ready barrier now drains prepared-successor acknowledgement from durable
+  exact-hand readiness as well as the immediate PhaseHost boundary. PostgreSQL
+  remains the only authority owner and retains the existing configurable
+  no-ack/disconnect recovery lease. Settlement, balances, deadlines,
+  Rabbit/Pussy/showdown table placement, continuation barriers, and terminal
+  behavior are unchanged.
+- The focused Holm suite passes 95 tests, including active/settled
+  duplicate reconciliation, stale-settle rejection, cancellation, and
+  same-hand unmount/remount reconstruction. TypeScript, 30 Cribbage preservation
+  assertions, and the production build pass. Publication and two-client
+  production smoke remain required.
+
 ## Holm split-showdown presentation-plan identity correction
 
 - Production session `Aug 14 - Metamora`, dealer game

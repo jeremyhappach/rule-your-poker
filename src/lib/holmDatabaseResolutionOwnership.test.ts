@@ -19,6 +19,11 @@ const gameSource = readFileSync(join(root, 'src', 'pages', 'Game.tsx'), 'utf8');
 const holmLogicSource = readFileSync(join(root, 'src', 'lib', 'holmGameLogic.ts'), 'utf8');
 const mobileTableSource = readFileSync(join(root, 'src', 'components', 'MobileGameTable.tsx'), 'utf8');
 const dealOrchestratorSource = readFileSync(join(root, 'src', 'components', 'HolmDealOrchestrator.tsx'), 'utf8');
+const cardRuntimeSource = readFileSync(join(root, 'src', 'lib', 'canonicalShell', 'cardTransport', 'CardTransportRuntime.tsx'), 'utf8');
+const chipRuntimeSource = readFileSync(join(root, 'src', 'lib', 'canonicalShell', 'ChipTransportRuntime.tsx'), 'utf8');
+const chipProviderSource = readFileSync(join(root, 'src', 'lib', 'canonicalShell', 'ChipTransportProvider.tsx'), 'utf8');
+const chipLedgerSource = readFileSync(join(root, 'src', 'lib', 'canonicalShell', 'ChipPresentationLedger.ts'), 'utf8');
+const dealRuntimeSource = readFileSync(join(root, 'src', 'lib', 'canonicalShell', 'cardTransport', 'DealRuntime.tsx'), 'utf8');
 
 describe('Holm database resolution ownership', () => {
   it('resolves multi-player cards, Chucky, settlement, and successor preparation in PostgreSQL', () => {
@@ -80,8 +85,40 @@ describe('Holm database resolution ownership', () => {
     expect(mobileTableSource).toContain('BUCKS_OVERLAY_SHOWN_AT_HANDS_WAVE_START');
     expect(mobileTableSource).not.toContain('BUCKS_PENDING_AWAITING_TEARDOWN');
     expect(dealOrchestratorSource).toContain('onHandsWaveStarted?.(handContextId);');
+    expect(dealOrchestratorSource).toContain('const reconciliation = ct.reconcileMany(intents);');
+    expect(dealOrchestratorSource).toContain('if (reconciliation.accepted > 0)');
     expect(dealOrchestratorSource.indexOf('onHandsWaveStarted?.(handContextId);'))
-      .toBeLessThan(dealOrchestratorSource.indexOf('deal.beginDeal(intents.length);'));
+      .toBeGreaterThan(dealOrchestratorSource.indexOf('const reconciliation = ct.reconcileMany(intents);'));
+  });
+
+  it('admits Holm H1 from a durable exact-cursor checkpoint and reconciles every card wave by manifest', () => {
+    expect(mobileTableSource).toContain('useChipPresentationCursorState(holmInitialAnteCursor)');
+    expect(mobileTableSource).toContain("holmInitialAnteCursorState === 'settled'");
+    expect(mobileTableSource).toContain("holmInitialAnteCursorState === 'reconciled'");
+    expect(dealOrchestratorSource).toContain('deal.beginDealForHand({ handContextId, handGeneration, expectedCards: manifest })');
+    expect(dealOrchestratorSource).toContain('deal.beginWaveForHand({ handContextId, handGeneration, addedExpectedCards: manifest })');
+    expect(dealOrchestratorSource).not.toContain('ct.dispatchMany(intents);');
+    expect(dealOrchestratorSource).toContain("entryMode === 'historical-entry' && !hasPresentationHistory");
+    expect(dealOrchestratorSource).toContain("? 'GAMEPLAY'");
+    expect(dealRuntimeSource).toContain("if (initialPhase === 'GAMEPLAY') markHolmHandReady(handContextId);");
+  });
+
+  it('keeps unresolved transports pending and reconstructs settles only for the exact hand', () => {
+    expect(cardRuntimeSource).toContain("if (ctx.gameType !== 'holm-game')");
+    expect(cardRuntimeSource).toContain("if (ctx?.gameType === 'holm-game') return;");
+    expect(cardRuntimeSource).toContain('new MutationObserver(wake)');
+    expect(chipRuntimeSource).toContain("if (ctx.gameType !== 'holm-game')");
+    expect(chipRuntimeSource).toContain('pendingRef.current.add(intent.id)');
+    expect(chipRuntimeSource).toContain('new MutationObserver(wake)');
+    expect(chipRuntimeSource).toContain("'[data-chip-center], [data-pot-anchor], [data-canonical-shell-pot-anchor]'");
+    expect(chipProviderSource).toContain("gameType === 'holm-game'");
+    expect(chipLedgerSource).toContain('if (!endpointsReady && waitForEndpointReadinessRef.current) continue;');
+    expect(chipLedgerSource).toContain('const liveBuffered = waitForEndpointReadinessRef.current ? buffered : [];');
+    expect(chipLedgerSource).toContain('requested.add(cursor);');
+    expect(chipLedgerSource).toContain("event: 'INSERT', schema: 'public', table: 'players'");
+    expect(dealRuntimeSource).toContain('intentHand !== handContextId');
+    expect(dealRuntimeSource).toContain('ctx.replaySettledIntents(handContextId)');
+    expect(dealRuntimeSource).toContain('expectedCardIdsRef.current.has(cardId)');
   });
 
   it('acknowledges prepared H2 only from the canonical deal-ready boundary', () => {
@@ -96,6 +133,8 @@ describe('Holm database resolution ownership', () => {
     expect(phaseHost.indexOf('deal.enterGameplay();'))
       .toBeLessThan(phaseHost.indexOf('onPresentationComplete?.(handContextId);'));
     expect(gameSource).toContain('holmLocallyPreparedSuccessorRef.current');
+    expect(gameSource).toContain('isHolmHandReady(prepared.handContextId)');
+    expect(gameSource).toContain('handleHolmDealPresentationComplete(prepared.handContextId)');
     expect(gameSource).toContain('holmPresentedDecisionTimer?.remainingSeconds');
     expect(gameSource).toContain(
       'isSameHolmPresentationHand(currentDecisionTimerPresentation, holmPresentationIdentity)',

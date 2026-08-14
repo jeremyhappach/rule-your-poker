@@ -330,6 +330,8 @@ export function ChipTransportRuntime({
   ctxRef.current = ctx;
   const cacheRef = useRef<EndpointCache>({});
   const resolvedRef = useRef<Map<string, RuntimeChip>>(new Map());
+  const pendingRef = useRef<Set<string>>(new Set());
+  const [resolveTick, setResolveTick] = useState(0);
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
@@ -341,6 +343,21 @@ export function ChipTransportRuntime({
     const container = containerRef.current;
     if (!container) {
       for (const intent of active) {
+        if (ctx.gameType !== 'holm-game') {
+          chipTransportDbgUpsert(intent.id, {
+            variant: intent.variant ?? 'default',
+            reason: intent.reason,
+            from: intent.from,
+            to: intent.to,
+            amount: intent.amount,
+            destinationReaction: intent.destinationReaction ?? null,
+            droppedReason: 'no-runtime',
+            transportMounted: false,
+          });
+          ctx.__markDropped(intent, 'no-runtime');
+          continue;
+        }
+        pendingRef.current.add(intent.id);
         chipTransportDbgUpsert(intent.id, {
           variant: intent.variant ?? 'default',
           reason: intent.reason,
@@ -348,10 +365,9 @@ export function ChipTransportRuntime({
           to: intent.to,
           amount: intent.amount,
           destinationReaction: intent.destinationReaction ?? null,
-          droppedReason: 'no-runtime',
+          droppedReason: null,
           transportMounted: false,
         });
-        ctx.__markDropped(intent, 'no-runtime');
       }
       return;
     }
@@ -392,8 +408,23 @@ export function ChipTransportRuntime({
       });
 
       if (!from || !to) {
+        if (ctx.gameType !== 'holm-game') {
+          chipTransportDbgUpsert(intent.id, {
+            droppedReason: 'missing-endpoint',
+            transportMounted: false,
+          });
+          captureWinnerChipEndpoint({
+            site: 'runtime:missing-endpoint',
+            winnerSeat: intent.to.kind === 'seat' ? intent.to.position : null,
+            loserSeats: intent.from.kind === 'seat' ? [intent.from.position] : [],
+            note: `intent=${intent.id} fromFound=${!!from} toFound=${!!to}`,
+          });
+          ctx.__markDropped(intent, 'missing-endpoint');
+          continue;
+        }
+        pendingRef.current.add(intent.id);
         chipTransportDbgUpsert(intent.id, {
-          droppedReason: 'missing-endpoint',
+          droppedReason: null,
           transportMounted: false,
         });
         // WINNER CHIP ENDPOINT DBG — exact moment of asymmetric drop.
@@ -403,9 +434,10 @@ export function ChipTransportRuntime({
           loserSeats: intent.from.kind === 'seat' ? [intent.from.position] : [],
           note: `intent=${intent.id} fromFound=${!!from} toFound=${!!to}`,
         });
-        ctx.__markDropped(intent, 'missing-endpoint');
         continue;
       }
+
+      pendingRef.current.delete(intent.id);
 
       const variant = intent.variant ?? 'default';
       const preset = PRESETS[variant] ?? PRESETS.default;
@@ -447,9 +479,63 @@ export function ChipTransportRuntime({
         mutated = true;
       }
     }
+    for (const id of Array.from(pendingRef.current)) {
+      if (!seenThisPass.has(id)) pendingRef.current.delete(id);
+    }
 
     if (mutated) rerender();
-  }, [ctx, containerRef, activeIds, active]);
+  }, [ctx, containerRef, activeIds, active, resolveTick]);
+
+  // Endpoint readiness is a DOM/layout condition, not a release timer. Wake
+  // resolution when the canonical surface mutates or an existing anchor
+  // changes size. Active intents otherwise remain provider-owned indefinitely
+  // and can be reconstructed after a runtime remount.
+  useEffect(() => {
+    if (
+      !ctx
+      || ctx.gameType !== 'holm-game'
+      || active.length === 0
+      || typeof document === 'undefined'
+    ) return;
+    let resizeObserver: ResizeObserver | null = null;
+    const observeCurrentAnchors = () => {
+      const container = containerRef.current;
+      if (!container || !resizeObserver) return;
+      resizeObserver.observe(container);
+      for (const node of container.querySelectorAll<HTMLElement>(
+        '[data-chip-center], [data-pot-anchor], [data-canonical-shell-pot-anchor]',
+      )) {
+        resizeObserver.observe(node);
+      }
+    };
+    const wake = () => {
+      if (pendingRef.current.size === 0) return;
+      observeCurrentAnchors();
+      cacheRef.current = {};
+      setResolveTick((value) => value + 1);
+    };
+    const mutationObserver = new MutationObserver(wake);
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        'class',
+        'style',
+        'data-chip-center',
+        'data-pot-anchor',
+        'data-canonical-shell-pot-anchor',
+      ],
+    });
+    resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(wake);
+    observeCurrentAnchors();
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, [active.length, activeIds, containerRef, ctx]);
 
   useEffect(() => {
     if (!ctxRef.current) return;
@@ -549,7 +635,7 @@ export function ChipTransportRuntime({
     return () => {
       for (const t of timers) window.clearTimeout(t);
     };
-  }, [activeIds, containerRef]);
+  }, [activeIds, containerRef, resolveTick]);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;

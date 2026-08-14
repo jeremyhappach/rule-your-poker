@@ -47,9 +47,49 @@ export interface CardDispatchManyOptions {
   onAllSettled?: () => void;
 }
 
+export type CardIntentLifecycleState = 'active' | 'settled' | 'dropped';
+
+export interface CardIntentLifecycleSnapshot {
+  intent: CardTransportIntent;
+  state: CardIntentLifecycleState;
+  settledSource?: string;
+  droppedReason?: string;
+}
+
+export interface CardManifestReconciliation {
+  total: number;
+  accepted: number;
+  active: number;
+  settled: number;
+  dropped: number;
+  conflicts: number;
+  allOwned: boolean;
+}
+
+function isSameManifestIdentity(
+  existing: CardTransportIntent,
+  incoming: CardTransportIntent,
+): boolean {
+  return existing.cardId === incoming.cardId
+    && (existing.handContextId ?? null) === (incoming.handContextId ?? null)
+    && (existing.handGeneration ?? null) === (incoming.handGeneration ?? null)
+    && (existing.recipientPlayerId ?? null) === (incoming.recipientPlayerId ?? null)
+    && existing.face === incoming.face
+    && describeCardEndpoint(existing.from) === describeCardEndpoint(incoming.from)
+    && describeCardEndpoint(existing.to) === describeCardEndpoint(incoming.to)
+    && (existing.visibleFace?.rank ?? null) === (incoming.visibleFace?.rank ?? null)
+    && (existing.visibleFace?.suit ?? null) === (incoming.visibleFace?.suit ?? null);
+}
+
 interface CardTransportContextValue {
   dispatch: (intent: CardTransportIntent, opts?: CardDispatchOptions) => boolean;
   dispatchMany: (intents: CardTransportIntent[], opts?: CardDispatchManyOptions) => number;
+  /** Holm presentation manifests reconcile unseen, active, and settled IDs. */
+  reconcileMany: (intents: CardTransportIntent[]) => CardManifestReconciliation;
+  getIntentLifecycle: (intentId: string) => CardIntentLifecycleSnapshot | null;
+  getHandIntentLifecycles: (handContextId: string) => CardIntentLifecycleSnapshot[];
+  /** Re-emit settled metadata so a remounted DealRuntime can reconstruct. */
+  replaySettledIntents: (handContextId: string) => number;
   /** Subscribe to per-card settle events (cardId emitted). */
   onCardSettled: (handler: (cardId: string) => void) => () => void;
   /** Subscribe to settle events with full intent metadata. */
@@ -62,6 +102,7 @@ interface CardTransportContextValue {
    */
   dropIntentsNotMatchingHand: (handContextId: string, reason: string) => number;
   __activeIntents: ActiveCardIntent[];
+  __lifecycleVersion: number;
   __markSettled: (intentId: string, cardId: string, source?: string) => void;
   __markDropped: (intent: CardTransportIntent, reason: string) => void;
   gameId?: string | null;
@@ -86,10 +127,18 @@ export function CardTransportProvider({
   activeIntentsRef.current = activeIntents;
   const seenRef = useRef<Set<string>>(new Set());
   const intentByIdRef = useRef<Map<string, CardTransportIntent>>(new Map());
+  const lifecycleByIdRef = useRef<Map<string, CardIntentLifecycleSnapshot>>(new Map());
+  const [lifecycleVersion, setLifecycleVersion] = useState(0);
   const seqRef = useRef(0);
   const onSettledMapRef = useRef<Map<string, (cardId: string) => void>>(new Map());
   const subscribersRef = useRef<Set<(cardId: string) => void>>(new Set());
   const intentSubscribersRef = useRef<Set<(intent: CardTransportIntent) => void>>(new Set());
+
+  const publishLifecycle = useCallback((snapshot: CardIntentLifecycleSnapshot) => {
+    if (gameType !== 'holm-game') return;
+    lifecycleByIdRef.current.set(snapshot.intent.id, snapshot);
+    setLifecycleVersion((version) => version + 1);
+  }, [gameType]);
 
   const acceptOne = useCallback(
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
@@ -144,6 +193,7 @@ export function CardTransportProvider({
       const now = performance.now();
       seenRef.current.add(intent.id);
       intentByIdRef.current.set(intent.id, intent);
+      publishLifecycle({ intent, state: 'active' });
       const enqueueSeq = ++seqRef.current;
       if (opts?.onSettled) onSettledMapRef.current.set(intent.id, opts.onSettled);
       cardTransportDbgUpsert(intent.id, {
@@ -218,7 +268,7 @@ export function CardTransportProvider({
       ]);
       return true;
     },
-    [gameId, gameType],
+    [gameId, gameType, publishLifecycle],
   );
 
   const dispatch = useCallback(
@@ -305,6 +355,76 @@ export function CardTransportProvider({
     [acceptOne, gameId, gameType],
   );
 
+  const getIntentLifecycle = useCallback((intentId: string) =>
+    lifecycleByIdRef.current.get(intentId) ?? null, []);
+
+  const getHandIntentLifecycles = useCallback((handContextId: string) =>
+    Array.from(lifecycleByIdRef.current.values()).filter((snapshot) => {
+      const snapshotHand = snapshot.intent.handContextId?.replace(/#r\d+$/, '') ?? null;
+      return snapshotHand === handContextId;
+    }), []);
+
+  const replaySettledIntents = useCallback((handContextId: string) => {
+    const settled = Array.from(lifecycleByIdRef.current.values()).filter((snapshot) => {
+      const snapshotHand = snapshot.intent.handContextId?.replace(/#r\d+$/, '') ?? null;
+      return snapshot.state === 'settled' && snapshotHand === handContextId;
+    });
+    for (const snapshot of settled) {
+      for (const subscriber of intentSubscribersRef.current) {
+        try { subscriber(snapshot.intent); } catch { /* ignore */ }
+      }
+    }
+    return settled.length;
+  }, []);
+
+  const reconcileMany = useCallback((intents: CardTransportIntent[]): CardManifestReconciliation => {
+    let accepted = 0;
+    let active = 0;
+    let settled = 0;
+    let dropped = 0;
+    let conflicts = 0;
+
+    for (const intent of intents) {
+      if (!intent?.id) {
+        conflicts += 1;
+        continue;
+      }
+      const existing = lifecycleByIdRef.current.get(intent.id);
+      if (existing) {
+        const sameIdentity = isSameManifestIdentity(existing.intent, intent);
+        if (!sameIdentity) {
+          conflicts += 1;
+        } else if (existing.state === 'settled') {
+          settled += 1;
+        } else if (existing.state === 'active') {
+          active += 1;
+        } else {
+          dropped += 1;
+        }
+        continue;
+      }
+      if (acceptOne(intent)) {
+        accepted += 1;
+        active += 1;
+      } else {
+        conflicts += 1;
+      }
+    }
+
+    return {
+      total: intents.length,
+      accepted,
+      active,
+      settled,
+      dropped,
+      conflicts,
+      allOwned: intents.length > 0
+        && active + settled === intents.length
+        && dropped === 0
+        && conflicts === 0,
+    };
+  }, [acceptOne]);
+
   const fireCallbacks = useCallback((intentId: string, cardId: string) => {
     const cb = onSettledMapRef.current.get(intentId);
     if (cb) {
@@ -323,11 +443,15 @@ export function CardTransportProvider({
         try { sub(intent); } catch { /* ignore */ }
       }
     }
-    intentByIdRef.current.delete(intentId);
-  }, []);
+    // Exact lifecycle retention is Holm-only. Preserve the established
+    // release behavior and memory profile for every other card game.
+    if (gameType !== 'holm-game') intentByIdRef.current.delete(intentId);
+  }, [gameType]);
 
   const markSettled = useCallback((intentId: string, cardId: string, source = 'flight_complete') => {
     const intent = intentByIdRef.current.get(intentId);
+    const lifecycle = lifecycleByIdRef.current.get(intentId);
+    if (!intent || lifecycle?.state === 'settled' || lifecycle?.state === 'dropped') return;
     recordCribbageCardTransportProvider('card_transport_markSettled_called', {
       gameId,
       gameType,
@@ -377,6 +501,7 @@ export function CardTransportProvider({
         },
       });
     }
+    publishLifecycle({ intent, state: 'settled', settledSource: source });
     fireCallbacks(intentId, cardId);
     cardTransportDbgUpsert(intentId, {
       cardId,
@@ -394,10 +519,12 @@ export function CardTransportProvider({
     } else {
       setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
     }
-  }, [fireCallbacks, gameId, gameType]);
+  }, [fireCallbacks, gameId, gameType, publishLifecycle]);
 
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
+      const lifecycle = lifecycleByIdRef.current.get(intent.id);
+      if (lifecycle?.state === 'settled' || lifecycle?.state === 'dropped') return;
       const now = performance.now();
       recordCribbageCardTransportProvider('card_transport_markDropped_called', {
         gameId,
@@ -447,9 +574,10 @@ export function CardTransportProvider({
         markSettledSource: 'dropped',
         lifecycleState: 'dropped',
       });
+      publishLifecycle({ intent, state: 'dropped', droppedReason: reason });
       fireCallbacks(intent.id, intent.cardId);
     },
-    [fireCallbacks, gameId],
+    [fireCallbacks, gameId, gameType, publishLifecycle],
   );
 
   const dropIntentsNotMatchingHand = useCallback(
@@ -496,16 +624,21 @@ export function CardTransportProvider({
     () => ({
       dispatch,
       dispatchMany,
+      reconcileMany,
+      getIntentLifecycle,
+      getHandIntentLifecycles,
+      replaySettledIntents,
       onCardSettled,
       onCardSettledIntent,
       dropIntentsNotMatchingHand,
       __activeIntents: activeIntents,
+      __lifecycleVersion: lifecycleVersion,
       __markSettled: markSettled,
       __markDropped: markDropped,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, onCardSettled, onCardSettledIntent, dropIntentsNotMatchingHand, activeIntents, markSettled, markDropped, gameId, gameType],
+    [dispatch, dispatchMany, reconcileMany, getIntentLifecycle, getHandIntentLifecycles, replaySettledIntents, onCardSettled, onCardSettledIntent, dropIntentsNotMatchingHand, activeIntents, lifecycleVersion, markSettled, markDropped, gameId, gameType],
   );
 
   return (
@@ -517,13 +650,24 @@ export function CardTransportProvider({
 
 export function useCardTransport(): Pick<
   CardTransportContextValue,
-  'dispatch' | 'dispatchMany' | 'onCardSettled' | 'onCardSettledIntent'
+  'dispatch' | 'dispatchMany' | 'reconcileMany' | 'getIntentLifecycle' | 'getHandIntentLifecycles' | 'onCardSettled' | 'onCardSettledIntent'
 > {
   const ctx = useContext(CardTransportContext);
   if (!ctx) {
     return {
       dispatch: () => false,
       dispatchMany: () => 0,
+      reconcileMany: (intents) => ({
+        total: intents.length,
+        accepted: 0,
+        active: 0,
+        settled: 0,
+        dropped: 0,
+        conflicts: intents.length,
+        allOwned: false,
+      }),
+      getIntentLifecycle: () => null,
+      getHandIntentLifecycles: () => [],
       onCardSettled: () => () => {},
       onCardSettledIntent: () => () => {},
     };
@@ -531,6 +675,9 @@ export function useCardTransport(): Pick<
   return {
     dispatch: ctx.dispatch,
     dispatchMany: ctx.dispatchMany,
+    reconcileMany: ctx.reconcileMany,
+    getIntentLifecycle: ctx.getIntentLifecycle,
+    getHandIntentLifecycles: ctx.getHandIntentLifecycles,
     onCardSettled: ctx.onCardSettled,
     onCardSettledIntent: ctx.onCardSettledIntent,
   };

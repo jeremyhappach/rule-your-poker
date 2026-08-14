@@ -33,6 +33,7 @@ import {
   type ChipPresentationBatch,
   type ChipPresentationBalanceDelta,
   type ChipPresentationBatchSettled,
+  type ChipPresentationCursorState,
   type LedgerDispatchOptions,
 } from './ChipPresentationLedger';
 
@@ -84,6 +85,10 @@ interface ChipTransportContextValue {
   presentationPotBalance: (fallback: number) => number;
   /** Shell-owned delta effects emitted at immutable ledger boundaries. */
   __presentationBalanceDeltas: ChipPresentationBalanceDelta[];
+  /** Durable exact-cursor state; unlike delta labels, this never expires. */
+  __presentationCursorState: (cursor: number | null | undefined) => ChipPresentationCursorState;
+  /** Recover one exact committed cursor when Realtime delivery was reordered. */
+  __ensurePresentationCursor: (cursor: number | null | undefined) => void;
   /** Runtime registration for a game presentation prerequisite. */
   __setPresentationAdmission: (
     admission: ChipPresentationAdmission | null,
@@ -322,6 +327,7 @@ export function ChipTransportProvider({
     onPresentationBatchSettled,
     publishPresentationBalanceDelta,
     abandonPresentationBalanceDeltas,
+    gameType === 'holm-game',
   );
 
   const value = useMemo<ChipTransportContextValue>(
@@ -337,6 +343,8 @@ export function ChipTransportProvider({
       presentationPlayerBalance: presentationLedger.playerBalance,
       presentationPotBalance: presentationLedger.potBalance,
       __presentationBalanceDeltas: presentationBalanceDeltas,
+      __presentationCursorState: presentationLedger.cursorState,
+      __ensurePresentationCursor: presentationLedger.ensureCursor,
       __setPresentationAdmission: setPresentationAdmission,
       gameId,
       gameType,
@@ -392,6 +400,26 @@ export function usePresentationPotChipBalance(rawBalance: number): number {
 export function useChipPresentationBalanceDeltas(): ChipPresentationBalanceDelta[] {
   const ctx = useContext(ChipTransportContext);
   return ctx?.__presentationBalanceDeltas ?? [];
+}
+
+/**
+ * Level-triggered presentation checkpoint for one authoritative transfer
+ * cursor. `settled` means this client saw the flight complete; `reconciled`
+ * means the cursor was historical or presentation ownership was safely
+ * baselined from authority. Both are terminal for client admission.
+ */
+export function useChipPresentationCursorState(
+  cursor: number | null | undefined,
+): ChipPresentationCursorState {
+  const ctx = useContext(ChipTransportContext);
+  const ensureCursor = ctx?.__ensurePresentationCursor;
+
+  useEffect(() => {
+    ensureCursor?.(cursor);
+  }, [cursor, ctx, ensureCursor]);
+
+  return ctx?.__presentationCursorState(cursor)
+    ?? (cursor == null || cursor <= 0 ? 'reconciled' : 'unknown');
 }
 
 /**

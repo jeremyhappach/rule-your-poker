@@ -200,6 +200,8 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   // beginDealForHand / beginWaveForHand.
   const [readyReleased, setReadyReleased] = useState(false);
   const ctx = useCardTransportInternal();
+  const expectedCardIdsRef = useRef<Set<string>>(new Set());
+  const processedSettledIntentIdsRef = useRef<Set<string>>(new Set());
   const activeIntentsForHand = useMemo(
     () => (ctx?.__activeIntents ?? []).filter((intent) => {
       const intentHand = intent.handContextId?.replace(/#r\d+$/, '') ?? null;
@@ -378,6 +380,20 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     if (!ctx) return;
     const off = ctx.onCardSettledIntent((intent) => {
       const cardId = intent.cardId;
+      if (gameType === 'holm-game') {
+        const intentHand = intent.handContextId?.replace(/#r\d+$/, '') ?? null;
+        const activeIdentity = holmHandIdentityRef.current;
+        const generationMatches = activeIdentity?.handContextId === handContextId
+          && intent.handGeneration === activeIdentity.handGeneration;
+        if (
+          intentHand !== handContextId
+          || !generationMatches
+          || !expectedCardIdsRef.current.has(cardId)
+          || ctx.getIntentLifecycle(intent.id)?.state !== 'settled'
+          || processedSettledIntentIdsRef.current.has(intent.id)
+        ) return;
+        processedSettledIntentIdsRef.current.add(intent.id);
+      }
       if (gameType === 'cribbage') {
         recordCribbageDealRuntime('deal_runtime_settle_intent_received', {
           handContextId,
@@ -485,6 +501,14 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     return off;
   }, [ctx, handContextId, gameType, phase, settledCardIds, settledByRecipient]);
 
+  // Provider lifecycle outlives DealRuntime. Re-emit exact settled metadata
+  // whenever a manifest is declared or its lifecycle advances so remounts can
+  // rebuild the same hand without redispatching or waiting for a lost edge.
+  useEffect(() => {
+    if (gameType !== 'holm-game' || !ctx || expectedCount <= 0) return;
+    ctx.replaySettledIntents(handContextId);
+  }, [ctx, ctx?.__lifecycleVersion, expectedCount, gameType, handContextId]);
+
   const beginDeal = useCallback((count: number) => {
     if (gameType === 'cribbage') {
       recordCribbageDealRuntime('deal_runtime_beginDeal_called', {
@@ -559,6 +583,8 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
 
   const resetForHand = useCallback((args: { handContextId: string; handGeneration: number }) => {
     holmHandIdentityRef.current = { handContextId: args.handContextId, handGeneration: args.handGeneration };
+    expectedCardIdsRef.current = new Set();
+    processedSettledIntentIdsRef.current = new Set();
     setHolmHandGeneration(args.handGeneration);
     setExpectedCount(0);
     expectedRef.current = 0;
@@ -589,19 +615,26 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   }) => {
     // Identity validation: every expected cardId must carry the matching handContextId.
     const breach = args.expectedCards.find((c) => c.handContextId !== args.handContextId);
-    if (breach) {
+    const runtimeIdentityBreach = args.handContextId !== handContextId;
+    if (breach || runtimeIdentityBreach) {
       holmDealDbgRecordViolation({
         type: 'HAND_RUNTIME_IDENTITY_BREACH',
-        cardId: breach.cardId,
+        cardId: breach?.cardId ?? args.expectedCards[0]?.cardId ?? 'missing-card',
         handContextId: args.handContextId,
         handGeneration: args.handGeneration,
         phase: 'PRE_DEAL',
-        detail: { offendingHandContextId: breach.handContextId },
+        detail: {
+          runtimeHandContextId: handContextId,
+          offendingHandContextId: breach?.handContextId ?? args.handContextId,
+        },
       });
       // Leave ledger reset; do not count anything dispatched.
       return;
     }
     holmHandIdentityRef.current = { handContextId: args.handContextId, handGeneration: args.handGeneration };
+    setHolmHandGeneration(args.handGeneration);
+    expectedCardIdsRef.current = new Set(args.expectedCards.map((card) => card.cardId));
+    processedSettledIntentIdsRef.current = new Set();
     if (ctx) {
       try { ctx.dropIntentsNotMatchingHand(args.handContextId, 'holm_beginDealForHand'); } catch { /* noop */ }
     }
@@ -633,18 +666,28 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     addedExpectedCards: HolmExpectedCardManifestEntry[];
   }) => {
     const breach = args.addedExpectedCards.find((c) => c.handContextId !== args.handContextId);
-    if (breach) {
+    const activeIdentity = holmHandIdentityRef.current;
+    const runtimeIdentityBreach = args.handContextId !== handContextId
+      || activeIdentity?.handContextId !== args.handContextId
+      || activeIdentity?.handGeneration !== args.handGeneration;
+    if (breach || runtimeIdentityBreach) {
       holmDealDbgRecordViolation({
         type: 'HAND_RUNTIME_IDENTITY_BREACH',
-        cardId: breach.cardId,
+        cardId: breach?.cardId ?? args.addedExpectedCards[0]?.cardId ?? 'missing-card',
         handContextId: args.handContextId,
         handGeneration: args.handGeneration,
         phase,
-        detail: { offendingHandContextId: breach.handContextId, source: 'beginWaveForHand' },
+        detail: {
+          runtimeHandContextId: handContextId,
+          activeIdentity,
+          offendingHandContextId: breach?.handContextId ?? args.handContextId,
+          source: 'beginWaveForHand',
+        },
       });
       return;
     }
     const added = args.addedExpectedCards.length;
+    for (const card of args.addedExpectedCards) expectedCardIdsRef.current.add(card.cardId);
     setExpectedCount((prev) => {
       const next = prev + added;
       expectedRef.current = next;
@@ -679,8 +722,12 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
 
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    // A fresh mount on an already-actionable authoritative hand deliberately
+    // skips historical card replay. It is therefore ready immediately and
+    // must open the same shared timer/action barrier as a completed live deal.
+    if (initialPhase === 'GAMEPLAY') markHolmHandReady(handContextId);
     return () => { clearHolmHandReady(handContextId); };
-  }, [gameType, handContextId]);
+  }, [gameType, handContextId, initialPhase]);
 
   // Deterministic READY release latch. Hand-scoped (DealRuntime keyed
   // by handContextId at host), idempotent (setReadyReleased guard +

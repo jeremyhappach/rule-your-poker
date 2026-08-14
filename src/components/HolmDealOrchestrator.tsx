@@ -11,20 +11,20 @@
  *                      Opp cards face-down.
  *                      Origin: dealer seat (canonical rule).
  *
- *   2. COMMUNITY wave — 4 cards (`beginWave(4)`).
+ *   2. COMMUNITY wave — 4 cards (exact additive manifest).
  *                      C0/C1 land face-up (visibleFace stamped from
  *                      communityCards[0..1]).
  *                      C2/C3 land face-down (no visibleFace; destination
  *                      renders cardback until existing reveal flips them).
  *                      All four fly as CanonicalCardBack.
  *
- *   3. CHUCKY wave   — solo only. `beginWave(chuckyCards.length)`.
+ *   3. CHUCKY wave   — solo only (exact additive manifest).
  *                      All face-down, lands face-down. Existing Chucky
  *                      reveal sequence consumes the pile post-settle.
  *
- * Timer policy: Holm timers are derived from actionability
- * (canPlayerAct), NOT from DealRuntime phase. This orchestrator does
- * not touch timer state.
+ * Timer policy: this orchestrator never owns a timer. DealRuntime opens the
+ * exact-hand ready barrier after every declared card settles; Game.tsx then
+ * admits authoritative action/timer presentation for that same hand.
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -128,6 +128,10 @@ export function HolmDealOrchestrator({
   const handsDispatchedRef = useRef(false);
   const communityDispatchedRef = useRef(false);
   const chuckyDispatchedRef = useRef(false);
+  const handsManifestDeclaredRef = useRef(false);
+  const communityManifestDeclaredRef = useRef(false);
+  const chuckyManifestDeclaredRef = useRef(false);
+  const handGeneration = 1;
 
   // Holm trace — orchestrator instance lifecycle.
   const instanceRef = useRef<string>(`orch_${Math.random().toString(36).slice(2, 8)}`);
@@ -213,6 +217,7 @@ export function HolmDealOrchestrator({
         expectedStartTime: emitTime + launchDelayMs,
         expectedArrivalTime: emitTime + launchDelayMs + durationMs,
         handContextId,
+        handGeneration,
         recipientPlayerId: s.recipientPlayerId,
         cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
         visibleFace: s.visibleFace,
@@ -242,13 +247,13 @@ export function HolmDealOrchestrator({
       dealerPosition,
       dispatchAllowed,
     };
-    if (!deal || handsDispatchedRef.current) {
+    if (!deal || handsDispatchedRef.current || deal.phase === 'GAMEPLAY') {
       ffRecord({
         writerId: 'HolmDealOrchestrator.tsx:handsWave:L190',
         source: 'HOLM_DEAL_ORCHESTRATOR',
         marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
         identity: { segmentId: handContextId, playerId: selfPlayerId },
-        payload: { reason: !deal ? 'no-deal-runtime' : 'already-dispatched', guard },
+        payload: { reason: !deal ? 'no-deal-runtime' : deal.phase === 'GAMEPLAY' ? 'historical-gameplay-entry' : 'already-dispatched', guard },
       });
       return;
     }
@@ -353,8 +358,24 @@ export function HolmDealOrchestrator({
     }
 
     const intents = buildIntents(specs);
+    const manifest = intents.map((intent) => ({ cardId: intent.cardId, handContextId }));
+    if (!handsManifestDeclaredRef.current) {
+      deal.beginDealForHand({ handContextId, handGeneration, expectedCards: manifest });
+      handsManifestDeclaredRef.current = true;
+    }
+    const reconciliation = ct.reconcileMany(intents);
+    if (!reconciliation.allOwned) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:manifestReconcile',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'manifest-not-owned', reconciliation },
+      });
+      return;
+    }
     handsDispatchedRef.current = true;
-    recordHolmTrace('ORCHESTRATOR', `dispatch HANDS accepted`, { phase: 'dispatch', wave: 'hands', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'handsDispatchedRef', intents: intents.length, reason: 'hands-wave-ready' });
+    recordHolmTrace('ORCHESTRATOR', `dispatch HANDS reconciled`, { phase: 'dispatch', wave: 'hands', accepted: reconciliation.accepted, active: reconciliation.active, settled: reconciliation.settled, instance: instanceRef.current, handContextId, dispatchedKey: 'handsDispatchedRef', intents: intents.length, reason: 'hands-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:handsWave:L300',
@@ -371,9 +392,10 @@ export function HolmDealOrchestrator({
         cardIds: intents.map((i) => i.cardId),
       },
     });
-    holmTimelineResetForHand(handContextId);
-    onHandsWaveStarted?.(handContextId);
-    deal.beginDeal(intents.length);
+    if (reconciliation.accepted > 0) {
+      holmTimelineResetForHand(handContextId);
+      onHandsWaveStarted?.(handContextId);
+    }
     holmDealDbgRecordWave({
       handContextId,
       wave: 'hands',
@@ -397,7 +419,6 @@ export function HolmDealOrchestrator({
     });
     const dispatchAt = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'hands', holmDbgEndpoint(intent.to), dispatchAt);
-    ct.dispatchMany(intents);
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dispatchAllowed,
@@ -468,8 +489,24 @@ export function HolmDealOrchestrator({
     }
 
     const intents = buildIntents(specs);
+    const manifest = intents.map((intent) => ({ cardId: intent.cardId, handContextId }));
+    if (!communityManifestDeclaredRef.current) {
+      deal.beginWaveForHand({ handContextId, handGeneration, addedExpectedCards: manifest });
+      communityManifestDeclaredRef.current = true;
+    }
+    const reconciliation = ct.reconcileMany(intents);
+    if (!reconciliation.allOwned) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:manifestReconcile',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_COMMUNITY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'manifest-not-owned', reconciliation },
+      });
+      return;
+    }
     communityDispatchedRef.current = true;
-    recordHolmTrace('ORCHESTRATOR', `dispatch COMMUNITY accepted`, { phase: 'dispatch', wave: 'community', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'communityDispatchedRef', intents: intents.length, reason: 'community-wave-ready' });
+    recordHolmTrace('ORCHESTRATOR', `dispatch COMMUNITY reconciled`, { phase: 'dispatch', wave: 'community', accepted: reconciliation.accepted, active: reconciliation.active, settled: reconciliation.settled, instance: instanceRef.current, handContextId, dispatchedKey: 'communityDispatchedRef', intents: intents.length, reason: 'community-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:communityWave:L405',
@@ -478,7 +515,6 @@ export function HolmDealOrchestrator({
       identity: { segmentId: handContextId, playerId: selfPlayerId },
       payload: { wave: 'community', intentCount: intents.length, beginAt, cardIds: intents.map((i) => i.cardId) },
     });
-    deal.beginWave(intents.length);
     holmDealDbgRecordWave({
       handContextId,
       wave: 'community',
@@ -511,7 +547,6 @@ export function HolmDealOrchestrator({
         slotRenderEligible: true,
       });
     });
-    ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
   // ── 3. CHUCKY WAVE (solo only) ────────────────────────────────────
@@ -553,8 +588,24 @@ export function HolmDealOrchestrator({
     }));
 
     const intents = buildIntents(specs);
+    const manifest = intents.map((intent) => ({ cardId: intent.cardId, handContextId }));
+    if (!chuckyManifestDeclaredRef.current) {
+      deal.beginWaveForHand({ handContextId, handGeneration, addedExpectedCards: manifest });
+      chuckyManifestDeclaredRef.current = true;
+    }
+    const reconciliation = ct.reconcileMany(intents);
+    if (!reconciliation.allOwned) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:chuckyWave:manifestReconcile',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_CHUCKY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'manifest-not-owned', reconciliation },
+      });
+      return;
+    }
     chuckyDispatchedRef.current = true;
-    recordHolmTrace('ORCHESTRATOR', `dispatch CHUCKY accepted`, { phase: 'dispatch', wave: 'chucky', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'chuckyDispatchedRef', intents: intents.length, reason: 'chucky-wave-ready' });
+    recordHolmTrace('ORCHESTRATOR', `dispatch CHUCKY reconciled`, { phase: 'dispatch', wave: 'chucky', accepted: reconciliation.accepted, active: reconciliation.active, settled: reconciliation.settled, instance: instanceRef.current, handContextId, dispatchedKey: 'chuckyDispatchedRef', intents: intents.length, reason: 'chucky-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:chuckyWave:L482',
@@ -563,7 +614,6 @@ export function HolmDealOrchestrator({
       identity: { segmentId: handContextId, playerId: selfPlayerId },
       payload: { wave: 'chucky', intentCount: intents.length, beginAt, cardIds: intents.map((i) => i.cardId) },
     });
-    deal.beginWave(intents.length);
     holmDealDbgRecordWave({
       handContextId,
       wave: 'chucky',
@@ -582,7 +632,6 @@ export function HolmDealOrchestrator({
     });
     const dispatchAtK = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'chucky', holmDbgEndpoint(intent.to), dispatchAtK);
-    ct.dispatchMany(intents);
   }, [deal, ct, handContextId, soloDeclared, chuckyCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
   // ── Self-hand anchor — portal a 1×1 anchor at top of active pane ──
@@ -664,15 +713,27 @@ export function HolmDealOrchestrator({
 export function HolmDealRuntimeMaybe({
   handContextId,
   gameType,
+  entryMode,
   children,
 }: {
   handContextId: string | null | undefined;
   gameType: string | null | undefined;
+  entryMode?: 'live-transition' | 'historical-entry';
   children: ReactNode;
 }) {
+  const cardTransport = useCardTransport();
   if (gameType !== 'holm-game' || !handContextId) return <>{children}</>;
+  const hasPresentationHistory = cardTransport.getHandIntentLifecycles(handContextId).length > 0;
+  const initialPhase = entryMode === 'historical-entry' && !hasPresentationHistory
+    ? 'GAMEPLAY'
+    : 'PRE_DEAL';
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="holm-game">
+    <DealRuntime
+      key={handContextId}
+      handContextId={handContextId}
+      gameType="holm-game"
+      initialPhase={initialPhase}
+    >
       {children}
     </DealRuntime>
   );

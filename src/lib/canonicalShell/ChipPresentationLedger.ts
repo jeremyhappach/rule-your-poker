@@ -79,6 +79,19 @@ export type ChipPresentationBalanceDeltaHandler = (
 /** Clears transient labels when a batch loses presentation ownership. */
 export type ChipPresentationBalanceDeltaAbandonHandler = (batchId: string) => void;
 
+/**
+ * Durable, level-triggered presentation state for one authoritative transfer
+ * cursor. Consumers may wait on `settled` or `reconciled`; neither state
+ * expires when a transient balance label leaves the screen.
+ */
+export type ChipPresentationCursorState =
+  | 'unknown'
+  | 'queued'
+  | 'running'
+  | 'settled'
+  | 'reconciling'
+  | 'reconciled';
+
 interface PlayerSnapshot {
   chips: number;
   position: number;
@@ -108,6 +121,8 @@ export interface ChipPresentationLedgerTransport {
 export interface ChipPresentationLedger {
   playerBalance: (playerId: string | null | undefined, fallback: number) => number;
   potBalance: (fallback: number) => number;
+  cursorState: (cursor: number | null | undefined) => ChipPresentationCursorState;
+  ensureCursor: (cursor: number | null | undefined) => void;
 }
 
 function endpointKey(endpoint: ChipPresentationEndpoint): EndpointKey | null {
@@ -244,8 +259,10 @@ export function useChipPresentationLedger(
   onBatchSettled: ChipPresentationBatchSettled = () => {},
   onBalanceDelta: ChipPresentationBalanceDeltaHandler = () => {},
   onBalanceDeltasAbandoned: ChipPresentationBalanceDeltaAbandonHandler = () => {},
+  waitForEndpointReadiness = false,
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
+  const [cursorStates, setCursorStates] = useState<Map<number, ChipPresentationCursorState>>(new Map());
   const playersRef = useRef(new Map<string, PlayerSnapshot>());
   const rawBalancesRef = useRef(new Map<EndpointKey, number>());
   const rawCursorsRef = useRef(new Map<EndpointKey, number>());
@@ -253,6 +270,7 @@ export function useChipPresentationLedger(
   const seenBatchIdsRef = useRef(new Set<string>());
   const knownBatchCursorsRef = useRef(new Set<number>());
   const recoveringBatchCursorsRef = useRef(new Set<number>());
+  const requestedBatchCursorsRef = useRef(new Map<string, Set<number>>());
   const queuedRef = useRef<ChipPresentationBatch[]>([]);
   const runningRef = useRef(new Map<string, RunningBatch>());
   const activeEndpointsRef = useRef(new Map<EndpointKey, string>());
@@ -261,6 +279,8 @@ export function useChipPresentationLedger(
   const disposedRef = useRef(false);
   const canStartBatchRef = useRef(canStartBatch);
   canStartBatchRef.current = canStartBatch;
+  const waitForEndpointReadinessRef = useRef(waitForEndpointReadiness);
+  waitForEndpointReadinessRef.current = waitForEndpointReadiness;
   const onBatchSettledRef = useRef(onBatchSettled);
   onBatchSettledRef.current = onBatchSettled;
   const onBalanceDeltaRef = useRef(onBalanceDelta);
@@ -269,6 +289,20 @@ export function useChipPresentationLedger(
   onBalanceDeltasAbandonedRef.current = onBalanceDeltasAbandoned;
   const emittedBalanceDeltaIdsRef = useRef(new Set<string>());
   const recoverCommittedCursorRef = useRef<(cursor: number) => void>(() => {});
+  const releaseOrContinueRef = useRef<(batch: ChipPresentationBatch) => void>(() => {});
+  const startQueuedRef = useRef<() => void>(() => {});
+  const abortBatchRef = useRef<(batchId: string) => void>(() => {});
+
+  const writeCursorState = useCallback((cursor: number, state: ChipPresentationCursorState) => {
+    if (!waitForEndpointReadinessRef.current) return;
+    if (!Number.isFinite(cursor) || cursor <= 0) return;
+    setCursorStates((previous) => {
+      if (previous.get(cursor) === state) return previous;
+      const next = new Map(previous);
+      next.set(cursor, state);
+      return next;
+    });
+  }, []);
 
   const emitBalanceDelta = useCallback((delta: ChipPresentationBalanceDelta) => {
     if (!Number.isFinite(delta.amount) || delta.amount === 0) return;
@@ -307,6 +341,7 @@ export function useChipPresentationLedger(
       // exact, durable cue to recover that one missing batch by identity.
       recoverCommittedCursorRef.current(cursor);
     }
+    queueMicrotask(() => startQueuedRef.current());
   }, [writeVisible]);
 
   const setRawPot = useCallback((row: Record<string, unknown>) => {
@@ -321,6 +356,7 @@ export function useChipPresentationLedger(
     } else {
       recoverCommittedCursorRef.current(cursor);
     }
+    queueMicrotask(() => startQueuedRef.current());
   }, [writeVisible]);
 
   const refetchAuthoritative = useCallback(async () => {
@@ -333,10 +369,6 @@ export function useChipPresentationLedger(
     for (const row of playerRows ?? []) setRawPlayer(row as Record<string, unknown>);
     if (gameRow) setRawPot(gameRow as Record<string, unknown>);
   }, [gameId, setRawPlayer, setRawPot]);
-
-  const releaseOrContinueRef = useRef<(batch: ChipPresentationBatch) => void>(() => {});
-  const startQueuedRef = useRef<() => void>(() => {});
-  const abortBatchRef = useRef<(batchId: string) => void>(() => {});
 
   const finishBatch = useCallback((batchId: string) => {
     const running = runningRef.current.get(batchId);
@@ -367,6 +399,7 @@ export function useChipPresentationLedger(
     for (const key of Object.keys(batch.opening_balances) as EndpointKey[]) {
       if (activeEndpointsRef.current.get(key) === batchId) activeEndpointsRef.current.delete(key);
     }
+    writeCursorState(batch.cursor, 'settled');
 
     // Financial presentation is visibly complete at this edge. Games may
     // advance their non-financial terminal phase from it, but only after the
@@ -388,7 +421,7 @@ export function useChipPresentationLedger(
       .catch(() => {
         startQueuedRef.current();
       });
-  }, [emitBalanceDelta, refetchAuthoritative, writeVisible]);
+  }, [emitBalanceDelta, refetchAuthoritative, writeCursorState, writeVisible]);
 
   const startQueued = useCallback(() => {
     if (disposedRef.current) return;
@@ -411,6 +444,16 @@ export function useChipPresentationLedger(
         // ledger-owned at their opening values until this gate opens.
         if (!canStartBatchRef.current(batch)) continue;
         if (endpoints.some((key) => activeEndpointsRef.current.has(key))) continue;
+        // Player hydration and the immutable batch may arrive in either
+        // order. Keep ownership queued until every logical endpoint can be
+        // mapped; a later authoritative player row re-runs this function.
+        const endpointsReady = batch.transfers.every((entry) =>
+          !!endpointKey(entry.from)
+          && !!endpointKey(entry.to)
+          && !!endpointRef(entry.from, playersRef.current)
+          && !!endpointRef(entry.to, playersRef.current),
+        );
+        if (!endpointsReady && waitForEndpointReadinessRef.current) continue;
         queuedRef.current = queuedRef.current.filter((candidate) => candidate.id !== batch.id);
         for (const key of endpoints) {
           activeEndpointsRef.current.set(key, batch.id);
@@ -425,6 +468,7 @@ export function useChipPresentationLedger(
           cancelled: false,
         };
         runningRef.current.set(batch.id, running);
+        writeCursorState(batch.cursor, 'running');
 
         const entryTotal = batch.transfers.length;
         if (entryTotal === 0) {
@@ -539,7 +583,7 @@ export function useChipPresentationLedger(
         break;
       }
     }
-  }, [finishBatch, transport, writeVisible]);
+  }, [emitBalanceDelta, finishBatch, transport, writeCursorState, writeVisible]);
   startQueuedRef.current = startQueued;
 
   // Admission may open after the immutable batch is already queued. Recheck
@@ -570,6 +614,7 @@ export function useChipPresentationLedger(
     const running = runningRef.current.get(batchId);
     if (!running || running.cancelled) return;
     running.cancelled = true;
+    writeCursorState(running.batch.cursor, 'reconciling');
     onBalanceDeltasAbandonedRef.current(batchId);
     for (const entry of running.batch.transfers) transport.cancel(entry.id);
     runningRef.current.delete(batchId);
@@ -587,8 +632,9 @@ export function useChipPresentationLedger(
         if (raw != null) writeVisible([[key, raw]]);
         releasedCursorsRef.current.set(key, rawCursorsRef.current.get(key) ?? running.batch.cursor);
       }
+      writeCursorState(running.batch.cursor, 'reconciled');
     });
-  }, [refetchAuthoritative, transport, writeVisible]);
+  }, [refetchAuthoritative, transport, writeCursorState, writeVisible]);
   abortBatchRef.current = abortBatch;
 
   const acceptBatch = useCallback((batch: ChipPresentationBatch) => {
@@ -603,12 +649,14 @@ export function useChipPresentationLedger(
       (rawCursorsRef.current.get(key) ?? 0) >= batch.cursor,
     )) {
       seenBatchIdsRef.current.add(batch.id);
+      writeCursorState(batch.cursor, 'reconciled');
       return;
     }
     seenBatchIdsRef.current.add(batch.id);
     queuedRef.current.push(batch);
+    writeCursorState(batch.cursor, 'queued');
     startQueuedRef.current();
-  }, []);
+  }, [writeCursorState]);
 
   const recoverCommittedCursor = useCallback((cursor: number) => {
     if (!shouldRecoverCommittedCursor({
@@ -646,10 +694,19 @@ export function useChipPresentationLedger(
   }, [acceptBatch, gameId]);
   recoverCommittedCursorRef.current = recoverCommittedCursor;
 
+  const ensureCursor = useCallback((cursor: number | null | undefined) => {
+    if (!gameId || cursor == null || !Number.isFinite(cursor) || cursor <= 0) return;
+    const requested = requestedBatchCursorsRef.current.get(gameId) ?? new Set<number>();
+    requested.add(cursor);
+    requestedBatchCursorsRef.current.set(gameId, requested);
+    recoverCommittedCursorRef.current(cursor);
+  }, [gameId]);
+
   useEffect(() => {
     if (!gameId) return;
     disposedRef.current = false;
     hydratedRef.current = false;
+    if (waitForEndpointReadinessRef.current) setCursorStates(new Map());
     emittedBalanceDeltaIdsRef.current.clear();
     knownBatchCursorsRef.current.clear();
     recoveringBatchCursorsRef.current.clear();
@@ -672,9 +729,17 @@ export function useChipPresentationLedger(
       // reconciliation.  No settlement effect is replayed after recovery.
       for (const running of runningRef.current.values()) {
         running.cancelled = true;
+        if (!disposedRef.current) writeCursorState(running.batch.cursor, 'reconciling');
         onBalanceDeltasAbandonedRef.current(running.batch.id);
         for (const entry of running.batch.transfers) transport.cancel(entry.id);
       }
+      for (const queued of queuedRef.current) {
+        if (!disposedRef.current) writeCursorState(queued.cursor, 'reconciling');
+      }
+      const abandonedCursors = [
+        ...Array.from(runningRef.current.values(), (entry) => entry.batch.cursor),
+        ...queuedRef.current.map((entry) => entry.cursor),
+      ];
       runningRef.current.clear();
       activeEndpointsRef.current.clear();
       queuedRef.current = [];
@@ -684,6 +749,7 @@ export function useChipPresentationLedger(
           writeVisible([[key, raw]]);
           releasedCursorsRef.current.set(key, rawCursorsRef.current.get(key) ?? 0);
         }
+        for (const cursor of abandonedCursors) writeCursorState(cursor, 'reconciled');
       });
     };
 
@@ -692,6 +758,11 @@ export function useChipPresentationLedger(
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'gameplay_transfer_batches', filter: `game_id=eq.${gameId}`,
       }, receiveBatch)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}`,
+      }, (payload: { new?: Record<string, unknown> }) => {
+        if (waitForEndpointReadinessRef.current) setRawPlayer(payload.new ?? {});
+      })
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}`,
       }, (payload: { new?: Record<string, unknown> }) => setRawPlayer(payload.new ?? {}))
@@ -714,36 +785,69 @@ export function useChipPresentationLedger(
       ]);
       if (disposedRef.current) return;
 
-      // Existing rows are history, including reconnect history: baseline them
-      // directly and never replay their financial effects.
+      // Existing rows are history, including reconnect history, except for an
+      // INSERT this subscribed client actually observed while bootstrap was
+      // still hydrating. That buffered INSERT is live presentation and must
+      // not be erased by the overlapping snapshot query.
+      const buffered = bootEventsRef.current;
+      bootEventsRef.current = [];
+      const liveBuffered = waitForEndpointReadinessRef.current ? buffered : [];
+      const bufferedIds = new Set(liveBuffered.map((batch) => batch.id));
+      const historicalBatches: ChipPresentationBatch[] = [];
       for (const row of batchRows ?? []) {
         const batch = normalizeBatch(row, gameId);
         if (batch) {
+          if (bufferedIds.has(batch.id)) continue;
+          historicalBatches.push(batch);
           seenBatchIdsRef.current.add(batch.id);
           knownBatchCursorsRef.current.add(batch.cursor);
+          writeCursorState(batch.cursor, 'reconciled');
         }
       }
       for (const row of playerRows ?? []) setRawPlayer(row as Record<string, unknown>);
       if (gameRow) setRawPot(gameRow as Record<string, unknown>);
-      for (const [key, cursor] of rawCursorsRef.current) releasedCursorsRef.current.set(key, cursor);
+      for (const [key, cursor] of rawCursorsRef.current) {
+        const firstLiveCursor = liveBuffered
+          .filter((batch) => Object.hasOwn(batch.opening_balances, key))
+          .reduce<number | null>((lowest, batch) =>
+            lowest == null || batch.cursor < lowest ? batch.cursor : lowest, null);
+        if (firstLiveCursor != null && cursor >= firstLiveCursor) {
+          const historicalCursor = historicalBatches
+            .filter((batch) => batch.cursor < firstLiveCursor && Object.hasOwn(batch.opening_balances, key))
+            .reduce((highest, batch) => Math.max(highest, batch.cursor), 0);
+          releasedCursorsRef.current.set(key, historicalCursor);
+        } else {
+          releasedCursorsRef.current.set(key, cursor);
+        }
+      }
       hydratedRef.current = true;
 
-      const buffered = bootEventsRef.current;
-      bootEventsRef.current = [];
-      for (const batch of buffered) acceptBatch(batch);
+      for (const batch of buffered) {
+        if (waitForEndpointReadinessRef.current) {
+          writeVisible(Object.entries(batch.opening_balances) as Array<[EndpointKey, number]>);
+        }
+        acceptBatch(batch);
+      }
+      for (const cursor of requestedBatchCursorsRef.current.get(gameId) ?? []) {
+        recoverCommittedCursorRef.current(cursor);
+      }
     })().catch(() => {
       // A failed bootstrap is a reconciliation-only state.  We never guess or
       // replay effects; the next subscription/browse event can establish a
       // fresh authoritative baseline.
       hydratedRef.current = true;
+      for (const cursor of requestedBatchCursorsRef.current.get(gameId) ?? []) {
+        recoverCommittedCursorRef.current(cursor);
+      }
     });
 
     return () => {
       disposedRef.current = true;
       abandon();
+      requestedBatchCursorsRef.current.delete(gameId);
       if (channel) void client.removeChannel(channel);
     };
-  }, [acceptBatch, gameId, refetchAuthoritative, setRawPlayer, setRawPot, transport, writeVisible]);
+  }, [acceptBatch, gameId, refetchAuthoritative, setRawPlayer, setRawPot, transport, writeCursorState, writeVisible]);
 
   return useMemo<ChipPresentationLedger>(() => ({
     playerBalance: (playerId, fallback) => {
@@ -753,5 +857,9 @@ export function useChipPresentationLedger(
         ?? fallback;
     },
     potBalance: (fallback) => visibleBalances.get('pot') ?? rawBalancesRef.current.get('pot') ?? fallback,
-  }), [visibleBalances]);
+    cursorState: (cursor) => cursor == null || cursor <= 0
+      ? 'reconciled'
+      : (cursorStates.get(cursor) ?? 'unknown'),
+    ensureCursor,
+  }), [cursorStates, ensureCursor, visibleBalances]);
 }

@@ -8851,6 +8851,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
   }, [gameId]);
 
+  // Level-triggered prepared-successor acknowledgement. The PhaseHost calls
+  // the same idempotent handler at the visual boundary, while this drain
+  // guarantees that a remount or callback/ref ordering cannot lose it after
+  // the exact hand has entered the durable ready barrier.
+  useEffect(() => {
+    const prepared = holmLocallyPreparedSuccessorRef.current;
+    if (!prepared || !isHolmHandReady(prepared.handContextId)) return;
+    handleHolmDealPresentationComplete(prepared.handContextId);
+  }, [game?.current_game_uuid, handContextKey, handleHolmDealPresentationComplete, holmReadyTick]);
+
   // Clear timer when results are shown
   useEffect(() => {
     if (game?.last_round_result) {

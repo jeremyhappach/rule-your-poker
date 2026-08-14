@@ -30,10 +30,10 @@ Codex follow-up:
 
 ### 2C. End-to-end Holm lifecycle seam audit
 
-Status: Queued (P0 follow-up); requested during the 2026-08-14 multiplayer-
-showdown client freeze investigation. Correct the proven H4-to-H5 client
-release seam first, then perform this audit read-only before proposing broader
-changes.
+Status: Implemented on 2026-08-14; publication and two-client production smoke
+pending. Requested during the multiplayer-showdown client-freeze investigation
+and expanded after the paused `Candyman` dealer game proved one client could
+fetch its exact H1 cards without ever opening local deal presentation.
 
 - Inventory every Holm identity boundary and presentation handoff: dealer
   setup/ante, Buck transport, deal transport, betting and deadline enforcement,
@@ -57,7 +57,19 @@ changes.
   mutable transfer cursor even though exact cursor belongs only to batch
   completion/release evidence. The approved correction removes that duplicate
   cursor-bearing plan-key API and adds cursor-reordering regressions. The wider
-  setup/Buck/deal/betting/reconnect/terminal seam audit remains queued here.
+  setup/Buck/deal/betting/reconnect/terminal seam audit then found three red
+  boundaries: transient ante admission, non-reconstructable card-wave
+  dispatch/settlement, and one-shot deal-ready acknowledgement. They now share
+  one exact-hand presentation transaction: durable chip-cursor state,
+  deterministic card manifests with provider-owned lifecycle snapshots,
+  exact-hand settle filtering/remount replay, accepted-transport Buck timing,
+  and a level-triggered prepared-successor acknowledgement drain. Holm endpoint
+  readiness is DOM/lifecycle-driven with no elapsed-time release. PostgreSQL
+  settlement, authoritative deadlines, the no-client recovery lease,
+  Rabbit/Pussy/showdown completion barriers and table placement, and terminal
+  flow were audited and preserved. Focused race coverage and the production
+  build pass; keep this item open only until published two-client smoke accepts
+  the full flow.
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 

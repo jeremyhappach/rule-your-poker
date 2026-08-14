@@ -649,3 +649,30 @@ remains enforceable even if all clients disconnect or one client still presents
 the predecessor. A client renders that timer and its controls only when its
 presented dealer-game/round/hand is the same authoritative hand; hiding a
 successor timer from a predecessor surface does not suspend enforcement.
+
+## D-052 - Holm client presentation is one reconstructable exact-hand transaction
+
+Every connected Holm client owns one presentation transaction keyed by the
+exact dealer game, rounds row, and hand number. Its chip prerequisite is the
+authoritative transfer cursor's durable ledger state, never a transient delta
+or animation callback. A live cursor releases deal admission only after the
+client's actual financial flight settles; a historical or reconnected cursor
+reconciles directly to authority without replay.
+
+Hands, community, and Chucky are deterministic card manifests. The persistent
+transport provider retains whether each exact intent is active, settled, or
+dropped and its immutable metadata. A DealRuntime remount reconstructs only
+the declared manifest for its exact hand; active IDs remain in flight, settled
+IDs replay locally, unseen IDs dispatch, stale-hand settles are rejected, and
+dropped/cancelled IDs never masquerade as completed presentation. Buck is
+eligible only when the first new hands-wave intent is actually accepted.
+
+A missing Holm DOM endpoint is readiness, not failure and not permission to
+fake-settle. The intent remains pending until canonical DOM/layout readiness or
+explicit lifecycle cancellation. Fresh mounts on an already-actionable
+historical hand enter gameplay without replay; an exact prepared successor
+still receives its deal. Deal-ready acknowledgement drains from the durable
+ready barrier, so callback/remount ordering cannot lose it. None of these
+client checkpoints owns settlement, successor publication, balances, or turn
+deadlines; PostgreSQL continues independently and its durable missing-ack lease
+remains the all-clients-disconnected fallback.

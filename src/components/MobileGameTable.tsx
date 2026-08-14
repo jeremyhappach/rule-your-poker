@@ -255,6 +255,7 @@ import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import {
   useChipPresentationBalanceDeltas,
+  useChipPresentationCursorState,
   useChipTransferPresentationAdmission,
   usePresentationPotChipBalance,
 } from "@/lib/canonicalShell/ChipTransportProvider";
@@ -1800,6 +1801,14 @@ export const MobileGameTable = ({
     released: boolean;
   }>({ triggerId: null, released: true });
   const presentationBalanceDeltas = useChipPresentationBalanceDeltas();
+  const holmInitialAnteCursor =
+    gameType === 'holm-game'
+    && holmEntryMode === 'live-transition'
+    && holmHandNumber === 1
+    && (holmPresentationIdentity?.transferCursor ?? 0) > 0
+      ? holmPresentationIdentity!.transferCursor
+      : null;
+  const holmInitialAnteCursorState = useChipPresentationCursorState(holmInitialAnteCursor);
   const presentationDeltaIdsRef = useRef(new Set<string>());
   presentationDeltaIdsRef.current = new Set(presentationBalanceDeltas.map((delta) => delta.id));
   const anteArrivalBaselineRef = useRef(new Set<string>());
@@ -1837,6 +1846,9 @@ export const MobileGameTable = ({
   ]);
   const anteDealDispatchAllowed =
     !isPlayerToPotAnteTrigger && antePresentationAdmission.released;
+  const holmDealDispatchAllowed = holmInitialAnteCursor == null
+    || holmInitialAnteCursorState === 'settled'
+    || holmInitialAnteCursorState === 'reconciled';
   // Dealer setup/config phases keep the table mounted as a dimmed background.
   // Dice gameplay/result surfaces must be hard-disabled here; otherwise prior
   // dealer-game result badges can survive behind the setup modal.
@@ -11396,6 +11408,7 @@ export const MobileGameTable = ({
   return <HolmDealRuntimeMaybe
     handContextId={gameType === 'holm-game' && !sessionEndedPhase ? (handContextId ?? null) : null}
     gameType={gameType}
+    entryMode={holmEntryMode}
   >
     {gameType === 'holm-game' && !sessionEndedPhase && handContextId && currentPlayer && (currentPlayer as any).id && typeof buckPosition === 'number' && typeof dealerPosition === 'number' && (
       <>
@@ -11412,7 +11425,7 @@ export const MobileGameTable = ({
           communityCards={communityCards ?? []}
           soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
-          dispatchAllowed={anteDealDispatchAllowed}
+          dispatchAllowed={holmDealDispatchAllowed}
         />
         <HolmDealPhaseHost
           handContextId={handContextId}
