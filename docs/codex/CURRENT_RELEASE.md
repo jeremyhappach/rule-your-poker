@@ -42,8 +42,9 @@ Date: 2026-08-14
 - The focused Holm suite passes 95 tests, including active/settled
   duplicate reconciliation, stale-settle rejection, cancellation, and
   same-hand unmount/remount reconstruction. TypeScript, 30 Cribbage preservation
-  assertions, and the production build pass. Publication and two-client
-  production smoke remain required.
+  assertions, and the production build pass. Published at commit
+  `540007f8e32b364a182b4d561782fca8e459b768`; the two-client Holm production
+  smoke was accepted clean on 2026-08-14.
 
 ## Holm split-showdown presentation-plan identity correction
 

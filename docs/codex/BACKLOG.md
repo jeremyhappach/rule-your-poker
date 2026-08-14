@@ -30,10 +30,12 @@ Codex follow-up:
 
 ### 2C. End-to-end Holm lifecycle seam audit
 
-Status: Implemented on 2026-08-14; publication and two-client production smoke
-pending. Requested during the multiplayer-showdown client-freeze investigation
-and expanded after the paused `Candyman` dealer game proved one client could
-fetch its exact H1 cards without ever opening local deal presentation.
+Status: Completed; published at commit
+`540007f8e32b364a182b4d561782fca8e459b768` and accepted by clean two-client
+Holm production smoke on 2026-08-14. Requested during the
+multiplayer-showdown client-freeze investigation and expanded after the paused
+`Candyman` dealer game proved one client could fetch its exact H1 cards without
+ever opening local deal presentation.
 
 - Inventory every Holm identity boundary and presentation handoff: dealer
   setup/ante, Buck transport, deal transport, betting and deadline enforcement,
@@ -67,9 +69,8 @@ fetch its exact H1 cards without ever opening local deal presentation.
   readiness is DOM/lifecycle-driven with no elapsed-time release. PostgreSQL
   settlement, authoritative deadlines, the no-client recovery lease,
   Rabbit/Pussy/showdown completion barriers and table placement, and terminal
-  flow were audited and preserved. Focused race coverage and the production
-  build pass; keep this item open only until published two-client smoke accepts
-  the full flow.
+  flow were audited and preserved. Focused race coverage, production build,
+  publication, and the two-client smoke all passed.
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
