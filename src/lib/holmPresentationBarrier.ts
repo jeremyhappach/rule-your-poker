@@ -15,6 +15,17 @@ export interface HolmContinuationPresentationCompletion extends HolmPresentation
   stage: HolmContinuationPresentationStage;
 }
 
+export type HolmAdmittedTransferStage =
+  | 'showdown-pot-award'
+  | 'showdown-replacement-pot'
+  | 'chucky-loss'
+  | 'pussy-tax';
+
+export interface HolmAdmittedTransferPresentation {
+  stage: HolmAdmittedTransferStage;
+  completion: HolmContinuationPresentationCompletion | null;
+}
+
 export type HolmPresentationBarrier = HolmPresentationIdentity;
 
 export function getHolmPresentationHandKey(
@@ -23,15 +34,46 @@ export function getHolmPresentationHandKey(
   return `${identity.dealerGameId}|${identity.roundId}|h${identity.handNumber}`;
 }
 
-export function isSameHolmPresentationIdentity(
-  left: HolmPresentationIdentity | null | undefined,
-  right: HolmPresentationIdentity | null | undefined,
+export function getHolmPresentationIdentityKey(
+  identity: HolmPresentationIdentity,
+): string {
+  return `${getHolmPresentationHandKey(identity)}|cursor:${identity.transferCursor}`;
+}
+
+export function isSameHolmPresentationHand(
+  left: Pick<HolmPresentationIdentity, 'dealerGameId' | 'roundId' | 'handNumber'> | null | undefined,
+  right: Pick<HolmPresentationIdentity, 'dealerGameId' | 'roundId' | 'handNumber'> | null | undefined,
 ): boolean {
   return !!left && !!right
     && left.dealerGameId === right.dealerGameId
     && left.roundId === right.roundId
-    && left.handNumber === right.handNumber
+    && left.handNumber === right.handNumber;
+}
+
+export function isSameHolmPresentationIdentity(
+  left: HolmPresentationIdentity | null | undefined,
+  right: HolmPresentationIdentity | null | undefined,
+): boolean {
+  return isSameHolmPresentationHand(left, right)
+    && !!left
+    && !!right
     && left.transferCursor === right.transferCursor;
+}
+
+/** Capture immutable completion identity when the ledger admits a stage. */
+export function captureHolmAdmittedTransferPresentation(
+  identity: HolmPresentationIdentity | null | undefined,
+  batchCursor: number,
+  stage: HolmAdmittedTransferStage,
+): HolmAdmittedTransferPresentation {
+  const continuationStage: HolmContinuationPresentationStage | null =
+    stage === 'showdown-pot-award' ? null : stage;
+  const completion = continuationStage
+    && identity
+    && batchCursor === identity.transferCursor
+      ? { ...identity, stage: continuationStage }
+      : null;
+  return { stage, completion };
 }
 
 /**
@@ -84,6 +126,30 @@ export function releaseHolmPresentationBarrier(
     return { barrier, released: false };
   }
   return { barrier: null, released: true };
+}
+
+/**
+ * Reconcile a predecessor hold from durable, exact-hand completion evidence.
+ * Evidence may arrive before or after the barrier is latched; either ordering
+ * produces the same release and duplicate evidence is harmless.
+ */
+export function reconcileHolmPresentationBarrierFromEvidence(
+  barrier: HolmPresentationBarrier | null,
+  evidence: ReadonlyMap<string, HolmContinuationPresentationCompletion>,
+): {
+  barrier: HolmPresentationBarrier | null;
+  completion: HolmContinuationPresentationCompletion | null;
+  released: boolean;
+} {
+  if (!barrier) {
+    return { barrier: null, completion: null, released: false };
+  }
+  const completion = evidence.get(getHolmPresentationIdentityKey(barrier)) ?? null;
+  if (!completion) {
+    return { barrier, completion: null, released: false };
+  }
+  const release = releaseHolmPresentationBarrier(barrier, completion);
+  return { ...release, completion: release.released ? completion : null };
 }
 
 export function canCompleteHolmAllFoldPresentation({

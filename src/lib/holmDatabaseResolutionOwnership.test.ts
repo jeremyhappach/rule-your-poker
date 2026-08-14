@@ -49,7 +49,8 @@ describe('Holm database resolution ownership', () => {
     expect(mobileTableSource).toContain('onHolmContinuationPresentationComplete?.(completion);');
     expect(mobileTableSource).toContain('onPresentationComplete={onHolmDealPresentationComplete}');
     expect(mobileTableSource).toContain("stage: 'zero-transfer'");
-    expect(mobileTableSource).toContain("holmStage === 'pussy-tax'");
+    expect(mobileTableSource).toContain('captureHolmAdmittedTransferPresentation(');
+    expect(mobileTableSource).toContain("admittedPresentation?.stage === 'pussy-tax'");
     expect(mobileTableSource).toContain("pussyTaxPresentationReady: lastRoundResult === 'Pussy Tax!'");
     expect(mobileTableSource).not.toContain("pussyTaxPresentationReady: !!anteAnimationTriggerId");
     expect(mobileTableSource).toContain('requestAnimationFrame');
@@ -95,6 +96,10 @@ describe('Holm database resolution ownership', () => {
     expect(phaseHost.indexOf('deal.enterGameplay();'))
       .toBeLessThan(phaseHost.indexOf('onPresentationComplete?.(handContextId);'));
     expect(gameSource).toContain('holmLocallyPreparedSuccessorRef.current');
-    expect(gameSource).toContain('isHolmHandReady(handContextKey) ? (currentDecisionTimerPresentation?.remainingSeconds');
+    expect(gameSource).toContain('holmPresentedDecisionTimer?.remainingSeconds');
+    expect(gameSource).toContain(
+      'isSameHolmPresentationHand(currentDecisionTimerPresentation, holmPresentationIdentity)',
+    );
+    expect(gameSource).toContain('holmDecisionPresentationReady');
   });
 });

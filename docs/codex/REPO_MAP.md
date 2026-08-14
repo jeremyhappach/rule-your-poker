@@ -129,6 +129,14 @@ reset transient/presentation state when those identities change.
   in `src/lib/holmPreparedPresentation.ts`. `HolmDealOrchestrator.tsx` reports
   the shared deal-ready boundary through `MobileGameTable.tsx`; `Game.tsx`
   then calls authenticated `public.acknowledge_holm_prepared_hand_dealt`.
+  Before that successor deal, `MobileGameTable.tsx` captures the exact Holm
+  transfer stage/identity at canonical-ledger admission. `Game.tsx` stores the
+  resulting completion in the evidence map defined by
+  `src/lib/holmPresentationBarrier.ts` and reconciles it idempotently with the
+  exact predecessor barrier. Mutable successor props never reclassify a batch
+  at settlement. Holm timer/control presentation also matches the exact
+  presented dealer-game/round/hand, while raw deadline enforcement remains
+  independent of client presentation.
   Migration `20260814190000_holm_acknowledged_presentation_release.sql` owns
   the private immutable active-human cohort, final-ack publication, and the
   configurable server-only missing-acknowledgement fallback. The

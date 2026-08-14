@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
   getHolmPresentationHandKey,
+  getHolmPresentationIdentityKey,
+  isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
+  reconcileHolmPresentationBarrierFromEvidence,
   releaseHolmPresentationBarrier,
   shouldHoldHolmAuthoritativeSuccessor,
   type HolmPresentationIdentity,
@@ -89,6 +93,55 @@ describe('Holm presented-hand barrier', () => {
       roundCompleted: true,
       hasResult: true,
     })).toBeNull();
+  });
+
+  it('captures the admitted H1 transfer identity even if mutable props later advance to H2', () => {
+    const first = hand('round-1', 1, 6);
+    const second = hand('round-2', 2, 7);
+    const captured = captureHolmAdmittedTransferPresentation(
+      first,
+      first.transferCursor,
+      'showdown-replacement-pot',
+    );
+
+    expect(captured).toEqual({
+      stage: 'showdown-replacement-pot',
+      completion: { ...first, stage: 'showdown-replacement-pot' },
+    });
+    expect(captured.completion && isSameHolmPresentationHand(captured.completion, second)).toBe(false);
+  });
+
+  it('reconciles completion evidence whether it arrives before or after the barrier', () => {
+    const first = hand('round-1', 1, 6);
+    const completion = { ...first, stage: 'chucky-loss' as const };
+    const evidence = new Map([[getHolmPresentationIdentityKey(first), completion]]);
+
+    expect(reconcileHolmPresentationBarrierFromEvidence(null, evidence)).toEqual({
+      barrier: null,
+      completion: null,
+      released: false,
+    });
+    expect(reconcileHolmPresentationBarrierFromEvidence(first, evidence)).toEqual({
+      barrier: null,
+      completion,
+      released: true,
+    });
+  });
+
+  it('does not release H1 from H2 evidence or a different transfer cursor', () => {
+    const first = hand('round-1', 1, 6);
+    const hiddenSecond = hand('round-2', 2, 7);
+    const wrongCursor = hand('round-1', 1, 8);
+    const evidence = new Map([
+      [getHolmPresentationIdentityKey(hiddenSecond), { ...hiddenSecond, stage: 'pussy-tax' as const }],
+      [getHolmPresentationIdentityKey(wrongCursor), { ...wrongCursor, stage: 'zero-transfer' as const }],
+    ]);
+
+    expect(reconcileHolmPresentationBarrierFromEvidence(first, evidence)).toEqual({
+      barrier: first,
+      completion: null,
+      released: false,
+    });
   });
 
   it('joins Rabbit Hunt paint/reveal and Pussy Tax settlement in either arrival order', () => {

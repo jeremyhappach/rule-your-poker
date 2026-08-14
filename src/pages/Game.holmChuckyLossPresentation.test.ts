@@ -25,7 +25,8 @@ describe('Game Holm Chucky-loss presentation ownership', () => {
   it('holds only local presentation while PostgreSQL owns successor release', () => {
     expect(source).toContain('latchHolmPresentationBarrier({');
     expect(source).toContain('Buffered authoritative successor behind local predecessor');
-    expect(source).toContain('releaseExactHolmPresentationBarrier(barrier, completion)');
+    expect(source).toContain('reconcileHolmPresentationBarrierFromEvidence(');
+    expect(source).toContain('holmPresentationCompletionEvidenceRef.current.set(evidenceKey, completion)');
     expect(source).toContain('holmLiveRoundIdsObservedRef.current.add(handKey)');
     expect(source).not.toContain('holmLiveRoundIdsObservedRef.current.add(currentRound.id)');
     expect(source).toContain('? holmView.lastRoundResult');

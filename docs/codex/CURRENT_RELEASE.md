@@ -2,6 +2,35 @@
 
 Date: 2026-08-14
 
+## Holm durable predecessor-completion reconciliation
+
+- Production session `Aug 14 - Jeff Samardzija`, dealer game
+  `f566d49f-74d7-4a7c-8d0b-32608d9b623d`, proved a faster client could enter
+  authoritative hand 5 while the slower client completed hand 4's correct
+  showdown transfers and then remained held on hand 4. PostgreSQL correctly
+  activated hand 5 through the missing-acknowledgement fallback; the defect was
+  a lost client-local predecessor completion, not settlement or successor
+  authority.
+- `MobileGameTable.tsx` now captures the immutable Holm stage and exact
+  `(dealer game, round, hand, transfer cursor)` completion identity when the
+  canonical chip ledger admits the batch. Ledger settlement consumes that
+  captured identity instead of reclassifying against mutable props that may
+  already describe the successor.
+- `Game.tsx` retains exact completion evidence and reconciles it idempotently
+  with the predecessor barrier. Completion-before-barrier and
+  barrier-before-completion both release the same hand; later rounds and
+  different transfer cursors cannot release it. The rule applies uniformly to
+  showdown replacement-pot, Chucky loss, Pussy Tax, and zero-transfer
+  continuations, without a release timer.
+- Visible Holm decision timers and controls now require the exact presented
+  dealer-game/round/hand identity. The authoritative deadline still runs and
+  remains server-enforceable even if another client is disconnected or still
+  presenting the predecessor; this correction changes presentation only.
+- No database migration or RPC change is required. All 102 focused Holm
+  assertions pass when the two community-row cases are run in their existing
+  isolated processes; TypeScript and the Vite production build pass.
+  Production publication and two-client showdown smoke remain required.
+
 ## Holm acknowledgement-driven presentation release
 
 - The fixed nine-second publication lease introduced by the preceding Holm

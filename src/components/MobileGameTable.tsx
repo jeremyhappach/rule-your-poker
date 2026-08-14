@@ -260,8 +260,10 @@ import {
 } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import {
+  captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
   getHolmPresentationHandKey,
+  type HolmAdmittedTransferPresentation,
   type HolmContinuationPresentationCompletion,
   type HolmPresentationIdentity,
 } from "@/lib/holmPresentationBarrier";
@@ -2688,9 +2690,17 @@ export const MobileGameTable = ({
   // The result and immutable transfer may arrive in either realtime order.
   // Retain the exact settled tax identity until Rabbit Hunt's visible card
   // boundary and result paint have also completed.
-  const [holmPussyTaxSettledHandKey, setHolmPussyTaxSettledHandKey] = useState<string | null>(null);
+  const [holmPussyTaxSettledCompletion, setHolmPussyTaxSettledCompletion] = useState<
+    HolmContinuationPresentationCompletion | null
+  >(null);
   const [holmAllFoldResultPaintedHandKey, setHolmAllFoldResultPaintedHandKey] = useState<string | null>(null);
   const holmAllFoldCompletionAcknowledgedRef = useRef<string | null>(null);
+  const holmAdmittedTransferPresentationsRef = useRef(
+    new Map<string, HolmAdmittedTransferPresentation>(),
+  );
+  const holmAdmittedTransferDealerGameRef = useRef<string | null>(
+    holmPresentationIdentity?.dealerGameId ?? null,
+  );
   const [holmShowdownTiming, setHolmShowdownTiming] = useState({
     afterTabled: 1500,
     preChucky: 1500,
@@ -4017,9 +4027,31 @@ export const MobileGameTable = ({
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyLossTransportPresentationReady ? chuckyLossTriggerId : null;
+  const holmTransferPresentationContext = useMemo(() => ({
+    showdownWinnerIds: holmShowdownWinnerIds,
+    showdownLoserIds: holmShowdownLoserIds,
+    showdownMatchAmount: holmShowdownMatchAmount,
+    chuckyLossPlayerIds,
+    chuckyLossAmount,
+    pussyTaxPlayerIds: players
+      .filter((player) =>
+        !player.sitting_out && player.status !== 'observer' && player.status !== 'left')
+      .map((player) => player.id),
+    pussyTaxAmount: pussyTaxValue ?? 0,
+  }), [
+    chuckyLossAmount,
+    chuckyLossPlayerIds,
+    holmShowdownLoserIds,
+    holmShowdownMatchAmount,
+    holmShowdownWinnerIds,
+    players,
+    pussyTaxValue,
+  ]);
 
   // The ledger owns endpoint display as soon as an immutable batch arrives,
   // while this gate preserves game-owned prerequisite presentation ordering.
+  // Capture the exact stage/hand at admission: the ledger settles later, after
+  // realtime may already have replaced the mutable result props.
   const canAdmitChipTransferPresentation = useCallback((batch: ChipPresentationBatch) => {
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
@@ -4029,18 +4061,14 @@ export const MobileGameTable = ({
     );
 
     if (gameType === 'holm-game') {
-      return canAdmitHolmTransferPresentation(batch, {
+      const dealerGameId = holmPresentationIdentity?.dealerGameId ?? null;
+      if (holmAdmittedTransferDealerGameRef.current !== dealerGameId) {
+        holmAdmittedTransferDealerGameRef.current = dealerGameId;
+        holmAdmittedTransferPresentationsRef.current.clear();
+      }
+      const admissionState = {
+        ...holmTransferPresentationContext,
         presentationTransferCursor: holmPresentationIdentity?.transferCursor ?? null,
-        showdownWinnerIds: holmShowdownWinnerIds,
-        showdownLoserIds: holmShowdownLoserIds,
-        showdownMatchAmount: holmShowdownMatchAmount,
-        chuckyLossPlayerIds,
-        chuckyLossAmount,
-        pussyTaxPlayerIds: players
-          .filter((player) =>
-            !player.sitting_out && player.status !== 'observer' && player.status !== 'left')
-          .map((player) => player.id),
-        pussyTaxAmount: pussyTaxValue ?? 0,
         communityFullyRevealed: holmCommunityFullyRevealed,
         chuckyVisualRevealComplete,
         chuckyLossTransportPresentationReady,
@@ -4050,7 +4078,22 @@ export const MobileGameTable = ({
         // ordering. The legacy animation trigger is intentionally consumed on
         // animation start and therefore cannot be a ledger admission latch.
         pussyTaxPresentationReady: lastRoundResult === 'Pussy Tax!',
-      });
+      };
+      const admitted = canAdmitHolmTransferPresentation(batch, admissionState);
+      const stage = admitted
+        ? classifyHolmTransferPresentationStage(batch, holmTransferPresentationContext)
+        : null;
+      if (stage && !holmAdmittedTransferPresentationsRef.current.has(batch.id)) {
+        holmAdmittedTransferPresentationsRef.current.set(
+          batch.id,
+          captureHolmAdmittedTransferPresentation(
+            holmPresentationIdentity,
+            batch.cursor,
+            stage,
+          ),
+        );
+      }
+      return admitted;
     }
 
     // Settlement can publish the 3-5-7 pot batch before the final-leg
@@ -4087,19 +4130,13 @@ export const MobileGameTable = ({
     return true;
   }, [
     gameType,
-    holmPresentationIdentity?.transferCursor,
+    holmPresentationIdentity,
+    holmTransferPresentationContext,
     holmCommunityFullyRevealed,
     chuckyVisualRevealComplete,
     chuckyLossTransportPresentationReady,
     holmWinPotTriggerIdGated,
     holmShowdownPhase,
-    holmShowdownWinnerIds,
-    holmShowdownLoserIds,
-    holmShowdownMatchAmount,
-    chuckyLossPlayerIds,
-    chuckyLossAmount,
-    players,
-    pussyTaxValue,
     lastRoundResult,
     threeFiveSevenWinPhase,
     chipTransferWinnerId,
@@ -4109,49 +4146,30 @@ export const MobileGameTable = ({
   ]);
   const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     if (gameType === 'holm-game') {
-      const holmStage = classifyHolmTransferPresentationStage(batch, {
-        showdownWinnerIds: holmShowdownWinnerIds,
-        showdownLoserIds: holmShowdownLoserIds,
-        showdownMatchAmount: holmShowdownMatchAmount,
-        chuckyLossPlayerIds,
-        chuckyLossAmount,
-        pussyTaxPlayerIds: players
-          .filter((player) =>
-            !player.sitting_out && player.status !== 'observer' && player.status !== 'left')
-          .map((player) => player.id),
-        pussyTaxAmount: pussyTaxValue ?? 0,
-      });
-      const exactCompletion = (
-        stage: HolmContinuationPresentationCompletion['stage'],
-      ): HolmContinuationPresentationCompletion | null => {
-        if (
-          !holmPresentationIdentity
-          || batch.cursor !== holmPresentationIdentity.transferCursor
-        ) return null;
-        return { ...holmPresentationIdentity, stage };
-      };
-      if (holmStage === 'showdown-pot-award' && holmShowdownPhase === 'pot-to-winner') {
+      const admittedPresentation = holmAdmittedTransferPresentationsRef.current.get(batch.id) ?? null;
+      holmAdmittedTransferPresentationsRef.current.delete(batch.id);
+      if (admittedPresentation?.stage === 'showdown-pot-award') {
         onHolmShowdownPotToWinnerEnded?.();
         return;
       }
-      if (holmStage === 'showdown-replacement-pot' && holmShowdownPhase === 'losers-to-pot') {
-        const completion = exactCompletion('showdown-replacement-pot');
+      if (admittedPresentation?.stage === 'showdown-replacement-pot') {
+        const completion = admittedPresentation.completion;
         if (!completion) return;
         onHolmShowdownLosersEnded?.();
         onHolmContinuationPresentationComplete?.(completion);
         return;
       }
-      if (holmStage === 'chucky-loss') {
-        const completion = exactCompletion('chucky-loss');
+      if (admittedPresentation?.stage === 'chucky-loss') {
+        const completion = admittedPresentation.completion;
         if (!completion) return;
         onChuckyLossEnded?.();
         onHolmContinuationPresentationComplete?.(completion);
         return;
       }
-      if (holmStage === 'pussy-tax') {
-        const completion = exactCompletion('pussy-tax');
+      if (admittedPresentation?.stage === 'pussy-tax') {
+        const completion = admittedPresentation.completion;
         if (!completion) return;
-        setHolmPussyTaxSettledHandKey(getHolmPresentationHandKey(completion));
+        setHolmPussyTaxSettledCompletion(completion);
         return;
       }
     }
@@ -4170,15 +4188,6 @@ export const MobileGameTable = ({
     beginPotFlight();
   }, [
     gameType,
-    holmPresentationIdentity,
-    holmShowdownWinnerIds,
-    holmShowdownLoserIds,
-    holmShowdownMatchAmount,
-    holmShowdownPhase,
-    chuckyLossPlayerIds,
-    chuckyLossAmount,
-    players,
-    pussyTaxValue,
     onChuckyLossEnded,
     onHolmContinuationPresentationComplete,
     onHolmShowdownPotToWinnerEnded,
@@ -6874,12 +6883,14 @@ export const MobileGameTable = ({
       || !holmPresentationHandKey
     ) return;
 
+    const pussyTaxSettledForPresentedHand = !!holmPussyTaxSettledCompletion
+      && getHolmPresentationHandKey(holmPussyTaxSettledCompletion) === holmPresentationHandKey;
     const canComplete = canCompleteHolmAllFoldPresentation({
       result: lastRoundResult,
       resultPainted: holmAllFoldResultPaintedHandKey === holmPresentationHandKey,
       rabbitHuntRequired: isRabbitHuntRevealActive,
       rabbitRevealComplete: holmCommunityFullyRevealed,
-      pussyTaxSettled: holmPussyTaxSettledHandKey === holmPresentationHandKey,
+      pussyTaxSettled: pussyTaxSettledForPresentedHand,
     });
     if (!canComplete) return;
 
@@ -6888,11 +6899,12 @@ export const MobileGameTable = ({
 
     const acknowledgementKey = `${holmPresentationHandKey}|${stage}`;
     if (holmAllFoldCompletionAcknowledgedRef.current === acknowledgementKey) return;
+    const completion = stage === 'pussy-tax'
+      ? holmPussyTaxSettledCompletion
+      : { ...holmPresentationIdentity, stage };
+    if (!completion) return;
     holmAllFoldCompletionAcknowledgedRef.current = acknowledgementKey;
-    onHolmContinuationPresentationComplete?.({
-      ...holmPresentationIdentity,
-      stage,
-    });
+    onHolmContinuationPresentationComplete?.(completion);
   }, [
     awaitingNextRound,
     gameType,
@@ -6900,7 +6912,7 @@ export const MobileGameTable = ({
     holmCommunityFullyRevealed,
     holmPresentationHandKey,
     holmPresentationIdentity,
-    holmPussyTaxSettledHandKey,
+    holmPussyTaxSettledCompletion,
     isAllFoldRabbitHuntResult,
     isRabbitHuntRevealActive,
     lastRoundResult,

@@ -620,3 +620,27 @@ remain paused, terminal games remain terminal, and bot-only/zero-human cohorts
 release server-side. This fallback guarantees authority cannot freeze when all
 clients disconnect without imposing a fixed delay on the connected-client
 normal path.
+
+## D-051 - Holm predecessor completion is durable evidence, not a callback edge
+
+A canonical Holm chip batch binds its presentation stage and exact dealer-game,
+round, hand, and transfer-cursor identity when the ledger admits it. Settlement
+must consume that captured identity; it may not reclassify the finished batch
+against mutable result, phase, or successor props. The same identity rule
+applies to showdown replacement-pot, Chucky loss, and Pussy Tax, while
+zero-transfer completion is recorded at its exact visible boundary.
+
+`Game.tsx` retains completion evidence independently of the live predecessor
+barrier and reconciles the two idempotently. Evidence may arrive before the
+barrier latches or after it is already held. Exact evidence releases the exact
+predecessor in either ordering; a later hand, different cursor, duplicate, or
+late callback cannot release another presentation. Dealer-game changes clear
+both the barrier and evidence.
+
+This client ordering rule never gates authority. PostgreSQL may publish the
+prepared successor through acknowledgements or the durable missing-ack fallback
+and immediately owns its decision deadline. Any authoritative current turn
+remains enforceable even if all clients disconnect or one client still presents
+the predecessor. A client renders that timer and its controls only when its
+presented dealer-game/round/hand is the same authoritative hand; hiding a
+successor timer from a predecessor surface does not suspend enforcement.
