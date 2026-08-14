@@ -681,7 +681,7 @@ Status: Queued; reported by production smoke on 2026-08-04.
 
 ### 12. Cribbage reconnect inherits stale final-pegging announcement
 
-Status: Queued; reproduced by production smoke on 2026-08-04.
+Status: Implemented locally; production smoke pending. Reproduced by production smoke on 2026-08-04.
 
 - Refreshing during counting correctly resumes the authoritative counting
   sequence and score presentation, but the announcement rail initially shows
@@ -691,6 +691,10 @@ Status: Queued; reproduced by production smoke on 2026-08-04.
   notice: it is valid during the live pegging-to-counting handoff but should
   not be revived when the client mounts already in counting. Preserve the live
   final Last/Go notice and the persisted counting sequence.
+- The candidate admits final pegging presentation only to a client that
+  observed the same hand in `pegging`, then immediately publishes the resumed
+  combo announcement that matches the restored highlight. It does not change
+  the durable cursor, scoring, or hand release.
 
 ### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
 

@@ -2,6 +2,21 @@
 
 Date: 2026-08-13
 
+## Cribbage counting rejoin announcement
+
+- The durable counting cursor already resumed the correct target and combo, but
+  a fresh counting mount also treated the persisted final pegging event as a
+  new announcement. The rail could therefore show `Last +1` until a scheduled
+  scoring beat replaced it.
+- `CribbageMobileGameTable` now admits a final pegging presentation only when
+  that client observed the same hand in `pegging`; His Heels remains a
+  separately admitted cut-card event. `CribbageCountingPhase` publishes an
+  active resumed combo with its restored highlight and suppresses the normal
+  duplicate publish while retaining its one score application and duration.
+- Focused cursor/announcement tests, TypeScript, and the production Vite build
+  pass locally. Production refresh and disconnect/reconnect smoke during a
+  highlighted counting combo remain required.
+
 ## Cribbage counting rejoin cursor
 
 - During the visible count, a refreshing or returning client could bootstrap at

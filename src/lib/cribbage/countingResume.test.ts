@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getCountingResumeAnnouncement,
   getCountingResumeCursorFromElapsed,
+  shouldPresentPeggingEventAfterHydration,
   type CountingTimelineBeat,
 } from './countingResume';
 
@@ -56,5 +58,53 @@ describe('getCountingResumeCursorFromElapsed', () => {
       phase: 'scoring',
       complete: true,
     });
+  });
+});
+
+describe('counting rejoin announcement ownership', () => {
+  const targets = [
+    {
+      label: "Pone's Hand",
+      combos: [
+        { label: 'Fifteen', points: 2 },
+        { label: 'Pair', points: 2 },
+      ],
+    },
+  ];
+
+  it('restores the active combo text from the persisted cursor', () => {
+    expect(getCountingResumeAnnouncement(targets, 0, 1)).toEqual({
+      targetLabel: "Pone's Hand",
+      text: 'Pair: +2',
+    });
+  });
+
+  it('does not invent a combo announcement for entering or total beats', () => {
+    expect(getCountingResumeAnnouncement(targets, 0, -1)).toBeNull();
+    expect(getCountingResumeAnnouncement(targets, 0, 2)).toBeNull();
+  });
+
+  it('does not revive a persisted final-pegging event on a counting rejoin', () => {
+    expect(shouldPresentPeggingEventAfterHydration({
+      phase: 'counting',
+      eventType: 'go_point',
+      hasObservedPeggingForHand: false,
+    })).toBe(false);
+  });
+
+  it('preserves final pegging presentation for a client that witnessed pegging', () => {
+    expect(shouldPresentPeggingEventAfterHydration({
+      phase: 'counting',
+      eventType: 'go_point',
+      hasObservedPeggingForHand: true,
+    })).toBe(true);
+  });
+
+  it('keeps His Heels independent of the pegging admission latch', () => {
+    expect(shouldPresentPeggingEventAfterHydration({
+      phase: 'complete',
+      eventType: 'his_heels',
+      hasObservedPeggingForHand: false,
+    })).toBe(true);
   });
 });

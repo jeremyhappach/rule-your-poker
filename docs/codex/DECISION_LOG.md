@@ -521,6 +521,15 @@ uses the durable cursor when present and derives the equivalent beat from the
 start anchor only while the cursor is still initial. The derived cursor is
 presentation continuity, never a source of gameplay or settlement authority.
 
+## D-047 - Historical pegging notices are not counting-rejoin notices
+
+The final pegging event remains authoritative history while the same hand is
+counted, but a browser may present it after the phase transition only if that
+browser previously observed the hand in `pegging`. A browser mounting directly
+in counting instead derives its rail announcement from the durable counting
+cursor and the matching highlighted combo. This presentation admission neither
+changes the cursor nor replays score, settlement, or hand release.
+
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission

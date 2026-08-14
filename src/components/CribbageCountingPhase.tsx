@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
-import { getCountingResumeCursorFromElapsed, type CountingTimelineBeat } from '@/lib/cribbage/countingResume';
+import {
+  getCountingResumeAnnouncement,
+  getCountingResumeCursorFromElapsed,
+  type CountingTimelineBeat,
+} from '@/lib/cribbage/countingResume';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -125,6 +129,13 @@ export const CribbageCountingPhase = ({
   // inside a scheduled timer.
   const currentTargetIndexRef = useRef(0);
   const currentComboIndexRef = useRef(-1);
+  // A resumed combo publishes its canonical rail text while its restored
+  // highlight is committed. The scoring loop consumes this marker so it can
+  // still apply the score and duration without publishing the same combo twice.
+  const resumedComboAnnouncementRef = useRef<{
+    targetIndex: number;
+    comboIndex: number;
+  } | null>(null);
   // Pending final-Total retirement identity. Set immediately after a
   // category='total' publish; cleared by handleTotalRetired before
   // invoking startExitTransition, or by any teardown path. Only one
@@ -177,15 +188,20 @@ export const CribbageCountingPhase = ({
   );
 
   const publishAnnouncement = useCallback(
-    (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
+    (
+      text: string,
+      targetLabel: string,
+      category: CountingTruthEntry['announcementCategory'] = 'combo',
+      owner?: { targetIndex: number; comboIndex: number },
+    ) => {
       const key = ++announcementKeyRef.current;
       const now = Date.now();
       announcementStartedAtRef.current = now;
       announcementHiddenAtRef.current = null;
       announcementPublishedAtRef.current = now;
       lastAnnouncementCategoryRef.current = category;
-      const targetIndex = currentTargetIndexRef.current;
-      const comboIndex = currentComboIndexRef.current;
+      const targetIndex = owner?.targetIndex ?? currentTargetIndexRef.current;
+      const comboIndex = owner?.comboIndex ?? currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
 
       // For the final Total publish, arm the terminal retirement wait
@@ -263,6 +279,8 @@ export const CribbageCountingPhase = ({
     },
     [onAnnouncementChange, handleTotalRetired],
   );
+  const publishAnnouncementRef = useRef(publishAnnouncement);
+  publishAnnouncementRef.current = publishAnnouncement;
 
   // Keep identity refs in sync every render.
   currentTargetIndexRef.current = currentTargetIndex;
@@ -951,6 +969,31 @@ export const CribbageCountingPhase = ({
       setCurrentComboIndex(skipComboIndex);
       setTransitionPhase(skipPhase);
 
+      // A reconnect can land directly on a highlighted combo. Its rail text
+      // must be restored with that highlight, rather than leaving the rail to
+      // show a historical pegging event until the next scheduled beat.
+      const resumeAnnouncement = getCountingResumeAnnouncement(
+        targetSummaries,
+        skipTargetIndex,
+        skipComboIndex,
+      );
+      const resumedCombo = targetSummaries[skipTargetIndex]?.combos[skipComboIndex];
+      if (resumeAnnouncement && resumedCombo && skipPhase === 'scoring') {
+        currentTargetIndexRef.current = skipTargetIndex;
+        currentComboIndexRef.current = skipComboIndex;
+        resumedComboAnnouncementRef.current = {
+          targetIndex: skipTargetIndex,
+          comboIndex: skipComboIndex,
+        };
+        setHighlightedCards(resumedCombo.cards);
+        publishAnnouncementRef.current(
+          resumeAnnouncement.text,
+          resumeAnnouncement.targetLabel,
+          'combo',
+          { targetIndex: skipTargetIndex, comboIndex: skipComboIndex },
+        );
+      }
+
       // ── Debug: crib:counting_resume_state_apply ─────────────
       logCountingDebug('crib:counting_resume_state_apply', {
         targetIndexApplied: skipTargetIndex,
@@ -1284,9 +1327,16 @@ export const CribbageCountingPhase = ({
       if (currentComboIndex < currentCombos.length) {
         const combo = currentCombos[currentComboIndex];
         const comboIds = combo.cards.map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`);
+        const resumedAnnouncement = resumedComboAnnouncementRef.current;
+        const isResumedActiveCombo =
+          resumedAnnouncement?.targetIndex === currentTargetIndex &&
+          resumedAnnouncement.comboIndex === currentComboIndex;
+        if (isResumedActiveCombo) {
+          resumedComboAnnouncementRef.current = null;
+        }
         recordEvent('combo_raise_start', {
           eventSource: 'scoringEffect',
-          eventReason: 'raise-combo',
+          eventReason: isResumedActiveCombo ? 'resume-active-combo' : 'raise-combo',
           highlightedCardIds: comboIds,
           previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
           currentComboLabelSnapshot: combo.label,
@@ -1294,8 +1344,10 @@ export const CribbageCountingPhase = ({
           effectThatRan: 'scoringEffect',
           dependenciesSnapshot: { currentTargetIndex, currentComboIndex, transitionPhase, isComplete, winFrozen },
         });
-        setHighlightedCards(combo.cards);
-        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
+        if (!isResumedActiveCombo) {
+          setHighlightedCards(combo.cards);
+          publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
+        }
 
         setAnimatedScores((prev) => {
           const next = {

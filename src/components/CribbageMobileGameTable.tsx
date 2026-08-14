@@ -113,6 +113,7 @@ import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
+import { shouldPresentPeggingEventAfterHydration } from '@/lib/cribbage/countingResume';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import {
   cribbageAuthoritativeHandCounts,
@@ -1495,6 +1496,23 @@ export const CribbageMobileGameTable = ({
     () => getCribbageHandIdentity(currentRoundId, currentHandNumber),
     [currentRoundId, currentHandNumber],
   );
+  // A final pegging event remains in authoritative state when counting starts.
+  // Only a client that saw this hand while it was actually pegging may present
+  // that event after the phase transition; a counting rejoin must treat it as
+  // history and let the counting cursor own the rail instead.
+  const observedPeggingHandKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (cribbageState?.phase === 'pegging' && currentHandKey) {
+      observedPeggingHandKeyRef.current = currentHandKey;
+    }
+  }, [cribbageState?.phase, currentHandKey]);
+  const hasObservedPeggingForCurrentHand =
+    !!currentHandKey && observedPeggingHandKeyRef.current === currentHandKey;
+  const canPresentPeggingEvent = shouldPresentPeggingEventAfterHydration({
+    phase: cribbageState?.phase,
+    eventType: cribbageState?.lastEvent?.type,
+    hasObservedPeggingForHand: hasObservedPeggingForCurrentHand,
+  });
   // Render-specific hand key: derived from the existing presentation-owned
   // boundary (syncHandle.presentationIdentity). No new mirror/latch/timer.
   const renderHandKey = useMemo(
@@ -2695,6 +2713,7 @@ export const CribbageMobileGameTable = ({
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
     if (!lastEvent) return;
+    if (!canPresentPeggingEvent) return;
     const is31 =
       lastEvent.type === 'pegging_points' &&
       (lastEvent as { count?: number }).count === 31;
@@ -2758,7 +2777,12 @@ export const CribbageMobileGameTable = ({
       clearTimeout(announceTimer);
       clearTimeout(safety);
     };
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, cribbageState?.lastEvent?.count]);
+  }, [
+    cribbageState?.lastEvent?.id,
+    cribbageState?.lastEvent?.type,
+    cribbageState?.lastEvent?.count,
+    canPresentPeggingEvent,
+  ]);
 
   // Primary release: the armed event's own announcement window has
   // elapsed AND its last-card transport has settled.
@@ -2931,7 +2955,7 @@ export const CribbageMobileGameTable = ({
     
     // Only apply timeout to pegging scoring events (not hand_count, discard, cut, etc.)
     const isPeggingEvent = event.type === 'pegging_points' || event.type === 'go_point' || event.type === 'his_heels';
-    if (!isPeggingEvent) {
+    if (!isPeggingEvent || !canPresentPeggingEvent) {
       // Non-pegging events - clear any pending timer and show them
       if (peggingAnnouncementTimerRef.current) {
         clearTimeout(peggingAnnouncementTimerRef.current);
@@ -2964,7 +2988,7 @@ export const CribbageMobileGameTable = ({
         peggingAnnouncementTimerRef.current = null;
       }
     };
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type]);
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, canPresentPeggingEvent]);
 
 
 
@@ -3257,6 +3281,7 @@ export const CribbageMobileGameTable = ({
       event.type === 'go_point' ||
       event.type === 'his_heels';
     if (!isPeggingEvent) return;
+    if (!canPresentPeggingEvent) return;
     if (emittedPegEventIdRef.current === event.id) return;
     emittedPegEventIdRef.current = event.id;
     const name = getPlayerUsername(event.playerId);
@@ -3282,7 +3307,15 @@ export const CribbageMobileGameTable = ({
     // above releases the heels terminal hold exactly once. No local
     // fallback timer / debounce / minimum-duration hold exists here.
 
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
+  }, [
+    cribbageState?.lastEvent?.id,
+    cribbageState?.lastEvent?.type,
+    gameId,
+    currentRoundId,
+    announcements,
+    getPlayerUsername,
+    canPresentPeggingEvent,
+  ]);
 
   // True while a His Heels cut reveal + "+2" plate still owes its
   // presentation before the terminal win sequence may begin.
