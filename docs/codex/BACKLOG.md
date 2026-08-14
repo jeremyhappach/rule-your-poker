@@ -508,6 +508,13 @@ Status: Queued; observed in production logs on 2026-08-09.
 - An active mobile client is posting `debug_events` with `game_id='0'`, causing
   repeated UUID errors (roughly twice per second). Guard debug writers against
   placeholder identities; do not add durable production instrumentation.
+- The 2026-08-14 P0 Holm freeze in paused session `Aug 14 - Jeff Samardzija`
+  reproduced the same defect through `round_id='0'`: the Android client posted
+  HTTP 400 once per second from 16:22:29Z through 16:22:42Z, while PostgreSQL
+  recorded `invalid input syntax for type uuid: "0"`. Validate every UUID
+  field independently so a missing round identity does not discard otherwise
+  useful incident evidence. This remained an observability failure; the frozen
+  Holm presentation had a separate client barrier-release cause.
 
 ### 3A. Source-proven rule, ledger, and harness discrepancies
 
