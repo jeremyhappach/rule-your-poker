@@ -2,6 +2,31 @@
 
 Date: 2026-08-13
 
+## Holm database-owned multiplayer resolution hardening
+
+- A production Holm hand could persist both final decisions but still rely on
+  the browser to evaluate cards, settle the result, and request the next hand.
+  When that callback was lost, the deadline service later recovered the game,
+  producing the observed roughly 30-second freeze.
+- Migration `20260814020000_holm_database_resolution_hardening.sql` is
+  installed on owned production. `public.resolve_holm_showdown` now locks the
+  exact active hand, evaluates all multi-player stayers and Chucky with the
+  existing database evaluators, records the canonical settlement, and creates
+  the non-actionable successor within the same transaction when play
+  continues. The final exact-round `holm_submit_decision` action invokes it
+  before returning; all-fold and solo branches retain their established
+  atomic owners.
+- The generic four-second result transition is excluded for every Holm result.
+  The canonical ledger's committed-paint acknowledgement activates the exact
+  successor after any ordinary winner, tie, Chucky, or zero-transfer result.
+  `enforce-deadlines` version 8 additionally replays only a legacy
+  all-decisions-in multi-player hand with the same database resolver.
+- Production rollback proofs passed authorization, winner, tie, duplicate and
+  late replay, terminal, all-fold, legacy recovery, and the real final-action
+  path. Focused Holm tests, TypeScript, and the Vite production-mode build
+  pass. Vercel publication and Jeremy's live two-player Holm smoke remain
+  required.
+
 ## Cribbage counting rejoin announcement
 
 - The durable counting cursor already resumed the correct target and combo, but

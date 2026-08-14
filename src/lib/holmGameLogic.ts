@@ -278,6 +278,20 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] ERROR: No rounds found for game');
     return;
   }
+
+  // Holm's final multi-player action is resolved inside PostgreSQL.  The
+  // browser may observe a legacy hand and request this exact resolver, but it
+  // never claims processing, reveals cards, evaluates hands, or settles chips.
+  // A duplicate call is intentionally inert and the service recovery invokes
+  // this same RPC when no browser survives the final action.
+  const { error: resolveError } = await (supabase as any).rpc('resolve_holm_showdown', {
+    p_game_id: gameId,
+    p_expected_round_id: round.id,
+  });
+  if (resolveError) {
+    console.error('[HOLM END] Database showdown resolver failed', resolveError);
+  }
+  return;
   
   const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
   

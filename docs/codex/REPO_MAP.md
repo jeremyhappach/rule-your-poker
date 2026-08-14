@@ -119,18 +119,21 @@ reset transient/presentation state when those identities change.
   child of `MobileGameTable.tsx`; it is never a Holm/pot/chip-balance effect.
 - State/actions: initial creation enters `public.start_holm_initial_hand`;
   decisions enter through `src/lib/gameLogic.ts:makeDecision` and the
-  exact-round `public.holm_submit_decision`; ordinary successor creation enters
-  `public.proceed_to_next_holm_hand`. Chucky-loss settlement enters the durable
-  `public.prepare_next_holm_hand` / `public.activate_prepared_holm_hand` pair
-  through `src/lib/holmGameLogic.ts`; the service-only presentation lease in
-  `supabase/functions/enforce-deadlines/index.ts` recovers a lost activation.
-  `checkHolmRoundComplete`/`endHolmRound` retain multi-player showdown
-  presentation orchestration and submit terminal inputs to
-  `public.holm_settle_hand`; they do not advance a turn, publish a successor
-  hand, or fail open after evaluation/settlement errors. Showdown recovery uses
-  the presentation-only `rounds.presentation_fallback_at` lease, never the
-  gameplay `decision_deadline`. Hand ranking is
-  `src/lib/cardUtils.ts:evaluateHand`.
+  exact-round `public.holm_submit_decision`. The last multi-player decision
+  calls `public.resolve_holm_showdown` from
+  `20260814020000_holm_database_resolution_hardening.sql`, which owns card
+  evaluation, final reveal, settlement, and successor creation in one
+  transaction. `src/lib/holmGameLogic.ts:endHolmRound` can only request that
+  exact resolver; it does not evaluate, settle, or create a hand. The canonical
+  ledger paint acknowledgement in `MobileGameTable.tsx` activates the exact
+  non-actionable successor through the existing
+  `prepare_next_holm_hand` / `activate_prepared_holm_hand` path. The
+  service-only `recover_pending_holm_showdowns` call in
+  `supabase/functions/enforce-deadlines/index.ts` replays only a legacy
+  all-decisions-in multi-player hand. All-fold and solo-vs-Chucky retain their
+  established atomic action owners. Showdown recovery uses the
+  presentation-only `rounds.presentation_fallback_at` lease, never the
+  gameplay `decision_deadline`.
 - Deadline action owner: `supabase/functions/enforce-deadlines/index.ts`
   authenticates an active participant and calls the service-only
   `public.holm_apply_deadline_decision` adapter, most recently defined by

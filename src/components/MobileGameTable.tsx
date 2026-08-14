@@ -1019,6 +1019,8 @@ interface MobileGameTableProps {
   chuckyLossPlayerIds?: string[];
   onChuckyLossStarted?: () => void;
   onChuckyLossEnded?: () => void;
+  /** Exact post-result acknowledgement for a durably prepared Holm successor. */
+  onHolmContinuationPresentationComplete?: () => void;
   // Holm multi-player showdown animation props (pot-to-winner, then losers-to-pot)
   holmShowdownTriggerId?: string | null;
   holmShowdownMatchAmount?: number;
@@ -1296,6 +1298,7 @@ export const MobileGameTable = ({
   chuckyLossPlayerIds = [],
   onChuckyLossStarted,
   onChuckyLossEnded,
+  onHolmContinuationPresentationComplete,
   holmShowdownTriggerId,
   holmShowdownMatchAmount = 0,
   holmShowdownWinnerIds = [],
@@ -4104,10 +4107,16 @@ export const MobileGameTable = ({
       }
       if (holmStage === 'showdown-replacement-pot' && holmShowdownPhase === 'losers-to-pot') {
         onHolmShowdownLosersEnded?.();
+        onHolmContinuationPresentationComplete?.();
         return;
       }
       if (holmStage === 'chucky-loss') {
         onChuckyLossEnded?.();
+        onHolmContinuationPresentationComplete?.();
+        return;
+      }
+      if (holmStage === 'pussy-tax') {
+        onHolmContinuationPresentationComplete?.();
         return;
       }
     }
@@ -4135,6 +4144,7 @@ export const MobileGameTable = ({
     players,
     pussyTaxValue,
     onChuckyLossEnded,
+    onHolmContinuationPresentationComplete,
     onHolmShowdownPotToWinnerEnded,
     onHolmShowdownLosersEnded,
   ]);
@@ -6794,6 +6804,42 @@ export const MobileGameTable = ({
       current === chuckyLossPresentationKey ? current : chuckyLossPresentationKey,
     );
   }, [gameType, isShowingAnnouncement, chuckyLossPresentationKey]);
+
+  // A no-penalty all-fold or a zero-pot showdown has no immutable transfer
+  // batch to settle.  Its result plate is therefore the presentation owner:
+  // acknowledge on the first committed paint, rather than recreating the old
+  // arbitrary next-hand timer.
+  const holmZeroTransferAcknowledgedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      gameType !== 'holm-game' ||
+      !awaitingNextRound ||
+      !isShowingAnnouncement ||
+      !lastRoundResult
+    ) return;
+
+    const zeroTransfer =
+      lastRoundResult === 'Everyone folded! No penalty.' ||
+      lastRoundResult.includes('|||POT:0|||MATCH:0') ||
+      lastRoundResult.includes('$0 added to pot.');
+    if (!zeroTransfer) return;
+
+    const key = `${handContextId ?? 'no-hand'}:${lastRoundResult}`;
+    if (holmZeroTransferAcknowledgedRef.current === key) return;
+    holmZeroTransferAcknowledgedRef.current = key;
+
+    const frame = requestAnimationFrame(() => {
+      onHolmContinuationPresentationComplete?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    awaitingNextRound,
+    gameType,
+    handContextId,
+    isShowingAnnouncement,
+    lastRoundResult,
+    onHolmContinuationPresentationComplete,
+  ]);
 
   const multiShowdownExposureHandRef = useRef<string | null>(null);
   useEffect(() => {

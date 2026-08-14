@@ -549,3 +549,18 @@ The last discard, cut-card selection, His Heels result, and pegging admission
 are one database-owned transition. Browsers may present the cut and may request
 an idempotent reconciliation for a legacy completed crib, but may not be the
 sole owner capable of progressing play.
+
+## D-048 - A final Holm multi-player action resolves before it returns
+
+An exact authenticated Holm action is the durable boundary for its final
+multi-player showdown. When that action locks the last decision, PostgreSQL
+must evaluate cards, reveal the final board, settle the immutable result, and
+create the exact non-actionable successor in that same transaction when the
+dealer game continues. A browser may request that resolver and later
+acknowledge an already-created successor after its committed result paint; it
+may not be the only evaluation, settlement, or continuation owner.
+
+All-fold and solo-vs-Chucky outcomes retain their existing atomic action
+owners. A service-only worker may replay the same resolver for a legacy
+all-decisions-in multi-player hand, never invent a result or use a timer as the
+normal resolution path.

@@ -3134,6 +3134,17 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_holm_showdown: {
+        Args: {
+          p_expected_round_id: string
+          p_game_id: string
+        }
+        Returns: Json
+      }
+      recover_pending_holm_showdowns: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
       admin_delete_fake_money_games: { Args: never; Returns: number }
       advance_357_round: {
         Args: {

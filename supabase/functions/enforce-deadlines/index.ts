@@ -549,6 +549,21 @@ serve(async (req) => {
 
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
+        // The final multi-player decision normally resolves inside
+        // holm_submit_decision. This service-only replay path recovers a
+        // legacy betting/processing/showdown hand if every browser vanished
+        // between the persisted decision and that database resolution.
+        const { data: showdownRecovery, error: showdownRecoveryError } = await serviceSupabase.rpc(
+          'recover_pending_holm_showdowns',
+          { p_game_id: gameId },
+        );
+        if (showdownRecoveryError) {
+          console.error('[ENFORCE-CLIENT] Holm showdown recovery failed safely:', showdownRecoveryError);
+          actionsTaken.push(`Holm showdown recovery failed safely: ${showdownRecoveryError.message}`);
+        } else if ((showdownRecovery as any)?.resolved > 0) {
+          actionsTaken.push(`Holm database showdown recovery: ${JSON.stringify(showdownRecovery)}`);
+        }
+
         // A completed Chucky-loss presentation prepares its successor before
         // the local chip flight begins. The prepared round is deliberately
         // non-actionable. If every connected presentation callback is lost,
@@ -764,38 +779,9 @@ serve(async (req) => {
         }
       }
 
-      // A presentation interruption is not a settlement signal.  Never use a
-      // deadline worker to reveal cards, complete a showdown, or advance Holm.
-      if (game.game_type === 'holm-game') {
-        const showdownQuery = supabase
-          .from('rounds')
-          .select('*')
-          .eq('game_id', gameId)
-          .eq('status', 'showdown');
-
-        const scopedShowdownQuery = game.current_game_uuid
-          ? showdownQuery.eq('dealer_game_id', game.current_game_uuid)
-          : showdownQuery;
-
-         const { data: showdownRounds } = await scopedShowdownQuery
-           .order('hand_number', { ascending: false, nullsFirst: false })
-           .order('round_number', { ascending: false, nullsFirst: false })
-          .limit(1);
-
-        const stuckShowdown = showdownRounds?.[0];
-
-        if (stuckShowdown) {
-          const cardsRevealed = stuckShowdown.community_cards_revealed ?? 0;
-          if (cardsRevealed < 4) {
-            console.warn('[ENFORCE-CLIENT] Holm presentation requires a canonical owner; leaving state unchanged:', {
-              roundId: stuckShowdown.id,
-              community_cards_revealed: cardsRevealed,
-              status: stuckShowdown.status,
-            });
-            actionsTaken.push(`Holm presentation preserved: no unsafe showdown recovery for round ${stuckShowdown.id}`);
-          }
-        }
-      }
+      // Holm showdown recovery above calls the same database-owned resolver as
+      // the final decision. Presentation never controls the result or hand
+      // lifecycle; only the prepared-successor acknowledgement advances it.
 
       // ============= 3A. 3-5-7 (SIMULTANEOUS) DECISION TIMEOUTS =============
       // 3-5-7 round numbers cycle 1/2/3 each hand, so we MUST key the current round by
