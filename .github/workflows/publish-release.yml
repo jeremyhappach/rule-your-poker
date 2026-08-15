@@ -17,7 +17,7 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          for attempt in {1..20}; do
+          for attempt in {1..120}; do
             manifest="$(curl --fail --silent --show-error --header 'Cache-Control: no-cache' https://holm357.com/build-manifest.json || true)"
             if [ -n "$manifest" ]; then
               build_sha="$(node -e 'try { process.stdout.write(JSON.parse(process.argv[1]).buildId || "") } catch {}' "$manifest")"
@@ -26,8 +26,8 @@ jobs:
                 exit 0
               fi
             fi
-            echo "Production alias has not reached $EXPECTED_SHA yet (attempt $attempt/20)."
-            sleep 30
+            echo "Production alias has not reached $EXPECTED_SHA yet (attempt $attempt/120)."
+            sleep 5
           done
           echo "Production alias never served the expected SHA. No release signal was published."
           exit 1

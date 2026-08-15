@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isBuildCurrent,
   isNewerRelease,
+  getGameEntryReleaseDecision,
   getGameRouteReleaseDecision,
   parseBuildManifest,
   parseReleasePublication,
@@ -57,5 +58,10 @@ describe("release publication contract", () => {
     expect(getGameRouteReleaseDecision("checking", false)).toBe("checking");
     expect(getGameRouteReleaseDecision("unavailable", false)).toBe("unavailable");
     expect(getGameRouteReleaseDecision("stale", true)).toBe("render-game");
+    expect(getGameEntryReleaseDecision("checking", "current", false)).toBe("checking");
+    expect(getGameEntryReleaseDecision("stale", "current", false)).toBe("refresh-required");
+    expect(getGameEntryReleaseDecision("current", "stale", false)).toBe("refresh-required");
+    expect(getGameEntryReleaseDecision("current", "current", false)).toBe("render-game");
+    expect(getGameEntryReleaseDecision("current", "stale", true)).toBe("render-game");
   });
 });

@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchPublishedBuildManifest } from "@/lib/releaseVersion/releaseManifest";
 import {
   isBuildCurrent,
-  getGameRouteReleaseDecision,
+  getGameEntryReleaseDecision,
   parseReleasePublication,
   RELEASE_PUBLICATION_SETTING_KEY,
   shouldShowLobbyReleaseModal,
@@ -88,8 +88,46 @@ function ReleaseCheckScreen({ unavailable = false }: { unavailable?: boolean }) 
  */
 export function ReleaseProtectedGameRoute({ children }: { children: ReactNode }) {
   const { status } = useReleaseVersionContext();
+  const { gameId } = useParams();
+
+  return (
+    <GameRouteEntryCheck key={gameId ?? "unknown-game"} ambientStatus={status}>
+      {children}
+    </GameRouteEntryCheck>
+  );
+}
+
+function GameRouteEntryCheck({
+  ambientStatus,
+  children,
+}: {
+  ambientStatus: ReleaseCheckStatus;
+  children: ReactNode;
+}) {
   const admittedRef = useRef(false);
-  const decision = getGameRouteReleaseDecision(status, admittedRef.current);
+  const [entryStatus, setEntryStatus] = useState<ReleaseCheckStatus>(
+    import.meta.env.PROD ? "checking" : "current",
+  );
+
+  useEffect(() => {
+    if (!import.meta.env.PROD) return;
+
+    let cancelled = false;
+    void fetchPublishedBuildManifest()
+      .then((manifest) => {
+        if (!cancelled) {
+          setEntryStatus(isBuildCurrent(BUILD_IDENTITY.buildSha, manifest.buildId) ? "current" : "stale");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setEntryStatus("unavailable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const decision = getGameEntryReleaseDecision(entryStatus, ambientStatus, admittedRef.current);
 
   if (decision === "checking") return <ReleaseCheckScreen />;
   if (decision === "unavailable") return <ReleaseCheckScreen unavailable />;

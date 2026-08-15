@@ -95,6 +95,21 @@ export function getGameRouteReleaseDecision(
   return "refresh-required";
 }
 
+/**
+ * A new game route must pass both its own just-in-time manifest check and the
+ * ambient release state. Once admitted, a live table is intentionally left
+ * alone until the player returns to the lobby.
+ */
+export function getGameEntryReleaseDecision(
+  entryStatus: ReleaseCheckStatus,
+  ambientStatus: ReleaseCheckStatus,
+  alreadyAdmitted: boolean,
+): GameRouteReleaseDecision {
+  if (alreadyAdmitted) return "render-game";
+  if (entryStatus !== "current") return getGameRouteReleaseDecision(entryStatus, false);
+  return getGameRouteReleaseDecision(ambientStatus, false);
+}
+
 export function shouldShowLobbyReleaseModal(
   status: ReleaseCheckStatus,
   isGameRoute: boolean,
