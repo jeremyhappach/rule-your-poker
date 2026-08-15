@@ -676,3 +676,18 @@ ready barrier, so callback/remount ordering cannot lose it. None of these
 client checkpoints owns settlement, successor publication, balances, or turn
 deadlines; PostgreSQL continues independently and its durable missing-ack lease
 remains the all-clients-disconnected fallback.
+
+## D-053 - Explicit participation and post-game disposition commit together
+
+An explicit Sit Out, Stand Up, or Leave result is authoritative participation
+evidence, not ambiguous presence. At a settled post-game boundary, the server
+must lock the session/cohort and commit the mutation with its lifecycle
+decision: zero active humans ends now, fewer than two eligible participants
+returns to Waiting with setup identity cleared, and an eligible cohort may
+continue. No client-side count or later scheduler tick may become the owner of
+that decision.
+
+Heartbeat grace remains a separate absence-confirmation path only for a human
+who is still authoritatively active and seated. Never-started rooms, live
+dealer games, financial snapshot safety, and connected-client terminal
+presentation retain their existing owners.

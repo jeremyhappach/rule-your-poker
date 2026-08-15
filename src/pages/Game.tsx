@@ -3132,6 +3132,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return (data as { outcome?: string } | null)?.outcome ?? 'unknown';
   };
 
+  // Stand Up is one atomic server action at a settled post-game boundary:
+  // record the caller's exit, then either end, wait, or preserve continuation
+  // from the resulting authoritative participant counts.
+  const standUpAndResolvePostgame = async (gId: string): Promise<{
+    outcome: string;
+    lifecycleResolved: boolean;
+  }> => {
+    const { data, error } = await supabase.rpc(
+      'stand_up_and_resolve_postgame' as any,
+      { p_game_id: gId } as any,
+    );
+    if (error) throw error;
+
+    const result = data as {
+      outcome?: string;
+      lifecycle_resolved?: boolean;
+    } | null;
+
+    return {
+      outcome: result?.outcome ?? 'unknown',
+      lifecycleResolved: result?.lifecycle_resolved === true,
+    };
+  };
+
   const handleStandUpNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
@@ -3149,30 +3173,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Stand up = soft-delete player record (preserve for hand history FK integrity).
-    // Also clear all participation-eligibility flags so the row cannot be revived
-    // by any downstream code that filters only by status.
-    const { error } = await supabase
-      .from('players')
-      .update({
-        status: 'left',
-        sitting_out: true,
-        stand_up_next_hand: false,
-        sit_out_next_hand: false,
-        ante_decision: null,
-        auto_ante: false,
-        auto_ante_runback: false,
-        auto_fold: false,
-        waiting: false,
-      })
-      .eq('id', currentPlayer.id);
-    
-    if (error) {
-      console.error('[PLAYER OPTIONS] Failed to stand up:', error);
-      toast({ title: "Error", description: "Failed to stand up", variant: "destructive" });
-    } else {
-      // After removing ourselves, check if session needs cleanup
-      await checkAndCleanupAfterPlayerLeave(gameId!);
+    try {
+      const result = await standUpAndResolvePostgame(gameId!);
+      console.log('[PLAYER OPTIONS] Stand-up disposition:', result);
+
+      if (result.outcome === 'not-authorized' || result.outcome === 'missing-game') {
+        throw new Error(`Stand up rejected: ${result.outcome}`);
+      }
+
+      // Never-started rooms and non-postgame states retain the established
+      // cleanup owner. Settled post-game lifecycle was already decided in the
+      // same transaction as the player exit and must not be second-guessed by
+      // the legacy client-side count.
+      if (!result.lifecycleResolved) {
+        await checkAndCleanupAfterPlayerLeave(gameId!);
+      } else {
+        await fetchGameData();
+      }
+
       // If cleanup deleted the game (e.g. last human stood up with no bots),
       // navigate back to lobby so we don't leave the viewer on a stale page
       // whose Join button would FK-violate against a now-missing games.id.
@@ -3186,6 +3204,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
       }
+    } catch (error) {
+      console.error('[PLAYER OPTIONS] Failed to stand up:', error);
+      toast({ title: "Error", description: "Failed to stand up", variant: "destructive" });
     }
   };
   

@@ -2,6 +2,32 @@
 
 Date: 2026-08-15
 
+## Atomic explicit post-game participation checkpoint
+
+- Migration `20260815163818_atomic_explicit_postgame_stand_up.sql` is
+  installed on owned production. `public.stand_up_and_resolve_postgame` now
+  commits an authenticated human's Stand Up flags and the settled post-game
+  lifecycle disposition under one game/player lock.
+- Zero active humans ends immediately: real-money sessions reuse the existing
+  snapshot-backed exactly-once finalizer, while fake-money sessions enter
+  `session_ended` without SessionResult, balance, or financial-transaction
+  writes. One remaining active participant returns to Waiting with setup
+  identity cleared; two or more eligible participants preserve continuation.
+  The fifteen-second heartbeat grace remains only for still-active seated
+  humans whose presence is ambiguous.
+- `Game.tsx:handleStandUpNow` now calls that RPC after the existing departing
+  real-money snapshot. Never-started rooms and non-post-game states explicitly
+  fall back to the prior cleanup owner. No deal transport, cards, game rules,
+  settlement trigger, heartbeat reconciler, or canonical presentation guard
+  changed.
+- The new rollback proof passes before and after deployment and covers the
+  exact two-client fake-money repro, real-money winner settlement, duplicate
+  and late replay, authorization, one-player Waiting, eligible continuation,
+  initial-room exclusion, and live-game exclusion. The complete existing
+  winner/tie/heartbeat abandonment proof, TypeScript, 30 focused Cribbage
+  preservation assertions, and the production Vite build also pass.
+  Production smoke is pending.
+
 ## Holm DG1H1 Buck and paused-session announcement checkpoint
 
 - Migrations `20260815155602_mint_holm_initial_buck_presentation.sql` and

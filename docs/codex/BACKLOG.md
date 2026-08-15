@@ -351,8 +351,9 @@ Status: Verified in production smoke on 2026-08-09 (migration
 
 ### 3E.2 Explicit zero-active post-game closure latency and setup divergence
 
-Status: Queued pending another frozen/repeatable repro; reported again and not
-reproduced in a replacement smoke on 2026-08-15.
+Status: Implemented on 2026-08-15; production smoke pending. Migration
+`20260815163818_atomic_explicit_postgame_stand_up.sql` is installed on owned
+production.
 
 - Original observation: a dealer game ended; during the subsequent dealer
   setup one human chose Sit Out, returning the session to the post-game Waiting
@@ -389,11 +390,17 @@ reproduced in a replacement smoke on 2026-08-15.
   presence enters the heartbeat-grace path. The existing
   `resolve_postgame_participation` is a partial version of this boundary, but
   Stand Up and fake-money branches do not consistently pass through it.
-- On recurrence, capture the session/game identity and approximate timestamp,
-  then inspect the game status/current dealer-game identity, both player rows,
-  abandonment-watch arm/next-check/last-outcome state, post-boundary heartbeat
-  timestamps, and the sitting-out client's setup-dialog owner before mutating
-  anything.
+- Delivered correction: `Game.tsx:handleStandUpNow` now routes the exit through
+  `public.stand_up_and_resolve_postgame`. The RPC locks the session and caller,
+  writes the complete Left/Sitting Out flag set, then atomically ends at zero
+  active humans, returns to Waiting below two active participants, or preserves
+  an eligible continuation. Never-started rooms and live dealer games remain
+  with their prior owners; the heartbeat reconciler is unchanged.
+- Smoke the original sequence with two continuously open clients: after one
+  human chooses Sit Out during post-game setup and the other chooses Stand Up
+  Now at Waiting, both clients should enter Session Ended immediately and no
+  Game Setup dialog may mount. Also preserve a one-human Waiting result and a
+  three-human stand-up continuation.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 
