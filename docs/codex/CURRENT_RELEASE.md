@@ -13,14 +13,15 @@ Date: 2026-08-15
   sessions are rejected and are never eligible for deletion.
 - `PlayerOptionsMenu` exposes **Blast This Game** only when `Game.tsx` has
   already established both conditions: the signed-in user is an admin and the
-  current game is fake money. Its destructive confirmation invokes only the
-  guarded RPC. A central `games` DELETE realtime listener sends every connected
-  client directly to the lobby, bypassing the prior missing-game retry cycle.
+  current game is fake money. It invokes the guarded RPC immediately; a local
+  in-flight latch prevents duplicate clicks. A central `games` DELETE realtime
+  listener sends every connected client directly to the lobby, bypassing the
+  prior missing-game retry cycle.
 - The rollback proof passed before and after the production migration. It
   covers winner and tie cleanup, duplicate/late replay, authorization,
   continuation controls, terminal state, and the real-money guard. TypeScript,
   the 30 focused Cribbage preservation assertions, and the production Vite
-  build pass. Production smoke is pending publication of this client change.
+  build pass. Live smoke remains pending.
 
 ## Atomic explicit post-game participation checkpoint
 

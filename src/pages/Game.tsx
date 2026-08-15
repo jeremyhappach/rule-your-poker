@@ -1210,7 +1210,6 @@ const Game = () => {
   const anteConfirmedLatchRef = useRef<string | null>(null); // stores "gameId|dealerGameId|playerId"
   
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
-  const [showBlastGameDialog, setShowBlastGameDialog] = useState(false);
   const [isBlastingGame, setIsBlastingGame] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
@@ -15242,7 +15241,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
             canBlastGame={isAdmin && game.real_money === false}
-            onBlastGame={() => setShowBlastGameDialog(true)}
+            onBlastGame={() => void handleBlastGame()}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
             onDeckColorModeChange={async (mode) => {
               await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -15266,7 +15265,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             variant="mobile"
             gameStatus={game.status}
             canBlastGame={isAdmin && game.real_money === false}
-            onBlastGame={() => setShowBlastGameDialog(true)}
+            onBlastGame={() => void handleBlastGame()}
             deckColorMode={'four_color'}
             onDeckColorModeChange={async () => {}}
           />
@@ -15362,7 +15361,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
                   canBlastGame={isAdmin && game.real_money === false}
-                  onBlastGame={() => setShowBlastGameDialog(true)}
+                  onBlastGame={() => void handleBlastGame()}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -17176,35 +17175,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             </AlertDialogAction>
           </AlertDialogFooter>
       </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
-        open={showBlastGameDialog}
-        onOpenChange={(open) => {
-          if (!isBlastingGame) setShowBlastGameDialog(open);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Blast this fake-money game?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes the session and its results, then sends every connected player back to the lobby. Real-money sessions cannot be blasted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBlastingGame}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isBlastingGame}
-              onClick={(event) => {
-                event.preventDefault();
-                void handleBlastGame();
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isBlastingGame ? 'Blasting…' : 'Blast This Game'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
       </AlertDialog>
 
     <DebugLogToggle />
