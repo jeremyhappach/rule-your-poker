@@ -152,6 +152,11 @@ Accepted design:
 - results on felt;
 - Back to Lobby local-only;
 - participant source is current roster plus latest valid snapshots.
+- Explicit zero-active post-game closure passed two-client production smoke on
+  2026-08-15: after one player sat out and the other stood up, both clients
+  entered Session Ended immediately and no setup dialog mounted. Preserve the
+  atomic server disposition and keep heartbeat grace limited to ambiguous
+  still-active humans.
 
 Do not reintroduce a scrim/modal, automatic lobby redirect for connected flow, or gameplay artifacts behind Results.
 

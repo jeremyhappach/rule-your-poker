@@ -26,7 +26,11 @@ Date: 2026-08-15
   initial-room exclusion, and live-game exclusion. The complete existing
   winner/tie/heartbeat abandonment proof, TypeScript, 30 focused Cribbage
   preservation assertions, and the production Vite build also pass.
-  Production smoke is pending.
+  Production smoke confirmed immediate Session Ended on both clients with no
+  setup-dialog recurrence. A narrow presentation follow-up now suppresses
+  open-seat join affordances whenever `MobileGameTable` is in its existing
+  `sessionEndedPhase`; the stood-up viewer still uses the established absolute
+  observer projection. Final affordance smoke is pending.
 
 ## Holm DG1H1 Buck and paused-session announcement checkpoint
 

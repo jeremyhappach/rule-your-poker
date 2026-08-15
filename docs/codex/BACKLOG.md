@@ -401,6 +401,12 @@ production.
   Now at Waiting, both clients should enter Session Ended immediately and no
   Game Setup dialog may mount. Also preserve a one-human Waiting result and a
   three-human stand-up continuation.
+- Core production smoke passed on 2026-08-15: both clients entered Session
+  Ended immediately and no Game Setup dialog mounted. The stood-up viewer
+  correctly changed to absolute observer projection, but `MobileGameTable`
+  also exposed open-seat `+` controls. The approved presentation-only follow-up
+  adds `!sessionEndedPhase` to that existing control gate; it deliberately does
+  not alter observer geometry. Affordance smoke remains pending.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 
