@@ -69,6 +69,7 @@ __wartimeRegisterEmitterApp('global.error.origin', __WARTIME_SRC_APP.GLOBAL_ERRO
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
+import { ReleaseProtectedGameRoute, ReleaseVersionGate } from "@/components/ReleaseVersionGate";
 
 
 
@@ -193,7 +194,8 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppNetworkSim>
+            <ReleaseVersionGate>
+              <AppNetworkSim>
               <ChatOperationInstrumentationMount />
               <WartimeAdminGateMount />
               <Routes>
@@ -202,10 +204,12 @@ const App = () => {
                 <Route
                   path="/game/:gameId"
                   element={
-                    <RouteErrorBoundary title="Game screen crashed">
-                      <VoiceOperationPresenceMount />
-                      <Game />
-                    </RouteErrorBoundary>
+                    <ReleaseProtectedGameRoute>
+                      <RouteErrorBoundary title="Game screen crashed">
+                        <VoiceOperationPresenceMount />
+                        <Game />
+                      </RouteErrorBoundary>
+                    </ReleaseProtectedGameRoute>
                   }
                 />
 
@@ -287,7 +291,8 @@ const App = () => {
 
 
 
-            </AppNetworkSim>
+              </AppNetworkSim>
+            </ReleaseVersionGate>
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>

@@ -1,0 +1,47 @@
+name: Publish release signal
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for the production alias to serve this commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..20}; do
+            manifest="$(curl --fail --silent --show-error --header 'Cache-Control: no-cache' https://holm357.com/build-manifest.json || true)"
+            if [ -n "$manifest" ]; then
+              build_sha="$(node -e 'try { process.stdout.write(JSON.parse(process.argv[1]).buildId || "") } catch {}' "$manifest")"
+              if [ "$build_sha" = "$EXPECTED_SHA" ]; then
+                echo "Production alias is serving $build_sha"
+                exit 0
+              fi
+            fi
+            echo "Production alias has not reached $EXPECTED_SHA yet (attempt $attempt/20)."
+            sleep 30
+          done
+          echo "Production alias never served the expected SHA. No release signal was published."
+          exit 1
+
+      - name: Publish the verified release signal
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          RELEASE_PUBLICATION_TOKEN: ${{ secrets.RELEASE_PUBLICATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          payload="$(node -e 'console.log(JSON.stringify({ buildSha: process.env.EXPECTED_SHA, deploymentId: `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`, publishedAt: new Date().toISOString() }))')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: Bearer $RELEASE_PUBLICATION_TOKEN" \
+            --data "$payload" \
+            https://xvhmbuppghwmwpwrkzao.supabase.co/functions/v1/publish-release
