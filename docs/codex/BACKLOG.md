@@ -908,6 +908,21 @@ Status: Queued; reproduced in owned-Supabase production on 2026-08-03.
   `max-h-[400px]`; preserve sorting, balance colors, row selection, and the
   transition into transaction history when correcting the containment.
 
+### 13G. Holm community-row test leaks its first render into the second case
+
+Status: Queued; test-harness defect discovered during checkpoint-1 Holm
+validation on 2026-08-15. Product source was not implicated.
+
+- Running `src/components/HolmCanonicalCommunityRow.test.tsx` by itself passes
+  its live-reveal case, then fails the historical-rejoin case because both
+  rendered rows remain in `document.body`; `screen.getByTestId('face-Q')`
+  therefore sees two matching nodes.
+- Running only the historical-rejoin case passes, confirming this is missing
+  per-test cleanup rather than a community-card presentation failure.
+- Add explicit Testing Library cleanup (or the repository-wide equivalent)
+  without changing `HolmCanonicalCommunityRow` behavior, then restore the
+  two-case file as a reliable member of the focused Holm suite.
+
 ## Documentation/bootstrap
 
 ### 14. Complete exact game-rule documentation
