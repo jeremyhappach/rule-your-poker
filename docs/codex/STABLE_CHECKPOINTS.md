@@ -108,6 +108,13 @@
   at commit `d7149e0d4ab3a3409ee6fbbc3aa15cf7f1c810e2`: after the deal-settled gate,
   the first visible frame was full and the timer only descended. Preserve the
   atomic remaining/total/deadline snapshot and pre-paint transition reset.
+- Holm DG1H1 live-entry provenance passed fresh two-client production smoke on
+  2026-08-15 at commit `372dd2cf7fb4ef7bce948d812c38048cad100ec4`:
+  the opening deal transported normally, the first active player's timer
+  appeared through the existing deal-settled gate, and play continued without
+  a freeze. Preserve the pre-hand lifecycle provenance classification. Do not
+  fabricate `DealRuntime` settlement/release state for a skipped historical
+  entry or bypass canonical card transport.
 - Consecutive identical Holm showdowns passed production smoke on 2026-08-10
   at commit `4eaf5b0be8c20eac4f3e33d5d3699b85f98d1588`: every hand showed its
   canonical pot-to-winner then loser-to-pot stages. Preserve the

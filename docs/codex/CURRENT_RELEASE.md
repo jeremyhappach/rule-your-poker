@@ -27,8 +27,10 @@ Date: 2026-08-15
   passes 114 of 115 assertions, with the sole failure reproduced independently
   as pre-existing test cleanup leakage in
   `HolmCanonicalCommunityRow.test.tsx`. TypeScript, 30 Cribbage preservation
-  assertions, and the production build pass. Publication and two-client
-  DG1H1 transport/timer smoke remain required.
+  assertions, and the production build pass. Production commit
+  `372dd2cf7fb4ef7bce948d812c38048cad100ec4` reached `READY`, and Jeremy
+  accepted checkpoint 1 after a clean two-client DG1H1 transport, timer, and
+  continuation smoke on 2026-08-15.
 
 ## Holm exact-hand presentation transaction
 
