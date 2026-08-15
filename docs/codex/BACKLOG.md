@@ -379,6 +379,16 @@ reproduced in a replacement smoke on 2026-08-15.
   post-game resolver, and no client may open or retain Game Setup after the
   terminal identity arrives. Preserve Sitting Out seat retention and the
   disconnect-only heartbeat grace.
+- Required missing boundary: immediately after an explicit participation
+  mutation and before publishing the next lifecycle state, one server-owned
+  transaction must lock the session/cohort and evaluate the authoritative
+  counts. Zero active humans ends the settled session now; at least one active
+  human but fewer than two game-eligible participants returns to Waiting with
+  every setup/dealer-game pointer cleared; an eligible cohort may continue to
+  dealer selection/setup. Only a still-active seated human with ambiguous
+  presence enters the heartbeat-grace path. The existing
+  `resolve_postgame_participation` is a partial version of this boundary, but
+  Stand Up and fake-money branches do not consistently pass through it.
 - On recurrence, capture the session/game identity and approximate timestamp,
   then inspect the game status/current dealer-game identity, both player rows,
   abandonment-watch arm/next-check/last-outcome state, post-boundary heartbeat
