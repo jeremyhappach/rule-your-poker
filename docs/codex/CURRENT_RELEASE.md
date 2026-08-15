@@ -30,7 +30,9 @@ Date: 2026-08-15
   setup-dialog recurrence. A narrow presentation follow-up now suppresses
   open-seat join affordances whenever `MobileGameTable` is in its existing
   `sessionEndedPhase`; the stood-up viewer still uses the established absolute
-  observer projection. Final affordance smoke is pending.
+  observer projection. Jeremy reported the follow-up production smoke clean on
+  2026-08-15 at commit `8b5e8f4ecc4d42f3028a48f71492b34aec80112b`;
+  the zero-active closure and Session Ended affordance gate are accepted.
 
 ## Holm DG1H1 Buck and paused-session announcement checkpoint
 

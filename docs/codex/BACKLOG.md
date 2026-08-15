@@ -351,7 +351,7 @@ Status: Verified in production smoke on 2026-08-09 (migration
 
 ### 3E.2 Explicit zero-active post-game closure latency and setup divergence
 
-Status: Implemented on 2026-08-15; production smoke pending. Migration
+Status: Completed and production-smoked on 2026-08-15. Migration
 `20260815163818_atomic_explicit_postgame_stand_up.sql` is installed on owned
 production.
 
@@ -406,7 +406,9 @@ production.
   correctly changed to absolute observer projection, but `MobileGameTable`
   also exposed open-seat `+` controls. The approved presentation-only follow-up
   adds `!sessionEndedPhase` to that existing control gate; it deliberately does
-  not alter observer geometry. Affordance smoke remains pending.
+  not alter observer geometry. Jeremy reported the follow-up production smoke
+  clean at commit `8b5e8f4ecc4d42f3028a48f71492b34aec80112b`;
+  this item is closed.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 

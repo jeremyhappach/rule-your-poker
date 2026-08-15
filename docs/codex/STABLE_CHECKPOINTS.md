@@ -157,6 +157,11 @@ Accepted design:
   entered Session Ended immediately and no setup dialog mounted. Preserve the
   atomic server disposition and keep heartbeat grace limited to ambiguous
   still-active humans.
+- The Session Ended join-affordance gate passed production smoke on 2026-08-15
+  at commit `8b5e8f4ecc4d42f3028a48f71492b34aec80112b`. Open-seat `+`
+  controls remain suppressed in this terminal table phase, while a stood-up
+  viewer retains the established absolute observer projection and ordinary
+  Waiting-table observers retain valid join controls.
 
 Do not reintroduce a scrim/modal, automatic lobby redirect for connected flow, or gameplay artifacts behind Results.
 
