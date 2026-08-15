@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchLobbyGames, LobbyFetchAbortedError } from "@/lib/lobbyFetch";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,10 @@ interface GameLobbyProps {
   userId: string;
 }
 
+// A lobby query is presentation data only, but it must not hold the lobby
+// surface forever when a browser transport wedges during a publish/reconnect.
+const LOBBY_FETCH_TIMEOUT_MS = 12_000;
+
 export const GameLobby = ({ userId }: GameLobbyProps) => {
   // Prevent screen from dimming in the lobby
   useWakeLock(true);
@@ -107,14 +111,96 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Lobby-load request lifecycle guard. Only the newest request may
-  // mutate `games` / `loading` / show an error toast. Older responses
-  // (including aborted ones) are ignored silently.
-  const requestSeqRef = useRef(0);
+  // A refresh signal may arrive from focus, realtime, or the bounded refresh
+  // interval while a query is already in flight. Keep one authoritative
+  // browser request and coalesce every extra signal into one follow-up fetch;
+  // cancelling the active request can otherwise leave the initial spinner
+  // latched forever during a reconnect burst.
   const activeAbortRef = useRef<AbortController | null>(null);
+  const refreshQueuedRef = useRef(false);
+  const mountedRef = useRef(false);
   const lastErrorToastKeyRef = useRef<string | null>(null);
 
+  const fetchGames = useCallback(() => {
+    if (!mountedRef.current) return;
+
+    if (activeAbortRef.current) {
+      refreshQueuedRef.current = true;
+      return;
+    }
+
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, LOBBY_FETCH_TIMEOUT_MS);
+    const perf = new PerfSession("GameLobby.fetchGames", 300);
+
+    void (async () => {
+      try {
+        const result = await perf.step("lobby.fetch", () =>
+          fetchLobbyGames({ userId, signal: controller.signal }),
+        );
+        if (activeAbortRef.current !== controller || !mountedRef.current) return;
+
+        setGames(result);
+        lastErrorToastKeyRef.current = null;
+        perf.done({ gameCount: result.length });
+      } catch (err) {
+        if (activeAbortRef.current !== controller || !mountedRef.current) return;
+
+        if (timedOut) {
+          const errKey = "lobby-fetch-timeout";
+          if (lastErrorToastKeyRef.current !== errKey) {
+            lastErrorToastKeyRef.current = errKey;
+            toast({
+              title: "Lobby connection timed out",
+              description: "Trying to refresh games again shortly.",
+              variant: "destructive",
+            });
+          }
+          perf.done({ timedOut: true });
+          return;
+        }
+
+        // Abort is only expected while this component is being retired.
+        if (err instanceof LobbyFetchAbortedError || controller.signal.aborted) {
+          perf.done({ aborted: true });
+          return;
+        }
+
+        // Preserve the last successful list on transient failure.
+        const errKey = (err as any)?.code || (err as any)?.message || "unknown";
+        if (lastErrorToastKeyRef.current !== errKey) {
+          lastErrorToastKeyRef.current = errKey;
+          toast({
+            title: "Error",
+            description: "Failed to fetch games",
+            variant: "destructive",
+          });
+        }
+        perf.done({ error: String((err as any)?.message ?? err) });
+      } finally {
+        window.clearTimeout(timeoutId);
+        if (activeAbortRef.current !== controller) return;
+
+        activeAbortRef.current = null;
+        if (!mountedRef.current) return;
+
+        // The lobby is no longer allowed to remain behind a terminal request.
+        setLoading(false);
+        if (refreshQueuedRef.current) {
+          refreshQueuedRef.current = false;
+          fetchGames();
+        }
+      }
+    })();
+  }, [toast, userId]);
+
   useEffect(() => {
+    mountedRef.current = true;
     setGames([]);
     setLoading(true);
 
@@ -166,68 +252,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       supabase.removeChannel(playersChannel);
       // Cancel any in-flight lobby request when the component unmounts
       // so a late reply cannot try to setState on an unmounted tree.
+      mountedRef.current = false;
+      refreshQueuedRef.current = false;
       activeAbortRef.current?.abort();
       activeAbortRef.current = null;
-      requestSeqRef.current = -1;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [fetchGames, userId]);
 
   const checkSuperuser = async () => {
     // Admin role now sourced from canonical user_roles via useIsAdmin.
     // Kept as a no-op to preserve existing call sites (visibility/focus refresh).
   };
-
-  const fetchGames = async () => {
-    // Cancel any in-flight request; only one lobby-load runs at a time.
-    activeAbortRef.current?.abort();
-    const controller = new AbortController();
-    activeAbortRef.current = controller;
-
-    const perf = new PerfSession("GameLobby.fetchGames", 300);
-    const mySeq = ++requestSeqRef.current;
-
-    try {
-      const result = await perf.step("lobby.fetch", () =>
-        fetchLobbyGames({ userId, signal: controller.signal }),
-      );
-      // Stale-response guard: newer request superseded this one.
-      if (mySeq !== requestSeqRef.current) {
-        perf.done({ stale: true });
-        return;
-      }
-      setGames(result);
-      lastErrorToastKeyRef.current = null;
-      perf.done({ gameCount: result.length });
-    } catch (err) {
-      // Silent for intentional aborts or superseded requests.
-      if (err instanceof LobbyFetchAbortedError || controller.signal.aborted) {
-        perf.done({ aborted: true });
-        return;
-      }
-      if (mySeq !== requestSeqRef.current) {
-        perf.done({ stale: true });
-        return;
-      }
-      // Preserve the last successful list on transient failure.
-      const errKey = (err as any)?.code || (err as any)?.message || "unknown";
-      if (lastErrorToastKeyRef.current !== errKey) {
-        lastErrorToastKeyRef.current = errKey;
-        toast({
-          title: "Error",
-          description: "Failed to fetch games",
-          variant: "destructive",
-        });
-      }
-      perf.done({ error: String((err as any)?.message ?? err) });
-    } finally {
-      if (mySeq === requestSeqRef.current) {
-        setLoading(false);
-      }
-    }
-  };
-
-
 
   const createGame = async () => {
     // Prevent double-clicks

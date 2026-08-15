@@ -6,7 +6,7 @@
  *   - broad nested `players(..., profiles(username))` joins across
  *     every historical game (the containment defect);
  *   - request-lifecycle latch bugs where a failure never clears
- *     `loading`, or a stale response overwrites newer data.
+ *     `loading`, or refresh noise cancels every initial request.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fetchLobbyGames, LobbyFetchAbortedError, LOBBY_GAMES_HARD_LIMIT } from '@/lib/lobbyFetch';
@@ -161,7 +161,7 @@ describe('fetchLobbyGames — bounded query shape', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Request-lifecycle guard: mirrors the GameLobby fetchGames pattern.  */
+/* Request-lifecycle guard: mirrors the GameLobby single-flight pattern. */
 /* ------------------------------------------------------------------ */
 type LifecycleState = {
   games: any[];
@@ -170,36 +170,43 @@ type LifecycleState = {
 };
 
 /**
- * Minimal reproduction of GameLobby.fetchGames' sequence-guarded
- * pattern. Tests target the pattern, not the component tree.
+ * Minimal reproduction of GameLobby.fetchGames' single-flight pattern.
+ * Tests target the request owner, not the component tree.
  */
 function makeLobbyController(fetchImpl: (opts: { signal: AbortSignal }) => Promise<any[]>) {
   const state: LifecycleState = { games: [{ id: 'last-good' }], loading: false, errorShown: 0 };
-  let seq = 0;
   let activeCtrl: AbortController | null = null;
+  let refreshQueued = false;
   let lastErrKey: string | null = null;
 
   async function fetchOnce() {
-    activeCtrl?.abort();
+    if (activeCtrl) {
+      refreshQueued = true;
+      return;
+    }
+
     const ctrl = new AbortController();
     activeCtrl = ctrl;
-    const mySeq = ++seq;
     state.loading = true;
     try {
       const rows = await fetchImpl({ signal: ctrl.signal });
-      if (mySeq !== seq) return;
       state.games = rows;
       lastErrKey = null;
     } catch (err: any) {
       if (err instanceof LobbyFetchAbortedError || ctrl.signal.aborted) return;
-      if (mySeq !== seq) return;
       const key = err?.code || err?.message || 'unknown';
       if (lastErrKey !== key) {
         lastErrKey = key;
         state.errorShown += 1;
       }
     } finally {
-      if (mySeq === seq) state.loading = false;
+      if (activeCtrl !== ctrl) return;
+      activeCtrl = null;
+      state.loading = false;
+      if (refreshQueued) {
+        refreshQueued = false;
+        void fetchOnce();
+      }
     }
   }
 
@@ -229,7 +236,7 @@ describe('GameLobby fetch lifecycle', () => {
     expect(state.errorShown).toBe(1);
   });
 
-  it('ignores a stale/aborted response — never overwrites newer data, never toasts', async () => {
+  it('coalesces overlapping refreshes instead of aborting the initial request', async () => {
     let resolveSlow!: (v: any) => void;
     const slow = new Promise<any>((r) => {
       resolveSlow = r;
@@ -238,21 +245,23 @@ describe('GameLobby fetch lifecycle', () => {
     const { state, fetchOnce } = makeLobbyController(async ({ signal }) => {
       calls += 1;
       if (calls === 1) {
-        // Slow first request: resolve only after second one completes.
+        // Slow initial request: a refresh arrives while it is in flight.
         await slow;
-        if (signal.aborted) throw new LobbyFetchAbortedError();
-        return [{ id: 'STALE' }];
+        expect(signal.aborted).toBe(false);
+        return [{ id: 'INITIAL' }];
       }
       return [{ id: 'FRESH' }];
     });
 
     const p1 = fetchOnce();
-    const p2 = fetchOnce();
-    await p2;
-    // Now let the stale first request finally settle.
-    resolveSlow([{ id: 'STALE' }]);
-    await p1;
+    void fetchOnce();
+    expect(calls).toBe(1);
 
+    resolveSlow([{ id: 'INITIAL' }]);
+    await p1;
+    await Promise.resolve();
+
+    expect(calls).toBe(2);
     expect(state.games).toEqual([{ id: 'FRESH' }]);
     expect(state.errorShown).toBe(0);
     expect(state.loading).toBe(false);
