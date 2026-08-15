@@ -79,6 +79,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import {
@@ -927,6 +928,7 @@ const Game = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
+  const { isAdmin } = useIsAdmin(user?.id);
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [_game, setGame] = useState<GameData | null>(null);
   // Post-hydration continuity: once the session has loaded a real game,
@@ -1208,6 +1210,8 @@ const Game = () => {
   const anteConfirmedLatchRef = useRef<string | null>(null); // stores "gameId|dealerGameId|playerId"
   
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
+  const [showBlastGameDialog, setShowBlastGameDialog] = useState(false);
+  const [isBlastingGame, setIsBlastingGame] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
@@ -4317,6 +4321,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
+          },
+        }))
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'games',
+        },
+        simulateRealtime('games', __wrapWartimeRealtimeCausality({
+          channelLabel: `game-${gameId}:games-delete`,
+          table: 'games',
+          identity: () => ({ gameId, dealerGameId: null, roundId: null }),
+          handler: (payload: any) => {
+            // DELETE events are intentionally unfiltered: Realtime only has
+            // the old row at this boundary. The games table uses REPLICA
+            // IDENTITY FULL, and this exact identity check keeps every other
+            // mounted game route inert.
+            if ((payload.old as { id?: string } | null)?.id !== gameId) return;
+            if (missingGameHandledRef.current) return;
+
+            missingGameHandledRef.current = true;
+            recordTerminalRecovery('kick-or-removal', {
+              gameId,
+              source: 'games-delete-realtime',
+            });
+            releaseRecoveryLease('kick-or-removal', {
+              gameId,
+              source: 'games-delete-realtime',
+            });
+            toast({
+              title: 'Session removed',
+              description: 'This session was removed by an administrator.',
+              duration: 3000,
+            });
+            navigate('/', { replace: true });
           },
         }))
       )
@@ -14566,6 +14607,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  const handleBlastGame = async () => {
+    if (!gameId || !isAdmin || game?.real_money !== false || isBlastingGame) return;
+
+    setIsBlastingGame(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_blast_fake_money_game', {
+        p_game_id: gameId,
+      });
+
+      if (error) throw error;
+
+      const result = data as { outcome?: string; deleted?: boolean } | null;
+      if (result?.outcome !== 'deleted' && result?.outcome !== 'already-deleted') {
+        throw new Error('The session was not deleted');
+      }
+
+      // The initiating admin does not wait for its own realtime echo. Other
+      // connected clients take the matching games DELETE path below.
+      missingGameHandledRef.current = true;
+      setShowBlastGameDialog(false);
+      recordTerminalRecovery('kick-or-removal', {
+        gameId,
+        source: 'admin-blast-fake-money-game',
+      });
+      releaseRecoveryLease('kick-or-removal', {
+        gameId,
+        source: 'admin-blast-fake-money-game',
+      });
+      navigate('/', { replace: true });
+    } catch (error: any) {
+      console.error('[ADMIN BLAST] Failed to delete fake-money session:', error);
+      toast({
+        title: 'Could not blast this game',
+        description: error?.message || 'The session was not deleted.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBlastingGame(false);
+    }
+  };
+
 
   const handleAddBot = async () => {
     if (!gameId) return;
@@ -15159,6 +15241,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
+            canBlastGame={isAdmin && game.real_money === false}
+            onBlastGame={() => setShowBlastGameDialog(true)}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
             onDeckColorModeChange={async (mode) => {
               await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -15181,6 +15265,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onLeaveGameNow={handleLeaveGameNow}
             variant="mobile"
             gameStatus={game.status}
+            canBlastGame={isAdmin && game.real_money === false}
+            onBlastGame={() => setShowBlastGameDialog(true)}
             deckColorMode={'four_color'}
             onDeckColorModeChange={async () => {}}
           />
@@ -15275,6 +15361,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   onAddBot={addBotAuthoritative}
 
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
+                  canBlastGame={isAdmin && game.real_money === false}
+                  onBlastGame={() => setShowBlastGameDialog(true)}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -17088,6 +17176,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             </AlertDialogAction>
           </AlertDialogFooter>
       </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showBlastGameDialog}
+        onOpenChange={(open) => {
+          if (!isBlastingGame) setShowBlastGameDialog(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Blast this fake-money game?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the session and its results, then sends every connected player back to the lobby. Real-money sessions cannot be blasted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlastingGame}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBlastingGame}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleBlastGame();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBlastingGame ? 'Blasting…' : 'Blast This Game'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
 
     <DebugLogToggle />

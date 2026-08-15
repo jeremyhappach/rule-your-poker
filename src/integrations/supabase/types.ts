@@ -3159,6 +3159,10 @@ export type Database = {
         Returns: Json
       }
       admin_delete_fake_money_games: { Args: never; Returns: number }
+      admin_blast_fake_money_game: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
       advance_357_round: {
         Args: {
           _dealer_game_id: string

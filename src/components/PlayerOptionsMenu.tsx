@@ -34,6 +34,10 @@ interface PlayerOptionsMenuProps {
   onAddBot?: () => void | Promise<void>;
   canAddBot?: boolean;
   onEndSession?: () => void;
+  // Admin-only, fake-money-only destructive session teardown. The caller must
+  // enforce the visibility predicate; the database enforces it again.
+  canBlastGame?: boolean;
+  onBlastGame?: () => void;
   // Deck color mode props
   deckColorMode?: 'two_color' | 'four_color';
   onDeckColorModeChange?: (mode: 'two_color' | 'four_color') => void;
@@ -61,6 +65,8 @@ export const PlayerOptionsMenu = ({
   onAddBot,
   canAddBot = false,
   onEndSession,
+  canBlastGame = false,
+  onBlastGame,
   deckColorMode,
   onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
@@ -127,6 +133,16 @@ export const PlayerOptionsMenu = ({
               <DropdownMenuSeparator />
             </>
           )}
+          {canBlastGame && onBlastGame && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => onBlastGame()}
+                className="text-destructive focus:text-destructive"
+              >
+                💥 Blast This Game
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem 
             onClick={onLeaveGameNow}
             className="text-destructive focus:text-destructive"
@@ -184,6 +200,16 @@ export const PlayerOptionsMenu = ({
                 4-Color Deck
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
+            </>
+          )}
+          {canBlastGame && onBlastGame && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => onBlastGame()}
+                className="text-destructive focus:text-destructive"
+              >
+                💥 Blast This Game
+              </DropdownMenuItem>
             </>
           )}
           
@@ -249,6 +275,18 @@ export const PlayerOptionsMenu = ({
                 🛑 End Session
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {canBlastGame && onBlastGame && (
+          <>
+            <DropdownMenuItem
+              onSelect={() => onBlastGame()}
+              className="text-destructive focus:text-destructive"
+            >
+              💥 Blast This Game
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
         )}

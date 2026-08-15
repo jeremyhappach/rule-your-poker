@@ -2,6 +2,26 @@
 
 Date: 2026-08-15
 
+## Admin fake-money session blast control
+
+- Migration `20260815180000_admin_blast_fake_money_game.sql` is installed on
+  owned production. The security-definer
+  `public.admin_blast_fake_money_game(uuid)` checks the authenticated admin
+  role and the fake-money flag under a game-row lock, removes the independently
+  archived Cribbage records, then deletes the authoritative game row and its
+  cascading session graph. Missing-session replays are safe no-ops; real-money
+  sessions are rejected and are never eligible for deletion.
+- `PlayerOptionsMenu` exposes **Blast This Game** only when `Game.tsx` has
+  already established both conditions: the signed-in user is an admin and the
+  current game is fake money. Its destructive confirmation invokes only the
+  guarded RPC. A central `games` DELETE realtime listener sends every connected
+  client directly to the lobby, bypassing the prior missing-game retry cycle.
+- The rollback proof passed before and after the production migration. It
+  covers winner and tie cleanup, duplicate/late replay, authorization,
+  continuation controls, terminal state, and the real-money guard. TypeScript,
+  the 30 focused Cribbage preservation assertions, and the production Vite
+  build pass. Production smoke is pending publication of this client change.
+
 ## Atomic explicit post-game participation checkpoint
 
 - Migration `20260815163818_atomic_explicit_postgame_stand_up.sql` is
