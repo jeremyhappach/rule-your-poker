@@ -2,6 +2,36 @@
 
 Date: 2026-08-15
 
+## Holm DG1H1 Buck and paused-session announcement checkpoint
+
+- Migrations `20260815155602_mint_holm_initial_buck_presentation.sql` and
+  `20260815160011_preserve_holm_initial_ante_transfer_reason.sql` are installed
+  on owned production. `public.start_holm_initial_hand` now mints the same exact
+  server-authored `SERVER_BUCK_TRANSFER` event used by later Holm hands, from
+  the authoritative dealer seat to H1's authoritative Buck position. The event
+  is bound to the new dealer-game, round, hand-context, and hand-1 identity in
+  the startup transaction. The follow-up retains the canonical `ante`
+  classification for both sides of the opening chip-transfer journal batch.
+- The existing client remains the sole Buck-overlay presentation owner. Only
+  the recipient client may show `Buck's on you`, and only when the matching
+  live H1 hands-wave transport is accepted. No card transport, `DealRuntime`,
+  timer, settlement, or continuation code changed.
+- `SessionLifecycleAnnouncer` now owns one `game_paused` ambient for every
+  game family, including Cribbage. Its stable event identity uses the
+  authoritative host user UUID; the host display name is presentation-only.
+  While `games.is_paused` remains true the rail says
+  `Game is paused - only <host name> can resume`, and authoritative resume
+  retires only that announcer-owned ambient.
+- The complete H1 rollback proof passed before and after both migrations. It
+  covers exact event shape, duplicate and late replay without event
+  replacement, authorization, paused startup, continuation rejection,
+  winner/tie terminal state, unique deal, exactly-once ante movement, exact
+  canonical ante journal classification, and rollback cleanup.
+  Thirty-six focused checkpoint-1/2 assertions, five Buck-ownership
+  assertions, TypeScript, 30 Cribbage preservation assertions, and the Vite
+  production build pass. Production Buck/pause smoke remains the acceptance
+  gate after publication.
+
 ## Holm DG1H1 live-entry provenance checkpoint
 
 - Repeatable two-client smoke reached Holm dealer-game 1, hand 1 with an

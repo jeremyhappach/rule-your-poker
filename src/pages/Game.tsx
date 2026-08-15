@@ -14962,6 +14962,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
   )[0];
   const currentHost = (game as any).current_host;
+  const sessionHostPlayer = currentHost
+    ? players.find((player) => player.user_id === currentHost)
+    : hostPlayer;
+  const sessionHostUserId = currentHost ?? sessionHostPlayer?.user_id ?? null;
+  const sessionHostName = sessionHostPlayer?.profiles?.username ?? 'the session host';
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
   const isWaitingTableStatus = game.status === 'waiting' || game.status === 'waiting_for_players';
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
@@ -15204,6 +15209,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameId={gameId ?? null}
         gameType={game.game_type}
         gameStatus={game.status}
+        isPaused={game.is_paused === true}
+        sessionHostUserId={sessionHostUserId}
+        sessionHostName={sessionHostName}
         configComplete={(game as any).config_complete ?? null}
         isViewerDealer={isDealer}
         allowBotDealers={allowBotDealers}

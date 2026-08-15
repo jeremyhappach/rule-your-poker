@@ -30,3 +30,17 @@ describe('solo showdown announcement', () => {
     expect(screen.getByText('Hap has a pair of 8s')).not.toBeNull();
   });
 });
+
+describe('paused-game announcement', () => {
+  it('renders the persistent host-only resume instruction verbatim', () => {
+    render(renderAnnouncement({
+      id: 'game-1:session-paused:host-user-id',
+      type: 'game_paused',
+      scope: { dealerGameId: 'game-1' },
+      payload: { hostName: 'Jeremy' },
+      behavior: 'ambient',
+    }));
+
+    expect(screen.getByText('Game is paused - only Jeremy can resume')).not.toBeNull();
+  });
+});

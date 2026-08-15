@@ -10,6 +10,8 @@ DECLARE
   v_dealer_game_id uuid := gen_random_uuid();
   v_continuation_game_id uuid := gen_random_uuid();
   v_continuation_dealer_game_id uuid := gen_random_uuid();
+  v_paused_game_id uuid := gen_random_uuid();
+  v_paused_dealer_game_id uuid := gen_random_uuid();
   v_terminal_game_id uuid := gen_random_uuid();
   v_terminal_dealer_game_id uuid := gen_random_uuid();
   v_unauthorized_id uuid := gen_random_uuid();
@@ -18,6 +20,7 @@ DECLARE
   v_late_replay jsonb;
   v_rejected jsonb;
   v_round_id uuid;
+  v_buck_event_id uuid;
   v_count integer;
   v_distinct_count integer;
 BEGIN
@@ -105,6 +108,29 @@ BEGIN
 
   v_round_id := (v_first->>'round_id')::uuid;
 
+  SELECT (buck_transfer_presentation->>'id')::uuid
+    INTO v_buck_event_id
+    FROM public.games
+   WHERE id = v_game_id;
+
+  IF v_buck_event_id IS NULL OR NOT EXISTS (
+    SELECT 1
+      FROM public.games
+     WHERE id = v_game_id
+       AND buck_transfer_presentation->>'sessionId' = v_game_id::text
+       AND buck_transfer_presentation->>'dealerGameId' = v_dealer_game_id::text
+       AND buck_transfer_presentation->>'roundId' = v_round_id::text
+       AND buck_transfer_presentation->>'handContextId' = v_round_id::text
+       AND (buck_transfer_presentation->>'handNumber')::integer = 1
+       AND (buck_transfer_presentation->>'fromPosition')::integer = 2
+       AND (buck_transfer_presentation->>'toPosition')::integer = 1
+       AND buck_transfer_presentation->>'source' = 'SERVER_BUCK_TRANSFER'
+       AND jsonb_typeof(buck_transfer_presentation->'sequence') = 'number'
+       AND buck_transfer_presentation->>'createdAt' IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'holm_initial_proof:h1_buck_event_invalid';
+  END IF;
+
   SELECT count(*) INTO v_count
     FROM public.rounds
    WHERE game_id = v_game_id
@@ -166,6 +192,21 @@ BEGIN
     RAISE EXCEPTION 'holm_initial_proof:ante_not_exactly_once';
   END IF;
 
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  IF NOT EXISTS (
+    SELECT 1
+      FROM public.gameplay_transfer_batches batch
+     WHERE batch.game_id = v_game_id
+       AND batch.cursor = 1
+       AND batch.reason = 'ante'
+       AND batch.opening_balances ->> 'pot' = '0'
+       AND batch.closing_balances ->> 'pot' = '2'
+       AND jsonb_array_length(batch.transfers) = 2
+  ) THEN
+    RAISE EXCEPTION 'holm_initial_proof:ante_transfer_not_canonical';
+  END IF;
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
+
   IF NOT EXISTS (
     SELECT 1
       FROM public.games
@@ -193,6 +234,10 @@ BEGIN
   IF v_duplicate->>'outcome' <> 'already-started'
      OR (v_duplicate->>'round_id')::uuid <> v_round_id THEN
     RAISE EXCEPTION 'holm_initial_proof:duplicate_not_deduped:%', v_duplicate;
+  END IF;
+  IF (SELECT (buck_transfer_presentation->>'id')::uuid
+        FROM public.games WHERE id = v_game_id) <> v_buck_event_id THEN
+    RAISE EXCEPTION 'holm_initial_proof:duplicate_replaced_h1_buck_event';
   END IF;
 
   UPDATE public.games
@@ -229,6 +274,40 @@ BEGIN
        AND chips <> 99
   ) THEN
     RAISE EXCEPTION 'holm_initial_proof:late_replay_moved_chips';
+  END IF;
+
+  IF (SELECT (buck_transfer_presentation->>'id')::uuid
+        FROM public.games WHERE id = v_game_id) <> v_buck_event_id THEN
+    RAISE EXCEPTION 'holm_initial_proof:late_replay_replaced_h1_buck_event';
+  END IF;
+
+  INSERT INTO public.games (
+    id, name, status, game_type, current_game_uuid, current_host,
+    dealer_position, is_first_hand, ante_amount, pot, real_money, is_paused
+  ) VALUES (
+    v_paused_game_id, 'Codex rollback proof - Holm paused', 'ante_decision',
+    'holm-game', v_paused_dealer_game_id, v_users[1],
+    2, true, 1, 0, false, true
+  );
+  INSERT INTO public.dealer_games (
+    id, session_id, dealer_user_id, game_type
+  ) VALUES (
+    v_paused_dealer_game_id, v_paused_game_id, v_users[1], 'holm'
+  );
+  INSERT INTO public.players (
+    game_id, user_id, position, chips, status, sitting_out,
+    ante_decision, is_bot
+  ) VALUES
+    (v_paused_game_id, v_users[1], 1, 100, 'active', false, 'ante_up', false),
+    (v_paused_game_id, v_users[2], 2, 100, 'active', false, 'ante_up', false);
+
+  SELECT public.start_holm_initial_hand(v_paused_game_id, false) INTO v_rejected;
+  IF v_rejected->>'outcome' <> 'rejected'
+     OR v_rejected->>'reason' <> 'game-paused'
+     OR EXISTS (SELECT 1 FROM public.rounds WHERE game_id = v_paused_game_id)
+     OR (SELECT buck_transfer_presentation FROM public.games
+          WHERE id = v_paused_game_id) IS NOT NULL THEN
+    RAISE EXCEPTION 'holm_initial_proof:paused_start_not_rejected:%', v_rejected;
   END IF;
 
   INSERT INTO public.games (

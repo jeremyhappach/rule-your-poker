@@ -32,6 +32,7 @@ export type AnnouncementType =
   | 'waiting_for_player'
   | 'waiting_for_next_round'
   | 'dealer_selection_in_progress'
+  | 'game_paused'
   | 'awaiting_ante'
   | 'awaiting_discards'
   | 'solo_showdown'
@@ -123,6 +124,7 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   peg_notice: 55,
   dealer_configuring: 50,
   dealer_selection_in_progress: 50,
+  game_paused: 95,
   awaiting_ante: 45,
   dealing_next_hand: 44,
   awaiting_discards: 42,
@@ -143,6 +145,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   dealing_next_hand: 'enqueue',
   dealer_configuring: 'ambient',
   dealer_selection_in_progress: 'ambient',
+  game_paused: 'ambient',
   awaiting_ante: 'ambient',
   awaiting_discards: 'ambient',
   solo_showdown: 'ambient',

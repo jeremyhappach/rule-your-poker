@@ -15,6 +15,8 @@
  *       previously: MobileGameTable `dealerSetupMessage` gold banner
  *   - "Awaiting ante decisions"
  *       previously: MobileGameTable ante_decision gold banner
+ *   - "Game is paused - only <session host> can resume"
+ *       persistent shell-owned paused state for every game family
  *   - "Selecting next dealer" / "Drawing for high card…"
  *       previously: MobileGameTable `dealerSelectionAnnouncement` banner
  *   - "Dealer selected" transient announcement
@@ -67,6 +69,12 @@ export interface SessionLifecycleAnnouncerProps {
   gameId: string | null | undefined;
   gameType: string | null | undefined;
   gameStatus: string | null | undefined;
+  /** Authoritative session pause flag. */
+  isPaused: boolean;
+  /** Authoritative host user UUID; announcement identity never uses a display name. */
+  sessionHostUserId: string | null | undefined;
+  /** Presentation-only host label resolved from the authoritative player row. */
+  sessionHostName: string | null | undefined;
   /** `(game as any).config_complete` — dealer-config-complete latch. */
   configComplete: boolean | null | undefined;
   /** Viewer is the current dealer for the dealer-config phase. */
@@ -93,6 +101,9 @@ export function SessionLifecycleAnnouncer({
   gameId,
   gameType,
   gameStatus,
+  isPaused,
+  sessionHostUserId,
+  sessionHostName,
   configComplete,
   isViewerDealer,
   allowBotDealers,
@@ -131,6 +142,7 @@ export function SessionLifecycleAnnouncer({
 
     // Classify which ambient (if any) we should own this frame.
     type AmbientPlan =
+      | { kind: 'game_paused'; id: string; hostName?: string }
       | { kind: 'dealer_selection_in_progress'; id: string; cohort: number; tie: boolean }
       | { kind: 'dealer_configuring'; id: string; dealerName?: string }
       | { kind: 'awaiting_ante'; id: string }
@@ -138,6 +150,15 @@ export function SessionLifecycleAnnouncer({
 
     let plan: AmbientPlan = null;
 
+    // Pause is a session-level state and therefore applies uniformly to
+    // Cribbage and every other game family. It supersedes phase ambients and
+    // remains in the ambient slot until authoritative resume clears it.
+    if (isPaused) {
+      plan = {
+        kind: 'game_paused',
+        id: `${gameId}:session-paused:${sessionHostUserId ?? 'unknown-host'}`,
+        hostName: sessionHostName || undefined,
+      };
     // Dealer-configuring: SHELL-OWNED for every family (Cribbage included).
     // CribbageMobileGameTable does not emit dealer_configuring, and the
     // between-games rollover window often still reports game_type='cribbage'
@@ -147,7 +168,7 @@ export function SessionLifecycleAnnouncer({
     // is shell-level lifecycle messaging, not gameplay messaging — emit it
     // regardless of current game_type so the rail contract is uniform
     // across first-session-setup and between-games-rollover.
-    if (
+    } else if (
       (gameStatus === 'game_selection' ||
         gameStatus === 'configuring' ||
         ((gameStatus === 'game_over' || gameStatus === 'session_ended') && !configComplete)) &&
@@ -192,7 +213,14 @@ export function SessionLifecycleAnnouncer({
     if (plan) {
       // Refresh / emit the planned ambient.
       lastAmbientIdRef.current = plan.id;
-      if (plan.kind === 'dealer_selection_in_progress') {
+      if (plan.kind === 'game_paused') {
+        announcements.emit({
+          id: plan.id,
+          type: 'game_paused',
+          scope: { dealerGameId: gameId },
+          payload: { hostName: plan.hostName },
+        });
+      } else if (plan.kind === 'dealer_selection_in_progress') {
         announcements.emit({
           id: plan.id,
           type: 'dealer_selection_in_progress',
@@ -229,6 +257,9 @@ export function SessionLifecycleAnnouncer({
     gameId,
     isCribbage,
     gameStatus,
+    isPaused,
+    sessionHostUserId,
+    sessionHostName,
     configComplete,
     isViewerDealer,
     allowBotDealers,

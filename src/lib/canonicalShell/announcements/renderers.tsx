@@ -158,6 +158,14 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         />
       );
     }
+    case 'game_paused': {
+      const x = p as { hostName?: string };
+      return (
+        <LifecycleAnnouncement
+          title={`Game is paused - only ${x.hostName || 'the session host'} can resume`}
+        />
+      );
+    }
     case 'session_ended': {
       return <LifecycleAnnouncement title="Session Ended" />;
     }
