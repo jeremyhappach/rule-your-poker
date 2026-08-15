@@ -676,18 +676,3 @@ ready barrier, so callback/remount ordering cannot lose it. None of these
 client checkpoints owns settlement, successor publication, balances, or turn
 deadlines; PostgreSQL continues independently and its durable missing-ack lease
 remains the all-clients-disconnected fallback.
-
-## D-053 - Authoritative gameplay entry is presentation-terminal
-
-`DealRuntime initialPhase="GAMEPLAY"` means the current hand is already
-actionable from authoritative state and has no client-owned opening transport
-left to replay. It must therefore report the same terminal presentation facts
-as a fully completed live deal: `dealSettled=true` and `readyReleased=true`.
-Timer consumers may rely on those facts uniformly; they must not wait for an
-expected-card manifest that is deliberately absent on a historical or
-reconnected entry.
-
-Any live `beginDeal`, `beginWave`, or hand reset clears those facts and retains
-the existing exact-manifest/card-settle release boundary. This is presentation
-admission only: PostgreSQL remains the owner of cards, turn selection,
-deadlines, settlement, and continuation.

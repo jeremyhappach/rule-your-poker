@@ -72,12 +72,6 @@
 
 ## Holm
 
-- The exact-hand presentation transaction passed clean two-client production
-  smoke on 2026-08-14 at commit
-  `540007f8e32b364a182b4d561782fca8e459b768`. Preserve durable exact-cursor
-  admission, card-manifest reconstruction, DOM/lifecycle endpoint readiness,
-  strict hand/generation filtering, and the database-owned disconnect fallback;
-  do not reintroduce client timers or one-shot release edges.
 - The authoritative Rabbit Hunt all-fold reveal passed production smoke on
   2026-08-11 at commit `22d4aa8c258fbac461d3ce92966d4924b9955a62`:
   the both-player all-fold path showed the Rabbit Hunt marker and sequentially

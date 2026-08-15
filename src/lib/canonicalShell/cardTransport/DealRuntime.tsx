@@ -198,12 +198,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
   // Reset to false on every beginDeal / beginWave / resetForHand /
   // beginDealForHand / beginWaveForHand.
-  // `initialPhase="GAMEPLAY"` is the authoritative reconnect/historical
-  // contract: this hand has no client-owned transports left to settle. Keep
-  // the runtime's terminal flags consistent with that phase so downstream
-  // timer owners do not wait forever for a wave that was deliberately not
-  // replayed.
-  const [readyReleased, setReadyReleased] = useState(() => initialPhase === 'GAMEPLAY');
+  const [readyReleased, setReadyReleased] = useState(false);
   const ctx = useCardTransportInternal();
   const expectedCardIdsRef = useRef<Set<string>>(new Set());
   const processedSettledIntentIdsRef = useRef<Set<string>>(new Set());
@@ -738,9 +733,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   // by handContextId at host), idempotent (setReadyReleased guard +
   // useState identity), no animation callbacks, no closures over stale
   // state — depends only on currently-rendered values.
-  const dealSettledNow =
-    (initialPhase === 'GAMEPLAY' && phase === 'GAMEPLAY')
-    || (expectedCount > 0 && settledCardIds.size >= expectedCount);
+  const dealSettledNow = expectedCount > 0 && settledCardIds.size >= expectedCount;
   const releaseEligible =
     phase === 'READY' &&
     dealSettledNow &&
@@ -780,11 +773,11 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
       cardsSettled: ids.filter((id) => id.includes('#hand-')).length,
       communitySettled: ids.filter((id) => id.includes('#community-')).length,
       chuckySettled: ids.filter((id) => id.includes('#chucky-')).length,
-      dealSettled: dealSettledNow,
-      readyReleased,
+      dealSettled: expectedCount > 0 && ids.length >= expectedCount,
+      readyReleased: expectedCount > 0 && ids.length >= expectedCount && activeIntentsForHand === 0,
       activeIntentCount: activeIntentsForHand,
     });
-  }, [gameType, handContextId, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, activeIntentsForHand]);
+  }, [gameType, handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand]);
 
   const isSettled = useCallback(
     (cardId: string) => settledCardIds.has(cardId),

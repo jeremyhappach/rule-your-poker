@@ -614,35 +614,12 @@ const DealerGameSetupInner = ({
 
     const { data: gameData, error } = await supabase
       .from('games')
-      .select('status, config_complete, config_deadline')
+      .select('config_deadline')
       .eq('id', gameId)
       .maybeSingle();
 
     if (error) {
       console.error('[DEALER SETUP] Failed to fetch server deadline:', error);
-      return;
-    }
-
-    // The render owner normally guarantees this component is only mounted
-    // during setup. Re-check the durable lifecycle before the fallback can
-    // write a deadline, because a terminal realtime snapshot can arrive while
-    // this async read is in flight. `game_over` remains admitted for the
-    // existing pre-setup handoff when config_complete is false.
-    const deadlineEligibleStatuses = new Set([
-      'dealer_selection',
-      'configuring',
-      'game_selection',
-      'game_over',
-    ]);
-    if (
-      !gameData ||
-      !deadlineEligibleStatuses.has(gameData.status) ||
-      gameData.config_complete === true
-    ) {
-      if (configTimeoutRef.current) {
-        clearTimeout(configTimeoutRef.current);
-        configTimeoutRef.current = null;
-      }
       return;
     }
 

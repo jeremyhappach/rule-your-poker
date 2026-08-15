@@ -7,7 +7,6 @@ import { CardTransportProvider, useCardTransport, useCardTransportInternal } fro
 import { DealRuntime, useDealRuntime } from './DealRuntime';
 import { isHolmHandReady } from './holmDealBarrier';
 import type { CardTransportIntent } from './types';
-import { getCanonicalTimerEligibility } from '../timerEligibility';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -52,11 +51,6 @@ function DealHarness({ store, expected }: { store: Store; expected: CardTranspor
   return null;
 }
 
-function DealStateHarness({ store }: { store: Store }) {
-  store.deal = useDealRuntime();
-  return null;
-}
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -74,7 +68,6 @@ afterEach(() => {
 describe('Holm card manifest reconciliation', () => {
   it('opens the ready barrier immediately for an already-actionable historical hand', async () => {
     const historicalHandContextId = 'round-historical:h4';
-    const store: Store = { transport: null, internal: null, deal: null };
     await act(async () => {
       root.render(
         <CardTransportProvider gameId="game" gameType="holm-game">
@@ -83,24 +76,12 @@ describe('Holm card manifest reconciliation', () => {
             gameType="holm-game"
             initialPhase="GAMEPLAY"
           >
-            <DealStateHarness store={store} />
+            <div />
           </DealRuntime>
         </CardTransportProvider>,
       );
     });
     expect(isHolmHandReady(historicalHandContextId)).toBe(true);
-    expect(store.deal).toMatchObject({
-      phase: 'GAMEPLAY',
-      dealSettled: true,
-      readyReleased: true,
-    });
-    expect(getCanonicalTimerEligibility({
-      gameType: 'holm-game',
-      dealPhase: store.deal!.phase,
-      dealSettled: store.deal!.dealSettled,
-      readyReleased: store.deal!.readyReleased,
-      activePlayerId: 'player-1',
-    })).toEqual({ visible: true, running: true });
   });
 
   it('reconciles unseen, active, and settled deterministic intents without redispatch', () => {
