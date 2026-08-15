@@ -115,6 +115,13 @@
   a freeze. Preserve the pre-hand lifecycle provenance classification. Do not
   fabricate `DealRuntime` settlement/release state for a skipped historical
   entry or bypass canonical card transport.
+- Holm DG1H1 Buck presentation and the persistent paused-session announcement
+  passed production smoke on 2026-08-15 at commit
+  `6f0951b8ea652633212dbec2a162c5fe86ced8fd` (tag
+  `holm-dg1h1-buck-pause-2026-08-15`). Preserve the exact server-authored H1
+  Buck identity and recipient-only hands-wave admission, plus the shell-owned
+  pause ambient keyed by the authoritative host UUID. Do not move either into
+  card transport, timer, settlement, or continuation ownership.
 - Consecutive identical Holm showdowns passed production smoke on 2026-08-10
   at commit `4eaf5b0be8c20eac4f3e33d5d3699b85f98d1588`: every hand showed its
   canonical pot-to-winner then loser-to-pot stages. Preserve the

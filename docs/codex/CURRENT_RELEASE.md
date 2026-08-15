@@ -29,8 +29,9 @@ Date: 2026-08-15
   canonical ante journal classification, and rollback cleanup.
   Thirty-six focused checkpoint-1/2 assertions, five Buck-ownership
   assertions, TypeScript, 30 Cribbage preservation assertions, and the Vite
-  production build pass. Production Buck/pause smoke remains the acceptance
-  gate after publication.
+  production build pass. Jeremy reported checkpoint 2 production smoke clean
+  on 2026-08-15 at commit `6f0951b8ea652633212dbec2a162c5fe86ced8fd`;
+  the H1 Buck and persistent paused-session announcement are accepted.
 
 ## Holm DG1H1 live-entry provenance checkpoint
 
