@@ -349,6 +349,42 @@ Status: Verified in production smoke on 2026-08-09 (migration
   Ended table; fresh reconnects go to the lobby. Rollback proofs and production
   runtime smoke passed.
 
+### 3E.2 Explicit zero-active post-game closure latency and setup divergence
+
+Status: Queued pending another frozen/repeatable repro; reported again and not
+reproduced in a replacement smoke on 2026-08-15.
+
+- Original observation: a dealer game ended; during the subsequent dealer
+  setup one human chose Sit Out, returning the session to the post-game Waiting
+  table. The other human then chose Stand Up Now. With no active seated humans,
+  that should have ended the session. The standing player's client entered
+  Session Ended, while the sitting-out player's client instead opened Game
+  Setup.
+- Replacement smoke on 2026-08-15 did not reproduce the client divergence.
+  The same path remained on Waiting for roughly fifteen seconds, then both
+  continuously open clients entered Session Ended.
+- Read-only ownership trace: `Game.tsx:handleStandUpNow` writes the departing
+  player as `status='left'` and `sitting_out=true`, then its legacy cleanup path
+  only restores `games.status='waiting'`. The deployed player-state trigger
+  merely arms the five-second post-game reconciliation watch and explicitly
+  does not evaluate lifecycle state. The scheduled reconciler excludes both
+  Sitting Out and Left rows from active-human and heartbeat evaluation.
+- Therefore open tabs should not preserve this session after those two explicit
+  choices. The observed delay is consistent with an already-known zero-active
+  state falling through scheduled reconciliation, not proof that either open
+  client missed a heartbeat. The fifteen-second absence lease should remain
+  reserved for an active seated human whose presence is genuinely ambiguous.
+- Expected contract: an explicit transition to zero active humans at a settled
+  post-game Waiting table closes immediately through the authoritative
+  post-game resolver, and no client may open or retain Game Setup after the
+  terminal identity arrives. Preserve Sitting Out seat retention and the
+  disconnect-only heartbeat grace.
+- On recurrence, capture the session/game identity and approximate timestamp,
+  then inspect the game status/current dealer-game identity, both player rows,
+  abandonment-watch arm/next-check/last-outcome state, post-boundary heartbeat
+  timestamps, and the sitting-out client's setup-dialog owner before mutating
+  anything.
+
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 
 Status: Queued; production smoke observation on 2026-08-09.
