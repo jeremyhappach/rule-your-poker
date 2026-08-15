@@ -59,8 +59,10 @@ import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import {
+  classifyHolmRouteEntryMode,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
+  isHolmPreHandRouteStatus,
   isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
   reconcileHolmPresentationBarrierFromEvidence,
@@ -991,6 +993,12 @@ const Game = () => {
     roundId: string | null;
     handNumber: number | null;
   }>({ captured: false, dealerGameId: null, roundId: null, handNumber: null });
+  // DG1H1 is created atomically in `betting`, so its first snapshot cannot by
+  // itself distinguish a mounted client that just witnessed setup/ante from a
+  // cold mount into an already-active hand. Preserve that route provenance
+  // separately; it never advances game state and resets naturally on route
+  // remount.
+  const holmPreHandLifecycleObservedRef = useRef(false);
 
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
@@ -2146,6 +2154,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
+  if (
+    !initialHolmIdentityRef.current.captured
+    && !holmView
+    && isHolmPreHandRouteStatus(game?.status)
+  ) {
+    holmPreHandLifecycleObservedRef.current = true;
+  }
   const holmPresentationIdentity = useMemo<HolmPresentationIdentity | null>(() => {
     if (
       game?.game_type !== 'holm-game'
@@ -16722,14 +16737,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               };
             }
             const _holmBaseline = initialHolmIdentityRef.current;
-            _holmEntryMode =
-              holmView.roundStatus === 'dealing'
-                ? 'live-transition'
-                : _holmBaseline.dealerGameId === _authDealerGameIdHolm
-              && _holmBaseline.roundId === _authRoundIdHolm
-              && _holmBaseline.handNumber === _authHandNumberHolm
-                ? 'historical-entry'
-                : 'live-transition';
+            _holmEntryMode = classifyHolmRouteEntryMode({
+              baseline: {
+                dealerGameId: _holmBaseline.dealerGameId,
+                roundId: _holmBaseline.roundId,
+                handNumber: _holmBaseline.handNumber,
+              },
+              current: {
+                dealerGameId: _authDealerGameIdHolm,
+                roundId: _authRoundIdHolm,
+                handNumber: _authHandNumberHolm,
+              },
+              roundStatus: holmView.roundStatus,
+              observedPreHandLifecycle: holmPreHandLifecycleObservedRef.current,
+            });
           }
 
           return (

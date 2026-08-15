@@ -1,6 +1,34 @@
 # Current release and cutover state
 
-Date: 2026-08-14
+Date: 2026-08-15
+
+## Holm DG1H1 live-entry provenance checkpoint
+
+- Repeatable two-client smoke reached Holm dealer-game 1, hand 1 with an
+  authoritative `betting` round and deadline, but the first active player's
+  timer never became visible. Read-only production evidence from `Aug 14 -
+  East Peoria` showed both mounted clients transition from `ante_decision`
+  with no Holm presentation hand directly into the same H1 betting identity.
+- `Game.tsx` captured the first Holm identity only after that H1 existed, then
+  treated the matching identity as a historical reconnect. That skipped the
+  live deal path, so no accepted hands/community transport could naturally
+  settle and release the existing timer gate. Later hands and dealer games
+  already classified live because their identities differed from H1.
+- The route now remembers only whether it actually rendered a pre-hand phase
+  before its first Holm presentation identity. A mounted setup/ante client
+  classifies the arriving DG1H1 as `live-transition`; a cold mount whose first
+  frame is an already-active H1 remains `historical-entry`, and later hand or
+  dealer-game identities remain live.
+- Checkpoint 1 changes no `DealRuntime`, timer-eligibility, transport,
+  settlement, continuation, database, Buck-event, or pause-announcement code.
+  Regression assertions explicitly preserve the rolled-back rule that an
+  initially skipped runtime is not fabricated as settled or released.
+- The focused checkpoint suite passes 32 assertions; the wider Holm sweep
+  passes 114 of 115 assertions, with the sole failure reproduced independently
+  as pre-existing test cleanup leakage in
+  `HolmCanonicalCommunityRow.test.tsx`. TypeScript, 30 Cribbage preservation
+  assertions, and the production build pass. Publication and two-client
+  DG1H1 transport/timer smoke remain required.
 
 ## Holm exact-hand presentation transaction
 

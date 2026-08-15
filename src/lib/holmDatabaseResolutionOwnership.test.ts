@@ -95,12 +95,24 @@ describe('Holm database resolution ownership', () => {
     expect(mobileTableSource).toContain('useChipPresentationCursorState(holmInitialAnteCursor)');
     expect(mobileTableSource).toContain("holmInitialAnteCursorState === 'settled'");
     expect(mobileTableSource).toContain("holmInitialAnteCursorState === 'reconciled'");
+    expect(gameSource).toContain('holmPreHandLifecycleObservedRef');
+    expect(gameSource).toContain('isHolmPreHandRouteStatus(game?.status)');
+    expect(gameSource).toContain('classifyHolmRouteEntryMode({');
+    expect(gameSource).toContain(
+      'observedPreHandLifecycle: holmPreHandLifecycleObservedRef.current',
+    );
     expect(dealOrchestratorSource).toContain('deal.beginDealForHand({ handContextId, handGeneration, expectedCards: manifest })');
     expect(dealOrchestratorSource).toContain('deal.beginWaveForHand({ handContextId, handGeneration, addedExpectedCards: manifest })');
     expect(dealOrchestratorSource).not.toContain('ct.dispatchMany(intents);');
     expect(dealOrchestratorSource).toContain("entryMode === 'historical-entry' && !hasPresentationHistory");
     expect(dealOrchestratorSource).toContain("? 'GAMEPLAY'");
     expect(dealRuntimeSource).toContain("if (initialPhase === 'GAMEPLAY') markHolmHandReady(handContextId);");
+    // Regression guard for the rolled-back P0: provenance must open the live
+    // path; a skipped runtime must never be declared settled by construction.
+    expect(dealRuntimeSource).toContain('const [readyReleased, setReadyReleased] = useState(false);');
+    expect(dealRuntimeSource).toContain(
+      'const dealSettledNow = expectedCount > 0 && settledCardIds.size >= expectedCount;',
+    );
   });
 
   it('keeps unresolved transports pending and reconstructs settles only for the exact hand', () => {

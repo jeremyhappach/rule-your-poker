@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
+  classifyHolmRouteEntryMode,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
+  isHolmPreHandRouteStatus,
   isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
   reconcileHolmPresentationBarrierFromEvidence,
@@ -21,6 +23,70 @@ const hand = (
   roundId,
   handNumber,
   transferCursor,
+});
+
+describe('Holm route-entry provenance', () => {
+  const first = {
+    dealerGameId: 'dealer-game-1',
+    roundId: 'round-1',
+    handNumber: 1,
+  };
+
+  it('arms only during phases that precede an active dealer-game hand', () => {
+    expect([
+      'waiting',
+      'waiting_for_players',
+      'dealer_selection',
+      'game_selection',
+      'configuring',
+      'ante_decision',
+    ].every(isHolmPreHandRouteStatus)).toBe(true);
+    expect(isHolmPreHandRouteStatus('in_progress')).toBe(false);
+    expect(isHolmPreHandRouteStatus('game_over')).toBe(false);
+    expect(isHolmPreHandRouteStatus('session_ended')).toBe(false);
+  });
+
+  it('treats DG1H1 created after this route observed ante as live', () => {
+    expect(classifyHolmRouteEntryMode({
+      baseline: first,
+      current: first,
+      roundStatus: 'betting',
+      observedPreHandLifecycle: true,
+    })).toBe('live-transition');
+  });
+
+  it('keeps a cold mount into an already-active H1 historical', () => {
+    expect(classifyHolmRouteEntryMode({
+      baseline: first,
+      current: first,
+      roundStatus: 'betting',
+      observedPreHandLifecycle: false,
+    })).toBe('historical-entry');
+  });
+
+  it('treats later hands and dealer games as live identity transitions', () => {
+    expect(classifyHolmRouteEntryMode({
+      baseline: first,
+      current: { ...first, roundId: 'round-2', handNumber: 2 },
+      roundStatus: 'betting',
+      observedPreHandLifecycle: false,
+    })).toBe('live-transition');
+    expect(classifyHolmRouteEntryMode({
+      baseline: first,
+      current: { dealerGameId: 'dealer-game-2', roundId: 'round-3', handNumber: 1 },
+      roundStatus: 'betting',
+      observedPreHandLifecycle: false,
+    })).toBe('live-transition');
+  });
+
+  it('preserves the explicit server dealing phase as live', () => {
+    expect(classifyHolmRouteEntryMode({
+      baseline: first,
+      current: first,
+      roundStatus: 'dealing',
+      observedPreHandLifecycle: false,
+    })).toBe('live-transition');
+  });
 });
 
 describe('Holm presented-hand barrier', () => {

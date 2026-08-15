@@ -11,6 +11,59 @@ export interface HolmPresentationIdentity {
   transferCursor: number;
 }
 
+export type HolmRouteEntryMode = 'live-transition' | 'historical-entry';
+
+export interface HolmRouteEntryIdentity {
+  dealerGameId: string | null;
+  roundId: string | null;
+  handNumber: number | null;
+}
+
+const HOLM_PRE_HAND_ROUTE_STATUSES = new Set([
+  'waiting',
+  'waiting_for_players',
+  'dealer_selection',
+  'game_selection',
+  'configuring',
+  'ante_decision',
+]);
+
+/**
+ * A client that rendered one of these phases before the first Holm hand
+ * existed witnessed a live dealer-game startup. A cold mount whose first
+ * authoritative frame is already `in_progress` did not.
+ */
+export function isHolmPreHandRouteStatus(status: string | null | undefined): boolean {
+  return !!status && HOLM_PRE_HAND_ROUTE_STATUSES.has(status);
+}
+
+/**
+ * Classify only presentation provenance. The database still owns the hand;
+ * this decides whether this mounted route should run its deal transports or
+ * admit an already-present hand without replaying them.
+ */
+export function classifyHolmRouteEntryMode({
+  baseline,
+  current,
+  roundStatus,
+  observedPreHandLifecycle,
+}: {
+  baseline: HolmRouteEntryIdentity | null;
+  current: HolmRouteEntryIdentity;
+  roundStatus: string | null | undefined;
+  observedPreHandLifecycle: boolean;
+}): HolmRouteEntryMode {
+  if (roundStatus === 'dealing' || observedPreHandLifecycle) {
+    return 'live-transition';
+  }
+  if (!baseline) return 'live-transition';
+  return baseline.dealerGameId === current.dealerGameId
+    && baseline.roundId === current.roundId
+    && baseline.handNumber === current.handNumber
+      ? 'historical-entry'
+      : 'live-transition';
+}
+
 export interface HolmContinuationPresentationCompletion extends HolmPresentationIdentity {
   stage: HolmContinuationPresentationStage;
 }
