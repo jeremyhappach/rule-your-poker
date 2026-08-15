@@ -21,6 +21,16 @@ Date: 2026-08-14
   `reconciling`, or `reconciled` state; historical/reconnected cursors baseline
   without replay, while live cursors release only after their actual flight
   settles. The transient signed delta remains visual decoration only.
+- P0 follow-up, 2026-08-14: current smoke session `Aug 14 - East Peoria`,
+  dealer game `540811fe-514a-4efb-8626-18f9b476e2cd`, hand 1, proved that
+  PostgreSQL created the opening turn and deadline correctly, and both clients
+  seeded the deadline. The visual timer remained hidden because an
+  authoritative historical `DealRuntime` mount marked the Holm hand ready but
+  reported neither `dealSettled` nor `readyReleased`. `initialPhase="GAMEPLAY"`
+  now represents a fully admitted terminal presentation state; a live deal
+  still resets both gates and cannot show a timer before its actual card
+  transports settle. Focused Holm tests, TypeScript, and the development build
+  pass. Production smoke remains required.
 - Holm card waves are deterministic manifests. The persistent card provider
   records each intent as active, settled, or dropped and can replay exact-hand
   settled metadata into a remounted DealRuntime. Hands, community, and Chucky
