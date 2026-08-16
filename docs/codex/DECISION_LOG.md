@@ -754,4 +754,3 @@ durable claim returns the same result to simultaneous clients and makes a late
 replay harmless after a newer dealer game begins. This decision is scoped to
 Cribbage; every other game's shared client-owned postgame boundary remains an
 explicit audit item during that game's authority migration.
-
