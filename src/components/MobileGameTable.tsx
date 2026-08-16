@@ -457,6 +457,48 @@ function HolmOpponentCardBackSlot({
 }
 
 /**
+ * The Chucky stage assigns each card its physical dimensions from the
+ * resolved Holm slot (`height: 100%` + `aspect-ratio`).  Percentage styles
+ * are not usable by PlayingCard's face resolver, so measure the rendered
+ * box and pass its true width through `faceFillPx`.  This keeps the
+ * canonical rank/suit proportions aligned with the card on tablet widths
+ * without changing the stage, card, or overlap geometry.
+ */
+function MeasuredHolmChuckyCardFace({ children }: {
+  children: (faceFillPx: number | undefined) => ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [faceFillPx, setFaceFillPx] = useState<number | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const measure = () => {
+      const width = node.getBoundingClientRect().width;
+      if (!Number.isFinite(width) || width <= 0) return;
+      setFaceFillPx((previous) =>
+        previous !== undefined && Math.abs(previous - width) < 0.1
+          ? previous
+          : width,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} style={{ width: '100%', height: '100%' }}>
+      {children(faceFillPx)}
+    </div>
+  );
+}
+
+/**
  * CommunityStageHolmSwitch — owns the per-phase swap between the
  * canonical per-slot community renderer (during DealRuntime
  * DEALING/READY) and the legacy CommunityCards reveal renderer
@@ -13756,15 +13798,20 @@ export const MobileGameTable = ({
                             return null;
                           })()}
                           <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
-                            <PlayingCard
-                              card={card}
-                              isHidden={!isRevealed}
-                              size="lg"
-                              tier="medium"
-                              borderColor="border-red-500"
-                              isDimmed={shouldDimChucky}
-                              style={{ width: '100%', height: '100%' }}
-                            />
+                            <MeasuredHolmChuckyCardFace>
+                              {(faceFillPx) => (
+                                <PlayingCard
+                                  card={card}
+                                  isHidden={!isRevealed}
+                                  size="lg"
+                                  tier="medium"
+                                  borderColor="border-red-500"
+                                  isDimmed={shouldDimChucky}
+                                  style={{ width: '100%', height: '100%' }}
+                                  faceFillPx={faceFillPx}
+                                />
+                              )}
+                            </MeasuredHolmChuckyCardFace>
                           </HolmSettledGate>
                         </div>
                       );
