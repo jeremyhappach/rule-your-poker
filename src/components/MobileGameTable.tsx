@@ -11405,6 +11405,16 @@ export const MobileGameTable = ({
   };
 
 
+  // A cleared dealer-game identity is the hard boundary between two dealer
+  // games. The persistent table itself stays mounted across that boundary,
+  // but the outgoing Holm card surface must retire in the same render so its
+  // cached community/tabled cards cannot replay during the game_over → setup
+  // handoff.
+  const holmCardSurfaceActive =
+    gameType === 'holm-game' &&
+    !sessionEndedPhase &&
+    !currentRoundNotReadyForPresentation;
+
   return <HolmDealRuntimeMaybe
     handContextId={gameType === 'holm-game' && !sessionEndedPhase ? (handContextId ?? null) : null}
     gameType={gameType}
@@ -13098,7 +13108,7 @@ export const MobileGameTable = ({
             Ended is only admitted after the canonical terminal
             presentation completion boundary, so cards remain through the
             full reveal/showdown/celebration. */}
-        {gameType === 'holm-game' && !sessionEndedPhase && (() => {
+        {holmCardSurfaceActive && (() => {
           let communityShouldShow =
             !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&

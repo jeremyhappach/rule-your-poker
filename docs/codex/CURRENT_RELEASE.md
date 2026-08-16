@@ -1,6 +1,25 @@
 # Current release and cutover state
 
-Date: 2026-08-15
+Date: 2026-08-16
+
+## Holm dealer-game teardown card retirement
+
+- The ordinary Holm dealer-game rollover clears `games.current_game_uuid`
+  before it publishes the next setup status. The persistent table correctly
+  remains mounted through that boundary, but its cached card surface had not
+  consumed the existing `currentRoundNotReadyForPresentation` admission
+  signal. The old community row could therefore briefly reappear in its
+  two-face-down/two-face-up state while the game still read `game_over`.
+- `MobileGameTable` now retires the entire Holm card surface (community,
+  tabled-player, and Chucky cards) in the same render that the authoritative
+  dealer-game/round identity is no longer valid. The normal terminal reveal
+  remains visible until the dealer-game boundary actually clears; no database,
+  settlement, deal transport, or next-game lifecycle behavior changed.
+- The focused two-assertion boundary regression check, TypeScript no-emit
+  check, and Vite production build pass. The existing isolated
+  `HolmCanonicalCommunityRow` suite still exposes its known pre-existing test
+  cleanup leakage (the prior render remains mounted); it is unrelated to this
+  change. Published runtime smoke remains required.
 
 ## Admin fake-money session blast control
 

@@ -13,4 +13,13 @@ describe('MobileGameTable Session Ended join affordance gate', () => {
     expect(gate).toContain('!sessionEndedPhase');
     expect(source).toContain('{canSelectSeat && openSeats.length > 0');
   });
+
+  it('retires the entire Holm card surface when its dealer-game identity clears', () => {
+    const cardSurfaceGate = source.match(/const holmCardSurfaceActive =([\s\S]*?);\r?\n\r?\n  return <HolmDealRuntimeMaybe/)?.[1] ?? '';
+
+    expect(cardSurfaceGate).toContain("gameType === 'holm-game'");
+    expect(cardSurfaceGate).toContain('!sessionEndedPhase');
+    expect(cardSurfaceGate).toContain('!currentRoundNotReadyForPresentation');
+    expect(source).toContain('{holmCardSurfaceActive && (() => {');
+  });
 });
