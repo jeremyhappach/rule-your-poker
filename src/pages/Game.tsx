@@ -13522,19 +13522,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       },
     });
 
-    // Persist the first dealer choice and clear synced dealer selection UI.
-    // NOTE: Do NOT set status to in_progress here; startCribbageRound will do that
-    // after it successfully creates round 1.
-    await supabase
-      .from('games')
-      .update({
-        dealer_position: dealerPosition,
-        dealer_selection_state: null,
-      })
-      .eq('id', gameId);
-
-    // Create round 1 AFTER dealer selection, with cribbage_state initialized.
-    // Passing isFirstHand=false avoids the deferred "client initializes" path.
+    // The server atomically consumes its persisted dealer result, deals the
+    // first hand, creates player_cards, and advances the game pointers.
     // ── HANDOFF TRACE #6: startCribbageRound entry ──
     emitCribbageHandoffTrace({
       gameId,

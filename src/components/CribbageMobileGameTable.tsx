@@ -5,17 +5,13 @@ import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import { DISCARD_COUNT, CARDS_PER_PLAYER } from '@/lib/cribbageTypes';
 import {
-  initializeCribbageGame, 
-  discardToCrib, 
-  playPeggingCard, 
-  callGo,
+  playPeggingCard,
 } from '@/lib/cribbageGameLogic';
 import { settleCribbageGame } from '@/lib/cribbageSettleGame';
-import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
-import { fetchSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHost';
+import { startCribbageRound } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
-import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
+import { getBotDiscardIndices } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
@@ -113,6 +109,7 @@ import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
+import { applyCribbagePeggingAction, fetchCribbageState } from '@/lib/cribbageAuthority';
 import { shouldPresentPeggingEventAfterHydration } from '@/lib/cribbage/countingResume';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import {
@@ -4273,32 +4270,20 @@ export const CribbageMobileGameTable = ({
       
       console.log('[CRIBBAGE] Loading state for round:', fetchRoundId);
 
-      // Clear any stale dealer_selection_state from a previous game in this session
-      // to prevent old cards from flashing during draw-for-button.
-      if (isHost) {
-        await supabase
-          .from('games')
-          .update({ dealer_selection_state: null })
-          .eq('id', gameId);
-      }
-      
-      // FIX B: Check token after first await
-      if (fetchToken !== cribbageFetchTokenRef.current) {
-        console.log('[CRIBBAGE] Fetch token stale after dealer_selection clear, dropping');
-        persistSyncDebugEvent({
-          gameId, gameType: 'cribbage', handNumber: currentHandNumber,
-          eventType: 'transition', severity: 'warn',
-          eventName: 'crib-load-drop-token',
-          payload: { fetchToken, currentToken: cribbageFetchTokenRef.current, roundId: fetchRoundId.slice(0, 8), dropPoint: 'after_dealer_selection_clear' },
-        });
-        return;
-      }
-      
       const { data: roundData, error } = await supabase
         .from('rounds')
-        .select('cribbage_state, hand_number')
+        .select('hand_number')
         .eq('id', fetchRoundId)
         .single();
+
+      let authorityState: CribbageState | null = null;
+      if (!error) {
+        try {
+          authorityState = await fetchCribbageState(fetchRoundId);
+        } catch (stateError) {
+          console.error('[CRIBBAGE] Error loading authoritative state:', stateError);
+        }
+      }
 
       // FIX B: Check token after DB fetch
       if (fetchToken !== cribbageFetchTokenRef.current) {
@@ -4319,7 +4304,7 @@ export const CribbageMobileGameTable = ({
       }
 
       console.log('[CRIBBAGE] Round data loaded:', { 
-        hasState: !!roundData?.cribbage_state, 
+        hasState: !!authorityState,
         handNumber: roundData?.hand_number 
       });
 
@@ -4327,16 +4312,16 @@ export const CribbageMobileGameTable = ({
       recordCribDealerDraw({
         gameId, surface: 'CribbageMobileGameTable.loadOrInitializeState', event: 'branch',
         payload: {
-          branch: roundData?.cribbage_state ? 'existing_round_state' : (!roundData?.hand_number || (roundData?.hand_number ?? 0) <= 1 ? 'first_hand_selection' : 'initialized_new_state'),
+          branch: authorityState ? 'existing_round_state' : (!roundData?.hand_number || (roundData?.hand_number ?? 0) <= 1 ? 'first_hand_selection' : 'missing_authoritative_state'),
           roundId: fetchRoundId,
           handNumber: roundData?.hand_number ?? null,
-          cribbageStatePresent: !!roundData?.cribbage_state,
-          cribbageStateNullness: roundData?.cribbage_state == null ? 'null' : 'non-null',
+          cribbageStatePresent: !!authorityState,
+          cribbageStateNullness: authorityState == null ? 'null' : 'non-null',
         },
       });
-      if (roundData?.cribbage_state) {
+      if (authorityState) {
         console.log('[CRIBBAGE] Using existing state from DB');
-        const loadedState = roundData.cribbage_state as unknown as CribbageState;
+        const loadedState = authorityState;
         const priorInitCount = incrementGuardCount(nextHandInitCountRef.current, initGuardKey);
         persistSyncDebugEvent({
           gameId,
@@ -4515,8 +4500,13 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
-      // Not first hand but no state - initialize with session dealer
-      console.log('[CRIBBAGE] Not first hand, initializing with session dealer');
+      // A non-first hand without private state is corrupt/incomplete authority.
+      // Never reconstruct it in the browser; the server recovery owner must
+      // supply the exact hand identity and deal.
+      console.error('[CRIBBAGE] Missing authoritative state for active hand', {
+        roundId: fetchRoundId,
+        handNumber: fetchHandNumber,
+      });
       const priorInitCount = incrementGuardCount(nextHandInitCountRef.current, initGuardKey);
       persistSyncDebugEvent({
         gameId,
@@ -4528,7 +4518,7 @@ export const CribbageMobileGameTable = ({
         payload: {
           roundId: fetchRoundId.slice(0, 8),
           handNumber: fetchHandNumber,
-          triggerSource: 'initialized_new_state',
+          triggerSource: 'missing_authoritative_state',
           priorTriggerCount: priorInitCount,
         },
       });
@@ -4543,7 +4533,7 @@ export const CribbageMobileGameTable = ({
           payload: {
             roundId: fetchRoundId.slice(0, 8),
             handNumber: fetchHandNumber,
-            event: 'loadOrInitializeState:initialized_new_state',
+            event: 'loadOrInitializeState:missing_authoritative_state',
             handKey: initGuardKey,
             timesCompleted: priorInitCount + 1,
           },
@@ -4552,30 +4542,6 @@ export const CribbageMobileGameTable = ({
       }
       hasInitializedRef.current = true;
       setInitialLoadComplete(true);
-      const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
-      const playerIds = players.map(p => p.id);
-      // Debug-harness target is the canonical SESSION HOST (games.current_host
-      // → earliest non-bot fallback). Identical on every client; never the
-      // local viewer / init-race winner. See resolveHarnessHost.ts.
-      await ensureHarnessCacheLoaded();
-      const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
-      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId ?? undefined);
-
-      
-      
-      await supabase
-        .from('rounds')
-        .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', fetchRoundId);
-      
-      // FIX B: Check token after write
-      if (fetchToken !== cribbageFetchTokenRef.current) {
-        console.log('[CRIBBAGE] Fetch token stale after state init write, dropping');
-        return;
-      }
-      
-      syncHandle.receiveAuthoritativeUpdate(newState);
-      setCribbageState(newState);
       persistSyncDebugEvent({
         gameId,
         gameType: 'cribbage',
@@ -4586,7 +4552,7 @@ export const CribbageMobileGameTable = ({
         payload: {
           fetchToken,
           roundId: fetchRoundId.slice(0, 8),
-          source: 'initialized_new_state',
+          source: 'missing_authoritative_state',
         },
       });
       // FIX: Same unfreeze as existing-state path above
@@ -4718,68 +4684,17 @@ export const CribbageMobileGameTable = ({
     setShowHighCardSelection(false);
     setInitialLoadComplete(true);
 
-    // Initialize the game with the winner as dealer.
-    // Phase C prereq: stamp dealerSelectionCohort + dealerResolved so the
-    // sync framework progress vector advances cleanly across the
-    // dealer-select → discarding boundary (incl. tie redraws).
     hasInitializedRef.current = true;
-    // Ensure debug-harness cache is hydrated (see note at first init callsite).
-    await ensureHarnessCacheLoaded();
-    const playerIds = players.map(p => p.id);
-    // Canonical session host (see resolveHarnessHost.ts) — deterministic across clients.
-    const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
-    const newState = initializeCribbageGame(
-      playerIds,
-      winnerPlayer.id,
-      anteAmount,
-      gameConfig,
-      {
-        dealerSelectionCohort: dealerSelectionCohortDerived,
-        dealerResolved: true,
-      },
-      hostPlayerId ?? undefined,
-    );
-
-
-    await supabase
-      .from('rounds')
-      .update({
-        cribbage_state: JSON.parse(JSON.stringify(newState)),
-        pot: 0,
-        cards_dealt: 6,
-      })
-      .eq('id', roundId);
-
-    // Persist dealt hands for privacy + rejoin
-    await Promise.all(
-      playerIds.map(async (playerId) => {
-        const ps = newState.playerStates[playerId];
-        if (!ps) return;
-        const { error } = await supabase
-          .from('player_cards')
-          .upsert(
-            {
-              player_id: playerId,
-              round_id: roundId,
-              cards: ps.hand as any,
-            },
-            { onConflict: 'player_id,round_id' }
-          );
-        if (error) {
-          console.error('[CRIBBAGE] Failed to persist player_cards:', playerId, error);
-        }
-      })
-    );
-
-    // Clear dealer selection state now that we have a real dealer + dealt state
-    await supabase
-      .from('games')
-      .update({ dealer_selection_state: null })
-      .eq('id', gameId);
-
+    const result = await startCribbageRound(gameId, false);
+    if (!result.success || !result.roundId) {
+      console.error('[CRIBBAGE] Server failed to start first hand:', result.error);
+      hasInitializedRef.current = false;
+      return;
+    }
+    const newState = await fetchCribbageState(result.roundId);
     syncHandle.receiveAuthoritativeUpdate(newState);
     setCribbageState(newState);
-  }, [players, anteAmount, roundId, isHost, gameId]);
+  }, [players, isHost, gameId]);
 
   const getHighCardDisplayNameByPosition = useCallback((position: number) => {
     const player = players.find(p => p.position === position);
@@ -5452,9 +5367,28 @@ export const CribbageMobileGameTable = ({
     };
 
     // Use a simple state signature since rounds doesn't have updated_at
-    // Include sequenceStartIndex to detect Go resets and crib length for discard detection
+    // Cover every server-owned progress axis used by fallback polling.
     const getStateSignature = (state: CribbageState): string => {
-      return `${state.phase}-${state.pegging.playedCards.length}-${state.pegging.currentCount}-${state.pegging.currentTurnPlayerId}-${state.pegging.sequenceStartIndex ?? 0}-${state.crib.length}`;
+      const playersSignature = Object.entries(state.playerStates)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, player]) => `${id}:${player.hand.length}:${player.discardedToCrib.length}:${player.pegScore}:${player.hasCalledGo ? 1 : 0}`)
+        .join('|');
+      return [
+        state.phase,
+        state.pegging.eventSequence ?? 0,
+        state.pegging.playedCards.length,
+        state.pegging.currentCount,
+        state.pegging.currentTurnPlayerId,
+        state.pegging.sequenceStartIndex ?? 0,
+        state.pegging.goCalledBy?.join(',') ?? '',
+        state.crib.length,
+        state.cutCard ? `${state.cutCard.rank}:${state.cutCard.suit}` : '',
+        state.countingTargetIndex ?? 0,
+        state.countingBeatIndex ?? -1,
+        state.countingResolution?.outcome ?? '',
+        state.winnerPlayerId ?? '',
+        playersSignature,
+      ].join('~');
     };
 
     // Primary: Realtime subscription
@@ -5468,12 +5402,14 @@ export const CribbageMobileGameTable = ({
           table: 'rounds',
           filter: `id=eq.${currentRoundId}`,
         },
-        (payload) => {
-          const newState = payload.new as { cribbage_state?: CribbageState };
-          if (newState.cribbage_state) {
-            lastSyncTimestamp = getStateSignature(newState.cribbage_state);
-            handleStateUpdate(newState.cribbage_state, true);
-          }
+        () => {
+          void fetchCribbageState(currentRoundId).then((newState) => {
+            if (!isActive) return;
+            lastSyncTimestamp = getStateSignature(newState);
+            handleStateUpdate(newState, true);
+          }).catch((error) => {
+            console.warn('[CRIBBAGE_REALTIME] Private-state fetch failed:', error);
+          });
         }
       )
       .subscribe((status, err) => {
@@ -5489,18 +5425,9 @@ export const CribbageMobileGameTable = ({
       if (!isActive) return;
 
       try {
-        const { data, error } = await supabase
-          .from('rounds')
-          .select('cribbage_state')
-          .eq('id', currentRoundId)
-          .single();
-
-        if (error || !data?.cribbage_state) {
-          // Backoff on errors
-          pollInterval = Math.min(pollInterval * 1.3, 8000);
-        } else {
+        const newState = await fetchCribbageState(currentRoundId);
+        if (isActive) {
           // Check if data has changed using state signature
-          const newState = data.cribbage_state as unknown as CribbageState;
           const newSignature = getStateSignature(newState);
           const hasNewData = !lastSyncTimestamp || newSignature !== lastSyncTimestamp;
           
@@ -5627,21 +5554,9 @@ export const CribbageMobileGameTable = ({
             );
             if (rpcError) throw rpcError;
             const merged = mergedRaw as unknown as CribbageState | null;
-            // If both players have now discarded, advance to cutting (guarded conditional)
-            if (merged && merged.phase === 'discarding') {
-              const expected = Object.keys(merged.playerStates).length === 2 ? 2 : 1;
-              const allDone = Object.values(merged.playerStates).every(
-                ps => ps.discardedToCrib.length === expected
-              );
-              if (allDone) {
-                const { advanceCribbageToCutting } = await import('@/lib/cribbageGameLogic');
-                const advanced = advanceCribbageToCutting(merged);
-                await supabase
-                  .from('rounds')
-                  .update({ cribbage_state: JSON.parse(JSON.stringify(advanced)) })
-                  .eq('id', roundId)
-                  .eq('cribbage_state->>phase', 'discarding');
-              }
+            if (merged) {
+              syncHandle.receiveAuthoritativeUpdate(merged);
+              setCribbageState(merged);
             }
           } catch (err) {
             console.error('[CRIBBAGE BOT] Discard error:', err);
@@ -5674,95 +5589,15 @@ export const CribbageMobileGameTable = ({
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
         try {
-          // P0 concurrency guard — snapshot identity captured at read time.
-          // A stale bot write must not overwrite a newer human Go/play/reset
-          // that landed between our read and write. We enforce optimistic
-          // concurrency via JSONB predicates: if any of (phase,
-          // currentTurnPlayerId, currentCount) has moved, the UPDATE
-          // matches 0 rows and we bail. The bot effect will re-evaluate
-          // on the next authoritative snapshot.
-          const guardCurrentTurnId = cribbageState.pegging.currentTurnPlayerId;
-          const guardCurrentCount = cribbageState.pegging.currentCount;
-          const guardPlayedLen = cribbageState.pegging.playedCards.length;
-          const guardGoLen = cribbageState.pegging.goCalledBy.length;
-
-          if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
-            traceGoRace(traceCtx, 'bot:callGo:before-write', {
-              readSnapshot: peggingSnapshot(cribbageState),
-            });
-            const newState = callGo(cribbageState, currentTurnId);
-            traceGoRace(traceCtx, 'bot:callGo:computed', {
-              wroteSnapshot: peggingSnapshot(newState),
-            });
-            // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-            logGoPointEvent(eventCtx, cribbageState, newState);
-
-            const { data: writeRows, error: writeErr } = await supabase
-              .from('rounds')
-              .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-              .eq('id', roundId)
-              .eq('cribbage_state->>phase', 'pegging')
-              .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
-              .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
-              .select('id');
-            const staleGo = !writeErr && (!writeRows || writeRows.length === 0);
-            traceGoRace(traceCtx, 'bot:callGo:after-write', {
-              ok: !writeErr && !staleGo,
-              error: writeErr?.message ?? null,
-              stale: staleGo,
-              guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
-            });
-            if (staleGo) {
-              console.warn('[CRIBBAGE BOT] callGo rejected by concurrency predicate — snapshot stale.');
-            }
-          } else {
-            const cardIndex = getBotPeggingCardIndex(
-              botState,
-              cribbageState.pegging.currentCount,
-              cribbageState.pegging.playedCards
-            );
-
-            if (cardIndex !== null) {
-              const cardPlayed = botState.hand[cardIndex];
-              traceGoRace(traceCtx, 'bot:playCard:before-write', {
-                cardIndex, cardPlayed,
-                readSnapshot: peggingSnapshot(cribbageState),
-              });
-              const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
-              traceGoRace(traceCtx, 'bot:playCard:computed', {
-                wroteSnapshot: peggingSnapshot(newState),
-              });
-              // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
-              // Check for his_heels on phase transition
-              if (newState.lastEvent?.type === 'his_heels') {
-                logHisHeelsEvent(eventCtx, newState);
-              }
-
-              const { data: writeRows, error: writeErr } = await supabase
-                .from('rounds')
-                .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-                .eq('id', roundId)
-                .eq('cribbage_state->>phase', 'pegging')
-                .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
-                .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
-                .select('id');
-              const stalePlay = !writeErr && (!writeRows || writeRows.length === 0);
-              traceGoRace(traceCtx, 'bot:playCard:after-write', {
-                ok: !writeErr && !stalePlay,
-                error: writeErr?.message ?? null,
-                stale: stalePlay,
-                guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
-              });
-              if (stalePlay) {
-                console.warn('[CRIBBAGE BOT] playPeggingCard rejected by concurrency predicate — snapshot stale.');
-              }
-            } else {
-              traceGoRace(traceCtx, 'bot:no-action', {
-                reason: 'shouldCallGo=false and getBotPeggingCardIndex=null',
-                readSnapshot: peggingSnapshot(cribbageState),
-              });
-            }
+          const result = await applyCribbagePeggingAction({
+            roundId,
+            playerId: currentTurnId,
+            action: 'auto',
+            expectedEventSequence: cribbageState.pegging.eventSequence ?? 0,
+          });
+          if (result.state) {
+            syncHandle.receiveAuthoritativeUpdate(result.state);
+            setCribbageState(result.state);
           }
         } catch (err) {
           console.error('[CRIBBAGE BOT] Pegging error:', err);
@@ -5857,58 +5692,6 @@ export const CribbageMobileGameTable = ({
     return () => { cancelled = true; };
   }, [cribbageState, currentRoundId, syncHandle]);
 
-  const updateState = async (newState: CribbageState, traceId?: string) => {
-    if (!currentRoundId) return;
-    setIsProcessing(true);
-    
-    const tid = traceId ?? newTraceId();
-    logCribbageDebug(debugCtx, 'optimistic_applied', cribbageStateSummary(newState), tid);
-    
-    // Apply optimistic state through sync framework
-    syncHandle.applyOptimistic(newState);
-    setCribbageState(newState);
-    
-    logCribbageDebug(debugCtx, 'db_write_start', cribbageStateSummary(newState), tid);
-    
-    try {
-      const { error } = await supabase
-        .from('rounds')
-        .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', currentRoundId);
-
-      if (error) throw error;
-      
-      logCribbageDebug(debugCtx, 'db_write_success', {}, tid);
-      
-      // Immediate authoritative promotion — prevents stale snapshots from overwriting
-      syncHandle.receiveAuthoritativeUpdate(newState);
-      if (newState.phase === 'complete' && newState.winnerPlayerId) {
-        cribbageStateRef.current = newState;
-        requestCribbageSettlement('terminal-state-write-acknowledged');
-      }
-    } catch (err) {
-      console.error('[CRIBBAGE] Error updating state:', err);
-      logCribbageDebug(debugCtx, 'db_write_failure', { error: (err as Error).message }, tid);
-      toast.error('Failed to update game state');
-      syncHandle.clearOptimistic();
-      // On failure, force-refetch from DB to get authoritative state
-      try {
-        const { data } = await supabase
-          .from('rounds')
-          .select('cribbage_state')
-          .eq('id', currentRoundId)
-          .single();
-        if (data?.cribbage_state) {
-          const freshState = data.cribbage_state as unknown as CribbageState;
-          setCribbageState(freshState);
-          syncHandle.receiveAuthoritativeUpdate(freshState);
-        }
-      } catch { /* ignore refetch errors */ }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleDiscard = useCallback(async (
     cardIndices: number[],
     sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
@@ -5986,34 +5769,6 @@ export const CribbageMobileGameTable = ({
       syncHandle.receiveAuthoritativeUpdate(merged);
       setCribbageState(merged);
       logCribbageDebug(debugCtx, 'db_write_success', cribbageStateSummary(merged), tid);
-
-      // If both players have now discarded, advance to cutting phase.
-      // Phase advancement is intentionally client-side because it requires RNG
-      // (cut card selection). Guarded by a phase='discarding' conditional update
-      // so only one client's advancement wins.
-      if (merged.phase === 'discarding') {
-        const expected = Object.keys(merged.playerStates).length === 2 ? 2 : 1;
-        const allDone = Object.values(merged.playerStates).every(
-          ps => ps.discardedToCrib.length === expected
-        );
-        if (allDone) {
-          // discardToCrib with empty indices would no-op; instead synthesize the
-          // cutting transition by re-running discardToCrib with the LAST discarder's
-          // payload — but a cleaner path: call discardToCrib only if our discard
-          // was the one that completed. We already merged; just construct the next
-          // state by invoking the local logic on a state where this player is the
-          // "last to discard". Since merged already has both discards applied,
-          // we need a dedicated advance helper. Use a conditional update.
-          // Lazy import to avoid circular ref.
-          const { advanceCribbageToCutting } = await import('@/lib/cribbageGameLogic');
-          const advanced = advanceCribbageToCutting(merged);
-          await supabase
-            .from('rounds')
-            .update({ cribbage_state: JSON.parse(JSON.stringify(advanced)) })
-            .eq('id', currentRoundId)
-            .eq('cribbage_state->>phase', 'discarding');
-        }
-      }
     } catch (err) {
       console.error('[CRIBBAGE] handleDiscard error:', err);
       toast.error((err as Error).message);
@@ -6538,23 +6293,15 @@ export const CribbageMobileGameTable = ({
     });
 
     try {
-      // CRITICAL: Fetch the latest state from DB to prevent stale state issues
-      // This guards against race conditions where bot's move hasn't propagated yet
-      const { data: freshRound, error: fetchError } = await supabase
-        .from('rounds')
-        .select('cribbage_state')
-        .eq('id', currentRoundId)
-        .single();
-      
-      if (fetchError || !freshRound?.cribbage_state) {
+      let freshState: CribbageState;
+      try {
+        freshState = await fetchCribbageState(currentRoundId);
+      } catch (fetchError) {
         console.error('[CRIBBAGE] Failed to fetch fresh state before play:', fetchError);
         toast.error('Failed to sync game state. Try again.');
         releasePlayWriterLock(lockClaim, 'fetch-failed');
         return;
       }
-
-      
-      const freshState = freshRound.cribbage_state as unknown as CribbageState;
       
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
@@ -6709,9 +6456,23 @@ export const CribbageMobileGameTable = ({
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      await updateState(newState, tid);
+      const result = await applyCribbagePeggingAction({
+        roundId: currentRoundId,
+        playerId: currentPlayerId,
+        action: 'play',
+        cardIndex,
+        expectedEventSequence: freshState.pegging.eventSequence ?? 0,
+      });
+      if (result.state) {
+        syncHandle.receiveAuthoritativeUpdate(result.state);
+        setCribbageState(result.state);
+      }
+      if (result.outcome !== 'applied') {
+        releasePlayWriterLock(lockClaim, 'server-rejected-stale-action');
+      }
       traceGoRace(humanTraceCtx, 'human:playCard:after-write', {
-        wroteSnapshot: peggingSnapshot(newState),
+        outcome: result.outcome,
+        wroteSnapshot: result.state ? peggingSnapshot(result.state) : null,
       });
     } catch (err) {
       toast.error((err as Error).message);
@@ -6750,26 +6511,7 @@ export const CribbageMobileGameTable = ({
     });
 
     try {
-      // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
-      // Same pattern as handlePlayCard - prevents missed Go points when subscription
-      // state is slightly behind the authoritative DB state.
-      const { data: freshRound, error: fetchError } = await supabase
-        .from('rounds')
-        .select('cribbage_state')
-        .eq('id', currentRoundId)
-        .single();
-      
-      if (fetchError || !freshRound?.cribbage_state) {
-        console.error('[CRIBBAGE] Failed to fetch fresh state before Go:', fetchError);
-        traceGoRace(goTraceCtx, 'human:handleGo:fresh-fetch-failed', { error: fetchError?.message ?? null });
-        // Fall back to subscription state
-        const newState = callGo(cribbageState, currentPlayerId);
-        logGoPointEvent(eventCtx, cribbageState, newState);
-        await updateState(newState, tid);
-        return;
-      }
-      
-      const freshState = freshRound.cribbage_state as unknown as CribbageState;
+      const freshState = await fetchCribbageState(currentRoundId);
       traceGoRace(goTraceCtx, 'human:handleGo:fresh-fetched', {
         freshSnapshot: peggingSnapshot(freshState),
       });
@@ -6812,16 +6554,20 @@ export const CribbageMobileGameTable = ({
       traceGoRace(goTraceCtx, 'human:callGo:before-write', {
         freshSnapshot: peggingSnapshot(freshState),
       });
-      const newState = callGo(freshState, currentPlayerId);
-      traceGoRace(goTraceCtx, 'human:callGo:computed', {
-        wroteSnapshot: peggingSnapshot(newState),
+      const result = await applyCribbagePeggingAction({
+        roundId: currentRoundId,
+        playerId: currentPlayerId,
+        action: 'go',
+        expectedEventSequence: freshState.pegging.eventSequence ?? 0,
       });
-      // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-      logGoPointEvent(eventCtx, freshState, newState);
-      
-      await updateState(newState, tid);
+      if (result.state) {
+        logGoPointEvent(eventCtx, freshState, result.state);
+        syncHandle.receiveAuthoritativeUpdate(result.state);
+        setCribbageState(result.state);
+      }
       traceGoRace(goTraceCtx, 'human:callGo:after-write', {
-        wroteSnapshot: peggingSnapshot(newState),
+        outcome: result.outcome,
+        wroteSnapshot: result.state ? peggingSnapshot(result.state) : null,
       });
     } catch (err) {
       toast.error((err as Error).message);

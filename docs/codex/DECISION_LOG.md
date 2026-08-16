@@ -708,3 +708,19 @@ component mounts and fails closed on a mismatch or unavailable read. Once a
 route has passed that one check, later publication events are deferred until
 the player returns to a non-game route so live presentation continuity is not
 interrupted.
+
+## D-055 - Cribbage gameplay truth is private and server-owned
+
+Cribbage hidden cards and mutable gameplay state live in
+`private.cribbage_round_states`. The public round document is only a redacted
+realtime projection; an authenticated state RPC restores the caller's own hand
+without exposing an opponent hand or the unrevealed crib. Public table
+privileges no longer imply authority to write a Cribbage round, player-card
+row, dealer result, or hand counter.
+
+Dealer draw and first deal, discard/cut, pegging play and Go, scoring and turn
+selection, counting resolution, successor creation, and terminal settlement
+are row-locked, replay-safe server transitions. Browsers submit immutable
+identity plus intent and own presentation only. A one-second private recovery
+owner advances dealer startup, bots, expired counting leases, and terminal
+settlement, so client disconnect cannot become a gameplay or financial pause.

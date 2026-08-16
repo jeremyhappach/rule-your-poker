@@ -34,7 +34,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 | Area | Source owner |
 |---|---|
-| Cribbage final-discard transition | `supabase/migrations/20260812213000_atomic_cribbage_discard_cut_transition.sql`: `cribbage_finish_discard_transition` trigger and authenticated `cribbage_reconcile_discard_transition`; client recovery is in `src/components/CribbageMobileGameTable.tsx`. |
+| Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. Client intent/state access is in `src/lib/cribbageAuthority.ts`. |
 
 | Area | Source owner |
 |---|---|
@@ -179,14 +179,16 @@ reset transient/presentation state when those identities change.
   is the sole presentation-boundary derivation for a live cut versus an
   authoritative exposed-cut rejoin; its focused test runs before `npm run
   build`.
-- State/actions: `src/lib/cribbageTypes.ts`;
-  `src/lib/cribbageGameLogic.ts:initializeCribbageGame`, `discardToCrib`,
-  `playPeggingCard`, `callGo`, `applyHandCountScores`, and `startNewHand`;
-  component action persistence is in `CribbageMobileGameTable.tsx`.
-- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound` and
-  `updateCribbageState`; counting resolution and lazy next-hand release are
-  owned by `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
-  in `supabase/migrations/20260814003750_defer_cribbage_successor_until_release.sql`.
+- State/actions: `private.cribbage_round_states` owns hidden and mutable truth;
+  `rounds.cribbage_state` is its redacted realtime projection.
+  `src/lib/cribbageAuthority.ts` fetches caller-specific state and submits
+  pegging intent; `CribbageMobileGameTable.tsx` owns presentation only.
+- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound` submits the
+  replay-safe initial-hand RPC. Dealer selection, first deal, discard/cut,
+  pegging, counting, successor release, and disconnect recovery are owned by
+  `20260816113000_cribbage_authority_cutover.sql`.
+  `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
+  retain the accepted counting presentation lease.
   `public.cribbage_record_counting_progress` in
   `supabase/migrations/20260814010000_cribbage_counting_rejoin_cursor.sql`
   owns the monotonic presentation cursor; `CribbageCountingPhase.tsx` derives
@@ -199,13 +201,14 @@ reset transient/presentation state when those identities change.
   silent until the first authoritative Cribbage phase arrives.
   The service-only fallback caller is in
   `supabase/functions/enforce-deadlines/index.ts`.
-- Bots/scoring: `cribbageBotLogic.ts:getBotDiscardIndices` and
-  `getBotPeggingCardIndex`; `cribbageScoring.ts:evaluateHand`,
-  `evaluatePegging`, and `checkHisHeels`; scoring detail expansion is in
-  `cribbageScoringDetails.ts`.
+- Bots/scoring: the client may choose a discard presentation preference, but
+  private server helpers validate cards and independently derive pegging and
+  counting points. `private.advance_due_cribbage_state` is the disconnect-safe
+  bot/start/continuation/settlement owner.
 - Settlement/terminal: `src/lib/cribbageSettleGame.ts:settleCribbageGame`
-  submits immutable identity to `public.cribbage_settle_game`, defined by
-  `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`.
+  submits immutable identity to `public.cribbage_settle_game`; the proven
+  settlement implementation is retained behind the authority wrapper in the
+  cutover migration.
   The RPC owns the result claim, server-derived payout, chips, round completion,
   snapshots, terminal disposition, and LAST HAND session financials in one
   transaction. `CribbageMobileGameTable.tsx` observes/replays settlement and
@@ -214,11 +217,8 @@ reset transient/presentation state when those identities change.
   same-mount hold that keeps the table admitted when atomic settlement reaches
   `session_ended` before the child can publish terminal animation liveness; a
   fresh terminal mount has no latch and follows the direct-to-lobby path.
-  Discard RPC
-  `cribbage_apply_discard` is defined by
-  `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`;
-  the current next-hand compatibility wrapper delegates through the lazy
-  counting release migration above.
+  `cribbage_apply_discard` and `cribbage_apply_pegging_action` lock the exact
+  private hand and publish one redacted successor snapshot.
 - Focused tests: Cribbage deal orchestrator, cards-tab render/measurement,
   Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
   render invariant tests under `src/components/` and `src/lib/cribbage/`,

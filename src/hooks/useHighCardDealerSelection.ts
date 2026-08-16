@@ -22,6 +22,7 @@ import { getBotAlias } from '@/lib/botAlias';
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { prepareCribbageDealerSelection } from '@/lib/cribbageAuthority';
 import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
 import {
   recordWaitingLifecycle,
@@ -351,7 +352,7 @@ export function useHighCardDealerSelection({
 
   const syncToDatabase = useCallback(
     async (state: DealerSelectionState) => {
-      if (!isHost) return;
+      if (!isHost || selectionVariant === 'cribbage') return;
       const dealerSelectionId = `${gameId}:host`;
       recordDealerSelectionDiag('dealer_selection_state_published', {
         sessionId: gameId,
@@ -866,6 +867,15 @@ export function useHighCardDealerSelection({
       hasInitializedRef.current = true;
       console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
       onComplete(eligibleDealers[0].position);
+      return;
+    }
+
+    if (isCribbageVariant) {
+      hasInitializedRef.current = true;
+      void prepareCribbageDealerSelection(gameId).catch((error) => {
+        hasInitializedRef.current = false;
+        console.error('[HIGH CARD] Server dealer selection failed:', error);
+      });
       return;
     }
 

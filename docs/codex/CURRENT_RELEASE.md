@@ -2,6 +2,26 @@
 
 Date: 2026-08-16
 
+## Cribbage server-authority cutover
+
+- Migration `20260816113000_cribbage_authority_cutover.sql` is installed on
+  owned production. Hidden hands and crib cards now live in
+  `private.cribbage_round_states`; `rounds.cribbage_state` is a redacted
+  realtime projection, and authenticated callers receive only their own hand
+  through `cribbage_get_state`.
+- PostgreSQL now owns dealer draw, first-hand creation, discard merge and cut,
+  every pegging play/Go/score/turn transition, counting totals, successor
+  creation, bot recovery, and terminal settlement. Round, player-card, dealer,
+  and hand-counter guards reject browser-authored Cribbage mutations. The
+  scheduled recovery owner continues dealer startup, bots, expired counting
+  leases, and settlement when every browser disconnects.
+- The rollback proof passed before and after deployment. It covers dealer-draw
+  ties, winner identity, hidden-card projection, authorization, duplicate and
+  replayed actions, stale late replay, continuation, terminal scoring, and
+  replay-safe settlement. TypeScript, the 30 focused Cribbage preservation
+  assertions, and the production Vite build pass. Production gameplay smoke
+  remains pending.
+
 ## Holm Chucky card-face slot sizing
 
 - The Holm Chucky stage deliberately fills its canonical `HolmAnchoredSlot`
