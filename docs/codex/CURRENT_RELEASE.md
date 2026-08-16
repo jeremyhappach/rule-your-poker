@@ -2,6 +2,30 @@
 
 Date: 2026-08-16
 
+## Cribbage dealer-selection startup hotfix
+
+- Production smoke after the authority cutover exposed one Cribbage startup
+  handoff with two coupled failures. The client that completed ante processing
+  wrote `cribbage_dealer_selection` and then depended on receiving its own
+  realtime update, so only the peer mounted the draw. The scheduled recovery
+  owner then called a nonexistent `jsonb_object_length(jsonb)` function; its
+  statement aborted and rolled back the otherwise valid first-hand start.
+- Migration `20260816124000_fix_cribbage_startup_handoff.sql` is installed on
+  owned production. `public.cribbage_begin_dealer_selection` now validates
+  completed antes and commits the status plus replay-safe dealer result in one
+  transaction. A private JSON-object count helper makes the existing recovery
+  owner executable. The initiating client calls the atomic RPC and explicitly
+  fetches its committed row, while non-host receipt ignores semantically
+  duplicate completed snapshots.
+- The complete rollback proof passed before and after deployment. It now calls
+  the full recovery owner and covers incomplete antes, authorization, dealer
+  tie/winner identity, duplicate/replay, initial-hand recovery, hidden-state
+  projection, continuation, late replay, and terminal settlement. The parked
+  production repro recovered to exactly one hand/round in `discarding`; the
+  latest cron run succeeded. Thirty-two focused Cribbage assertions, the
+  available TypeScript no-emit check, and the production build pass. Fresh
+  two-client production startup smoke remains required.
+
 ## Cribbage server-authority cutover
 
 - Migration `20260816113000_cribbage_authority_cutover.sql` is installed on

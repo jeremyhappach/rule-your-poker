@@ -11,10 +11,23 @@ export async function fetchCribbageState(roundId: string): Promise<CribbageState
 }
 
 export async function prepareCribbageDealerSelection(gameId: string): Promise<void> {
-  const { error } = await (supabase as any).rpc('cribbage_prepare_dealer_selection', {
+  const { data, error } = await (supabase as any).rpc('cribbage_prepare_dealer_selection', {
     _game_id: gameId,
   });
   if (error) throw error;
+  if (data?.outcome === 'rejected') {
+    throw new Error(String(data.reason ?? 'Cribbage dealer selection rejected'));
+  }
+}
+
+export async function beginCribbageDealerSelection(gameId: string): Promise<void> {
+  const { data, error } = await (supabase as any).rpc('cribbage_begin_dealer_selection', {
+    _game_id: gameId,
+  });
+  if (error) throw error;
+  if (data?.outcome === 'rejected') {
+    throw new Error(String(data.reason ?? 'Cribbage dealer-selection entry rejected'));
+  }
 }
 
 export async function applyCribbagePeggingAction(args: {

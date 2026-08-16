@@ -320,6 +320,7 @@ import { getHolmPhysicalBuckPosition } from "@/lib/holmBuckOwnership";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
+import { beginCribbageDealerSelection } from "@/lib/cribbageAuthority";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
 import {
@@ -13949,13 +13950,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             recordNormalizationDbg({ kind: 'call-site', caller: 'ante→cribbage_dealer_selection', didInvokeNormalizer: true, statusTransition: 'ante_decision→cribbage_dealer_selection' });
             try { await normalizeTwoPlayerSeatsIfNeeded(gameId, 'ante→cribbage_dealer_selection'); }
             catch (e) { console.error('[ANTE → cribbage_dealer_selection] normalize threw:', e); }
-            await supabase
-              .from('games')
-              .update({
-                status: 'cribbage_dealer_selection',
-                dealer_selection_state: null, // Will be populated by HighCardDealerSelection
-              })
-              .eq('id', gameId);
+            // PostgreSQL commits the status and dealer result together. Fetch
+            // the committed row explicitly so the initiating client does not
+            // depend on receiving its own realtime event to mount the draw.
+            await beginCribbageDealerSelection(gameId!);
+            await fetchGameData();
           } else if (freshGame?.game_type === 'gin-rummy') {
             // Gin Rummy: go straight to in_progress and start the round
             recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound call issued', {

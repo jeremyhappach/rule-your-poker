@@ -75,6 +75,26 @@ export interface DealerSelectionState {
   announcement: string | null;
   isComplete: boolean;
   winnerPosition: number | null;
+  preparedAt?: string;
+}
+
+export function getDealerSelectionReceiptKey(state: DealerSelectionState): string {
+  return JSON.stringify({
+    preparedAt: state.preparedAt ?? null,
+    announcement: state.announcement,
+    isComplete: state.isComplete,
+    winnerPosition: state.winnerPosition,
+    cards: state.cards.map((entry) => ({
+      playerId: entry.playerId,
+      position: entry.position,
+      rank: entry.card.rank,
+      suit: entry.card.suit,
+      isRevealed: entry.isRevealed,
+      isWinner: entry.isWinner,
+      isDimmed: entry.isDimmed,
+      roundNumber: entry.roundNumber,
+    })),
+  });
 }
 
 export interface UseHighCardDealerSelectionArgs {
@@ -391,9 +411,17 @@ export function useHighCardDealerSelection({
   const nonHostCardsSeenRef = useRef(false);
   const lastCardsLenRef = useRef<number>(0);
   const lastWinnerRef = useRef<number | null>(null);
+  const lastNonHostReceiptKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (isHost) return;
-    if (!syncedState) return;
+    if (!syncedState) {
+      lastNonHostReceiptKeyRef.current = null;
+      return;
+    }
+
+    const receiptKey = getDealerSelectionReceiptKey(syncedState);
+    if (lastNonHostReceiptKeyRef.current === receiptKey) return;
+    lastNonHostReceiptKeyRef.current = receiptKey;
 
     // P-WAIT.C2: receive-frame trace (every synced-state delivery on non-host).
     recordWaitingLifecycle('high-card receive frame', {

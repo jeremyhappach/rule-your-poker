@@ -34,7 +34,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 | Area | Source owner |
 |---|---|
-| Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. Client intent/state access is in `src/lib/cribbageAuthority.ts`. |
+| Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. `20260816124000_fix_cribbage_startup_handoff.sql` adds atomic ante-to-dealer-selection entry and repairs the scheduled recovery query. Client intent/state access is in `src/lib/cribbageAuthority.ts`. |
 
 | Area | Source owner |
 |---|---|
@@ -183,10 +183,13 @@ reset transient/presentation state when those identities change.
   `rounds.cribbage_state` is its redacted realtime projection.
   `src/lib/cribbageAuthority.ts` fetches caller-specific state and submits
   pegging intent; `CribbageMobileGameTable.tsx` owns presentation only.
-- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound` submits the
-  replay-safe initial-hand RPC. Dealer selection, first deal, discard/cut,
+- Lifecycle: `public.cribbage_begin_dealer_selection` atomically consumes the
+  completed-ante boundary and publishes the dealer result;
+  `src/lib/cribbageRoundLogic.ts:startCribbageRound` submits the replay-safe
+  initial-hand RPC. Dealer selection, first deal, discard/cut,
   pegging, counting, successor release, and disconnect recovery are owned by
-  `20260816113000_cribbage_authority_cutover.sql`.
+  `20260816113000_cribbage_authority_cutover.sql`, with startup correction in
+  `20260816124000_fix_cribbage_startup_handoff.sql`.
   `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
   retain the accepted counting presentation lease.
   `public.cribbage_record_counting_progress` in

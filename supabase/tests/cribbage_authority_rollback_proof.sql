@@ -1,4 +1,4 @@
--- Run in the same transaction immediately after the authority migration.
+-- Run in the same transaction immediately after the authority/startup migrations.
 -- The caller owns BEGIN/ROLLBACK so this proof cannot retain synthetic data.
 DO $proof$
 DECLARE
@@ -21,6 +21,7 @@ DECLARE
   v_card_index integer;
   v_event_sequence integer;
   v_iteration integer;
+  v_advanced integer;
   v_tie_seen boolean:=false;
   v_winner_id uuid;
   v_loser_id uuid;
@@ -50,15 +51,15 @@ BEGIN
     double_skunk_threshold,is_first_hand,current_host
   ) VALUES(
     v_game_id,'Cribbage authority rollback proof','cribbage',
-    'cribbage_dealer_selection',1,100,0,NULL,0,121,true,91,true,61,true,v_user_one
+    'ante_decision',1,100,0,NULL,0,121,true,91,true,61,true,v_user_one
   );
   INSERT INTO public.dealer_games(id,dealer_user_id,game_type,session_id,config)
   VALUES(v_dealer_game_id,v_user_one,'cribbage',v_game_id,'{}'::jsonb);
   UPDATE public.games SET current_game_uuid=v_dealer_game_id WHERE id=v_game_id;
-  INSERT INTO public.players(id,user_id,game_id,position,chips,is_bot,status)
+  INSERT INTO public.players(id,user_id,game_id,position,chips,is_bot,status,ante_decision)
   VALUES
-    (v_player_one,v_user_one,v_game_id,1,100,false,'active'),
-    (v_player_two,v_user_two,v_game_id,2,100,false,'active');
+    (v_player_one,v_user_one,v_game_id,1,100,false,'active','ante_up'),
+    (v_player_two,v_user_two,v_game_id,2,100,false,'active',NULL);
   UPDATE public.system_settings
      SET value=jsonb_set(coalesce(value,'{}'::jsonb),'{enabled}','false'::jsonb,true)
    WHERE key='harnesses_mode';
@@ -69,19 +70,57 @@ BEGIN
     true
   );
 
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_outsider,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    PERFORM public.cribbage_begin_dealer_selection(v_game_id);
+    RAISE EXCEPTION 'outsider_dealer_selection_entry_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='outsider_dealer_selection_entry_was_allowed' THEN RAISE; END IF;
+  END;
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_user_one,'role','authenticated')::text,
+    true
+  );
+
+  -- Dealer selection cannot begin until every eligible participant resolves
+  -- the ante, and rejection cannot publish a partial status/state transition.
+  v_result:=public.cribbage_begin_dealer_selection(v_game_id);
+  IF v_result->>'outcome'<>'rejected'
+     OR v_result->>'reason'<>'waiting_for_antes'
+     OR (SELECT status FROM public.games WHERE id=v_game_id)<>'ante_decision'
+     OR (SELECT dealer_selection_state FROM public.games WHERE id=v_game_id) IS NOT NULL THEN
+    RAISE EXCEPTION 'incomplete_ante_entry_was_not_rejected:%',v_result;
+  END IF;
+  UPDATE public.players SET ante_decision='ante_up' WHERE id=v_player_two;
+
   -- Dealer-draw tie: repeat the server draw until a redraw round is observed.
   -- The chance of missing a two-player rank tie in 200 independent draws is negligible.
   FOR v_iteration IN 1..200 LOOP
     PERFORM set_config('app.cribbage_authoritative_write','on',true);
     UPDATE public.games SET dealer_selection_state=NULL WHERE id=v_game_id;
     PERFORM set_config('app.cribbage_authoritative_write','',true);
-    v_state:=public.cribbage_prepare_dealer_selection(v_game_id);
+    v_state:=CASE WHEN v_iteration=1
+      THEN public.cribbage_begin_dealer_selection(v_game_id)
+      ELSE public.cribbage_prepare_dealer_selection(v_game_id)
+    END;
     SELECT coalesce(max((card->>'roundNumber')::integer),0)>1
       INTO v_tie_seen
       FROM jsonb_array_elements(v_state->'cards') AS cards(card);
     EXIT WHEN v_tie_seen;
   END LOOP;
   IF NOT v_tie_seen THEN RAISE EXCEPTION 'dealer_tie_redraw_not_observed'; END IF;
+  IF (SELECT status FROM public.games WHERE id=v_game_id)<>'cribbage_dealer_selection' THEN
+    RAISE EXCEPTION 'dealer_selection_entry_did_not_commit_atomically';
+  END IF;
+  v_replay:=public.cribbage_begin_dealer_selection(v_game_id);
+  IF v_replay IS DISTINCT FROM v_state THEN
+    RAISE EXCEPTION 'dealer_selection_entry_replay_changed_state:%',v_replay;
+  END IF;
   IF v_state->>'winnerPosition' IS NULL
      OR NOT EXISTS(
        SELECT 1 FROM jsonb_array_elements(v_state->'cards') AS cards(card)
@@ -96,15 +135,40 @@ BEGIN
     RAISE EXCEPTION 'dealer_draw_did_not_resolve_one_winner_identity';
   END IF;
 
-  -- Initial creation and replay dedupe.
-  v_result:=public.start_cribbage_initial_hand(v_game_id);
-  IF v_result->>'outcome'<>'started' THEN RAISE EXCEPTION 'initial_start_failed:%',v_result; END IF;
-  v_round_id:=(v_result->>'round_id')::uuid;
+  -- The complete scheduled recovery function must start the hand and continue
+  -- through every later candidate query without aborting the transaction.
+  v_state:=jsonb_set(
+    v_state,
+    '{preparedAt}',
+    to_jsonb(to_char(clock_timestamp()-interval '10 seconds','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+    true
+  );
+  PERFORM set_config('app.cribbage_authoritative_write','on',true);
+  UPDATE public.games SET dealer_selection_state=v_state WHERE id=v_game_id;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_advanced:=private.advance_due_cribbage_state();
+  SELECT id INTO v_round_id
+    FROM public.rounds
+   WHERE game_id=v_game_id
+     AND dealer_game_id=v_dealer_game_id
+     AND hand_number=1;
+  IF v_advanced<1 OR v_round_id IS NULL
+     OR (SELECT status FROM public.games WHERE id=v_game_id)<>'in_progress' THEN
+    RAISE EXCEPTION 'scheduled_initial_start_failed:advanced=% round=%',v_advanced,v_round_id;
+  END IF;
+
+  -- Initial creation replay dedupe.
   v_replay:=public.start_cribbage_initial_hand(v_game_id);
   IF v_replay->>'outcome'<>'already-started'
      OR (v_replay->>'round_id')::uuid<>v_round_id THEN
     RAISE EXCEPTION 'initial_start_replay_failed:%',v_replay;
   END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_user_one,'role','authenticated')::text,
+    true
+  );
 
   -- Hidden-state projection: public is masked, caller sees only their own hand.
   SELECT cribbage_state INTO v_public FROM public.rounds WHERE id=v_round_id;
