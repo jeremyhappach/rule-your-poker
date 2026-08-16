@@ -11239,7 +11239,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    if (gameData?.pending_session_end) {
+    if (gameData?.pending_session_end && game?.game_type !== 'gin-rummy') {
       console.log('[GAME OVER] Session should end, transitioning to session_ended');
       await supabase
         .from('games')
@@ -11283,10 +11283,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
       throw e;
     }
-    // Cribbage's authoritative postgame RPC clears this state atomically with
-    // the exact settled-round claim. A preliminary browser update would be
-    // rejected by the Cribbage authority guard and could split the handoff.
-    if (game?.game_type !== 'cribbage') {
+    // Dealer-game authority RPCs clear this state atomically with the exact
+    // settled-round claim. A preliminary browser reset would either be rejected
+    // by the authority guard or split the handoff across two owners.
+    if (game?.game_type !== 'cribbage' && game?.game_type !== 'gin-rummy') {
       emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
       try {
         await clearDealerGameTransientSessionState(gameId);
@@ -11295,6 +11295,100 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'clearDealerGameTransientSessionState', error: e });
         throw e;
       }
+    }
+
+    if (game?.game_type === 'gin-rummy') {
+      const outgoingDealerGameId = gameData?.current_game_uuid ?? game.current_game_uuid ?? null;
+      const outgoingHandNumber = gameData?.total_hands ?? game.total_hands ?? null;
+      let terminalRoundId = (
+        currentRound?.dealer_game_id === outgoingDealerGameId
+        && currentRound?.hand_number === outgoingHandNumber
+      ) ? currentRound.id : null;
+
+      if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+        const { data: terminalRound, error: terminalRoundError } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', outgoingDealerGameId)
+          .eq('hand_number', outgoingHandNumber)
+          .maybeSingle();
+        if (terminalRoundError) {
+          throw terminalRoundError;
+        }
+        terminalRoundId = terminalRound?.id ?? null;
+      }
+
+      if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+        throw new Error('Gin Rummy postgame identity is incomplete; no transition was attempted.');
+      }
+
+      emit357GameOverCompleteDiag('advance_begin', {
+        ..._gocId(),
+        outgoingDealerGameId,
+        terminalRoundId,
+        outgoingHandNumber,
+        branch: 'gin-rummy-authoritative-postgame',
+      });
+      const { data: postgameResult, error: postgameError } = await supabase.rpc(
+        'gin_rummy_advance_postgame' as any,
+        {
+          _game_id: gameId,
+          _round_id: terminalRoundId,
+          _dealer_game_id: outgoingDealerGameId,
+          _hand_number: outgoingHandNumber,
+        } as any,
+      );
+      if (postgameError) {
+        emit357GameOverCompleteDiag('advance_error', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          error: postgameError,
+        });
+        throw postgameError;
+      }
+
+      const postgame = postgameResult as {
+        outcome?: string;
+        status?: string;
+        dealer_position?: number | null;
+      } | null;
+      if (postgame?.outcome === 'stale_identity') {
+        emit357GameOverCompleteDiag('advance_complete', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          resultingStatus: postgame.status ?? null,
+          claimLost: true,
+        });
+        gameOverTransitionRef.current = false;
+        await fetchGameData();
+        return;
+      }
+      if (postgame?.outcome !== 'advanced' && postgame?.outcome !== 'already_advanced') {
+        throw new Error(`Unexpected Gin Rummy postgame outcome: ${postgame?.outcome ?? 'missing'}`);
+      }
+
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        outgoingDealerGameId,
+        terminalRoundId,
+        outgoingHandNumber,
+        resultingStatus: postgame.status ?? null,
+        selectedNextDealerPosition: postgame.dealer_position ?? null,
+        claimLost: postgame.outcome === 'already_advanced',
+      });
+      gameOverTransitionRef.current = false;
+      anteAnimationFiredRef.current = null;
+      await fetchGameData();
+      emit357GameOverCompleteDiag('complete', {
+        ..._gocId(),
+        finalStatus: postgame.status ?? null,
+      });
+      return;
     }
 
 

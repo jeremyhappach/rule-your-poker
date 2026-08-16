@@ -25,7 +25,6 @@ import {
   logGinResultDisplay,
 } from '@/lib/ginRummySyncDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
-import { isGinNonDealerNearKnockHarnessEnabled } from '@/lib/debugFlags';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
@@ -42,19 +41,13 @@ import {
   passFirstDraw,
   layOffCard,
   finishLayingOff,
-  scoreHand,
   getDiscardTop,
 } from '@/lib/ginRummyGameLogic';
 import {
-  shouldBotTakeFirstDraw,
-  botChooseDrawSource,
-  botChooseDiscard,
-  botShouldKnock,
-  botGetLayOffs,
-} from '@/lib/ginRummyBotLogic';
-import {
   startNextGinRummyHand,
-  recordGinRummyHandResult,
+  applyGinRummyAction,
+  fetchGinRummyState,
+  type GinRummyAuthorityAction,
 } from '@/lib/ginRummyRoundLogic';
 import { settleGinRummyGame } from '@/lib/ginRummySettleGame';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
@@ -1493,14 +1486,8 @@ export const GinRummyGameTable = ({
         handNumber,
       });
       ginTrace('gin.hydration load:start', { roundId: roundId?.slice(0, 8) });
-      const { data, error } = await supabase
-        .from('rounds')
-        .select('gin_rummy_state')
-        .eq('id', roundId)
-        .single();
-
-      if (!error && data?.gin_rummy_state) {
-        const state = data.gin_rummy_state as unknown as GinRummyState;
+      try {
+        const state = await fetchGinRummyState(roundId);
         // Site 6 admission — full 3-axis provenance.
         const expectedHand = currentHandNumberRef.current;
         const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
@@ -1542,12 +1529,12 @@ export const GinRummyGameTable = ({
           accepted: result.accepted,
           phase: state.phase,
         });
-      } else {
+      } catch (error) {
         console.warn('[GIN_RUNTIME_TIMELINE] viewState hydration load:empty', {
           gameId,
           roundId: roundId?.slice(0, 8),
           elapsedMs: Math.round(performance.now() - startedAt),
-          error: error?.message ?? null,
+          error: error instanceof Error ? error.message : String(error),
         });
         ginTrace('gin.hydration load:empty', {
           elapsedMs: Math.round(performance.now() - startedAt),
@@ -1557,9 +1544,8 @@ export const GinRummyGameTable = ({
     load();
   }, [roundId]);
 
-  // Realtime subscription + aggressive polling fallback
-  // Realtime silently drops large JSONB payloads — polling is the safety net for human vs human.
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Realtime is only a synchronization prompt. The caller-specific RPC projection
+  // is the sole source of cards and authoritative Gin state.
   // Use a ref for onGameComplete to avoid rebuilding the subscription on every parent re-render
   const onGameCompleteRef = useRef(onGameComplete);
   useEffect(() => { onGameCompleteRef.current = onGameComplete; }, [onGameComplete]);
@@ -1699,24 +1685,21 @@ export const GinRummyGameTable = ({
           table: 'rounds',
           filter: `id=eq.${roundId}`,
         },
-        (payload) => {
+        () => {
           recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable rounds callback fired / payload received', {
             file: 'src/components/GinRummyGameTable.tsx',
             function: 'round-specific realtime callback',
             table: 'rounds',
-            row: (payload.new as any)?.id ?? roundId,
-            eventType: payload.eventType,
+            row: roundId,
+            eventType: 'UPDATE',
             oldValue: null,
-            newValue: {
-              roundId: (payload.new as any)?.id ?? null,
-              hasGinRummyState: !!(payload.new as any)?.gin_rummy_state,
-              phase: ((payload.new as any)?.gin_rummy_state as any)?.phase ?? null,
-            },
+            newValue: { roundId, source: 'authoritative-refetch' },
           });
-          const newData = payload.new as { gin_rummy_state?: GinRummyState };
-          if (newData.gin_rummy_state) {
-            applyState(newData.gin_rummy_state, 'realtime');
-          }
+          void fetchGinRummyState(roundId)
+            .then((state) => applyState(state, 'realtime-refetch'))
+            .catch((error) => {
+              console.error('[GIN-RUMMY] Authoritative realtime refetch failed:', error);
+            });
         }
       )
       .subscribe((status) => {
@@ -1730,36 +1713,8 @@ export const GinRummyGameTable = ({
         });
       });
 
-    // Fallback polling — unconditional, always applies fresh DB state.
-    // Realtime silently drops large JSONB payloads; polling is the guaranteed fallback.
-    const poll = async () => {
-      if (!isActive) return;
-
-      try {
-        const { data } = await supabase
-          .from('rounds')
-          .select('gin_rummy_state')
-          .eq('id', roundId)
-          .maybeSingle();
-
-        if (data?.gin_rummy_state && isActive) {
-          applyState(data.gin_rummy_state as unknown as GinRummyState, 'poll');
-        }
-      } catch {
-        // Silent fail
-      }
-
-      if (isActive) {
-        pollTimerRef.current = setTimeout(poll, 1500);
-      }
-    };
-
-    // First poll after a short delay, then every 1.5s
-    pollTimerRef.current = setTimeout(poll, 800);
-
     return () => {
       isActive = false;
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       supabase.removeChannel(channel);
     };
   }, [roundId]); // ← onGameComplete intentionally excluded; using ref instead
@@ -1991,353 +1946,6 @@ export const GinRummyGameTable = ({
     }, 1500);
   }, [activeTab, chatTabFlashing, getChatIndicatorEligibility, hasUnreadMessages, latestRealtimeMessage, logChatIndicator]);
 
-  // ─── Bot Action Loop ────────────────────────────────────────────
-  const botActionInProgress = useRef(false);
-
-  useEffect(() => {
-    if (!ginState || !currentPlayerId || isProcessing || botActionInProgress.current) return;
-    // Writer-audit gate: do not let the bot loop write into a stale identity.
-    // CRITICAL: both gates are also in the dep array below. Without that, the
-    // bot effect could fire while isIdentityStale=true on the hand boundary,
-    // bail, and then never re-run once the gate cleared (because none of
-    // [ginState, currentPlayerId, isProcessing, players, roundId] would
-    // change again). Symptom: stuck on "Bot deciding on upcard..." on the
-    // 2nd hand. Keeping the refs for the synchronous read; deps wake us.
-    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
-      persistSyncDebugEvent({
-        gameId,
-        gameType: 'gin-rummy',
-        handNumber: currentHandNumber ?? null,
-        roundId: roundId ?? null,
-        eventType: 'transition',
-        severity: 'info',
-        eventName: 'gin-bot-loop-skip-gated',
-        payload: {
-          isIdentityStale: isIdentityStaleRef.current,
-          interactionsAllowed: interactionsAllowedRef.current,
-          phase: ginState.phase,
-          turnPhase: ginState.turnPhase,
-          currentTurn: ginState.currentTurnPlayerId?.slice(0, 8) ?? null,
-        },
-      });
-      return;
-    }
-
-    const currentTurnId = ginState.currentTurnPlayerId;
-    if (!currentTurnId) return;
-
-    const turnPlayer = players.find(p => p.id === currentTurnId);
-    if (!turnPlayer?.is_bot) return;
-
-    // Bot needs to act
-    const runBotAction = async () => {
-      if (botActionInProgress.current) return;
-      botActionInProgress.current = true;
-
-      try {
-        // Add a human-like delay
-        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 600));
-
-        // Re-fetch latest state to prevent stale-closure issues
-        const { data } = await supabase
-          .from('rounds')
-          .select('gin_rummy_state')
-          .eq('id', roundId)
-          .single();
-
-        if (!data?.gin_rummy_state) return;
-        let state = data.gin_rummy_state as unknown as GinRummyState;
-
-        // Phase guard: don't act during terminal or scoring phases
-        if (['complete', 'scoring'].includes(state.phase)) {
-          console.log(`[GIN-RUMMY BOT] Skipping — phase is ${state.phase}`);
-          return;
-        }
-
-        // Verify it's still the bot's turn
-        if (state.currentTurnPlayerId !== currentTurnId) return;
-
-        const botId = currentTurnId;
-        const botState = state.playerStates[botId];
-        if (!botState) return;
-
-        // Non-Dealer Near Knock harness: when the bot is the authoritative
-        // NON-DEALER of this hand, it must take the upcard and knock at the
-        // first legal opportunity. Role comes from the persisted state's
-        // dealer identity — never from the viewing client.
-        const harnessForcesNonDealerKnock =
-          isGinNonDealerNearKnockHarnessEnabled() && state.nonDealerPlayerId === botId;
-
-        // Phase: first_draw
-        if (state.phase === 'first_draw' && state.firstDrawOfferedTo === botId) {
-          const upCard = state.discardPile[state.discardPile.length - 1];
-          if (upCard && (harnessForcesNonDealerKnock || shouldBotTakeFirstDraw(botState.hand, upCard))) {
-            state = takeFirstDrawCard(state, botId);
-            // Write intermediate "draw" state so the opponent-draw animation fires
-            const drawSnapshot = JSON.parse(JSON.stringify(state));
-            await supabase
-              .from('rounds')
-              .update({ gin_rummy_state: drawSnapshot })
-              .eq('id', roundId);
-            setGinState(drawSnapshot);
-            // Wait so the player can see the card-fly animation
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            // Fall through to discard logic below (phase=playing, turnPhase=discard)
-          } else {
-            state = passFirstDraw(state, botId);
-            // After pass, if turn moved to human, write and stop
-            if (state.currentTurnPlayerId !== botId) {
-              ginSync.applyOptimistic(state);
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-                .eq('id', roundId);
-              setGinState(state);
-              return;
-            }
-          }
-        }
-        // Phase: playing - draw (then fall through to discard after 1s delay)
-        if (state.phase === 'playing' && state.turnPhase === 'draw') {
-          const topDiscard = getDiscardTop(state);
-          const source = botChooseDrawSource(botState.hand, topDiscard);
-          if (source === 'discard' && topDiscard) {
-            state = drawFromDiscard(state, botId);
-          } else {
-            state = drawFromStock(state, botId);
-          }
-
-          // Write draw state to DB so opponent sees the draw animation
-          const drawSnapshot = JSON.parse(JSON.stringify(state));
-          await supabase
-            .from('rounds')
-            .update({ gin_rummy_state: drawSnapshot })
-            .eq('id', roundId);
-          setGinState(drawSnapshot);
-
-          // 1-second delay so opponent can see what the bot drew
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Re-read bot state after draw (hand changed)
-          const updatedBotState = state.playerStates[botId];
-
-          // Fall through to discard
-          const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
-            ? state.lastAction.card
-            : null;
-
-          const knockDecision = botShouldKnock(updatedBotState.hand, drawnFromDiscard, harnessForcesNonDealerKnock);
-
-          if (knockDecision.shouldKnock) {
-            const discardCardVal = updatedBotState.hand[knockDecision.discardIndex];
-            state = declareKnock(state, botId, discardCardVal);
-            if (state.phase === 'scoring') {
-              // Gin! Write state first so gin overlay plays, then wait before scoring
-              const ginSnapshot = JSON.parse(JSON.stringify(state));
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: ginSnapshot })
-                .eq('id', roundId);
-              setGinState(ginSnapshot);
-              await new Promise(resolve => setTimeout(resolve, 3500));
-              state = scoreHand(state);
-              // Write scored state and RETURN — do not fall through to generic write
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-                .eq('id', roundId);
-              setGinState(state);
-              return;
-            } else if (state.phase === 'knocking') {
-              // Knock! Write state so overlay plays, wait for it before tabling cards
-              const knockSnapshot = JSON.parse(JSON.stringify(state));
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: knockSnapshot })
-                .eq('id', roundId);
-              setGinState(knockSnapshot);
-              await new Promise(resolve => setTimeout(resolve, 2800));
-              // RETURN — the knock snapshot above already tabled the cards and
-              // `state` has not advanced since. The opponent now owns
-              // layoff → scoring → complete. Falling through to the generic
-              // trailing write would re-publish this stale 'knocking' snapshot
-              // (matchScores pre-settlement) over any newer authoritative
-              // 'complete' state written during the 2.8s presentation hold,
-              // resetting the settled score rail back to 0.
-              return;
-            }
-          } else {
-            const discardIdx = knockDecision.discardIndex;
-            const card = updatedBotState.hand[discardIdx];
-            state = discardCard(state, botId, card);
-          }
-        }
-        // Phase: playing - discard only (edge case: state loaded mid-discard)
-        else if (state.phase === 'playing' && state.turnPhase === 'discard') {
-          const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
-            ? state.lastAction.card
-            : null;
-
-          // Read the CURRENT hand from state — `botState` was captured before
-          // the first-draw take above and would be the stale 10-card hand.
-          const discardPhaseBotState = state.playerStates[botId];
-          const knockDecision = botShouldKnock(discardPhaseBotState.hand, drawnFromDiscard, harnessForcesNonDealerKnock);
-
-          if (knockDecision.shouldKnock) {
-            const discardCardVal = discardPhaseBotState.hand[knockDecision.discardIndex];
-            state = declareKnock(state, botId, discardCardVal);
-            if (state.phase === 'scoring') {
-              // Gin! Write state first so gin overlay plays, then wait before scoring
-              const ginSnapshot = JSON.parse(JSON.stringify(state));
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: ginSnapshot })
-                .eq('id', roundId);
-              setGinState(ginSnapshot);
-              await new Promise(resolve => setTimeout(resolve, 3500));
-              state = scoreHand(state);
-              // Write scored state and RETURN — do not fall through to generic write
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-                .eq('id', roundId);
-              setGinState(state);
-              return;
-            } else if (state.phase === 'knocking') {
-              // Knock! Write state so overlay plays, wait for it before tabling cards
-              const knockSnapshot = JSON.parse(JSON.stringify(state));
-              await supabase
-                .from('rounds')
-                .update({ gin_rummy_state: knockSnapshot })
-                .eq('id', roundId);
-              setGinState(knockSnapshot);
-              await new Promise(resolve => setTimeout(resolve, 2800));
-              // RETURN for the same reason as the draw-branch knock above:
-              // no state advance happens after the knock snapshot, so the
-              // generic trailing write can only clobber newer authoritative
-              // settlement written by the opponent during the hold.
-              return;
-            }
-          } else {
-            const discardIdx = knockDecision.discardIndex;
-            const card = discardPhaseBotState.hand[discardIdx];
-            state = discardCard(state, botId, card);
-          }
-
-        }
-        // Phase: knocking/laying_off - bot is the non-knocker
-        else if ((state.phase === 'knocking' || state.phase === 'laying_off')) {
-          const knockerId = Object.entries(state.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
-          if (knockerId && botId !== knockerId) {
-            // Show bot's cards on felt first, then wait 3s before laying off
-            await supabase
-              .from('rounds')
-              .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-              .eq('id', roundId);
-            setGinState(state);
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // Lay off cards one at a time with 1.5s delay each so player can follow along
-            const layOffs = botGetLayOffs(botState.hand, state.playerStates[knockerId].melds);
-            for (const lo of layOffs) {
-              try {
-                state = layOffCard(state, botId, lo.card, lo.onMeldIndex);
-                // Write intermediate state so viewer can see each lay-off
-                await supabase
-                  .from('rounds')
-                  .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-                  .eq('id', roundId);
-                setGinState(state);
-                await new Promise(resolve => setTimeout(resolve, 1500));
-              } catch {
-                break; // Card may no longer be valid
-              }
-            }
-            state = finishLayingOff(state, botId);
-            if (state.phase === 'scoring') {
-              state = scoreHand(state);
-            }
-          }
-        }
-
-        // Write updated state
-        await supabase
-          .from('rounds')
-          .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
-          .eq('id', roundId);
-
-        setGinState(state);
-      } catch (err) {
-        console.error('[GIN-RUMMY BOT] Error:', err);
-      } finally {
-        botActionInProgress.current = false;
-      }
-    };
-
-    const timeout = setTimeout(runBotAction, 300);
-    return () => clearTimeout(timeout);
-  }, [ginState, currentPlayerId, isProcessing, players, roundId,
-      // Wake-up deps: ensure bot loop re-fires when the identity/interactions
-      // gate flips open AFTER ginState was already populated for a new hand.
-      ginSync.isIdentityStale, ginSync.interactionsAllowed]);
-  // ─── Scoring Safety Net ────────────────────────────────────────
-  // scoreHand is deterministic — both clients can independently compute the same result.
-  // If the acting client's inline scoreHand (inside handleKnock) fails or its DB write
-  // is lost, this effect ensures ANY client that sees 'scoring' phase auto-advances to 'complete'.
-  const scoringAutoProgressRef = useRef(false);
-  useEffect(() => {
-    if (!ginState || ginState.phase !== 'scoring' || scoringAutoProgressRef.current) return;
-    if (!roundId) return;
-
-    // Short delay: give the acting client's inline scoreHand time to write 'complete' first.
-    // If 'complete' arrives via realtime/poll within this window, this effect becomes a no-op.
-    const timer = setTimeout(async () => {
-      // Re-check: ginState may have advanced during the delay
-      if (scoringAutoProgressRef.current) return;
-      // Writer-audit gate: do not let the safety net write into a stale identity.
-      if (isIdentityStaleRef.current) return;
-      scoringAutoProgressRef.current = true;
-
-      try {
-        // Fetch fresh state from DB to avoid stale closures
-        const { data } = await supabase
-          .from('rounds')
-          .select('gin_rummy_state')
-          .eq('id', roundId)
-          .single();
-
-        const freshState = data?.gin_rummy_state as unknown as GinRummyState | null;
-        if (!freshState || freshState.phase !== 'scoring') {
-          // Already advanced past scoring — nothing to do
-          scoringAutoProgressRef.current = false;
-          return;
-        }
-
-        console.log('[GIN-RUMMY] Scoring safety-net: auto-advancing from scoring → complete');
-        const completedState = scoreHand(freshState);
-        const { error } = await supabase
-          .from('rounds')
-          .update({ gin_rummy_state: JSON.parse(JSON.stringify(completedState)) })
-          .eq('id', roundId);
-
-        if (!error) {
-          setGinState(completedState);
-        }
-      } catch (err) {
-        console.error('[GIN-RUMMY] Scoring safety-net error:', err);
-      } finally {
-        scoringAutoProgressRef.current = false;
-      }
-    }, 2000); // 2s grace period for the acting client's inline path
-
-    return () => clearTimeout(timer);
-  }, [ginState?.phase, roundId]);
-
-  // Reset scoring guard when round changes (new hand)
-  useEffect(() => {
-    scoringAutoProgressRef.current = false;
-  }, [roundId]);
-
   // ─── Hand Completion & Next Hand ──────────────────────────────
   // Driven off viewState (presentation), NOT raw ginState. This keeps the
   // terminal lifecycle on a single authoritative-via-presentation trigger,
@@ -2380,11 +1988,6 @@ export const GinRummyGameTable = ({
           handNumber,
         });
         const isTerminalMatch = Boolean(viewState.winnerPlayerId);
-        // Ordinary hands retain their existing history-only writer. Terminal
-        // hands are written by the settlement transaction below instead.
-        if (viewState.knockResult && !isTerminalMatch) {
-          await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
-        }
 
         if (isTerminalMatch) {
           onTerminalPresentationActiveChange?.(true);
@@ -2586,7 +2189,10 @@ export const GinRummyGameTable = ({
         const isGin = viewState.knockResult?.isGin;
         const delay = !viewState.knockResult ? 1500 : isGin ? 5000 : 3000;
         await new Promise(resolve => setTimeout(resolve, delay));
-        const result = await startNextGinRummyHand(gameId, dealerGameId, viewState);
+        if (!roundId) {
+          throw new Error('Gin successor identity is incomplete; no next hand was started.');
+        }
+        const result = await startNextGinRummyHand(roundId);
         if (result.success) {
           console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
         }
@@ -2617,8 +2223,14 @@ export const GinRummyGameTable = ({
 
   const updateState = async (
     newState: GinRummyState,
+    intent: {
+      action: GinRummyAuthorityAction;
+      card?: GinRummyCard | null;
+      meldIndex?: number | null;
+      expectedActionCount?: number | null;
+    },
     traceId?: string,
-  ) => {
+  ): Promise<GinRummyState | null> => {
     // Writer-audit gate: refuse to write if the framework says we cannot interact
     // (frozen / visual contract active / identity stale). Prevents stale local
     // action paths from clobbering the new round after a peer advanced the hand.
@@ -2635,7 +2247,7 @@ export const GinRummyGameTable = ({
           interactionsAllowed: interactionsAllowedRef.current,
         },
       });
-      return;
+      return null;
     }
     setIsProcessing(true);
     logDebugEvent({
@@ -2643,7 +2255,7 @@ export const GinRummyGameTable = ({
       eventType: 'gin:optimistic_applied', traceId,
       payload: ginStateSummary(newState),
     });
-    // Apply optimistic override — sync framework will reject stale realtime/poll updates
+    // Optimism is presentation-only; the intent RPC validates and commits truth.
     localOptimisticSignatureRef.current = signatureForGinRunback(newState);
     ginSync.applyOptimistic(newState);
     recordGinPhaseTrace({
@@ -2662,26 +2274,39 @@ export const GinRummyGameTable = ({
         eventType: 'gin:db_write_start', traceId,
         payload: ginStateSummary(newState),
       });
-      const { error } = await supabase
-        .from('rounds')
-        .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', roundId);
-      if (error) throw error;
+      if (!roundId || !currentPlayerId) {
+        throw new Error('Gin action identity is incomplete.');
+      }
+      const result = await applyGinRummyAction({
+        roundId,
+        playerId: currentPlayerId,
+        action: intent.action,
+        card: intent.card ?? null,
+        meldIndex: intent.meldIndex ?? null,
+        expectedActionCount:
+          intent.expectedActionCount
+          ?? Math.max(0, (newState.actionCount ?? 1) - 1),
+      });
+      const committedState = result.state;
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_success', traceId,
-        payload: ginStateSummary(newState),
+        payload: ginStateSummary(committedState, { outcome: result.outcome }),
       });
-      // DB write succeeded — promote to authoritative
-      ginSync.receiveAuthoritativeUpdate(newState);
+      // The returned caller projection is the initiating client's bootstrap/action
+      // result. Realtime is only responsible for synchronizing peers.
+      ginSync.receiveAuthoritativeUpdate(committedState);
+      setGinState(committedState);
+      lastAuthoritativeSignatureRef.current = signatureForGinRunback(committedState);
       recordGinPhaseTrace({
         kind: 'state-replacement',
         summary: 'Gin server action confirmed local state',
         sourceFile: 'src/components/GinRummyGameTable.tsx',
         sourceFunction: 'updateState',
         identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
-        detail: { source: 'server action', phaseAfter: newState.phase, stateHandNumber: newState.handNumber ?? null },
+        detail: { source: 'server action', phaseAfter: committedState.phase, stateHandNumber: committedState.handNumber ?? null },
       });
+      return committedState;
     } catch (err) {
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2689,22 +2314,28 @@ export const GinRummyGameTable = ({
         payload: ginStateSummary(newState, { error: String(err) }),
       });
       console.error('[GIN-RUMMY] Error updating state:', err);
-      toast.error('Failed to update game state');
-      // On error, clear optimistic so polls can recover to real state
+      // Clear presentation optimism and restore the caller-specific committed
+      // projection before surfacing the error to the action handler.
       ginSync.clearOptimistic();
+      if (roundId) {
+        try {
+          const authoritativeState = await fetchGinRummyState(roundId);
+          ginSync.receiveAuthoritativeUpdate(authoritativeState);
+          setGinState(authoritativeState);
+        } catch (refetchError) {
+          console.error('[GIN-RUMMY] Authoritative recovery refetch failed:', refetchError);
+        }
+      }
+      throw err;
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Fetch fresh state from DB to avoid stale closures in multiplayer
+  // Fetch the caller-specific authoritative projection to avoid stale closures.
   const fetchFreshState = async (): Promise<GinRummyState | null> => {
-    const { data } = await supabase
-      .from('rounds')
-      .select('gin_rummy_state')
-      .eq('id', roundId)
-      .single();
-    return data?.gin_rummy_state as unknown as GinRummyState | null;
+    if (!roundId) return null;
+    return fetchGinRummyState(roundId);
   };
 
   // Action handlers
@@ -2773,7 +2404,7 @@ export const GinRummyGameTable = ({
         preState,
         newState,
       });
-      await updateState(newState, tid);
+      await updateState(newState, { action: 'draw_stock' }, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2805,7 +2436,7 @@ export const GinRummyGameTable = ({
         preState,
         newState,
       });
-      await updateState(newState, tid);
+      await updateState(newState, { action: 'draw_discard' }, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2830,7 +2461,7 @@ export const GinRummyGameTable = ({
     pendingSelfDiscardSourceRectRef.current = sourceRect ?? null;
     try {
       const newState = discardCard(ginState, currentPlayerId, card);
-      await updateState(newState, tid);
+      await updateState(newState, { action: 'discard', card }, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2841,9 +2472,9 @@ export const GinRummyGameTable = ({
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
     try {
-      let newState = declareKnock(ginState, currentPlayerId, card);
+      const newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
-        // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        // Gin! Show the presentation immediately, but commit only the intent RPC.
         traceGinAnnouncement('overlay:trigger:local-action', {
           overlay: 'gin',
           phase: newState.phase,
@@ -2852,25 +2483,27 @@ export const GinRummyGameTable = ({
           roundId: currentRoundId,
           handNumber: newState.handNumber ?? handNumber,
         });
-        localOptimisticSignatureRef.current = signatureForGinRunback(newState);
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
-        // Write scoring state to DB so opponent sees gin phase and gets overlay too
-        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        traceGinAnnouncement('local-action:scoring-state-written', {
+        const committed = await updateState(newState, { action: 'knock', card });
+        traceGinAnnouncement('local-action:scoring-state-committed', {
           overlay: 'gin',
-          phase: newState.phase,
+          phase: committed?.phase ?? newState.phase,
           roundId: currentRoundId,
         });
-        ginSync.applyOptimistic(newState);
-        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
-        // Transition scoring → complete in one shot (no redundant scoring write)
-        newState = scoreHand(newState);
-        // Gin branch authors a genuinely newer 'complete' state — write it once here.
-        await updateState(newState);
+        if (committed && roundId) {
+          const finalized = await applyGinRummyAction({
+            roundId,
+            playerId: currentPlayerId,
+            action: 'finalize_scoring',
+            expectedActionCount: committed.actionCount ?? null,
+          });
+          ginSync.receiveAuthoritativeUpdate(finalized.state);
+          setGinState(finalized.state);
+        }
       } else if (newState.phase === 'knocking') {
-        // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        // Knock! Show the presentation immediately, but commit only the intent RPC.
         traceGinAnnouncement('overlay:trigger:local-action', {
           overlay: 'knock',
           phase: newState.phase,
@@ -2879,23 +2512,16 @@ export const GinRummyGameTable = ({
           roundId: currentRoundId,
           handNumber: newState.handNumber ?? handNumber,
         });
-        localOptimisticSignatureRef.current = signatureForGinRunback(newState);
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
-        // Write knocking state to DB so opponent sees overlay too
-        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        traceGinAnnouncement('local-action:knocking-state-written', {
+        const committed = await updateState(newState, { action: 'knock', card });
+        traceGinAnnouncement('local-action:knocking-state-committed', {
           overlay: 'knock',
-          phase: newState.phase,
+          phase: committed?.phase ?? newState.phase,
           roundId: currentRoundId,
         });
-        ginSync.applyOptimistic(newState);
-        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
-        // NO trailing updateState here. The opponent now owns layoff → scoring → complete
-        // progression; a delayed write of the stale 'knocking' snapshot would clobber any
-        // newer authoritative state (e.g. 'complete') the opponent has already written.
       }
     } catch (err) {
       toast.error((err as Error).message);
@@ -2934,7 +2560,7 @@ export const GinRummyGameTable = ({
         preState: fresh,
         newState,
       });
-      await updateState(newState, tid);
+      await updateState(newState, { action: 'take_first_draw' }, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2949,7 +2575,7 @@ export const GinRummyGameTable = ({
       const newState = passFirstDraw(fresh, currentPlayerId);
       // Longer optimistic guard — bot needs 1-2s to decide after our pass
       // Optimistic guard handled by updateState → ginSync.applyOptimistic
-      await updateState(newState);
+      await updateState(newState, { action: 'pass_first_draw' });
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2961,7 +2587,7 @@ export const GinRummyGameTable = ({
     if (!card) return;
     try {
       const newState = layOffCard(ginState, currentPlayerId, card, meldIndex);
-      await updateState(newState);
+      await updateState(newState, { action: 'lay_off', card, meldIndex });
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2970,11 +2596,8 @@ export const GinRummyGameTable = ({
   const handleFinishLayingOff = async () => {
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
-      let newState = finishLayingOff(ginState, currentPlayerId);
-      if (newState.phase === 'scoring') {
-        newState = scoreHand(newState);
-      }
-      await updateState(newState);
+      const newState = finishLayingOff(ginState, currentPlayerId);
+      await updateState(newState, { action: 'finish_lay_off' });
     } catch (err) {
       toast.error((err as Error).message);
     }
