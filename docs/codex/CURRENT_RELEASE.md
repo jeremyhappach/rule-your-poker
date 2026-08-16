@@ -2,6 +2,22 @@
 
 Date: 2026-08-16
 
+## Holm Chucky card-face slot sizing
+
+- The Holm Chucky stage deliberately fills its canonical `HolmAnchoredSlot`
+  with percentage dimensions. `PlayingCard` could not derive face density from
+  those percentage strings, so it used a device-category fallback and produced
+  oversized or cropped rank/suit art in Chrome desktop mobile emulation.
+- `MobileGameTable` now measures that existing slot with a bounded
+  `ResizeObserver` owner and passes the measured width through the shared
+  `faceFillPx` API. Stage geometry, card aspect ratio, deck art, and canonical
+  card rendering remain unchanged; no viewport breakpoint or core geometry
+  contract was changed.
+- The focused sizing regression check, TypeScript no-emit check, and Vite
+  production build passed. Commit `9509c16bfb9fdf43c2e2e469fa09e57fc9cffdb0`
+  reached Vercel production `READY`, and Jeremy confirmed the reported
+  Chucky-card face-size smoke on 2026-08-16.
+
 ## Stale published-build admission gate
 
 - Production commit `504956f1dacc14d4a60750e5fbb520dc15038210` added a

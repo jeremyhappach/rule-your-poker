@@ -825,7 +825,9 @@ Status: Completed; production smoke passed on 2026-08-13. Reproduced by producti
 
 ### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
 
-Status: Queued; reported by Chrome desktop mobile-emulator smoke on 2026-08-12.
+Status: Completed; production commit
+`9509c16bfb9fdf43c2e2e469fa09e57fc9cffdb0` passed the reported smoke on
+2026-08-16.
 
 - The Holm Chucky stage is positioned through the canonical felt-relative
   `HolmAnchoredSlot`, and it renders the shared `PlayingCard` / Card Front
@@ -841,6 +843,11 @@ Status: Queued; reported by Chrome desktop mobile-emulator smoke on 2026-08-12.
   resolver (for example via its existing explicit face dimensions or a bounded
   measurement owner), then verify Chucky card faces in desktop mobile
   emulation and supported mobile layouts without overlap or crop.
+- Completed by a bounded slot measurement owner in `MobileGameTable`: it
+  observes the existing canonical Chucky slot and supplies its measured width
+  to `PlayingCard` through `faceFillPx`. Jeremy confirmed the formerly
+  oversized/cropped face art now fits; stage geometry and responsive contracts
+  were preserved.
 
 ## P2 — known low-severity defects
 
