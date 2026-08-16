@@ -20,6 +20,37 @@ export type GinPresentationIdentity = {
   handNumber: number;
 };
 
+type GinPresentationActionState = {
+  actionCount?: number;
+  lastAction?: {
+    type: string;
+    playerId: string;
+    timestamp: string;
+  } | null;
+};
+
+/**
+ * One committed Gin action keeps the same presentation identity across the
+ * caller's optimistic projection, RPC result, refetch, and Realtime echo.
+ * Timestamps are deliberately excluded because the browser and PostgreSQL
+ * stamp their projections independently.
+ */
+export const ginPresentationActionKey = (
+  state: GinPresentationActionState | null | undefined,
+  handContextId: string | null | undefined,
+): string | null => {
+  const action = state?.lastAction;
+  const actionCount = state?.actionCount;
+  if (!handContextId || !action || !Number.isInteger(actionCount) || (actionCount ?? 0) < 1) {
+    return null;
+  }
+  return `${handContextId}#a${actionCount}#${action.type}#p${action.playerId}`;
+};
+
+export const isGinMaskedCard = (
+  card: { rank?: string; suit?: string; masked?: boolean } | null | undefined,
+): boolean => !!card && (card.masked === true || card.rank === '?' || card.suit === '?');
+
 export const ginIdentityKey = (id: GinPresentationIdentity | null | undefined): string =>
   id ? `${id.dealerGameId}#r${id.roundId}#h${id.handNumber}` : '';
 

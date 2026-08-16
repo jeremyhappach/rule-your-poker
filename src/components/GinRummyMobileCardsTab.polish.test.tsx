@@ -33,14 +33,15 @@ describe('Gin cards-tab visual selection ownership (polish)', () => {
     expect(src).toMatch(/prevPhaseRef\.current\s*!==\s*ginState\.phase/);
   });
 
-  it('validates lifted selection/drawnCard against current hand', () => {
+  it('validates selection against the rendered hand and drawnCard against the full caller hand', () => {
     expect(src).toMatch(/!myState\.hand\[selectedCardIndex\]/);
-    expect(src).toMatch(/!myState\.hand\.some\(c\s*=>\s*c\.rank\s*===\s*drawnCard\.rank/);
+    expect(src).toMatch(/!stableMyStateAuthoritative\.hand\.some\(c\s*=>\s*c\.rank\s*===\s*drawnCard\.rank/);
+    expect(src).toMatch(/!isGinMaskedCard\(lastAct\.card\)/);
   });
 
   it('successful discard/knock/layoff still clear selection', () => {
     // handleDiscard clears
-    expect(src).toMatch(/onDiscard\(selectedCardIndex\);\s*setSelectedCardIndex\(null\)/);
+    expect(src).toMatch(/onDiscard\(selectedCardIndex,\s*sourceRect\);\s*setSelectedCardIndex\(null\)/);
     // handleKnock clears
     expect(src).toMatch(/onKnock\(selectedCardIndex\);\s*setSelectedCardIndex\(null\)/);
     // handleLayOff clears

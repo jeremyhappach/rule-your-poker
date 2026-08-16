@@ -30,4 +30,26 @@ describe('Gin caller-specific projection admission', () => {
       ".then((state) => applyState(state, 'realtime-refetch'))",
     );
   });
+
+  it('uses one hand-and-action-count identity across optimistic and committed presentation', () => {
+    expect(componentSource).toContain(
+      'ginPresentationActionKey(viewState, handContextId)',
+    );
+    expect(componentSource).toContain(
+      'ginPresentationActionKey(newState, handContextId)',
+    );
+    expect(componentSource).not.toMatch(/action\.type[^\n]+action\.timestamp/);
+  });
+
+  it('reconciles the real caller card before admitting the committed state', () => {
+    const reconcileIndex = componentSource.indexOf(
+      'reconcileCommittedSelfDraw(committedState)',
+    );
+    const admitIndex = componentSource.indexOf(
+      'ginSync.receiveAuthoritativeUpdate(committedState)',
+    );
+    expect(reconcileIndex).toBeGreaterThan(-1);
+    expect(admitIndex).toBeGreaterThan(reconcileIndex);
+    expect(componentSource).toContain('isGinMaskedCard(action.card)');
+  });
 });

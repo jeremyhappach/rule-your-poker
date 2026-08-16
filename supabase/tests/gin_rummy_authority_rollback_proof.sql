@@ -30,6 +30,7 @@ DECLARE
   v_dealer_positions integer[];
   v_dealer_index integer;
   v_expected_dealer integer;
+  v_stock_card jsonb;
 BEGIN
   SELECT ids[1],ids[2] INTO v_user_one,v_user_two FROM (
     SELECT array_agg(id ORDER BY id::text) ids FROM (
@@ -95,6 +96,34 @@ BEGIN
   IF v_state->'playerStates'->v_player_two::text->'hand'->0->>'rank'='?'
      OR v_state->'playerStates'->v_player_one::text->'hand'->0->>'rank'<>'?' THEN
     RAISE EXCEPTION 'peer_projection_incorrect';
+  END IF;
+
+  -- A stock draw remains masked in the Realtime/public and peer projections,
+  -- while the initiating caller receives the exact committed card. Public
+  -- discard draws remain visible because their source card was already public.
+  SELECT state INTO v_state FROM private.gin_rummy_round_states WHERE round_id=v_round_one;
+  v_stock_card:=v_state->'stockPile'->(jsonb_array_length(v_state->'stockPile')-1);
+  v_state:=jsonb_set(v_state,'{lastAction}',jsonb_build_object(
+    'type','draw_stock','playerId',v_player_one,'card',v_stock_card,'timestamp','projection-proof'
+  ),true);
+  v_public:=private.gin_public_state(v_state);
+  IF v_public #>> '{lastAction,card,rank}'<>'?' THEN
+    RAISE EXCEPTION 'public_stock_draw_projection_leaked_card:%',v_public->'lastAction';
+  END IF;
+  v_result:=private.gin_project_state(v_state,v_game_id,v_user_one);
+  IF v_result #> '{lastAction,card}' IS DISTINCT FROM v_stock_card THEN
+    RAISE EXCEPTION 'stock_draw_actor_projection_missing_card:%',v_result->'lastAction';
+  END IF;
+  v_result:=private.gin_project_state(v_state,v_game_id,v_user_two);
+  IF v_result #>> '{lastAction,card,rank}'<>'?' THEN
+    RAISE EXCEPTION 'stock_draw_peer_projection_leaked_card:%',v_result->'lastAction';
+  END IF;
+  v_state:=jsonb_set(v_state,'{lastAction}',jsonb_build_object(
+    'type','draw_discard','playerId',v_player_one,'card',v_stock_card,'timestamp','projection-proof'
+  ),true);
+  v_public:=private.gin_public_state(v_state);
+  IF v_public #> '{lastAction,card}' IS DISTINCT FROM v_stock_card THEN
+    RAISE EXCEPTION 'public_discard_draw_projection_masked_visible_card:%',v_public->'lastAction';
   END IF;
 
   -- Direct public state authority is rejected.
