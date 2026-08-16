@@ -303,13 +303,100 @@ BEGIN
   v_state:=private.cribbage_enter_counting(v_state);
   PERFORM private.cribbage_publish_state(v_next_round_id,v_state);
   SELECT state INTO v_state FROM private.cribbage_round_states WHERE round_id=v_next_round_id;
-  IF v_state->>'phase'<>'complete' OR (v_state->>'winnerPlayerId')::uuid<>v_winner_id THEN
-    RAISE EXCEPTION 'terminal_resolution_failed:%',v_state;
+  SELECT cribbage_state INTO v_public FROM public.rounds WHERE id=v_next_round_id;
+  IF v_state->>'phase'<>'counting'
+     OR v_state->'countingResolution'->>'outcome'<>'terminal_pending'
+     OR v_state->>'winnerPlayerId' IS NOT NULL
+     OR (v_state->'pendingTerminal'->>'winnerPlayerId')::uuid<>v_winner_id
+     OR v_public->>'phase'<>'counting'
+     OR v_public->>'winnerPlayerId' IS NOT NULL
+     OR v_public ? 'pendingTerminal'
+     OR (SELECT presentation_fallback_at FROM public.rounds WHERE id=v_next_round_id) IS NULL
+     OR EXISTS(
+       SELECT 1 FROM public.game_results
+        WHERE dealer_game_id=v_dealer_game_id
+          AND hand_number=2
+          AND settlement_key='cribbage_terminal'
+     ) THEN
+    RAISE EXCEPTION 'terminal_pending_lease_failed:private=% public=%',v_state,v_public;
   END IF;
 
+  -- Pending winner identity is private, duplicate finalization cannot score it
+  -- twice, and no caller can settle before presentation promotes the state.
+  v_before:=v_state;
+  v_replay:=public.cribbage_finalize_counting(v_next_round_id);
+  SELECT state INTO v_after FROM private.cribbage_round_states WHERE round_id=v_next_round_id;
+  IF v_replay->>'outcome'<>'terminal_pending'
+     OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
+     OR v_after IS DISTINCT FROM v_before THEN
+    RAISE EXCEPTION 'terminal_pending_finalize_replay_changed_state:%',v_replay;
+  END IF;
+  BEGIN
+    PERFORM public.cribbage_settle_game(v_game_id,v_next_round_id,v_dealer_game_id,2);
+    RAISE EXCEPTION 'terminal_pending_settlement_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='terminal_pending_settlement_was_allowed'
+       OR SQLERRM NOT LIKE '%cribbage_settle_game:round_not_terminal:counting%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  -- Outsiders cannot acknowledge terminal presentation.
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_outsider,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    PERFORM public.cribbage_complete_counting(v_next_round_id);
+    RAISE EXCEPTION 'outsider_terminal_presentation_ack_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='outsider_terminal_presentation_ack_was_allowed'
+       OR SQLERRM NOT LIKE '%cribbage_finalize_counting:not_in_session%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  -- A connected client's visible crossing promotes exactly once.
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_user_one,'role','authenticated')::text,
+    true
+  );
+  v_result:=public.cribbage_complete_counting(v_next_round_id);
+  v_replay:=public.cribbage_complete_counting(v_next_round_id);
+  SELECT state INTO v_state FROM private.cribbage_round_states WHERE round_id=v_next_round_id;
+  IF v_result->>'outcome'<>'terminal'
+     OR coalesce((v_result->>'deduped')::boolean,true) IS TRUE
+     OR v_replay->>'outcome'<>'terminal'
+     OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
+     OR v_state->>'phase'<>'complete'
+     OR (v_state->>'winnerPlayerId')::uuid<>v_winner_id
+     OR v_state ? 'pendingTerminal'
+     OR (SELECT presentation_fallback_at FROM public.rounds WHERE id=v_next_round_id) IS NOT NULL THEN
+    RAISE EXCEPTION 'terminal_presentation_ack_failed:%/%/%',v_result,v_replay,v_state;
+  END IF;
+
+  -- Restore the rollback-only pending fixture, then prove that the scheduled
+  -- owner promotes and settles the same result when every browser disconnects.
+  PERFORM private.cribbage_publish_state(v_next_round_id,v_before);
+  PERFORM set_config('app.cribbage_authoritative_write','on',true);
+  UPDATE public.rounds SET presentation_fallback_at=clock_timestamp()-interval '1 second'
+   WHERE id=v_next_round_id;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_advanced:=private.advance_due_cribbage_state();
+  SELECT state INTO v_state FROM private.cribbage_round_states WHERE round_id=v_next_round_id;
+  IF v_advanced<1
+     OR v_state->>'phase'<>'complete'
+     OR (v_state->>'winnerPlayerId')::uuid<>v_winner_id
+     OR (SELECT status FROM public.games WHERE id=v_game_id)<>'game_over'
+     OR (SELECT count(*) FROM public.game_results
+          WHERE dealer_game_id=v_dealer_game_id
+            AND hand_number=2
+            AND settlement_key='cribbage_terminal')<>1 THEN
+    RAISE EXCEPTION 'terminal_fallback_settlement_failed:advanced=% state=%',v_advanced,v_state;
+  END IF;
   v_result:=public.cribbage_settle_game(v_game_id,v_next_round_id,v_dealer_game_id,2);
-  IF v_result->>'status'<>'settled' THEN RAISE EXCEPTION 'terminal_settlement_failed:%',v_result; END IF;
-  v_replay:=public.cribbage_settle_game(v_game_id,v_next_round_id,v_dealer_game_id,2);
-  IF v_replay->>'status'<>'already_settled' THEN RAISE EXCEPTION 'terminal_settlement_replay_failed:%',v_replay; END IF;
+  IF v_result->>'status'<>'already_settled' THEN RAISE EXCEPTION 'terminal_settlement_replay_failed:%',v_result; END IF;
 END;
 $proof$;

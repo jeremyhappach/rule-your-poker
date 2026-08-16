@@ -177,8 +177,9 @@ reset transient/presentation state when those identities change.
   `CribbageAnchoredPeggingRowMount.tsx`, `CribbageCountingPhase.tsx`, and
   `CribbagePegBoard.tsx`. `src/lib/cribbage/cribbageCutPresentation.ts`
   is the sole presentation-boundary derivation for a live cut versus an
-  authoritative exposed-cut rejoin; its focused test runs before `npm run
-  build`.
+  authoritative exposed-cut rejoin and derives the one-time persisted crib
+  hydration for a partial-discard rejoin; its focused test runs before `npm
+  run build`.
 - State/actions: `private.cribbage_round_states` owns hidden and mutable truth;
   `rounds.cribbage_state` is its redacted realtime projection.
   `src/lib/cribbageAuthority.ts` fetches caller-specific state and submits
@@ -189,9 +190,13 @@ reset transient/presentation state when those identities change.
   initial-hand RPC. Dealer selection, first deal, discard/cut,
   pegging, counting, successor release, and disconnect recovery are owned by
   `20260816113000_cribbage_authority_cutover.sql`, with startup correction in
-  `20260816124000_fix_cribbage_startup_handoff.sql`.
+  `20260816124000_fix_cribbage_startup_handoff.sql` and the terminal-counting
+  presentation lease in
+  `20260816143000_defer_cribbage_terminal_until_counted.sql`.
   `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
-  retain the accepted counting presentation lease.
+  retain the accepted counting presentation lease. A database-resolved winner
+  remains private `terminal_pending` until visible-count acknowledgement; the
+  same scheduled owner promotes and settles it after the disconnect fallback.
   `public.cribbage_record_counting_progress` in
   `supabase/migrations/20260814010000_cribbage_counting_rejoin_cursor.sql`
   owns the monotonic presentation cursor; `CribbageCountingPhase.tsx` derives

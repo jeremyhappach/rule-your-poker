@@ -724,3 +724,18 @@ are row-locked, replay-safe server transitions. Browsers submit immutable
 identity plus intent and own presentation only. A one-second private recovery
 owner advances dealer startup, bots, expired counting leases, and terminal
 settlement, so client disconnect cannot become a gameplay or financial pause.
+
+## D-056 - A Cribbage counting winner is terminal only when the count releases it
+
+PostgreSQL may resolve the immutable counting plan and winning score before a
+browser presents them, but it must not publish `complete`, expose the winner,
+or admit settlement at that point. A counting-based winner remains private
+`terminal_pending` while the public state stays in `counting`; the visible
+threshold-crossing acknowledgement promotes the authoritative terminal state.
+
+That acknowledgement does not choose the winner or calculate points. It only
+releases a database-resolved outcome. If every browser disconnects, the same
+private recovery owner promotes and settles after the durable presentation
+fallback. Direct pegging and His Heels wins retain their existing terminal
+path because their winning points have already been presented before the
+terminal state is published.

@@ -16,7 +16,10 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbageDiscardPresentationQueue } from '@/lib/cribbage/discardPresentationQueue';
-import { deriveCribbageCutPresentation } from '@/lib/cribbage/cribbageCutPresentation';
+import {
+  deriveCribbageCutPresentation,
+  deriveCribbageHistoricalCribHydrationSeed,
+} from '@/lib/cribbage/cribbageCutPresentation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 // Wartime + peg-transport instrumentation removed post-cleanup. Local
 // no-op stubs preserve existing call-site shape without any diagnostic
@@ -5961,7 +5964,16 @@ export const CribbageMobileGameTable = ({
   }, [cutRevealHandKey]);
 
   useEffect(() => {
-    if (lastCutRevealHandKeyRef.current === cutRevealHandKey) return;
+    if (lastCutRevealHandKeyRef.current === cutRevealHandKey) {
+      const hydrationSeed = deriveCribbageHistoricalCribHydrationSeed({
+        entryMode,
+        authoritativeCribCount: cribbageState?.crib?.length ?? 0,
+        locallySettledCribCount: discardsSettledInHand,
+        hasDiscardIntent: discardIntent !== null,
+      });
+      if (hydrationSeed !== null) setDiscardsSettledInHand(hydrationSeed);
+      return;
+    }
     lastCutRevealHandKeyRef.current = cutRevealHandKey;
     // Seed settled count from authoritative crib length at every hand
     // boundary. Fresh hands seed 0 (crib empty); mid-hand rejoin seeds
@@ -5977,7 +5989,13 @@ export const CribbageMobileGameTable = ({
     const alreadyPresented = !!cribbageState?.cutCard && authCrib > 0;
     cutRevealPresentationReadyRef.current = alreadyPresented;
     setCutRevealCompletedHandKey(alreadyPresented ? cutRevealHandKey : null);
-  }, [cutRevealHandKey, cribbageState?.crib?.length]);
+  }, [
+    cutRevealHandKey,
+    cribbageState?.crib?.length,
+    discardIntent,
+    discardsSettledInHand,
+    entryMode,
+  ]);
 
   // A historical entry deliberately does not replay already-finished deal or
   // discard presentation. If it joins an exposed cut in pegging, no local

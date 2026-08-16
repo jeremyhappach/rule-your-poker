@@ -21,6 +21,35 @@ export interface CribbageCutPresentationState {
   isPeggingPresentationBlocked: boolean;
 }
 
+export interface CribbageHistoricalCribHydrationArgs {
+  entryMode: CribbageEntryMode;
+  authoritativeCribCount: number;
+  locallySettledCribCount: number;
+  hasDiscardIntent: boolean;
+}
+
+/**
+ * A refreshed client has no local transport completion for cards that were
+ * already committed before it mounted. Recover that one initial presentation
+ * fact from the persisted crib count, but never absorb later live growth: once
+ * any card is locally settled, the normal discard transport remains the owner.
+ */
+export function deriveCribbageHistoricalCribHydrationSeed(
+  args: CribbageHistoricalCribHydrationArgs,
+): number | null {
+  const authoritativeCribCount = Math.max(0, args.authoritativeCribCount);
+  const locallySettledCribCount = Math.max(0, args.locallySettledCribCount);
+  if (
+    args.entryMode !== 'historical-entry' ||
+    args.hasDiscardIntent ||
+    authoritativeCribCount === 0 ||
+    locallySettledCribCount !== 0
+  ) {
+    return null;
+  }
+  return authoritativeCribCount;
+}
+
 /**
  * Resolves the complete local presentation boundary for a Cribbage cut.
  *

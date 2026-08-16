@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { deriveCribbageCutPresentation } from './cribbageCutPresentation';
+import {
+  deriveCribbageCutPresentation,
+  deriveCribbageHistoricalCribHydrationSeed,
+} from './cribbageCutPresentation';
 
 const liveCut = {
   entryMode: 'live-transition' as const,
@@ -58,5 +61,34 @@ describe('deriveCribbageCutPresentation', () => {
       cutRevealCompletedHandKey: 'round-a:7',
       handKey: 'round-b:8',
     }).isPeggingPresentationBlocked).toBe(true);
+  });
+});
+
+describe('deriveCribbageHistoricalCribHydrationSeed', () => {
+  it('restores a persisted partial crib after an empty refresh bootstrap', () => {
+    expect(deriveCribbageHistoricalCribHydrationSeed({
+      entryMode: 'historical-entry',
+      authoritativeCribCount: 2,
+      locallySettledCribCount: 0,
+      hasDiscardIntent: false,
+    })).toBe(2);
+  });
+
+  it('leaves later opponent crib growth to the live transport owner', () => {
+    expect(deriveCribbageHistoricalCribHydrationSeed({
+      entryMode: 'historical-entry',
+      authoritativeCribCount: 4,
+      locallySettledCribCount: 2,
+      hasDiscardIntent: false,
+    })).toBeNull();
+  });
+
+  it('does not expose authoritative growth while a discard is in flight', () => {
+    expect(deriveCribbageHistoricalCribHydrationSeed({
+      entryMode: 'historical-entry',
+      authoritativeCribCount: 2,
+      locallySettledCribCount: 0,
+      hasDiscardIntent: true,
+    })).toBeNull();
   });
 });

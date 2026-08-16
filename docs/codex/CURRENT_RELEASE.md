@@ -2,6 +2,33 @@
 
 Date: 2026-08-16
 
+## Cribbage terminal-counting lease and partial-crib rejoin repair
+
+- Production smoke on **Aug 16 - Aramis Ramirez** proved that a counting-based
+  winner was finalized in the same transaction that entered counting. Both
+  clients received `complete` with a 31-point winner while the durable counting
+  cursor was still at target `0`, beat `-1`; their pegboards then reconstructed
+  the correct 24-point pre-count baseline after terminal presentation had
+  already started. The database nevertheless settled exactly once.
+- Migration `20260816143000_defer_cribbage_terminal_until_counted.sql` is
+  installed on owned production. PostgreSQL now persists a counting winner as
+  `terminal_pending`, keeps the winner identity private, and publishes the
+  immutable scoring plan without admitting `complete`. The visible crossing
+  acknowledgement promotes the authoritative terminal state; the scheduled
+  owner performs the same promotion and exactly-once settlement after the
+  presentation fallback when every browser disconnects.
+- A refreshed client that rejoins after its own partial discard now reconstructs
+  already-parked crib cardbacks from the authoritative crib count. That one-time
+  hydration does not consume later live opponent growth, so normal
+  discard-to-crib transport and cut gating remain unchanged.
+- The complete authority rollback proof passed before and after deployment and
+  now covers private pending-winner projection, duplicate scoring, premature
+  settlement rejection, authorization, connected promotion, disconnect
+  fallback, and settlement replay in addition to dealer winner/tie, action
+  replay, late replay, and continuation. Thirty-three focused Cribbage
+  assertions, the local TypeScript no-emit check, and the production build pass.
+  Fresh two-client production smoke remains required.
+
 ## Cribbage dealer-selection startup hotfix
 
 - Production smoke after the authority cutover exposed one Cribbage startup
