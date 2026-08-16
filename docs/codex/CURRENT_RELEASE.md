@@ -2,6 +2,30 @@
 
 Date: 2026-08-16
 
+## Gin stock-draw projection and presentation reconciliation
+
+- Production evidence after the Gin caller-projection hotfix exposed one
+  coupled authority/presentation defect. The public projection masked hands
+  and stock but left a stock draw's `lastAction.card` visible to peers. The
+  initiating browser also represented the same action twice: masked optimistic
+  state and the real RPC result carried different timestamps, so draw/discard
+  transports duplicated and the blue recently-drawn latch retained no real
+  card identity.
+- Migration `20260816203000_fix_gin_stock_draw_projection.sql` is installed on
+  owned production. Realtime/public and peer projections now mask stock-draw
+  action cards; only the exact player who drew the card receives it through the
+  caller-specific projection. Public discard draws remain visible.
+- Client transports now key one action by exact Gin hand identity plus the
+  CAS-protected `actionCount`, action type, and player. The caller's committed
+  real card replaces the optimistic `?/?` payload under that same transport
+  before authoritative render, and the blue latch validates against the full
+  caller hand rather than the intentionally clipped animation hand.
+- The complete Gin rollback proof passed before and after migration, including
+  the installed cron statement, authorization, projection privacy, ordinary
+  and void-hand continuation, terminal settlement, duplicate/replay, and late
+  replay. Sixteen focused assertions, TypeScript, and the production build
+  pass. Published two-client runtime smoke remains required.
+
 ## Cribbage authoritative postgame handoff
 
 - Production smoke after terminal-counting acceptance exposed a separate

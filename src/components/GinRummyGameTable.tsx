@@ -10,6 +10,8 @@ import {
   type GinPresentationIdentity,
   ginIdentityEqual,
   ginIdentityKey,
+  ginPresentationActionKey,
+  isGinMaskedCard,
   isGinIdentityForward,
   ginIdentityMismatchAxis,
 } from '@/lib/ginRummy/presentationIdentity';
@@ -149,6 +151,7 @@ function estimateSelfDrawLandingRect(
   drawnCard: { rank: string; suit: string } | null,
 ): { x: number; y: number; width: number; height: number } | null {
   if (!drawnCard) return null;
+  if (!GIN_LANDING_RANK_ORDER[drawnCard.rank] || GIN_LANDING_SUIT_ORDER[drawnCard.suit] === undefined) return null;
   if (!Array.isArray(preHand) || preHand.length === 0) return null;
   // Build indexed pre-hand entries keyed by their originalIndex in
   // preHand, then sort by the shared (rank, suit) comparator.
@@ -1038,6 +1041,41 @@ export const GinRummyGameTable = ({
   const [releasedDiscardActionKeys, setReleasedDiscardActionKeys] = useState<Set<string>>(() => new Set());
   const prevLastActionRef = useRef<string | null>(null);
 
+  const reconcileCommittedSelfDraw = useCallback((committedState: GinRummyState): void => {
+    const action = committedState.lastAction;
+    if (
+      !currentPlayerId ||
+      !action ||
+      action.playerId !== currentPlayerId ||
+      (action.type !== 'draw_stock' && action.type !== 'draw_discard') ||
+      !action.card ||
+      isGinMaskedCard(action.card)
+    ) {
+      return;
+    }
+    const actionKey = ginPresentationActionKey(committedState, handContextId);
+    if (!actionKey) return;
+    const intentId = `self-draw-${actionKey}`;
+    const committedCardId = cardId(action.card);
+
+    // The optimistic stock projection contains a masked ?/? card. Replace the
+    // payload under the SAME intent before the committed state renders so the
+    // real caller card remains withheld until the original transport settles.
+    setSelfDrawIntents(prev => {
+      const existing = prev[intentId];
+      if (!existing || existing.drawnCardId === committedCardId) return prev;
+      return {
+        ...prev,
+        [intentId]: {
+          ...existing,
+          card: action.card ?? null,
+          drawnCardId: committedCardId,
+        },
+      };
+    });
+    setDrawnCard({ rank: action.card.rank, suit: action.card.suit });
+  }, [currentPlayerId, handContextId]);
+
   const isSeatedGamePlayer = useCallback((player: Player) => {
     if (player.status === 'observer' || player.status === 'left') return false;
     if (player.sitting_out) return false;
@@ -1333,7 +1371,8 @@ export const GinRummyGameTable = ({
     if (!viewState) return;
     const action = viewState.lastAction;
     if (!action) return;
-    const actionKey = `${action.type}-${action.playerId}-${action.timestamp}`;
+    const actionKey = ginPresentationActionKey(viewState, handContextId);
+    if (!actionKey) return;
     if (actionKey === prevLastActionRef.current) return;
     prevLastActionRef.current = actionKey;
 
@@ -1398,7 +1437,7 @@ export const GinRummyGameTable = ({
         sourceRect: null,
       });
     }
-  }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
+  }, [viewState?.lastAction, viewState?.actionCount, currentPlayerId, playerSlotById, players, handContextId]);
 
   // Load state from DB
   useEffect(() => {
@@ -2214,6 +2253,7 @@ export const GinRummyGameTable = ({
           ?? Math.max(0, (newState.actionCount ?? 1) - 1),
       });
       const committedState = result.state;
+      reconcileCommittedSelfDraw(committedState);
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_success', traceId,
@@ -2278,8 +2318,8 @@ export const GinRummyGameTable = ({
     const { source, preState, newState } = args;
     const drawnCard = newState.lastAction?.card ?? null;
     const drawnId = cardId(drawnCard);
-    const _action = newState.lastAction!;
-    const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
+    const _actionKey = ginPresentationActionKey(newState, handContextId);
+    if (!_actionKey) return;
     const _intentId = `self-draw-${_actionKey}`;
     // Estimate the drawn card's projected sorted landing rect using
     // the pre-draw hand still rendered in the DOM. Fallback (null)
@@ -2785,7 +2825,7 @@ export const GinRummyGameTable = ({
               const la = viewState.lastAction;
               const discardActionKey =
                 la && la.type === 'discard' && la.card
-                  ? `${la.type}-${la.playerId}-${la.timestamp}`
+                  ? ginPresentationActionKey(viewState, handContextId)
                   : null;
               const withheldDiscardTop =
                 discardActionKey &&

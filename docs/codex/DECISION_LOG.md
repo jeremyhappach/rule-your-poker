@@ -754,3 +754,17 @@ durable claim returns the same result to simultaneous clients and makes a late
 replay harmless after a newer dealer game begins. This decision is scoped to
 Cribbage; every other game's shared client-owned postgame boundary remains an
 explicit audit item during that game's authority migration.
+
+## D-058 - Hidden action payloads use caller-specific projection identity
+
+A hidden card is not made public merely because it is referenced by
+`lastAction`. Gin stock-draw action cards are masked in the public Realtime row
+and every peer projection, then restored only in the exact drawing player's
+caller-specific RPC/refetch result. Discard-pile draws remain public because
+their source card was already visible.
+
+Presentation dedupe never uses independently generated browser/database
+timestamps. One Gin action is keyed by exact dealer-game/round/hand identity,
+the CAS-protected action counter, action type, and player. A masked optimistic
+payload may be reconciled in place with its committed caller payload, but that
+reconciliation cannot launch a second transport or become gameplay authority.

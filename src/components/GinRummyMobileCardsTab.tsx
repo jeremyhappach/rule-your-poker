@@ -14,6 +14,7 @@ import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
+import { isGinMaskedCard } from '@/lib/ginRummy/presentationIdentity';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -369,7 +370,12 @@ export const GinRummyMobileCardsTab = ({
   useEffect(() => {
     if (prevTurnPhaseRef.current === 'draw' && ginState.turnPhase === 'discard' && isMyTurn) {
       const lastAct = ginState.lastAction;
-      if (lastAct && (lastAct.type === 'draw_stock' || lastAct.type === 'draw_discard') && lastAct.card) {
+      if (
+        lastAct &&
+        (lastAct.type === 'draw_stock' || lastAct.type === 'draw_discard') &&
+        lastAct.card &&
+        !isGinMaskedCard(lastAct.card)
+      ) {
         setDrawnCard({ rank: lastAct.card.rank, suit: lastAct.card.suit });
       }
     }
@@ -400,10 +406,14 @@ export const GinRummyMobileCardsTab = ({
       setSelectedCardIndex(null);
       onLayOffCardSelected?.(null);
     }
-    if (drawnCard && !myState.hand.some(c => c.rank === drawnCard.rank && c.suit === drawnCard.suit)) {
+    if (
+      drawnCard &&
+      stableMyStateAuthoritative &&
+      !stableMyStateAuthoritative.hand.some(c => c.rank === drawnCard.rank && c.suit === drawnCard.suit)
+    ) {
       setDrawnCard(null);
     }
-  }, [myState, selectedCardIndex, drawnCard, setSelectedCardIndex, setDrawnCard, onLayOffCardSelected]);
+  }, [myState, stableMyStateAuthoritative, selectedCardIndex, drawnCard, setSelectedCardIndex, setDrawnCard, onLayOffCardSelected]);
 
   // Knock/Gin checks
   const handAfterDiscard = useMemo(() => {
