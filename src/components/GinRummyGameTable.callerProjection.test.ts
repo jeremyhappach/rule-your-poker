@@ -52,4 +52,16 @@ describe('Gin caller-specific projection admission', () => {
     expect(admitIndex).toBeGreaterThan(reconcileIndex);
     expect(componentSource).toContain('isGinMaskedCard(action.card)');
   });
+
+  it('derives the current player before the reconciliation hook evaluates its dependencies', () => {
+    const currentPlayerIdIndex = componentSource.indexOf(
+      'const currentPlayerId = currentPlayer?.id',
+    );
+    const reconcileHookIndex = componentSource.indexOf(
+      'const reconcileCommittedSelfDraw = useCallback',
+    );
+
+    expect(currentPlayerIdIndex).toBeGreaterThan(-1);
+    expect(reconcileHookIndex).toBeGreaterThan(currentPlayerIdIndex);
+  });
 });

@@ -1041,6 +1041,23 @@ export const GinRummyGameTable = ({
   const [releasedDiscardActionKeys, setReleasedDiscardActionKeys] = useState<Set<string>>(() => new Set());
   const prevLastActionRef = useRef<string | null>(null);
 
+  const isSeatedGamePlayer = useCallback((player: Player) => {
+    if (player.status === 'observer' || player.status === 'left') return false;
+    if (player.sitting_out) return false;
+    if (player.waiting) return false;
+    return true;
+  }, []);
+  const eligibleSeatPlayers = players.filter(isSeatedGamePlayer);
+  const viewStateParticipantIds = viewState
+    ? new Set([viewState.dealerPlayerId, viewState.nonDealerPlayerId])
+    : null;
+  const activeSeatPlayers = viewStateParticipantIds
+    ? players.filter(player => viewStateParticipantIds.has(player.id))
+    : eligibleSeatPlayers;
+  const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
+  const currentPlayerId = currentPlayer?.id;
+  const isObserver = !currentPlayerId;
+
   const reconcileCommittedSelfDraw = useCallback((committedState: GinRummyState): void => {
     const action = committedState.lastAction;
     if (
@@ -1076,22 +1093,6 @@ export const GinRummyGameTable = ({
     setDrawnCard({ rank: action.card.rank, suit: action.card.suit });
   }, [currentPlayerId, handContextId]);
 
-  const isSeatedGamePlayer = useCallback((player: Player) => {
-    if (player.status === 'observer' || player.status === 'left') return false;
-    if (player.sitting_out) return false;
-    if (player.waiting) return false;
-    return true;
-  }, []);
-  const eligibleSeatPlayers = players.filter(isSeatedGamePlayer);
-  const viewStateParticipantIds = viewState
-    ? new Set([viewState.dealerPlayerId, viewState.nonDealerPlayerId])
-    : null;
-  const activeSeatPlayers = viewStateParticipantIds
-    ? players.filter(player => viewStateParticipantIds.has(player.id))
-    : eligibleSeatPlayers;
-  const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
-  const currentPlayerId = currentPlayer?.id;
-  const isObserver = !currentPlayerId;
   // P9.4 (re-scoped, Option A): consume shell-owned SeatAnchorLayer.
   // Gin no longer recomputes seat projection locally. The shell mounts
   // SeatAnchorLayer at the PersistentTableShell boundary using the same
