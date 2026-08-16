@@ -33,6 +33,15 @@
 
 ## Cribbage
 
+- The Cribbage server-authority sweep passed published two-client production
+  smoke on 2026-08-16 at commit
+  `a73855939c2737f685e0cefc9b5851473bfbe54f`. Both clients completed dealer
+  startup, a partial-discard refresh retained the committed crib cardbacks, the
+  winner remained nonterminal until the visible scoring combo crossed the
+  target, settlement committed exactly once, and the session advanced into the
+  next dealer-game setup. Preserve the private hidden-state owner, terminal
+  counting lease, and `public.cribbage_advance_postgame` exact-settlement claim;
+  do not restore browser-authored dealer-game resets.
 - Cribbage count rejoin passed production smoke on 2026-08-13 at commit
   `938d89437d888323ab63fc5be254d917f3d5101c`: a refresh, reconnect, or
   connection change during the visible count resumes at the durable monotonic

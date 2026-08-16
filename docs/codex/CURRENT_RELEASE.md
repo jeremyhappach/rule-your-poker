@@ -23,8 +23,11 @@ Date: 2026-08-16
   rollback proof covers direct-write rejection, authorization, exact terminal
   settlement, dealer derivation, duplicate callers, and a late replay after a
   simulated newer dealer game. TypeScript, 33 focused Cribbage assertions, and
-  the production build pass. Fresh two-client continuation smoke remains
-  required.
+  the production build pass.
+- Jeremy accepted the published two-client Cribbage smoke on 2026-08-16 at
+  commit `a73855939c2737f685e0cefc9b5851473bfbe54f`: startup, partial-discard
+  refresh, visible terminal counting, exactly-once settlement, and progression
+  into the next dealer-game setup all completed cleanly.
 
 ## Cribbage terminal-counting lease and partial-crib rejoin repair
 
@@ -51,7 +54,7 @@ Date: 2026-08-16
   fallback, and settlement replay in addition to dealer winner/tie, action
   replay, late replay, and continuation. Thirty-three focused Cribbage
   assertions, the local TypeScript no-emit check, and the production build pass.
-  Fresh two-client production smoke remains required.
+  The published end-to-end smoke was accepted on 2026-08-16.
 
 ## Cribbage dealer-selection startup hotfix
 
@@ -74,8 +77,8 @@ Date: 2026-08-16
   projection, continuation, late replay, and terminal settlement. The parked
   production repro recovered to exactly one hand/round in `discarding`; the
   latest cron run succeeded. Thirty-two focused Cribbage assertions, the
-  available TypeScript no-emit check, and the production build pass. Fresh
-  two-client production startup smoke remains required.
+  available TypeScript no-emit check, and the production build pass. The
+  published end-to-end startup smoke was accepted on 2026-08-16.
 
 ## Cribbage server-authority cutover
 
@@ -94,8 +97,8 @@ Date: 2026-08-16
   ties, winner identity, hidden-card projection, authorization, duplicate and
   replayed actions, stale late replay, continuation, terminal scoring, and
   replay-safe settlement. TypeScript, the 30 focused Cribbage preservation
-  assertions, and the production Vite build pass. Production gameplay smoke
-  remains pending.
+  assertions, and the production Vite build pass. Published two-client gameplay
+  smoke was accepted on 2026-08-16.
 
 ## Holm Chucky card-face slot sizing
 
