@@ -172,6 +172,12 @@ Date: 2026-08-16
   in-flight latch prevents duplicate clicks. A central `games` DELETE realtime
   listener sends every connected client directly to the lobby, bypassing the
   prior missing-game retry cycle.
+- The later one-tap follow-up removed the confirmation dialog but left its
+  obsolete state setter in the post-RPC success path. The session was deleted,
+  then the undefined setter threw and produced a misleading failure toast. The
+  client now continues directly from the successful RPC result into the
+  existing recovery release and lobby navigation; database deletion, guards,
+  peer ejection, and real-money protection are unchanged.
 - The rollback proof passed before and after the production migration. It
   covers winner and tie cleanup, duplicate/late replay, authorization,
   continuation controls, terminal state, and the real-money guard. TypeScript,

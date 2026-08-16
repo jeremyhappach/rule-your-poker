@@ -14802,7 +14802,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // The initiating admin does not wait for its own realtime echo. Other
       // connected clients take the matching games DELETE path below.
       missingGameHandledRef.current = true;
-      setShowBlastGameDialog(false);
       recordTerminalRecovery('kick-or-removal', {
         gameId,
         source: 'admin-blast-fake-money-game',
