@@ -329,7 +329,6 @@ import {
   recordStartupValue,
   useStartupRenderTrace,
 } from "@/lib/startupFlightRecorder";
-import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
@@ -14199,11 +14198,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               error: ginStartResult.error ?? null,
             });
 
-            // OPTIMIZATION: Optimistically seed the returned round into Game state so
-            // currentRound / bootstrapState become available immediately, without
-            // waiting for realtime → fetchGameData → currentRound population
-            // (previously ~600ms on the critical path). Realtime + fetch remain as
-            // reconciliation — they will overwrite this seed with the same authoritative row.
+            // Seed only the exact round identity into Game state so the initiating
+            // client mounts without waiting for its own Realtime event. Gin gameplay
+            // presentation separately refetches its caller-specific private projection;
+            // the generic rounds row may later contain only the public masked document.
             if (ginStartResult.success && ginStartResult.round) {
               const insertedRound = ginStartResult.round as any;
               const insertedHand = ginStartResult.handNumber ?? insertedRound.hand_number ?? 1;
@@ -14241,10 +14239,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 };
               });
             }
-            // Canonical sync: realtime delivers rounds.gin_rummy_state and the
-            // games-status update independently; readiness probe (subscribed to
-            // rounds row) fires as soon as the insert lands. No awaited
-            // fetchGameData() and no setTimeout enrich on the critical path.
+            // Canonical sync: Realtime announces the row/status identity only;
+            // GinRummyGameTable reads cards through gin_rummy_get_state.
 
           } else {
             // ── SINGLE-OWNER PREFLIGHT ──────────────────────────
@@ -16853,9 +16849,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   onGameComplete={handleGameOverComplete}
                   onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                   onTerminalPresentationComplete={markTerminalPresentationComplete}
-                  bootstrapState={
-                    ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null
-                  }
                   // Lifted mobile tab + chat compose state (single source of
                   // truth at Game.tsx). Gin table must NOT own its own
                   // activeTab: without this, seeding from persistence would
