@@ -739,3 +739,18 @@ private recovery owner promotes and settles after the durable presentation
 fallback. Direct pegging and His Heels wins retain their existing terminal
 path because their winning points have already been presented before the
 terminal state is published.
+
+## D-057 - Cribbage postgame continuation is one exact-settlement transition
+
+A committed Cribbage settlement does not authorize a browser to clear the
+outgoing dealer-game identity, choose the next dealer, or publish the next
+setup phase with separate table updates. The browser submits the immutable
+game, dealer-game, round, and hand identity only after terminal presentation.
+
+PostgreSQL locks that round and game, proves the exact `cribbage_terminal`
+result, derives the next eligible dealer under the lock, clears all outgoing
+transients, and commits `game_selection` or `dealer_selection` once. A private
+durable claim returns the same result to simultaneous clients and makes a late
+replay harmless after a newer dealer game begins. This decision is scoped to
+Cribbage; every other game's shared client-owned postgame boundary remains an
+explicit audit item during that game's authority migration.

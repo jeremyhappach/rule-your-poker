@@ -158,7 +158,7 @@ Durable settlement and connected-client terminal presentation are clean.
 
 ### 2B. Cribbage refresh replays the deal and temporarily drops crib backs
 
-Status: Queued; reproduced in real-money cross-country smoke on 2026-08-13.
+Status: Resolved and accepted in published two-client smoke on 2026-08-16.
 
 - Refresh Player 1 after the deal, before or after that player's discard but
   before pegging. The deal presentation replays even though the authoritative
@@ -170,6 +170,9 @@ Status: Queued; reproduced in real-money cross-country smoke on 2026-08-13.
 - Preserve the authoritative deal, committed discards, cut, scores, and the
   lazy counting successor correction. Reconnect must restore the current hand
   without replaying a completed deal or hiding already-committed crib cards.
+- The accepted correction hydrates only the already-persisted partial crib on
+  rejoin and leaves later live opponent growth available to the normal
+  transport owner. Both committed cardbacks now survive refresh.
 
 ### 3. Remaining terminal-authority migrations
 
@@ -198,6 +201,22 @@ Remaining game-by-game delivery order after 3-5-7 acceptance:
 1. Horses + SCC as one shared dice-resolution delivery with separate rule
    validation and acceptance for each game.
 2. 3-5-7 instant-win/initial-Round-1 residual seam.
+
+### 3A. Cross-game postgame continuation ownership
+
+Status: Queued for each remaining game authority migration; recorded from the
+Cribbage post-settlement freeze on 2026-08-16.
+
+- The shared `Game.tsx:handleGameOverComplete` path still lets an elected
+  browser derive the next dealer and write the outgoing dealer-game reset for
+  non-Cribbage games. An atomic `status='game_over'` filter deduplicates a
+  successful write but does not make the browser an authoritative lifecycle
+  owner or make the derivation disconnect-safe.
+- Cribbage now uses an exact-settlement, row-locked, replay-safe database
+  transition. During every queued game authority migration, explicitly inspect
+  that game's terminal-to-next-setup boundary and apply the same ownership
+  rule where its lifecycle requires it. Do not change unrelated games through
+  the Cribbage delivery.
 
 ### 3B. 3-5-7 disconnected winner during next-game setup
 

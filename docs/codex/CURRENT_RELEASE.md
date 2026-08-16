@@ -2,6 +2,30 @@
 
 Date: 2026-08-16
 
+## Cribbage authoritative postgame handoff
+
+- Production smoke after terminal-counting acceptance exposed a separate
+  post-settlement freeze: the shared browser lifecycle owner attempted to clear
+  protected Cribbage hand counters directly, the authority guard rejected that
+  write, and its later `game_over` claim failed for the same reason. Settlement
+  remained correct and exactly once, but the session never reached the next
+  dealer-game setup.
+- Migration `20260816153000_cribbage_postgame_authority.sql` is installed on
+  owned production and adds an authenticated, exact-identity
+  `cribbage_advance_postgame` RPC plus a private durable replay claim. The RPC
+  locks the terminal round then game, requires
+  the matching committed `cribbage_terminal` result, derives make-it-take-it
+  or normal dealer rotation in PostgreSQL, clears outgoing dealer-game state,
+  and commits the next setup phase atomically. Duplicate clients and late
+  replays are read-only.
+- `Game.tsx` now delegates only the Cribbage continuation branch to that RPC;
+  all other game families retain their existing postgame path. The complete
+  rollback proof covers direct-write rejection, authorization, exact terminal
+  settlement, dealer derivation, duplicate callers, and a late replay after a
+  simulated newer dealer game. TypeScript, 33 focused Cribbage assertions, and
+  the production build pass. Fresh two-client continuation smoke remains
+  required.
+
 ## Cribbage terminal-counting lease and partial-crib rejoin repair
 
 - Production smoke on **Aug 16 - Aramis Ramirez** proved that a counting-based

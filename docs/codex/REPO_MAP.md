@@ -34,7 +34,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 | Area | Source owner |
 |---|---|
-| Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. `20260816124000_fix_cribbage_startup_handoff.sql` adds atomic ante-to-dealer-selection entry and repairs the scheduled recovery query. Client intent/state access is in `src/lib/cribbageAuthority.ts`. |
+| Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. `20260816124000_fix_cribbage_startup_handoff.sql` adds atomic ante-to-dealer-selection entry and repairs the scheduled recovery query. `20260816153000_cribbage_postgame_authority.sql` owns exact-settlement continuation to the next dealer-game setup with a durable replay claim. Client intent/state access is in `src/lib/cribbageAuthority.ts`; `Game.tsx` submits the postgame identity. |
 
 | Area | Source owner |
 |---|---|
@@ -192,7 +192,11 @@ reset transient/presentation state when those identities change.
   `20260816113000_cribbage_authority_cutover.sql`, with startup correction in
   `20260816124000_fix_cribbage_startup_handoff.sql` and the terminal-counting
   presentation lease in
-  `20260816143000_defer_cribbage_terminal_until_counted.sql`.
+  `20260816143000_defer_cribbage_terminal_until_counted.sql`. The terminal
+  dealer-game reset and next-dealer derivation are owned by
+  `public.cribbage_advance_postgame` in
+  `20260816153000_cribbage_postgame_authority.sql`; its private exact-identity
+  claim makes duplicate clients and late replays read-only.
   `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
   retain the accepted counting presentation lease. A database-resolved winner
   remains private `terminal_pending` until visible-count acknowledgement; the

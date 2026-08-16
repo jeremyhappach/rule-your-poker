@@ -11,6 +11,7 @@ DECLARE
   v_player_two uuid:=gen_random_uuid();
   v_round_id uuid;
   v_next_round_id uuid;
+  v_later_dealer_game_id uuid:=gen_random_uuid();
   v_state jsonb;
   v_public jsonb;
   v_result jsonb;
@@ -28,6 +29,10 @@ DECLARE
   v_winner_hand jsonb;
   v_loser_hand jsonb;
   v_played jsonb:='[]'::jsonb;
+  v_dealer_positions integer[];
+  v_old_dealer_position integer;
+  v_expected_dealer_position integer;
+  v_dealer_index integer;
 BEGIN
   SELECT profile_ids[1],profile_ids[2]
     INTO v_user_one,v_user_two
@@ -398,5 +403,115 @@ BEGIN
   END IF;
   v_result:=public.cribbage_settle_game(v_game_id,v_next_round_id,v_dealer_game_id,2);
   IF v_result->>'status'<>'already_settled' THEN RAISE EXCEPTION 'terminal_settlement_replay_failed:%',v_result; END IF;
+
+  -- A browser cannot perform the outgoing dealer-game reset directly.
+  PERFORM set_config('app.cribbage_authoritative_write','',true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_user_one,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    UPDATE public.games SET total_hands=0 WHERE id=v_game_id;
+    RAISE EXCEPTION 'direct_postgame_mutation_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='direct_postgame_mutation_was_allowed'
+       OR SQLERRM NOT LIKE '%cribbage_game_authority_mutation:rpc_required%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  -- The exact settled round is the only valid claim, and outsiders cannot
+  -- submit it even though the function is replay-safe.
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_outsider,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    PERFORM public.cribbage_advance_postgame(v_game_id,v_next_round_id,v_dealer_game_id,2);
+    RAISE EXCEPTION 'outsider_postgame_advance_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='outsider_postgame_advance_was_allowed'
+       OR SQLERRM NOT LIKE '%cribbage_advance_postgame:not_in_session%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  -- Disable make-it-take-it for a deterministic rotation assertion. The RPC
+  -- must derive the next eligible dealer and deadline inside the game lock.
+  UPDATE public.system_settings
+     SET value=jsonb_set(coalesce(value,'{}'::jsonb),'{enabled}','false'::jsonb,true)
+   WHERE key='make_it_take_it';
+  SELECT dealer_position INTO v_old_dealer_position
+    FROM public.games WHERE id=v_game_id;
+  SELECT array_agg(position ORDER BY position) INTO v_dealer_positions
+    FROM public.players
+   WHERE game_id=v_game_id
+     AND NOT coalesce(sitting_out,false)
+     AND status NOT IN ('observer','left')
+     AND position IS NOT NULL
+     AND NOT coalesce(is_bot,false);
+  v_dealer_index:=array_position(v_dealer_positions,coalesce(v_old_dealer_position,1));
+  v_expected_dealer_position:=CASE
+    WHEN v_dealer_index IS NULL THEN v_dealer_positions[1]
+    ELSE v_dealer_positions[(v_dealer_index%cardinality(v_dealer_positions))+1]
+  END;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_user_one,'role','authenticated')::text,
+    true
+  );
+  v_result:=public.cribbage_advance_postgame(v_game_id,v_next_round_id,v_dealer_game_id,2);
+  IF v_result->>'outcome'<>'advanced'
+     OR v_result->>'status'<>'game_selection'
+     OR (v_result->>'dealer_position')::integer IS DISTINCT FROM v_expected_dealer_position
+     OR (SELECT status FROM public.games WHERE id=v_game_id)<>'game_selection'
+     OR (SELECT dealer_position FROM public.games WHERE id=v_game_id) IS DISTINCT FROM v_expected_dealer_position
+     OR (SELECT current_game_uuid FROM public.games WHERE id=v_game_id) IS NOT NULL
+     OR (SELECT current_round FROM public.games WHERE id=v_game_id) IS NOT NULL
+     OR (SELECT total_hands FROM public.games WHERE id=v_game_id)<>0
+     OR (SELECT config_deadline FROM public.games WHERE id=v_game_id) IS NULL
+     OR (SELECT count(*) FROM private.cribbage_postgame_advances
+          WHERE game_id=v_game_id AND dealer_game_id=v_dealer_game_id
+            AND round_id=v_next_round_id AND hand_number=2)<>1 THEN
+    RAISE EXCEPTION 'postgame_advance_failed:%',v_result;
+  END IF;
+
+  -- Duplicate clients read the durable result and cannot mutate it or create
+  -- a second settlement/claim.
+  SELECT to_jsonb(game_row) INTO v_before FROM public.games game_row WHERE id=v_game_id;
+  v_replay:=public.cribbage_advance_postgame(v_game_id,v_next_round_id,v_dealer_game_id,2);
+  SELECT to_jsonb(game_row) INTO v_after FROM public.games game_row WHERE id=v_game_id;
+  IF v_replay->>'outcome'<>'already_advanced'
+     OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
+     OR v_after IS DISTINCT FROM v_before
+     OR (SELECT count(*) FROM public.game_results
+          WHERE dealer_game_id=v_dealer_game_id
+            AND hand_number=2
+            AND settlement_key='cribbage_terminal')<>1 THEN
+    RAISE EXCEPTION 'postgame_advance_replay_failed:%',v_replay;
+  END IF;
+
+  -- Even after a later dealer game exists, a late replay of the old exact
+  -- identity is read-only and cannot clear the newer lifecycle state.
+  INSERT INTO public.dealer_games(id,dealer_user_id,game_type,session_id,config)
+  VALUES(v_later_dealer_game_id,v_user_two,'cribbage',v_game_id,'{}'::jsonb);
+  PERFORM set_config('app.cribbage_authoritative_write','on',true);
+  UPDATE public.games
+     SET status='in_progress',current_game_uuid=v_later_dealer_game_id,
+         current_round=1,total_hands=1
+   WHERE id=v_game_id;
+  PERFORM set_config('app.cribbage_authoritative_write','',true);
+  SELECT to_jsonb(game_row) INTO v_before FROM public.games game_row WHERE id=v_game_id;
+  v_replay:=public.cribbage_advance_postgame(v_game_id,v_next_round_id,v_dealer_game_id,2);
+  SELECT to_jsonb(game_row) INTO v_after FROM public.games game_row WHERE id=v_game_id;
+  IF v_replay->>'outcome'<>'already_advanced'
+     OR v_after IS DISTINCT FROM v_before
+     OR (SELECT current_game_uuid FROM public.games WHERE id=v_game_id)
+          IS DISTINCT FROM v_later_dealer_game_id THEN
+    RAISE EXCEPTION 'late_postgame_replay_mutated_newer_game:%',v_replay;
+  END IF;
 END;
 $proof$;

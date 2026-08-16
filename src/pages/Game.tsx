@@ -11214,7 +11214,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check if session should end AND verify game is still in game_over status (not already transitioned by another client)
     const { data: gameData, error: fetchError } = await supabase
       .from('games')
-      .select('pending_session_end, current_round, status, dealer_position, current_game_uuid')
+      .select('pending_session_end, current_round, status, dealer_position, current_game_uuid, total_hands')
       .eq('id', gameId)
       .single();
 
@@ -11283,13 +11283,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
       throw e;
     }
-    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
-    try {
-      await clearDealerGameTransientSessionState(gameId);
-      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
-    } catch (e) {
-      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'clearDealerGameTransientSessionState', error: e });
-      throw e;
+    // Cribbage's authoritative postgame RPC clears this state atomically with
+    // the exact settled-round claim. A preliminary browser update would be
+    // rejected by the Cribbage authority guard and could split the handoff.
+    if (game?.game_type !== 'cribbage') {
+      emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+      try {
+        await clearDealerGameTransientSessionState(gameId);
+        emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+      } catch (e) {
+        emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'clearDealerGameTransientSessionState', error: e });
+        throw e;
+      }
     }
 
 
@@ -11470,6 +11475,100 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ..._gocId(),
         returnSite: 'handleGameOverComplete:not-enough-players',
         returnReason: `eligibleDealers=${eligibleDealerCount} activePlayers=${activePlayerCount}`,
+      });
+      return;
+    }
+
+    if (game?.game_type === 'cribbage') {
+      const outgoingDealerGameId = gameData?.current_game_uuid ?? game.current_game_uuid ?? null;
+      const outgoingHandNumber = gameData?.total_hands ?? game.total_hands ?? null;
+      let terminalRoundId = (
+        currentRound?.dealer_game_id === outgoingDealerGameId
+        && currentRound?.hand_number === outgoingHandNumber
+      ) ? currentRound.id : null;
+
+      if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+        const { data: terminalRound, error: terminalRoundError } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', outgoingDealerGameId)
+          .eq('hand_number', outgoingHandNumber)
+          .maybeSingle();
+        if (terminalRoundError) {
+          throw terminalRoundError;
+        }
+        terminalRoundId = terminalRound?.id ?? null;
+      }
+
+      if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+        throw new Error('Cribbage postgame identity is incomplete; no transition was attempted.');
+      }
+
+      emit357GameOverCompleteDiag('advance_begin', {
+        ..._gocId(),
+        outgoingDealerGameId,
+        terminalRoundId,
+        outgoingHandNumber,
+        branch: 'cribbage-authoritative-postgame',
+      });
+      const { data: postgameResult, error: postgameError } = await supabase.rpc(
+        'cribbage_advance_postgame' as any,
+        {
+          _game_id: gameId,
+          _round_id: terminalRoundId,
+          _dealer_game_id: outgoingDealerGameId,
+          _hand_number: outgoingHandNumber,
+        } as any,
+      );
+      if (postgameError) {
+        emit357GameOverCompleteDiag('advance_error', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          error: postgameError,
+        });
+        throw postgameError;
+      }
+
+      const postgame = postgameResult as {
+        outcome?: string;
+        status?: string;
+        dealer_position?: number | null;
+      } | null;
+      if (postgame?.outcome === 'stale_identity') {
+        emit357GameOverCompleteDiag('advance_complete', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          resultingStatus: postgame.status ?? null,
+          claimLost: true,
+        });
+        gameOverTransitionRef.current = false;
+        await fetchGameData();
+        return;
+      }
+      if (postgame?.outcome !== 'advanced' && postgame?.outcome !== 'already_advanced') {
+        throw new Error(`Unexpected Cribbage postgame outcome: ${postgame?.outcome ?? 'missing'}`);
+      }
+
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        outgoingDealerGameId,
+        terminalRoundId,
+        outgoingHandNumber,
+        resultingStatus: postgame.status ?? null,
+        selectedNextDealerPosition: postgame.dealer_position ?? null,
+        claimLost: postgame.outcome === 'already_advanced',
+      });
+      gameOverTransitionRef.current = false;
+      anteAnimationFiredRef.current = null;
+      await fetchGameData();
+      emit357GameOverCompleteDiag('complete', {
+        ..._gocId(),
+        finalStatus: postgame.status ?? null,
       });
       return;
     }
@@ -11796,7 +11895,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   } finally {
     gameOverTransitionRef.current = false;
   }
-  }, [gameId, navigate, players, game, fetchGameData, toast]);
+  }, [gameId, navigate, players, game, currentRound, fetchGameData, toast]);
 
   // Dealer confirms to skip countdown and go directly to game selection
   const handleDealerConfirmGameOver = useCallback(async () => {
