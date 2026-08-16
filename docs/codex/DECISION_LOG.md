@@ -691,3 +691,20 @@ Heartbeat grace remains a separate absence-confirmation path only for a human
 who is still authoritatively active and seated. Never-started rooms, live
 dealer games, financial snapshot safety, and connected-client terminal
 presentation retain their existing owners.
+
+## D-054 - Public build identity gates new game admission
+
+The public production `build-manifest.json` is the final source of the build
+identity. The deployment publisher waits until that alias serves the expected
+full Git SHA, and only then writes the versioned
+`system_settings.release_publication` event through its verified Edge Function.
+That event is a prompt for connected clients to refresh their manifest check;
+it is never gameplay, session, balance, or settlement authority.
+
+Because an external deployment signal can arrive after the public alias has
+changed, lobby Realtime alone cannot be an admission guard. Every new game
+route independently reads the no-cache public manifest before the `Game`
+component mounts and fails closed on a mismatch or unavailable read. Once a
+route has passed that one check, later publication events are deferred until
+the player returns to a non-game route so live presentation continuity is not
+interrupted.

@@ -2,6 +2,26 @@
 
 Date: 2026-08-16
 
+## Stale published-build admission gate
+
+- Production commit `504956f1dacc14d4a60750e5fbb520dc15038210` added a
+  versioned `system_settings.release_publication` signal, emitted only after
+  the public production manifest serves the matching SHA. `ReleaseVersionGate`
+  rechecks that manifest on the release signal, page resume, reconnect, and
+  foregrounding; a stale lobby receives the non-dismissible **Not on current
+  build** refresh dialog.
+- Runtime smoke exposed the original publisher-to-client race: the public
+  bundle could be live before the workflow wrote the release signal. Commit
+  `02233d8913e7629f8847e29ad5931d95b1e1b18b` closes that admission boundary:
+  every new `/game/:gameId` route performs its own no-cache manifest read
+  before `Game` mounts and fails closed on a mismatch or unavailable manifest.
+  Once admitted, an active game remains uninterrupted; the next lobby visit
+  remains the update boundary.
+- The GitHub publisher's public-alias retry cadence is five seconds while
+  retaining its ten-minute maximum wait. Focused release tests, TypeScript,
+  the Cribbage preservation suite, and the Vite production build passed.
+  Jeremy confirmed the production stale-lobby smoke working on 2026-08-16.
+
 ## Holm dealer-game teardown card retirement
 
 - The ordinary Holm dealer-game rollover clears `games.current_game_uuid`
@@ -19,7 +39,9 @@ Date: 2026-08-16
   check, and Vite production build pass. The existing isolated
   `HolmCanonicalCommunityRow` suite still exposes its known pre-existing test
   cleanup leakage (the prior render remains mounted); it is unrelated to this
-  change. Published runtime smoke remains required.
+  change. Jeremy's production smoke passed on 2026-08-16 at commit
+  `8cd3cc884e88393a548c99edae8a75139a42c10b`: after a Holm dealer-game
+  teardown, no community cards reappeared before next-game setup.
 
 ## Admin fake-money session blast control
 

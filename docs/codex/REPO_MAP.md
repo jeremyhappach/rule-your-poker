@@ -16,7 +16,7 @@ claim that every owner is already database-authoritative.
 | Area | Source owner |
 |---|---|
 | Browser bootstrap | `src/main.tsx` installs startup/runtime instrumentation, presence heartbeat handling, page resume handling, and mounts `<App />`. `src/lib/runtimeInstrumentation/voicePresenceHeartbeat.ts` writes the four-second tab heartbeat, refreshes game context on route entry/exit, and accepts the one immediate Waiting-table pulse; the database-stamped `updated_at` is the safe-boundary presence lease. |
-| Application providers and routes | `src/App.tsx` owns the React Query, auth/voice/chat, router, error-boundary, and global UI provider tree. |
+| Application providers and routes | `src/App.tsx` owns the React Query, auth/voice/chat, router, error-boundary, and global UI provider tree. `src/components/ReleaseVersionGate.tsx` wraps that route tree: its lobby gate owns the stale-build refresh dialog, and its keyed `/game/:gameId` entry boundary owns the no-cache manifest admission read before `Game` can mount. |
 | Lobby route | `/` -> `src/pages/Index.tsx` -> `src/components/GameLobby.tsx`. |
 | Authentication | `/auth` -> `src/pages/Auth.tsx`. |
 | Live table | `/game/:gameId` -> `src/pages/Game.tsx` inside `RouteErrorBoundary`. |
@@ -381,6 +381,7 @@ Canonical snapshot identity is
 | `GinRummyGameTable.tsx` | `gin-rummy-${roundId}` watches the current `rounds` row. |
 | `SessionEndedTablePhase.tsx` | `session-ended-results-${gameId}` watches snapshot INSERTs. |
 | `GameLobby.tsx` | Separate all-event `games` and `players` lobby channels, plus bounded refresh on focus/visibility and every five seconds. |
+| `ReleaseVersionGate.tsx` | Watches the `system_settings.release_publication` UPDATE, then rechecks the public build manifest. Realtime is lobby-update UX only; the keyed game-route entry boundary independently verifies the manifest before game admission. |
 | Peripheral channels | `useGameChat.ts`, `useChipStackEmoticons.ts`, voice witness/report mounts, maintenance/make-it-take-it settings, debug harness cache, canonical layout config, and Geometry Lab stores. |
 
 Yahtzee intentionally relies on the central `Game.tsx` round subscription.
@@ -403,6 +404,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
 | Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |
 | Admin fake-money smoke teardown | `admin_blast_fake_money_game` in `supabase/migrations/20260815180000_admin_blast_fake_money_game.sql`; `PlayerOptionsMenu.tsx` exposes it only through the admin/fake-money guard in `Game.tsx`, whose DELETE listener returns connected clients to the lobby. |
+| Published build signal | `supabase/migrations/20260815170000_add_release_publication_signal.sql` seeds the single release row; `supabase/functions/publish-release/index.ts` verifies the public manifest then writes it; `.github/workflows/publish-release.yml` invokes that publisher after a `main` deployment is public. Client enforcement is `src/components/ReleaseVersionGate.tsx` and `src/lib/releaseVersion/`. |
 | Real-money abandonment reconciliation | Post-game waiting boundary, private finalizer/triggers, and the `reconcile-abandoned-real-money-sessions` pg_cron job latest in `supabase/migrations/20260809173000_postgame_waiting_session_resolution.sql`; rollback proof in `supabase/tests/session_abandonment_reconciliation_proof.sql`. |
 | Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260809173000_postgame_waiting_session_resolution.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
 | Cutover write lock and fake-history purge | `supabase/migrations/20260802184800_cutover_readiness.sql`; the lock is inert until its `system_settings` flag is enabled, and the controlled import bypass is session-local. |

@@ -24,6 +24,12 @@
   until the canonical ledger's aggregate ante-to-pot arrival boundary. Preserve
   that transport event as the presentation owner; do not restore a timer-based
   card-deal release.
+- The stale published-build gate passed production smoke on 2026-08-16 at
+  commit `02233d8913e7629f8847e29ad5931d95b1e1b18b`. A stale lobby may show
+  the release modal when its Realtime signal arrives, but a new game route
+  always performs its own no-cache public-manifest check before `Game` mounts.
+  Preserve that fail-closed entry boundary and the rule that an already-admitted
+  live table is not interrupted by a later publication.
 
 ## Cribbage
 
@@ -72,6 +78,12 @@
 
 ## Holm
 
+- Holm dealer-game teardown card retirement passed production smoke on
+  2026-08-16 at commit `8cd3cc884e88393a548c99edae8a75139a42c10b`:
+  clearing `games.current_game_uuid` retires the old community, player, and
+  Chucky card surfaces in the same render; no four-card remount occurs before
+  next-game setup. Preserve the `currentRoundNotReadyForPresentation` ownership
+  gate at the Holm card-surface root.
 - The authoritative Rabbit Hunt all-fold reveal passed production smoke on
   2026-08-11 at commit `22d4aa8c258fbac461d3ce92966d4924b9955a62`:
   the both-player all-fold path showed the Rabbit Hunt marker and sequentially
