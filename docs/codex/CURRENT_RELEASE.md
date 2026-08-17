@@ -2,6 +2,22 @@
 
 Date: 2026-08-16
 
+## Yahtzee remote-score presentation handoff
+
+- Published two-client smoke after the authority cutover exposed a
+  presentation-only regression: the atomic score commit advanced the real turn
+  before the observer's effect installed its score highlight. The next player's
+  `isMyTurn` branch therefore mounted a felt scorecard for one frame, and the
+  unbound category highlight made it resemble the outgoing scorer's card.
+- The client now recognizes an unseen latest `lastAction` score synchronously
+  and binds that presentation to its player and action sequence. The observer
+  keeps the scorer's dice on the felt and the scorer's read-only scorecard in
+  the active-player box through the existing highlight, suppressing the next
+  player's interactive felt surface until release. Authoritative turn state,
+  RPC admission, scoring, and Realtime ownership are unchanged.
+- Seventeen focused Yahtzee assertions, TypeScript, and the production build
+  pass locally; published two-client confirmation remains pending.
+
 ## Yahtzee server-authority and postgame cutover
 
 - Migration `20260816210000_yahtzee_authority_cutover.sql` is installed on the

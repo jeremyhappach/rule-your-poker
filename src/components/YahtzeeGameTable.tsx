@@ -36,6 +36,7 @@ import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
+import { resolveYahtzeeRemoteScorePresentation } from "@/lib/yahtzeePresentation";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -757,6 +758,14 @@ export function YahtzeeGameTable({
   });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
+  const remoteScorePresentation = resolveYahtzeeRemoteScorePresentation(
+    viewState,
+    myPlayer?.id,
+    scoringInProgress,
+    lastPresentedScoreSequenceRef.current,
+  );
+  const presentedOpponentPlayerId = remoteScorePresentation.action?.playerId
+    ?? (!isMyTurn ? currentTurnPlayerId ?? null : null);
 
   // Reorder harness no longer gates on eligibility — manual-run only.
 
@@ -784,7 +793,10 @@ export function YahtzeeGameTable({
 
   const rolling = uiRolling;
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
-  const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
+  const showMyDice = isMyTurn
+    && !remoteScorePresentation.active
+    && gamePhase === "playing"
+    && localRollsRemaining < 3;
 
   // Wave 2E — fluid dice-row sizing.
   const paneContentRef = useRef<HTMLDivElement | null>(null);
@@ -862,7 +874,8 @@ export function YahtzeeGameTable({
   useEffect(() => () => {
     if (scorecardUnmountTimerRef.current) clearTimeout(scorecardUnmountTimerRef.current);
   }, []);
-  const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
+  const showInteractiveScorecard = !remoteScorePresentation.active
+    && (isMyTurn || stickyScorecardMounted);
 
 
 
@@ -982,7 +995,7 @@ export function YahtzeeGameTable({
       setCachedOpponentDice(null);
     }, 2500);
     return () => clearTimeout(timer);
-  }, [viewState?.lastAction, myPlayer?.id]);
+  }, [viewState?.lastAction?.sequence, myPlayer?.id]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
   useEffect(() => {
@@ -2159,19 +2172,31 @@ export function YahtzeeGameTable({
 
           const diceState = getCurrentTurnDice();
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
+          const committedScoreDice = remoteScorePresentation.action ? {
+            dice: remoteScorePresentation.action.dice.map(die => ({
+              value: die.value,
+              isHeld: die.isHeld,
+            })),
+            playerId: remoteScorePresentation.action.playerId,
+          } : null;
+          const scoreDice = cachedOpponentDice?.playerId === presentedOpponentPlayerId
+            ? cachedOpponentDice
+            : committedScoreDice;
 
-          // During scoring transition, dice reset to zeros in DB — use cached values
-          const useCached = !hasRolled && cachedOpponentDice && scoringInProgress;
+          // The atomic score commit has already reset/advanced authoritative
+          // turn dice. Keep the scorer's committed dice on the felt until the
+          // presentation-only selection highlight releases the new turn.
+          const useCached = remoteScorePresentation.active && !!scoreDice;
 
           if (!hasRolled && !useCached) {
             return null;
           }
 
-          const feltDice = useCached ? cachedOpponentDice!.dice : diceState!.dice;
+          const feltDice = useCached ? scoreDice!.dice : diceState!.dice;
           // When using cached dice, pass undefined rollKey so no fly-in animation plays
           const feltRollKey = useCached ? undefined : diceState!.rollKey;
           // Stable cache key prevents remount when switching live→cached
-          const stableCacheKey = useCached ? cachedOpponentDice!.playerId : (currentTurnPlayerId ?? "no-turn");
+          const stableCacheKey = useCached ? scoreDice!.playerId : (currentTurnPlayerId ?? "no-turn");
 
           return (
             <YahtzeeAnchoredSlot artifactId="yahtzee.opponentDiceStage">
@@ -2373,7 +2398,7 @@ export function YahtzeeGameTable({
                     opponent-turn UI uses the opponent scorecard block below. */}
                 {gamePhase === 'playing' && isMyTurn && (
                   <ActionStripSlot className="mt-1 mb-1" density="compact">
-                    {scoringInProgress ? (
+                    {remoteScorePresentation.active || scoringInProgress ? (
                       <ActionStripStatusPill emphasis="muted">
                         Scoring…
                       </ActionStripStatusPill>
@@ -2396,12 +2421,19 @@ export function YahtzeeGameTable({
                 )}
 
                 {/* Opponent scorecard when it's not my turn */}
-                {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
+                {presentedOpponentPlayerId && presentedOpponentPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
                   <div className="px-1 relative">
 
                     {(() => {
-                      const oppPlayer = players.find(p => p.id === currentTurnPlayerId);
+                      const oppPlayer = players.find(p => p.id === presentedOpponentPlayerId);
                       if (!oppPlayer) return null;
+                      if (remoteScorePresentation.action) {
+                        return (
+                          <p className="text-amber-400 font-semibold text-xs text-center mb-0.5">
+                            {getPlayerUsername(oppPlayer)} scored {CATEGORY_FULL_NAMES[remoteScorePresentation.action.category]}
+                          </p>
+                        );
+                      }
                       const diceState = getCurrentTurnDice();
                       const hasRolled = diceState?.dice.some(d => d.value !== 0);
                       const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
@@ -2418,13 +2450,13 @@ export function YahtzeeGameTable({
                       );
                     })()}
                     <div className="yahtzee-opponent-scorecard">
-                      {renderScorecard(currentTurnPlayerId, false)}
+                      {renderScorecard(presentedOpponentPlayerId, false)}
                     </div>
                   </div>
                 )}
 
                 {/* My scorecard (read-only summary) when it IS my turn - interactive one is on felt */}
-                {isMyTurn && myPlayer && (
+                {isMyTurn && !remoteScorePresentation.active && myPlayer && (
                   <div className="mt-1 px-1 opacity-60">
                     <span className="text-xs text-muted-foreground">Your scorecard is on the table above</span>
                   </div>
