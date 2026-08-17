@@ -261,6 +261,10 @@ import {
 } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import {
+  isThreeFiveSevenRolloverCursorReleased,
+  type ThreeFiveSevenRolloverPresentation,
+} from "@/lib/threeFiveSeven/rolloverPresentation";
+import {
   captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
   getHolmPresentationHandKey,
@@ -1034,6 +1038,8 @@ interface MobileGameTableProps {
   threeFiveSevenViewRoundId?: string | null;
   /** 3-5-7 lower-zone trace: presentation view round number from Game.tsx. */
   threeFiveSevenViewRoundNumber?: number | null;
+  /** Exact committed H2+ / R1 rollover batch returned by the advance RPC or refetch. */
+  threeFiveSevenRolloverPresentation?: ThreeFiveSevenRolloverPresentation | null;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -1336,6 +1342,7 @@ export const MobileGameTable = ({
   threeFiveSevenAuthoritativeRoundNumber,
   threeFiveSevenViewRoundId,
   threeFiveSevenViewRoundNumber,
+  threeFiveSevenRolloverPresentation,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -1851,6 +1858,27 @@ export const MobileGameTable = ({
       ? holmPresentationIdentity!.transferCursor
       : null;
   const holmInitialAnteCursorState = useChipPresentationCursorState(holmInitialAnteCursor);
+  const threeFiveSevenRolloverAdmissionRequired =
+    __is357GameType(gameType)
+    && threeFiveSevenAuthoritativeRoundNumber === 1
+    && (horsesHandNumber ?? 0) > 1
+    && !!threeFiveSevenAuthoritativeRoundId;
+  const threeFiveSevenRolloverPresentationMatches =
+    threeFiveSevenRolloverAdmissionRequired
+    && !!threeFiveSevenRolloverPresentation
+    && threeFiveSevenRolloverPresentation.gameId === gameId
+    && threeFiveSevenRolloverPresentation.dealerGameId === (holmDealerGameId ?? horsesDealerGameId)
+    && threeFiveSevenRolloverPresentation.roundId === threeFiveSevenAuthoritativeRoundId
+    && threeFiveSevenRolloverPresentation.roundId === threeFiveSevenViewRoundId
+    && threeFiveSevenRolloverPresentation.handNumber === horsesHandNumber
+    && threeFiveSevenRolloverPresentation.roundNumber === threeFiveSevenAuthoritativeRoundNumber
+    && threeFiveSevenRolloverPresentation.roundNumber === threeFiveSevenViewRoundNumber;
+  const threeFiveSevenRolloverCursor = threeFiveSevenRolloverPresentationMatches
+    ? threeFiveSevenRolloverPresentation.transferCursor
+    : null;
+  const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
+    threeFiveSevenRolloverCursor,
+  );
   const presentationDeltaIdsRef = useRef(new Set<string>());
   presentationDeltaIdsRef.current = new Set(presentationBalanceDeltas.map((delta) => delta.id));
   const anteArrivalBaselineRef = useRef(new Set<string>());
@@ -1886,8 +1914,15 @@ export const MobileGameTable = ({
     presentationBalanceDeltas,
     releaseAntePresentationAdmission,
   ]);
-  const anteDealDispatchAllowed =
-    !isPlayerToPotAnteTrigger && antePresentationAdmission.released;
+  const threeFiveSevenRolloverDealDispatchAllowed =
+    threeFiveSevenRolloverPresentationMatches
+    && isThreeFiveSevenRolloverCursorReleased(
+      threeFiveSevenRolloverPresentation,
+      threeFiveSevenRolloverCursorState,
+    );
+  const anteDealDispatchAllowed = threeFiveSevenRolloverAdmissionRequired
+    ? threeFiveSevenRolloverDealDispatchAllowed
+    : !isPlayerToPotAnteTrigger && antePresentationAdmission.released;
   const holmDealDispatchAllowed = holmInitialAnteCursor == null
     || holmInitialAnteCursorState === 'settled'
     || holmInitialAnteCursorState === 'reconciled';

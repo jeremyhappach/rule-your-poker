@@ -232,6 +232,35 @@ smoke before stable-checkpoint promotion.
   than shared browser cleanup. The Make It Take It toggle requires the returned
   persisted setting row before reporting success. Two-client published smoke
   must recheck all three observations before checkpoint promotion.
+- Published smoke follow-up, 2026-08-17, session `Aug 17 - Albert Almora`:
+  Happach Gmail's self hand remained invisible at DG2/H2/R1 while the peer
+  dealt normally. Jeremy paused the game at the repro. Read-only evidence
+  proves the round and both private three-card rows committed atomically with
+  correct ownership. Happach's client mounted the exact H2 runtime but emitted
+  6,891 consecutive `awaiting_ante_presentation_landing` deferrals: its
+  transient ante-arrival delta had already occurred before the local admission
+  gate armed, so no later edge could release the deal. Corrected on the
+  approved 3-5-7 branch: the initiating client consumes the exact committed
+  advance result and immediately refetches the new round/private cards; H2+
+  Round 1 deal admission waits on that exact durable transfer cursor. Peers
+  select the same committed identity after refetch, reconciliation releases
+  without replaying historical financial motion, and a stale direct result is
+  rejected across hand/dealer-game boundaries. Published resume smoke remains
+  required before checkpoint promotion.
+- P1 from the same smoke: at H1/R1 the decision timer and action buttons paint
+  briefly when the authoritative betting row arrives, disappear when deal
+  transport begins, then return at transport landing. The timer's boolean
+  permission and the action-card predicate can both inherit the previous hand's
+  ready state before the new hand runtime reports its identity. Gate both on an
+  identity-matched DealRuntime readiness token; a prior hand's `true` value may
+  never admit the new hand.
+- P1 from the same smoke: when a player has two legs and wins the third, the
+  static display briefly drops to one and the incoming third leg reads as a
+  second. The terminal presentation enters its win phase using a cached
+  pre-award count of two, then the generic pending-leg renderer subtracts one
+  again. For a normal terminal descriptor, render the immutable final-leg
+  baseline (`targetLegs - 1`) exactly once and let the award add the final leg;
+  preserve nonterminal leg animation and instant-sweep behavior.
 
 ### 3A. Cross-game postgame continuation ownership
 

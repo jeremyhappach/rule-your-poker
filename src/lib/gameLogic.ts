@@ -3179,7 +3179,32 @@ export async function endRound(gameId: string) {
   console.log(`[END_ROUND] ===== COMPLETE ===== game=${shortGameId}`);
 }
 
-export async function proceedToNextRound(gameId: string) {
+export interface ThreeFiveSevenAdvanceRoundResult {
+  outcome?: string;
+  deduped?: boolean;
+  round_id?: string;
+  hand_number?: number;
+  round_number?: number;
+  game?: {
+    id?: string;
+    current_game_uuid?: string | null;
+    chip_transfer_cursor?: number | null;
+    [key: string]: unknown;
+  };
+  round?: {
+    id?: string;
+    dealer_game_id?: string | null;
+    hand_number?: number | null;
+    round_number?: number | null;
+    status?: string | null;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export async function proceedToNextRound(
+  gameId: string,
+): Promise<ThreeFiveSevenAdvanceRoundResult | null> {
   console.log('[PROCEED_NEXT_ROUND] Starting for game', gameId);
 
   const { data: game, error: gameError } = await supabase
@@ -3194,17 +3219,17 @@ export async function proceedToNextRound(gameId: string) {
   const _is357 = _gt === '3-5-7' || _gt === '3-5-7-game' || _gt === '357';
   if (!_is357) {
     console.warn('[PROCEED_NEXT_ROUND] proceedToNextRound-suppressed-non-357 — game_type=', _gt);
-    return;
+    return null;
   }
 
   if (!game?.next_round_number) {
     console.log('[PROCEED_NEXT_ROUND] No next round configured');
-    return;
+    return null;
   }
 
   if (!game.awaiting_next_round) {
     console.log('[PROCEED_NEXT_ROUND] Not awaiting next round, skipping');
-    return;
+    return null;
   }
 
   if (!game.current_game_uuid || !game.total_hands || !game.current_round) {
@@ -3229,7 +3254,7 @@ export async function proceedToNextRound(gameId: string) {
   } as any);
   if (error) throw error;
   console.log('[PROCEED_NEXT_ROUND] Authoritative advance result:', data);
-  return data;
+  return data as unknown as ThreeFiveSevenAdvanceRoundResult;
 }
 
 /**
