@@ -75,6 +75,15 @@
 
 ## Yahtzee
 
+- Yahtzee score presentation and rail handoff passed published two-client
+  production smoke on 2026-08-17 at commit
+  `987f9a31be249bae3d2c26ddeaa6dfa13840e9a3`. Preserve the scorer-bound,
+  round/action-sequence keyed presentation: a cached score may remain only
+  until a newer authoritative action is observed, then its card, dice, and
+  exact rail event must retire before that newer action paints. The roller's
+  canonical rail status lasts across the whole turn, and score narration holds
+  only for the matching score presentation interval; do not restore helper
+  lines that displace the opponent scorecard or allow score text to truncate.
 - Atomic Yahtzee settlement and connected-client terminal presentation passed
   the published two-human terminal-disconnect smoke on 2026-08-03. Preserve
   `public.yahtzee_settle_game` as the replay-safe owner of result, fixed-stake

@@ -270,6 +270,10 @@ reset transient/presentation state when those identities change.
 - Entry/presentation: `Game.tsx` -> `YahtzeeGameTable.tsx`;
   `YahtzeeAnchoredSlot.tsx`, `YahtzeeAnchoredInteractionSlot.tsx`,
   `YahtzeeOverlays.tsx`, `DiceRollAnimation.tsx`, and dice shell primitives.
+- Score presentation: `YahtzeeGameTable.tsx` and
+  `src/lib/yahtzeePresentation.ts` bind the scorer card/dice/rail event to the
+  exact round and action sequence. A later authoritative sequence retires that
+  local presentation before paint; this does not advance game state.
 - State/actions: `rounds.yahtzee_state` is written only through
   `public.yahtzee_apply_action`; `src/lib/yahtzeeAuthority.ts` submits exact
   intent/action sequence and consumes the committed result. Pure client rule
@@ -294,7 +298,7 @@ reset transient/presentation state when those identities change.
   `supabase/tests/yahtzee_authority_rollback_proof.sql`.
 - Focused tests: `yahtzeeScoring.test.ts`, `yahtzeeGameLogic.test.ts`,
   `yahtzeeProgress.test.ts`, `yahtzeeAuthority.test.ts`,
-  `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
+  `yahtzeePresentation.test.ts`, `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
   `liveTerminalPresentationHold.test.ts`, and shared die-row/shell tests.
 
 ### 3-5-7
