@@ -102,7 +102,7 @@ describe('getYahtzeeProgress', () => {
     expect(compareProgress(before, after)).toBe(1);
   });
 
-  it('vector has exactly 5 dimensions: [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]', () => {
+  it('includes the server action sequence before the per-player and volatile dimensions', () => {
     const state: YahtzeeState = {
       gamePhase: 'playing',
       currentTurnPlayerId: 'p1',
@@ -113,7 +113,38 @@ describe('getYahtzeeProgress', () => {
         p2: buildPlayerState(0, 3, false),
       },
     };
-    expect(getYahtzeeProgress(state)).toHaveLength(5);
+    const vector = getYahtzeeProgress({ ...state, actionSequence: 7 });
+    expect(vector).toHaveLength(8);
+    expect(vector.slice(0, 3)).toEqual([0, 1, 7]);
+  });
+
+  it('treats a committed hold toggle as forward progress', () => {
+    const before: YahtzeeState = {
+      gamePhase: 'playing',
+      currentTurnPlayerId: 'p1',
+      turnOrder: ['p1', 'p2'],
+      currentRound: 1,
+      actionSequence: 3,
+      playerStates: {
+        p1: buildPlayerState(0, 2, false),
+        p2: buildPlayerState(0, 3, false),
+      },
+    };
+    const after: YahtzeeState = {
+      ...before,
+      actionSequence: 4,
+      playerStates: {
+        ...before.playerStates,
+        p1: {
+          ...before.playerStates.p1,
+          dice: before.playerStates.p1.dice.map((die, index) => ({
+            ...die,
+            isHeld: index === 0,
+          })),
+        },
+      },
+    };
+    expect(compareProgress(getYahtzeeProgress(before), getYahtzeeProgress(after))).toBe(1);
   });
 
   it('stamped __syncRound dominates lower dims across match boundary', () => {

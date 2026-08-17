@@ -107,6 +107,17 @@ export interface YahtzeeState {
   botControllerUserId?: string | null;
   /** ISO timestamp deadline for the current turn */
   turnDeadline?: string | null;
+  /** Server-owned compare-and-set sequence for every durable Yahtzee action. */
+  actionSequence?: number;
+  /** Last committed score transition retained for presentation after turn advance. */
+  lastAction?: {
+    type: 'score';
+    playerId: string;
+    category: YahtzeeCategory;
+    score: number;
+    dice: YahtzeeDie[];
+    sequence: number;
+  } | null;
 }
 
 /** Upper section bonus threshold and value */

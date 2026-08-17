@@ -2,6 +2,30 @@
 
 Date: 2026-08-16
 
+## Yahtzee server-authority and postgame cutover
+
+- Migration `20260816210000_yahtzee_authority_cutover.sql` is installed on the
+  owned production database. PostgreSQL now validates completed antes and
+  atomically creates/replays the first or tie-successor Yahtzee round, including
+  the canonical lower-position clockwise order and committed opening state.
+- `public.yahtzee_apply_action` owns server-generated rolls, holds, Joker-aware
+  category legality and scoring, the monotonic action sequence, atomic score
+  plus turn handoff, terminal state, and settlement invocation. The initiating
+  browser consumes the returned committed snapshot directly; Realtime remains
+  peer/reconnect synchronization. Direct Yahtzee round JSON writes are rejected.
+- `public.yahtzee_advance_postgame` locks the exact terminal round and game,
+  verifies its committed settlement, uses a durable exact-identity replay claim,
+  derives the next dealer/deadline, clears outgoing identities and ephemerals,
+  and publishes the next setup or terminal disposition atomically. Yahtzee now
+  bypasses the shared browser-authored transient reset.
+- The one-second scheduled owner runs the same bootstrap, bot, terminal, and
+  postgame transitions without swallowing database errors. The full deployed
+  rollback proof passes winner, tie, duplicate, stale action, authorization,
+  continuation, terminal, late-replay, direct-write guard, and complete
+  scheduled-recovery cases. TypeScript, 20 focused assertions, the 33-test
+  release gate, and the production build pass locally; published multiplayer
+  smoke remains pending.
+
 ## Cribbage authoritative postgame handoff
 
 - Production smoke after terminal-counting acceptance exposed a separate

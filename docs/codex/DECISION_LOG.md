@@ -754,3 +754,20 @@ durable claim returns the same result to simultaneous clients and makes a late
 replay harmless after a newer dealer game begins. This decision is scoped to
 Cribbage; every other game's shared client-owned postgame boundary remains an
 explicit audit item during that game's authority migration.
+
+## D-060 - Yahtzee actions and continuation are exact server transitions
+
+Yahtzee browsers submit intent plus exact round/player/action-sequence identity;
+they do not generate durable dice, score categories, advance turns, create
+successor rounds, or write the round document. PostgreSQL validates admission,
+ownership, turn, Joker/category legality, and compare-and-set sequence, then
+returns the committed state directly to the initiating client. Realtime is
+synchronization for peers and reconnects, never the bootstrap or action trigger.
+
+After settlement, a browser submits only the immutable game, dealer-game,
+round, and hand identity. PostgreSQL locks the terminal round and game, proves
+the matching settlement, derives the next dealer/deadline, clears ephemerals
+and outgoing identities, and publishes the next phase atomically. A private
+durable claim returns the stored outcome to duplicates and makes a late replay
+read-only after a newer dealer game. The complete scheduled function is the
+disconnect recovery owner and must pass rollback proof as one executable unit.

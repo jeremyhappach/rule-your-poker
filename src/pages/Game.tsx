@@ -330,6 +330,7 @@ import {
   useStartupRenderTrace,
 } from "@/lib/startupFlightRecorder";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
+import { advanceYahtzeePostgame } from "@/lib/yahtzeeAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
@@ -1250,6 +1251,7 @@ const Game = () => {
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
   const gameOverTransitionRef = useRef<boolean>(false); // Guard against multiple clients racing to transition game_over
+  const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
   // True while a game's terminal win presentation is running on THIS client.
   // Used to hold the session_ended lobby redirect (settlement may close the
   // session before the local celebration finishes).
@@ -8565,7 +8567,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
                 });
               } else if (freshGame?.game_type === 'yahtzee') {
-                await startYahtzeeRound(gameId);
+                await startYahtzeeRound(gameId, false, currentRound?.id ?? null);
+                await fetchGameData();
               } else {
                 await startHorsesRound(gameId, false, {
                   caller: 'Game.tsx:awaiting_next_round-effect',
@@ -11104,6 +11107,64 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Yahtzee's exact settlement identity is handed directly to PostgreSQL.
+    // Every client may submit it; the durable claim dedupes simultaneous and
+    // late callers. Do not enter shared browser-authored cleanup/rotation.
+    if (game?.game_type === 'yahtzee') {
+      gameOverTransitionRef.current = true;
+      try {
+        const outgoingDealerGameId = game.current_game_uuid ?? null;
+        const outgoingHandNumber = game.total_hands ?? null;
+        let terminalRoundId = (
+          currentRound?.dealer_game_id === outgoingDealerGameId
+          && currentRound?.hand_number === outgoingHandNumber
+        ) ? currentRound.id : null;
+        if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+          const { data: terminalRound, error: terminalRoundError } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('dealer_game_id', outgoingDealerGameId)
+            .eq('hand_number', outgoingHandNumber)
+            .maybeSingle();
+          if (terminalRoundError) throw terminalRoundError;
+          terminalRoundId = terminalRound?.id ?? null;
+        }
+        if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+          throw new Error('Yahtzee postgame identity is incomplete; no transition was attempted.');
+        }
+        const postgame = await advanceYahtzeePostgame({
+          gameId,
+          roundId: terminalRoundId,
+          dealerGameId: outgoingDealerGameId,
+          handNumber: outgoingHandNumber,
+        });
+        if (postgame.outcome !== 'advanced'
+            && postgame.outcome !== 'already_advanced'
+            && postgame.outcome !== 'stale_identity') {
+          throw new Error(`Unexpected Yahtzee postgame outcome: ${postgame.outcome}`);
+        }
+        anteAnimationFiredRef.current = null;
+        await fetchGameData();
+      } catch (error: any) {
+        yahtzeeGameOverProcessedRef.current = null;
+        console.error('[YAHTZEE POSTGAME] Authoritative handoff failed:', error);
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to advance Yahtzee. Please try again.',
+          variant: 'destructive',
+        });
+        try {
+          await fetchGameData();
+        } catch (refetchError) {
+          console.error('[YAHTZEE POSTGAME] Recovery refetch failed:', refetchError);
+        }
+      } finally {
+        gameOverTransitionRef.current = false;
+      }
+      return;
+    }
+
     // P0 GUARD (MUT-02): Single-executor leader election.
     // Only ONE client may run destructive game-over lifecycle. Leader is:
     //   1. The seated human at dealer_position (if active and not sitting out), else
@@ -11285,7 +11346,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Dealer-game authority RPCs clear this state atomically with the exact
     // settled-round claim. A preliminary browser reset would either be rejected
     // by the authority guard or split the handoff across two owners.
-    if (game?.game_type !== 'cribbage' && game?.game_type !== 'gin-rummy') {
+    if (game?.game_type !== 'cribbage' && game?.game_type !== 'gin-rummy' && game?.game_type !== 'yahtzee') {
       emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
       try {
         await clearDealerGameTransientSessionState(gameId);
@@ -13560,7 +13621,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleGameOverCompleteRef = useRef(handleGameOverComplete);
   handleGameOverCompleteRef.current = handleGameOverComplete;
 
-  const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
   const handleYahtzeeTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
     markTerminalPresentationComplete(terminalIdentity);
     const facts = terminalStatusFactsRef.current;
@@ -13595,17 +13655,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       await handleGameOverCompleteRef.current();
     }, 2000);
 
-    // Safety fallback: if still stuck after 8s, force retry
-    const fallback = setTimeout(async () => {
-      const { data: g } = await supabase.from('games').select('status').eq('id', gameId).maybeSingle();
-      if (g?.status === 'game_over') {
-        console.warn('[YAHTZEE GAME OVER] Still stuck after 8s, forcing transition');
-        gameOverTransitionRef.current = false;
-        await handleGameOverCompleteRef.current();
-      }
-    }, 8000);
-
-    return () => { clearTimeout(timer); clearTimeout(fallback); };
+    // The complete scheduled recovery function owns disconnected/stuck
+    // fallback. Do not add a browser poll that can race exact-identity replay.
+    return () => clearTimeout(timer);
   }, [game?.status, game?.game_type, game?.last_round_result, gameId, terminalPresentationActive]);
 
 

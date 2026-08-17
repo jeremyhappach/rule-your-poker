@@ -176,16 +176,16 @@ Status: Resolved and accepted in published two-client smoke on 2026-08-16.
 
 ### 3. Remaining terminal-authority migrations
 
-Yahtzee delivery status: the atomic RPC, identity-only client cutover, and
-connected-client terminal hold are implemented; migration
-`20260803234111_atomic_yahtzee_terminal_settlement.sql` and late-replay fix
-`20260804000259_fix_yahtzee_settlement_replay.sql` are installed on the owned
-production database. Final human/bot score writes now make terminal state
-durable before their local highlight, and live presentation retains departed
-round participants. Published two-human terminal-disconnect smoke passed on
-2026-08-03, making atomic settlement and the connected-client terminal hold a
-stable checkpoint. The separate missing winner-chip bounce is queued below as
-a presentation defect.
+Yahtzee delivery status: server-authoritative bootstrap, rolls, holds, scoring,
+atomic turn handoff, recovery, settlement, and exact-identity postgame
+continuation are implemented. Migration
+`20260816210000_yahtzee_authority_cutover.sql` plus the earlier settlement and
+late-replay migrations are installed on the owned production database. The
+client candidate consumes committed RPC results directly, rejects direct round
+writes, and skips shared browser cleanup. The complete rollback proof and local
+validation pass; published multiplayer authority smoke is pending. The earlier
+two-human terminal-disconnect smoke remains a stable settlement/presentation
+checkpoint. The separate missing winner-chip bounce is queued below.
 
 Normal 3-5-7 delivery status: the atomic settlement RPC and connected-client
 presentation latch are implemented. Production smoke on 2026-08-07 exposed a
@@ -655,21 +655,6 @@ above. Preserve their exact game-specific semantics during later triage.
   deltas even though
   `src/lib/ginRummyRoundLogic.ts:recordGinRummyHandResult` explicitly performs
   no chip transfer.
-- Yahtzee's ascending-position turn order conflicts with canonical
-  `src/lib/canonicalShell/seatRing.ts:nextClockwise`, which defines
-  left/clockwise as the nearest lower occupied position.
-- Yahtzee nonterminal category selection still persists the scored snapshot,
-  waits for presentation, and then persists the next-turn snapshot. If the
-  acting client disappears in that interval, the current turn can remain on a
-  now-complete scorecard. The terminal score path is fixed in the settlement
-  delivery; migrate the broader nonterminal handoff separately without losing
-  the visible score highlight.
-- Yahtzee gameplay state is still written directly to
-  `rounds.yahtzee_state`, and the deployed `rounds` UPDATE policy permits both
-  anonymous and authenticated mutation. The settlement RPC validates terminal
-  structure and score domains but cannot reconstruct roll/category provenance.
-  Move roll, hold, score, and advance actions behind authenticated,
-  participant/turn-scoped RPCs and then narrow direct round UPDATE access.
 - Holm partial-tie payout uses integer division. When the pot is not divisible
   by the number of tied winners, the remainder has no proven conservation
   owner.

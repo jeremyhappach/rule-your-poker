@@ -1,7 +1,7 @@
 /**
  * Yahtzee progress vector extractor for the anti-regression framework.
  *
- * Vector: [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]
+ * Vector: [roundOrd, phaseOrd, actionSequence, totalCategoriesFilled, handoffPhase, rollsUsed]
  *
  * CRITICAL ORDERING:
  * - roundOrd (most significant) — discriminates cross-Yahtzee-game boundaries.
@@ -26,6 +26,7 @@
  *
  * - roundOrd:            stamped monotonic round ord (new Yahtzee match > old)
  * - phaseOrd:            waiting=0, playing=1, complete=2
+ * - actionSequence:      server-owned CAS sequence (every roll/hold/score advances)
  * - totalCategoriesFilled: total categories scored across ALL players (monotonic within a match)
  * - handoffPhase:        0 = scored snapshot before turn handoff, 1 = live turn snapshot
  * - rollsUsed:           3 - rollsRemaining (higher = more advanced within a turn)
@@ -55,6 +56,7 @@ export function getYahtzeeProgress(state: YahtzeeStateForProgress): ProgressVect
 
   // Phase ordinal: waiting=0, playing=1, complete=2
   const phaseOrd = state.gamePhase === 'waiting' ? 0 : state.gamePhase === 'complete' ? 2 : 1;
+  const actionSequence = Number.isInteger(state.actionSequence) ? state.actionSequence! : 0;
 
   // Total categories filled across all players (strictly monotonic as game advances)
   let totalCategoriesFilled = 0;
@@ -104,6 +106,7 @@ export function getYahtzeeProgress(state: YahtzeeStateForProgress): ProgressVect
   return [
     roundOrd,
     phaseOrd,
+    actionSequence,
     totalCategoriesFilled,
     ...perPlayerCategoryCounts,
     handoffPhase,

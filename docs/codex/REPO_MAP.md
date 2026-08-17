@@ -270,12 +270,13 @@ reset transient/presentation state when those identities change.
 - Entry/presentation: `Game.tsx` -> `YahtzeeGameTable.tsx`;
   `YahtzeeAnchoredSlot.tsx`, `YahtzeeAnchoredInteractionSlot.tsx`,
   `YahtzeeOverlays.tsx`, `DiceRollAnimation.tsx`, and dice shell primitives.
-- State/actions: `rounds.yahtzee_state`;
-  `yahtzeeGameLogic.ts:rollYahtzeeDice`, `toggleYahtzeeHold`,
-  `scoreYahtzeeCategory`, and `advanceYahtzeeTurn`; the mounted component
-  persists state directly.
-- Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound`; terminal disposition is
-  owned by the settlement RPC below.
+- State/actions: `rounds.yahtzee_state` is written only through
+  `public.yahtzee_apply_action`; `src/lib/yahtzeeAuthority.ts` submits exact
+  intent/action sequence and consumes the committed result. Pure client rule
+  helpers remain preview/presentation support.
+- Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound` calls atomic
+  `public.start_yahtzee_round`; `public.yahtzee_advance_postgame` owns the
+  exact-settlement handoff; `private.advance_due_yahtzee_state` owns recovery.
 - Bots/scoring: `yahtzeeBotLogic.ts:getBotHoldDecision`,
   `getBotCategoryChoice`, and `shouldBotStopRolling`;
   `yahtzeeScoring.ts:scoreCategory`, `getTotalScore`, and Joker helpers.
@@ -286,10 +287,14 @@ reset transient/presentation state when those identities change.
   `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`.
   The RPC derives score/winner or tie, owns fixed-stake payout, result claim,
   post-payout snapshots, and terminal disposition. `YahtzeeGameTable.tsx`
-  retries settlement and owns presentation only; `Game.tsx` plus the generic
-  live-terminal scope helper retain a connected LAST HAND table.
+  retries settlement and owns presentation only; `Game.tsx` retains the live
+  terminal table and delegates continuation without shared browser cleanup.
+- Authority migration/proof:
+  `supabase/migrations/20260816210000_yahtzee_authority_cutover.sql` and
+  `supabase/tests/yahtzee_authority_rollback_proof.sql`.
 - Focused tests: `yahtzeeScoring.test.ts`, `yahtzeeGameLogic.test.ts`,
-  `yahtzeeProgress.test.ts`, `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
+  `yahtzeeProgress.test.ts`, `yahtzeeAuthority.test.ts`,
+  `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
   `liveTerminalPresentationHold.test.ts`, and shared die-row/shell tests.
 
 ### 3-5-7

@@ -34,11 +34,8 @@ import {
 } from "@/lib/yahtzeeTypes";
 import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
-import {
-  rollYahtzeeDice, toggleYahtzeeHold,
-  buildYahtzeeScoreTransition,
-} from "@/lib/yahtzeeGameLogic";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
+import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -143,14 +140,6 @@ interface YahtzeeGameTableProps {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-async function updateYahtzeeState(roundId: string, state: YahtzeeState): Promise<Error | null> {
-  const { error } = await supabase
-    .from("rounds")
-    .update({ yahtzee_state: state } as any)
-    .eq("id", roundId);
-  return error;
-}
 
 function toHorsesDice(dice: YahtzeeDie[]): HorsesDieType[] {
   return dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
@@ -372,6 +361,13 @@ export function YahtzeeGameTable({
   const authoritativeYahtzeeState = yahtzeeSync.authoritativeState;
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
+  const acceptCommittedState = useCallback((state: YahtzeeState) => {
+    const stamped = {
+      ...state,
+      __syncRound: getRoundOrd(currentRoundId),
+    } as YahtzeeState & { __syncRound: number };
+    return yahtzeeSync.receiveAuthoritativeUpdate(stamped);
+  }, [currentRoundId, getRoundOrd, yahtzeeSync]);
 
   // Terminal settlement is authoritative, replayable database work. Every
   // mounted client that observes the persisted terminal state may submit the
@@ -505,7 +501,6 @@ export function YahtzeeGameTable({
     });
   }, [viewState?.currentTurnPlayerId, viewState?.playerStates, gameId, dealerGameId, currentRoundId]);
 
-  const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
   const [lastScoredValue, setLastScoredValue] = useState<number | null>(null);
@@ -519,15 +514,10 @@ export function YahtzeeGameTable({
   /** Ref-based identity for the currently running bot turn. Used instead of closure-based
    *  `cancelled` so that transient dep flickers don't abort a legitimately running bot. */
   const activeBotTurnIdentityRef = useRef<string | null>(null);
-  const localRollKeyRef = useRef<string | undefined>(undefined);
-  /** Monotonic counter for generating unique rollKeys across all rolls in this session */
-  const rollSerialRef = useRef(0);
-  // Track opponent scorecard to detect when a new category is scored remotely
-  const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
+  const lastPresentedScoreSequenceRef = useRef<number | null>(null);
+  const actionInFlightRef = useRef(false);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
-  // Always track last non-zero dice for current turn player (used to cache for scoring transition)
-  const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Overlay states
@@ -596,8 +586,8 @@ export function YahtzeeGameTable({
   useEffect(() => {
     completionLatchRoundIdRef.current = null;
     prevTurnRef.current = null;
-    prevOpponentScorecardRef.current = {};
-    lastNonZeroDiceRef.current = null;
+    lastPresentedScoreSequenceRef.current = null;
+    actionInFlightRef.current = false;
     setCachedOpponentDice(null);
     setScoringInProgress(false);
     setLastScoredCategory(null);
@@ -688,8 +678,9 @@ export function YahtzeeGameTable({
     setActiveTabRaw(next);
   }, [gameId]);
 
-  // Local dice state — OWNED by the active player during their turn.
-  // Seeded from DB once on turn start; after that, only local actions mutate it.
+  // Local dice are presentation state for the active player. Every durable
+  // roll/hold/score is returned by the authoritative action RPC and consumed
+  // directly; Realtime only synchronizes peers and reconnects.
   const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
   // Ref mirror of localDice — always up-to-date for synchronous reads in handlers
   // (React closures capture stale state; this ref avoids the hold→roll race condition)
@@ -700,9 +691,6 @@ export function YahtzeeGameTable({
   // is local-owned just like dice; handlers must not depend on a stale DB snapshot.
   const localRollsRemainingRef = useRef(3);
   useEffect(() => { localRollsRemainingRef.current = localRollsRemaining; }, [localRollsRemaining]);
-  // Ref for pending debounced hold DB write (batches rapid toggles into one write)
-  const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Track which turn we've already seeded localDice for, so we seed exactly once per turn.
   const turnSeededKeyRef = useRef<string | null>(null);
 
@@ -794,7 +782,7 @@ export function YahtzeeGameTable({
     })), [viewState?.playerStates]);
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
 
-  const rolling = uiRolling || isRolling;
+  const rolling = uiRolling;
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
 
@@ -907,9 +895,8 @@ export function YahtzeeGameTable({
   const ROLL_AGAIN_MS = 1800;
 
   /* ---- Seed local dice ONCE when my turn starts (or on reconnect) ---- */
-  // After seeding, localDice is the sole source of truth for the active player's dice.
-  // No mid-turn DB→localDice sync — rolls, holds, and scores all mutate localDice directly.
-  // DB writes are fire-and-forget persistence; the UI never reads back from DB mid-turn.
+  // After seeding, committed RPC results update localDice directly so the
+  // initiator never waits for its own Realtime echo.
   useEffect(() => {
     if (!isMyTurn || !myPlayer || !stableYahtzeeState) {
       // Not my turn — clear the seed key so we re-seed when it becomes my turn again
@@ -972,63 +959,30 @@ export function YahtzeeGameTable({
     }
   }, [viewState?.playerStates]);
 
-  /* ---- Track opponent's last non-zero dice for caching during scoring ---- */
+  /* ---- Present the exact committed score after the atomic turn handoff ---- */
   useEffect(() => {
-    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = viewState.playerStates[currentTurnPlayerId];
-    if (!ps) return;
-    const hasNonZero = ps.dice.some(d => d.value !== 0);
-    if (hasNonZero) {
-      lastNonZeroDiceRef.current = {
-        dice: ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld })),
-        rollKey: ps.rollKey,
-        playerId: currentTurnPlayerId,
-      };
-    }
-  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+    const action = viewState?.lastAction;
+    if (!action || action.type !== 'score' || action.playerId === myPlayer?.id) return;
+    if (lastPresentedScoreSequenceRef.current === action.sequence) return;
+    lastPresentedScoreSequenceRef.current = action.sequence;
 
-  /* ---- Detect remote opponent scoring (new category appears in their scorecard) ---- */
-  useEffect(() => {
-    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = viewState.playerStates[currentTurnPlayerId];
-    if (!ps) return;
+    setLastScoredCategory(action.category);
+    setLastScoredValue(action.score);
+    setScoringInProgress(true);
+    setCachedOpponentDice({
+      dice: action.dice.map(die => ({ value: die.value, isHeld: die.isHeld })),
+      rollKey: action.sequence,
+      playerId: action.playerId,
+    });
 
-    const prevScores = prevOpponentScorecardRef.current[currentTurnPlayerId] || {};
-    const currentScores = ps.scorecard.scores;
-
-    // Find newly scored category
-    const allCats = [...UPPER_CATEGORIES, ...LOWER_CATEGORIES] as YahtzeeCategory[];
-    let newCat: YahtzeeCategory | null = null;
-    for (const cat of allCats) {
-      if (currentScores[cat] !== undefined && prevScores[cat] === undefined) {
-        newCat = cat;
-        break;
-      }
-    }
-
-    // Always update tracked scorecard
-    prevOpponentScorecardRef.current[currentTurnPlayerId] = { ...currentScores };
-
-    if (newCat) {
-      // Opponent just scored this category — show highlight
-      setLastScoredCategory(newCat);
-      setLastScoredValue(currentScores[newCat]!);
-      setScoringInProgress(true);
-
-      if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
-        setCachedOpponentDice(lastNonZeroDiceRef.current);
-      }
-
-      // Auto-clear after 2.5s (in case turn advance hasn't arrived yet)
-      const timer = setTimeout(() => {
-        setLastScoredCategory(null);
-        setLastScoredValue(null);
-        setScoringInProgress(false);
-        setCachedOpponentDice(null);
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+    const timer = setTimeout(() => {
+      setLastScoredCategory(null);
+      setLastScoredValue(null);
+      setScoringInProgress(false);
+      setCachedOpponentDice(null);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [viewState?.lastAction, myPlayer?.id]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
   useEffect(() => {
@@ -1045,18 +999,17 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   const handleRoll = useCallback(async () => {
-    if (!isMyTurn || !currentRoundId || !myPlayer || rolling) {
+    if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
-    const currentLocalRollsRemaining = localRollsRemainingRef.current;
-    if (!myPs || currentLocalRollsRemaining <= 0) {
+    if (!myPs || myPs.rollsRemaining <= 0) {
       console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', {
         hasRawState: !!rawState,
         hasPs: !!myPs,
-        rolls: currentLocalRollsRemaining,
+        rolls: myPs?.rollsRemaining,
         snapshot: describeYahtzeeSnapshot(rawState),
       });
       return;
@@ -1065,122 +1018,82 @@ export function YahtzeeGameTable({
     const turnKey = `${currentTurnPlayerId}-${currentRoundId}`;
     turnSeededKeyRef.current = turnKey;
 
-    const isFirstRoll = currentLocalRollsRemaining === 3;
+    const isFirstRoll = myPs.rollsRemaining === 3;
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
-
-    // Use ref to get the LATEST localDice — avoids stale closure when user
-    // holds a die and immediately taps Roll before React re-renders.
-    const currentLocalDice = localDiceRef.current;
-    heldSnapshotRef.current = currentLocalDice.map(d => d.isHeld);
-    rollSerialRef.current += 1;
-    const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
-    localRollKeyRef.current = t;
-    console.log('[ROLL GENERATED]', { rollKey: t, playerId: myPlayer.id, rollSerial: rollSerialRef.current, roundId: currentRoundId });
-
-    // CRITICAL: Apply local hold state to the player state before rolling.
-    // The DB state may be stale if the user toggled holds that haven't synced yet.
-    const psWithLocalHolds = {
-      ...myPs,
-      rollsRemaining: currentLocalRollsRemaining,
-      dice: myPs.dice.map((d, i) => ({
-        ...(currentLocalDice[i] ?? d),
-        isHeld: currentLocalDice[i]?.isHeld ?? d.isHeld,
-      })),
-    };
-
-    const newPs = rollYahtzeeDice(psWithLocalHolds);
-    localDiceRef.current = newPs.dice;
-    localRollsRemainingRef.current = newPs.rollsRemaining;
-    setLocalDice(newPs.dice);
-    setLocalRollsRemaining(newPs.rollsRemaining);
-
-    // Check for Yahtzee roll — delay overlay until dice animation finishes
-    const diceValues = newPs.dice.map(d => d.value);
-    if (isYahtzee(diceValues) && diceValues[0] !== 0) {
-      setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
-    }
-
-    // NOTE: We do NOT freeze the whole presentationState during roll animations.
-    // The acting client renders from localDice (not viewState), so it's already stable.
-    // The observer renders opponent dice from viewState via getCurrentTurnDice + DiceTableLayout's
-    // own fly-in animation, so it handles the visual transition naturally.
-    // Freezing the entire viewState would block turn banner, rolls badge, and status text
-     // from updating on the observer — causing the "stuck on Rolls: 3" bug.
-     // No sync cooldown needed: localDice is owned by local actions during my turn
-     // (turn-seed-only model — no mid-turn DB→localDice sync to guard against).
-
-    setUiRolling(true);
-    if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
-    uiRollingTimerRef.current = window.setTimeout(() => {
-      setUiRolling(false);
-      heldSnapshotRef.current = null;
-      uiRollingTimerRef.current = null;
-    }, duration);
-
-    const newState = {
-      ...rawState,
-      playerStates: {
-        ...rawState.playerStates,
-        [myPlayer.id]: { ...newPs, rollKey: t, heldMaskBeforeComplete: heldSnapshotRef.current ?? undefined },
-      },
-    };
-    // Apply optimistic override — sync framework will reject stale DB updates until caught up
-    console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
-    const rollWriterId = {
-      rollKey: t,
-      rollSerial: rollSerialRef.current,
-      playerId: myPlayer.id,
-      roundId: currentRoundId,
-      rollNumber: 3 - newPs.rollsRemaining,
-    };
-    yahtzeeSync.applyOptimistic(newState);
+    actionInFlightRef.current = true;
     try {
-      await updateYahtzeeState(currentRoundId, newState);
-    } catch (err) {
-      throw err;
+      const result = await applyYahtzeeAction({
+        roundId: currentRoundId,
+        playerId: myPlayer.id,
+        action: 'roll',
+        expectedActionSequence: rawState.actionSequence ?? 0,
+      });
+      acceptCommittedState(result.state);
+      const committedPs = result.state.playerStates[myPlayer.id];
+      if (!committedPs) throw new Error('Yahtzee roll result omitted the acting player state.');
+      if (result.outcome === 'rejected') {
+        throw new Error(`Yahtzee roll rejected: ${result.reason ?? 'unknown reason'}`);
+      }
+      localDiceRef.current = committedPs.dice;
+      localRollsRemainingRef.current = committedPs.rollsRemaining;
+      setLocalDice(committedPs.dice);
+      setLocalRollsRemaining(committedPs.rollsRemaining);
+      if (result.outcome === 'stale_action') return;
+
+      heldSnapshotRef.current = committedPs.heldMaskBeforeComplete ?? null;
+      const diceValues = committedPs.dice.map(d => d.value);
+      if (isYahtzee(diceValues) && diceValues[0] !== 0) {
+        setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
+      }
+      setUiRolling(true);
+      if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
+      uiRollingTimerRef.current = window.setTimeout(() => {
+        setUiRolling(false);
+        heldSnapshotRef.current = null;
+        uiRollingTimerRef.current = null;
+      }, duration);
+    } catch (error) {
+      console.error('[YAHTZEE] Authoritative roll failed', error);
+      onRefetch();
+    } finally {
+      actionInFlightRef.current = false;
     }
-  }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
+  }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling, acceptCommittedState, onRefetch]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
+    if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       return;
     }
-    const myPs = yahtzeeState.playerStates[myPlayer.id];
+    const rawState = authoritativeYahtzeeState;
+    const myPs = rawState?.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) {
       return;
     }
-
-
-
-
-    // Apply optimistic guard — the sync framework will reject stale DB hold states
-    // Use functional updater so rapid taps always read latest local state
-    setLocalDice(prev => {
-      const updatedDice = prev.map((die, idx) => ({
-        ...die,
-        isHeld: idx === dieIndex ? !die.isHeld : die.isHeld,
-      }));
-
-      // Debounce the DB write so rapid holds batch into one update
-      if (pendingHoldUpdateRef.current) clearTimeout(pendingHoldUpdateRef.current);
-      pendingHoldUpdateRef.current = setTimeout(() => {
-        pendingHoldUpdateRef.current = null;
-        // Read latest local dice at persist time via a hidden ref
-        setLocalDice(latest => {
-          const newPs = { ...myPs, dice: latest };
-          const newState = {
-            ...yahtzeeState,
-            playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
-          };
-          updateYahtzeeState(currentRoundId, newState);
-          return latest; // no change
-        });
-      }, 300);
-
-      return updatedDice;
-    });
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling]);
+    actionInFlightRef.current = true;
+    try {
+      const result = await applyYahtzeeAction({
+        roundId: currentRoundId,
+        playerId: myPlayer.id,
+        action: 'hold',
+        dieIndex,
+        expectedActionSequence: rawState.actionSequence ?? 0,
+      });
+      acceptCommittedState(result.state);
+      if (result.outcome === 'rejected') {
+        throw new Error(`Yahtzee hold rejected: ${result.reason ?? 'unknown reason'}`);
+      }
+      const committedPs = result.state.playerStates[myPlayer.id];
+      if (!committedPs) throw new Error('Yahtzee hold result omitted the acting player state.');
+      localDiceRef.current = committedPs.dice;
+      setLocalDice(committedPs.dice);
+    } catch (error) {
+      console.error('[YAHTZEE] Authoritative hold failed', error);
+      onRefetch();
+    } finally {
+      actionInFlightRef.current = false;
+    }
+  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, acceptCommittedState, onRefetch]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
@@ -1214,16 +1127,17 @@ export function YahtzeeGameTable({
   }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!currentRoundId || !myPlayer) return;
+    if (!currentRoundId || !myPlayer || actionInFlightRef.current) return;
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs) return;
+    const diceValues = myPs.dice.map(d => d.value);
+    const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
+    const pendingScore = jokerValid ? getJokerScore(category, diceValues) : calculateCategoryScore(category, diceValues);
 
-
-    // Highlight the chosen category and pause for clarity
+    actionInFlightRef.current = true;
     setScoringInProgress(true);
     setLastScoredCategory(category);
-    const pendingScore = calculateCategoryScore(category, myPs.dice.map(d => d.value));
     setLastScoredValue(pendingScore);
 
     // If this upper category pushes us to the bonus threshold, fire the overlay now
@@ -1236,87 +1150,51 @@ export function YahtzeeGameTable({
       }
     }
 
-    const scoreTransition = buildYahtzeeScoreTransition(rawState, myPlayer.id, category);
-    const newPs = scoreTransition.scoredPlayerState;
-    localDiceRef.current = newPs.dice;
-    localRollsRemainingRef.current = newPs.rollsRemaining;
-    setLocalDice(newPs.dice);
-    setLocalRollsRemaining(newPs.rollsRemaining);
-
-    // Cache dice for opponent to see during scoring highlight (like bot logic)
     const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
     setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
-
-    // First authoritative write. Nonterminal scores preserve the existing
-    // scored-only presentation handoff; a terminal score includes completion.
-    const { scoredState, advancedState, authoritativeScoreState, isTerminalScore } = scoreTransition;
-    console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
-    yahtzeeSync.applyOptimistic(scoredState);
-    if (isTerminalScore) {
-      // The final category and terminal phase are one durable write. Keep the
-      // two-second score highlight in the presentation layer only: if this
-      // client disappears during that hold, the persisted terminal snapshot
-      // is already sufficient for any peer/reconnect to replay settlement.
+    let presentationFrozen = false;
+    try {
       yahtzeeSync.freezePresentation();
-    }
-    const scoreWriteError = await updateYahtzeeState(
-      currentRoundId,
-      authoritativeScoreState,
-    );
-    if (scoreWriteError) {
-      console.error('[YAHTZEE] Failed to persist category score', {
-        currentRoundId,
+      presentationFrozen = true;
+      const result = await applyYahtzeeAction({
+        roundId: currentRoundId,
+        playerId: myPlayer.id,
+        action: 'score',
         category,
-        isTerminalScore,
-        error: scoreWriteError,
+        expectedActionSequence: rawState.actionSequence ?? 0,
       });
-      if (isTerminalScore) {
-        yahtzeeSync.clearOptimistic();
-        yahtzeeSync.unfreezePresentation();
+      acceptCommittedState(result.state);
+      if (result.outcome === 'rejected') {
+        throw new Error(`Yahtzee score rejected: ${result.reason ?? 'unknown reason'}`);
       }
+      if (result.outcome === 'stale_action') {
+        onRefetch();
+        return;
+      }
+      const committedPs = result.state.playerStates[myPlayer.id];
+      if (!committedPs) throw new Error('Yahtzee score result omitted the acting player state.');
+      setLastScoredValue(result.score ?? pendingScore);
+      if (result.terminal) {
+        settlementRequestRef.current('terminal-score-rpc-acknowledged', true);
+      }
+      await new Promise(r => setTimeout(r, 2000));
+      setOptimisticScore({ playerId: myPlayer.id, category, value: result.score ?? pendingScore });
+      localDiceRef.current = committedPs.dice;
+      localRollsRemainingRef.current = committedPs.rollsRemaining;
+      setLocalDice(committedPs.dice);
+      setLocalRollsRemaining(committedPs.rollsRemaining);
+    } catch (error) {
+      console.error('[YAHTZEE] Authoritative score failed', error);
+      onRefetch();
+    } finally {
       setLastScoredCategory(null);
       setLastScoredValue(null);
       setScoringInProgress(false);
       setCachedOpponentDice(null);
-      return;
+      if (presentationFrozen) yahtzeeSync.unfreezePresentation();
+      actionInFlightRef.current = false;
     }
-    if (isTerminalScore) {
-      // Dispatch settlement from the acknowledged terminal write itself; do
-      // not require this client to remain mounted long enough to receive its
-      // own realtime echo. Realtime/focus callers still replay the same key.
-      settlementRequestRef.current('terminal-score-write-acknowledged', true);
-    }
-
-    // Wait 2 seconds so both players can see the selection highlighted
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Keep optimistic score visible until DB subscription catches up
-    setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
-
-    // NONTERMINAL SECOND WRITE: advance turn after the score highlight. The
-    // terminal case was already persisted atomically with the score above.
-    console.log('[YAHTZEE_SYNC] Writing turn-advance snapshot', describeYahtzeeSnapshot(advancedState));
-    // CRITICAL: Apply turn-advance optimistic BEFORE clearing scoring flags.
-    // Otherwise there's a 1-2 frame gap where scoringInProgress=false but
-    // currentTurnPlayerId still points to the scorer, causing a brief "my roll" flash.
-    yahtzeeSync.applyOptimistic(advancedState);
-
-    // Now safe to clear scoring flags — turn owner has already advanced
-    setLastScoredCategory(null);
-    setLastScoredValue(null);
-    setScoringInProgress(false);
-    setCachedOpponentDice(null);
-
-    if (isTerminalScore) {
-      yahtzeeSync.unfreezePresentation();
-      return;
-    }
-
-    await updateYahtzeeState(currentRoundId, advancedState);
-    // P9.3b: NO direct handleGameComplete call here — completion is now driven
-    // by the authoritative effect below (fires once per currentRoundId on every
-    // client; settlement is replayed separately from authoritative state).
-  }, [currentRoundId, authoritativeYahtzeeState, myPlayer]);
+  }, [currentRoundId, authoritativeYahtzeeState, myPlayer, acceptCommittedState, onRefetch, yahtzeeSync]);
 
   /* ---- P9.3b: end-of-game presentation effect ----
    * Fires on EVERY client (active scorer, non-scoring active, observer) when
@@ -1615,7 +1493,6 @@ export function YahtzeeGameTable({
       let activeRoll = -1;
       let lastHolds: boolean[] | null = null;
       let lastPrevRollKey: string | number | undefined;
-      let terminalPresentationFrozen = false;
 
       // Double-check guard in case of race between timer fire and identity change
       if (isCancelled('runBot:start')) {
@@ -1793,98 +1670,21 @@ export function YahtzeeGameTable({
             turnIdentity,
           });
 
-          console.log('[BOT BEFORE rollYahtzeeDice]', {
+          const rollResult = await applyYahtzeeAction({
             roundId: currentRoundId,
-            botPlayerId,
-            roll,
-            rollsRemaining: ps.rollsRemaining,
-            dice: describeBotDiceState(ps.dice),
-            holds: lastHolds,
-            prevRollKey: lastPrevRollKey,
-            turnIdentity,
+            playerId: botPlayerId,
+            action: 'bot_roll',
+            holdMask: roll === 0 ? null : lastHolds,
+            expectedActionSequence: state.actionSequence ?? 0,
           });
-
-          const preRollDice = describeBotDiceState(ps.dice);
-          const preRollsRemaining = ps.rollsRemaining;
-          rollSerialRef.current += 1;
-          const botRollKey = `yahtzee:${currentRoundId}:${botPlayerId}:${rollSerialRef.current}`;
-          const rolledPs = rollYahtzeeDice(ps);
-          const rollsRemainingChanged = rolledPs.rollsRemaining === preRollsRemaining - 1;
-          const rolledDiceShapeValid = Array.isArray(rolledPs.dice)
-            && rolledPs.dice.length === 5
-            && rolledPs.dice.every((die) => typeof die?.value === 'number' && typeof die?.isHeld === 'boolean');
-          const rollStateChanged = rollsRemainingChanged || rolledPs.dice.some((die, index) => (
-            die.value !== ps.dice[index]?.value || die.isHeld !== ps.dice[index]?.isHeld
-          ));
-          console.log('[BOT AFTER ROLL]', {
-            roundId: currentRoundId,
-            botPlayerId,
-            rollKey: botRollKey,
-            roll,
-            rollsRemaining: rolledPs.rollsRemaining,
-            diceValues: rolledPs.dice.map(d => d.value),
-            heldFlags: rolledPs.dice.map(d => d.isHeld),
-            rollsRemainingChanged,
-            rolledDiceShapeValid,
-            rollStateChanged,
-            turnIdentity,
-          });
-          console.assert(rollsRemainingChanged, '[BOT ASSERT] rollYahtzeeDice did not decrement rollsRemaining as expected', {
-            roll,
-            before: preRollsRemaining,
-            after: rolledPs.rollsRemaining,
-            turnIdentity,
-          });
-          console.assert(rolledDiceShapeValid, '[BOT ASSERT] rolled dice array invalid', {
-            roll,
-            dice: rolledPs.dice,
-            turnIdentity,
-          });
-          console.assert(rollStateChanged, '[BOT ASSERT] rollYahtzeeDice did not change expected roll state', {
-            roll,
-            preRollsRemaining,
-            rolledPs,
-            preRollDice,
-            turnIdentity,
-          });
-          ps = rolledPs;
-          console.log('[ROLL GENERATED]', { rollKey: botRollKey, playerId: botPlayerId, rollSerial: rollSerialRef.current, roll, roundId: currentRoundId });
-          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: botRollKey } } };
-          yahtzeeSync.applyOptimistic(state);
-          console.log('[BOT BEFORE UPDATE_YAHTZEE_STATE]', {
-            roundId: currentRoundId,
-            botPlayerId,
-            roll,
-            rollKey: botRollKey,
-            rollsRemaining: ps.rollsRemaining,
-            dice: describeBotDiceState(ps.dice),
-            turnIdentity,
-          });
-          const updateError = await updateYahtzeeState(currentRoundId, state);
-          console.log('[BOT AFTER UPDATE_YAHTZEE_STATE]', {
-            roundId: currentRoundId,
-            botPlayerId,
-            roll,
-            rollKey: botRollKey,
-            rollsRemaining: ps.rollsRemaining,
-            dice: describeBotDiceState(ps.dice),
-            error: updateError ? { message: updateError.message, name: updateError.name } : null,
-            turnIdentity,
-          });
-          if (updateError) {
-            console.error('[BOT UPDATE ERROR]', {
-              roundId: currentRoundId,
-              botPlayerId,
-              roll,
-              rollKey: botRollKey,
-              error: updateError,
-              ps,
-              statePlayerState: state.playerStates[botPlayerId],
-              holds: lastHolds,
-              prevRollKey: lastPrevRollKey,
-              turnIdentity,
-            });
+          acceptCommittedState(rollResult.state);
+          state = rollResult.state;
+          if (rollResult.outcome === 'rejected') {
+            throw new Error(`Yahtzee bot roll rejected: ${rollResult.reason ?? 'unknown reason'}`);
           }
+          if (rollResult.outcome === 'stale_action') return;
+          ps = state.playerStates[botPlayerId];
+          if (!ps) throw new Error('Yahtzee bot roll omitted the acting player state.');
 
           console.log('[BOT POST-ROLL WAIT START]', { roll, turnIdentity });
           await new Promise(r => setTimeout(r, 1800));
@@ -1939,29 +1739,28 @@ export function YahtzeeGameTable({
         setLastScoredCategory(category);
         setScoringInProgress(true);
 
-        const scoreTransition = buildYahtzeeScoreTransition(state, botPlayerId, category);
-        ps = scoreTransition.scoredPlayerState;
-        state = scoreTransition.scoredState;
-        const { advancedState, authoritativeScoreState, isTerminalScore } = scoreTransition;
-        yahtzeeSync.applyOptimistic(state);
-        if (isTerminalScore) {
-          // As with a human's final category, terminal truth is durable before
-          // the local score-highlight pause. Bot-controller cancellation can
-          // no longer strand all-complete scorecards in `playing`.
-          yahtzeeSync.freezePresentation();
-          terminalPresentationFrozen = true;
+        const scoreResult = await applyYahtzeeAction({
+          roundId: currentRoundId,
+          playerId: botPlayerId,
+          action: 'bot_score',
+          category,
+          expectedActionSequence: state.actionSequence ?? 0,
+        });
+        acceptCommittedState(scoreResult.state);
+        state = scoreResult.state;
+        if (scoreResult.outcome === 'rejected') {
+          throw new Error(`Yahtzee bot score rejected: ${scoreResult.reason ?? 'unknown reason'}`);
         }
-        const scoreWriteError = await updateYahtzeeState(
-          currentRoundId,
-          authoritativeScoreState,
-        );
-        if (scoreWriteError) throw scoreWriteError;
-        if (isTerminalScore) {
-          settlementRequestRef.current('terminal-bot-score-write-acknowledged', true);
+        if (scoreResult.outcome === 'stale_action') return;
+        ps = state.playerStates[botPlayerId];
+        if (!ps) throw new Error('Yahtzee bot score omitted the acting player state.');
+        setLastScoredValue(scoreResult.score ?? null);
+        if (scoreResult.terminal) {
+          settlementRequestRef.current('terminal-bot-score-rpc-acknowledged', true);
         }
 
         await new Promise(r => setTimeout(r, 2000));
-        if (!isTerminalScore && isCancelled('after-score-wait')) {
+        if (!scoreResult.terminal && isCancelled('after-score-wait')) {
           setLastScoredCategory(null);
           setLastScoredValue(null);
           setScoringInProgress(false);
@@ -1979,25 +1778,13 @@ export function YahtzeeGameTable({
         setScoringInProgress(false);
         setCachedOpponentDice(null);
 
-        const prevTurnOwner = state.currentTurnPlayerId;
-        state = advancedState;
         console.log('[TURN TRANSITION]', {
           roundId: currentRoundId,
-          fromPlayerId: prevTurnOwner,
+          fromPlayerId: botPlayerId,
           toPlayerId: state.currentTurnPlayerId,
           gamePhase: state.gamePhase,
           turnIdentity,
         });
-        yahtzeeSync.applyOptimistic(state);
-        if (isTerminalScore) {
-          yahtzeeSync.unfreezePresentation();
-          terminalPresentationFrozen = false;
-          return;
-        }
-        await updateYahtzeeState(currentRoundId, state);
-        // P9.3b: completion is driven by the authoritative effect — no direct
-        // handleGameComplete call here. Effect fires on every client when
-        // viewState.gamePhase transitions to 'complete'.
       } catch (e) {
         console.error('[YAHTZEE] Bot error:', {
           error: e,
@@ -2008,11 +1795,8 @@ export function YahtzeeGameTable({
           prevRollKey: lastPrevRollKey,
           turnIdentity,
         });
+        onRefetch();
       } finally {
-        if (terminalPresentationFrozen) {
-          yahtzeeSync.clearOptimistic();
-          yahtzeeSync.unfreezePresentation();
-        }
         botProcessingRef.current = false;
         // Only clear identity if it still matches (prevents clearing a newer turn's identity)
         if (activeBotTurnIdentityRef.current === turnIdentity) {

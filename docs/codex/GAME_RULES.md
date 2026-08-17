@@ -250,10 +250,10 @@ contradictions.
 | Responsibility | Source |
 |---|---|
 | Setup/config | `src/components/DealerGameSetup.tsx` exposes a positive ante/stake; timer defaults come from `game_defaults`. |
-| State/actions | `src/lib/yahtzeeTypes.ts`; `src/lib/yahtzeeGameLogic.ts:rollYahtzeeDice`, `toggleYahtzeeHold`, `scoreYahtzeeCategory`, and `advanceYahtzeeTurn`; mounted persistence in `src/components/YahtzeeGameTable.tsx`. |
-| Scoring | `src/lib/yahtzeeScoring.ts:calculateCategoryScore`, `scoreCategory`, `getJokerValidCategories`, `getJokerScore`, and `getTotalScore`. |
-| Lifecycle | `src/lib/yahtzeeRoundLogic.ts:startYahtzeeRound`; terminal disposition is owned by `public.yahtzee_settle_game`, and shared continuation remains in `Game.tsx`. |
-| Bots | `src/lib/yahtzeeBotLogic.ts:getBotHoldDecision`, `getBotCategoryChoice`, and `shouldBotStopRolling`. |
+| State/actions | `src/lib/yahtzeeAuthority.ts:applyYahtzeeAction`; `public.yahtzee_apply_action` in `20260816210000_yahtzee_authority_cutover.sql` owns rolls, holds, scoring, action sequence, and atomic turn handoff. `yahtzeeGameLogic.ts` remains pure rule/presentation support only. |
+| Scoring | PostgreSQL helpers `private.yahtzee_category_is_legal` and `private.yahtzee_category_score` are authoritative; `src/lib/yahtzeeScoring.ts` supplies previews/presentation. |
+| Lifecycle | `src/lib/yahtzeeRoundLogic.ts:startYahtzeeRound` calls atomic `public.start_yahtzee_round`; `public.yahtzee_advance_postgame` owns exact-settlement continuation; `private.advance_due_yahtzee_state` owns recovery. |
+| Bots | Browser heuristics may choose holds/categories, but `public.yahtzee_apply_action` validates and commits bot actions; scheduled recovery can advance disconnected bot turns. |
 | State acceptance | `src/lib/gameStateSync/yahtzeeProgress.ts:getYahtzeeProgress`. |
 | Settlement | `src/lib/yahtzeeSettleGame.ts:settleYahtzeeGame`; `public.yahtzee_settle_game`, introduced by `20260803234111_atomic_yahtzee_terminal_settlement.sql` and latest in `20260804000259_fix_yahtzee_settlement_replay.sql`. |
 
@@ -276,8 +276,12 @@ contradictions.
   is initialized to 1 and the current action code does not increment it. The
   game completes when every player has filled all 13 categories.
 - The session dealer remains fixed for this Yahtzee dealer game. A tie creates
-  another Yahtzee hand under that dealer; after a win, shared lifecycle chooses
-  the next dealer/game.
+  another Yahtzee hand under that dealer; after a win, PostgreSQL derives the
+  next dealer and setup phase from the exact committed settlement.
+- Bootstrap validates admission and completed ante decisions, persists the
+  canonical nearest-lower-position clockwise order, creates the round, and
+  returns the committed state in one transaction. The caller consumes/refetches
+  that result directly; Realtime is not the bootstrap trigger.
 - Highest total wins. If multiple players share the high score, no chips move;
   the settlement RPC completes the exact round and atomically publishes the
   rollover flag for a new hand.
@@ -285,10 +289,10 @@ contradictions.
   completion, each loser pays the configured `anteAmount`; the winner receives
   `loserCount * anteAmount`. The payout is fixed stake, not score-difference
   based.
-- Final human and bot category actions persist the final score and
-  `gamePhase='complete'` in one snapshot before their two-second local score
-  highlight. Every mounted participant may then replay immutable
-  game/round/dealer-game/hand identity to `yahtzee_settle_game`.
+- Every roll, hold, and category action is authenticated, participant/turn
+  scoped, and compare-and-set against `actionSequence`. Category scoring and
+  the next-turn or terminal transition are one write; the local two-second
+  highlight is presentation only.
 - For a unique winner, the RPC atomically claims one `yahtzee_terminal`
   result, transfers the fixed configured stake, completes the round, replaces
   final snapshots with post-payout balances, and publishes `game_over` or
@@ -299,8 +303,10 @@ contradictions.
   plate and loser-to-winner chip animation even if a settled player leaves.
   The route holds the exact live terminal identity through real animation
   completion; a fresh mount of an already-ended session goes to the lobby.
-- Shared `handleGameOverComplete` continues the session or consumes pending
-  session end.
+- After terminal presentation, `Game.tsx` submits the exact immutable identity
+  to `yahtzee_advance_postgame` and skips shared browser-authored cleanup. The
+  server verifies settlement, clears ephemerals/outgoing identities, and
+  publishes continuation or session end with durable replay protection.
 - Bots hold toward valuable categories, choose the highest heuristic available
   score, and normally use all rolls; they stop early for Yahtzee or a maximum
   category.
@@ -312,19 +318,6 @@ contradictions.
 - `yahtzeeTypes.ts` describes `currentRound` as 1-13, but the action reducer
   never increments it; scorecard category counts, not that field, carry match
   progress.
-- Nonterminal category selection still uses a scored-state write, a visual
-  pause, and a later turn-advance write. A disconnect in that interval can
-  strand the current turn on a player whose scorecard just became complete;
-  the terminal path no longer has this gap.
-- The turn-order comment says left of dealer, but the implementation walks
-  ascending positions after the dealer. Canonical
-  `src/lib/canonicalShell/seatRing.ts:nextClockwise` defines left/clockwise as the nearest lower
-  occupied position. The two direction rules disagree.
-- Gameplay roll/hold/score state is still written directly to the round JSON.
-  The deployed broad round UPDATE policy means terminal structural/domain
-  validation cannot prove the roll and category history that produced a real-
-  money scorecard. Server-owned action RPCs and narrower UPDATE access remain
-  separate integrity work.
 
 ## 3-5-7
 
