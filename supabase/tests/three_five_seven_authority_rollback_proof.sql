@@ -69,6 +69,8 @@ BEGIN
   END IF;
   SELECT public.three_five_seven_begin_game(v_game) INTO v_replay;
   IF v_replay->>'outcome'<>'already_started' OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
+     OR v_replay#>>'{game,id}' IS DISTINCT FROM v_game::text
+     OR v_replay#>>'{round,id}' IS DISTINCT FROM v_round::text
      OR (SELECT pot FROM public.games WHERE id=v_game)<>4 OR EXISTS(SELECT 1 FROM public.players WHERE game_id=v_game AND chips<>98) THEN
     RAISE EXCEPTION '357_authority_proof:bootstrap_replay_mutated:%',v_replay;
   END IF;

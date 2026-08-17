@@ -92,6 +92,7 @@ import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { declineThreeFiveSevenSetup } from "@/lib/threeFiveSeven/declineSetup";
+import type { DealerGameSetupCommitResult } from "@/lib/dealerGameSetupAuthority";
 import {
   parseThreeFiveSevenRolloverAdvanceResult,
   selectThreeFiveSevenRolloverPresentation,
@@ -489,6 +490,7 @@ interface GameData {
   reveal_at_showdown?: boolean;
   is_first_hand?: boolean;
   config_complete?: boolean;
+  config_deadline?: string | null;
   current_game_uuid?: string | null;
   chip_transfer_cursor?: number | null;
   game_setup_timer_seconds?: number;
@@ -1353,6 +1355,9 @@ const Game = () => {
     double_skunk_threshold?: number;
     cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint' | 'custom'
     custom_points_to_win?: number; // For custom mode
+    per_point_value?: number;
+    gin_bonus?: number;
+    undercut_bonus?: number;
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   // Track which gameId the previousGameConfig was captured from
@@ -5741,7 +5746,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }))
     });
     
-    if (game?.status === 'ante_decision' && user) {
+    if (
+      game?.status === 'ante_decision'
+      && game.config_complete === true
+      && !!game.current_game_uuid
+      && user
+    ) {
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
       
@@ -5983,7 +5993,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset isRunningItBack so it re-computes on next ante_decision phase
       setIsRunningItBack(null);
     }
-  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
+  }, [game?.id, game?.status, game?.config_complete, game?.current_game_uuid, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
@@ -10994,11 +11004,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setTimeout(() => fetchGameData(), 300);
   };
 
-  const handleConfigComplete = async () => {
+  const handleConfigComplete = async (result: DealerGameSetupCommitResult) => {
     if (!gameId) return;
 
-    // Immediately refetch to sync state - bots will start making decisions automatically
-    setTimeout(() => fetchGameData(), 100);
+    // The initiating client consumes the RPC's committed snapshot directly.
+    // Realtime remains peer synchronization; it is not the trigger that makes
+    // this browser enter ante decision.
+    setGame((previous) => previous
+      ? { ...previous, ...(result.game as unknown as Partial<GameData>), rounds: previous.rounds }
+      : result.game as unknown as GameData);
+    setPlayers((previous) => result.players.map((committed) => ({
+      ...(previous.find((player) => player.id === committed.id) ?? {}),
+      ...committed,
+    })) as Player[]);
+    await fetchGameData('manual');
   };
 
   const handleGameSelection = async (gameType: string) => {
@@ -14481,6 +14500,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const bootstrapResult = await startRound(gameId, 1) as any;
             const committedRound = bootstrapResult?.round;
             const committedGame = bootstrapResult?.game;
+            const committedRoundOnePresentation =
+              parseThreeFiveSevenRolloverAdvanceResult(gameId, bootstrapResult);
+            if (!committedRoundOnePresentation) {
+              throw new Error('3-5-7 bootstrap omitted its exact committed presentation cursor');
+            }
+            setDirectThreeFiveSevenRolloverPresentation(committedRoundOnePresentation);
             if (committedRound?.id) {
               setGame((prev) => {
                 if (!prev) return prev;
@@ -14496,6 +14521,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 };
               });
             }
+            await fetchGameData('manual');
           }
 
       // CRITICAL: Reset processing ref AFTER successful round start
@@ -15973,6 +15999,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
+                    configDeadline={game.config_deadline ?? null}
                     previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
@@ -16409,6 +16436,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
+                    configDeadline={game.config_deadline ?? null}
                     previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}

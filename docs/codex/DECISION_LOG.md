@@ -825,3 +825,21 @@ marks the owner sitting out, derives the next dealer or waiting/terminal state,
 clears outgoing transients, and records a durable result. Duplicate callers get
 that result, and a late replay cannot alter a newer dealer game. Shared browser
 cleanup is not an authority fallback, and the authority guard remains strict.
+
+## D-063 - Dealer configuration is one shared exact-identity transition
+
+The seven supported dealer-selected games share one authoritative
+configuration-to-ante boundary. A browser never creates a dealer-game row,
+cleans players, publishes the game identity/phase, and sets ante decisions as
+independent writes. It submits the selected configuration plus the exact game,
+dealer player, dealer position, and committed configuration deadline.
+
+PostgreSQL locks that identity, validates caller/dealer ownership and the
+game-specific configuration, creates the dealer game, resets player
+ephemerals, auto-antes the dealer, and publishes the complete ante phase in one
+transaction. A private durable claim returns the stored result to an exact
+duplicate, rejects a different payload for the same identity, and makes an old
+replay read-only after a newer dealer setup exists. The initiating browser
+consumes the returned game/dealer-game/player snapshot directly; Realtime is
+peer and reconnect synchronization only. Cleanup, configuration, or result
+validation errors are surfaced and never treated as successful completion.

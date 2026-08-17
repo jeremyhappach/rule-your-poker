@@ -2,6 +2,36 @@
 
 Date: 2026-08-17
 
+## Shared atomic dealer configuration handoff
+
+- Migration `20260817230000_atomic_dealer_game_setup_handoff.sql` is installed
+  on owned production. Its post-install rollback proofs pass against the
+  deployed definitions.
+- The shared `DealerGameSetup` boundary for all seven games no longer inserts
+  a dealer-game row, sanitizes players, and publishes `ante_decision` through
+  separate browser writes. `configure_dealer_game` locks the exact
+  game/dealer/deadline identity, validates the selected game configuration and
+  caller, creates the dealer game, resets player ephemerals, auto-antes the
+  dealer, and publishes the complete ante phase in one transaction.
+- An exact durable setup claim returns the stored committed game, dealer game,
+  and player rows to duplicate callers. A mismatched duplicate is rejected;
+  a replay for an older dealer/deadline identity is read-only after a newer
+  setup exists. Human and bot dealer paths consume that result directly;
+  Realtime only synchronizes peers.
+- The 3-5-7 first-hand caller now consumes the complete opening RPC result and
+  refetches its private cards directly. H1/R1 and later new-hand R1 deal
+  admission use the exact durable chip-transfer cursor, eliminating the
+  edge-order race where the arrival could precede the browser's baseline.
+- Routine 3-5-7 investigation traces are debug-gated again, and repeated wave
+  dispatch decisions are fingerprint-bounded so a stalled presentation cannot
+  amplify into continuous diagnostic database traffic.
+- The rollback-only database proof passes all seven game configurations,
+  human and bot ownership, authorization, failed-config atomicity, duplicate,
+  payload mismatch, and late replay. The complete 3-5-7 authority proof also
+  passes in that transaction, including its actual scheduled recovery entry
+  point. Twenty-six focused setup/Round-1 assertions, TypeScript, all 33
+  build-required Cribbage assertions, and the production build pass.
+
 ## 3-5-7 server-authority cutover
 
 - Migrations `20260816213000_three_five_seven_authority_cutover.sql` and
@@ -56,6 +86,10 @@ Date: 2026-08-17
   batch cursor (`settled` or `reconciled`). Peers derive the same exact identity
   from committed game + round state; stale direct results cannot cross a newer
   hand or dealer game. Realtime remains synchronization only.
+- The later `Patrick Wisdom` DG1 failure exposed the same edge-order contract
+  on H1/R1 after the old multi-write setup handoff temporarily exposed a torn
+  ante phase. The shared atomic handoff and H1 durable cursor above close both
+  sides of that first-hand race; the paused production session was not mutated.
 - Nineteen focused 3-5-7 advancement/rollover assertions, TypeScript, and the
   production build pass for this P0 correction. The frozen session remains
   untouched; resume smoke must verify both clients see H2/R1 cards after the

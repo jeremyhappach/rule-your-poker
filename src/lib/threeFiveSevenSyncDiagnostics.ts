@@ -9,12 +9,12 @@ import { checkInvariant } from './debugSyncInvariants';
 import { persistInvariantViolation, persistSyncDebugEvent } from './persistSyncDebugEvent';
 import { buildMetaPayload } from './buildMeta';
 
-// ── Always-on 357 investigation helper ────────────────────────
+// ── Opt-in 357 investigation helper ───────────────────────────
 /**
  * Persist a 357 round-transition investigation event.
- * Uses eventType 'invariant' so it ALWAYS persists regardless of debug flag.
- * This is intentional during the active investigation of the showdown bug family.
- * Once the bug family is closed, these can be downgraded to 'transition' (debug-gated).
+ * Routine informational traces are debug-gated. True invariant violations use
+ * persistInvariantViolation and remain always-on; render/effect churn must not
+ * generate production database traffic.
  */
 export function persist357Investigation(
   gameId: string,
@@ -28,7 +28,7 @@ export function persist357Investigation(
     gameType: '3-5-7',
     handNumber,
     roundId,
-    eventType: 'invariant',  // always-on during investigation
+    eventType: 'transition',
     severity: 'info',
     eventName,
     payload: { ...payload, ...buildMetaPayload() },

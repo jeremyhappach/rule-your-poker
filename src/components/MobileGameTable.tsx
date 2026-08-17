@@ -1861,7 +1861,7 @@ export const MobileGameTable = ({
   const threeFiveSevenRolloverAdmissionRequired =
     __is357GameType(gameType)
     && threeFiveSevenAuthoritativeRoundNumber === 1
-    && (horsesHandNumber ?? 0) > 1
+    && (horsesHandNumber ?? 0) > 0
     && !!threeFiveSevenAuthoritativeRoundId;
   const threeFiveSevenRolloverPresentationMatches =
     threeFiveSevenRolloverAdmissionRequired

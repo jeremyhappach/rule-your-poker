@@ -165,6 +165,7 @@ export function ThreeFiveSevenDealOrchestrator({
     isTerminalOrStale: false,
   });
   const dispatchedWaveRef = useRef<string | null>(null);
+  const waveDecisionFingerprintRef = useRef<Map<string, string>>(new Map());
   // Tracks per-wave dispatch begin time (used for first_card_visible /
   // full_hand_visible elapsed-time computation). Fire-and-forget only.
   const waveDispatchBeginAtRef = useRef<Map<string, number>>(new Map());
@@ -236,6 +237,24 @@ export function ThreeFiveSevenDealOrchestrator({
     const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const dealerGameId = waveContextId.split('#')[0] ?? null;
     const emitDecision = (dispatchDecision: 'dispatch' | 'suppress' | 'defer', suppressionReason: string | null) => {
+      const fingerprint = [
+        dispatchDecision,
+        suppressionReason ?? 'none',
+        deal.phase,
+        deal.expectedCount,
+        dealTimingHydrated,
+        cardsThisWave,
+        activeSeats.length,
+        dealerPosition,
+        dealerIsSelf,
+        selfDealerFeltIsSurface,
+      ].join('|');
+      if (waveDecisionFingerprintRef.current.get(waveContextId) === fingerprint) return;
+      waveDecisionFingerprintRef.current.set(waveContextId, fingerprint);
+      if (waveDecisionFingerprintRef.current.size > 12) {
+        const oldest = waveDecisionFingerprintRef.current.keys().next().value;
+        if (oldest) waveDecisionFingerprintRef.current.delete(oldest);
+      }
       emit357RuntimeDiag('wave_dispatch_decision', {
         dealerGameId,
         roundId: roundStr,

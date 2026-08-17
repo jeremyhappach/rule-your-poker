@@ -16,6 +16,31 @@ const exact: ThreeFiveSevenRolloverPresentation = {
 };
 
 describe('3-5-7 rollover presentation identity', () => {
+  it('consumes the exact committed H1/R1 bootstrap result', () => {
+    expect(parseThreeFiveSevenRolloverAdvanceResult('game-1', {
+      hand_number: 1,
+      round_number: 1,
+      game: {
+        id: 'game-1',
+        current_game_uuid: 'dealer-game-1',
+        chip_transfer_cursor: 7,
+      },
+      round: {
+        id: 'round-h1-r1',
+        dealer_game_id: 'dealer-game-1',
+        hand_number: 1,
+        round_number: 1,
+      },
+    })).toEqual({
+      gameId: 'game-1',
+      dealerGameId: 'dealer-game-1',
+      roundId: 'round-h1-r1',
+      handNumber: 1,
+      roundNumber: 1,
+      transferCursor: 7,
+    });
+  });
+
   it('consumes the exact committed H2/R1 RPC result', () => {
     expect(parseThreeFiveSevenRolloverAdvanceResult('game-1', {
       hand_number: 2,
@@ -90,6 +115,25 @@ describe('3-5-7 rollover presentation identity', () => {
       roundNumber: 1,
       transferCursor: 14,
     })).toEqual(exact);
+  });
+
+  it('lets a peer select the committed H1 cursor after refetch', () => {
+    expect(selectThreeFiveSevenRolloverPresentation(null, {
+      gameId: 'game-1',
+      gameType: '3-5-7',
+      dealerGameId: 'dealer-game-1',
+      roundId: 'round-h1-r1',
+      handNumber: 1,
+      roundNumber: 1,
+      transferCursor: 7,
+    })).toEqual({
+      gameId: 'game-1',
+      dealerGameId: 'dealer-game-1',
+      roundId: 'round-h1-r1',
+      handNumber: 1,
+      roundNumber: 1,
+      transferCursor: 7,
+    });
   });
 
   it('does not allow a late direct result to cross a newer hand identity', () => {

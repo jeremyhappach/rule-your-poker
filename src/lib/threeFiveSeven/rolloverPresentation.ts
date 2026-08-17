@@ -33,9 +33,9 @@ export function isThreeFiveSevenGameType(gameType: string | null | undefined): b
 
 /**
  * Consume the committed RPC result rather than waiting for the initiating
- * browser to receive its own Realtime event. Only a new-hand Round 1 result
- * with an exact game/dealer-game/round/hand identity can arm rollover
- * presentation admission.
+ * browser to receive its own Realtime event. Every new-hand Round 1 result,
+ * including H1, needs an exact game/dealer-game/round/hand identity before
+ * presentation can admit the deal.
  */
 export function parseThreeFiveSevenRolloverAdvanceResult(
   expectedGameId: string,
@@ -63,7 +63,6 @@ export function parseThreeFiveSevenRolloverAdvanceResult(
     || roundDealerGameId !== dealerGameId
     || !roundId
     || handNumber == null
-    || handNumber <= 1
     || roundNumber !== 1
     || resultHandNumber !== handNumber
     || resultRoundNumber !== roundNumber
@@ -106,7 +105,6 @@ export function selectThreeFiveSevenRolloverPresentation(
     || !current.dealerGameId
     || !current.roundId
     || current.handNumber == null
-    || current.handNumber <= 1
     || current.roundNumber !== 1
   ) return null;
 

@@ -4,6 +4,32 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## P0 — release/correctness
 
+### 0. Shared dealer configuration handoff can expose a torn ante phase
+
+Status: Database migration installed on 2026-08-17 and the approved high-risk
+client branch is validated. Client publication and two-client smoke remain
+required.
+
+- Production smoke in paused `Patrick Wisdom` DG1 showed the nondealer wait
+  roughly 30 seconds for an ante modal, then both players received no cards or
+  timer while the UI showed an impossible `$8` pot for a `$3` two-player ante.
+- The shared seven-game setup component created the dealer-game, sanitized
+  players, updated the game phase/current identity, and wrote ante decisions
+  separately. Realtime/refetch could therefore expose `ante_decision` with a
+  null `current_game_uuid` and incomplete config. The later 3-5-7 opening deal
+  still armed from a transient arrival edge, so an arrival observed before the
+  local baseline left H1 permanently closed.
+- Correction: one exact-identity SQL transition publishes the entire setup and
+  returns it to every initiating/duplicate client. All seven human/bot paths
+  use it; peers use Realtime only to synchronize. 3-5-7 H1 uses the committed
+  transfer cursor and direct refetch, and routine investigation writes are
+  bounded/debug-gated.
+- Acceptance: for every game, the nondealer sees one ante decision from the
+  committed dealer-game identity; dealer and nondealer progress from the same
+  row. For 3-5-7 H1, both clients see the ante flight, three-card deal, timer,
+  and legal actions without a refresh. Duplicate setup callers create one
+  dealer game, and a late retry cannot alter a newer setup.
+
 ### 1. Final iOS Session Ended long-list scroll
 
 Status at handoff: accepted only after published iOS smoke.
