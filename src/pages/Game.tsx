@@ -92,6 +92,11 @@ import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { declineThreeFiveSevenSetup } from "@/lib/threeFiveSeven/declineSetup";
+import {
+  parseThreeFiveSevenRolloverAdvanceResult,
+  selectThreeFiveSevenRolloverPresentation,
+  type ThreeFiveSevenRolloverPresentation,
+} from "@/lib/threeFiveSeven/rolloverPresentation";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -485,6 +490,7 @@ interface GameData {
   is_first_hand?: boolean;
   config_complete?: boolean;
   current_game_uuid?: string | null;
+  chip_transfer_cursor?: number | null;
   game_setup_timer_seconds?: number;
   ante_decision_timer_seconds?: number;
   // Cribbage-specific settings
@@ -2296,6 +2302,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
+  const [directThreeFiveSevenRolloverPresentation, setDirectThreeFiveSevenRolloverPresentation] =
+    useState<ThreeFiveSevenRolloverPresentation | null>(null);
   const threeFiveSevenAcceptedIdentityRef = useRef<{
     dealerGameId: string;
     handNumber: number;
@@ -6464,6 +6472,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
+  const threeFiveSevenRolloverPresentation = selectThreeFiveSevenRolloverPresentation(
+    directThreeFiveSevenRolloverPresentation,
+    {
+      gameId,
+      gameType: game?.game_type,
+      dealerGameId: game?.current_game_uuid,
+      roundId: currentRound?.id,
+      handNumber: currentRound?.hand_number,
+      roundNumber: currentRound?.round_number,
+      transferCursor: game?.chip_transfer_cursor,
+    },
+  );
+
 
 
 
@@ -8623,7 +8644,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 freshGame,
               });
             }
-            await proceedToNextRound(gameId);
+            const advanceResult = await proceedToNextRound(gameId);
+            const committedRolloverPresentation =
+              freshGame?.next_round_number === 1 && advanceResult
+                ? parseThreeFiveSevenRolloverAdvanceResult(gameId, advanceResult)
+                : null;
+            if (freshGame?.next_round_number === 1 && advanceResult && !committedRolloverPresentation) {
+              throw new Error('3-5-7 rollover advance returned no exact committed transfer identity');
+            }
+            if (committedRolloverPresentation) {
+              // The initiating client consumes the RPC result directly. The
+              // following refetch supplies its committed round + private cards;
+              // Realtime remains peer synchronization, never the bootstrap cue.
+              setDirectThreeFiveSevenRolloverPresentation(committedRolloverPresentation);
+            }
+            await fetchGameData('manual');
             
             // THEN trigger the rollover animation when proceeding to the next hand's Round 1.
             // This happens AFTER the result has been cleared
@@ -17245,6 +17280,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenAuthoritativeRoundNumber={is357GameType ? (currentRound?.round_number ?? null) : null}
               threeFiveSevenViewRoundId={is357GameType ? (threeFiveSevenView?.roundId ?? null) : null}
               threeFiveSevenViewRoundNumber={is357GameType ? (threeFiveSevenView?.roundNumber ?? null) : null}
+              threeFiveSevenRolloverPresentation={is357GameType ? threeFiveSevenRolloverPresentation : null}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}

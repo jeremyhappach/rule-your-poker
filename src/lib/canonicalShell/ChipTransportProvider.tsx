@@ -319,6 +319,13 @@ export function ChipTransportProvider({
     presentationBatchSettledRef.current = onBatchSettled;
     setPresentationAdmissionVersion((version) => version + 1);
   }, []);
+  // Holm initial antes and 3-5-7 new-hand rollovers both gate the card deal on
+  // one exact committed transfer cursor. Keep cursor state durable and retain
+  // live INSERTs observed during ledger hydration for both game families.
+  const requiresDurablePresentationCursor = gameType === 'holm-game'
+    || gameType === '3-5-7'
+    || gameType === '3-5-7-game'
+    || gameType === '357';
   const presentationLedger = useChipPresentationLedger(
     gameId,
     ledgerTransport,
@@ -327,7 +334,7 @@ export function ChipTransportProvider({
     onPresentationBatchSettled,
     publishPresentationBalanceDelta,
     abandonPresentationBalanceDeltas,
-    gameType === 'holm-game',
+    requiresDurablePresentationCursor,
   );
 
   const value = useMemo<ChipTransportContextValue>(

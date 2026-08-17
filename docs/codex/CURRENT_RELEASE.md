@@ -47,6 +47,20 @@ Date: 2026-08-17
   dealer game. TypeScript, 13 focused 3-5-7/ledger assertions, all 33 required
   Cribbage assertions, and the production build pass. Published two-client
   acceptance remains required; the historical smoke session was not rewritten.
+- The paused `Aug 17 - Albert Almora` H2/R1 P0 was a client presentation
+  deadlock, not missing cards: both private hands and exact rollover batch 14
+  committed atomically, but Happach Gmail armed an edge-triggered ante gate
+  after its own transient arrival label had already expired. New-hand Round 1
+  admission now consumes the initiating client's committed advance-RPC result,
+  immediately refetches the round/private cards, and waits on the durable exact
+  batch cursor (`settled` or `reconciled`). Peers derive the same exact identity
+  from committed game + round state; stale direct results cannot cross a newer
+  hand or dealer game. Realtime remains synchronization only.
+- Nineteen focused 3-5-7 advancement/rollover assertions, TypeScript, and the
+  production build pass for this P0 correction. The frozen session remains
+  untouched; resume smoke must verify both clients see H2/R1 cards after the
+  rollover flight. The two separately queued P1 presentation flashes remain
+  out of this correction.
 
 ## Yahtzee remote-score presentation handoff
 
