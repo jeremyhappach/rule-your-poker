@@ -279,18 +279,28 @@ smoke before stable-checkpoint promotion.
   permission and the action-card predicate can both inherit the previous hand's
   ready state before the new hand runtime reports its identity. Gate both on an
   identity-matched DealRuntime readiness token; a prior hand's `true` value may
-  never admit the new hand. Corrected in the current published candidate by
-  requiring the exact mounted hand token for both timer and decision admission;
-  production smoke remains pending.
+  never admit the new hand. Corrected by requiring the exact mounted hand token
+  for both timer and decision admission; published two-client smoke passed on
+  2026-08-17 at commit `845f5865b`.
 - P1 from the same smoke: when a player has two legs and wins the third, the
   static display briefly drops to one and the incoming third leg reads as a
   second. The terminal presentation enters its win phase using a cached
   pre-award count of two, then the generic pending-leg renderer subtracts one
   again. For a normal terminal descriptor, render the immutable final-leg
   baseline (`targetLegs - 1`) exactly once and let the award add the final leg;
-  preserve nonterminal leg animation and instant-sweep behavior. Corrected in
-  the current published candidate with a terminal-only static-leg resolver;
-  production smoke remains pending.
+  preserve nonterminal leg animation and instant-sweep behavior. Corrected with
+  a terminal-only static-leg resolver; published two-client smoke passed on
+  2026-08-17 at commit `845f5865b`.
+- P2 from the accepted follow-up smoke: after the terminal leg sweep has torn
+  down, the swept legs can briefly repaint before the next dealer game exists.
+  `threeFiveSevenDealerGameScope` substitutes the session `gameId` while the
+  authoritative `current_game_uuid` is intentionally null, so the boundary
+  effect treats that gap as a new concrete dealer game and clears the outgoing
+  terminal suppression owner. When the local phase returns to `idle`, the felt
+  self/opponent renderers can fall back to cached or not-yet-reconciled outgoing
+  leg counts. Preserve a null scope through the handoff and keep an exact
+  outgoing-dealer-game leg-retirement claim until a different non-null dealer
+  game arrives; do not delay server advancement or alter leg settlement.
 
 ### 3A. Cross-game postgame continuation ownership
 

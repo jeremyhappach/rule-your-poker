@@ -109,7 +109,16 @@ Date: 2026-08-17
   remain unchanged.
 - Twenty-seven focused 3-5-7 assertions, TypeScript, all 33 build-required
   Cribbage assertions, and the production build pass for the P1 candidate.
-  Published two-client smoke remains the acceptance gate.
+  Jeremy accepted the published two-client smoke on 2026-08-17 at commit
+  `845f5865b`: the two-leg baseline remained visible while the third leg
+  arrived, and Round 1 controls stayed hidden until deal transport landed.
+- The accepted smoke exposed one separate P2 after terminal teardown: swept
+  legs can repaint before the next dealer game exists. During the intentional
+  null `current_game_uuid` handoff, `MobileGameTable` substitutes the long-lived
+  session `gameId` as a dealer-game scope. That false concrete boundary clears
+  the outgoing terminal owner; once the local phase returns to `idle`, the leg
+  renderers may expose their still-cached outgoing counts. No database or
+  settlement defect is indicated; correction is not yet approved.
 
 ## Yahtzee remote-score presentation handoff
 

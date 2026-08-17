@@ -21,6 +21,11 @@
   initiating-client committed RPC result, immediate private-card refetch, and
   exact durable transfer cursor; do not make Realtime the bootstrap or deal-
   admission trigger again.
+- The 3-5-7 final-leg baseline and Round 1 deal-presentation gate passed
+  published two-client smoke on 2026-08-17 at commit `845f5865b`. Preserve the
+  immutable `targetLegs - 1` terminal baseline and exact-hand DealRuntime
+  readiness token. A later post-sweep leg-stack repaint before the next dealer
+  game is separately queued and does not reopen these accepted behaviors.
 - The `+L` leg cue scope passed production smoke on 2026-08-10 at commit
   `0e6498d83c1e65faf3872a21dd344223dfc51c22`: it remains visible for real
   3-5-7 leg wins and cannot survive into Holm or another shared-table game.
