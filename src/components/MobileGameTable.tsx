@@ -2,6 +2,11 @@ import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleI
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
+  isThreeFiveSevenDealPresentationReady,
+  resolveThreeFiveSevenStaticLegCount,
+  type ThreeFiveSevenDealReadinessToken,
+} from "@/lib/threeFiveSeven/presentationReadiness";
+import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
@@ -584,13 +589,18 @@ function DealAwareShellTimerRail() {
 function ThreeFiveSevenTimerGateReporter({
   onAllowedChange,
 }: {
-  onAllowedChange?: (allowed: boolean) => void;
+  onAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
 }) {
   const deal = useDealRuntime();
-  const allowed = deal ? deal.timerAllowed : true;
-  useEffect(() => {
-    onAllowedChange?.(allowed);
-  }, [allowed, onAllowedChange]);
+  const handContextId = deal?.handContextId ?? null;
+  const allowed = deal?.timerAllowed ?? false;
+  useLayoutEffect(() => {
+    onAllowedChange?.(
+      handContextId
+        ? { handContextId, allowed }
+        : null,
+    );
+  }, [allowed, handContextId, onAllowedChange]);
   // BREAK THE TIMER DEADLOCK:
   // The canonical rail (DealAwareShellTimerRail) is the historical
   // driver of enterGameplay(), but it is only mounted when `hasTimer`
@@ -1218,7 +1228,7 @@ interface MobileGameTableProps {
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   // When true, auto-roll disable is deferred until end of current turn
   pendingAutoRollOff?: boolean;
-  on357TimerAllowedChange?: (allowed: boolean) => void;
+  on357TimerAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
@@ -3810,6 +3820,24 @@ export const MobileGameTable = ({
     threeFiveSevenDealerGameScope && threeFiveSevenHandIdentity
       ? `${threeFiveSevenDealerGameScope}#${threeFiveSevenHandIdentity}`
       : null;
+  const [reportedThreeFiveSevenDealReadiness, setReportedThreeFiveSevenDealReadiness] =
+    useState<ThreeFiveSevenDealReadinessToken | null>(null);
+  const threeFiveSevenDealPresentationReady =
+    !currentRoundNotReadyForPresentation &&
+    isThreeFiveSevenDealPresentationReady(
+      threeFiveSevenHandContextId,
+      reportedThreeFiveSevenDealReadiness,
+    );
+  const handleThreeFiveSevenDealReadinessChange = useCallback((
+    token: ThreeFiveSevenDealReadinessToken | null,
+  ) => {
+    setReportedThreeFiveSevenDealReadiness((current) =>
+      current?.handContextId === token?.handContextId && current?.allowed === token?.allowed
+        ? current
+        : token,
+    );
+    on357TimerAllowedChange?.(token);
+  }, [on357TimerAllowedChange]);
   const threeFiveSevenWaveContextId =
     threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
       ? `${threeFiveSevenHandContextId}#r${currentRound}`
@@ -6331,7 +6359,10 @@ export const MobileGameTable = ({
   const threeFiveSevenDecisionBoundaryOpen = __is357GameType(gameType)
     ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
-  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
+  const threeFiveSevenDecisionPresentationGate = __is357GameType(gameType)
+    ? threeFiveSevenDealPresentationReady
+    : true;
+  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen && threeFiveSevenDecisionPresentationGate;
   type LowerZoneRenderedOwner =
     | 'stay_fold_buttons'
     | 'stayed_badge'
@@ -6355,6 +6386,7 @@ export const MobileGameTable = ({
     if (currentPlayerCards.length <= 0) return 'currentPlayerCards.length';
     if (!holmDecisionGate) return 'holmDecisionGate';
     if (!threeFiveSevenDecisionBoundaryOpen) return 'threeFiveSevenDecisionBoundaryOpen';
+    if (!threeFiveSevenDecisionPresentationGate) return 'threeFiveSevenDecisionPresentationGate';
     return 'no_matching_branch';
   };
   const evaluateLowerZoneOwner = (): { renderedOwner: LowerZoneRenderedOwner; reason: string | null } => {
@@ -6495,6 +6527,9 @@ export const MobileGameTable = ({
       rawCurrentPlayerCardsLen: Array.isArray(rawCurrentPlayerCards) ? rawCurrentPlayerCards.length : -1,
       selfHandHasActive357: !!selfHandHasActive357,
       threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
+      threeFiveSevenDecisionPresentationGate: !!threeFiveSevenDecisionPresentationGate,
+      reportedDealReadinessHandContextId: reportedThreeFiveSevenDealReadiness?.handContextId ?? null,
+      reportedDealReadinessAllowed: reportedThreeFiveSevenDealReadiness?.allowed ?? false,
       dbDecisionAdmitted: !!dbDecisionAdmitted,
       admittedDbDecisionIdentity: admittedDbDecisionIdentity ?? null,
       authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
@@ -11557,7 +11592,7 @@ export const MobileGameTable = ({
           : 'PRE_DEAL'
       }
     >
-    <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
+    <ThreeFiveSevenTimerGateReporter onAllowedChange={handleThreeFiveSevenDealReadinessChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {!currentRoundNotReadyForPresentation && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
@@ -14102,11 +14137,25 @@ export const MobileGameTable = ({
             (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) ||
             hasPendingLegAnimationClaim(currentPlayer.id, currentPlayer.legs);
 
+          const isNormalTerminalFinalLegAward =
+            normal357TerminalDescriptor?.winnerId === currentPlayer.id &&
+            (
+              showLegEarned ||
+              hasPendingLegAnimationClaim(currentPlayer.id, currentPlayer.legs) ||
+              threeFiveSevenWinPhase === 'waiting' ||
+              normal357PresentationRef.current?.stage === 'award'
+            );
+
           // While the flying leg is in the air, don't show it in the felt stack yet.
-          const displayCount = Math.min(
-            Math.max(0, isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs),
+          // The normal terminal descriptor already snapshots the two-leg
+          // baseline. Do not subtract the incoming third leg from that
+          // baseline a second time.
+          const displayCount = resolveThreeFiveSevenStaticLegCount({
+            effectiveLegs,
+            isIncomingLegAnimating: isAnimatingCurrentPlayer,
+            isNormalTerminalFinalLegAward,
             legsToWin,
-          );
+          });
 
           if (displayCount <= 0) return null;
 
@@ -14316,7 +14365,10 @@ export const MobileGameTable = ({
           const pausedTimerVisible = isPaused && (
             !diceGameplayUiActive || diceTimerOwnedByThisClient
           );
-          const hasTimer = !sessionEndedPhase && (pausedTimerVisible || (
+          const timerPresentationGate = __is357GameType(gameType)
+            ? threeFiveSevenDealPresentationReady
+            : true;
+          const hasTimer = !sessionEndedPhase && timerPresentationGate && (pausedTimerVisible || (
             diceTimerOwnedByThisClient &&
             horsesController.timeLeft !== null
           ) || (

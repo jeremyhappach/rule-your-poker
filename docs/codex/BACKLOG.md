@@ -279,14 +279,18 @@ smoke before stable-checkpoint promotion.
   permission and the action-card predicate can both inherit the previous hand's
   ready state before the new hand runtime reports its identity. Gate both on an
   identity-matched DealRuntime readiness token; a prior hand's `true` value may
-  never admit the new hand.
+  never admit the new hand. Corrected in the current published candidate by
+  requiring the exact mounted hand token for both timer and decision admission;
+  production smoke remains pending.
 - P1 from the same smoke: when a player has two legs and wins the third, the
   static display briefly drops to one and the incoming third leg reads as a
   second. The terminal presentation enters its win phase using a cached
   pre-award count of two, then the generic pending-leg renderer subtracts one
   again. For a normal terminal descriptor, render the immutable final-leg
   baseline (`targetLegs - 1`) exactly once and let the award add the final leg;
-  preserve nonterminal leg animation and instant-sweep behavior.
+  preserve nonterminal leg animation and instant-sweep behavior. Corrected in
+  the current published candidate with a terminal-only static-leg resolver;
+  production smoke remains pending.
 
 ### 3A. Cross-game postgame continuation ownership
 

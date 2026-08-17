@@ -95,6 +95,21 @@ Date: 2026-08-17
   untouched; resume smoke must verify both clients see H2/R1 cards after the
   rollover flight. The two separately queued P1 presentation flashes remain
   out of this correction.
+- Jeremy accepted the published two-client 3-5-7 P0 smoke on 2026-08-17 at
+  commit `8f6890caa`: the repaired atomic setup and exact first/new-hand deal
+  admission completed cleanly. Preserve the initiating-client RPC result,
+  private-card refetch, and exact durable transfer cursor; Realtime remains
+  peer synchronization only.
+- The current presentation-only follow-up keys timer and decision admission to
+  the exact mounted 3-5-7 hand runtime, so the prior hand's ready state cannot
+  flash controls before Round 1 deal transport lands. A normal terminal final-
+  leg award now renders the immutable `targetLegs - 1` baseline once, so a
+  player with two legs keeps both visible while the winning third leg arrives.
+  Nonterminal leg awards, instant sweeps, database authority, and settlement
+  remain unchanged.
+- Twenty-seven focused 3-5-7 assertions, TypeScript, all 33 build-required
+  Cribbage assertions, and the production build pass for the P1 candidate.
+  Published two-client smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 

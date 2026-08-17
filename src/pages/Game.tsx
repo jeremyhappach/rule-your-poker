@@ -98,6 +98,10 @@ import {
   selectThreeFiveSevenRolloverPresentation,
   type ThreeFiveSevenRolloverPresentation,
 } from "@/lib/threeFiveSeven/rolloverPresentation";
+import {
+  isThreeFiveSevenDealPresentationReady,
+  type ThreeFiveSevenDealReadinessToken,
+} from "@/lib/threeFiveSeven/presentationReadiness";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -1236,7 +1240,16 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
-  const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(false);
+  const [dealReadiness357, setDealReadiness357] =
+    useState<ThreeFiveSevenDealReadinessToken | null>(null);
+  const expectedDealHandContext357 =
+    game?.current_game_uuid && typeof game.total_hands === 'number' && game.total_hands > 0
+      ? `${game.current_game_uuid}#h${game.total_hands}`
+      : null;
+  const dealTimerAllowed357 = isThreeFiveSevenDealPresentationReady(
+    expectedDealHandContext357,
+    dealReadiness357,
+  );
   // Legacy denominator remains the presentation source for non-Holm games.
   const [decisionMaxTime, setDecisionMaxTime] = useState<number | null>(null);
   const decisionMaxTimeDeadlineRef = useRef<string | null>(null);
@@ -17408,7 +17421,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               pendingAutoRollOff={pendingAutoRollOff}
-              on357TimerAllowedChange={setDealTimerAllowed357}
+              on357TimerAllowedChange={setDealReadiness357}
               reAnteMessage={reAnteMessage}
             />
           );
