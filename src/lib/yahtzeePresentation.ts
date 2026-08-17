@@ -1,7 +1,15 @@
 import type { YahtzeeState } from './yahtzeeTypes';
 import { UPPER_CATEGORIES } from './yahtzeeTypes';
+import type { AnnouncementEvent } from './canonicalShell/announcements/types';
 
 type ScoreAction = NonNullable<YahtzeeState['lastAction']>;
+
+/**
+ * One presentation interval shared by the local scorer, remote viewers, and
+ * the committed-score rail notice. It is deliberately presentation-only: the
+ * authoritative turn has already advanced when this interval begins.
+ */
+export const YAHTZEE_SCORE_PRESENTATION_MS = 2500;
 
 export interface YahtzeeRemoteScorePresentation {
   active: boolean;
@@ -54,4 +62,49 @@ export function describeYahtzeeScore(action: ScoreAction): string {
   }
 
   return String(action.score);
+}
+
+/** Persistent rail state for the exact player who owns the current turn. */
+export function createYahtzeeTurnAnnouncement({
+  dealerGameId,
+  roundId,
+  playerId,
+  playerName,
+}: {
+  dealerGameId: string;
+  roundId: string;
+  playerId: string;
+  playerName: string;
+}): AnnouncementEvent {
+  return {
+    id: `yahtzee-turn:${roundId}:${playerId}`,
+    type: 'gameplay_notice',
+    behavior: 'ambient',
+    scope: { dealerGameId, roundId },
+    payload: { title: `${playerName} is rolling` },
+  };
+}
+
+/** Immediate score narration that overlays the persistent next-turn status. */
+export function createYahtzeeScoreAnnouncement({
+  dealerGameId,
+  roundId,
+  playerName,
+  action,
+}: {
+  dealerGameId: string;
+  roundId: string;
+  playerName: string;
+  action: ScoreAction;
+}): AnnouncementEvent {
+  return {
+    id: `yahtzee-score:${roundId}:${action.sequence}`,
+    type: 'gameplay_notice',
+    // Scoring supersedes any preceding low-priority roll narration so its
+    // lifetime starts with the scorer-card presentation, never after it.
+    priority: 56,
+    scope: { dealerGameId, roundId },
+    payload: { title: `${playerName} scored ${describeYahtzeeScore(action)}` },
+    ttlMs: YAHTZEE_SCORE_PRESENTATION_MS,
+  };
 }

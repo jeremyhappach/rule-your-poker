@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeYahtzeeScore, resolveYahtzeeRemoteScorePresentation } from './yahtzeePresentation';
+import {
+  createYahtzeeScoreAnnouncement,
+  createYahtzeeTurnAnnouncement,
+  describeYahtzeeScore,
+  resolveYahtzeeRemoteScorePresentation,
+  YAHTZEE_SCORE_PRESENTATION_MS,
+} from './yahtzeePresentation';
 import type { YahtzeeState } from './yahtzeeTypes';
 
 const scoreAction: NonNullable<YahtzeeState['lastAction']> = {
@@ -13,6 +19,39 @@ const scoreAction: NonNullable<YahtzeeState['lastAction']> = {
 };
 
 describe('resolveYahtzeeRemoteScorePresentation', () => {
+  it('uses one fixed interval for every score presentation owner', () => {
+    expect(YAHTZEE_SCORE_PRESENTATION_MS).toBe(2500);
+  });
+
+  it('keeps the current turn in the ambient rail through rolls and category choice', () => {
+    expect(createYahtzeeTurnAnnouncement({
+      dealerGameId: 'dealer-game-1',
+      roundId: 'round-1',
+      playerId: 'player-one',
+      playerName: 'Hap',
+    })).toMatchObject({
+      id: 'yahtzee-turn:round-1:player-one',
+      type: 'gameplay_notice',
+      behavior: 'ambient',
+      payload: { title: 'Hap is rolling' },
+    });
+  });
+
+  it('makes committed scoring immediately preempt roll narration for the shared presentation interval', () => {
+    expect(createYahtzeeScoreAnnouncement({
+      dealerGameId: 'dealer-game-1',
+      roundId: 'round-1',
+      playerName: 'Hap',
+      action: scoreAction,
+    })).toMatchObject({
+      id: 'yahtzee-score:round-1:8',
+      type: 'gameplay_notice',
+      priority: 56,
+      ttlMs: YAHTZEE_SCORE_PRESENTATION_MS,
+      payload: { title: 'Hap scored 3 x 4s' },
+    });
+  });
+
   it('recognizes an unseen remote score on the first render after atomic turn handoff', () => {
     expect(resolveYahtzeeRemoteScorePresentation(
       { actionSequence: 8, lastAction: scoreAction },

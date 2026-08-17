@@ -29,6 +29,15 @@ Date: 2026-08-16
 - Twenty-two focused Yahtzee/announcement assertions, TypeScript, and the
   production build pass locally; published two-client confirmation remains
   pending.
+- The current presentation follow-up gives the exact active Yahtzee player a
+  persistent canonical-rail status (for example, `Hap is rolling`) through
+  every roll, hold, and category choice. A committed score immediately overlays
+  that next-turn status at higher rail priority, and the local scorer, remote
+  scorer presentation, and score narration now share one 2.5-second release
+  interval. This remains presentation-only; the database turn already advances
+  atomically at score commit.
+- Twenty-five focused Yahtzee/rail assertions, local TypeScript checking, and
+  the production build gate pass; the renewed two-client smoke remains pending.
 
 ## Yahtzee server-authority and postgame cutover
 

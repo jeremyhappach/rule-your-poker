@@ -36,7 +36,12 @@ import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
-import { describeYahtzeeScore, resolveYahtzeeRemoteScorePresentation } from "@/lib/yahtzeePresentation";
+import {
+  createYahtzeeScoreAnnouncement,
+  createYahtzeeTurnAnnouncement,
+  resolveYahtzeeRemoteScorePresentation,
+  YAHTZEE_SCORE_PRESENTATION_MS,
+} from "@/lib/yahtzeePresentation";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -61,7 +66,7 @@ import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
-import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { useAnnouncementContext, useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import {
@@ -519,7 +524,6 @@ export function YahtzeeGameTable({
   const remotePresentationHydrationRoundRef = useRef<string | null>(null);
   const [remotePresentationHydratedRoundId, setRemotePresentationHydratedRoundId] = useState<string | null>(null);
   const lastAnnouncedScoreSequenceRef = useRef<number | null>(null);
-  const lastAnnouncedRollKeyRef = useRef<string | null>(null);
   const actionInFlightRef = useRef(false);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
@@ -770,12 +774,9 @@ export function YahtzeeGameTable({
 
     lastPresentedScoreSequenceRef.current = viewState.lastAction?.sequence ?? null;
     lastAnnouncedScoreSequenceRef.current = viewState.lastAction?.sequence ?? null;
-    lastAnnouncedRollKeyRef.current = currentTurnState?.rollKey == null || !currentTurnPlayerId
-      ? null
-      : `${currentTurnPlayerId}:${String(currentTurnState.rollKey)}`;
     remotePresentationHydrationRoundRef.current = currentRoundId;
     setRemotePresentationHydratedRoundId(currentRoundId);
-  }, [viewState, currentRoundId, currentTurnPlayerId, currentTurnState?.rollKey]);
+  }, [viewState, currentRoundId]);
 
   const remoteScorePresentation = resolveYahtzeeRemoteScorePresentation(
     viewState,
@@ -800,6 +801,7 @@ export function YahtzeeGameTable({
   // with chip-transfer trigger + winner confetti, matching Gin/Cribbage).
   // Keeping the announcements handle here for the chip-transfer effect.
   const announcements = useAnnouncements();
+  const { ambient: announcementAmbient } = useAnnouncementContext();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   const lastEmittedYahtzeeMatchRef = useRef<string | null>(null);
 
@@ -1014,7 +1016,7 @@ export function YahtzeeGameTable({
       setLastScoredValue(null);
       setScoringInProgress(false);
       setCachedOpponentDice(null);
-    }, 2500);
+    }, YAHTZEE_SCORE_PRESENTATION_MS);
     return () => clearTimeout(timer);
   }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId]);
 
@@ -1028,13 +1030,12 @@ export function YahtzeeGameTable({
     if (!scorer) return;
 
     lastAnnouncedScoreSequenceRef.current = action.sequence;
-    announcements.emit({
-      id: `yahtzee-score:${currentRoundId}:${action.sequence}`,
-      type: 'gameplay_notice',
-      scope: { dealerGameId: gameId, roundId: currentRoundId },
-      payload: { title: `${getPlayerUsername(scorer)} scored ${describeYahtzeeScore(action)}` },
-      ttlMs: 2500,
-    });
+    announcements.emit(createYahtzeeScoreAnnouncement({
+      dealerGameId: gameId,
+      roundId: currentRoundId,
+      playerName: getPlayerUsername(scorer),
+      action,
+    }));
   }, [
     remotePresentationHydratedRoundId,
     currentRoundId,
@@ -1047,36 +1048,28 @@ export function YahtzeeGameTable({
 
   useEffect(() => {
     if (remotePresentationHydratedRoundId !== currentRoundId) return;
-    if (!currentTurnPlayerId || !currentTurnState?.rollKey) return;
-
-    const rollKey = `${currentTurnPlayerId}:${String(currentTurnState.rollKey)}`;
-    const hasRolled = currentTurnState.rollsRemaining < 3
-      && currentTurnState.dice.some(die => die.value !== 0);
-    if (!hasRolled) {
-      lastAnnouncedRollKeyRef.current = rollKey;
-      return;
-    }
-    if (lastAnnouncedRollKeyRef.current === rollKey) return;
+    if (gamePhase !== 'playing' || !currentTurnPlayerId) return;
+    // Session lifecycle owns non-gameplay ambients (notably pause). Do not
+    // overwrite one; this effect will reconcile again when that state clears.
+    if (announcementAmbient && announcementAmbient.type !== 'gameplay_notice') return;
     const roller = players.find(player => player.id === currentTurnPlayerId);
     if (!roller) return;
 
-    lastAnnouncedRollKeyRef.current = rollKey;
-    announcements.emit({
-      id: `yahtzee-roll:${currentRoundId}:${rollKey}`,
-      type: 'gameplay_notice',
-      scope: { dealerGameId: gameId, roundId: currentRoundId },
-      payload: { title: `${getPlayerUsername(roller)} is rolling` },
-      ttlMs: currentTurnState.rollsRemaining === 2 ? FIRST_ROLL_MS : ROLL_AGAIN_MS,
-    });
+    announcements.emit(createYahtzeeTurnAnnouncement({
+      dealerGameId: gameId,
+      roundId: currentRoundId,
+      playerId: currentTurnPlayerId,
+      playerName: getPlayerUsername(roller),
+    }));
   }, [
     remotePresentationHydratedRoundId,
     currentRoundId,
     currentTurnPlayerId,
-    currentTurnState?.rollKey,
-    currentTurnState?.rollsRemaining,
-    currentTurnState?.dice,
+    gamePhase,
     players,
     announcements,
+    announcementAmbient?.id,
+    announcementAmbient?.type,
     gameId,
   ]);
 
@@ -1273,7 +1266,7 @@ export function YahtzeeGameTable({
       if (result.terminal) {
         settlementRequestRef.current('terminal-score-rpc-acknowledged', true);
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, YAHTZEE_SCORE_PRESENTATION_MS));
       setOptimisticScore({ playerId: myPlayer.id, category, value: result.score ?? pendingScore });
       localDiceRef.current = committedPs.dice;
       localRollsRemainingRef.current = committedPs.rollsRemaining;
