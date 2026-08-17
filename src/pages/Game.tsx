@@ -2295,6 +2295,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
+  const threeFiveSevenAcceptedIdentityRef = useRef<{
+    dealerGameId: string;
+    handNumber: number;
+    roundNumber: number;
+    roundId: string;
+  } | null>(null);
+  const threeFiveSevenRetiredDealerGamesRef = useRef<Set<string>>(new Set());
   const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
     getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0, 0, 0],
     debugLabel: '357',
@@ -4854,7 +4861,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [gameId]);
   
   // Handler for winner to broadcast "show cards" and persist to database
-  const handleWinner357ShowCards = useCallback(() => {
+  const handleWinner357ShowCards = useCallback(async () => {
     const currentGameUuid = game?.current_game_uuid;
     console.log('[BROADCAST] Sending show-cards event for game', currentGameUuid);
     try {
@@ -4872,48 +4879,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         winnerCardCount: threeFiveSevenWinnerCards?.length ?? 0,
       });
     } catch { /* noop */ }
-    setWinner357ShowCards(true); // Update local state immediately
-    
-    // Broadcast to all other clients - include current_game_uuid to prevent stale events
-    showCardsChannelRef.current?.send({
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    const handNumber = game?.total_hands ?? null;
+    if (!currentPlayer || !currentGameUuid || handNumber == null) {
+      console.error('[SHOW_CARDS] Missing exact terminal identity');
+      return;
+    }
+    const { data: terminalRound, error: terminalRoundError } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('dealer_game_id', currentGameUuid)
+      .eq('hand_number', handNumber)
+      .eq('status', 'completed')
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (terminalRoundError || !terminalRound) {
+      console.error('[SHOW_CARDS] Exact terminal round unavailable:', terminalRoundError);
+      return;
+    }
+    const { error: revealError } = await supabase.rpc(
+      'three_five_seven_reveal_terminal_cards' as any,
+      {
+        p_game_id: gameId,
+        p_round_id: terminalRound.id,
+        p_dealer_game_id: currentGameUuid,
+        p_hand_number: handNumber,
+        p_player_id: currentPlayer.id,
+      } as any,
+    );
+    if (revealError) {
+      console.error('[SHOW_CARDS] Authoritative reveal failed:', revealError);
+      return;
+    }
+    setWinner357ShowCards(true);
+    await showCardsChannelRef.current?.send({
       type: 'broadcast',
       event: 'show-cards',
-      payload: { timestamp: Date.now(), currentGameUuid }
+      payload: {
+        timestamp: Date.now(),
+        currentGameUuid,
+        roundId: terminalRound.id,
+        handNumber,
+      },
     });
-    
-    // PERSIST: Mark the winner's cards as is_public = true for hand history
-    // Find the current round (for 3-5-7, match current_round number within current dealer game)
-    const currentPlayer = players.find(p => p.user_id === user?.id);
-    const rounds = game?.rounds || [];
-    const dealerGameRounds = currentGameUuid 
-      ? rounds.filter((r: any) => r.dealer_game_id === currentGameUuid)
-      : rounds;
-    // For 3-5-7, find the round matching current_round number with highest hand_number
-    const matchingRounds = dealerGameRounds.filter((r: any) => r.round_number === game?.current_round);
-    const activeRound = matchingRounds.reduce<any>(
-      (best: any, r: any) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
-      null
-    );
-    const roundId = activeRound?.id;
-    
-    if (currentPlayer && roundId) {
-      console.log('[SHOW_CARDS] Persisting is_public=true for player', currentPlayer.id, 'round', roundId);
-      supabase
-        .from('player_cards')
-        .update({ is_public: true })
-        .eq('round_id', roundId)
-        .eq('player_id', currentPlayer.id)
-        .then(({ error }) => {
-          if (error) {
-            console.error('[SHOW_CARDS] Failed to persist is_public:', error);
-          } else {
-            console.log('[SHOW_CARDS] Successfully persisted is_public=true');
-          }
-        });
-    } else {
-      console.warn('[SHOW_CARDS] Missing data for persist:', { currentPlayer: !!currentPlayer, roundId });
-    }
-  }, [game?.current_game_uuid, game?.rounds, game?.current_round, players, user?.id]);
+  }, [game?.current_game_uuid, game?.total_hands, gameId, players, user?.id, winner357ShowCards, game?.status, game?.awaiting_next_round, game?.current_round, threeFiveSevenWinnerCards]);
   
   // Reset winner357ShowCards when game transitions away from game_over OR when a new hand starts
   useEffect(() => {
@@ -7393,60 +7404,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     user?.id,
   ]);
   
-  // 3-5-7 GLOBAL AUTO-FOLD: If ANY human player is already in auto_fold when a betting round starts,
-  // fold for them immediately so the game doesn't wait out the full timer.
-  // This is intentionally redundant across clients; makeDecision has atomic guards.
-  useEffect(() => {
-    const is357Game = game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
-    if (!is357Game) return;
-    if (game?.status !== "in_progress") return;
-    if (!gameId) return;
-    if (!currentRound || currentRound.status !== "betting") return;
-    if (game?.is_paused) return;
-    if (isAllDecisionsInFor(game, currentRound?.id)) return;
-
-    const myUserId = user?.id;
-
-    const candidates = players.filter((p) => {
-      if (p.is_bot) return false;
-      if (p.sitting_out) return false;
-      if (!p.auto_fold) return false;
-      // If they already have a decision (or are locked), do nothing.
-      if (p.current_decision || p.decision_locked) return false;
-      // Let the local player handle their own instant fold (existing effect), avoid duplicate local UI work.
-      if (myUserId && p.user_id === myUserId) return false;
-      return true;
-    });
-
-    if (candidates.length === 0) return;
-
-    for (const p of candidates) {
-      const key = `${currentRound.id}:${p.id}`;
-      if (instant357OtherPlayersAutoFoldRef.current.has(key)) continue;
-      instant357OtherPlayersAutoFoldRef.current.add(key);
-
-      console.warn("[AUTO_FOLD 3-5-7] Folding for auto_fold player (remote)", {
-        roundId: currentRound.id,
-        playerId: p.id,
-        position: p.position,
-      });
-
-      void makeDecision(gameId, p.id, "fold").catch((err) => {
-        console.error("[AUTO_FOLD 3-5-7] Remote auto-fold makeDecision failed:", err);
-      });
-    }
-  }, [
-    game?.game_type,
-    game?.status,
-    game?.is_paused,
-    game?.all_decisions_in,
-    game?.all_decisions_in_round_id,
-    currentRound?.id,
-    currentRound?.status,
-    players,
-    gameId,
-    user?.id,
-  ]);
+  // Remote 3-5-7 auto-folds are applied only by the exact-round deadline RPC.
+  // A browser can submit only the authenticated local player's own decision.
 
   // Holm pre-decision arming helper.
   //
@@ -10158,6 +10117,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: gameData.current_game_uuid,
       });
       const snapshot = buildThreeFiveSevenSnapshot(gameData, (playersData || []) as Player[], threeFiveSevenRound);
+      const acceptedIdentity357 = threeFiveSevenAcceptedIdentityRef.current;
+      const suppressRegressive357Identity = !!snapshot && (
+        threeFiveSevenRetiredDealerGamesRef.current.has(snapshot.dealerGameId)
+        || (
+          acceptedIdentity357?.dealerGameId === snapshot.dealerGameId
+          && (
+            snapshot.handNumber < acceptedIdentity357.handNumber
+            || (
+              snapshot.handNumber === acceptedIdentity357.handNumber
+              && snapshot.roundNumber < acceptedIdentity357.roundNumber
+            )
+          )
+        )
+      );
 
       // ── DIAGNOSTIC: Log every authoritative arrival (always-on for investigation) ──
       const prevRoundId357 = threeFiveSevenSyncLastRoundIdRef.current;
@@ -10182,7 +10155,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameTotalHands: gameData.total_hands,
       }, snapshot?.roundId);
 
-      if (snapshot) {
+      if (snapshot && !suppressRegressive357Identity) {
         if (prevRoundId357 && prevRoundId357 !== snapshot.roundId) {
           // ── Identity boundary reset (always-on) ──
           persist357Investigation(gameData.id, snapshot.handNumber, '357-round-boundary-reset', {
@@ -10293,7 +10266,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }, snapshot.roundId);
           }
         }
+        if (acceptedIdentity357 && acceptedIdentity357.dealerGameId !== snapshot.dealerGameId) {
+          threeFiveSevenRetiredDealerGamesRef.current.add(acceptedIdentity357.dealerGameId);
+        }
+        threeFiveSevenAcceptedIdentityRef.current = {
+          dealerGameId: snapshot.dealerGameId,
+          handNumber: snapshot.handNumber,
+          roundNumber: snapshot.roundNumber,
+          roundId: snapshot.roundId,
+        };
         threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
+      } else if (snapshot && suppressRegressive357Identity) {
+        persist357Investigation(gameData.id, snapshot.handNumber, '357-regressive-identity-rejected', {
+          incoming: {
+            dealerGameId: snapshot.dealerGameId,
+            handNumber: snapshot.handNumber,
+            roundNumber: snapshot.roundNumber,
+            roundId: snapshot.roundId,
+          },
+          accepted: acceptedIdentity357,
+        }, snapshot.roundId);
       } else {
         // ── DIAGNOSTIC: No snapshot built (always-on) ──
         persist357Investigation(gameData.id, gameData.total_hands ?? 0, '357-no-snapshot-built', {
@@ -11335,18 +11327,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // from the games row. Both must happen AFTER participation reconciliation and
     // BEFORE branching to waiting / next dealer game, so no prior-dealer-game state
     // can leak forward (e.g. stale current_round triggering ROUND_ALREADY_IN_PROGRESS).
-    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
-    try {
-      await sanitizePlayerAutomationStateForSession(gameId);
-      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
-    } catch (e) {
-      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
-      throw e;
+    if (!is357GameType) {
+      emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+      try {
+        await sanitizePlayerAutomationStateForSession(gameId);
+        emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+      } catch (e) {
+        emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
+        throw e;
+      }
     }
     // Dealer-game authority RPCs clear this state atomically with the exact
     // settled-round claim. A preliminary browser reset would either be rejected
     // by the authority guard or split the handoff across two owners.
-    if (game?.game_type !== 'cribbage' && game?.game_type !== 'gin-rummy' && game?.game_type !== 'yahtzee') {
+    if (
+      game?.game_type !== 'cribbage'
+      && game?.game_type !== 'gin-rummy'
+      && game?.game_type !== 'yahtzee'
+      && !is357GameType
+    ) {
       emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
       try {
         await clearDealerGameTransientSessionState(gameId);
@@ -11448,6 +11447,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ..._gocId(),
         finalStatus: postgame.status ?? null,
       });
+      return;
+    }
+
+    if (is357GameType) {
+      const outgoingDealerGameId = gameData?.current_game_uuid ?? game.current_game_uuid ?? null;
+      const outgoingHandNumber = gameData?.total_hands ?? game.total_hands ?? null;
+      let terminalRoundId = (
+        currentRound?.dealer_game_id === outgoingDealerGameId
+        && currentRound?.hand_number === outgoingHandNumber
+      ) ? currentRound.id : null;
+
+      if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+        const { data: terminalRound, error: terminalRoundError } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', outgoingDealerGameId)
+          .eq('hand_number', outgoingHandNumber)
+          .eq('status', 'completed')
+          .order('round_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (terminalRoundError) throw terminalRoundError;
+        terminalRoundId = terminalRound?.id ?? null;
+      }
+      if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+        throw new Error('3-5-7 postgame identity is incomplete; no transition was attempted.');
+      }
+
+      const { data: postgameResult, error: postgameError } = await supabase.rpc(
+        'three_five_seven_advance_postgame' as any,
+        {
+          p_game_id: gameId,
+          p_round_id: terminalRoundId,
+          p_dealer_game_id: outgoingDealerGameId,
+          p_hand_number: outgoingHandNumber,
+        } as any,
+      );
+      if (postgameError) throw postgameError;
+      const postgame = postgameResult as { outcome?: string; status?: string } | null;
+      if (!['advanced', 'already_advanced', 'stale_identity'].includes(postgame?.outcome ?? '')) {
+        throw new Error(`Unexpected 3-5-7 postgame outcome: ${postgame?.outcome ?? 'missing'}`);
+      }
+      gameOverTransitionRef.current = false;
+      anteAnimationFiredRef.current = null;
+      await fetchGameData();
       return;
     }
 
@@ -14366,14 +14411,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               anteProcessingRef.current = false;
               return;
             }
-            // Preflight passed (or inapplicable). Original canonical
-            // ordering restored — status FIRST, then startRound. This is
-            // the pre-wartime production sequence and preserves the
-            // ante-charge / round-insert path unchanged.
-            await supabase
-              .from('games')
-              .update({ status: 'in_progress' })
-              .eq('id', gameId);
+            // The bootstrap RPC owns the status transition, ante transfer,
+            // opening deal, exact round identity, and any instant settlement.
             // ── H1R3 → H2R1 targeted trace: advancement request.
             try {
               void (async () => {
@@ -14403,7 +14442,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 });
               })();
             } catch { /* fire-and-forget */ }
-            await startRound(gameId, 1);
+            const bootstrapResult = await startRound(gameId, 1) as any;
+            const committedRound = bootstrapResult?.round;
+            const committedGame = bootstrapResult?.game;
+            if (committedRound?.id) {
+              setGame((prev) => {
+                if (!prev) return prev;
+                const rounds = prev.rounds ?? [];
+                const index = rounds.findIndex((row: any) => row.id === committedRound.id);
+                const nextRounds = index < 0
+                  ? [...rounds, committedRound]
+                  : rounds.map((row: any, rowIndex: number) => rowIndex === index ? { ...row, ...committedRound } : row);
+                return {
+                  ...prev,
+                  ...(committedGame ?? {}),
+                  rounds: nextRounds,
+                };
+              });
+            }
           }
 
       // CRITICAL: Reset processing ref AFTER successful round start
@@ -14411,11 +14467,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       anteProcessingRef.current = false;
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
-      // If round start fails, reset status
-      await supabase
-        .from('games')
-        .update({ status: 'ante_decision' })
-        .eq('id', gameId);
+      // The RPC is atomic: a failure leaves ante_decision unchanged and must
+      // be surfaced, never "repaired" by a browser-authored lifecycle write.
       anteProcessingRef.current = false;
     }
   };
@@ -14618,7 +14671,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Stay requires an active round');
       }
-      await makeDecision(gameId, currentPlayer.id, 'stay', game?.game_type === 'holm-game' ? currentRound!.id : undefined);
+      await makeDecision(gameId, currentPlayer.id, 'stay', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
@@ -14716,7 +14769,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Fold requires an active round');
       }
-      await makeDecision(gameId, currentPlayer.id, 'fold', game?.game_type === 'holm-game' ? currentRound!.id : undefined);
+      await makeDecision(gameId, currentPlayer.id, 'fold', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,

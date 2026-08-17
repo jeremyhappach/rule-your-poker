@@ -1361,6 +1361,18 @@ serve(async (req) => {
             
             // ============= 3-5-7 GAME ROUND TRANSITION =============
             else if (game.game_type === '3-5-7') {
+              const { data: recovery, error: recoveryError } = await supabase.rpc(
+                'three_five_seven_recover_game',
+                { p_game_id: game.id },
+              );
+              if (recoveryError) throw recoveryError;
+              actionsTaken.push(`3-5-7 authority recovery: ${JSON.stringify(recovery)}`);
+              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+              continue;
+
+              // Historical browser/service-authored fallback retained only for
+              // source archaeology. The authority RPC above is the sole runtime
+              // owner and the database guard rejects these writes.
               const nextRoundNum = game.next_round_number;
               
               if (nextRoundNum && nextRoundNum >= 1 && nextRoundNum <= 3) {

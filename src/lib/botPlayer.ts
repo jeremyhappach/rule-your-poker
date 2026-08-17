@@ -306,6 +306,14 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
   console.log('[BOT DECISIONS] Bots to decide:', botsToDecide.map(b => ({ id: b.id, pos: b.position })));
 
+  if (!isHolmGame) {
+    // 3-5-7 bot choices are server-owned and completed by the scheduled
+    // recovery owner. A browser may render them but never chooses or writes
+    // their decisions.
+    console.log('[BOT DECISIONS] 3-5-7 bot decisions delegated to database recovery');
+    return false;
+  }
+
   // Get bot profiles to fetch aggression levels
   const botUserIds = botsToDecide.map(b => b.user_id);
   const { data: botProfiles } = await supabase

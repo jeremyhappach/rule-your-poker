@@ -42,6 +42,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     .eq('id', gameId)
     .maybeSingle();
   const gType = (gameRow as any)?.game_type;
+  const is357AuthorityGame = gType === '3-5-7' || gType === '3-5-7-game' || gType === '357';
   const autoFoldRuleApplies =
     gType === '3-5-7' || gType === '3-5-7-game' || gType === '357' ||
     gType === 'holm' || gType === 'holm-game';
@@ -120,7 +121,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
             ante_decision: null,
             auto_ante: false,
             auto_ante_runback: false,
-            auto_fold: false,
+            ...(!is357AuthorityGame ? { auto_fold: false } : {}),
           })
           .eq('id', player.id);
         
@@ -524,6 +525,7 @@ export async function sanitizePlayerAutomationStateForSession(gameId: string): P
      .eq('game_id', gameId);
   if (error) {
     console.error('[SESSION HYGIENE] Error sanitizing automation state:', error);
+    throw error;
   }
 }
 
@@ -554,6 +556,7 @@ export async function clearDealerGameTransientSessionState(gameId: string): Prom
     .eq('id', gameId);
   if (error) {
     console.error('[SESSION HYGIENE] Error clearing transient session state:', error);
+    throw error;
   }
 }
 

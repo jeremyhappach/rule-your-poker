@@ -339,6 +339,18 @@ async function settleThreeFiveSevenTerminal(
 
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
+
+  // 3-5-7 bootstrap is one database transaction. The committed round is
+  // returned to the initiating browser; Realtime only synchronizes peers.
+  if (roundNumber !== 1) {
+    throw new Error('three_five_seven_begin_game requires opening round 1');
+  }
+  const { data: authorityResult, error: authorityError } = await supabase.rpc(
+    'three_five_seven_begin_game' as any,
+    { p_game_id: gameId } as any,
+  );
+  if (authorityError) throw authorityError;
+  return authorityResult;
   
   // PARALLEL: Fetch game config + defaults (players are fetched AFTER we reset statuses)
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
@@ -1450,6 +1462,23 @@ export async function makeDecision(
     throw new Error('Round not found');
   }
 
+  if (is357Game) {
+    if (!expectedRoundId || expectedRoundId !== currentRound.id || !game.current_game_uuid) {
+      throw new Error('three_five_seven_submit_decision requires exact current identity');
+    }
+    const { data, error } = await supabase.rpc('three_five_seven_submit_decision' as any, {
+      p_game_id: gameId,
+      p_round_id: currentRound.id,
+      p_dealer_game_id: game.current_game_uuid,
+      p_hand_number: currentRound.hand_number,
+      p_round_number: currentRound.round_number,
+      p_player_id: playerId,
+      p_decision: decision,
+    } as any);
+    if (error) throw error;
+    return data;
+  }
+
   console.log(`[MAKE_DECISION] Round found: id=${currentRound.id.slice(0,8)} round_number=${currentRound.round_number} hand_number=${currentRound.hand_number} status=${currentRound.status}`);
 
   const { data: player, error: playerError } = await supabase
@@ -1967,6 +1996,21 @@ export async function autoFoldUndecided(gameId: string, opts?: {
   const isHolmGame = game?.game_type === 'holm-game';
   const is357GameAutoFold = game?.game_type === '3-5-7' || game?.game_type === '3-5-7-game' || game?.game_type === '357';
 
+  if (is357GameAutoFold) {
+    if (!currentRound?.id || !currentRound.dealer_game_id) {
+      throw new Error('three_five_seven_expire_round requires exact current identity');
+    }
+    const { error } = await supabase.rpc('three_five_seven_expire_round' as any, {
+      p_game_id: gameId,
+      p_round_id: currentRound.id,
+      p_dealer_game_id: currentRound.dealer_game_id,
+      p_hand_number: currentRound.hand_number,
+      p_round_number: currentRound.round_number,
+    } as any);
+    if (error) throw error;
+    return;
+  }
+
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
     .from('players')
@@ -2333,6 +2377,13 @@ export async function endRound(gameId: string) {
       sourceLocation: 'gameLogic:endRound:roundNotFound',
       details: { handNumber, currentRound, dealerGameId: currentGameUuid, timestamp: endRoundTimestamp },
     });
+    return;
+  }
+
+  if (is357Game) {
+    // The final decision RPC resolves the exact round transactionally. A
+    // disconnected final actor is covered by scheduled recovery; the browser
+    // no longer computes or republishes a result here.
     return;
   }
   
@@ -3131,15 +3182,17 @@ export async function endRound(gameId: string) {
 export async function proceedToNextRound(gameId: string) {
   console.log('[PROCEED_NEXT_ROUND] Starting for game', gameId);
 
-  const { data: game } = await supabase
+  const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('next_round_number, status, awaiting_next_round, game_type')
+    .select('id, current_game_uuid, total_hands, current_round, next_round_number, status, awaiting_next_round, game_type')
     .eq('id', gameId)
     .single();
 
+  if (gameError || !game) throw gameError ?? new Error('3-5-7 game not found');
+
   const _gt = (game as any)?.game_type;
   const _is357 = _gt === '3-5-7' || _gt === '3-5-7-game' || _gt === '357';
-  if (game && !_is357) {
+  if (!_is357) {
     console.warn('[PROCEED_NEXT_ROUND] proceedToNextRound-suppressed-non-357 — game_type=', _gt);
     return;
   }
@@ -3154,43 +3207,29 @@ export async function proceedToNextRound(gameId: string) {
     return;
   }
 
-  console.log('[PROCEED_NEXT_ROUND] Proceeding to round', game.next_round_number);
-
-  const { data: updateResult } = await supabase
-    .from('games')
-    .update({
-      awaiting_next_round: false,
-      next_round_number: null,
-      last_round_result: null,
-    })
-    .eq('id', gameId)
-    .eq('awaiting_next_round', true)
-    .select();
-
-  if (!updateResult || updateResult.length === 0) {
-    console.log('[PROCEED_NEXT_ROUND] Another process already proceeding, skipping');
-    return;
+  if (!game.current_game_uuid || !game.total_hands || !game.current_round) {
+    throw new Error('three_five_seven_advance_round requires exact predecessor identity');
   }
+  const { data: round, error: roundError } = await supabase
+    .from('rounds')
+    .select('id, dealer_game_id, hand_number, round_number')
+    .eq('game_id', gameId)
+    .eq('dealer_game_id', game.current_game_uuid)
+    .eq('hand_number', game.total_hands)
+    .eq('round_number', game.current_round)
+    .single();
+  if (roundError || !round) throw roundError ?? new Error('3-5-7 predecessor round not found');
 
-  // ATOMIC SERVER-AUTHORED ROUND-TRANSITION PATH
-  // --------------------------------------------
-  // All three seams — R1→R2, R2→R3, and R3→next-hand-R1 — flow through
-  // `advance_357_round`, which server-authors the deck, deal, roster
-  // reset, persisted rollover (new-hand R1 only), hand-number increment,
-  // pot update,
-  // and legs-at-start snapshot inside a single locked transaction.
-  //
-  // The client sends only transition identity. It never sends card
-  // arrays. Round-only fold semantics are preserved server-side.
-  const nextRoundNumber = game.next_round_number as 1 | 2 | 3;
-  try {
-    const advanced = await advance357RoundAtomic(gameId, nextRoundNumber);
-    console.log('[PROCEED_NEXT_ROUND] Atomic advance result:', advanced);
-    return;
-  } catch (err) {
-    console.error('[PROCEED_NEXT_ROUND] Atomic advance FAILED:', err);
-    throw err;
-  }
+  const { data, error } = await supabase.rpc('three_five_seven_advance_round' as any, {
+    p_game_id: gameId,
+    p_round_id: round.id,
+    p_dealer_game_id: round.dealer_game_id,
+    p_hand_number: round.hand_number,
+    p_round_number: round.round_number,
+  } as any);
+  if (error) throw error;
+  console.log('[PROCEED_NEXT_ROUND] Authoritative advance result:', data);
+  return data;
 }
 
 /**

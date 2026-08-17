@@ -188,19 +188,42 @@ two-human terminal-disconnect smoke remains a stable settlement/presentation
 checkpoint. The separate missing winner-chip bounce is queued below.
 
 Normal 3-5-7 delivery status: the atomic settlement RPC and connected-client
-presentation latch are implemented. Production smoke on 2026-08-07 exposed a
-completed-round admission mismatch between `endRound` and the RPC. Migration
-`20260807143000_allow_completed_three_five_seven_terminal_round.sql` corrects
-that mismatch, and the client candidate adds one identity-bound idempotent
-recovery attempt for the interrupted terminal signature. The complete rollback
-proof passed before and after deployment; repeat production disconnect smoke
-remains before this becomes a stable checkpoint.
+presentation latch are implemented. The full server-authority cutover in
+`20260816213000_three_five_seven_authority_cutover.sql` is installed on owned
+production: atomic bootstrap, decisions, expiry, round resolution and
+continuation, terminal settlement, exact replay-safe postgame handoff, and
+one-second recovery are database-owned. The complete scheduled recovery entry
+point passed rollback proof before and after deployment. Published two-client
+startup, disconnect, rollover, settlement, and successor-setup smoke remain
+before this becomes a stable checkpoint.
 
 Remaining game-by-game delivery order after 3-5-7 acceptance:
 
 1. Horses + SCC as one shared dice-resolution delivery with separate rule
    validation and acceptance for each game.
 2. 3-5-7 instant-win/initial-Round-1 residual seam.
+
+#### 3-5-7 authority migration — deployed 2026-08-17
+
+Status: Implemented and deployed; awaiting published two-client acceptance
+smoke before stable-checkpoint promotion.
+
+- `three_five_seven_begin_game` locks and validates admission and antes,
+  commits the opening round/deal, and returns the committed result directly to
+  the initiating client. Bootstrap no longer depends on a self-delivered
+  Realtime event.
+- Exact-identity decision, expiry, resolution, continuation, settlement, and
+  recovery transitions reject browser-authored gameplay truth. The rollback
+  proof executes the complete scheduled recovery entry point and covers winner,
+  tie, all-fold, duplicate, replay, late-replay, authorization, continuation,
+  and terminal cases.
+- `three_five_seven_advance_postgame` locks the terminal round and game, proves
+  the exact committed settlement, derives the next dealer/deadline, clears the
+  outgoing identity, counters, and player ephemerals, and publishes the next
+  disposition atomically. Its durable exact-identity claim returns the stored
+  result to duplicate callers and prevents an older replay from changing a
+  newer dealer game. The 3-5-7 client skips the shared transient-reset owner,
+  and cleanup/advancement failures now propagate.
 
 ### 3A. Cross-game postgame continuation ownership
 

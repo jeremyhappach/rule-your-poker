@@ -1,6 +1,29 @@
 # Current release and cutover state
 
-Date: 2026-08-16
+Date: 2026-08-17
+
+## 3-5-7 server-authority cutover
+
+- Migrations `20260816213000_three_five_seven_authority_cutover.sql` and
+  `20260817123000_optimize_357_hidden_cards_rls.sql` are installed on owned
+  production. PostgreSQL now owns atomic admission/bootstrap and first deal,
+  exact player decisions and expiry, winner/tie/all-fold resolution, successor
+  rounds, instant sweep and terminal settlement, winner-card consent, and the
+  exact-settlement transition into the next dealer-game setup.
+- The bootstrap RPC commits and returns the opening round to its initiating
+  client; Realtime only synchronizes peers. Postgame progression skips the
+  shared browser-authored transient reset. Its row-locked durable claim returns
+  the stored disposition to duplicate callers and makes a replay for an older
+  dealer game read-only after a newer dealer game exists.
+- The one-second database recovery function and both deadline Edge Function
+  paths call the same server transition. The complete scheduled recovery entry
+  point passed the rollback proof before and after production deployment,
+  including opening, expiry, continuation, terminal settlement, duplicate and
+  late replay, authorization, tie, all-fold, and terminal-state cases.
+- TypeScript, the nine focused 3-5-7 progress assertions, all 33 build-required
+  Cribbage assertions, and the production build pass. Published two-client
+  startup, disconnect recovery, rollover, settlement, and postgame smoke remain
+  the acceptance gate before this becomes a stable checkpoint.
 
 ## Yahtzee remote-score presentation handoff
 

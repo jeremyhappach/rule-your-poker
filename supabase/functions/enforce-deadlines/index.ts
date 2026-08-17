@@ -784,9 +784,18 @@ serve(async (req) => {
       // lifecycle; only the prepared-successor acknowledgement advances it.
 
       // ============= 3A. 3-5-7 (SIMULTANEOUS) DECISION TIMEOUTS =============
+      if (game.game_type === '3-5-7') {
+        const { data: recovery, error: recoveryError } = await serviceSupabase.rpc(
+          'three_five_seven_recover_game',
+          { p_game_id: gameId },
+        );
+        if (recoveryError) throw recoveryError;
+        actionsTaken.push(`3-5-7 authority recovery: ${JSON.stringify(recovery)}`);
+      }
+
       // 3-5-7 round numbers cycle 1/2/3 each hand, so we MUST key the current round by
       // (dealer_game_id, hand_number, round_number). Within a session, multiple dealer games can exist.
-      if (game.game_type === '3-5-7') {
+      if (false && game.game_type === '3-5-7') {
         let currentRound: any = null;
         const dealerGameId357 = (game as any).current_game_uuid;
 

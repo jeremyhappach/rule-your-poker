@@ -306,19 +306,25 @@ reset transient/presentation state when those identities change.
 - State/actions: `src/lib/gameLogic.ts:startRound`, `makeDecision`,
   `autoFoldUndecided`, `endRound`, and `proceedToNextRound`;
   `src/lib/cardUtils.ts:evaluateHand`; seam helpers in
-  `src/lib/threeFiveSeven/advanceRound.ts`.
+  `src/lib/threeFiveSeven/advanceRound.ts`. These client functions now submit
+  intent and exact identity to the server-authority RPCs.
 - Bots: `botPlayer.ts:makeBotDecisions` with
-  `botHandStrength.ts:getBotFoldProbability`; scheduling is in `Game.tsx`.
-- Settlement/terminal: later-round/new-hand seams and a normal R1 instant sweep
-  are owned by `public.advance_357_round`, latest in
-  `supabase/migrations/20260810210000_separate_357_rollover_amount.sql`. Its
-  public signature accepts transition identity only and derives the persisted
-  3-5-7 rollover at the R3 -> next-hand R1 boundary. Normal
-  leg-completion settlement remains the private client
-  `gameLogic.ts:handleGameOver`; legacy instant helpers remain under
-  `src/lib/threeFiveSeven/`.
+  `botHandStrength.ts:getBotFoldProbability`; the browser submits human intent,
+  while `three_five_seven_recover_game` owns disconnected/bot expiry and
+  progression.
+- Authority: `supabase/migrations/20260816213000_three_five_seven_authority_cutover.sql`
+  guards public gameplay rows and adds atomic `three_five_seven_begin_game`,
+  exact decision/expiry, resolution/continuation, settlement/reveal, durable
+  postgame handoff, and scheduled recovery. Hidden-card read policy optimization
+  is in `20260817123000_optimize_357_hidden_cards_rls.sql`. The recovery RPC is
+  also called by `enforce-all-deadlines` and the 3-5-7 branch of
+  `enforce-deadlines`.
+- Settlement/terminal: `three_five_seven_settle_game` accepts exact committed
+  resolution identity and retains the established atomic chip/snapshot
+  settlement implementation behind its authority wrapper.
 - Focused tests: `threeFiveSeven/advanceRound.test.ts`,
   `threeFiveSevenProgress.test.ts`,
+  `supabase/tests/three_five_seven_authority_rollback_proof.sql`,
   `supabase/tests/three_five_seven_rollover_proof.sql`, and shared card
   transport/slot tests.
 

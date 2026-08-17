@@ -755,6 +755,29 @@ replay harmless after a newer dealer game begins. This decision is scoped to
 Cribbage; every other game's shared client-owned postgame boundary remains an
 explicit audit item during that game's authority migration.
 
+## D-058 - 3-5-7 bootstrap and postgame are returned database transitions
+
+Both 3-5-7 dealer-game boundaries are atomic, exact-identity PostgreSQL
+transitions. The bootstrap RPC validates admission and antes, commits startup,
+derives and persists the first deal, and returns that committed result to its
+caller. The initiating browser consumes the returned authority directly;
+Realtime synchronizes peers but never triggers bootstrap.
+
+The migration rollback proof executes the complete scheduled recovery function
+as PostgreSQL runs it in production. Helper-only proof is insufficient because
+an error elsewhere in the scheduled statement can abort and roll back an
+otherwise valid recovery transition.
+
+After settlement, the browser skips the shared dealer-game transient reset and
+submits only exact game, dealer-game, round, and hand identity. PostgreSQL locks
+the terminal round and game, proves the matching committed settlement, derives
+the next dealer and configuration deadline, clears player ephemerals plus the
+outgoing identity and counters, and publishes the next setup, waiting, or
+terminal disposition atomically. A durable exact-identity claim returns the
+stored result to duplicate callers and makes an older replay read-only after a
+newer dealer game exists. Authority protections remain strict, and cleanup or
+advancement database errors are surfaced as failures.
+
 ## D-060 - Yahtzee actions and continuation are exact server transitions
 
 Yahtzee browsers submit intent plus exact round/player/action-sequence identity;
