@@ -808,3 +808,20 @@ the layout phase before it paints the newer action. A lagged observer may show
 the old score only until it learns the newer state. Roll narration is likewise
 derived from the durable current actor for the full turn, while score narration
 is a higher-priority bounded overlay for its matching sequence.
+
+## D-062 - 3-5-7 leg reserve is player-owned and setup decline is exact
+
+A purchased 3-5-7 leg is value owned by the player and displayed beside that
+player. Its purchase debits the player's chips and increments the durable leg
+count, but never credits the table pot. Terminal settlement returns all owned
+leg reserve and separately awards the carry-forward pot. The immutable chip
+projection therefore orders a normal final leg as `leg`, `sweep`, `transfer`;
+financial conservation includes chips plus pot plus outstanding leg reserve.
+
+After the exact postgame handoff has published a setup owner and configuration
+deadline, that owner may decline only through a row-locked database transition
+tied back to the committed outgoing dealer-game/round/hand identity. The server
+marks the owner sitting out, derives the next dealer or waiting/terminal state,
+clears outgoing transients, and records a durable result. Duplicate callers get
+that result, and a late replay cannot alter a newer dealer game. Shared browser
+cleanup is not an authority fallback, and the authority guard remains strict.

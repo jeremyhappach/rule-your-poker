@@ -91,6 +91,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { declineThreeFiveSevenSetup } from "@/lib/threeFiveSeven/declineSetup";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -15950,6 +15951,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSitOut={async () => {
                       // Handle dealer sitting out - mark as sitting out then evaluate player counts
                       if (!dealerPlayer?.id || !gameId) return;
+
+                      if (is357GameType) {
+                        try {
+                          await declineThreeFiveSevenSetup({
+                            gameId,
+                            expectedDealerPosition: game.dealer_position || 1,
+                            expectedConfigDeadline: (game as { config_deadline?: string | null }).config_deadline,
+                          });
+                          await fetchGameData();
+                        } catch (error) {
+                          console.error('[3-5-7 SETUP DECLINE] Authoritative transition failed:', error);
+                          toast({
+                            title: 'Could not sit out',
+                            description: error instanceof Error ? error.message : 'The server rejected the setup handoff.',
+                            variant: 'destructive',
+                          });
+                        }
+                        return;
+                      }
                       
                       console.log('[SIT OUT] Dealer sitting out from game selection');
                       
@@ -16366,6 +16386,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
                       if (!dealerPlayer?.id || !gameId) return;
+                      if (is357GameType) {
+                        try {
+                          await declineThreeFiveSevenSetup({
+                            gameId,
+                            expectedDealerPosition: game.dealer_position || 1,
+                            expectedConfigDeadline: (game as { config_deadline?: string | null }).config_deadline,
+                          });
+                          await fetchGameData();
+                        } catch (error) {
+                          console.error('[3-5-7 SETUP DECLINE] Authoritative transition failed:', error);
+                          toast({
+                            title: 'Could not sit out',
+                            description: error instanceof Error ? error.message : 'The server rejected the setup handoff.',
+                            variant: 'destructive',
+                          });
+                        }
+                        return;
+                      }
                       await supabase
                         .from('players')
                         .update({ sitting_out: true, sit_out_next_hand: false, waiting: false })

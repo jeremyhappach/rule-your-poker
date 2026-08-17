@@ -24,6 +24,29 @@ Date: 2026-08-17
   Cribbage assertions, and the production build pass. Published two-client
   startup, disconnect recovery, rollover, settlement, and postgame smoke remain
   the acceptance gate before this becomes a stable checkpoint.
+- Smoke of session `Aug 17 - Estimated Prophet` exposed two follow-up defects.
+  Purchased legs were being transferred into the pot even though settlement
+  also returned the leg reserve, minting one leg-reserve total at terminal;
+  and the setup owner's Sit Out action still entered shared browser cleanup,
+  whose protected game update was correctly rejected by the authority guard.
+- Migration `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` is now
+  installed on owned production. A leg debits its owner and increments the
+  owned leg count without changing the pot. A normal terminal publishes the
+  immutable ledger stages `leg`, `sweep`, then `transfer`, preserving chips,
+  pot, and owned reserve exactly.
+- `three_five_seven_decline_setup` now accepts only the exact committed
+  postgame dealer/deadline handoff, locks the game, verifies the setup owner,
+  marks that player sitting out, derives the next eligible dealer or terminal/
+  waiting disposition, clears outgoing transients, and stores one durable
+  exact-identity replay result. Both 3-5-7 modal call sites bypass the shared
+  browser cleanup. Make It Take It changes now require and verify the returned
+  persisted setting row before the client reports success.
+- The complete candidate and deployed rollback proofs pass, including owned
+  leg reserve, exact terminal conservation and ledger ordering, Make It Take It,
+  setup-owner authorization, duplicate replay, and late replay after a newer
+  dealer game. TypeScript, 13 focused 3-5-7/ledger assertions, all 33 required
+  Cribbage assertions, and the production build pass. Published two-client
+  acceptance remains required; the historical smoke session was not rewritten.
 
 ## Yahtzee remote-score presentation handoff
 

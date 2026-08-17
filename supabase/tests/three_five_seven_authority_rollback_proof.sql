@@ -8,10 +8,13 @@ DECLARE
   v_users uuid[]; v_outsider uuid:=gen_random_uuid();
   v_game uuid:=gen_random_uuid(); v_dealer uuid:=gen_random_uuid();
   v_cron_game uuid:=gen_random_uuid(); v_cron_dealer uuid:=gen_random_uuid();
+  v_leg_game uuid:=gen_random_uuid(); v_leg_dealer uuid:=gen_random_uuid();
   v_terminal_game uuid:=gen_random_uuid(); v_terminal_dealer uuid:=gen_random_uuid();
   v_p1 uuid; v_p2 uuid; v_round uuid; v_r2 uuid; v_r3 uuid; v_r1_next uuid;
+  v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
   v_result jsonb; v_replay jsonb; v_chips1 integer; v_chips2 integer; v_count integer;
+  v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
 BEGIN
   SELECT array_agg(id ORDER BY created_at,id) INTO v_users FROM (
     SELECT id,created_at FROM public.profiles ORDER BY created_at,id LIMIT 2
@@ -162,6 +165,53 @@ BEGIN
     RAISE EXCEPTION '357_authority_proof:rollover_invalid:%',v_result;
   END IF;
 
+  -- A purchased nonterminal leg is owned reserve beside the player. It debits
+  -- only that player, leaves the table pot unchanged, and emits one leg batch
+  -- with an unmatched debit rather than a player-to-pot transfer.
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  INSERT INTO public.games(
+    id,name,status,game_type,current_game_uuid,current_host,dealer_position,
+    ante_amount,rollover_amount,leg_value,legs_to_win,total_hands,pot,real_money
+  ) VALUES(
+    v_leg_game,'Codex rollback proof - 357 leg reserve','ante_decision','3-5-7',v_leg_dealer,v_users[1],1,
+    0,1,2,3,0,10,false
+  );
+  INSERT INTO public.dealer_games(id,session_id,dealer_user_id,game_type)
+  VALUES(v_leg_dealer,v_leg_game,v_users[1],'3-5-7');
+  INSERT INTO public.players(game_id,user_id,position,chips,status,sitting_out,is_bot,ante_decision) VALUES
+    (v_leg_game,v_users[1],1,100,'active',false,false,'ante_up'),
+    (v_leg_game,v_users[2],2,100,'active',false,false,'ante_up');
+  SELECT id INTO v_l1 FROM public.players WHERE game_id=v_leg_game AND user_id=v_users[1];
+  SELECT id INTO v_l2 FROM public.players WHERE game_id=v_leg_game AND user_id=v_users[2];
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  SELECT public.three_five_seven_begin_game(v_leg_game) INTO v_result;
+  v_leg_round:=(v_result->>'round_id')::uuid;
+  PERFORM public.three_five_seven_submit_decision(v_leg_game,v_leg_round,v_leg_dealer,1,1,v_l1,'stay');
+  PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
+  SELECT public.three_five_seven_submit_decision(v_leg_game,v_leg_round,v_leg_dealer,1,1,v_l2,'fold') INTO v_result;
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
+  IF v_result#>>'{resolution,outcome}'<>'solo_stay'
+     OR (SELECT pot FROM public.games WHERE id=v_leg_game)<>10
+     OR (SELECT chips FROM public.players WHERE id=v_l1)<>98
+     OR (SELECT legs FROM public.players WHERE id=v_l1)<>1
+     OR (SELECT chips FROM public.players WHERE id=v_l2)<>100
+     OR (SELECT sum(chips) FROM public.players WHERE game_id=v_leg_game)
+          +(SELECT pot FROM public.games WHERE id=v_leg_game)
+          +(SELECT sum(legs)*2 FROM public.players WHERE game_id=v_leg_game)<>210
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches WHERE game_id=v_leg_game AND reason='leg')<>1
+     OR EXISTS(
+       SELECT 1 FROM public.gameplay_transfer_batches batch
+        WHERE batch.game_id=v_leg_game
+          AND batch.reason='leg'
+          AND batch.transfers<>'[]'::jsonb
+     ) THEN
+    RAISE EXCEPTION '357_authority_proof:owned_leg_reserve_invalid:%',v_result;
+  END IF;
+
   -- The complete scheduled function can bootstrap a ready game without a
   -- browser/Reatime self-event dependency.
   PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
@@ -183,7 +233,7 @@ BEGIN
   -- postgame duplicate replay, and late replay after a newer dealer game.
   PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
   INSERT INTO public.games(id,name,status,game_type,current_game_uuid,current_host,dealer_position,ante_amount,rollover_amount,leg_value,legs_to_win,total_hands,pot,real_money)
-  VALUES(v_terminal_game,'Codex rollback proof - 357 terminal','ante_decision','3-5-7',v_terminal_dealer,v_users[1],1,0,1,1,1,0,0,false);
+  VALUES(v_terminal_game,'Codex rollback proof - 357 terminal','ante_decision','3-5-7',v_terminal_dealer,v_users[1],1,0,1,1,1,0,5,false);
   INSERT INTO public.dealer_games(id,session_id,dealer_user_id,game_type) VALUES(v_terminal_dealer,v_terminal_game,v_users[1],'3-5-7');
   INSERT INTO public.players(game_id,user_id,position,chips,status,sitting_out,is_bot,ante_decision) VALUES
     (v_terminal_game,v_users[1],1,100,'active',false,false,'ante_up'),(v_terminal_game,v_users[2],2,100,'active',false,false,'ante_up');
@@ -197,9 +247,21 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_terminal_game,v_terminal_round,v_terminal_dealer,1,1,v_t2,'fold') INTO v_result;
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
   IF v_result#>>'{resolution,outcome}'<>'terminal' OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'game_over'
-     OR (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_terminal_dealer AND settlement_key='three_five_seven_terminal')<>1 THEN
+     OR (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_terminal_dealer AND settlement_key='three_five_seven_terminal')<>1
+     OR (SELECT chips FROM public.players WHERE id=v_t1)<>105
+     OR (SELECT chips FROM public.players WHERE id=v_t2)<>100
+     OR (SELECT pot FROM public.games WHERE id=v_terminal_game)<>0
+     OR (SELECT sum(chips) FROM public.players WHERE game_id=v_terminal_game)<>205 THEN
     RAISE EXCEPTION '357_authority_proof:terminal_settlement_invalid:%',v_result;
+  END IF;
+  SELECT array_agg(reason ORDER BY cursor) INTO v_reasons
+    FROM public.gameplay_transfer_batches
+   WHERE game_id=v_terminal_game;
+  IF v_reasons IS DISTINCT FROM ARRAY['leg','sweep','transfer']::text[] THEN
+    RAISE EXCEPTION '357_authority_proof:terminal_batch_order_invalid:%',v_reasons;
   END IF;
   SELECT public.three_five_seven_settle_game(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_replay;
   IF (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_terminal_dealer AND settlement_key='three_five_seven_terminal')<>1 THEN
@@ -213,11 +275,45 @@ BEGIN
   IF v_result->>'outcome'<>'revealed' OR NOT EXISTS(
     SELECT 1 FROM public.player_cards WHERE round_id=v_terminal_round AND player_id=v_t1 AND is_public
   ) THEN RAISE EXCEPTION '357_authority_proof:terminal_reveal_invalid:%',v_result; END IF;
+  UPDATE public.system_settings
+     SET value=jsonb_build_object('enabled',true),updated_at=clock_timestamp()
+   WHERE key='make_it_take_it'
+   RETURNING value INTO v_setting;
+  IF coalesce((v_setting->>'enabled')::boolean,false) IS NOT TRUE THEN
+    RAISE EXCEPTION '357_authority_proof:make_it_take_it_enable_not_returned';
+  END IF;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_result;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_replay;
   IF v_result->>'outcome'<>'advanced' OR v_replay->>'outcome'<>'already_advanced'
+     OR (v_result->>'dealer_position')::integer<>1
      OR (SELECT count(*) FROM private.three_five_seven_postgame_advances WHERE game_id=v_terminal_game AND dealer_game_id=v_terminal_dealer)<>1 THEN
     RAISE EXCEPTION '357_authority_proof:postgame_replay_invalid:%/%',v_result,v_replay;
+  END IF;
+  SELECT config_deadline INTO v_deadline FROM public.games WHERE id=v_terminal_game;
+
+  -- Only the exact setup owner can decline this committed handoff. The server
+  -- publishes waiting for the remaining one-player cohort, stores one replay
+  -- claim, and returns that claim to duplicate callers.
+  PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
+  BEGIN
+    PERFORM public.three_five_seven_decline_setup(v_terminal_game,1,v_deadline);
+    RAISE EXCEPTION '357_authority_proof:non_owner_setup_decline_succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='357_authority_proof:non_owner_setup_decline_succeeded' OR SQLERRM NOT LIKE '%not_setup_owner%' THEN RAISE; END IF;
+  END;
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  SELECT public.three_five_seven_decline_setup(v_terminal_game,1,v_deadline) INTO v_result;
+  SELECT public.three_five_seven_decline_setup(v_terminal_game,1,v_deadline) INTO v_replay;
+  IF v_result->>'outcome'<>'declined' OR v_result->>'status'<>'waiting'
+     OR v_replay->>'outcome'<>'already_declined'
+     OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'waiting'
+     OR NOT (SELECT sitting_out FROM public.players WHERE id=v_t1)
+     OR (SELECT count(*) FROM private.three_five_seven_setup_declines
+          WHERE game_id=v_terminal_game AND dealer_game_id=v_terminal_dealer
+            AND round_id=v_terminal_round AND hand_number=1 AND declining_player_id=v_t1)<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:setup_decline_replay_invalid:%/%',v_result,v_replay;
   END IF;
   -- A validated shared configuration handoff may create the next dealer game;
   -- this is not permission to mutate an active 3-5-7 identity.
@@ -227,6 +323,18 @@ BEGIN
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_replay;
   IF v_replay->>'outcome'<>'already_advanced' OR (SELECT current_game_uuid FROM public.games WHERE id=v_terminal_game)<>v_new_dealer THEN
     RAISE EXCEPTION '357_authority_proof:late_replay_mutated_new_game:%',v_replay;
+  END IF;
+  SELECT public.three_five_seven_decline_setup(v_terminal_game,1,v_deadline) INTO v_replay;
+  IF v_replay->>'outcome'<>'already_declined' OR (SELECT current_game_uuid FROM public.games WHERE id=v_terminal_game)<>v_new_dealer THEN
+    RAISE EXCEPTION '357_authority_proof:late_setup_decline_mutated_new_game:%',v_replay;
+  END IF;
+
+  UPDATE public.system_settings
+     SET value=jsonb_build_object('enabled',false),updated_at=clock_timestamp()
+   WHERE key='make_it_take_it'
+   RETURNING value INTO v_setting;
+  IF coalesce((v_setting->>'enabled')::boolean,true) IS NOT FALSE THEN
+    RAISE EXCEPTION '357_authority_proof:make_it_take_it_disable_not_returned';
   END IF;
 
   -- Ambiguous simultaneous 3/5/7 sweeps are rejected atomically.

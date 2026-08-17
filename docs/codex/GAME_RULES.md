@@ -326,11 +326,11 @@ contradictions.
 | Responsibility | Source |
 |---|---|
 | Setup/config | `src/components/DealerGameSetup.tsx`: opening ante, rollover, leg value, legs to win, optional Pussy Tax/value, optional pot cap/value, and reveal-at-showdown. |
-| State/actions | `src/lib/gameLogic.ts:startRound`, `makeDecision`, `autoFoldUndecided`, `endRound`, and `proceedToNextRound`; hand ranking in `src/lib/cardUtils.ts:evaluateHand`. |
-| Atomic seam | `src/lib/threeFiveSeven/advanceRound.ts` builds assignments; `public.advance_357_round` latest in `supabase/migrations/20260810210000_separate_357_rollover_amount.sql`. |
+| State/actions | Client adapters in `src/lib/gameLogic.ts` submit exact identity and intent to the `three_five_seven_*` RPCs; hand ranking is server-owned with matching presentation helpers in `src/lib/cardUtils.ts:evaluateHand`. |
+| Atomic seam | `supabase/migrations/20260816213000_three_five_seven_authority_cutover.sql` owns bootstrap, decision/resolution, continuation, settlement, postgame, and recovery. `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` owns leg-reserve accounting and setup-owner decline. |
 | Bots | `src/lib/botPlayer.ts:makeBotDecisions` and `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling in `src/pages/Game.tsx`. |
 | State acceptance | `src/lib/gameStateSync/threeFiveSevenProgress.ts:getThreeFiveSevenProgress`. |
-| Terminal | Normal leg win: private `src/lib/gameLogic.ts:handleGameOver`; atomic R1 sweep: `advance_357_round`; presentation owner `src/components/ThreeFiveSevenTerminalController.tsx`. |
+| Terminal | `public.three_five_seven_settle_game` owns exact terminal settlement for normal leg wins and instant sweeps; presentation owner `src/components/ThreeFiveSevenTerminalController.tsx`. |
 | Presentation | `src/components/MobileGameTable.tsx`, `src/components/ThreeFiveSevenDealOrchestrator.tsx`, `src/components/ThreeFiveSevenAnchoredSlot.tsx`, and `src/components/ThreeFiveSevenProofCardsAnimation.tsx`. |
 
 ### Implemented rules
@@ -367,11 +367,11 @@ contradictions.
   decision reset, persisted rollover at a new-hand Round 1, and normal R1
   instant sweep. Its seam identity
   is `(game_id, dealer_game_id, next_hand_number, next_round_number)`.
-- The initial Round 1 still enters through client `startRound`. Normal
-  leg-completion calls client `handleGameOver`, which claims `game_over`,
-  then separately awards, records, snapshots, resets, and optionally writes
-  `session_ended`. The RPC instant-sweep path performs these consequences in
-  its transaction.
+- Initial Round 1 enters through atomic `three_five_seven_begin_game`, and the
+  initiating browser consumes the committed returned round directly. Normal
+  leg completion and instant sweep settle through exact-identity database
+  transitions. `three_five_seven_advance_postgame` owns the terminal handoff;
+  `three_five_seven_decline_setup` owns a setup owner's explicit Sit Out.
 - `reveal_at_showdown` controls opponent proof-card presentation. An
   identity-guarded `show-cards` broadcast is presentation only.
 - Bots use the same Stay/Fold action with hand-strength/aggression probability

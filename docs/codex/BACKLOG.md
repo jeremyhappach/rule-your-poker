@@ -224,6 +224,14 @@ smoke before stable-checkpoint promotion.
   result to duplicate callers and prevents an older replay from changing a
   newer dealer game. The 3-5-7 client skips the shared transient-reset owner,
   and cleanup/advancement failures now propagate.
+- Smoke follow-up `20260817131736_fix_357_leg_reserve_and_setup_decline.sql`
+  is installed. Purchased legs now debit only the owner into visible leg
+  reserve and never enter the pot; terminal settlement projects ordered
+  `leg`/`sweep`/`transfer` batches without creating value. Setup-owner Sit Out
+  now uses its own exact committed-handoff RPC and durable replay claim rather
+  than shared browser cleanup. The Make It Take It toggle requires the returned
+  persisted setting row before reporting success. Two-client published smoke
+  must recheck all three observations before checkpoint promotion.
 
 ### 3A. Cross-game postgame continuation ownership
 

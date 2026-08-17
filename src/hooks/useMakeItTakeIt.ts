@@ -49,20 +49,28 @@ export const useMakeItTakeIt = () => {
   }, []);
 
   const toggleMakeItTakeIt = async (enabled: boolean): Promise<boolean> => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('system_settings')
       .update({ 
         value: { enabled },
         updated_at: new Date().toISOString()
       })
-      .eq('key', 'make_it_take_it');
+      .eq('key', 'make_it_take_it')
+      .select('value, updated_at')
+      .single();
 
     if (error) {
       console.error('[MAKE IT TAKE IT] Error updating setting:', error);
       return false;
     }
 
-    setMakeItTakeIt(enabled);
+    const persisted = data.value as { enabled?: boolean };
+    if (persisted?.enabled !== enabled) {
+      console.error('[MAKE IT TAKE IT] Persisted setting did not match the requested value:', data);
+      return false;
+    }
+
+    setMakeItTakeIt(persisted.enabled);
     return true;
   };
 
