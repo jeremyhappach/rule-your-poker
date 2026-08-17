@@ -2394,11 +2394,12 @@ export function YahtzeeGameTable({
                 {/* Action strip (Wave 2F.2) — single canonical slot owns
                     the reservation across Roll → Waiting → Pick-a-category
                     so the dice tray above and any sibling below never
-                    reflow when the variant swaps. Only rendered on my turn;
-                    opponent-turn UI uses the opponent scorecard block below. */}
-                {gamePhase === 'playing' && isMyTurn && (
+                    reflow when the variant swaps. The strip belongs to the
+                    incoming player only after a remote scorer's presentation
+                    releases; opponent-turn UI uses the scorecard block below. */}
+                {gamePhase === 'playing' && isMyTurn && !remoteScorePresentation.active && (
                   <ActionStripSlot className="mt-1 mb-1" density="compact">
-                    {remoteScorePresentation.active || scoringInProgress ? (
+                    {scoringInProgress ? (
                       <ActionStripStatusPill emphasis="muted">
                         Scoring…
                       </ActionStripStatusPill>

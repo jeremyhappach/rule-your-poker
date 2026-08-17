@@ -17,6 +17,9 @@ Date: 2026-08-16
   RPC admission, scoring, and Realtime ownership are unchanged.
 - Seventeen focused Yahtzee assertions, TypeScript, and the production build
   pass locally; published two-client confirmation remains pending.
+- The presentation follow-up suppresses the incoming player's action strip
+  while that remote scorer presentation is active, so its `Scoring…`
+  reservation cannot move the scorer's scorecard before it tears down.
 
 ## Yahtzee server-authority and postgame cutover
 
