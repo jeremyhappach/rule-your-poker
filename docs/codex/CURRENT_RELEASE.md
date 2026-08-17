@@ -20,6 +20,15 @@ Date: 2026-08-16
 - The presentation follow-up suppresses the incoming player's action strip
   while that remote scorer presentation is active, so its `Scoring…`
   reservation cannot move the scorer's scorecard before it tears down.
+- The next follow-up removes every helper line above the opponent scorecard,
+  moves roll and score narration onto the canonical announcement rail, and
+  gives the mobile HUD a score-first, two-column layout: scores never shrink,
+  while only an overlong player name may ellipsize. Initial hydration now
+  marks durable prior actions as already presented, so refresh cannot replay
+  an opponent's old scoring dice or highlight before the local turn resumes.
+- Twenty-two focused Yahtzee/announcement assertions, TypeScript, and the
+  production build pass locally; published two-client confirmation remains
+  pending.
 
 ## Yahtzee server-authority and postgame cutover
 

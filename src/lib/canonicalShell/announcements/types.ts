@@ -25,6 +25,7 @@ export type AnnouncementType =
   | 'chip_award'
   | 'dealer_selected'
   | 'peg_notice'
+  | 'gameplay_notice'
   | 'dealing_next_hand'
   // Ambient
   | 'dealer_configuring'
@@ -50,6 +51,9 @@ export type AnnouncementType =
  *     (e.g. Cribbage "Go"). MUST NOT carry timing or progression
  *     implications. Anything that gates progression is an overlay
  *     (Phase 3), not a rail event.
+ *   - `gameplay_notice` (transient): game-neutral version of the same
+ *     non-blocking rail contract for action narration such as dice rolls
+ *     and committed scoring.
  */
 
 export interface AnnouncementScope {
@@ -122,6 +126,7 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   round_win: 80,
   chip_award: 60,
   peg_notice: 55,
+  gameplay_notice: 55,
   dealer_configuring: 50,
   dealer_selection_in_progress: 50,
   game_paused: 95,
@@ -142,6 +147,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   chip_award: 'enqueue',
   dealer_selected: 'enqueue',
   peg_notice: 'enqueue',
+  gameplay_notice: 'enqueue',
   dealing_next_hand: 'enqueue',
   dealer_configuring: 'ambient',
   dealer_selection_in_progress: 'ambient',
@@ -162,6 +168,7 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   chip_award: 2200,
   dealer_selected: 2500,
   peg_notice: 1500,
+  gameplay_notice: 1500,
   dealing_next_hand: 1500,
   // Ambient types: no TTL — cleared by supersession or boundary teardown.
 };

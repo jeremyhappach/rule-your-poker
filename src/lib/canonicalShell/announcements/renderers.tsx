@@ -234,7 +234,8 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       if (!x.title) return null;
       return <LifecycleAnnouncement title={x.title} subtitle={x.subtitle} />;
     }
-    case 'peg_notice': {
+    case 'peg_notice':
+    case 'gameplay_notice': {
       // Lightweight non-blocking gameplay notice. MUST NOT carry
       // timing or progression implications. Anything that gates
       // progression is an overlay (Phase 3), not a rail event.

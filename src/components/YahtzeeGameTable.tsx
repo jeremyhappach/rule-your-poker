@@ -36,7 +36,7 @@ import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
-import { resolveYahtzeeRemoteScorePresentation } from "@/lib/yahtzeePresentation";
+import { describeYahtzeeScore, resolveYahtzeeRemoteScorePresentation } from "@/lib/yahtzeePresentation";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -48,7 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
-import { RotateCcw, MessageSquare, User, Clock, Check, Ban } from "lucide-react";
+import { RotateCcw, MessageSquare, User, Check, Ban } from "lucide-react";
 import { settleYahtzeeGame } from "@/lib/yahtzeeSettleGame";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
@@ -516,6 +516,10 @@ export function YahtzeeGameTable({
    *  `cancelled` so that transient dep flickers don't abort a legitimately running bot. */
   const activeBotTurnIdentityRef = useRef<string | null>(null);
   const lastPresentedScoreSequenceRef = useRef<number | null>(null);
+  const remotePresentationHydrationRoundRef = useRef<string | null>(null);
+  const [remotePresentationHydratedRoundId, setRemotePresentationHydratedRoundId] = useState<string | null>(null);
+  const lastAnnouncedScoreSequenceRef = useRef<number | null>(null);
+  const lastAnnouncedRollKeyRef = useRef<string | null>(null);
   const actionInFlightRef = useRef(false);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
@@ -587,7 +591,6 @@ export function YahtzeeGameTable({
   useEffect(() => {
     completionLatchRoundIdRef.current = null;
     prevTurnRef.current = null;
-    lastPresentedScoreSequenceRef.current = null;
     actionInFlightRef.current = false;
     setCachedOpponentDice(null);
     setScoringInProgress(false);
@@ -758,11 +761,28 @@ export function YahtzeeGameTable({
   });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
+  // A durable `lastAction` is history on a reconnect, not a fresh visual
+  // event. Establish the first hydrated action/roll as already presented
+  // before the browser paints; later sequences may own a live handoff.
+  useLayoutEffect(() => {
+    if (!viewState || !currentRoundId) return;
+    if (remotePresentationHydrationRoundRef.current === currentRoundId) return;
+
+    lastPresentedScoreSequenceRef.current = viewState.lastAction?.sequence ?? null;
+    lastAnnouncedScoreSequenceRef.current = viewState.lastAction?.sequence ?? null;
+    lastAnnouncedRollKeyRef.current = currentTurnState?.rollKey == null || !currentTurnPlayerId
+      ? null
+      : `${currentTurnPlayerId}:${String(currentTurnState.rollKey)}`;
+    remotePresentationHydrationRoundRef.current = currentRoundId;
+    setRemotePresentationHydratedRoundId(currentRoundId);
+  }, [viewState, currentRoundId, currentTurnPlayerId, currentTurnState?.rollKey]);
+
   const remoteScorePresentation = resolveYahtzeeRemoteScorePresentation(
     viewState,
     myPlayer?.id,
     scoringInProgress,
     lastPresentedScoreSequenceRef.current,
+    remotePresentationHydratedRoundId === currentRoundId,
   );
   const presentedOpponentPlayerId = remoteScorePresentation.action?.playerId
     ?? (!isMyTurn ? currentTurnPlayerId ?? null : null);
@@ -974,6 +994,7 @@ export function YahtzeeGameTable({
 
   /* ---- Present the exact committed score after the atomic turn handoff ---- */
   useEffect(() => {
+    if (remotePresentationHydratedRoundId !== currentRoundId) return;
     const action = viewState?.lastAction;
     if (!action || action.type !== 'score' || action.playerId === myPlayer?.id) return;
     if (lastPresentedScoreSequenceRef.current === action.sequence) return;
@@ -995,7 +1016,69 @@ export function YahtzeeGameTable({
       setCachedOpponentDice(null);
     }, 2500);
     return () => clearTimeout(timer);
-  }, [viewState?.lastAction?.sequence, myPlayer?.id]);
+  }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId]);
+
+  /* ---- Canonical rail narration — never occupies the scorecard pane ---- */
+  useEffect(() => {
+    if (remotePresentationHydratedRoundId !== currentRoundId) return;
+    const action = viewState?.lastAction;
+    if (!action || action.type !== 'score' || viewState?.actionSequence !== action.sequence) return;
+    if (lastAnnouncedScoreSequenceRef.current === action.sequence) return;
+    const scorer = players.find(player => player.id === action.playerId);
+    if (!scorer) return;
+
+    lastAnnouncedScoreSequenceRef.current = action.sequence;
+    announcements.emit({
+      id: `yahtzee-score:${currentRoundId}:${action.sequence}`,
+      type: 'gameplay_notice',
+      scope: { dealerGameId: gameId, roundId: currentRoundId },
+      payload: { title: `${getPlayerUsername(scorer)} scored ${describeYahtzeeScore(action)}` },
+      ttlMs: 2500,
+    });
+  }, [
+    remotePresentationHydratedRoundId,
+    currentRoundId,
+    viewState?.lastAction,
+    viewState?.actionSequence,
+    players,
+    announcements,
+    gameId,
+  ]);
+
+  useEffect(() => {
+    if (remotePresentationHydratedRoundId !== currentRoundId) return;
+    if (!currentTurnPlayerId || !currentTurnState?.rollKey) return;
+
+    const rollKey = `${currentTurnPlayerId}:${String(currentTurnState.rollKey)}`;
+    const hasRolled = currentTurnState.rollsRemaining < 3
+      && currentTurnState.dice.some(die => die.value !== 0);
+    if (!hasRolled) {
+      lastAnnouncedRollKeyRef.current = rollKey;
+      return;
+    }
+    if (lastAnnouncedRollKeyRef.current === rollKey) return;
+    const roller = players.find(player => player.id === currentTurnPlayerId);
+    if (!roller) return;
+
+    lastAnnouncedRollKeyRef.current = rollKey;
+    announcements.emit({
+      id: `yahtzee-roll:${currentRoundId}:${rollKey}`,
+      type: 'gameplay_notice',
+      scope: { dealerGameId: gameId, roundId: currentRoundId },
+      payload: { title: `${getPlayerUsername(roller)} is rolling` },
+      ttlMs: currentTurnState.rollsRemaining === 2 ? FIRST_ROLL_MS : ROLL_AGAIN_MS,
+    });
+  }, [
+    remotePresentationHydratedRoundId,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnState?.rollKey,
+    currentTurnState?.rollsRemaining,
+    currentTurnState?.dice,
+    players,
+    announcements,
+    gameId,
+  ]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
   useEffect(() => {
@@ -2317,37 +2400,36 @@ export function YahtzeeGameTable({
         timer={
           <div
             data-shell-operational-hud=""
-            className="w-full h-full flex items-center justify-center gap-x-3 px-3 overflow-hidden whitespace-nowrap"
+            className="w-full h-full flex min-w-0 items-center justify-center px-3 overflow-hidden whitespace-nowrap"
           >
-            {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
-              <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-foreground font-medium">
-                  {isMyTurn ? 'Your turn' : `${getPlayerUsername(currentPlayer)}'s turn`}
-                </span>
-                <Badge variant="secondary" className="text-xs">
-                  Rolls: {isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 0)}
-                </Badge>
-              </div>
-            ) : null}
             {gamePhase === 'playing' && (
-              <div className="flex items-center gap-3 text-xs tabular-nums">
-                {activePlayers.map(p => {
-                  const ps = viewState?.playerStates?.[p.id];
-                  const total = ps ? getTotalScore(ps.scorecard) : 0;
-                  const isTurn = p.id === currentTurnPlayerId;
-                  return (
-                    <span
-                      key={p.id}
-                      className={cn(
-                        'font-semibold',
-                        isTurn ? 'text-poker-gold' : 'text-muted-foreground'
-                      )}
-                    >
-                      {getPlayerUsername(p)}: {total}
-                    </span>
-                  );
-                })}
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-2 text-xs tabular-nums">
+                <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-2">
+                  {activePlayers.map(p => {
+                    const ps = viewState?.playerStates?.[p.id];
+                    const total = ps ? getTotalScore(ps.scorecard) : 0;
+                    const isTurn = p.id === currentTurnPlayerId;
+                    const name = getPlayerUsername(p);
+                    return (
+                      <div
+                        key={p.id}
+                        className={cn(
+                          'flex min-w-0 items-center justify-center gap-1 font-semibold',
+                          isTurn ? 'text-poker-gold' : 'text-muted-foreground',
+                        )}
+                        aria-label={`${name}: ${total}`}
+                      >
+                        <span className="min-w-0 truncate" title={name}>{name}</span>
+                        <span className="shrink-0">: {total}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {currentPlayer ? (
+                  <Badge variant="secondary" className="shrink-0 px-1.5 text-[10px] tabular-nums">
+                    R: {isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 0)}
+                  </Badge>
+                ) : null}
               </div>
             )}
           </div>
@@ -2424,32 +2506,6 @@ export function YahtzeeGameTable({
                 {/* Opponent scorecard when it's not my turn */}
                 {presentedOpponentPlayerId && presentedOpponentPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
                   <div className="px-1 relative">
-
-                    {(() => {
-                      const oppPlayer = players.find(p => p.id === presentedOpponentPlayerId);
-                      if (!oppPlayer) return null;
-                      if (remoteScorePresentation.action) {
-                        return (
-                          <p className="text-amber-400 font-semibold text-xs text-center mb-0.5">
-                            {getPlayerUsername(oppPlayer)} scored {CATEGORY_FULL_NAMES[remoteScorePresentation.action.category]}
-                          </p>
-                        );
-                      }
-                      const diceState = getCurrentTurnDice();
-                      const hasRolled = diceState?.dice.some(d => d.value !== 0);
-                      const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
-                      const rollsLeft = oppPs?.rollsRemaining ?? 3;
-                      const statusText = !hasRolled || rollsLeft === 3
-                        ? `${getPlayerUsername(oppPlayer)} is rolling...`
-                        : rollsLeft > 0
-                          ? `${getPlayerUsername(oppPlayer)} — Roll ${4 - rollsLeft}`
-                          : `${getPlayerUsername(oppPlayer)} choosing...`;
-                      return (
-                        <p className="text-amber-400 font-semibold text-xs text-center animate-pulse mb-0.5">
-                          {statusText}
-                        </p>
-                      );
-                    })()}
                     <div className="yahtzee-opponent-scorecard">
                       {renderScorecard(presentedOpponentPlayerId, false)}
                     </div>

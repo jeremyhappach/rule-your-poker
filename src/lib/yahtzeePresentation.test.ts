@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveYahtzeeRemoteScorePresentation } from './yahtzeePresentation';
+import { describeYahtzeeScore, resolveYahtzeeRemoteScorePresentation } from './yahtzeePresentation';
 import type { YahtzeeState } from './yahtzeeTypes';
 
 const scoreAction: NonNullable<YahtzeeState['lastAction']> = {
@@ -19,7 +19,18 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       'player-two',
       false,
       null,
+      true,
     )).toEqual({ active: true, action: scoreAction });
+  });
+
+  it('does not replay durable score history while the initial snapshot hydrates', () => {
+    expect(resolveYahtzeeRemoteScorePresentation(
+      { actionSequence: 8, lastAction: scoreAction },
+      'player-two',
+      false,
+      null,
+      false,
+    )).toEqual({ active: false, action: null });
   });
 
   it('holds the scorer while the effect-driven highlight remains active', () => {
@@ -28,6 +39,7 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       'player-two',
       true,
       8,
+      true,
     )).toEqual({ active: true, action: scoreAction });
   });
 
@@ -37,6 +49,7 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       'player-two',
       false,
       8,
+      true,
     )).toEqual({ active: false, action: null });
   });
 
@@ -46,6 +59,7 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       'player-one',
       false,
       null,
+      true,
     )).toEqual({ active: false, action: null });
   });
 
@@ -55,6 +69,16 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       'player-two',
       false,
       null,
+      true,
     )).toEqual({ active: false, action: null });
+  });
+
+  it('narrates upper scores by matching dice and straight scores by category', () => {
+    expect(describeYahtzeeScore(scoreAction)).toBe('3 x 4s');
+    expect(describeYahtzeeScore({
+      ...scoreAction,
+      category: 'large_straight',
+      score: 40,
+    })).toBe('a large straight');
   });
 });

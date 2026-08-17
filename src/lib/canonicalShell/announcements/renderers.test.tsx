@@ -44,3 +44,17 @@ describe('paused-game announcement', () => {
     expect(screen.getByText('Game is paused - only Jeremy can resume')).not.toBeNull();
   });
 });
+
+describe('generic gameplay announcement', () => {
+  it('renders non-blocking game narration in the canonical rail', () => {
+    render(renderAnnouncement({
+      id: 'yahtzee-score:round-1:8',
+      type: 'gameplay_notice',
+      scope: { dealerGameId: 'game-1', roundId: 'round-1' },
+      payload: { title: 'Hap scored 3 x 6s' },
+      ttlMs: 2500,
+    }));
+
+    expect(screen.getByText('Hap scored 3 x 6s')).not.toBeNull();
+  });
+});
