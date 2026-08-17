@@ -36,8 +36,14 @@ Date: 2026-08-16
   scorer presentation, and score narration now share one 2.5-second release
   interval. This remains presentation-only; the database turn already advances
   atomically at score commit.
-- Twenty-five focused Yahtzee/rail assertions, local TypeScript checking, and
+- Twenty-six focused Yahtzee/rail assertions, local TypeScript checking, and
   the production build gate pass; the renewed two-client smoke remains pending.
+- A slow observer may legitimately receive an older score snapshot after the
+  next player is locally ready, but it must never retain that score once the
+  newer durable action reaches it. Score presentation and rail narration are
+  now keyed to the exact round/action sequence; a newer sequence dismisses the
+  active or queued score notice and cached score visual in the layout phase.
+  The bot scorer now uses the same 2.5-second maximum presentation interval.
 
 ## Yahtzee server-authority and postgame cutover
 
