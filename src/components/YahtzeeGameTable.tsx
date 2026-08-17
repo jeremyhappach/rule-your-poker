@@ -39,8 +39,10 @@ import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
 import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
+  isYahtzeeScorePresentationSuperseded,
   resolveYahtzeeRemoteScorePresentation,
   YAHTZEE_SCORE_PRESENTATION_MS,
+  yahtzeeScoreAnnouncementId,
 } from "@/lib/yahtzeePresentation";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
@@ -524,6 +526,7 @@ export function YahtzeeGameTable({
   const remotePresentationHydrationRoundRef = useRef<string | null>(null);
   const [remotePresentationHydratedRoundId, setRemotePresentationHydratedRoundId] = useState<string | null>(null);
   const lastAnnouncedScoreSequenceRef = useRef<number | null>(null);
+  const activeScorePresentationRef = useRef<{ roundId: string; sequence: number } | null>(null);
   const actionInFlightRef = useRef(false);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
@@ -596,6 +599,7 @@ export function YahtzeeGameTable({
     completionLatchRoundIdRef.current = null;
     prevTurnRef.current = null;
     actionInFlightRef.current = false;
+    activeScorePresentationRef.current = null;
     setCachedOpponentDice(null);
     setScoringInProgress(false);
     setLastScoredCategory(null);
@@ -801,9 +805,35 @@ export function YahtzeeGameTable({
   // with chip-transfer trigger + winner confetti, matching Gin/Cribbage).
   // Keeping the announcements handle here for the chip-transfer effect.
   const announcements = useAnnouncements();
+  const announcementsRef = useRef(announcements);
+  announcementsRef.current = announcements;
   const { ambient: announcementAmbient } = useAnnouncementContext();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   const lastEmittedYahtzeeMatchRef = useRef<string | null>(null);
+
+  const clearActiveScorePresentation = useCallback((expected?: { roundId: string; sequence: number }) => {
+    const active = activeScorePresentationRef.current;
+    if (!active || (expected && (active.roundId !== expected.roundId || active.sequence !== expected.sequence))) {
+      return false;
+    }
+    activeScorePresentationRef.current = null;
+    setLastScoredCategory(null);
+    setLastScoredValue(null);
+    setScoringInProgress(false);
+    setCachedOpponentDice(null);
+    announcementsRef.current.dismiss(yahtzeeScoreAnnouncementId(active.roundId, active.sequence));
+    return true;
+  }, []);
+
+  // A newly observed durable action owns the felt immediately. This is a
+  // layout effect so a slow score snapshot cannot paint over its successor.
+  useLayoutEffect(() => {
+    const active = activeScorePresentationRef.current;
+    if (!active || active.roundId !== currentRoundId) return;
+    if (isYahtzeeScorePresentationSuperseded(active.sequence, viewState?.actionSequence)) {
+      clearActiveScorePresentation(active);
+    }
+  }, [viewState?.actionSequence, currentRoundId, clearActiveScorePresentation]);
 
 
   // Scores — derived from viewState for render stability
@@ -1001,6 +1031,8 @@ export function YahtzeeGameTable({
     if (!action || action.type !== 'score' || action.playerId === myPlayer?.id) return;
     if (lastPresentedScoreSequenceRef.current === action.sequence) return;
     lastPresentedScoreSequenceRef.current = action.sequence;
+    const presentation = { roundId: currentRoundId, sequence: action.sequence };
+    activeScorePresentationRef.current = presentation;
 
     setLastScoredCategory(action.category);
     setLastScoredValue(action.score);
@@ -1012,13 +1044,10 @@ export function YahtzeeGameTable({
     });
 
     const timer = setTimeout(() => {
-      setLastScoredCategory(null);
-      setLastScoredValue(null);
-      setScoringInProgress(false);
-      setCachedOpponentDice(null);
+      clearActiveScorePresentation(presentation);
     }, YAHTZEE_SCORE_PRESENTATION_MS);
     return () => clearTimeout(timer);
-  }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId]);
+  }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId, clearActiveScorePresentation]);
 
   /* ---- Canonical rail narration — never occupies the scorecard pane ---- */
   useEffect(() => {
@@ -1242,6 +1271,7 @@ export function YahtzeeGameTable({
     const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
     setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
     let presentationFrozen = false;
+    let scorePresentation: { roundId: string; sequence: number } | null = null;
     try {
       yahtzeeSync.freezePresentation();
       presentationFrozen = true;
@@ -1262,6 +1292,10 @@ export function YahtzeeGameTable({
       }
       const committedPs = result.state.playerStates[myPlayer.id];
       if (!committedPs) throw new Error('Yahtzee score result omitted the acting player state.');
+      if (result.state.lastAction?.type === 'score') {
+        scorePresentation = { roundId: currentRoundId, sequence: result.state.lastAction.sequence };
+        activeScorePresentationRef.current = scorePresentation;
+      }
       setLastScoredValue(result.score ?? pendingScore);
       if (result.terminal) {
         settlementRequestRef.current('terminal-score-rpc-acknowledged', true);
@@ -1276,14 +1310,18 @@ export function YahtzeeGameTable({
       console.error('[YAHTZEE] Authoritative score failed', error);
       onRefetch();
     } finally {
-      setLastScoredCategory(null);
-      setLastScoredValue(null);
-      setScoringInProgress(false);
-      setCachedOpponentDice(null);
+      if (scorePresentation) {
+        clearActiveScorePresentation(scorePresentation);
+      } else {
+        setLastScoredCategory(null);
+        setLastScoredValue(null);
+        setScoringInProgress(false);
+        setCachedOpponentDice(null);
+      }
       if (presentationFrozen) yahtzeeSync.unfreezePresentation();
       actionInFlightRef.current = false;
     }
-  }, [currentRoundId, authoritativeYahtzeeState, myPlayer, acceptCommittedState, onRefetch, yahtzeeSync]);
+  }, [currentRoundId, authoritativeYahtzeeState, myPlayer, acceptCommittedState, onRefetch, yahtzeeSync, clearActiveScorePresentation]);
 
   /* ---- P9.3b: end-of-game presentation effect ----
    * Fires on EVERY client (active scorer, non-scoring active, observer) when
@@ -1843,17 +1881,25 @@ export function YahtzeeGameTable({
         if (scoreResult.outcome === 'stale_action') return;
         ps = state.playerStates[botPlayerId];
         if (!ps) throw new Error('Yahtzee bot score omitted the acting player state.');
+        const scorePresentation = state.lastAction?.type === 'score'
+          ? { roundId: currentRoundId, sequence: state.lastAction.sequence }
+          : null;
+        if (scorePresentation) activeScorePresentationRef.current = scorePresentation;
         setLastScoredValue(scoreResult.score ?? null);
         if (scoreResult.terminal) {
           settlementRequestRef.current('terminal-bot-score-rpc-acknowledged', true);
         }
 
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, YAHTZEE_SCORE_PRESENTATION_MS));
         if (!scoreResult.terminal && isCancelled('after-score-wait')) {
-          setLastScoredCategory(null);
-          setLastScoredValue(null);
-          setScoringInProgress(false);
-          setCachedOpponentDice(null);
+          if (scorePresentation) {
+            clearActiveScorePresentation(scorePresentation);
+          } else {
+            setLastScoredCategory(null);
+            setLastScoredValue(null);
+            setScoringInProgress(false);
+            setCachedOpponentDice(null);
+          }
           console.log('[BOT TURN EXIT]', {
             reason: 'cancelled-after-score-wait',
             location: 'after-score-wait',
@@ -1862,10 +1908,14 @@ export function YahtzeeGameTable({
           return;
         }
 
-        setLastScoredCategory(null);
-        setLastScoredValue(null);
-        setScoringInProgress(false);
-        setCachedOpponentDice(null);
+        if (scorePresentation) {
+          clearActiveScorePresentation(scorePresentation);
+        } else {
+          setLastScoredCategory(null);
+          setLastScoredValue(null);
+          setScoringInProgress(false);
+          setCachedOpponentDice(null);
+        }
 
         console.log('[TURN TRANSITION]', {
           roundId: currentRoundId,

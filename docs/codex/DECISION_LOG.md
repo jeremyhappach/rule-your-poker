@@ -794,3 +794,17 @@ and outgoing identities, and publishes the next phase atomically. A private
 durable claim returns the stored outcome to duplicates and makes a late replay
 read-only after a newer dealer game. The complete scheduled function is the
 disconnect recovery owner and must pass rollback proof as one executable unit.
+
+## D-061 - Yahtzee score presentation is sequence-bound and supersedable
+
+Yahtzee scorecard/dice highlighting and score narration are local presentation
+of one committed score action, identified by its authoritative round and
+action sequence. The presentation may hold across the server's already-
+committed turn handoff so both clients see the scorer's static card and result.
+
+That hold is never authority: when a snapshot with a later action sequence
+arrives, the client must retire the exact score visual and exact rail event in
+the layout phase before it paints the newer action. A lagged observer may show
+the old score only until it learns the newer state. Roll narration is likewise
+derived from the durable current actor for the full turn, while score narration
+is a higher-priority bounded overlay for its matching sequence.

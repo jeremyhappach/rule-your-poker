@@ -4,8 +4,10 @@ import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
   describeYahtzeeScore,
+  isYahtzeeScorePresentationSuperseded,
   resolveYahtzeeRemoteScorePresentation,
   YAHTZEE_SCORE_PRESENTATION_MS,
+  yahtzeeScoreAnnouncementId,
 } from './yahtzeePresentation';
 import type { YahtzeeState } from './yahtzeeTypes';
 
@@ -50,6 +52,13 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       ttlMs: YAHTZEE_SCORE_PRESENTATION_MS,
       payload: { title: 'Hap scored 3 x 4s' },
     });
+  });
+
+  it('retires the exact score presentation as soon as a later action is known', () => {
+    expect(yahtzeeScoreAnnouncementId('round-1', 8)).toBe('yahtzee-score:round-1:8');
+    expect(isYahtzeeScorePresentationSuperseded(8, 8)).toBe(false);
+    expect(isYahtzeeScorePresentationSuperseded(8, 9)).toBe(true);
+    expect(isYahtzeeScorePresentationSuperseded(null, 9)).toBe(false);
   });
 
   it('recognizes an unseen remote score on the first render after atomic turn handoff', () => {

@@ -11,6 +11,20 @@ type ScoreAction = NonNullable<YahtzeeState['lastAction']>;
  */
 export const YAHTZEE_SCORE_PRESENTATION_MS = 2500;
 
+export function yahtzeeScoreAnnouncementId(roundId: string, sequence: number): string {
+  return `yahtzee-score:${roundId}:${sequence}`;
+}
+
+/** A later durable action immediately invalidates a prior score visual. */
+export function isYahtzeeScorePresentationSuperseded(
+  presentedScoreSequence: number | null,
+  actionSequence: number | null | undefined,
+): boolean {
+  return presentedScoreSequence !== null
+    && typeof actionSequence === 'number'
+    && actionSequence > presentedScoreSequence;
+}
+
 export interface YahtzeeRemoteScorePresentation {
   active: boolean;
   action: ScoreAction | null;
@@ -98,7 +112,7 @@ export function createYahtzeeScoreAnnouncement({
   action: ScoreAction;
 }): AnnouncementEvent {
   return {
-    id: `yahtzee-score:${roundId}:${action.sequence}`,
+    id: yahtzeeScoreAnnouncementId(roundId, action.sequence),
     type: 'gameplay_notice',
     // Scoring supersedes any preceding low-priority roll narration so its
     // lifetime starts with the scorer-card presentation, never after it.

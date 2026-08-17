@@ -39,7 +39,7 @@ Date: 2026-08-17
   player's interactive felt surface until release. Authoritative turn state,
   RPC admission, scoring, and Realtime ownership are unchanged.
 - Seventeen focused Yahtzee assertions, TypeScript, and the production build
-  pass locally; published two-client confirmation remains pending.
+  passed locally as the first stage of the released presentation correction.
 - The presentation follow-up suppresses the incoming player's action strip
   while that remote scorer presentation is active, so its `Scoring…`
   reservation cannot move the scorer's scorecard before it tears down.
@@ -50,8 +50,8 @@ Date: 2026-08-17
   marks durable prior actions as already presented, so refresh cannot replay
   an opponent's old scoring dice or highlight before the local turn resumes.
 - Twenty-two focused Yahtzee/announcement assertions, TypeScript, and the
-  production build pass locally; published two-client confirmation remains
-  pending.
+  production build passed locally as the second stage of the released
+  presentation correction.
 - The current presentation follow-up gives the exact active Yahtzee player a
   persistent canonical-rail status (for example, `Hap is rolling`) through
   every roll, hold, and category choice. A committed score immediately overlays
@@ -59,8 +59,22 @@ Date: 2026-08-17
   scorer presentation, and score narration now share one 2.5-second release
   interval. This remains presentation-only; the database turn already advances
   atomically at score commit.
-- Twenty-five focused Yahtzee/rail assertions, local TypeScript checking, and
-  the production build gate pass; the renewed two-client smoke remains pending.
+- Twenty-six focused Yahtzee/rail assertions, local TypeScript checking, and
+  the production build gate pass. Vercel production deployment
+  `dpl_3PTo2K2BRcLksVjFswgSbgd5VQ1B` and the public manifest serve commit
+  `987f9a31be249bae3d2c26ddeaa6dfa13840e9a3`.
+- A slow observer may legitimately receive an older score snapshot after the
+  next player is locally ready, but it must never retain that score once the
+  newer durable action reaches it. Score presentation and rail narration are
+  now keyed to the exact round/action sequence; a newer sequence dismisses the
+  active or queued score notice and cached score visual in the layout phase.
+  The bot scorer now uses the same 2.5-second maximum presentation interval.
+- Jeremy accepted the published two-client Yahtzee smoke on 2026-08-17 at
+  commit `987f9a31be249bae3d2c26ddeaa6dfa13840e9a3`: opponent scorecards
+  remain static while scoring, the rail narrates the active roller or the
+  committed score without helper-text displacement, mobile scores remain
+  visible, refresh does not replay a prior score, and a delayed score visual
+  retires as soon as the next durable action arrives.
 
 ## Yahtzee server-authority and postgame cutover
 
