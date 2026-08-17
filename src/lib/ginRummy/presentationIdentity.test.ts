@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ginPresentationActionKey, isGinMaskedCard } from './presentationIdentity';
+import {
+  ginPresentationActionKey,
+  isGinMaskedCard,
+  withholdGinDrawnCards,
+} from './presentationIdentity';
 
 const handContextId = 'dealer-game-1#rround-1#h1';
 
@@ -43,5 +47,29 @@ describe('Gin presentation action identity', () => {
   it('recognizes projected hidden-card placeholders', () => {
     expect(isGinMaskedCard({ rank: '?', suit: '?', masked: true })).toBe(true);
     expect(isGinMaskedCard({ rank: 'K', suit: '♠' })).toBe(false);
+  });
+
+  it('withholds a masked stock placeholder after the hand grows to eleven cards', () => {
+    const openingHand = Array.from({ length: 10 }, (_, index) => ({
+      rank: String(index + 1),
+      suit: '♠',
+    }));
+    const optimisticHand = [...openingHand, { rank: '?', suit: '?' }];
+
+    const projected = withholdGinDrawnCards(optimisticHand, [{ rank: '?', suit: '?' }]);
+
+    expect(projected).toEqual(openingHand);
+  });
+
+  it('withholds a known discard draw until settlement and then admits it', () => {
+    const openingHand = Array.from({ length: 10 }, (_, index) => ({
+      rank: String(index + 1),
+      suit: '♦',
+    }));
+    const discard = { rank: 'K', suit: '♥' };
+    const authoritativeHand = [...openingHand, discard];
+
+    expect(withholdGinDrawnCards(authoritativeHand, [discard])).toEqual(openingHand);
+    expect(withholdGinDrawnCards(authoritativeHand, [])).toBe(authoritativeHand);
   });
 });

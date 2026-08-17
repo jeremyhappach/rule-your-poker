@@ -51,6 +51,29 @@ export const isGinMaskedCard = (
   card: { rank?: string; suit?: string; masked?: boolean } | null | undefined,
 ): boolean => !!card && (card.masked === true || card.rank === '?' || card.suit === '?');
 
+/**
+ * Keep an in-flight self draw out of the active hand until its canonical
+ * transport settles. This projection runs independently of opening-deal
+ * admission so both a masked stock placeholder and a known discard card stay
+ * withheld when the authoritative hand has already grown past ten cards.
+ */
+export const withholdGinDrawnCards = <T extends { rank: string; suit: string }>(
+  hand: T[],
+  withheld: readonly { rank: string; suit: string }[] | null | undefined,
+): T[] => {
+  if (!withheld || withheld.length === 0) return hand;
+
+  const clipped = [...hand];
+  for (const card of withheld) {
+    const index = clipped.findIndex(
+      candidate => candidate.rank === card.rank && candidate.suit === card.suit,
+    );
+    if (index !== -1) clipped.splice(index, 1);
+  }
+
+  return clipped.length === hand.length ? hand : clipped;
+};
+
 export const ginIdentityKey = (id: GinPresentationIdentity | null | undefined): string =>
   id ? `${id.dealerGameId}#r${id.roundId}#h${id.handNumber}` : '';
 

@@ -14,7 +14,7 @@ import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
-import { isGinMaskedCard } from '@/lib/ginRummy/presentationIdentity';
+import { isGinMaskedCard, withholdGinDrawnCards } from '@/lib/ginRummy/presentationIdentity';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -260,16 +260,13 @@ export const GinRummyMobileCardsTab = ({
 
   const rawMyState = useMemo(() => {
     if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;
-    if (forceFullProjection) return stableMyStateAuthoritative;
-    if (!withheldDrawnCards || withheldDrawnCards.length === 0) return stableMyStateAuthoritative;
-    const clipped = [...stableMyStateAuthoritative.hand];
-    for (const w of withheldDrawnCards) {
-      const idx = clipped.findIndex(c => c.rank === w.rank && c.suit === w.suit);
-      if (idx !== -1) clipped.splice(idx, 1);
-    }
-    if (clipped.length === stableMyStateAuthoritative.hand.length) return stableMyStateAuthoritative;
+    const clipped = withholdGinDrawnCards(
+      stableMyStateAuthoritative.hand,
+      withheldDrawnCards,
+    );
+    if (clipped === stableMyStateAuthoritative.hand) return stableMyStateAuthoritative;
     return { ...stableMyStateAuthoritative, hand: clipped };
-  }, [stableMyStateAuthoritative, withheldDrawnCards, forceFullProjection]);
+  }, [stableMyStateAuthoritative, withheldDrawnCards]);
 
   // Opening-deal prefix gate — active ONLY during the DealRuntime
   // DEALING wave bound to THIS hand. Reveals each local card as its
