@@ -3,6 +3,8 @@ import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/th
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
   isThreeFiveSevenDealPresentationReady,
+  isThreeFiveSevenLegStackRetired,
+  resolveThreeFiveSevenDealerGameScope,
   resolveThreeFiveSevenStaticLegCount,
   type ThreeFiveSevenDealReadinessToken,
 } from "@/lib/threeFiveSeven/presentationReadiness";
@@ -2549,6 +2551,11 @@ export const MobileGameTable = ({
   // Known shipping bug: MGT/Game remount mid-sequence strands the win
   // animation (Loading… flash → zombie table).
   const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'waiting' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'delay'>('idle');
+  // Set only after the visible sweep retires the outgoing stack. The exact
+  // dealer-game claim survives the intentional null handoff and releases for
+  // a different concrete dealer game, never for a timer or status change.
+  const [retiredThreeFiveSevenLegsDealerGameId, setRetiredThreeFiveSevenLegsDealerGameId] =
+    useState<string | null>(null);
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
@@ -3808,9 +3815,35 @@ export const MobileGameTable = ({
   } else {
     prevRoundForHandEpochRef.current = null;
   }
+  // A session game id is not a dealer-game identity. Preserve null while the
+  // authoritative handoff has cleared current_game_uuid but has not created
+  // the next dealer game yet.
+  const concreteDealerGameScope = resolveThreeFiveSevenDealerGameScope(
+    holmDealerGameId,
+    horsesDealerGameId,
+  );
   const threeFiveSevenDealerGameScope = __is357GameType(gameType)
-    ? ((holmDealerGameId ?? horsesDealerGameId) ?? gameId ?? null)
+    ? concreteDealerGameScope
     : null;
+  const threeFiveSevenLegStackRetired = isThreeFiveSevenLegStackRetired({
+    activeDealerGameId: concreteDealerGameScope,
+    retiredDealerGameId: retiredThreeFiveSevenLegsDealerGameId,
+  });
+  const retireThreeFiveSevenLegStack = useCallback((dealerGameId: string | null | undefined) => {
+    if (!dealerGameId) return;
+    setRetiredThreeFiveSevenLegsDealerGameId((current) =>
+      current === dealerGameId ? current : dealerGameId,
+    );
+  }, []);
+  useEffect(() => {
+    if (
+      retiredThreeFiveSevenLegsDealerGameId &&
+      concreteDealerGameScope &&
+      concreteDealerGameScope !== retiredThreeFiveSevenLegsDealerGameId
+    ) {
+      setRetiredThreeFiveSevenLegsDealerGameId(null);
+    }
+  }, [concreteDealerGameScope, retiredThreeFiveSevenLegsDealerGameId]);
   const threeFiveSevenHandIdentity = __is357GameType(gameType)
     ? (typeof horsesHandNumber === 'number'
         ? `h${horsesHandNumber}`
@@ -9658,6 +9691,9 @@ export const MobileGameTable = ({
 
     // Mark as completed for this animation
     legsToPlayerCompletedRef.current = animId;
+    retireThreeFiveSevenLegStack(
+      normalPresentation?.dealerGameId ?? threeFiveSevenDealerGameScope,
+    );
 
     // Trigger "+XL" flash on winner's chipstack
     const totalLegs = threeFiveSevenCachedLegPositions.reduce((sum, p) => sum + p.legCount, 0);
@@ -9752,7 +9788,7 @@ export const MobileGameTable = ({
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
-  }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation]);
+  }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
@@ -10107,6 +10143,7 @@ export const MobileGameTable = ({
     setShowSweepsPot(false);
     setShowSweepTheLegs357(false);
     setSweepCelebrationCompleted(false);
+    setRetiredThreeFiveSevenLegsDealerGameId(null);
     hadLegsBeforeSweepRef.current = false;
     lastSweepsIdentityRef.current = null;
     // The next descriptor may now acquire this freshly synchronized scope.
@@ -10956,6 +10993,7 @@ export const MobileGameTable = ({
       (showLegEarned && legEarnedPlayerPosition === player.position) ||
       hasPendingLegAnimationClaim(player.id, player.legs);
     const hideLegsForWinAnimation =
+      threeFiveSevenLegStackRetired ||
       threeFiveSevenWinPhase === 'legs-to-player' ||
       threeFiveSevenWinPhase === 'sweep-credit' ||
       threeFiveSevenWinPhase === 'pot-to-player' ||
@@ -11739,6 +11777,7 @@ export const MobileGameTable = ({
             }}
             onEnterCanonical={(entry) => {
               const awardedPot = threeFiveSevenWinPotAmount ?? null;
+              retireThreeFiveSevenLegStack(entry.dealerGameId);
               // Legacy pot identity mirrors what the sweep-release site
               // used to stamp so the downstream cross-DG guard shape is
               // preserved. terminalGenerationId is carried from the
@@ -11807,6 +11846,7 @@ export const MobileGameTable = ({
                 __capture357Checkpoint('sweep_the_legs_complete', {
                   phase: threeFiveSevenWinPhaseRef.current,
                 });
+                retireThreeFiveSevenLegStack(threeFiveSevenDealerGameScope);
                 setShowSweepTheLegs357(false);
                 setSweepCelebrationCompleted(true);
               }}
@@ -14105,6 +14145,7 @@ export const MobileGameTable = ({
         {/* Use a stable snapshot during the win transition so legs don't disappear/reappear mid-sequence */}
         {!sessionEndedPhase && gameType !== 'holm-game' && currentPlayer && (() => {
           const hideLegsForWinAnimation =
+            threeFiveSevenLegStackRetired ||
             threeFiveSevenWinPhase === 'legs-to-player' ||
             threeFiveSevenWinPhase === 'sweep-credit' ||
             threeFiveSevenWinPhase === 'pot-to-player' ||
@@ -15188,7 +15229,7 @@ export const MobileGameTable = ({
                             {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {gameType !== 'holm-game' && player.legs > 0 && (
+                            {gameType !== 'holm-game' && !threeFiveSevenLegStackRetired && player.legs > 0 && (
                               <div className="flex">
                                 {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
                                   <div

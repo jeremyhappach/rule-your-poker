@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   isThreeFiveSevenDealPresentationReady,
+  isThreeFiveSevenLegStackRetired,
+  resolveThreeFiveSevenDealerGameScope,
   resolveThreeFiveSevenStaticLegCount,
   type ThreeFiveSevenDealReadinessToken,
 } from './presentationReadiness';
@@ -27,6 +29,37 @@ describe('3-5-7 deal presentation readiness', () => {
       handContextId: 'dealer-game-1#h2',
       allowed: true,
     })).toBe(true);
+  });
+});
+
+describe('3-5-7 dealer-game presentation boundary', () => {
+  it('uses the concrete authoritative dealer-game identity', () => {
+    expect(resolveThreeFiveSevenDealerGameScope('dealer-game-2', null)).toBe('dealer-game-2');
+  });
+
+  it('preserves a null scope during the postgame handoff', () => {
+    expect(resolveThreeFiveSevenDealerGameScope(null, undefined)).toBeNull();
+  });
+
+  it('keeps swept legs retired for the outgoing dealer game', () => {
+    expect(isThreeFiveSevenLegStackRetired({
+      activeDealerGameId: 'dealer-game-1',
+      retiredDealerGameId: 'dealer-game-1',
+    })).toBe(true);
+  });
+
+  it('keeps swept legs retired through the null handoff gap', () => {
+    expect(isThreeFiveSevenLegStackRetired({
+      activeDealerGameId: null,
+      retiredDealerGameId: 'dealer-game-1',
+    })).toBe(true);
+  });
+
+  it('releases the retired stack only for a different concrete dealer game', () => {
+    expect(isThreeFiveSevenLegStackRetired({
+      activeDealerGameId: 'dealer-game-2',
+      retiredDealerGameId: 'dealer-game-1',
+    })).toBe(false);
   });
 });
 

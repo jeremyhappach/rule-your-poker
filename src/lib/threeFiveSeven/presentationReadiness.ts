@@ -12,6 +12,26 @@ export function isThreeFiveSevenDealPresentationReady(
     && token.allowed;
 }
 
+export function resolveThreeFiveSevenDealerGameScope(
+  primaryDealerGameId: string | null | undefined,
+  secondaryDealerGameId: string | null | undefined,
+): string | null {
+  return primaryDealerGameId ?? secondaryDealerGameId ?? null;
+}
+
+interface ThreeFiveSevenLegRetirementArgs {
+  activeDealerGameId: string | null | undefined;
+  retiredDealerGameId: string | null | undefined;
+}
+
+export function isThreeFiveSevenLegStackRetired({
+  activeDealerGameId,
+  retiredDealerGameId,
+}: ThreeFiveSevenLegRetirementArgs): boolean {
+  return !!retiredDealerGameId
+    && (activeDealerGameId == null || activeDealerGameId === retiredDealerGameId);
+}
+
 interface ThreeFiveSevenLegDisplayArgs {
   effectiveLegs: number;
   isIncomingLegAnimating: boolean;

@@ -117,8 +117,14 @@ Date: 2026-08-17
   null `current_game_uuid` handoff, `MobileGameTable` substitutes the long-lived
   session `gameId` as a dealer-game scope. That false concrete boundary clears
   the outgoing terminal owner; once the local phase returns to `idle`, the leg
-  renderers may expose their still-cached outgoing counts. No database or
-  settlement defect is indicated; correction is not yet approved.
+  renderers may expose their still-cached outgoing counts. The current
+  presentation-only candidate preserves the null scope, records the exact
+  outgoing dealer game when the visible sweep completes, suppresses self,
+  opponent, and lobby leg stacks through that handoff, and releases them only
+  for a different concrete dealer game. Database settlement and postgame
+  advancement are unchanged. Thirty-two focused 3-5-7 assertions, TypeScript,
+  all 33 build-required Cribbage assertions, and the production build pass;
+  published smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 

@@ -301,6 +301,8 @@ smoke before stable-checkpoint promotion.
   leg counts. Preserve a null scope through the handoff and keep an exact
   outgoing-dealer-game leg-retirement claim until a different non-null dealer
   game arrives; do not delay server advancement or alter leg settlement.
+  Corrected in the current published candidate across the self felt, opponent
+  chip stacks, and lobby list; production smoke remains pending.
 
 ### 3A. Cross-game postgame continuation ownership
 
