@@ -33,10 +33,10 @@ export function getThreeFiveSevenPussyTaxAnnouncementScope(
   return `357-pussy-tax:${getThreeFiveSevenAllFoldPresentationKey(presentation)}`;
 }
 
-function getThreeFiveSevenPussyTaxAnnouncement(
-  presentation: ThreeFiveSevenAllFoldPresentation,
-): ThreeFiveSevenCursorAnnouncement {
-
+export function getThreeFiveSevenPussyTaxAnnouncement(
+  presentation: ThreeFiveSevenAllFoldPresentation | null | undefined,
+): ThreeFiveSevenCursorAnnouncement | null {
+  if (!presentation || presentation.transferCursor == null) return null;
   const scope = getThreeFiveSevenPussyTaxAnnouncementScope(presentation);
   return {
     id: `round_win:${scope}`,
@@ -44,7 +44,7 @@ function getThreeFiveSevenPussyTaxAnnouncement(
     text: 'Pussy Tax!',
     kind: 'pussy_tax',
     handNumber: presentation.handNumber,
-    transferCursor: presentation.transferCursor!,
+    transferCursor: presentation.transferCursor,
   };
 }
 
@@ -61,9 +61,11 @@ export function getThreeFiveSevenReAnteAnnouncementScope(
   ].join(':');
 }
 
-function getThreeFiveSevenReAnteAnnouncement(
-  presentation: ThreeFiveSevenRolloverPresentation,
-): ThreeFiveSevenCursorAnnouncement {
+export function getThreeFiveSevenReAnteAnnouncement(
+  presentation: ThreeFiveSevenRolloverPresentation | null | undefined,
+): ThreeFiveSevenCursorAnnouncement | null {
+  // H1/R1 is the opening ante, never a re-ante.
+  if (!presentation || presentation.handNumber <= 1) return null;
   const scope = getThreeFiveSevenReAnteAnnouncementScope(presentation);
   return {
     id: `peg:${scope}`,
@@ -71,14 +73,15 @@ function getThreeFiveSevenReAnteAnnouncement(
     text: 'Re-Ante',
     kind: 'reante',
     handNumber: presentation.handNumber,
-    transferCursor: presentation.transferCursor!,
+    transferCursor: presentation.transferCursor,
   };
 }
 
 /**
- * Classifies the exact live financial batch at the canonical launch edge.
- * Announcement publication must use this boundary rather than a React render
- * of the transient `running` cursor state, which can collapse into `settled`.
+ * Classifies an animated batch against the exact authoritative notice. This is
+ * used only to retire a notice when its local transport settles; publication
+ * is owned by the committed presentation identity above, so a reconnect or
+ * no-flight reconciliation cannot silently skip the semantic notice.
  */
 export function getThreeFiveSevenBatchStartAnnouncement(
   batch: Pick<ChipPresentationBatch, 'cursor' | 'reason' | 'transfers'>,

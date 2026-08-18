@@ -1,12 +1,15 @@
 import { recordShellEvent } from '../diagnostics';
+import { buildMetaPayload } from '@/lib/buildMeta';
+import { getClientId, getClientTimestamp } from '@/lib/clientContext';
 import type { AnnouncementEvent } from './types';
 
 type FinancialAnnouncementKind = 'pussy_tax' | 'reante';
 type FinancialAnnouncementStage = 'disposition' | 'painted' | 'retired';
 
 /**
- * Debug-gated, exact-identity evidence for 3-5-7 financial narration.
- * This is observability only: it never gates the rail, transport, or gameplay.
+ * Always-on, exact-identity evidence for the two bounded 3-5-7 financial
+ * notices. This is observability only: it never gates the rail, transport, or
+ * gameplay, and no other announcement type uses the production bypass.
  */
 export function recordFinancialAnnouncementEvidence(
   event: AnnouncementEvent,
@@ -35,6 +38,9 @@ export function recordFinancialAnnouncementEvidence(
       transientScope: event.transientScope ?? null,
       financialKind,
       transferCursor,
+      clientId: getClientId(),
+      clientTimestamp: getClientTimestamp(),
+      ...buildMetaPayload(),
       ...detail,
     },
     dedupKey: [
@@ -44,5 +50,6 @@ export function recordFinancialAnnouncementEvidence(
       stage,
       String(detail.disposition ?? detail.reason ?? ''),
     ].join(':'),
+    alwaysPersist: true,
   });
 }

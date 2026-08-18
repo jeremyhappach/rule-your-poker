@@ -14,14 +14,13 @@ import {
   type ThreeFiveSevenAllFoldPresentation,
 } from "@/lib/threeFiveSeven/allFoldPresentation";
 import {
-  getThreeFiveSevenBatchStartAnnouncement,
   isThreeFiveSevenDedicatedResultAnnouncement,
-  type ThreeFiveSevenCursorAnnouncement,
 } from "@/lib/threeFiveSeven/announcementPresentation";
 import {
   getThreeFiveSevenPlayerToPotAdmission,
   retainThreeFiveSevenFinancialPresentation,
 } from "@/lib/threeFiveSeven/financialPresentation";
+import { useThreeFiveSevenFinancialAnnouncementOwner } from "@/lib/threeFiveSeven/financialAnnouncementOwner";
 import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
@@ -4302,10 +4301,18 @@ export const MobileGameTable = ({
   const announcements = useAnnouncements();
   const emitCanonicalAnnouncement = announcements.emit;
   const retireCanonicalTransientScope = announcements.retireTransientScope;
-  const activeThreeFiveSevenFinancialAnnouncementsRef = useRef(new Map<
-    string,
-    { cursor: number; event: ThreeFiveSevenCursorAnnouncement }
-  >());
+  const {
+    onBatchStarted: onThreeFiveSevenFinancialBatchStarted,
+    onBatchSettled: onThreeFiveSevenFinancialBatchSettled,
+  } = useThreeFiveSevenFinancialAnnouncementOwner({
+    enabled: __is357GameType(gameType),
+    announcementGameId: gameId,
+    dealerGameId: threeFiveSevenFinancialScope.dealerGameId,
+    pussyTax: retainedThreeFiveSevenAllFoldPresentation,
+    reAnte: retainedThreeFiveSevenRolloverPresentation,
+    emit: emitCanonicalAnnouncement,
+    retireTransientScope: retireCanonicalTransientScope,
+  });
 
   // The ledger owns endpoint display as soon as an immutable batch arrives,
   // while this gate preserves game-owned prerequisite presentation ordering.
@@ -4417,66 +4424,10 @@ export const MobileGameTable = ({
     horsesWinPotTriggerId,
   ]);
   const onChipTransferPresentationBatchStarted = useCallback((batch: ChipPresentationBatch) => {
-    if (gameType !== '3-5-7') return;
-    const event = getThreeFiveSevenBatchStartAnnouncement(
-      batch,
-      retainedThreeFiveSevenAllFoldPresentationRef.current,
-      retainedThreeFiveSevenRolloverPresentationRef.current,
-    );
-    if (!event || activeThreeFiveSevenFinancialAnnouncementsRef.current.has(batch.id)) return;
-
-    // Shared player/pot endpoints serialize tax before re-ante. Retire any
-    // defensive leftover tax scope before publishing its successor so these
-    // semantic plates can never compete on one client.
-    if (event.kind === 'reante') {
-      for (const [batchId, active] of activeThreeFiveSevenFinancialAnnouncementsRef.current) {
-        if (active.event.kind !== 'pussy_tax') continue;
-        retireCanonicalTransientScope(active.event.scope);
-        activeThreeFiveSevenFinancialAnnouncementsRef.current.delete(batchId);
-      }
-    }
-
-    activeThreeFiveSevenFinancialAnnouncementsRef.current.set(batch.id, {
-      cursor: batch.cursor,
-      event,
-    });
-    if (event.kind === 'pussy_tax') {
-      emitCanonicalAnnouncement({
-        id: event.id,
-        type: 'round_win',
-        scope: { dealerGameId: gameId ?? null, roundId: null },
-        payload: {
-          text: event.text,
-          kind: event.kind,
-          handNumber: event.handNumber,
-          transferCursor: event.transferCursor,
-        },
-        ttlMs: 60_000,
-        transientScope: event.scope,
-      });
-      return;
-    }
-    emitCanonicalAnnouncement({
-      id: event.id,
-      type: 'peg_notice',
-      scope: { dealerGameId: gameId ?? null, roundId: null },
-      payload: {
-        title: event.text,
-        kind: event.kind,
-        handNumber: event.handNumber,
-        transferCursor: event.transferCursor,
-      },
-      ttlMs: 60_000,
-      transientScope: event.scope,
-    });
-  }, [emitCanonicalAnnouncement, gameId, gameType, retireCanonicalTransientScope]);
+    onThreeFiveSevenFinancialBatchStarted(batch);
+  }, [onThreeFiveSevenFinancialBatchStarted]);
   const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
-    const activeThreeFiveSevenAnnouncement =
-      activeThreeFiveSevenFinancialAnnouncementsRef.current.get(batch.id) ?? null;
-    if (activeThreeFiveSevenAnnouncement) {
-      retireCanonicalTransientScope(activeThreeFiveSevenAnnouncement.event.scope);
-      activeThreeFiveSevenFinancialAnnouncementsRef.current.delete(batch.id);
-    }
+    onThreeFiveSevenFinancialBatchSettled(batch);
 
     if (gameType === 'holm-game') {
       const admittedPresentation = holmAdmittedTransferPresentationsRef.current.get(batch.id) ?? null;
@@ -4525,7 +4476,7 @@ export const MobileGameTable = ({
     onHolmContinuationPresentationComplete,
     onHolmShowdownPotToWinnerEnded,
     onHolmShowdownLosersEnded,
-    retireCanonicalTransientScope,
+    onThreeFiveSevenFinancialBatchSettled,
   ]);
   useChipTransferPresentationAdmission(
     canAdmitChipTransferPresentation,
@@ -7491,39 +7442,10 @@ export const MobileGameTable = ({
   //
   // Scope: dealerGameId/roundId left as gameId/handContextId so events scope
   // to the active hand and are torn down on hand boundary by the provider.
-  // 3-5-7 financial narration is emitted synchronously by the ledger's exact
-  // batch-start edge above. React cursor state remains cleanup-only so a
-  // disconnect/reconciliation can retire a notice without becoming its
-  // trigger. Normal completion retires synchronously in the settled callback.
-  useEffect(() => {
-    const terminalStates = new Set(['settled', 'reconciling', 'reconciled']);
-    for (const [batchId, active] of activeThreeFiveSevenFinancialAnnouncementsRef.current) {
-      const state = active.cursor === threeFiveSevenAllFoldCursor
-        ? threeFiveSevenAllFoldCursorState
-        : active.cursor === threeFiveSevenRolloverCursor
-          ? threeFiveSevenRolloverCursorState
-          : null;
-      if (!state || !terminalStates.has(state)) continue;
-      retireCanonicalTransientScope(active.event.scope);
-      activeThreeFiveSevenFinancialAnnouncementsRef.current.delete(batchId);
-    }
-  }, [
-    retireCanonicalTransientScope,
-    threeFiveSevenAllFoldCursor,
-    threeFiveSevenAllFoldCursorState,
-    threeFiveSevenRolloverCursor,
-    threeFiveSevenRolloverCursorState,
-  ]);
-
-  const threeFiveSevenAnnouncementBoundary = gameType === '3-5-7'
-    ? `${gameId ?? 'no-game'}:${threeFiveSevenFinancialScope.dealerGameId ?? 'no-dealer-game'}`
-    : null;
-  useEffect(() => () => {
-    for (const active of activeThreeFiveSevenFinancialAnnouncementsRef.current.values()) {
-      retireCanonicalTransientScope(active.event.scope);
-    }
-    activeThreeFiveSevenFinancialAnnouncementsRef.current.clear();
-  }, [retireCanonicalTransientScope, threeFiveSevenAnnouncementBoundary]);
+  // 3-5-7 financial narration is level-triggered by the exact committed
+  // tax/re-ante cursor identity in useThreeFiveSevenFinancialAnnouncementOwner.
+  // A local animated batch may retire the plate at settlement, while a
+  // reconciled/no-flight client keeps the same non-blocking notice for its TTL.
 
   // Solo Holm showdown uses the same central space as the lone player's
   // tabled cards. Keep the transfer anchor mounted, but surface the readable

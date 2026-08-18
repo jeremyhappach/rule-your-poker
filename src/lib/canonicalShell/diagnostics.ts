@@ -49,6 +49,8 @@ export interface ShellEventPayload {
   detail?: Record<string, unknown>;
   /** Optional exact lifecycle identity for debug persistence dedupe. */
   dedupKey?: string;
+  /** Bypass the opt-in debug gate for a bounded production proof event. */
+  alwaysPersist?: boolean;
 }
 
 /**
@@ -67,6 +69,7 @@ export function recordShellEvent(
     handNumber,
     detail,
     dedupKey,
+    alwaysPersist,
   } = payload;
 
   if (import.meta.env.DEV) {
@@ -94,6 +97,7 @@ export function recordShellEvent(
         severity: 'info',
         eventName: `canonical-shell-${eventName}`,
         dedupKey,
+        alwaysPersist,
         payload: {
           sessionId: sessionId ?? null,
           dealerGameId: dealerGameId ?? null,

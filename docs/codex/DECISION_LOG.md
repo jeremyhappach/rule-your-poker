@@ -843,3 +843,17 @@ replay read-only after a newer dealer setup exists. The initiating browser
 consumes the returned game/dealer-game/player snapshot directly; Realtime is
 peer and reconnect synchronization only. Cleanup, configuration, or result
 validation errors are surfaced and never treated as successful completion.
+
+## D-064 - Semantic financial notices follow committed identity, not animation
+
+For 3-5-7, `Pussy Tax!` and `Re-Ante` are consequences of exact committed
+game/dealer-game/round/hand/transfer-cursor identities. Every live client that
+observes one of those identities publishes the same deduped semantic event;
+receiving a Realtime insert or launching a local chip flight is not eligibility
+for the notice.
+
+Local transport remains presentation-only. An animated batch may retire its
+matching notice at the real settlement edge, while a client that legitimately
+reconciles the cursor without replaying financial motion receives a short,
+non-blocking rail lifetime. Neither path delays deal admission or progression,
+and neither creates a second owner for balances, settlement, or chip movement.

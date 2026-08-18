@@ -4,6 +4,8 @@ import type { ThreeFiveSevenRolloverPresentation } from './rolloverPresentation'
 import type { ChipPresentationBatch } from '@/lib/canonicalShell/ChipPresentationLedger';
 import {
   getThreeFiveSevenBatchStartAnnouncement,
+  getThreeFiveSevenPussyTaxAnnouncement,
+  getThreeFiveSevenReAnteAnnouncement,
   isThreeFiveSevenDedicatedResultAnnouncement,
   matchesThreeFiveSevenPresentationCursor,
 } from './announcementPresentation';
@@ -43,7 +45,34 @@ function playerToPotBatch(
 }
 
 describe('3-5-7 exact announcement ownership', () => {
-  it('publishes Pussy Tax from its exact live batch-start identity', () => {
+  it('derives Pussy Tax directly from its exact committed cursor identity', () => {
+    expect(getThreeFiveSevenPussyTaxAnnouncement(allFold)).toMatchObject({
+      text: 'Pussy Tax!',
+      kind: 'pussy_tax',
+      handNumber: 1,
+      transferCursor: 8,
+    });
+    expect(getThreeFiveSevenPussyTaxAnnouncement({
+      ...allFold,
+      transferCursor: null,
+    })).toBeNull();
+  });
+
+  it('derives Re-Ante directly from the exact later-hand Round 1 identity', () => {
+    expect(getThreeFiveSevenReAnteAnnouncement(reAnte)).toMatchObject({
+      text: 'Re-Ante',
+      kind: 'reante',
+      handNumber: 2,
+      transferCursor: 9,
+    });
+    expect(getThreeFiveSevenReAnteAnnouncement({
+      ...reAnte,
+      handNumber: 1,
+      roundId: 'round-h1-r1',
+    })).toBeNull();
+  });
+
+  it('classifies the exact animated Pussy Tax batch for settlement retirement', () => {
     expect(getThreeFiveSevenBatchStartAnnouncement(
       playerToPotBatch(8, 'bet'),
       allFold,
@@ -69,7 +98,7 @@ describe('3-5-7 exact announcement ownership', () => {
     expect(matchesThreeFiveSevenPresentationCursor(reAnte, 8)).toBe(false);
   });
 
-  it('publishes Re-Ante from the exact later-hand Round 1 batch start', () => {
+  it('classifies the exact animated Re-Ante batch for settlement retirement', () => {
     expect(getThreeFiveSevenBatchStartAnnouncement(
       playerToPotBatch(9, 'ante'),
       allFold,

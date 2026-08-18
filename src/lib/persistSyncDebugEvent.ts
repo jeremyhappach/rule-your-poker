@@ -2,7 +2,7 @@
  * Persistent sync debug event writer.
  *
  * Writes structured events to `debug_sync_events` table.
- * - Invariant violations ALWAYS persist (no flag needed).
+ * - Invariant violations and explicitly bounded proof events ALWAYS persist.
  * - All other events gated by localStorage: ptp_debug_sync_events = "1"
  *
  * All writes are fire-and-forget — never blocks UI.
@@ -74,6 +74,8 @@ export interface SyncDebugEvent {
   eventName: string;
   payload?: Record<string, unknown>;
   dedupKey?: string;
+  /** Reserved for bounded production proof events that must survive smoke. */
+  alwaysPersist?: boolean;
   /**
    * Optional callback invoked when the DB write resolves. Called with
    * `ok=true` on successful insert, `ok=false` if the insert errored or
@@ -88,14 +90,15 @@ export interface SyncDebugEvent {
 /**
  * Persist a sync debug event. Fire-and-forget.
  *
- * - eventType 'invariant' always persists regardless of debug flag.
+ * - eventType 'invariant' and `alwaysPersist` events persist regardless of the
+ *   debug flag.
  * - All others only persist when debug flag is on.
  */
 export function persistSyncDebugEvent(event: SyncDebugEvent): void {
   const isInvariant = event.eventType === 'invariant';
 
   // Gate: invariants always persist; others only when enabled
-  if (!isInvariant && !isSyncDebugEnabled()) {
+  if (!isInvariant && event.alwaysPersist !== true && !isSyncDebugEnabled()) {
     event.onResult?.(false, 'gated');
     return;
   }

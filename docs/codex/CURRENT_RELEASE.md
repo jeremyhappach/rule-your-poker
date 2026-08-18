@@ -212,6 +212,27 @@ Date: 2026-08-18
   for both 3-5-7 financial notices. Forty-eight focused assertions, TypeScript,
   all 33 build-required Cribbage assertions, and the production build pass;
   published two-client R3 -> R1 smoke remains the acceptance gate.
+- Paused `Aug 18 - Notre Dame` smoke rejected that candidate on commit
+  `672e0321f`: both clients received the same committed cursor 4 Pussy Tax,
+  cursor 5 Re-Ante, and H2/R1 authority, but only the client that launched the
+  local cursor-5 chip flight ran the batch-start callback. The other client
+  correctly reconciled the immutable cursor without replaying financial
+  motion, so an animation-owned semantic trigger could never publish
+  `Re-Ante` there. The different H2 timer/deal arrival times corroborated the
+  two legitimate local presentation paths; the paused session was not mutated.
+- The current candidate moves both financial notices to a dedicated owner fed
+  by their exact committed game/dealer-game/round/hand/cursor identities.
+  Every live client now publishes the same event once after observing that
+  identity. A locally animated batch is only an early-retirement boundary;
+  a reconciled/no-flight client keeps the non-blocking notice for its short
+  rail TTL. Tax is synchronously retired before the distinct Re-Ante identity
+  publishes, H1 remains an opening ante, and transport, deal admission,
+  balances, settlement, and database authority are unchanged. The bounded
+  disposition/paint/retirement proof now bypasses the opt-in debug gate and
+  carries client/build correlation during production smoke. Seventy-four
+  focused 3-5-7/provider assertions, local TypeScript, all 33 build-required
+  Cribbage assertions, and the production build pass; published two-client
+  R3 -> R1 smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 
