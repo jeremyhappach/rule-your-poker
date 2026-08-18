@@ -131,13 +131,12 @@ Date: 2026-08-18
   resolution, and returns the committed game, completed round, and resolution
   directly to the last-decision caller. A duplicate same-decision caller gets
   the stored result; a stale result cannot authorize a newer round.
-- The `All players folded` announcement no longer enters the generic four-
-  second result delay. It remains visible while the exact tax batch travels;
-  connected clients call the exact server advance only at that cursor's
-  settled/reconciled boundary. The existing eight-second database recovery
-  lease remains only for a missing or disconnected client. The initiating
-  client immediately refetches its RPC result instead of waiting for its own
-  Realtime event.
+- All-fold no longer enters the generic four-second result delay. Connected
+  clients call the exact server advance only at the tax cursor's settled/
+  reconciled boundary. The existing eight-second database recovery lease
+  remains only for a missing or disconnected client. The initiating client
+  immediately refetches its RPC result instead of waiting for its own Realtime
+  event.
 - 3-5-7 action/timer readiness now proves dealer game, hand, round row, round
   number, wave identity, and the cumulative runtime card count. R1 readiness
   therefore cannot flash controls over R2's retained three cards before cards
@@ -152,6 +151,23 @@ Date: 2026-08-18
   assertions, and the production build pass. Published two-client smoke is the
   remaining acceptance gate; the paused `Aug 18 - Monroe Street` session was
   not mutated.
+- Published follow-up smoke confirmed the financial handoff but exposed three
+  presentation-owner conflicts. The current client candidate suppresses raw
+  `All players folded` and solo-stay audit narration from the generic result
+  rail. An actual committed all-fold tax batch now owns exactly one `Pussy
+  Tax!` scope while its immutable cursor is queued/running; the identity-
+  deduped leg-delta owner remains the sole ordinary `<player> won a leg!`
+  publisher.
+- The legacy browser-timed `Rollover` notice is removed. A later-hand Round 1
+  batch now owns `Re-Ante` from the same exact cursor already gating its chip
+  transport and deal. Pussy Tax retires when its cursor settles, the server
+  commits the R3 -> R1 continuation, and Re-Ante then exists only while that
+  distinct cursor is queued/running. Historical/reconciled cursors never
+  replay either notice, and neither announcement adds a progression delay.
+  Database settlement, pot, leg reserve, authority guards, and replay claims
+  are unchanged. Thirty-six focused 3-5-7 assertions, TypeScript, all 33
+  build-required Cribbage assertions, and the production build pass; published
+  two-client smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 

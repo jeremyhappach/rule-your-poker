@@ -1651,7 +1651,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // handleGameTypeSelect happen to clear refs in a path the observer doesn't run.
   // Fix: clear trigger state any time the game leaves the ante_decision phase, so
   // no AnteUpAnimation mount can ever consume a stale trigger from a prior game.
-  const [reAnteMessage, setReAnteMessage] = useState<string | null>(null); // Rollover message for 3-5-7 subsequent Round 1s
   
   // Chip transfer animation state (for 3-5-7 showdowns)
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -8780,16 +8779,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 if (anteAnimationFiredRef.current !== anteTriggerKey) {
                   anteAnimationFiredRef.current = anteTriggerKey;
                   setAnteAnimationTriggerId(`ante-${Date.now()}`);
-                  // Make the distinct R3 -> next-hand Round 1 collection explicit.
-                  setReAnteMessage('Rollover');
-                  // Clear the message after animation completes (3 seconds)
-                  __scheduleWartimeTimeout({
-                    sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR.id,
-                    ownerLabel: 'game.357ReAnteMessageClear',
-                    delayMs: 3000,
-                    extra: { purpose: 'clear 3-5-7 rollover announcement' },
-                    fn: () => setReAnteMessage(null),
-                  });
                 }
               }
             }
@@ -17269,7 +17258,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 chatInputValue={mobileChatInput}
                 onChatInputChange={setMobileChatInput}
                 dealerSetupMessage={undefined}
-                reAnteMessage={reAnteMessage}
                 onAutoFoldChange={handleAutoFoldChange}
                 pendingAutoRollOff={pendingAutoRollOff}
               />
@@ -17524,7 +17512,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               pendingAutoRollOff={pendingAutoRollOff}
               on357TimerAllowedChange={setDealReadiness357}
-              reAnteMessage={reAnteMessage}
             />
           );
           })()}

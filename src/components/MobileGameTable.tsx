@@ -14,6 +14,14 @@ import {
   type ThreeFiveSevenAllFoldPresentation,
 } from "@/lib/threeFiveSeven/allFoldPresentation";
 import {
+  getThreeFiveSevenPussyTaxAnnouncement,
+  getThreeFiveSevenPussyTaxAnnouncementScope,
+  getThreeFiveSevenReAnteAnnouncement,
+  getThreeFiveSevenReAnteAnnouncementScope,
+  isThreeFiveSevenDedicatedResultAnnouncement,
+  matchesThreeFiveSevenPresentationCursor,
+} from "@/lib/threeFiveSeven/announcementPresentation";
+import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
@@ -1249,8 +1257,6 @@ interface MobileGameTableProps {
   onChatInputChange?: (value: string) => void;
   // Dealer setup message - shown as yellow announcement when another player is configuring
   dealerSetupMessage?: string | null;
-  // Re-ante message - shown during 3-5-7 subsequent round 1 ante animations
-  reAnteMessage?: string | null;
   // Auto-fold callback for when player disables auto_fold
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   // When true, auto-roll disable is deferred until end of current turn
@@ -1477,7 +1483,6 @@ export const MobileGameTable = ({
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
   dealerSetupMessage,
-  reAnteMessage,
   onAutoFoldChange,
   pendingAutoRollOff = false,
   on357TimerAllowedChange,
@@ -4279,6 +4284,9 @@ export const MobileGameTable = ({
     const movesPlayerToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
     );
+    const movesPlayerToPot = batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
+    );
 
     if (gameType === 'holm-game') {
       const dealerGameId = holmPresentationIdentity?.dealerGameId ?? null;
@@ -4321,6 +4329,25 @@ export const MobileGameTable = ({
     // opening balances until the sole terminal-phase owner starts the pot
     // stage (final leg -> sweep legs -> pot flight + celebration).
     if (gameType === '3-5-7') {
+      // Realtime may deliver a newly committed financial batch before the RPC
+      // caller/refetch publishes its exact presentation identity. Keep tax and
+      // opening/re-ante player-to-pot batches queued until their own cursor is
+      // mounted; otherwise the flight can finish before its semantic notice or
+      // before the correct Round 1 surface exists.
+      if (movesPlayerToPot && batch.reason === 'bet') {
+        return threeFiveSevenAllFoldPresentationMatches
+          && matchesThreeFiveSevenPresentationCursor(
+            threeFiveSevenAllFoldPresentation,
+            batch.cursor,
+          );
+      }
+      if (movesPlayerToPot && batch.reason === 'ante') {
+        return threeFiveSevenRolloverPresentationMatches
+          && matchesThreeFiveSevenPresentationCursor(
+            threeFiveSevenRolloverPresentation,
+            batch.cursor,
+          );
+      }
       // Normal final-leg settlement publishes the reserve return as an
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
@@ -4358,6 +4385,10 @@ export const MobileGameTable = ({
     holmWinPotTriggerIdGated,
     holmShowdownPhase,
     lastRoundResult,
+    threeFiveSevenAllFoldPresentation,
+    threeFiveSevenAllFoldPresentationMatches,
+    threeFiveSevenRolloverPresentation,
+    threeFiveSevenRolloverPresentationMatches,
     threeFiveSevenWinPhase,
     chipTransferWinnerId,
     chipTransferLoserIds,
@@ -7322,6 +7353,10 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType, revealAtShowdown, currentPlayerStayed]);
 
+  const hasDedicatedThreeFiveSevenResultAnnouncement =
+    __is357GameType(gameType)
+    && isThreeFiveSevenDedicatedResultAnnouncement(lastRoundResult);
+
   // ── 357 announcement instrumentation ──
   const prev357AnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
@@ -7331,6 +7366,7 @@ export const MobileGameTable = ({
     if (gameType !== '3-5-7' || !gameId) return;
     // The announcement renders when: lastRoundResult is present AND (awaitingNextRound OR roundStatus completed/showdown OR allDecisionsIn)
     const announcementEligible = !!lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') &&
+      !hasDedicatedThreeFiveSevenResultAnnouncement &&
       !(lastRoundResult.includes('won the game')) &&
       !(threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
       gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
@@ -7361,7 +7397,7 @@ export const MobileGameTable = ({
         transitionType: tType,
       });
     }
-  }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId]);
+  }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId, hasDedicatedThreeFiveSevenResultAnnouncement]);
 
   // ── Phase 4: Canonical gameplay announcement emits ────────────────────────
   // Migration of the legacy MobileGameTable gold plate (`announcementFallback`)
@@ -7372,6 +7408,103 @@ export const MobileGameTable = ({
   // Scope: dealerGameId/roundId left as gameId/handContextId so events scope
   // to the active hand and are torn down on hand boundary by the provider.
   const announcements = useAnnouncements();
+
+  // Exact transfer cursors own the financial narration for 3-5-7. The tax
+  // plate exists only while the committed tax batch is visibly queued/running;
+  // the subsequent Re-Ante plate uses the distinct R3 -> R1 batch. Neither TTL
+  // gates progression: each scope is retired at its ledger boundary, and the
+  // existing cursor gates advance/deal immediately after settlement.
+  const activeThreeFiveSevenPussyTaxScopeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const presentation = threeFiveSevenAllFoldPresentationMatches
+      ? threeFiveSevenAllFoldPresentation
+      : null;
+    const nextScope = presentation?.transferCursor != null
+      ? getThreeFiveSevenPussyTaxAnnouncementScope(presentation)
+      : null;
+    const previousScope = activeThreeFiveSevenPussyTaxScopeRef.current;
+
+    if (previousScope && previousScope !== nextScope) {
+      announcements.retireTransientScope(previousScope);
+      activeThreeFiveSevenPussyTaxScopeRef.current = null;
+    }
+    if (!presentation || !nextScope) return;
+
+    const event = getThreeFiveSevenPussyTaxAnnouncement(
+      presentation,
+      threeFiveSevenAllFoldCursorState,
+    );
+    if (event) {
+      if (activeThreeFiveSevenPussyTaxScopeRef.current === event.scope) return;
+      announcements.emit({
+        id: event.id,
+        type: 'round_win',
+        scope: { dealerGameId: gameId ?? null, roundId: null },
+        payload: { text: event.text, kind: 'pussy_tax' },
+        ttlMs: 60_000,
+        transientScope: event.scope,
+      });
+      activeThreeFiveSevenPussyTaxScopeRef.current = event.scope;
+      return;
+    }
+
+    if (activeThreeFiveSevenPussyTaxScopeRef.current === nextScope) {
+      announcements.retireTransientScope(nextScope);
+      activeThreeFiveSevenPussyTaxScopeRef.current = null;
+    }
+  }, [
+    announcements,
+    gameId,
+    threeFiveSevenAllFoldCursorState,
+    threeFiveSevenAllFoldPresentation,
+    threeFiveSevenAllFoldPresentationMatches,
+  ]);
+
+  const activeThreeFiveSevenReAnteScopeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const presentation = threeFiveSevenRolloverPresentationMatches
+      ? threeFiveSevenRolloverPresentation
+      : null;
+    const nextScope = presentation && presentation.handNumber > 1
+      ? getThreeFiveSevenReAnteAnnouncementScope(presentation)
+      : null;
+    const previousScope = activeThreeFiveSevenReAnteScopeRef.current;
+
+    if (previousScope && previousScope !== nextScope) {
+      announcements.retireTransientScope(previousScope);
+      activeThreeFiveSevenReAnteScopeRef.current = null;
+    }
+    if (!presentation || !nextScope) return;
+
+    const event = getThreeFiveSevenReAnteAnnouncement(
+      presentation,
+      threeFiveSevenRolloverCursorState,
+    );
+    if (event) {
+      if (activeThreeFiveSevenReAnteScopeRef.current === event.scope) return;
+      announcements.emit({
+        id: event.id,
+        type: 'peg_notice',
+        scope: { dealerGameId: gameId ?? null, roundId: null },
+        payload: { title: event.text, kind: 'reante' },
+        ttlMs: 60_000,
+        transientScope: event.scope,
+      });
+      activeThreeFiveSevenReAnteScopeRef.current = event.scope;
+      return;
+    }
+
+    if (activeThreeFiveSevenReAnteScopeRef.current === nextScope) {
+      announcements.retireTransientScope(nextScope);
+      activeThreeFiveSevenReAnteScopeRef.current = null;
+    }
+  }, [
+    announcements,
+    gameId,
+    threeFiveSevenRolloverCursorState,
+    threeFiveSevenRolloverPresentation,
+    threeFiveSevenRolloverPresentationMatches,
+  ]);
 
   // Solo Holm showdown uses the same central space as the lone player's
   // tabled cards. Keep the transfer anchor mounted, but surface the readable
@@ -7465,21 +7598,17 @@ export const MobileGameTable = ({
     // owner effect below (both instant-357 and normal-win variants).
     // Skip the generic emit here so text/lifecycle don't compete.
     if (gameType === '3-5-7' && threeFiveSevenTerminalDescriptor) return;
-    // 3-5-7 leg/game-win overlays own these messages — suppress rail.
-    // 3-5-7 LEG win overlay (LegEarnedAnimation) owns the "won a leg" text —
-    // suppress rail and retire it. GAME-WIN ("won the game") is intentionally
-    // NOT suppressed: the canonical match_win emit drives the shell-owned
-    // CanonicalCelebrationLayer (confetti) and the lifecycle rail winner
-    // plate, while the bespoke 3-5-7 win sequence (LegsToPlayer → PotToPlayer
-    // → tabled winner cards) plays underneath. This restores the intended
-    // pot-won → sweep → announcement → celebration → chip transfer sequence.
-    const isLegWin = gameType !== 'holm-game' && !!threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg');
-    if (isLegWin) {
-      // Overlay owns this text — retire it so the rail never re-emits it
-      // when the overlay suppression flag drops on a later identity tick.
-      if (lastRoundResult) retiredResultTextsRef.current.texts.add(lastRoundResult);
+    // 3-5-7 all-fold and leg-award results have dedicated semantic owners.
+    // Never enqueue their raw database audit text in the generic rail: tax is
+    // tied to its exact ledger cursor, and the identity-deduped player leg
+    // delta below is the sole ordinary "won a leg!" publisher.
+    if (hasDedicatedThreeFiveSevenResultAnnouncement) {
+      retiredResultTextsRef.current.texts.add(lastRoundResult);
       return;
     }
+    // GAME-WIN ("won the game") is intentionally NOT suppressed: the
+    // canonical match_win emit drives the shell-owned celebration while the
+    // bespoke 3-5-7 terminal sequence plays underneath.
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
     // Rabbit Hunt announces with its concurrent tax/reveal presentation. All
@@ -7557,7 +7686,7 @@ export const MobileGameTable = ({
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
     allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
     currentRound, announcements, threeFiveSevenTerminalDescriptor, isSoloVsChucky, presentationPot,
-    isAllFoldRabbitHuntResult,
+    isAllFoldRabbitHuntResult, hasDedicatedThreeFiveSevenResultAnnouncement,
   ]);
 
   // The server is allowed to settle a winning solo-vs-Chucky hand before the
@@ -7746,21 +7875,6 @@ export const MobileGameTable = ({
     });
   }, [isDiceGame, isGameOver, lastRoundResult, gameId, handContextId, announcements]);
 
-  // (D) 3-5-7 re-ante message → peg_notice.
-  const lastEmittedReAnteRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!reAnteMessage) return;
-    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:reante:${reAnteMessage}`;
-    if (lastEmittedReAnteRef.current === key) return;
-    lastEmittedReAnteRef.current = key;
-    announcements.emit({
-      id: `peg:${key}`,
-      type: 'peg_notice',
-      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
-      payload: { title: reAnteMessage, kind: 'reante' },
-      ttlMs: 2000,
-    });
-  }, [reAnteMessage, gameId, handContextId, announcements]);
   // ── End Phase 4 emits ─────────────────────────────────────────────────────
 
 

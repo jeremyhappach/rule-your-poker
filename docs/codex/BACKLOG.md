@@ -333,6 +333,29 @@ smoke before stable-checkpoint promotion.
   is round-wave/cumulative-count scoped. The full scheduled recovery function
   passed rollback proof on the unacknowledged all-fold path. Published two-
   client smoke remains pending; the frozen repro was not changed.
+- P1 follow-up from the 2026-08-18 published two-client smoke: financial and
+  handoff behavior is now mostly correct, but three 3-5-7 announcement owners
+  still conflict. A tax-enabled all-fold exposes the database audit text
+  `All players folded` through the generic result announcer instead of showing
+  `Pussy Tax!` during its exact committed tax batch. A solo-stay leg award can
+  first expose the database text (`<player> stayed alone and earned leg N`)
+  and then the leg-delta owner emits `<player> won a leg!`; the generic
+  suppression is keyed to a transient final-win trigger and does not recognize
+  the authoritative solo-stay result. Finally, `Rollover` is still published
+  from a legacy browser state/timer path, while the exact all-fold continuation
+  bypasses that path entirely, so the notice can be absent. Make the exact
+  tax and subsequent R3 -> R1 transfer cursors own non-overlapping `Pussy Tax!`
+  then `Re-Ante` announcement scopes, retiring each at its real ledger boundary
+  without delaying advancement or deal. Suppress the raw solo-stay database
+  narration and retain the identity-deduped leg-delta owner as the sole ordinary
+  `won a leg!` announcement. Preserve PostgreSQL settlement, leg reserve, pot,
+  exact replay/late-replay protection, and all existing cursor-gated transport.
+  Corrected in the current client candidate: exact queued/running tax and
+  later-hand Round 1 cursors own `Pussy Tax!` and `Re-Ante` respectively, their
+  scopes retire at the real ledger boundary, and raw all-fold/solo-stay audit
+  text cannot enter the generic rail. Thirty-six focused 3-5-7 assertions,
+  TypeScript, all 33 build-required Cribbage assertions, and the production
+  build pass; published two-client smoke remains the acceptance gate.
 
 ### 3A. Cross-game postgame continuation ownership
 
