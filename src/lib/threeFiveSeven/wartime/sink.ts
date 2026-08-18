@@ -15,6 +15,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { SRC } from './sourceSites';
+import { sanitizeWartimeUuid } from './sinkIdentity';
 
 interface BufferedEvent {
   event_type: string;
@@ -22,11 +23,13 @@ interface BufferedEvent {
   sequence: number;
   game_id?: string | null;
   round_id?: string | null;
+  retryCount?: number;
 }
 
 const BATCH_MAX = 40;
 const FLUSH_INTERVAL_MS = 400;
 const MAX_QUEUE = 2000;
+const MAX_FLUSH_RETRIES = 1;
 
 let buffer: BufferedEvent[] = [];
 let flushScheduled = false;
@@ -113,8 +116,8 @@ async function flushBatch(): Promise<void> {
 
   const rows = batch.map((e) => ({
     event_type: e.event_type,
-    game_id: e.game_id ?? null,
-    round_id: e.round_id ?? null,
+    game_id: sanitizeWartimeUuid(e.game_id),
+    round_id: sanitizeWartimeUuid(e.round_id),
     payload: { ...e.payload, flushBatchId: batchId },
   }));
 
@@ -131,9 +134,16 @@ async function flushBatch(): Promise<void> {
 
   if (error) {
     sinkFailureCount += 1;
-    // Retry once at the head — preserves order for this batch.
-    buffer = [...batch, ...buffer];
-    scheduleFlush();
+    const retryable = batch
+      .filter((event) => (event.retryCount ?? 0) < MAX_FLUSH_RETRIES)
+      .map((event) => ({ ...event, retryCount: (event.retryCount ?? 0) + 1 }));
+    droppedEventCount += batch.length - retryable.length;
+    if (retryable.length > 0) {
+      // One bounded retry at the head preserves event order without allowing a
+      // malformed diagnostic row to become an unbounded gameplay-side loop.
+      buffer = [...retryable, ...buffer];
+    }
+    if (buffer.length > 0) scheduleFlush();
     emitSinkFlush({
       batchId,
       batch,

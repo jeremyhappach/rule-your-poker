@@ -1,15 +1,39 @@
 export interface ThreeFiveSevenDealReadinessToken {
   handContextId: string;
+  waveContextId: string;
+  roundId: string;
+  roundNumber: number;
   allowed: boolean;
 }
 
 export function isThreeFiveSevenDealPresentationReady(
-  expectedHandContextId: string | null | undefined,
+  expected: {
+    handContextId: string | null | undefined;
+    waveContextId: string | null | undefined;
+    roundId: string | null | undefined;
+    roundNumber: number | null | undefined;
+  },
   token: ThreeFiveSevenDealReadinessToken | null | undefined,
 ): boolean {
-  return !!expectedHandContextId
-    && token?.handContextId === expectedHandContextId
+  return !!expected.handContextId
+    && !!expected.waveContextId
+    && !!expected.roundId
+    && token?.handContextId === expected.handContextId
+    && token.waveContextId === expected.waveContextId
+    && token.roundId === expected.roundId
+    && token.roundNumber === expected.roundNumber
     && token.allowed;
+}
+
+export function isThreeFiveSevenRuntimeWaveReady(args: {
+  runtimeAllowed: boolean;
+  runtimeExpectedCount: number;
+  expectedCumulativeCount: number;
+  historicalEntry: boolean;
+}): boolean {
+  if (!args.runtimeAllowed) return false;
+  if (args.historicalEntry && args.runtimeExpectedCount === 0) return true;
+  return args.runtimeExpectedCount === args.expectedCumulativeCount;
 }
 
 export function resolveThreeFiveSevenDealerGameScope(

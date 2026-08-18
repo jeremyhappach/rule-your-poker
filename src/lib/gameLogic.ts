@@ -3204,8 +3204,27 @@ export interface ThreeFiveSevenAdvanceRoundResult {
 
 export async function proceedToNextRound(
   gameId: string,
+  exactPredecessor?: {
+    dealerGameId: string;
+    roundId: string;
+    handNumber: number;
+    roundNumber: number;
+  },
 ): Promise<ThreeFiveSevenAdvanceRoundResult | null> {
   console.log('[PROCEED_NEXT_ROUND] Starting for game', gameId);
+
+  if (exactPredecessor) {
+    const { data, error } = await supabase.rpc('three_five_seven_advance_round' as any, {
+      p_game_id: gameId,
+      p_round_id: exactPredecessor.roundId,
+      p_dealer_game_id: exactPredecessor.dealerGameId,
+      p_hand_number: exactPredecessor.handNumber,
+      p_round_number: exactPredecessor.roundNumber,
+    } as any);
+    if (error) throw error;
+    console.log('[PROCEED_NEXT_ROUND] Exact authoritative advance result:', data);
+    return data as unknown as ThreeFiveSevenAdvanceRoundResult;
+  }
 
   const { data: game, error: gameError } = await supabase
     .from('games')

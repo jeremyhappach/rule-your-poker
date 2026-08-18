@@ -4,10 +4,15 @@ import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib
 import {
   isThreeFiveSevenDealPresentationReady,
   isThreeFiveSevenLegStackRetired,
+  isThreeFiveSevenRuntimeWaveReady,
   resolveThreeFiveSevenDealerGameScope,
   resolveThreeFiveSevenStaticLegCount,
   type ThreeFiveSevenDealReadinessToken,
 } from "@/lib/threeFiveSeven/presentationReadiness";
+import {
+  getThreeFiveSevenAllFoldPresentationKey,
+  type ThreeFiveSevenAllFoldPresentation,
+} from "@/lib/threeFiveSeven/allFoldPresentation";
 import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
@@ -589,20 +594,35 @@ function DealAwareShellTimerRail() {
 }
 
 function ThreeFiveSevenTimerGateReporter({
+  waveContextId,
+  roundId,
+  roundNumber,
+  expectedCumulativeCount,
+  historicalEntry,
   onAllowedChange,
 }: {
+  waveContextId: string | null;
+  roundId: string | null;
+  roundNumber: number | null;
+  expectedCumulativeCount: number;
+  historicalEntry: boolean;
   onAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
 }) {
   const deal = useDealRuntime();
   const handContextId = deal?.handContextId ?? null;
-  const allowed = deal?.timerAllowed ?? false;
+  const allowed = isThreeFiveSevenRuntimeWaveReady({
+    runtimeAllowed: deal?.timerAllowed ?? false,
+    runtimeExpectedCount: deal?.expectedCount ?? 0,
+    expectedCumulativeCount,
+    historicalEntry,
+  });
   useLayoutEffect(() => {
     onAllowedChange?.(
-      handContextId
-        ? { handContextId, allowed }
+      handContextId && waveContextId && roundId && roundNumber
+        ? { handContextId, waveContextId, roundId, roundNumber, allowed }
         : null,
     );
-  }, [allowed, handContextId, onAllowedChange]);
+  }, [allowed, handContextId, onAllowedChange, roundId, roundNumber, waveContextId]);
   // BREAK THE TIMER DEADLOCK:
   // The canonical rail (DealAwareShellTimerRail) is the historical
   // driver of enterGameplay(), but it is only mounted when `hasTimer`
@@ -1052,6 +1072,11 @@ interface MobileGameTableProps {
   threeFiveSevenViewRoundNumber?: number | null;
   /** Exact committed H2+ / R1 rollover batch returned by the advance RPC or refetch. */
   threeFiveSevenRolloverPresentation?: ThreeFiveSevenRolloverPresentation | null;
+  /** Exact completed all-fold round and pussy-tax ledger batch. */
+  threeFiveSevenAllFoldPresentation?: ThreeFiveSevenAllFoldPresentation | null;
+  onThreeFiveSevenAllFoldPresentationComplete?: (
+    presentation: ThreeFiveSevenAllFoldPresentation,
+  ) => void;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -1355,6 +1380,8 @@ export const MobileGameTable = ({
   threeFiveSevenViewRoundId,
   threeFiveSevenViewRoundNumber,
   threeFiveSevenRolloverPresentation,
+  threeFiveSevenAllFoldPresentation,
+  onThreeFiveSevenAllFoldPresentationComplete,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -1891,6 +1918,40 @@ export const MobileGameTable = ({
   const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
     threeFiveSevenRolloverCursor,
   );
+  const threeFiveSevenAllFoldPresentationMatches =
+    __is357GameType(gameType)
+    && awaitingNextRound
+    && !!threeFiveSevenAllFoldPresentation
+    && threeFiveSevenAllFoldPresentation.gameId === gameId
+    && threeFiveSevenAllFoldPresentation.dealerGameId === (holmDealerGameId ?? horsesDealerGameId)
+    && threeFiveSevenAllFoldPresentation.roundId === threeFiveSevenAuthoritativeRoundId
+    && threeFiveSevenAllFoldPresentation.roundId === threeFiveSevenViewRoundId
+    && threeFiveSevenAllFoldPresentation.handNumber === horsesHandNumber
+    && threeFiveSevenAllFoldPresentation.roundNumber === threeFiveSevenAuthoritativeRoundNumber
+    && threeFiveSevenAllFoldPresentation.roundNumber === threeFiveSevenViewRoundNumber;
+  const threeFiveSevenAllFoldCursor = threeFiveSevenAllFoldPresentationMatches
+    ? threeFiveSevenAllFoldPresentation!.transferCursor
+    : null;
+  const threeFiveSevenAllFoldCursorState = useChipPresentationCursorState(
+    threeFiveSevenAllFoldCursor,
+  );
+  const completedThreeFiveSevenAllFoldPresentationsRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!threeFiveSevenAllFoldPresentationMatches || !threeFiveSevenAllFoldPresentation) return;
+    const cursorComplete = threeFiveSevenAllFoldPresentation.transferCursor == null
+      || threeFiveSevenAllFoldCursorState === 'settled'
+      || threeFiveSevenAllFoldCursorState === 'reconciled';
+    if (!cursorComplete) return;
+    const key = getThreeFiveSevenAllFoldPresentationKey(threeFiveSevenAllFoldPresentation);
+    if (completedThreeFiveSevenAllFoldPresentationsRef.current.has(key)) return;
+    completedThreeFiveSevenAllFoldPresentationsRef.current.add(key);
+    onThreeFiveSevenAllFoldPresentationComplete?.(threeFiveSevenAllFoldPresentation);
+  }, [
+    onThreeFiveSevenAllFoldPresentationComplete,
+    threeFiveSevenAllFoldCursorState,
+    threeFiveSevenAllFoldPresentation,
+    threeFiveSevenAllFoldPresentationMatches,
+  ]);
   const presentationDeltaIdsRef = useRef(new Set<string>());
   presentationDeltaIdsRef.current = new Set(presentationBalanceDeltas.map((delta) => delta.id));
   const anteArrivalBaselineRef = useRef(new Set<string>());
@@ -3853,28 +3914,37 @@ export const MobileGameTable = ({
     threeFiveSevenDealerGameScope && threeFiveSevenHandIdentity
       ? `${threeFiveSevenDealerGameScope}#${threeFiveSevenHandIdentity}`
       : null;
+  const threeFiveSevenWaveContextId =
+    threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
+      ? `${threeFiveSevenHandContextId}#r${currentRound}`
+      : null;
   const [reportedThreeFiveSevenDealReadiness, setReportedThreeFiveSevenDealReadiness] =
     useState<ThreeFiveSevenDealReadinessToken | null>(null);
   const threeFiveSevenDealPresentationReady =
     !currentRoundNotReadyForPresentation &&
     isThreeFiveSevenDealPresentationReady(
-      threeFiveSevenHandContextId,
+      {
+        handContextId: threeFiveSevenHandContextId,
+        waveContextId: threeFiveSevenWaveContextId,
+        roundId: threeFiveSevenViewRoundId,
+        roundNumber: threeFiveSevenViewRoundNumber,
+      },
       reportedThreeFiveSevenDealReadiness,
     );
   const handleThreeFiveSevenDealReadinessChange = useCallback((
     token: ThreeFiveSevenDealReadinessToken | null,
   ) => {
     setReportedThreeFiveSevenDealReadiness((current) =>
-      current?.handContextId === token?.handContextId && current?.allowed === token?.allowed
+      current?.handContextId === token?.handContextId
+        && current?.waveContextId === token?.waveContextId
+        && current?.roundId === token?.roundId
+        && current?.roundNumber === token?.roundNumber
+        && current?.allowed === token?.allowed
         ? current
         : token,
     );
     on357TimerAllowedChange?.(token);
   }, [on357TimerAllowedChange]);
-  const threeFiveSevenWaveContextId =
-    threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
-      ? `${threeFiveSevenHandContextId}#r${currentRound}`
-      : null;
   const threeFiveSevenSelfPlayerId =
     __is357GameType(gameType) && currentUserId
       ? (players.find(p => p.user_id === currentUserId)?.id ?? null)
@@ -11630,7 +11700,16 @@ export const MobileGameTable = ({
           : 'PRE_DEAL'
       }
     >
-    <ThreeFiveSevenTimerGateReporter onAllowedChange={handleThreeFiveSevenDealReadinessChange} />
+    <ThreeFiveSevenTimerGateReporter
+      waveContextId={threeFiveSevenWaveContextId}
+      roundId={threeFiveSevenViewRoundId ?? null}
+      roundNumber={threeFiveSevenViewRoundNumber ?? null}
+      expectedCumulativeCount={
+        threeFiveSevenActiveSeats.length * totalAfterWaveFor357(currentRound ?? 0)
+      }
+      historicalEntry={three57EntryMode === 'historical-entry'}
+      onAllowedChange={handleThreeFiveSevenDealReadinessChange}
+    />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {!currentRoundNotReadyForPresentation && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator

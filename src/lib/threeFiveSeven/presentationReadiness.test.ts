@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isThreeFiveSevenDealPresentationReady,
+  isThreeFiveSevenRuntimeWaveReady,
   isThreeFiveSevenLegStackRetired,
   resolveThreeFiveSevenDealerGameScope,
   resolveThreeFiveSevenStaticLegCount,
@@ -10,24 +11,65 @@ import {
 describe('3-5-7 deal presentation readiness', () => {
   const priorHandReady: ThreeFiveSevenDealReadinessToken = {
     handContextId: 'dealer-game-1#h1',
+    waveContextId: 'dealer-game-1#h1#r1',
+    roundId: 'round-1',
+    roundNumber: 1,
     allowed: true,
   };
 
+  const expectedR2 = {
+    handContextId: 'dealer-game-1#h2',
+    waveContextId: 'dealer-game-1#h2#r2',
+    roundId: 'round-2',
+    roundNumber: 2,
+  };
+
   it('rejects a ready token inherited from the prior hand', () => {
-    expect(isThreeFiveSevenDealPresentationReady('dealer-game-1#h2', priorHandReady)).toBe(false);
+    expect(isThreeFiveSevenDealPresentationReady(expectedR2, priorHandReady)).toBe(false);
   });
 
-  it('keeps the exact hand blocked until its runtime allows gameplay', () => {
-    expect(isThreeFiveSevenDealPresentationReady('dealer-game-1#h2', {
+  it('rejects an R1 token when R2 publishes within the same hand', () => {
+    expect(isThreeFiveSevenDealPresentationReady(expectedR2, {
       handContextId: 'dealer-game-1#h2',
-      allowed: false,
+      waveContextId: 'dealer-game-1#h2#r1',
+      roundId: 'round-1',
+      roundNumber: 1,
+      allowed: true,
     })).toBe(false);
   });
 
-  it('admits controls and timer only for the exact ready hand', () => {
-    expect(isThreeFiveSevenDealPresentationReady('dealer-game-1#h2', {
-      handContextId: 'dealer-game-1#h2',
+  it('keeps a live R2 blocked until all ten two-player card intents settle', () => {
+    expect(isThreeFiveSevenRuntimeWaveReady({
+      runtimeAllowed: true,
+      runtimeExpectedCount: 6,
+      expectedCumulativeCount: 10,
+      historicalEntry: false,
+    })).toBe(false);
+    expect(isThreeFiveSevenRuntimeWaveReady({
+      runtimeAllowed: true,
+      runtimeExpectedCount: 10,
+      expectedCumulativeCount: 10,
+      historicalEntry: false,
+    })).toBe(true);
+  });
+
+  it('admits controls and timer only for the exact settled wave', () => {
+    expect(isThreeFiveSevenDealPresentationReady(expectedR2, {
+      ...expectedR2,
+      handContextId: expectedR2.handContextId!,
+      waveContextId: expectedR2.waveContextId!,
+      roundId: expectedR2.roundId!,
+      roundNumber: expectedR2.roundNumber!,
       allowed: true,
+    })).toBe(true);
+  });
+
+  it('preserves historical-entry reconstruction with no replayed intents', () => {
+    expect(isThreeFiveSevenRuntimeWaveReady({
+      runtimeAllowed: true,
+      runtimeExpectedCount: 0,
+      expectedCumulativeCount: 10,
+      historicalEntry: true,
     })).toBe(true);
   });
 });

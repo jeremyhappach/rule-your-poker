@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-Date: 2026-08-17
+Date: 2026-08-18
 
 ## Shared atomic dealer configuration handoff
 
@@ -125,6 +125,33 @@ Date: 2026-08-17
   advancement are unchanged. Thirty-two focused 3-5-7 assertions, TypeScript,
   all 33 build-required Cribbage assertions, and the production build pass;
   published smoke remains the acceptance gate.
+- Migration `20260818090518_fix_357_all_fold_wave_handoff.sql` is installed on
+  owned production. An all-fold resolution now finalizes its pussy-tax ledger
+  batch in the decision transaction, persists that exact cursor in the durable
+  resolution, and returns the committed game, completed round, and resolution
+  directly to the last-decision caller. A duplicate same-decision caller gets
+  the stored result; a stale result cannot authorize a newer round.
+- The `All players folded` announcement no longer enters the generic four-
+  second result delay. It remains visible while the exact tax batch travels;
+  connected clients call the exact server advance only at that cursor's
+  settled/reconciled boundary. The existing eight-second database recovery
+  lease remains only for a missing or disconnected client. The initiating
+  client immediately refetches its RPC result instead of waiting for its own
+  Realtime event.
+- 3-5-7 action/timer readiness now proves dealer game, hand, round row, round
+  number, wave identity, and the cumulative runtime card count. R1 readiness
+  therefore cannot flash controls over R2's retained three cards before cards
+  four and five land. Historical rejoin still reconstructs without replaying
+  old transports.
+- The 3-5-7 wartime sink validates UUID columns independently and retries a
+  failed batch at most once; the pregame `round_id='0'` placeholder is stored
+  as null and can no longer generate a permanent HTTP 400 loop. The complete
+  rollback proof passed in the applying transaction, including the actual
+  scheduled recovery function on an unacknowledged all-fold result. Thirty-
+  three focused 3-5-7 assertions, TypeScript, all 33 build-required Cribbage
+  assertions, and the production build pass. Published two-client smoke is the
+  remaining acceptance gate; the paused `Aug 18 - Monroe Street` session was
+  not mutated.
 
 ## Yahtzee remote-score presentation handoff
 

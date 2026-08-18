@@ -303,6 +303,36 @@ smoke before stable-checkpoint promotion.
   game arrives; do not delay server advancement or alter leg settlement.
   Corrected in the current published candidate across the self felt, opponent
   chip stacks, and lobby list; production smoke remains pending.
+- P0 from the 2026-08-18 paused `Aug 18 - Monroe Street` DG1/H1 all-fold
+  smoke: PostgreSQL committed the `$1`-per-player pussy tax and exact
+  `All players folded` resolution at 12:42:39Z, but Round 2 was not created
+  until 12:42:46.8Z. The last decision caller discards the committed
+  `three_five_seven_submit_decision` result and, unlike Holm, performs no
+  direct refetch; it therefore waits for its own Realtime echo before starting
+  the generic hard-coded four-second delay applied to every non-Holm result.
+  That delay is invalid for all-fold: the `All players folded` announcement
+  must appear immediately while the exact pussy-tax batch travels, and the
+  successor deal must begin when that batch settles, with scheduled recovery
+  only as the disconnect fallback. At the R1 -> R2
+  boundary, the accepted P1 readiness token is scoped only to dealer game +
+  hand. R1's `allowed=true` remains admissible for R2 in the same hand until
+  `beginWave()` finally flips the runtime back to `DEALING`, which explains the
+  timer starting over the retained three-card surface, disappearing while
+  cards four and five travel, then restarting at landing. Correct the decision
+  caller to consume/refetch its committed result directly, advance all-fold
+  from exact tax-batch settlement rather than the generic delay, and make
+  decision/timer admission prove the exact active round wave has begun and settled;
+  preserve the intentional one-runtime-per-hand cumulative card transport and
+  server-owned resolution/advancement. Production logs from the same client
+  also show the known invalid-debug-UUID retry loop below; stop that loop as
+  part of the release blocker so diagnostics cannot create continuing load.
+  Corrected in migration `20260818090518_fix_357_all_fold_wave_handoff.sql`
+  and the matching client release candidate: the RPC returns the committed
+  exact resolution/cursor, the announcement appears without a generic dwell,
+  exact ledger settlement acknowledges advancement, and the readiness token
+  is round-wave/cumulative-count scoped. The full scheduled recovery function
+  passed rollback proof on the unacknowledged all-fold path. Published two-
+  client smoke remains pending; the frozen repro was not changed.
 
 ### 3A. Cross-game postgame continuation ownership
 
@@ -730,7 +760,8 @@ smoke on 2026-08-10.
 
 ### 3G. Suppress invalid production debug-event writes
 
-Status: Queued; observed in production logs on 2026-08-09.
+Status: Partially implemented; the 3-5-7 wartime sink correction is in the
+2026-08-18 release candidate. Continue treating any other writer as queued.
 
 - An active mobile client is posting `debug_events` with `game_id='0'`, causing
   repeated UUID errors (roughly twice per second). Guard debug writers against
@@ -742,6 +773,16 @@ Status: Queued; observed in production logs on 2026-08-09.
   field independently so a missing round identity does not discard otherwise
   useful incident evidence. This remained an observability failure; the frozen
   Holm presentation had a separate client barrier-release cause.
+- The 2026-08-18 3-5-7 `Aug 18 - Monroe Street` repro hit the same failure
+  continuously after pause. The wartime sink accepts placeholder round values,
+  sends them to the UUID `debug_events.round_id` column, then requeues the same
+  rejected batch at the head forever. PostgreSQL logged `invalid input syntax
+  for type uuid: "0"` about once per second and the client emitted matching
+  HTTP 400s. Validate UUID columns at the sink boundary and terminally discard
+  an invalid diagnostic row/batch; diagnostic retry must be bounded and may
+  never become a gameplay-adjacent request storm. Corrected for the 3-5-7
+  wartime sink: invalid UUID columns become null, and a failed batch receives
+  at most one retry before it is dropped and counted.
 
 ### 3A. Source-proven rule, ledger, and harness discrepancies
 

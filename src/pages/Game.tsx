@@ -99,6 +99,13 @@ import {
   type ThreeFiveSevenRolloverPresentation,
 } from "@/lib/threeFiveSeven/rolloverPresentation";
 import {
+  deriveThreeFiveSevenAllFoldPresentation,
+  getThreeFiveSevenAllFoldPresentationKey,
+  parseThreeFiveSevenAllFoldDecisionResult,
+  selectThreeFiveSevenAllFoldPresentation,
+  type ThreeFiveSevenAllFoldPresentation,
+} from "@/lib/threeFiveSeven/allFoldPresentation";
+import {
   isThreeFiveSevenDealPresentationReady,
   type ThreeFiveSevenDealReadinessToken,
 } from "@/lib/threeFiveSeven/presentationReadiness";
@@ -1246,8 +1253,23 @@ const Game = () => {
     game?.current_game_uuid && typeof game.total_hands === 'number' && game.total_hands > 0
       ? `${game.current_game_uuid}#h${game.total_hands}`
       : null;
+  const expectedDealRoundNumber357 =
+    typeof game?.current_round === 'number' && game.current_round > 0
+      ? game.current_round
+      : null;
+  const expectedDealWaveContext357 =
+    expectedDealHandContext357 && expectedDealRoundNumber357
+      ? `${expectedDealHandContext357}#r${expectedDealRoundNumber357}`
+      : null;
   const dealTimerAllowed357 = isThreeFiveSevenDealPresentationReady(
-    expectedDealHandContext357,
+    {
+      handContextId: expectedDealHandContext357,
+      waveContextId: expectedDealWaveContext357,
+      roundId: dealReadiness357?.roundNumber === expectedDealRoundNumber357
+        ? dealReadiness357.roundId
+        : null,
+      roundNumber: expectedDealRoundNumber357,
+    },
     dealReadiness357,
   );
   // Legacy denominator remains the presentation source for non-Holm games.
@@ -2322,6 +2344,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
   const [directThreeFiveSevenRolloverPresentation, setDirectThreeFiveSevenRolloverPresentation] =
     useState<ThreeFiveSevenRolloverPresentation | null>(null);
+  const [directThreeFiveSevenAllFoldPresentation, setDirectThreeFiveSevenAllFoldPresentation] =
+    useState<ThreeFiveSevenAllFoldPresentation | null>(null);
+  const advancingThreeFiveSevenAllFoldRef = useRef(new Set<string>());
   const threeFiveSevenAcceptedIdentityRef = useRef<{
     dealerGameId: string;
     handNumber: number;
@@ -6507,6 +6532,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       transferCursor: game?.chip_transfer_cursor,
     },
   );
+  const threeFiveSevenAllFoldPresentation = selectThreeFiveSevenAllFoldPresentation(
+    directThreeFiveSevenAllFoldPresentation,
+    deriveThreeFiveSevenAllFoldPresentation({
+      gameId,
+      gameType: game?.game_type,
+      dealerGameId: game?.current_game_uuid,
+      roundId: currentRound?.id,
+      handNumber: currentRound?.hand_number,
+      roundNumber: currentRound?.round_number,
+      roundStatus: currentRound?.status,
+      awaitingNextRound: game?.awaiting_next_round,
+      lastRoundResult: game?.last_round_result,
+      pussyTaxEnabled: game?.pussy_tax_enabled,
+      pussyTaxValue: game?.pussy_tax_value,
+      transferCursor: game?.chip_transfer_cursor,
+    }),
+  );
 
 
 
@@ -8378,6 +8420,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // service-only lease recovers a missing acknowledgement.
       if (game?.game_type === 'holm-game') {
         console.log('[AWAITING_NEXT_ROUND] Waiting for exact Holm presentation acknowledgement');
+        return;
+      }
+
+      // All-fold has no generic result dwell. The committed announcement is
+      // visible while the exact pussy-tax ledger batch travels; that batch's
+      // settled/reconciled boundary is the sole connected-client advance cue.
+      // The service recovery lease remains the disconnected-client fallback.
+      if (is357GameType && lastResult === 'All players folded') {
+        console.log('[AWAITING_NEXT_ROUND] Waiting for exact 3-5-7 pussy-tax presentation acknowledgement');
         return;
       }
 
@@ -14746,7 +14797,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Stay requires an active round');
       }
-      await makeDecision(gameId, currentPlayer.id, 'stay', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      const decisionResult = await makeDecision(gameId, currentPlayer.id, 'stay', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      if (is357GameType) {
+        const allFoldPresentation = parseThreeFiveSevenAllFoldDecisionResult(gameId, decisionResult);
+        if (allFoldPresentation) {
+          setDirectThreeFiveSevenAllFoldPresentation(allFoldPresentation);
+        }
+        await fetchGameData('manual');
+      }
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
@@ -14844,7 +14902,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Fold requires an active round');
       }
-      await makeDecision(gameId, currentPlayer.id, 'fold', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      const decisionResult = await makeDecision(gameId, currentPlayer.id, 'fold', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      if (is357GameType) {
+        const allFoldPresentation = parseThreeFiveSevenAllFoldDecisionResult(gameId, decisionResult);
+        if (allFoldPresentation) {
+          setDirectThreeFiveSevenAllFoldPresentation(allFoldPresentation);
+        }
+        await fetchGameData('manual');
+      }
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
@@ -14873,6 +14938,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       // Clear pending decision on error
       setPendingDecision(null);
+    }
+  };
+
+  const handleThreeFiveSevenAllFoldPresentationComplete = async (
+    presentation: ThreeFiveSevenAllFoldPresentation,
+  ) => {
+    if (!gameId || presentation.gameId !== gameId) return;
+    const key = getThreeFiveSevenAllFoldPresentationKey(presentation);
+    if (advancingThreeFiveSevenAllFoldRef.current.has(key)) return;
+    advancingThreeFiveSevenAllFoldRef.current.add(key);
+    try {
+      const advanceResult = await proceedToNextRound(gameId, {
+        dealerGameId: presentation.dealerGameId,
+        roundId: presentation.roundId,
+        handNumber: presentation.handNumber,
+        roundNumber: presentation.roundNumber,
+      });
+      if (presentation.roundNumber === 3) {
+        const rollover = parseThreeFiveSevenRolloverAdvanceResult(gameId, advanceResult);
+        if (!rollover) {
+          throw new Error('3-5-7 all-fold rollover returned no exact committed transfer identity');
+        }
+        setDirectThreeFiveSevenRolloverPresentation(rollover);
+      }
+      await fetchGameData('manual');
+    } catch (error: any) {
+      advancingThreeFiveSevenAllFoldRef.current.delete(key);
+      console.error('[357 ALL FOLD] Exact presentation handoff failed', error);
+      toast({
+        title: 'Could not start the next round',
+        description: error?.message ?? 'The server rejected the 3-5-7 handoff.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -17322,6 +17420,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenViewRoundId={is357GameType ? (threeFiveSevenView?.roundId ?? null) : null}
               threeFiveSevenViewRoundNumber={is357GameType ? (threeFiveSevenView?.roundNumber ?? null) : null}
               threeFiveSevenRolloverPresentation={is357GameType ? threeFiveSevenRolloverPresentation : null}
+              threeFiveSevenAllFoldPresentation={is357GameType ? threeFiveSevenAllFoldPresentation : null}
+              onThreeFiveSevenAllFoldPresentationComplete={is357GameType
+                ? handleThreeFiveSevenAllFoldPresentationComplete
+                : undefined}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}

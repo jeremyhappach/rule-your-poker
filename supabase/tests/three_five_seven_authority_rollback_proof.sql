@@ -11,9 +11,10 @@ DECLARE
   v_leg_game uuid:=gen_random_uuid(); v_leg_dealer uuid:=gen_random_uuid();
   v_terminal_game uuid:=gen_random_uuid(); v_terminal_dealer uuid:=gen_random_uuid();
   v_p1 uuid; v_p2 uuid; v_round uuid; v_r2 uuid; v_r3 uuid; v_r1_next uuid;
+  v_cron_p1 uuid; v_cron_p2 uuid; v_cron_round uuid;
   v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
-  v_result jsonb; v_replay jsonb; v_chips1 integer; v_chips2 integer; v_count integer;
+  v_result jsonb; v_replay jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
 BEGIN
   SELECT array_agg(id ORDER BY created_at,id) INTO v_users FROM (
@@ -104,6 +105,11 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p2,'stay') INTO v_result;
+  -- The proof body runs inside one caller-owned transaction. Flush and restore
+  -- the deferred projector here to model the production RPC commit boundary,
+  -- so the later all-fold cursor identifies only its pussy-tax batch.
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
   IF v_result#>>'{resolution,outcome}'<>'showdown'
      OR (v_result#>>'{resolution,winner_player_id}')::uuid<>v_p1
      OR (SELECT chips FROM public.players WHERE id=v_p1)<>102
@@ -158,7 +164,30 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_r3,v_dealer,1,3,v_p2,'fold') INTO v_result;
-  IF v_result#>>'{resolution,outcome}'<>'all_fold' THEN RAISE EXCEPTION '357_authority_proof:all_fold_invalid:%',v_result; END IF;
+  v_cursor:=(v_result#>>'{resolution,presentation_transfer_cursor}')::integer;
+  IF v_result#>>'{resolution,outcome}'<>'all_fold'
+     OR v_result#>>'{resolution,presentation_kind}'<>'pussy_tax'
+     OR coalesce(v_cursor,0)<=0
+     OR v_result#>>'{game,id}' IS DISTINCT FROM v_game::text
+     OR v_result#>>'{game,current_game_uuid}' IS DISTINCT FROM v_dealer::text
+     OR v_result#>>'{game,last_round_result}' IS DISTINCT FROM 'All players folded'
+     OR coalesce((v_result#>>'{game,awaiting_next_round}')::boolean,false) IS NOT TRUE
+     OR v_result#>>'{round,id}' IS DISTINCT FROM v_r3::text
+     OR v_result#>>'{round,status}' IS DISTINCT FROM 'completed'
+     OR (SELECT chip_transfer_cursor FROM public.games WHERE id=v_game)<>v_cursor
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_game AND cursor=v_cursor AND reason='bet'
+            AND jsonb_array_length(transfers)=2)<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:all_fold_invalid:%',v_result;
+  END IF;
+  SELECT public.three_five_seven_submit_decision(v_game,v_r3,v_dealer,1,3,v_p2,'fold') INTO v_replay;
+  IF v_replay->>'outcome'<>'already_decided'
+     OR v_replay#>>'{resolution,outcome}'<>'all_fold'
+     OR (v_replay#>>'{resolution,presentation_transfer_cursor}')::integer<>v_cursor
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_game AND cursor=v_cursor)<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:all_fold_replay_invalid:%',v_replay;
+  END IF;
   SELECT chips INTO v_chips1 FROM public.players WHERE id=v_p1; SELECT chips INTO v_chips2 FROM public.players WHERE id=v_p2;
   SELECT public.three_five_seven_advance_round(v_game,v_r3,v_dealer,1,3) INTO v_result; v_r1_next:=(v_result->>'round_id')::uuid;
   IF (SELECT total_hands FROM public.games WHERE id=v_game)<>2 OR (SELECT current_round FROM public.games WHERE id=v_game)<>1
@@ -215,7 +244,8 @@ BEGIN
   END IF;
 
   -- The complete scheduled function can bootstrap a ready game without a
-  -- browser/Reatime self-event dependency.
+  -- browser/Realtime self-event dependency, then recover an unacknowledged
+  -- all-fold handoff without replaying its pussy-tax batch.
   PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
   INSERT INTO public.games(id,name,status,game_type,current_game_uuid,current_host,dealer_position,ante_amount,rollover_amount,leg_value,legs_to_win,total_hands,pot,real_money)
   VALUES(v_cron_game,'Codex rollback proof - 357 cron','ante_decision','3-5-7',v_cron_dealer,v_users[1],1,1,1,1,3,0,0,false);
@@ -229,6 +259,34 @@ BEGIN
   IF (SELECT status FROM public.games WHERE id=v_cron_game)<>'in_progress'
      OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>1 THEN
     RAISE EXCEPTION '357_authority_proof:complete_scheduled_recovery_failed';
+  END IF;
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
+  SELECT id INTO v_cron_round FROM public.rounds WHERE dealer_game_id=v_cron_dealer;
+  SELECT id INTO v_cron_p1 FROM public.players WHERE game_id=v_cron_game AND user_id=v_users[1];
+  SELECT id INTO v_cron_p2 FROM public.players WHERE game_id=v_cron_game AND user_id=v_users[2];
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  PERFORM public.three_five_seven_submit_decision(v_cron_game,v_cron_round,v_cron_dealer,1,1,v_cron_p1,'fold');
+  PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
+  SELECT public.three_five_seven_submit_decision(v_cron_game,v_cron_round,v_cron_dealer,1,1,v_cron_p2,'fold') INTO v_result;
+  v_cursor:=(v_result#>>'{resolution,presentation_transfer_cursor}')::integer;
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  UPDATE private.three_five_seven_round_resolutions
+     SET presentation_fallback_at=clock_timestamp()-interval '1 second'
+   WHERE game_id=v_cron_game AND round_id=v_cron_round;
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  PERFORM set_config('app.three_five_seven_recovery_game_id',v_cron_game::text,true);
+  PERFORM private.advance_due_three_five_seven_state();
+  PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  IF (SELECT current_round FROM public.games WHERE id=v_cron_game)<>2
+     OR (SELECT total_hands FROM public.games WHERE id=v_cron_game)<>1
+     OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>2
+     OR (SELECT chip_transfer_cursor FROM public.games WHERE id=v_cron_game)<>v_cursor
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_cron_game AND cursor=v_cursor AND reason='bet')<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:complete_all_fold_recovery_failed:%',v_result;
   END IF;
 
   -- Final-leg settlement, exact committed settlement verification, durable
