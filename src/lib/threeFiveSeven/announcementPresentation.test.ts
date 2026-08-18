@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ThreeFiveSevenAllFoldPresentation } from './allFoldPresentation';
 import type { ThreeFiveSevenRolloverPresentation } from './rolloverPresentation';
+import type { ChipPresentationBatch } from '@/lib/canonicalShell/ChipPresentationLedger';
 import {
-  getThreeFiveSevenPussyTaxAnnouncement,
-  getThreeFiveSevenReAnteAnnouncement,
+  getThreeFiveSevenBatchStartAnnouncement,
   isThreeFiveSevenDedicatedResultAnnouncement,
   matchesThreeFiveSevenPresentationCursor,
 } from './announcementPresentation';
@@ -26,25 +26,40 @@ const reAnte: ThreeFiveSevenRolloverPresentation = {
   transferCursor: 9,
 };
 
+function playerToPotBatch(
+  cursor: number,
+  reason: ChipPresentationBatch['reason'],
+): Pick<ChipPresentationBatch, 'cursor' | 'reason' | 'transfers'> {
+  return {
+    cursor,
+    reason,
+    transfers: [{
+      id: `transfer-${cursor}`,
+      amount: 1,
+      from: { kind: 'player', playerId: 'player-1' },
+      to: { kind: 'pot' },
+    }],
+  };
+}
+
 describe('3-5-7 exact announcement ownership', () => {
-  it('shows Pussy Tax only while its exact transfer is running', () => {
-    expect(getThreeFiveSevenPussyTaxAnnouncement(allFold, 'running')).toMatchObject({
+  it('publishes Pussy Tax from its exact live batch-start identity', () => {
+    expect(getThreeFiveSevenBatchStartAnnouncement(
+      playerToPotBatch(8, 'bet'),
+      allFold,
+      reAnte,
+    )).toMatchObject({
       text: 'Pussy Tax!',
+      kind: 'pussy_tax',
     });
   });
 
-  it.each(['unknown', 'queued', 'settled', 'reconciling', 'reconciled'] as const)(
-    'does not publish Pussy Tax when its cursor is %s',
-    (cursorState) => {
-      expect(getThreeFiveSevenPussyTaxAnnouncement(allFold, cursorState)).toBeNull();
-    },
-  );
-
-  it('does not claim a tax announcement when no tax transfer committed', () => {
-    expect(getThreeFiveSevenPussyTaxAnnouncement(
-      { ...allFold, transferCursor: null },
-      'running',
-    )).toBeNull();
+  it.each([
+    [playerToPotBatch(7, 'bet'), allFold],
+    [playerToPotBatch(8, 'ante'), allFold],
+    [playerToPotBatch(8, 'bet'), { ...allFold, transferCursor: null }],
+  ] as const)('does not narrate a non-matching tax batch %#', (batch, presentation) => {
+    expect(getThreeFiveSevenBatchStartAnnouncement(batch, presentation, reAnte)).toBeNull();
   });
 
   it('admits a narrated transfer only for its exact committed cursor', () => {
@@ -54,29 +69,40 @@ describe('3-5-7 exact announcement ownership', () => {
     expect(matchesThreeFiveSevenPresentationCursor(reAnte, 8)).toBe(false);
   });
 
-  it('shows Re-Ante only while the exact later-hand Round 1 transfer is running', () => {
-    expect(getThreeFiveSevenReAnteAnnouncement(reAnte, 'running')).toMatchObject({
+  it('publishes Re-Ante from the exact later-hand Round 1 batch start', () => {
+    expect(getThreeFiveSevenBatchStartAnnouncement(
+      playerToPotBatch(9, 'ante'),
+      allFold,
+      reAnte,
+    )).toMatchObject({
       text: 'Re-Ante',
+      kind: 'reante',
     });
   });
 
-  it('does not announce a queued Re-Ante that is still blocked by Pussy Tax', () => {
-    expect(getThreeFiveSevenReAnteAnnouncement(reAnte, 'queued')).toBeNull();
-  });
-
-  it('never calls the opening H1/R1 ante a re-ante', () => {
-    expect(getThreeFiveSevenReAnteAnnouncement(
-      { ...reAnte, handNumber: 1, roundId: 'round-h1-r1' },
-      'running',
+  it('requires player-to-pot motion at the exact launch boundary', () => {
+    expect(getThreeFiveSevenBatchStartAnnouncement(
+      { ...playerToPotBatch(9, 'ante'), transfers: [] },
+      allFold,
+      reAnte,
     )).toBeNull();
   });
 
-  it.each(['settled', 'reconciled'] as const)(
-    'retires Re-Ante at the exact terminal cursor state %s',
-    (cursorState) => {
-      expect(getThreeFiveSevenReAnteAnnouncement(reAnte, cursorState)).toBeNull();
-    },
-  );
+  it('never calls the opening H1/R1 ante a re-ante', () => {
+    expect(getThreeFiveSevenBatchStartAnnouncement(
+      playerToPotBatch(9, 'ante'),
+      allFold,
+      { ...reAnte, handNumber: 1, roundId: 'round-h1-r1' },
+    )).toBeNull();
+  });
+
+  it('classifies the serialized tax and re-ante starts independently', () => {
+    const events = [
+      getThreeFiveSevenBatchStartAnnouncement(playerToPotBatch(8, 'bet'), allFold, reAnte),
+      getThreeFiveSevenBatchStartAnnouncement(playerToPotBatch(9, 'ante'), allFold, reAnte),
+    ];
+    expect(events.map((event) => event?.kind)).toEqual(['pussy_tax', 'reante']);
+  });
 
   it.each([
     'All players folded',

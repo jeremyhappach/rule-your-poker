@@ -182,6 +182,19 @@ Date: 2026-08-18
   3-5-7 assertions, TypeScript, all 33 build-required Cribbage assertions, and
   the production build pass; published two-client R3 -> R1 smoke remains the
   acceptance gate.
+- Paused `Aug 18 - Roquan Smith` smoke proved the remaining announcement edge:
+  the database committed cursor 4 Pussy Tax, cursor 5 Re-Ante, and H2/R1
+  correctly on both clients running commit `4fe757e30`, but one client skipped
+  the transient React render in which cursor 5 was `running`. The canonical
+  ledger now exposes an optional exact batch-start callback after endpoint
+  ownership and before dispatch. Only 3-5-7 uses it to publish `Pussy Tax!`
+  and `Re-Ante`; exact batch settlement/reconciliation retires the scope.
+  Cursor state is cleanup-only and can no longer be the announcement trigger.
+  Existing Cribbage, Gin, Yahtzee, Holm, transport timing, database authority,
+  and financial progression are unchanged. Seventy-three focused 3-5-7/
+  ledger assertions, TypeScript, all 33 build-required Cribbage assertions,
+  and the production build pass. The paused production session remains
+  untouched; published two-client R3 -> R1 smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 

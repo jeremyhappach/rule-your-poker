@@ -32,6 +32,7 @@ import {
   type ChipPresentationAdmission,
   type ChipPresentationBatch,
   type ChipPresentationBalanceDelta,
+  type ChipPresentationBatchStarted,
   type ChipPresentationBatchSettled,
   type ChipPresentationCursorState,
   type LedgerDispatchOptions,
@@ -93,6 +94,7 @@ interface ChipTransportContextValue {
   __setPresentationAdmission: (
     admission: ChipPresentationAdmission | null,
     onBatchSettled?: ChipPresentationBatchSettled | null,
+    onBatchStarted?: ChipPresentationBatchStarted | null,
   ) => void;
   /** Diagnostics scoping. */
   gameId?: string | null;
@@ -304,19 +306,26 @@ export function ChipTransportProvider({
     presentationAdmissionRef.current?.(batch) ?? true
   ), []);
   const presentationBatchSettledRef = useRef<ChipPresentationBatchSettled | null>(null);
+  const presentationBatchStartedRef = useRef<ChipPresentationBatchStarted | null>(null);
   const onPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     presentationBatchSettledRef.current?.(batch);
+  }, []);
+  const onPresentationBatchStarted = useCallback((batch: ChipPresentationBatch) => {
+    presentationBatchStartedRef.current?.(batch);
   }, []);
   const setPresentationAdmission = useCallback((
     admission: ChipPresentationAdmission | null,
     onBatchSettled: ChipPresentationBatchSettled | null = null,
+    onBatchStarted: ChipPresentationBatchStarted | null = null,
   ) => {
     if (
       presentationAdmissionRef.current === admission &&
-      presentationBatchSettledRef.current === onBatchSettled
+      presentationBatchSettledRef.current === onBatchSettled &&
+      presentationBatchStartedRef.current === onBatchStarted
     ) return;
     presentationAdmissionRef.current = admission;
     presentationBatchSettledRef.current = onBatchSettled;
+    presentationBatchStartedRef.current = onBatchStarted;
     setPresentationAdmissionVersion((version) => version + 1);
   }, []);
   // Holm initial antes and 3-5-7 new-hand rollovers both gate the card deal on
@@ -332,6 +341,7 @@ export function ChipTransportProvider({
     canStartPresentationBatch,
     presentationAdmissionVersion,
     onPresentationBatchSettled,
+    onPresentationBatchStarted,
     publishPresentationBalanceDelta,
     abandonPresentationBalanceDeltas,
     requiresDurablePresentationCursor,
@@ -437,15 +447,16 @@ export function useChipPresentationCursorState(
 export function useChipTransferPresentationAdmission(
   admission: ChipPresentationAdmission,
   onBatchSettled?: ChipPresentationBatchSettled,
+  onBatchStarted?: ChipPresentationBatchStarted,
 ): void {
   const ctx = useContext(ChipTransportContext);
   const setAdmission = ctx?.__setPresentationAdmission;
 
   useLayoutEffect(() => {
     if (!setAdmission) return;
-    setAdmission(admission, onBatchSettled ?? null);
-    return () => setAdmission(null, null);
-  }, [admission, onBatchSettled, setAdmission]);
+    setAdmission(admission, onBatchSettled ?? null, onBatchStarted ?? null);
+    return () => setAdmission(null, null, null);
+  }, [admission, onBatchSettled, onBatchStarted, setAdmission]);
 }
 
 /** Internal hook used only by ChipTransportRuntime. */

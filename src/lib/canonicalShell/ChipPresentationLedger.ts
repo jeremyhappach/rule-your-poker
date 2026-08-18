@@ -47,6 +47,14 @@ export interface ChipPresentationBatch {
 export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean;
 
 /**
+ * Presentation-only launch boundary. Fires exactly once after an admitted
+ * immutable batch owns its endpoints and immediately before its first visual
+ * transfer is dispatched. Unlike cursor state observed through React, this
+ * edge cannot be skipped when running and settled updates share one render.
+ */
+export type ChipPresentationBatchStarted = (batch: ChipPresentationBatch) => void;
+
+/**
  * Presentation-only terminal handoff. Fires once only after every rendered
  * transfer in an admitted immutable batch has settled; it is never fired for
  * an abandoned endpoint or a reconnect baseline.
@@ -257,6 +265,7 @@ export function useChipPresentationLedger(
   canStartBatch: ChipPresentationAdmission = () => true,
   admissionVersion = 0,
   onBatchSettled: ChipPresentationBatchSettled = () => {},
+  onBatchStarted: ChipPresentationBatchStarted = () => {},
   onBalanceDelta: ChipPresentationBalanceDeltaHandler = () => {},
   onBalanceDeltasAbandoned: ChipPresentationBalanceDeltaAbandonHandler = () => {},
   waitForEndpointReadiness = false,
@@ -283,6 +292,8 @@ export function useChipPresentationLedger(
   waitForEndpointReadinessRef.current = waitForEndpointReadiness;
   const onBatchSettledRef = useRef(onBatchSettled);
   onBatchSettledRef.current = onBatchSettled;
+  const onBatchStartedRef = useRef(onBatchStarted);
+  onBatchStartedRef.current = onBatchStarted;
   const onBalanceDeltaRef = useRef(onBalanceDelta);
   onBalanceDeltaRef.current = onBalanceDelta;
   const onBalanceDeltasAbandonedRef = useRef(onBalanceDeltasAbandoned);
@@ -469,6 +480,13 @@ export function useChipPresentationLedger(
         };
         runningRef.current.set(batch.id, running);
         writeCursorState(batch.cursor, 'running');
+        try {
+          onBatchStartedRef.current(batch);
+        } catch (error) {
+          // Presentation narration must not strand canonical financial motion
+          // after this batch has already claimed its exact endpoints.
+          console.warn('[canonical-shell] chip batch-started callback threw', error);
+        }
 
         const entryTotal = batch.transfers.length;
         if (entryTotal === 0) {
