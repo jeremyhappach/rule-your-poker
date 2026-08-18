@@ -27,16 +27,13 @@ const reAnte: ThreeFiveSevenRolloverPresentation = {
 };
 
 describe('3-5-7 exact announcement ownership', () => {
-  it.each(['queued', 'running'] as const)(
-    'shows Pussy Tax while its exact transfer is %s',
-    (cursorState) => {
-      expect(getThreeFiveSevenPussyTaxAnnouncement(allFold, cursorState)).toMatchObject({
-        text: 'Pussy Tax!',
-      });
-    },
-  );
+  it('shows Pussy Tax only while its exact transfer is running', () => {
+    expect(getThreeFiveSevenPussyTaxAnnouncement(allFold, 'running')).toMatchObject({
+      text: 'Pussy Tax!',
+    });
+  });
 
-  it.each(['unknown', 'settled', 'reconciling', 'reconciled'] as const)(
+  it.each(['unknown', 'queued', 'settled', 'reconciling', 'reconciled'] as const)(
     'does not publish Pussy Tax when its cursor is %s',
     (cursorState) => {
       expect(getThreeFiveSevenPussyTaxAnnouncement(allFold, cursorState)).toBeNull();
@@ -46,7 +43,7 @@ describe('3-5-7 exact announcement ownership', () => {
   it('does not claim a tax announcement when no tax transfer committed', () => {
     expect(getThreeFiveSevenPussyTaxAnnouncement(
       { ...allFold, transferCursor: null },
-      'queued',
+      'running',
     )).toBeNull();
   });
 
@@ -57,14 +54,15 @@ describe('3-5-7 exact announcement ownership', () => {
     expect(matchesThreeFiveSevenPresentationCursor(reAnte, 8)).toBe(false);
   });
 
-  it.each(['queued', 'running'] as const)(
-    'shows Re-Ante while the exact later-hand Round 1 transfer is %s',
-    (cursorState) => {
-      expect(getThreeFiveSevenReAnteAnnouncement(reAnte, cursorState)).toMatchObject({
-        text: 'Re-Ante',
-      });
-    },
-  );
+  it('shows Re-Ante only while the exact later-hand Round 1 transfer is running', () => {
+    expect(getThreeFiveSevenReAnteAnnouncement(reAnte, 'running')).toMatchObject({
+      text: 'Re-Ante',
+    });
+  });
+
+  it('does not announce a queued Re-Ante that is still blocked by Pussy Tax', () => {
+    expect(getThreeFiveSevenReAnteAnnouncement(reAnte, 'queued')).toBeNull();
+  });
 
   it('never calls the opening H1/R1 ante a re-ante', () => {
     expect(getThreeFiveSevenReAnteAnnouncement(

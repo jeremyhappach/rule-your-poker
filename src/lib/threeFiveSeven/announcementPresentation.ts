@@ -16,7 +16,7 @@ type ThreeFiveSevenTransferPresentation =
   | ThreeFiveSevenRolloverPresentation;
 
 const isVisibleTransferState = (state: ChipPresentationCursorState): boolean =>
-  state === 'queued' || state === 'running';
+  state === 'running';
 
 export function matchesThreeFiveSevenPresentationCursor(
   presentation: ThreeFiveSevenTransferPresentation | null | undefined,

@@ -19,8 +19,11 @@ import {
   getThreeFiveSevenReAnteAnnouncement,
   getThreeFiveSevenReAnteAnnouncementScope,
   isThreeFiveSevenDedicatedResultAnnouncement,
-  matchesThreeFiveSevenPresentationCursor,
 } from "@/lib/threeFiveSeven/announcementPresentation";
+import {
+  getThreeFiveSevenPlayerToPotAdmission,
+  retainThreeFiveSevenFinancialPresentation,
+} from "@/lib/threeFiveSeven/financialPresentation";
 import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
@@ -1917,12 +1920,6 @@ export const MobileGameTable = ({
     && threeFiveSevenRolloverPresentation.handNumber === horsesHandNumber
     && threeFiveSevenRolloverPresentation.roundNumber === threeFiveSevenAuthoritativeRoundNumber
     && threeFiveSevenRolloverPresentation.roundNumber === threeFiveSevenViewRoundNumber;
-  const threeFiveSevenRolloverCursor = threeFiveSevenRolloverPresentationMatches
-    ? threeFiveSevenRolloverPresentation.transferCursor
-    : null;
-  const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
-    threeFiveSevenRolloverCursor,
-  );
   const threeFiveSevenAllFoldPresentationMatches =
     __is357GameType(gameType)
     && awaitingNextRound
@@ -1934,9 +1931,41 @@ export const MobileGameTable = ({
     && threeFiveSevenAllFoldPresentation.handNumber === horsesHandNumber
     && threeFiveSevenAllFoldPresentation.roundNumber === threeFiveSevenAuthoritativeRoundNumber
     && threeFiveSevenAllFoldPresentation.roundNumber === threeFiveSevenViewRoundNumber;
-  const threeFiveSevenAllFoldCursor = threeFiveSevenAllFoldPresentationMatches
-    ? threeFiveSevenAllFoldPresentation!.transferCursor
-    : null;
+  const retainedThreeFiveSevenAllFoldPresentationRef =
+    useRef<ThreeFiveSevenAllFoldPresentation | null>(null);
+  const retainedThreeFiveSevenRolloverPresentationRef =
+    useRef<ThreeFiveSevenRolloverPresentation | null>(null);
+  const threeFiveSevenFinancialScope = {
+    gameId,
+    dealerGameId: holmDealerGameId ?? horsesDealerGameId,
+  };
+  const retainedThreeFiveSevenAllFoldPresentation =
+    retainThreeFiveSevenFinancialPresentation(
+      retainedThreeFiveSevenAllFoldPresentationRef.current,
+      threeFiveSevenAllFoldPresentationMatches
+        ? threeFiveSevenAllFoldPresentation
+        : null,
+      threeFiveSevenFinancialScope,
+    );
+  const retainedThreeFiveSevenRolloverPresentation =
+    retainThreeFiveSevenFinancialPresentation(
+      retainedThreeFiveSevenRolloverPresentationRef.current,
+      threeFiveSevenRolloverPresentationMatches
+        ? threeFiveSevenRolloverPresentation
+        : null,
+      threeFiveSevenFinancialScope,
+    );
+  retainedThreeFiveSevenAllFoldPresentationRef.current =
+    retainedThreeFiveSevenAllFoldPresentation;
+  retainedThreeFiveSevenRolloverPresentationRef.current =
+    retainedThreeFiveSevenRolloverPresentation;
+  const threeFiveSevenRolloverCursor =
+    retainedThreeFiveSevenRolloverPresentation?.transferCursor ?? null;
+  const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
+    threeFiveSevenRolloverCursor,
+  );
+  const threeFiveSevenAllFoldCursor =
+    retainedThreeFiveSevenAllFoldPresentation?.transferCursor ?? null;
   const threeFiveSevenAllFoldCursorState = useChipPresentationCursorState(
     threeFiveSevenAllFoldCursor,
   );
@@ -4284,9 +4313,6 @@ export const MobileGameTable = ({
     const movesPlayerToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
     );
-    const movesPlayerToPot = batch.transfers.some(
-      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
-    );
 
     if (gameType === 'holm-game') {
       const dealerGameId = holmPresentationIdentity?.dealerGameId ?? null;
@@ -4334,20 +4360,12 @@ export const MobileGameTable = ({
       // opening/re-ante player-to-pot batches queued until their own cursor is
       // mounted; otherwise the flight can finish before its semantic notice or
       // before the correct Round 1 surface exists.
-      if (movesPlayerToPot && batch.reason === 'bet') {
-        return threeFiveSevenAllFoldPresentationMatches
-          && matchesThreeFiveSevenPresentationCursor(
-            threeFiveSevenAllFoldPresentation,
-            batch.cursor,
-          );
-      }
-      if (movesPlayerToPot && batch.reason === 'ante') {
-        return threeFiveSevenRolloverPresentationMatches
-          && matchesThreeFiveSevenPresentationCursor(
-            threeFiveSevenRolloverPresentation,
-            batch.cursor,
-          );
-      }
+      const playerToPotAdmission = getThreeFiveSevenPlayerToPotAdmission(
+        batch,
+        retainedThreeFiveSevenAllFoldPresentation,
+        retainedThreeFiveSevenRolloverPresentation,
+      );
+      if (playerToPotAdmission != null) return playerToPotAdmission;
       // Normal final-leg settlement publishes the reserve return as an
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
@@ -4385,10 +4403,8 @@ export const MobileGameTable = ({
     holmWinPotTriggerIdGated,
     holmShowdownPhase,
     lastRoundResult,
-    threeFiveSevenAllFoldPresentation,
-    threeFiveSevenAllFoldPresentationMatches,
-    threeFiveSevenRolloverPresentation,
-    threeFiveSevenRolloverPresentationMatches,
+    retainedThreeFiveSevenAllFoldPresentation,
+    retainedThreeFiveSevenRolloverPresentation,
     threeFiveSevenWinPhase,
     chipTransferWinnerId,
     chipTransferLoserIds,
@@ -7416,9 +7432,7 @@ export const MobileGameTable = ({
   // existing cursor gates advance/deal immediately after settlement.
   const activeThreeFiveSevenPussyTaxScopeRef = useRef<string | null>(null);
   useEffect(() => {
-    const presentation = threeFiveSevenAllFoldPresentationMatches
-      ? threeFiveSevenAllFoldPresentation
-      : null;
+    const presentation = retainedThreeFiveSevenAllFoldPresentation;
     const nextScope = presentation?.transferCursor != null
       ? getThreeFiveSevenPussyTaxAnnouncementScope(presentation)
       : null;
@@ -7456,15 +7470,12 @@ export const MobileGameTable = ({
     announcements,
     gameId,
     threeFiveSevenAllFoldCursorState,
-    threeFiveSevenAllFoldPresentation,
-    threeFiveSevenAllFoldPresentationMatches,
+    retainedThreeFiveSevenAllFoldPresentation,
   ]);
 
   const activeThreeFiveSevenReAnteScopeRef = useRef<string | null>(null);
   useEffect(() => {
-    const presentation = threeFiveSevenRolloverPresentationMatches
-      ? threeFiveSevenRolloverPresentation
-      : null;
+    const presentation = retainedThreeFiveSevenRolloverPresentation;
     const nextScope = presentation && presentation.handNumber > 1
       ? getThreeFiveSevenReAnteAnnouncementScope(presentation)
       : null;
@@ -7502,8 +7513,7 @@ export const MobileGameTable = ({
     announcements,
     gameId,
     threeFiveSevenRolloverCursorState,
-    threeFiveSevenRolloverPresentation,
-    threeFiveSevenRolloverPresentationMatches,
+    retainedThreeFiveSevenRolloverPresentation,
   ]);
 
   // Solo Holm showdown uses the same central space as the lone player's

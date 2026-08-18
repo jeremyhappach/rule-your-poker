@@ -168,6 +168,20 @@ Date: 2026-08-18
   are unchanged. Thirty-six focused 3-5-7 assertions, TypeScript, all 33
   build-required Cribbage assertions, and the production build pass; published
   two-client smoke remains the acceptance gate.
+- Paused `Aug 18 - Ryan Dempster` smoke proved a two-client cursor seam in that
+  presentation candidate. After one client advanced the database to the next
+  hand, the slower client recomputed away its exact outgoing pussy-tax claim.
+  The shared ledger correctly held the overlapping re-ante batch behind that
+  unadmitted tax cursor, leaving the later announcement visible without its
+  chip transport or deal. The client now retains each immutable 3-5-7 financial
+  cursor claim within the exact game/dealer-game scope until a newer claim or
+  identity reset replaces it. Cursor 8 can therefore finish before cursor 9 on
+  both clients even after authoritative state advances. `Pussy Tax!` and
+  `Re-Ante` publish only for a running transfer, never for a merely queued one.
+  Database state and the paused repro remain untouched. Fifty-three focused
+  3-5-7 assertions, TypeScript, all 33 build-required Cribbage assertions, and
+  the production build pass; published two-client R3 -> R1 smoke remains the
+  acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 
