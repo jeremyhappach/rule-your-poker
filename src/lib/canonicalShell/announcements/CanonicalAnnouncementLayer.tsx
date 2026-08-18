@@ -27,6 +27,8 @@ import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 import { useLifecycleMount, getLifecycleContext } from '../lifecycleDebug';
 import { useUnmountSnapshot } from '../shellLifecycleLog';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { recordFinancialAnnouncementEvidence } from './announcementLifecycleEvidence';
+import type { AnnouncementEvent } from './types';
 
 const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> = {}) => {
   try {
@@ -43,6 +45,13 @@ const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> 
     // no-op: diagnostic only
   }
 };
+
+function FinancialAnnouncementPaintEvidence({ event }: { event: AnnouncementEvent }) {
+  useEffect(() => {
+    recordFinancialAnnouncementEvidence(event, 'painted');
+  }, [event]);
+  return null;
+}
 
 export function CanonicalAnnouncementLayer() {
   useLifecycleMount('CanonicalAnnouncementLayer');
@@ -138,6 +147,7 @@ export function CanonicalAnnouncementLayer() {
         pointerEvents: 'none',
       }}
     >
+      <FinancialAnnouncementPaintEvidence event={railActive} />
       {node}
     </div>
   );

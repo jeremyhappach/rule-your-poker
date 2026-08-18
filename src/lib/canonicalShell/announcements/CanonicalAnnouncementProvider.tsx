@@ -51,6 +51,7 @@ import {
   type AnnouncementType,
 } from './types';
 import { recordAnnouncementDebugEvent } from './announcementDebugLog';
+import { recordFinancialAnnouncementEvidence } from './announcementLifecycleEvidence';
 
 const traceAnnouncementRuntime = (event: string, payload: Record<string, unknown> = {}) => {
   try {
@@ -218,6 +219,7 @@ export function CanonicalAnnouncementProvider({
       if (retiredIdsRef.current.has(evt.id)) return;
       retiredIdsRef.current.add(evt.id);
       drainDismiss(evt.id);
+      recordFinancialAnnouncementEvidence(evt, 'retired', { reason });
       const cb = evt.onRetired;
       if (cb) {
         try {
@@ -281,7 +283,7 @@ export function CanonicalAnnouncementProvider({
     // the scheduling of this microtask and its execution), we must
     // not touch the slot or the TTL timer — both belong to the new
     // owner.
-    if (transientIdRef.current != null && queue.length === 0) {
+    if (transientIdRef.current != null) {
       return;
     }
 
@@ -309,6 +311,9 @@ export function CanonicalAnnouncementProvider({
         },
       );
       if (!scopeMatches(event.scope, currentScope)) {
+        recordFinancialAnnouncementEvidence(event, 'disposition', {
+          disposition: 'rejected-scope',
+        });
         traceAnnouncementRuntime('emit:dropped:scope-mismatch', {
           id: event.id, type: event.type, eventScope: event.scope, currentScope,
         });
@@ -399,6 +404,9 @@ export function CanonicalAnnouncementProvider({
         seenRef.current.set(bucketKey, bucket);
       }
       if (bucket.has(event.id)) {
+        recordFinancialAnnouncementEvidence(event, 'disposition', {
+          disposition: 'rejected-dedupe',
+        });
         if (isYahtzeeMatchWin) {
           recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider REJECTED', {
             providerDealerGameId: currentScope.dealerGameId ?? null,
@@ -451,6 +459,13 @@ export function CanonicalAnnouncementProvider({
         : !liveTransient
           ? 'promote-immediate'
           : 'enqueue';
+      recordFinancialAnnouncementEvidence(resolved, 'disposition', {
+        disposition: branch,
+        activeEventId: liveTransient?.id ?? null,
+        activeEventType: liveTransient?.type ?? null,
+        activePriority: liveTransient?.resolvedPriority ?? null,
+        queueLength: queueRef.current.length,
+      });
       recordAnnouncementDebugEvent(
         'lifecycle',
         `DOUBLE-SKUNK-TRACE terminal-eval ${resolved.type}(${resolved.id.slice(0,8)}) pri=${resolved.resolvedPriority} branch=${branch} ref=${liveTransient?.type ?? 'null'}(${refTransientId?.slice(0,8) ?? 'null'}) closure=${closureTransient?.type ?? 'null'} mismatch=${closureRefMismatch}`,
@@ -690,17 +705,25 @@ export function CanonicalAnnouncementProvider({
       );
 
       if (liveMatchId) {
-        setTransient((cur) => {
-          if (cur && cur.transientScope === scope) {
-            clearTtl();
-            transientIdRef.current = null;
-            transientRef.current = null;
-            retireEvent(cur, 'scope-retire');
-            queueMicrotask(promoteNextTransient);
-            return null;
-          }
-          return cur;
-        });
+        // `retireTransientScope` is a synchronous ownership boundary. Clear
+        // the authoritative refs before returning so a same-tick successor
+        // cannot observe the retired event and enqueue behind it merely
+        // because React deferred this component's state updater.
+        clearTtl();
+        transientIdRef.current = null;
+        transientRef.current = null;
+        setTransient((cur) => (cur?.id === liveMatchId ? null : cur));
+
+        // Preserve the global priority queue before the producer publishes a
+        // successor. If an unrelated event was already waiting, it becomes the
+        // live owner now and the successor goes through normal priority rules.
+        promoteNextTransient();
+        retireEvent(live, 'scope-retire');
+      } else if (!live && kept.length > 0) {
+        // A prior terminal transition can leave promotion pending in a
+        // microtask. Scope retirement must leave the synchronous state machine
+        // with either a live owner or an empty queue.
+        promoteNextTransient();
       }
     },
     [clearTtl, retireEvent, promoteNextTransient],

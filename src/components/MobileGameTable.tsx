@@ -4445,7 +4445,12 @@ export const MobileGameTable = ({
         id: event.id,
         type: 'round_win',
         scope: { dealerGameId: gameId ?? null, roundId: null },
-        payload: { text: event.text, kind: event.kind },
+        payload: {
+          text: event.text,
+          kind: event.kind,
+          handNumber: event.handNumber,
+          transferCursor: event.transferCursor,
+        },
         ttlMs: 60_000,
         transientScope: event.scope,
       });
@@ -4455,7 +4460,12 @@ export const MobileGameTable = ({
       id: event.id,
       type: 'peg_notice',
       scope: { dealerGameId: gameId ?? null, roundId: null },
-      payload: { title: event.text, kind: event.kind },
+      payload: {
+        title: event.text,
+        kind: event.kind,
+        handNumber: event.handNumber,
+        transferCursor: event.transferCursor,
+      },
       ttlMs: 60_000,
       transientScope: event.scope,
     });

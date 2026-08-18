@@ -195,6 +195,23 @@ Date: 2026-08-18
   ledger assertions, TypeScript, all 33 build-required Cribbage assertions,
   and the production build pass. The paused production session remains
   untouched; published two-client R3 -> R1 smoke remains the acceptance gate.
+- Paused `Aug 18 - Stella Blue` smoke rejected that candidate: both clients on
+  commit `9fe57529f` consumed the same committed cursor 4 Pussy Tax and cursor
+  5 Re-Ante sequence, but Hap never painted `Re-Ante`. The canonical rail's
+  `retireTransientScope` contract said synchronous while its live-event ref was
+  actually cleared later inside a React state updater. A same-tick lower-
+  priority successor could therefore enqueue behind the retired tax and be
+  removed at its own settlement without ever becoming visible.
+- The current client candidate makes scope retirement synchronous at the rail
+  state-machine boundary, promotes any unrelated queued priority owner before
+  admitting a successor, and prevents a stale promotion task from overwriting
+  a newer live event. A mounted-provider regression covers the exact Pussy Tax
+  -> Re-Ante handoff under pending React work; separate cases preserve unrelated
+  priority ordering and Cribbage counting-target retirement. Debug-gated
+  exact-identity evidence now records disposition, actual paint, and retirement
+  for both 3-5-7 financial notices. Forty-eight focused assertions, TypeScript,
+  all 33 build-required Cribbage assertions, and the production build pass;
+  published two-client R3 -> R1 smoke remains the acceptance gate.
 
 ## Yahtzee remote-score presentation handoff
 

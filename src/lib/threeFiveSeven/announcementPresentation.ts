@@ -10,6 +10,8 @@ export interface ThreeFiveSevenCursorAnnouncement {
   scope: string;
   text: 'Pussy Tax!' | 'Re-Ante';
   kind: 'pussy_tax' | 'reante';
+  handNumber: number;
+  transferCursor: number;
 }
 
 type ThreeFiveSevenTransferPresentation =
@@ -41,6 +43,8 @@ function getThreeFiveSevenPussyTaxAnnouncement(
     scope,
     text: 'Pussy Tax!',
     kind: 'pussy_tax',
+    handNumber: presentation.handNumber,
+    transferCursor: presentation.transferCursor!,
   };
 }
 
@@ -66,6 +70,8 @@ function getThreeFiveSevenReAnteAnnouncement(
     scope,
     text: 'Re-Ante',
     kind: 'reante',
+    handNumber: presentation.handNumber,
+    transferCursor: presentation.transferCursor!,
   };
 }
 

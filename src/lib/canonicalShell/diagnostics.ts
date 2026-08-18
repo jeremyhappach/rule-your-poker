@@ -36,6 +36,7 @@ export type ShellLifecycleEvent =
   | 'chip-transport-dispatched'
   | 'chip-transport-settled'
   | 'chip-transport-dropped'
+  | 'announcement-lifecycle'
   | 'seat-anchor-projection-changed'
   | 'seat-anchor-canonicalized-2p';
 
@@ -46,6 +47,8 @@ export interface ShellEventPayload {
   dealerGameId?: string | null;
   handNumber?: number | null;
   detail?: Record<string, unknown>;
+  /** Optional exact lifecycle identity for debug persistence dedupe. */
+  dedupKey?: string;
 }
 
 /**
@@ -63,6 +66,7 @@ export function recordShellEvent(
     dealerGameId,
     handNumber,
     detail,
+    dedupKey,
   } = payload;
 
   if (import.meta.env.DEV) {
@@ -89,6 +93,7 @@ export function recordShellEvent(
         eventType: 'transition',
         severity: 'info',
         eventName: `canonical-shell-${eventName}`,
+        dedupKey,
         payload: {
           sessionId: sessionId ?? null,
           dealerGameId: dealerGameId ?? null,
