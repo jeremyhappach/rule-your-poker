@@ -16,6 +16,12 @@
   flight, winner announcement, and confetti. Destination bounce remains
   deferred; unsolicited winner-card exposure is a separate queued consent bug
   (Backlog item 3H).
+- The 3-5-7 winner-only final-leg handoff passed published production smoke on
+  2026-08-19 at commit
+  `045cd01f2d3e2b11cbf44946ac43afb67559a4f3`. When no opponent owns a leg,
+  the terminal sequence skips the zero-transfer 3.5-second legs-to-player hold
+  and proceeds through the existing sweep-credit/pot handoff. Preserve the
+  timed sweep when one or more opponent legs actually move.
 - The 3-5-7 atomic setup and exact first/new-hand deal-admission P0 passed
   published two-client smoke on 2026-08-17 at commit `8f6890caa`. Preserve the
   initiating-client committed RPC result, immediate private-card refetch, and

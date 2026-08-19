@@ -25,7 +25,8 @@ Date: 2026-08-19
   advancement are unchanged.
 - Fourteen focused component/helper/sweep-credit assertions, TypeScript, all
   33 build-required Cribbage assertions, and the production build pass.
-  Published two-client winner-only-leg smoke remains the acceptance gate.
+  Published two-client winner-only-leg smoke passed on 2026-08-19 at commit
+  `045cd01f2d3e2b11cbf44946ac43afb67559a4f3`; this defect is closed.
 
 ## 3-5-7 atomic terminal participation handoff
 
