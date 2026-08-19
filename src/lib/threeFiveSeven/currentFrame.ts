@@ -3,6 +3,8 @@ export interface ThreeFiveSevenFrameIdentity {
   hand_number: number | null;
   round_number: number | null;
   round_id: string | null;
+  opening_transfer_required: boolean;
+  opening_transfer_cursor: number | null;
   chip_transfer_cursor: number;
 }
 
@@ -50,6 +52,11 @@ function nullableInteger(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) ? value : null;
 }
 
+function nullablePositiveInteger(value: unknown): number | null {
+  const parsed = nullableInteger(value);
+  return parsed != null && parsed > 0 ? parsed : null;
+}
+
 /**
  * Validate the RPC envelope before any React state writer sees it. An active
  * frame is admitted only when the game pointer, exact round, and the caller's
@@ -76,11 +83,21 @@ export function parseThreeFiveSevenCurrentFrame<
     return { player_id: row.player_id, cards: row.cards };
   });
 
+  const rawOpeningTransferCursor = raw.identity.opening_transfer_cursor;
+  const openingTransferCursor = nullablePositiveInteger(rawOpeningTransferCursor);
+  if (rawOpeningTransferCursor != null && openingTransferCursor == null) {
+    throw new Error('three_five_seven_current_frame:malformed_opening_transfer_cursor');
+  }
+  if (typeof raw.identity.opening_transfer_required !== 'boolean') {
+    throw new Error('three_five_seven_current_frame:malformed_opening_transfer_required');
+  }
   const identity: ThreeFiveSevenFrameIdentity = {
     dealer_game_id: nullableString(raw.identity.dealer_game_id),
     hand_number: nullableInteger(raw.identity.hand_number),
     round_number: nullableInteger(raw.identity.round_number),
     round_id: nullableString(raw.identity.round_id),
+    opening_transfer_required: raw.identity.opening_transfer_required,
+    opening_transfer_cursor: openingTransferCursor,
     chip_transfer_cursor: nullableInteger(raw.identity.chip_transfer_cursor) ?? 0,
   };
   const gameDealerGameId = nullableString(game.current_game_uuid);
@@ -100,6 +117,19 @@ export function parseThreeFiveSevenCurrentFrame<
     throw new Error('three_five_seven_current_frame:exact_round_missing');
   }
   if (round) {
+    const roundOpeningTransferCursor = nullablePositiveInteger(
+      round.three_five_seven_opening_transfer_cursor,
+    );
+    const roundOpeningTransferRequired = round.three_five_seven_opening_transfer_required;
+    if (
+      round.three_five_seven_opening_transfer_cursor != null
+      && roundOpeningTransferCursor == null
+    ) {
+      throw new Error('three_five_seven_current_frame:malformed_round_opening_transfer_cursor');
+    }
+    if (typeof roundOpeningTransferRequired !== 'boolean') {
+      throw new Error('three_five_seven_current_frame:malformed_round_opening_transfer_required');
+    }
     if (
       nullableString(round.id) !== identity.round_id
       || nullableString(round.dealer_game_id) !== gameDealerGameId
@@ -107,6 +137,24 @@ export function parseThreeFiveSevenCurrentFrame<
       || nullableInteger(round.round_number) !== gameRoundNumber
     ) {
       throw new Error('three_five_seven_current_frame:round_identity_mismatch');
+    }
+    if (roundOpeningTransferCursor !== identity.opening_transfer_cursor) {
+      throw new Error('three_five_seven_current_frame:opening_transfer_claim_mismatch');
+    }
+    if (roundOpeningTransferRequired !== identity.opening_transfer_required) {
+      throw new Error('three_five_seven_current_frame:opening_transfer_requirement_mismatch');
+    }
+    if (
+      (identity.opening_transfer_required && identity.opening_transfer_cursor == null)
+      || (!identity.opening_transfer_required && identity.opening_transfer_cursor !== null)
+    ) {
+      throw new Error('three_five_seven_current_frame:opening_transfer_requirement_invalid');
+    }
+    if (
+      gameRoundNumber !== 1
+      && (identity.opening_transfer_required || identity.opening_transfer_cursor !== null)
+    ) {
+      throw new Error('three_five_seven_current_frame:opening_transfer_claim_on_nonopening_round');
     }
   } else if (identity.round_id !== null) {
     throw new Error('three_five_seven_current_frame:orphan_round_identity');

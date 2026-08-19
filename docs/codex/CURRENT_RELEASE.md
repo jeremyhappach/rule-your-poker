@@ -1,6 +1,37 @@
 # Current release and cutover state
 
-Date: 2026-08-18
+Date: 2026-08-19
+
+## 3-5-7 exact opening-transfer claim
+
+- Frozen production session `Aug 19 - Brandon Morrow` proved the repeated
+  R3-to-R1 P0 was a financial-presentation identity split, not missing cards.
+  PostgreSQL had committed H3/R1, both three-card rows, and re-ante batch 9,
+  but the initiating advance RPC returned the pre-commit game cursor 8 because
+  the transfer projector is a deferred constraint trigger. The peer's later
+  duplicate received cursor 9. The initiating client retained cursor 8, could
+  never admit batch 9, and therefore never released its deal gate.
+- Migration `20260819150000_exact_357_opening_transfer_claim.sql` makes every
+  charged Round 1 own the immutable ante-batch cursor that opened that exact
+  `(game, dealer game, hand, round, round row)` identity. The bootstrap and
+  R3-to-R1 RPCs force the complete deferred projector before returning, store
+  the claim on the round, and return it directly to the initiating caller.
+  Duplicate and late callers replay the stored claim even after the mutable
+  game cursor advances; they cannot claim a newer batch or alter a newer hand.
+- Existing claims are backfilled only where one charge result and one
+  immutable ante batch prove the mapping. Ambiguous or missing active claims
+  abort rather than silently waiting. The atomic current-frame RPC validates
+  the round claim against its immutable batch, and the client no longer derives
+  new-hand presentation identity from `games.chip_transfer_cursor`.
+- The migration is installed on owned production. The complete rollback proof
+  passed before and after installation, including atomic bootstrap, winner,
+  tie, authorization, continuation, R3-to-R1, duplicate, a late replay after a
+  newer cursor, terminal handoff, zero-charge openings, and the complete
+  scheduled recovery function. A read-only assertion also verified the frozen
+  `Brandon Morrow` round against its exact immutable ante batch. Thirty focused
+  client assertions, TypeScript, all 33 build-required Cribbage assertions,
+  and the production build pass. Publication and two-client smoke remain the
+  release gates at this checkpoint.
 
 ## 3-5-7 atomic current-frame hydration
 

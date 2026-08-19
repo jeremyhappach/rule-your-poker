@@ -14,6 +14,8 @@ function rawFrame(overrides: Record<string, unknown> = {}) {
   const round = {
     id: 'round-h2-r1', game_id: 'game-1', dealer_game_id: 'dg-1',
     hand_number: 2, round_number: 1, cards_dealt: 3, status: 'betting',
+    three_five_seven_opening_transfer_required: true,
+    three_five_seven_opening_transfer_cursor: 9,
   };
   return {
     game, round, players: [{ id: 'player-1' }],
@@ -21,7 +23,8 @@ function rawFrame(overrides: Record<string, unknown> = {}) {
     viewer_player_id: 'player-1', viewer_cards_required: true, viewer_cards_present: true,
     identity: {
       dealer_game_id: 'dg-1', hand_number: 2, round_number: 1,
-      round_id: 'round-h2-r1', chip_transfer_cursor: 9,
+      round_id: 'round-h2-r1', opening_transfer_required: true,
+      opening_transfer_cursor: 9, chip_transfer_cursor: 9,
     },
     ...overrides,
   };
@@ -47,6 +50,33 @@ describe('3-5-7 atomic current frame', () => {
     expect(() => parseThreeFiveSevenCurrentFrame(rawFrame({
       game: { ...rawFrame().game, total_hands: 1, current_round: 3 },
     }))).toThrow(/game_identity_mismatch/);
+  });
+
+  it('rejects a frame whose exact round claim disagrees with its identity', () => {
+    expect(() => parseThreeFiveSevenCurrentFrame(rawFrame({
+      identity: {
+        ...rawFrame().identity,
+        opening_transfer_cursor: 10,
+      },
+    }))).toThrow(/opening_transfer_claim_mismatch/);
+  });
+
+  it('admits an explicit zero-charge opening with no transfer cursor', () => {
+    const base = rawFrame();
+    const frame = parseThreeFiveSevenCurrentFrame(rawFrame({
+      round: {
+        ...base.round,
+        three_five_seven_opening_transfer_required: false,
+        three_five_seven_opening_transfer_cursor: null,
+      },
+      identity: {
+        ...base.identity,
+        opening_transfer_required: false,
+        opening_transfer_cursor: null,
+      },
+    }));
+    expect(frame.identity.opening_transfer_required).toBe(false);
+    expect(frame.identity.opening_transfer_cursor).toBeNull();
   });
 
   it('accepts R3 to next-hand R1 as forward identity', () => {

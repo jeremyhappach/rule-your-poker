@@ -874,3 +874,19 @@ admits game, round, roster, card context, and cards together, rejects a slower
 older request, rejects active identity regression or conflicting round IDs,
 and uses no newest-round fallback. This preserves transport and announcement
 presentation while eliminating client-dependent bootstrap at round boundaries.
+
+## D-066 - A charged 3-5-7 Round 1 owns its opening transfer batch
+
+The mutable `games.chip_transfer_cursor` is synchronization progress, not a
+durable Round 1 identity. Before a charged 3-5-7 opening or re-ante RPC returns,
+PostgreSQL must force the complete deferred transfer projector, verify the
+resulting immutable ante batch, and store that cursor on the exact round row.
+The initiating caller consumes the stored claim directly; Realtime only wakes
+peer and reconnect refetches.
+
+Duplicate and late callers return that round-owned claim even when later chip
+movement has advanced the game cursor. A missing claim may be created only
+from the same transaction's pending ante journal; it is never reconstructed
+from the current game cursor. Existing history is backfilled only from an
+unambiguous charge-result/batch mapping. Missing, ambiguous, or mismatched live
+claims fail explicitly instead of parking a client presentation gate.

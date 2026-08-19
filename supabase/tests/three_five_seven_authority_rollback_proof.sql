@@ -15,6 +15,7 @@ DECLARE
   v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
   v_result jsonb; v_replay jsonb; v_frame jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
+  v_opening_cursor bigint; v_late_cursor bigint;
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
 BEGIN
   SELECT array_agg(id ORDER BY created_at,id) INTO v_users FROM (
@@ -67,11 +68,19 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
   SELECT public.three_five_seven_begin_game(v_game) INTO v_result;
   v_round:=(v_result->>'round_id')::uuid;
+  v_opening_cursor:=(v_result->>'opening_transfer_cursor')::bigint;
   IF v_result->>'outcome'<>'started' OR v_result->'round'->>'id' IS DISTINCT FROM v_round::text
+     OR coalesce((v_result->>'opening_transfer_required')::boolean,false) IS NOT TRUE
+     OR coalesce(v_opening_cursor,0)<=0
+     OR (v_result#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
      OR (SELECT status FROM public.games WHERE id=v_game)<>'in_progress'
+     OR (SELECT chip_transfer_cursor FROM public.games WHERE id=v_game)<>v_opening_cursor
      OR (SELECT pot FROM public.games WHERE id=v_game)<>4
      OR EXISTS(SELECT 1 FROM public.players WHERE game_id=v_game AND chips<>98)
-     OR (SELECT count(*) FROM public.player_cards WHERE round_id=v_round)<>2 THEN
+     OR (SELECT count(*) FROM public.player_cards WHERE round_id=v_round)<>2
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_game AND dealer_game_id=v_dealer AND cursor=v_opening_cursor
+            AND reason='ante' AND jsonb_array_length(transfers)=2)<>1 THEN
     RAISE EXCEPTION '357_authority_proof:atomic_bootstrap_invalid:%',v_result;
   END IF;
   SELECT public.three_five_seven_current_frame(v_game) INTO v_frame;
@@ -80,6 +89,9 @@ BEGIN
      OR v_frame#>>'{round,id}' IS DISTINCT FROM v_round::text
      OR v_frame#>>'{identity,hand_number}' IS DISTINCT FROM '1'
      OR v_frame#>>'{identity,round_number}' IS DISTINCT FROM '1'
+     OR coalesce((v_frame#>>'{identity,opening_transfer_required}')::boolean,false) IS NOT TRUE
+     OR (v_frame#>>'{identity,opening_transfer_cursor}')::bigint<>v_opening_cursor
+     OR (v_frame#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
      OR jsonb_array_length(v_frame->'players')<>2
      OR (SELECT count(*) FROM jsonb_array_elements(v_frame->'player_cards') card_row
           WHERE card_row->>'player_id'=v_p1::text)<>1
@@ -91,8 +103,11 @@ BEGIN
   END IF;
   SELECT public.three_five_seven_begin_game(v_game) INTO v_replay;
   IF v_replay->>'outcome'<>'already_started' OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
+     OR coalesce((v_replay->>'opening_transfer_required')::boolean,false) IS NOT TRUE
      OR v_replay#>>'{game,id}' IS DISTINCT FROM v_game::text
      OR v_replay#>>'{round,id}' IS DISTINCT FROM v_round::text
+     OR (v_replay->>'opening_transfer_cursor')::bigint<>v_opening_cursor
+     OR (v_replay#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
      OR (SELECT pot FROM public.games WHERE id=v_game)<>4 OR EXISTS(SELECT 1 FROM public.players WHERE game_id=v_game AND chips<>98) THEN
     RAISE EXCEPTION '357_authority_proof:bootstrap_replay_mutated:%',v_replay;
   END IF;
@@ -211,7 +226,15 @@ BEGIN
   END IF;
   SELECT chips INTO v_chips1 FROM public.players WHERE id=v_p1; SELECT chips INTO v_chips2 FROM public.players WHERE id=v_p2;
   SELECT public.three_five_seven_advance_round(v_game,v_r3,v_dealer,1,3) INTO v_result; v_r1_next:=(v_result->>'round_id')::uuid;
+  v_opening_cursor:=(v_result->>'opening_transfer_cursor')::bigint;
   IF (SELECT total_hands FROM public.games WHERE id=v_game)<>2 OR (SELECT current_round FROM public.games WHERE id=v_game)<>1
+     OR coalesce((v_result->>'opening_transfer_required')::boolean,false) IS NOT TRUE
+     OR coalesce(v_opening_cursor,0)<=0
+     OR (v_result#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
+     OR (SELECT chip_transfer_cursor FROM public.games WHERE id=v_game)<>v_opening_cursor
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_game AND dealer_game_id=v_dealer AND cursor=v_opening_cursor
+            AND reason='ante' AND jsonb_array_length(transfers)=2)<>1
      OR (SELECT chips FROM public.players WHERE id=v_p1)<>v_chips1-1 OR (SELECT chips FROM public.players WHERE id=v_p2)<>v_chips2-1
      OR EXISTS(SELECT 1 FROM public.player_cards WHERE round_id=v_r1_next AND jsonb_array_length(cards)<>3) THEN
     RAISE EXCEPTION '357_authority_proof:rollover_invalid:%',v_result;
@@ -223,11 +246,50 @@ BEGIN
      OR v_frame#>>'{round,hand_number}' IS DISTINCT FROM '2'
      OR v_frame#>>'{round,round_number}' IS DISTINCT FROM '1'
      OR v_frame#>>'{identity,round_id}' IS DISTINCT FROM v_r1_next::text
+     OR coalesce((v_frame#>>'{identity,opening_transfer_required}')::boolean,false) IS NOT TRUE
+     OR (v_frame#>>'{identity,opening_transfer_cursor}')::bigint<>v_opening_cursor
+     OR (v_frame#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
      OR (SELECT count(*) FROM jsonb_array_elements(v_frame->'player_cards') card_row
           WHERE card_row->>'player_id'=v_p2::text)<>1
      OR (SELECT jsonb_array_length(card_row->'cards') FROM jsonb_array_elements(v_frame->'player_cards') card_row
           WHERE card_row->>'player_id'=v_p2::text)<>3 THEN
     RAISE EXCEPTION '357_authority_proof:rollover_current_frame_invalid:%',v_frame;
+  END IF;
+
+  -- A later financial batch may advance games.chip_transfer_cursor, but an
+  -- exact duplicate of R3 -> next-hand R1 must replay the stored opening claim
+  -- and must not mutate the newer current identity.
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  PERFORM public.settle_gameplay_chip_transfers(
+    v_game,
+    jsonb_build_array(jsonb_build_object(
+      'from',jsonb_build_object('kind','player','playerId',v_p1),
+      'to',jsonb_build_object('kind','pot'),
+      'amount',1
+    )),
+    'bet'
+  );
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
+  EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
+  SELECT chip_transfer_cursor INTO v_late_cursor FROM public.games WHERE id=v_game;
+  SELECT public.three_five_seven_advance_round(v_game,v_r3,v_dealer,1,3) INTO v_replay;
+  IF v_late_cursor<=v_opening_cursor
+     OR v_replay->>'outcome'<>'already_started'
+     OR coalesce((v_replay->>'opening_transfer_required')::boolean,false) IS NOT TRUE
+     OR (v_replay->>'opening_transfer_cursor')::bigint<>v_opening_cursor
+     OR (v_replay#>>'{round,three_five_seven_opening_transfer_cursor}')::bigint<>v_opening_cursor
+     OR (v_replay#>>'{game,chip_transfer_cursor}')::bigint<>v_late_cursor
+     OR (SELECT total_hands FROM public.games WHERE id=v_game)<>2
+     OR (SELECT current_round FROM public.games WHERE id=v_game)<>1
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches
+          WHERE game_id=v_game AND cursor=v_opening_cursor AND reason='ante')<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:late_rollover_replay_invalid:%/%/%',v_replay,v_opening_cursor,v_late_cursor;
+  END IF;
+  SELECT public.three_five_seven_current_frame(v_game) INTO v_frame;
+  IF (v_frame#>>'{identity,opening_transfer_cursor}')::bigint<>v_opening_cursor
+     OR (v_frame#>>'{identity,chip_transfer_cursor}')::bigint<>v_late_cursor THEN
+    RAISE EXCEPTION '357_authority_proof:late_cursor_frame_invalid:%',v_frame;
   END IF;
 
   -- A purchased nonterminal leg is owned reserve beside the player. It debits
@@ -253,6 +315,11 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
   SELECT public.three_five_seven_begin_game(v_leg_game) INTO v_result;
   v_leg_round:=(v_result->>'round_id')::uuid;
+  IF coalesce((v_result->>'opening_transfer_required')::boolean,true) IS NOT FALSE
+     OR v_result->'opening_transfer_cursor' IS DISTINCT FROM 'null'::jsonb
+     OR v_result#>>'{round,three_five_seven_opening_transfer_cursor}' IS NOT NULL THEN
+    RAISE EXCEPTION '357_authority_proof:zero_charge_bootstrap_claim_invalid:%',v_result;
+  END IF;
   PERFORM public.three_five_seven_submit_decision(v_leg_game,v_leg_round,v_leg_dealer,1,1,v_l1,'stay');
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
@@ -288,11 +355,21 @@ BEGIN
     (v_cron_game,v_users[1],1,100,'active',false,false,'ante_up'),(v_cron_game,v_users[2],2,100,'active',false,false,'ante_up');
   PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
   PERFORM set_config('app.three_five_seven_recovery_game_id',v_cron_game::text,true);
-  PERFORM private.advance_due_three_five_seven_state();
+  SELECT private.advance_due_three_five_seven_state() INTO v_result;
   PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
   IF (SELECT status FROM public.games WHERE id=v_cron_game)<>'in_progress'
-     OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>1 THEN
-    RAISE EXCEPTION '357_authority_proof:complete_scheduled_recovery_failed';
+     OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>1
+     OR coalesce((v_result#>>'{games,0,result,opening_transfer_cursor}')::bigint,0)<=0
+     OR coalesce((v_result#>>'{games,0,result,opening_transfer_required}')::boolean,false) IS NOT TRUE
+     OR (v_result#>>'{games,0,result,opening_transfer_cursor}')::bigint
+          IS DISTINCT FROM (SELECT three_five_seven_opening_transfer_cursor
+                              FROM public.rounds WHERE dealer_game_id=v_cron_dealer)
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches batch
+          JOIN public.rounds round_row
+            ON round_row.game_id=batch.game_id
+           AND round_row.three_five_seven_opening_transfer_cursor=batch.cursor
+         WHERE round_row.dealer_game_id=v_cron_dealer AND batch.reason='ante')<>1 THEN
+    RAISE EXCEPTION '357_authority_proof:complete_scheduled_recovery_failed:%',v_result;
   END IF;
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
@@ -337,6 +414,10 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
   SELECT public.three_five_seven_begin_game(v_terminal_game) INTO v_result; v_terminal_round:=(v_result->>'round_id')::uuid;
+  IF coalesce((v_result->>'opening_transfer_required')::boolean,true) IS NOT FALSE
+     OR v_result->'opening_transfer_cursor' IS DISTINCT FROM 'null'::jsonb THEN
+    RAISE EXCEPTION '357_authority_proof:zero_charge_terminal_bootstrap_claim_invalid:%',v_result;
+  END IF;
   PERFORM public.three_five_seven_submit_decision(v_terminal_game,v_terminal_round,v_terminal_dealer,1,1,v_t1,'stay');
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);

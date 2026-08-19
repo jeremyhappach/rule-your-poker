@@ -2431,6 +2431,7 @@ export type Database = {
           round_number: number
           status: string
           three_five_seven_legs_at_start: Json | null
+          three_five_seven_opening_transfer_cursor: number | null
           yahtzee_state: Json | null
         }
         Insert: {
@@ -2461,6 +2462,7 @@ export type Database = {
           round_number: number
           status?: string
           three_five_seven_legs_at_start?: Json | null
+          three_five_seven_opening_transfer_cursor?: number | null
           yahtzee_state?: Json | null
         }
         Update: {
@@ -2491,6 +2493,7 @@ export type Database = {
           round_number?: number
           status?: string
           three_five_seven_legs_at_start?: Json | null
+          three_five_seven_opening_transfer_cursor?: number | null
           yahtzee_state?: Json | null
         }
         Relationships: [

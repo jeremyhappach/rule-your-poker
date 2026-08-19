@@ -4,7 +4,8 @@ export interface ThreeFiveSevenRolloverPresentation {
   roundId: string;
   handNumber: number;
   roundNumber: 1;
-  transferCursor: number;
+  openingTransferRequired: boolean;
+  transferCursor: number | null;
 }
 
 interface CurrentThreeFiveSevenRolloverIdentity {
@@ -14,7 +15,8 @@ interface CurrentThreeFiveSevenRolloverIdentity {
   roundId: string | null | undefined;
   handNumber: number | null | undefined;
   roundNumber: number | null | undefined;
-  transferCursor: number | null | undefined;
+  openingTransferRequired: boolean | null | undefined;
+  openingTransferCursor: number | null | undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,6 +27,11 @@ function asPositiveInteger(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value > 0
     ? value
     : null;
+}
+
+function asNullablePositiveInteger(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  return asPositiveInteger(value) ?? undefined;
 }
 
 export function isThreeFiveSevenGameType(gameType: string | null | undefined): boolean {
@@ -55,7 +62,11 @@ export function parseThreeFiveSevenRolloverAdvanceResult(
   const roundNumber = asPositiveInteger(value.round.round_number);
   const resultHandNumber = asPositiveInteger(value.hand_number);
   const resultRoundNumber = asPositiveInteger(value.round_number);
-  const transferCursor = asPositiveInteger(value.game.chip_transfer_cursor);
+  const openingTransferRequired = value.opening_transfer_required;
+  const resultOpeningTransferCursor = asNullablePositiveInteger(value.opening_transfer_cursor);
+  const roundOpeningTransferCursor = asNullablePositiveInteger(
+    value.round.three_five_seven_opening_transfer_cursor,
+  );
 
   if (
     resultGameId !== expectedGameId
@@ -66,7 +77,13 @@ export function parseThreeFiveSevenRolloverAdvanceResult(
     || roundNumber !== 1
     || resultHandNumber !== handNumber
     || resultRoundNumber !== roundNumber
-    || transferCursor == null
+    || typeof openingTransferRequired !== 'boolean'
+    || resultOpeningTransferCursor === undefined
+    || roundOpeningTransferCursor === undefined
+    || (openingTransferRequired
+      ? resultOpeningTransferCursor == null
+        || roundOpeningTransferCursor !== resultOpeningTransferCursor
+      : resultOpeningTransferCursor !== null || roundOpeningTransferCursor !== null)
   ) return null;
 
   return {
@@ -75,7 +92,8 @@ export function parseThreeFiveSevenRolloverAdvanceResult(
     roundId,
     handNumber,
     roundNumber: 1,
-    transferCursor,
+    openingTransferRequired,
+    transferCursor: roundOpeningTransferCursor,
   };
 }
 
@@ -106,12 +124,21 @@ export function selectThreeFiveSevenRolloverPresentation(
     || !current.roundId
     || current.handNumber == null
     || current.roundNumber !== 1
+    || typeof current.openingTransferRequired !== 'boolean'
   ) return null;
 
-  if (directResult && matchesCurrentIdentity(directResult, current)) return directResult;
-
-  const transferCursor = asPositiveInteger(current.transferCursor);
-  if (transferCursor == null) return null;
+  const transferCursor = asNullablePositiveInteger(current.openingTransferCursor);
+  if (
+    transferCursor === undefined
+    || (current.openingTransferRequired && transferCursor == null)
+    || (!current.openingTransferRequired && transferCursor !== null)
+  ) return null;
+  if (
+    directResult
+    && matchesCurrentIdentity(directResult, current)
+    && directResult.openingTransferRequired === current.openingTransferRequired
+    && directResult.transferCursor === transferCursor
+  ) return directResult;
 
   return {
     gameId: current.gameId,
@@ -119,6 +146,7 @@ export function selectThreeFiveSevenRolloverPresentation(
     roundId: current.roundId,
     handNumber: current.handNumber,
     roundNumber: 1,
+    openingTransferRequired: current.openingTransferRequired,
     transferCursor,
   };
 }
@@ -128,6 +156,8 @@ export function isThreeFiveSevenRolloverCursorReleased(
   cursorState: ChipPresentationCursorState,
 ): boolean {
   return !!presentation
-    && (cursorState === 'settled' || cursorState === 'reconciled');
+    && (!presentation.openingTransferRequired
+      || cursorState === 'settled'
+      || cursorState === 'reconciled');
 }
 import type { ChipPresentationCursorState } from '@/lib/canonicalShell/ChipPresentationLedger';

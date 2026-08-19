@@ -531,6 +531,8 @@ interface Round {
   // 3-5-7: round_number cycles each hand, so we must also key by hand_number (and usually dealer_game_id).
   hand_number?: number | null;
   dealer_game_id?: string | null;
+  three_five_seven_opening_transfer_required?: boolean;
+  three_five_seven_opening_transfer_cursor?: number | null;
   cards_dealt: number;
   pot: number;
   status: string;
@@ -6514,7 +6516,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       roundId: currentRound?.id,
       handNumber: currentRound?.hand_number,
       roundNumber: currentRound?.round_number,
-      transferCursor: game?.chip_transfer_cursor,
+      openingTransferRequired: currentRound?.three_five_seven_opening_transfer_required,
+      openingTransferCursor: currentRound?.three_five_seven_opening_transfer_cursor,
     },
   );
   const threeFiveSevenAllFoldPresentation = selectThreeFiveSevenAllFoldPresentation(
