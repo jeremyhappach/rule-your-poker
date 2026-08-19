@@ -20,6 +20,13 @@ import {
   getThreeFiveSevenPlayerToPotAdmission,
   retainThreeFiveSevenFinancialPresentation,
 } from "@/lib/threeFiveSeven/financialPresentation";
+import {
+  isTerminal357SweepCreditBatch,
+  isTerminal357SweepCreditReleased,
+  selectTerminal357SweepCreditCheckpoint,
+  terminal357SweepCreditMatchesDescriptor,
+  type Terminal357SweepCreditCheckpoint,
+} from "@/lib/threeFiveSeven/terminalSweepCredit";
 import { useThreeFiveSevenFinancialAnnouncementOwner } from "@/lib/threeFiveSeven/financialAnnouncementOwner";
 import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
@@ -1966,6 +1973,86 @@ export const MobileGameTable = ({
   const threeFiveSevenAllFoldCursorState = useChipPresentationCursorState(
     threeFiveSevenAllFoldCursor,
   );
+  const normal357SweepDescriptor =
+    __is357GameType(gameType) && threeFiveSevenTerminalDescriptor?.source === 'normal-win'
+      ? threeFiveSevenTerminalDescriptor
+      : null;
+  const [normal357SweepCreditCheckpoint, setNormal357SweepCreditCheckpoint] =
+    useState<Terminal357SweepCreditCheckpoint | null>(null);
+  useEffect(() => {
+    const descriptor = normal357SweepDescriptor;
+    if (!descriptor?.gameId || !descriptor.dealerGameId) {
+      setNormal357SweepCreditCheckpoint(null);
+      return;
+    }
+
+    let cancelled = false;
+    setNormal357SweepCreditCheckpoint((current) =>
+      current?.terminalGenerationId === descriptor.terminalGenerationId
+        ? current
+        : null,
+    );
+
+    void __mgtSupabase
+      .from('gameplay_transfer_batches')
+      .select('game_id, dealer_game_id, cursor, reason, transfers')
+      .eq('game_id', descriptor.gameId)
+      .eq('dealer_game_id', descriptor.dealerGameId)
+      .eq('reason', 'sweep')
+      .order('cursor', { ascending: false })
+      .limit(2)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('[357 TERMINAL] Exact sweep-credit batch lookup failed', {
+            gameId: descriptor.gameId,
+            dealerGameId: descriptor.dealerGameId,
+            terminalGenerationId: descriptor.terminalGenerationId,
+            error,
+          });
+          emit357RuntimeDiag('global_error', {
+            gameId: descriptor.gameId,
+            dealerGameId: descriptor.dealerGameId,
+            roundId: descriptor.roundId,
+            handNumber: descriptor.handNumber,
+            winnerPlayerId: descriptor.winnerId,
+            terminalResultIdentity: descriptor.terminalResultIdentity,
+          }, {
+            site: 'normal_terminal_sweep_credit_lookup',
+            terminalGenerationId: descriptor.terminalGenerationId,
+            error,
+          });
+          return;
+        }
+
+        const checkpoint = selectTerminal357SweepCreditCheckpoint(
+          descriptor,
+          data ?? [],
+        );
+        if (!checkpoint) {
+          console.error('[357 TERMINAL] Exact sweep-credit batch missing or ambiguous', {
+            gameId: descriptor.gameId,
+            dealerGameId: descriptor.dealerGameId,
+            terminalGenerationId: descriptor.terminalGenerationId,
+            matchingRows: data?.length ?? 0,
+          });
+          return;
+        }
+        setNormal357SweepCreditCheckpoint(checkpoint);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    normal357SweepDescriptor,
+    normal357SweepDescriptor?.dealerGameId,
+    normal357SweepDescriptor?.gameId,
+    normal357SweepDescriptor?.terminalGenerationId,
+  ]);
+  const normal357SweepCreditCursorState = useChipPresentationCursorState(
+    normal357SweepCreditCheckpoint?.transferCursor ?? null,
+  );
   const completedThreeFiveSevenAllFoldPresentationsRef = useRef(new Set<string>());
   useEffect(() => {
     if (!threeFiveSevenAllFoldPresentationMatches || !threeFiveSevenAllFoldPresentation) return;
@@ -2672,7 +2759,17 @@ export const MobileGameTable = ({
   // The financial projection owns the transition from the visible leg sweep
   // to pot flight. This callback is armed only by that exact 3-5-7 sequence
   // and consumed only when its immutable `sweep` batch has settled.
-  const pending357LegSweepCreditRef = useRef<(() => void) | null>(null);
+  const pending357LegSweepCreditRef = useRef<{
+    gameId: string;
+    dealerGameId: string;
+    roundId: string | null;
+    handNumber: number | null;
+    handContextId: string | null;
+    terminalResultIdentity: string;
+    terminalGenerationId: string;
+    winnerId: string;
+    beginPotFlight: () => void;
+  } | null>(null);
   
   // DEBUG: Track when phase changed for elapsed time in overlay
   const phaseChangedAtRef = useRef<number>(Date.now());
@@ -4316,6 +4413,51 @@ export const MobileGameTable = ({
 
   // The ledger owns endpoint display as soon as an immutable batch arrives,
   // while this gate preserves game-owned prerequisite presentation ordering.
+  const releasePending357LegSweepCredit = useCallback((
+    checkpoint: Terminal357SweepCreditCheckpoint,
+    source: 'batch-settled' | 'cursor-settled' | 'cursor-reconciled',
+  ) => {
+    const pending = pending357LegSweepCreditRef.current;
+    const presentation = normal357PresentationRef.current;
+    if (!pending || !presentation) return false;
+    if (threeFiveSevenWinPhaseRef.current !== 'sweep-credit') return false;
+    if (!terminal357SweepCreditMatchesDescriptor(checkpoint, normal357SweepDescriptor)) {
+      return false;
+    }
+    if (
+      pending.gameId !== checkpoint.gameId
+      || pending.dealerGameId !== checkpoint.dealerGameId
+      || pending.roundId !== checkpoint.roundId
+      || pending.handNumber !== checkpoint.handNumber
+      || pending.handContextId !== checkpoint.handContextId
+      || pending.terminalResultIdentity !== checkpoint.terminalResultIdentity
+      || pending.terminalGenerationId !== checkpoint.terminalGenerationId
+      || pending.winnerId !== checkpoint.winnerId
+      || presentation.generationId !== checkpoint.terminalGenerationId
+      || presentation.dealerGameId !== checkpoint.dealerGameId
+      || presentation.stage !== 'sweep-credit'
+    ) {
+      return false;
+    }
+
+    pending357LegSweepCreditRef.current = null;
+    emit357RuntimeDiag('sweep_wait_released', {
+      gameId: checkpoint.gameId,
+      dealerGameId: checkpoint.dealerGameId,
+      roundId: checkpoint.roundId,
+      handNumber: checkpoint.handNumber,
+      winnerPlayerId: checkpoint.winnerId,
+      terminalResultIdentity: checkpoint.terminalResultIdentity,
+    }, {
+      releaseReason: 'terminal_sweep_credit_committed',
+      source,
+      transferCursor: checkpoint.transferCursor,
+      terminalGenerationId: checkpoint.terminalGenerationId,
+    });
+    pending.beginPotFlight();
+    return true;
+  }, [normal357SweepDescriptor]);
+
   // Capture the exact stage/hand at admission: the ledger settles later, after
   // realtime may already have replaced the mutable result props.
   const canAdmitChipTransferPresentation = useCallback((batch: ChipPresentationBatch) => {
@@ -4382,7 +4524,12 @@ export const MobileGameTable = ({
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
       if (batch.reason === 'sweep' && batch.transfers.length === 0) {
-        return threeFiveSevenWinPhase === 'sweep-credit';
+        return threeFiveSevenWinPhase === 'sweep-credit'
+          && isTerminal357SweepCreditBatch(
+            normal357SweepCreditCheckpoint,
+            normal357SweepDescriptor,
+            batch,
+          );
       }
       if (movesPotToPlayer) {
         return threeFiveSevenWinPhase === 'pot-to-player';
@@ -4417,6 +4564,8 @@ export const MobileGameTable = ({
     lastRoundResult,
     retainedThreeFiveSevenAllFoldPresentation,
     retainedThreeFiveSevenRolloverPresentation,
+    normal357SweepCreditCheckpoint,
+    normal357SweepDescriptor,
     threeFiveSevenWinPhase,
     chipTransferWinnerId,
     chipTransferLoserIds,
@@ -4459,24 +4608,29 @@ export const MobileGameTable = ({
     }
 
     if (
-      gameType !== '3-5-7' ||
-      batch.reason !== 'sweep' ||
-      batch.transfers.length !== 0 ||
-      threeFiveSevenWinPhaseRef.current !== 'sweep-credit'
+      !__is357GameType(gameType)
+      || !isTerminal357SweepCreditBatch(
+        normal357SweepCreditCheckpoint,
+        normal357SweepDescriptor,
+        batch,
+      )
     ) {
       return;
     }
-    const beginPotFlight = pending357LegSweepCreditRef.current;
-    if (!beginPotFlight) return;
-    pending357LegSweepCreditRef.current = null;
-    beginPotFlight();
+    releasePending357LegSweepCredit(
+      normal357SweepCreditCheckpoint!,
+      'batch-settled',
+    );
   }, [
     gameType,
+    normal357SweepCreditCheckpoint,
+    normal357SweepDescriptor,
     onChuckyLossEnded,
     onHolmContinuationPresentationComplete,
     onHolmShowdownPotToWinnerEnded,
     onHolmShowdownLosersEnded,
     onThreeFiveSevenFinancialBatchSettled,
+    releasePending357LegSweepCredit,
   ]);
   useChipTransferPresentationAdmission(
     canAdmitChipTransferPresentation,
@@ -9798,6 +9952,7 @@ export const MobileGameTable = ({
   const handleLegsToPlayerComplete = useCallback(() => {
     const animId = currentAnimationIdRef.current;
     const normalPresentation = normal357PresentationRef.current;
+    const descriptor = normal357TerminalDescriptor;
     
     // One-shot guard: only fire once per animation sequence
     if (legsToPlayerCompletedRef.current === animId) {
@@ -9808,7 +9963,13 @@ export const MobileGameTable = ({
     if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
       return;
     }
-    if (normalPresentation && normalPresentation.stage !== 'legs-to-player') {
+    if (
+      !normalPresentation
+      || !descriptor
+      || normalPresentation.stage !== 'legs-to-player'
+      || normalPresentation.generationId !== descriptor.terminalGenerationId
+      || normalPresentation.dealerGameId !== descriptor.dealerGameId
+    ) {
       // A cancelled/completed normal generation must never let a late leg
       // flight callback re-enter pot presentation.
       return;
@@ -9863,57 +10024,93 @@ export const MobileGameTable = ({
     const winnerPositionForEntry =
       players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null;
     const legacyLegsIdentity: Three57PresentationIdentity = build357PresentationIdentity();
-    if (normalPresentation) {
-      normalPresentation.stage = 'sweep-credit';
-    }
-    pending357LegSweepCreditRef.current = () => {
-    const legsEntryResult = enterCanonical357TerminalPresentation({
-      identity: {
-        gameId: gameId ?? null,
-        dealerGameId: legacyLegsIdentity.dealerGameId,
-        roundId: legacyLegsIdentity.roundId,
-        handNumber: null,
-        handContextId: legacyLegsIdentity.handContextId,
-        terminalResultIdentity: legacyLegsIdentity.terminalResultIdentity,
-        terminalGenerationId: null,
-        winnerId: threeFiveSevenWinnerId ?? null,
-        winnerPosition: winnerPositionForEntry,
-        awardedPot: threeFiveSevenWinPotAmount ?? null,
+    normalPresentation.stage = 'sweep-credit';
+    pending357LegSweepCreditRef.current = {
+      gameId: descriptor.gameId,
+      dealerGameId: descriptor.dealerGameId!,
+      roundId: descriptor.roundId,
+      handNumber: descriptor.handNumber,
+      handContextId: descriptor.handContextId,
+      terminalResultIdentity: descriptor.terminalResultIdentity,
+      terminalGenerationId: descriptor.terminalGenerationId,
+      winnerId: descriptor.winnerId,
+      beginPotFlight: () => {
+        const legsEntryResult = enterCanonical357TerminalPresentation({
+          identity: {
+            gameId: descriptor.gameId,
+            dealerGameId: descriptor.dealerGameId,
+            roundId: descriptor.roundId,
+            handNumber: descriptor.handNumber,
+            handContextId: descriptor.handContextId,
+            terminalResultIdentity: descriptor.terminalResultIdentity,
+            terminalGenerationId: descriptor.terminalGenerationId,
+            winnerId: descriptor.winnerId,
+            winnerPosition: descriptor.winnerPosition,
+            awardedPot: threeFiveSevenWinPotAmount ?? null,
+          },
+          legacyPotIdentity: legacyLegsIdentity,
+          source: 'legacy-legs-complete',
+        });
+        if ('suppressed' in legsEntryResult) {
+          // Adapter refused — do not run legs-complete tail diagnostics.
+          return;
+        }
+        normalPresentation.stage = 'pot-to-player';
+        const potTid = legsEntryResult.potTriggerId;
+        __capture357Checkpoint('pot_to_player_begin:legs_complete', {
+          triggerId: potTid,
+          amount: threeFiveSevenWinPotAmount,
+        });
+        // F. Pot animation begin — non-sweep (legs-complete) branch.
+        emit357RuntimeDiag('pot_animation_begin', {
+          gameId: descriptor.gameId,
+          dealerGameId: descriptor.dealerGameId,
+          roundId: descriptor.roundId,
+          handNumber: descriptor.handNumber,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: descriptor.winnerId,
+          terminalResultIdentity: descriptor.terminalResultIdentity,
+        }, {
+          branch: 'legs_to_player_complete',
+          immutableParsedPrize: null,
+          currentGamesPot: null,
+          amountPassedToAnimation: threeFiveSevenWinPotAmount,
+          destinationSelector: `[data-chip-reaction-target="${winnerPositionForEntry}"]`,
+          triggerId: potTid,
+          terminalGenerationId: descriptor.terminalGenerationId,
+        });
       },
-      legacyPotIdentity: legacyLegsIdentity,
-      source: 'legacy-legs-complete',
-    });
-    if ('suppressed' in legsEntryResult) {
-      // Adapter refused — do not run legs-complete tail diagnostics.
-      return;
-    }
-    if (normalPresentation) {
-      normalPresentation.stage = 'pot-to-player';
-    }
-    const potTid = legsEntryResult.potTriggerId;
-    __capture357Checkpoint('pot_to_player_begin:legs_complete', {
-      triggerId: potTid,
-      amount: threeFiveSevenWinPotAmount,
-    });
-    // F. Pot animation begin — non-sweep (legs-complete) branch.
-    emit357RuntimeDiag('pot_animation_begin', {
-      gameId: gameId ?? null,
-      roundId: handContextId ?? null,
-      viewerPlayerId: currentPlayer?.id ?? null,
-      winnerPlayerId: threeFiveSevenWinnerId ?? null,
-      terminalResultIdentity: lastRoundResult ?? null,
-    }, {
-      branch: 'legs_to_player_complete',
-      immutableParsedPrize: null,
-      currentGamesPot: null,
-      amountPassedToAnimation: threeFiveSevenWinPotAmount,
-      destinationSelector: `[data-chip-reaction-target="${winnerPositionForEntry}"]`,
-      triggerId: potTid,
-    });
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
-  }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope]);
+  }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope, normal357TerminalDescriptor]);
+
+  // A reconciled cursor is every bit as authoritative as a locally animated
+  // batch. This level-triggered release closes the reconnect/remount race in
+  // which onBatchSettled can never fire because the ledger correctly treated
+  // the committed zero-flight sweep as history.
+  useEffect(() => {
+    if (!normal357SweepCreditCheckpoint) return;
+    if (!isTerminal357SweepCreditReleased(
+      normal357SweepCreditCheckpoint,
+      normal357SweepDescriptor,
+      normal357SweepCreditCursorState,
+    )) {
+      return;
+    }
+    releasePending357LegSweepCredit(
+      normal357SweepCreditCheckpoint,
+      normal357SweepCreditCursorState === 'settled'
+        ? 'cursor-settled'
+        : 'cursor-reconciled',
+    );
+  }, [
+    normal357SweepCreditCheckpoint,
+    normal357SweepCreditCursorState,
+    normal357SweepDescriptor,
+    releasePending357LegSweepCredit,
+    threeFiveSevenWinPhase,
+  ]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {

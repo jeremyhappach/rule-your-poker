@@ -233,6 +233,24 @@ Date: 2026-08-18
   focused 3-5-7/provider assertions, local TypeScript, all 33 build-required
   Cribbage assertions, and the production build pass; published two-client
   R3 -> R1 smoke remains the acceptance gate.
+- The completed `Aug 18 - 46 Days` dealer game exposed the same forbidden
+  edge dependency in normal terminal presentation. Both clients held the
+  exact committed settlement and postgame handoff, but Hap reconciled the
+  zero-flight leg-reserve sweep batch as history. Because pot presentation
+  depended only on a local batch-settled callback, Hap remained in
+  `sweep-credit`, never published the win notice, never animated the pot, and
+  kept the already-committed setup modal behind its local terminal hold.
+- Normal terminal presentation now directly refetches the one immutable
+  zero-flight sweep batch for the exact outgoing game/dealer-game generation.
+  Its cursor releases the armed continuation at either `settled` or
+  `reconciled`; the live batch callback remains only an immediate path through
+  the same exact-identity one-shot. Round, hand, terminal result, winner, and
+  generation mismatches reject duplicate or late release, so an old terminal
+  can never advance a newer dealer game. Settlement, postgame authority, and
+  financial motion are unchanged. Seventy-two focused 3-5-7 assertions,
+  local TypeScript, all 33 build-required Cribbage assertions, and the
+  production build pass; published two-client terminal smoke remains the
+  acceptance gate. The historical session was not mutated.
 
 ## Yahtzee remote-score presentation handoff
 
