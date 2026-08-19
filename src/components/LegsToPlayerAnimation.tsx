@@ -8,6 +8,7 @@ import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleLTP } from '@/lib/threeFiveSeven/wartime';
+import { selectTransferableThreeFiveSevenLegs } from '@/lib/threeFiveSeven/legsToPlayerPresentation';
 
 interface LegChipAnimation {
   id: string;
@@ -101,9 +102,16 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     const positions = legPositionsRef.current;
     const winner = winnerPositionRef.current;
     const maxLegs = legsToWinRef.current;
+    const transferablePositions = selectTransferableThreeFiveSevenLegs(
+      positions,
+      winner,
+      maxLegs,
+    );
 
-    // If no legs to animate, immediately complete
-    if (positions.length === 0) {
+    // The winner's own legs never move. If the winner is the only player in
+    // the cached roster, there is no visible transfer work and no reason to
+    // hold the terminal sequence behind the 3.5-second sweep timer.
+    if (transferablePositions.length === 0) {
       console.log('[LEGS TO PLAYER] No legs to sweep, skipping animation');
       if (!completedRef.current) {
         completedRef.current = true;
@@ -151,14 +159,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     const newAnimations: LegChipAnimation[] = [];
     let animIndex = 0;
 
-    positions.forEach((playerLeg) => {
-      // Skip the winner - their legs don't need to animate to themselves
-      if (playerLeg.position === winner) {
-        return;
-      }
-      
+    transferablePositions.forEach((playerLeg) => {
       const legCoords = getLegCoords(playerLeg.position);
-      const legCount = Math.min(playerLeg.legCount, maxLegs);
+      const legCount = playerLeg.legCount;
       
       for (let i = 0; i < legCount; i++) {
         newAnimations.push({

@@ -2,6 +2,31 @@
 
 Date: 2026-08-19
 
+## 3-5-7 zero-transfer terminal sweep bypass
+
+- Production game `f4e4be6b-97c2-4e40-90b3-91be52556734`, dealer game
+  `fbdceb38-ab49-4c8b-be5c-047ed39192b0`, proved that its final decision and
+  authoritative settlement were not delayed. The last decision was inserted
+  at `22:06:17.293Z`, terminal settlement committed at `22:06:18.381Z`, and
+  both connected clients received the complete `game_over` Realtime frame
+  within roughly half a second of publication.
+- The terminal client pipeline nevertheless serialized a 1.8-second winning
+  leg award and a 3.5-second legs-to-player phase before pot flight. The cached
+  roster contained only the winner's two existing legs. The animation tested
+  whether that unfiltered roster was empty, then excluded the winner and
+  produced zero leg transports, but still held the sequence for the full
+  3.5-second timer. Pot flight consequently began 6.83 and 8.26 seconds after
+  the final decision on the two clients.
+- `LegsToPlayerAnimation` now selects positive opponent-leg transports before
+  entering the timed phase. A winner-only roster completes immediately through
+  the existing exact sweep-credit/pot handoff; a real opponent-leg transfer
+  retains the existing animation and duration. Winning-leg presentation,
+  financial settlement, terminal identity, and authoritative postgame
+  advancement are unchanged.
+- Fourteen focused component/helper/sweep-credit assertions, TypeScript, all
+  33 build-required Cribbage assertions, and the production build pass.
+  Published two-client winner-only-leg smoke remains the acceptance gate.
+
 ## 3-5-7 atomic terminal participation handoff
 
 - Production dealer game `d36b5353-ba30-4e10-85f0-1c4a82e8a31f` completed
