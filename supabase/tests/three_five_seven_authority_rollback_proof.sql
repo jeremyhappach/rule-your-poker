@@ -14,7 +14,7 @@ DECLARE
   v_cron_p1 uuid; v_cron_p2 uuid; v_cron_round uuid;
   v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
-  v_result jsonb; v_replay jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
+  v_result jsonb; v_replay jsonb; v_frame jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
 BEGIN
   SELECT array_agg(id ORDER BY created_at,id) INTO v_users FROM (
@@ -56,6 +56,12 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM='357_authority_proof:outsider_bootstrap_succeeded' OR SQLERRM NOT LIKE '%not_in_session%' THEN RAISE; END IF;
   END;
+  BEGIN
+    PERFORM public.three_five_seven_current_frame(v_game);
+    RAISE EXCEPTION '357_authority_proof:outsider_frame_succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='357_authority_proof:outsider_frame_succeeded' OR SQLERRM NOT LIKE '%not_in_session%' THEN RAISE; END IF;
+  END;
 
   PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
@@ -67,6 +73,21 @@ BEGIN
      OR EXISTS(SELECT 1 FROM public.players WHERE game_id=v_game AND chips<>98)
      OR (SELECT count(*) FROM public.player_cards WHERE round_id=v_round)<>2 THEN
     RAISE EXCEPTION '357_authority_proof:atomic_bootstrap_invalid:%',v_result;
+  END IF;
+  SELECT public.three_five_seven_current_frame(v_game) INTO v_frame;
+  IF v_frame#>>'{game,id}' IS DISTINCT FROM v_game::text
+     OR v_frame#>>'{game,current_game_uuid}' IS DISTINCT FROM v_dealer::text
+     OR v_frame#>>'{round,id}' IS DISTINCT FROM v_round::text
+     OR v_frame#>>'{identity,hand_number}' IS DISTINCT FROM '1'
+     OR v_frame#>>'{identity,round_number}' IS DISTINCT FROM '1'
+     OR jsonb_array_length(v_frame->'players')<>2
+     OR (SELECT count(*) FROM jsonb_array_elements(v_frame->'player_cards') card_row
+          WHERE card_row->>'player_id'=v_p1::text)<>1
+     OR (SELECT jsonb_array_length(card_row->'cards') FROM jsonb_array_elements(v_frame->'player_cards') card_row
+          WHERE card_row->>'player_id'=v_p1::text)<>3
+     OR coalesce((v_frame->>'viewer_cards_required')::boolean,false) IS NOT TRUE
+     OR coalesce((v_frame->>'viewer_cards_present')::boolean,false) IS NOT TRUE THEN
+    RAISE EXCEPTION '357_authority_proof:atomic_current_frame_invalid:%',v_frame;
   END IF;
   SELECT public.three_five_seven_begin_game(v_game) INTO v_replay;
   IF v_replay->>'outcome'<>'already_started' OR coalesce((v_replay->>'deduped')::boolean,false) IS NOT TRUE
@@ -194,6 +215,19 @@ BEGIN
      OR (SELECT chips FROM public.players WHERE id=v_p1)<>v_chips1-1 OR (SELECT chips FROM public.players WHERE id=v_p2)<>v_chips2-1
      OR EXISTS(SELECT 1 FROM public.player_cards WHERE round_id=v_r1_next AND jsonb_array_length(cards)<>3) THEN
     RAISE EXCEPTION '357_authority_proof:rollover_invalid:%',v_result;
+  END IF;
+  SELECT public.three_five_seven_current_frame(v_game) INTO v_frame;
+  IF v_frame#>>'{game,total_hands}' IS DISTINCT FROM '2'
+     OR v_frame#>>'{game,current_round}' IS DISTINCT FROM '1'
+     OR v_frame#>>'{round,id}' IS DISTINCT FROM v_r1_next::text
+     OR v_frame#>>'{round,hand_number}' IS DISTINCT FROM '2'
+     OR v_frame#>>'{round,round_number}' IS DISTINCT FROM '1'
+     OR v_frame#>>'{identity,round_id}' IS DISTINCT FROM v_r1_next::text
+     OR (SELECT count(*) FROM jsonb_array_elements(v_frame->'player_cards') card_row
+          WHERE card_row->>'player_id'=v_p2::text)<>1
+     OR (SELECT jsonb_array_length(card_row->'cards') FROM jsonb_array_elements(v_frame->'player_cards') card_row
+          WHERE card_row->>'player_id'=v_p2::text)<>3 THEN
+    RAISE EXCEPTION '357_authority_proof:rollover_current_frame_invalid:%',v_frame;
   END IF;
 
   -- A purchased nonterminal leg is owned reserve beside the player. It debits

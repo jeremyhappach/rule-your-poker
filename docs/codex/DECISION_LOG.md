@@ -857,3 +857,20 @@ matching notice at the real settlement edge, while a client that legitimately
 reconciles the cursor without replaying financial motion receives a short,
 non-blocking rail lifetime. Neither path delays deal admission or progression,
 and neither creates a second owner for balances, settlement, or chip movement.
+
+## D-065 - 3-5-7 presents one exact database frame
+
+A 3-5-7 browser may not compose live gameplay from independent game, round,
+player, and private-card reads. PostgreSQL returns the published game pointer,
+its exact `(dealer_game_id, hand_number, round_number, round_id)`, the decision
+roster, and caller-visible cards from one MVCC snapshot. An active participant
+without the complete card count fails closed; an observer may receive an empty
+private hand.
+
+Realtime events are level-triggered synchronization signals only. A standalone
+successor-round INSERT does not advance presentation, and a games UPDATE does
+not clear or rotate 3-5-7 card state before the exact frame arrives. The client
+admits game, round, roster, card context, and cards together, rejects a slower
+older request, rejects active identity regression or conflicting round IDs,
+and uses no newest-round fallback. This preserves transport and announcement
+presentation while eliminating client-dependent bootstrap at round boundaries.

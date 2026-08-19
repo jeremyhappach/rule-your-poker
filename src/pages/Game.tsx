@@ -109,6 +109,15 @@ import {
   isThreeFiveSevenDealPresentationReady,
   type ThreeFiveSevenDealReadinessToken,
 } from "@/lib/threeFiveSeven/presentationReadiness";
+import {
+  acceptThreeFiveSevenFrame,
+  frameCursor as buildThreeFiveSevenFrameCursor,
+  isThreeFiveSevenGameType as isThreeFiveSevenFrameGameType,
+  parseThreeFiveSevenCurrentFrame,
+  selectExactThreeFiveSevenRound,
+  type ThreeFiveSevenCurrentFrame,
+  type ThreeFiveSevenFrameCursor,
+} from "@/lib/threeFiveSeven/currentFrame";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -675,36 +684,11 @@ function pickActive357Round(
     dealerGameId: string | null | undefined;
   }
 ): Round | null {
-  if (!rounds || rounds.length === 0) return null;
-
-  const { currentRoundNumber, currentHandNumber, dealerGameId } = params;
-
-  // CRITICAL: Always require dealer_game_id to prevent cross-game contamination
-  if (!dealerGameId) {
-    console.warn('[pickActive357Round] ⚠️ Missing dealer_game_id - cannot safely select round');
-    return null;
-  }
-
-  if (typeof currentRoundNumber === 'number' && typeof currentHandNumber === 'number') {
-    const exact = rounds.find((r) =>
-      r.round_number === currentRoundNumber &&
-      r.hand_number === currentHandNumber &&
-      r.dealer_game_id === dealerGameId
-    );
-    if (exact) return exact;
-  }
-
-  // Fallback: most recent betting round within this dealer game.
-  // IMPORTANT: Never use created_at ordering for round selection.
-  const candidates = rounds.filter((r) => r.dealer_game_id === dealerGameId);
-  const sorted = [...candidates].sort((a, b) => {
-    const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
-    const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
-    if (bHand !== aHand) return bHand - aHand;
-    return (b.round_number ?? 0) - (a.round_number ?? 0);
+  return selectExactThreeFiveSevenRound(rounds, {
+    dealerGameId: params.dealerGameId,
+    handNumber: params.currentHandNumber,
+    roundNumber: params.currentRoundNumber,
   });
-
-  return sorted.find((r) => r.status === 'betting') ?? sorted[0] ?? null;
 }
 
 function pickLatestRoundByKey(rounds: Round[] | undefined, dealerGameId?: string | null): Round | null {
@@ -2903,6 +2887,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+  // 3-5-7 publishes one exact game/round/roster/card frame. The request
+  // sequence rejects a slow replay from an older fetch (including an outgoing
+  // dealer game); exact hand/round identity rejects active-state regression.
+  const threeFiveSevenFrameCursorRef = useRef<ThreeFiveSevenFrameCursor | null>(null);
 
   // ── Optimistic Gin in-progress seed guard ─────────────────────────────
   // When the dealer client optimistically advances a gin dealerGameId to
@@ -4081,6 +4069,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (needsRoundSync) {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
+            if (isThreeFiveSevenFrameGameType(incomingGameType ?? localGameType ?? game?.game_type)) {
+              // Realtime is a level-triggered refetch signal for 3-5-7. Do not
+              // clear cards, rotate context, or publish payload scalars here;
+              // the exact current-frame RPC performs that handoff as one unit.
+              if (debounceTimer) clearTimeout(debounceTimer);
+              fetchGameData('realtime_update');
+              return;
+            }
             lastKnownRoundRef.current = incomingRound;
             
             // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
@@ -6334,25 +6330,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
     }
 
-    if (game.game_type === '3-5-7') {
-      // CRITICAL: ALWAYS require dealer_game_id for 3-5-7 - NO fallback to unscoped rounds
-      if (!game.current_game_uuid) {
-        console.warn('[LIVE_ROUND] ⚠️ Missing dealer_game_id for 3-5-7 - cannot safely select round');
-        return null;
-      }
-      // Derive max hand_number from rounds for this dealer_game - don't trust game.total_hands which can be stale
-      const dealerRounds = game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid);
-      const maxHandNumber = dealerRounds.reduce(
-        (max, r) => (typeof r.hand_number === 'number' && r.hand_number > max ? r.hand_number : max),
-        0
-      );
-      return (
-        pickActive357Round(game.rounds, {
-          currentRoundNumber: game.current_round,
-          currentHandNumber: maxHandNumber || game.total_hands,
-          dealerGameId: game.current_game_uuid,
-        }) ?? null
-      );
+    if (isThreeFiveSevenFrameGameType(game.game_type)) {
+      // The game pointer is the publication authority. A successor round INSERT
+      // can arrive first over Realtime, but it is invisible until the atomic
+      // current frame advances all four identity fields together.
+      return pickActive357Round(game.rounds, {
+        currentRoundNumber: game.current_round,
+        currentHandNumber: game.total_hands,
+        dealerGameId: game.current_game_uuid,
+      });
     }
 
     // Default behavior for other games (Holm, Cribbage, etc.)
@@ -9137,9 +9123,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single()),
     ]);
 
-    const { data: gameData, error: gameError } = gameResult;
-    const { data: playersData, error: playersError } = playersResult;
+    let gameData = gameResult.data as unknown as GameData | null;
+    const gameError = gameResult.error;
+    let playersData = playersResult.data as unknown as Player[] | null;
+    const playersError = playersResult.error;
     const { data: gameDefaults } = defaultsResult;
+    let exactThreeFiveSevenFrame: ThreeFiveSevenCurrentFrame | null = null;
     patchFetchTraceState({
       gameDataStatus: (gameData as any)?.status ?? null,
       gameDataGameType: (gameData as any)?.game_type ?? null,
@@ -9207,6 +9196,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
       finishFetchTrace('returned_no_game_data', 'game_query_no_data');
       return;
+    }
+
+    // 3-5-7 STATE OWNERSHIP: replace the split games -> rounds -> players ->
+    // player_cards waterfall with one MVCC frame. The ordinary parallel reads
+    // above only discover the game family; none of their 3-5-7 gameplay state
+    // is published. Realtime may request this RPC but may never advance the
+    // browser directly from an INSERT/UPDATE payload.
+    if (isThreeFiveSevenFrameGameType(gameData.game_type)) {
+      const { data: rawFrame, error: frameError } = await timedQuery(
+        'rpc.three_five_seven_current_frame',
+        'three_five_seven_current_frame',
+        () => supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any),
+      );
+      if (frameError) {
+        throw new Error(`three_five_seven_current_frame failed: ${frameError.message ?? String(frameError)}`);
+      }
+      const parsedFrame = parseThreeFiveSevenCurrentFrame(rawFrame);
+      const incomingCursor = buildThreeFiveSevenFrameCursor(parsedFrame, fetchSeq);
+      const acceptance = acceptThreeFiveSevenFrame(threeFiveSevenFrameCursorRef.current, incomingCursor);
+      if (isStale() || !acceptance.accepted) {
+        console.warn('[357 FRAME] Rejected non-current atomic frame', {
+          fetchSeq,
+          latestFetchSeq: fetchSeqRef.current,
+          reason: isStale() ? 'older_request' : acceptance.reason,
+          incoming: incomingCursor,
+          accepted: threeFiveSevenFrameCursorRef.current,
+        });
+        finishFetchTrace('superseded_after_357_frame', '357_frame:rejected');
+        return;
+      }
+
+      threeFiveSevenFrameCursorRef.current = incomingCursor;
+      exactThreeFiveSevenFrame = parsedFrame;
+      gameData = {
+        ...(parsedFrame.game as unknown as GameData),
+        // Only the exact round named by the game pointer is presentation input.
+        // Historical/prepared rows remain in PostgreSQL, never in this frame.
+        rounds: parsedFrame.round ? [parsedFrame.round as unknown as Round] : [],
+      };
+      playersData = parsedFrame.players as unknown as Player[];
     }
 
     // ── HARD DEALER-GAME ADMISSION BOUNDARY ─────────────────────────────
@@ -9395,10 +9424,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Holm card presentation follows the exact hand published by games.
         // A prepared successor is deliberately present in rounds/player_cards
         // before activation, so "latest" is never a valid presentation owner.
-        let roundData: { id: string; round_number: number; hand_number?: number; cards_dealt: number } | null = null;
+        let roundData: {
+          id: string;
+          round_number: number;
+          hand_number?: number | null;
+          dealer_game_id?: string | null;
+          cards_dealt: number;
+        } | null = null;
 
         // 3-5-7 wartime unconditional trace: which round-selection branch ran
         let roundSelectionBranch357:
+          | '357_atomic_frame'
           | '357_authoritative_lookup'
           | 'fallback_current_round'
           | 'ultimate_fallback'
@@ -9409,7 +9445,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         let roundQueryError357: { code: string | null; message: string | null } = { code: null, message: null };
         let roundQueryRowsReturned357 = 0;
         
-        if (isHolmGame) {
+        if (exactThreeFiveSevenFrame) {
+          roundSelectionBranch357 = '357_atomic_frame';
+          roundData = exactThreeFiveSevenFrame.round as typeof roundData;
+        } else if (isHolmGame) {
           const selectedHolmRound = holmClientRoundSelection?.round ?? null;
           // HOLM HARD GATE: round selection is scoped to the active
           // dealer_game_id. If no active dealer game, do NOT run any
@@ -9518,7 +9557,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const { data, error } = await timedQuery('rounds.357-current', 'rounds', () =>
             supabase
               .from('rounds')
-              .select('id, round_number, cards_dealt')
+              .select('id, round_number, hand_number, dealer_game_id, cards_dealt')
               .eq('game_id', gameId)
               .eq('dealer_game_id', gameData.current_game_uuid)
               .eq('hand_number', gameData.total_hands)
@@ -9604,7 +9643,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             cardsDealt: roundData.cards_dealt
           };
           console.log('[FETCH] Setting card state context:', newCardContext);
-          setCardStateContext(newCardContext);
+          // For 3-5-7 this context is published only with the cards from the
+          // same atomic frame below. Publishing it before a separate card read
+          // was the torn-snapshot failure that stranded clients at zero cards.
+          if (!exactThreeFiveSevenFrame) {
+            setCardStateContext(newCardContext);
+          }
 
           ffRecord({
             writerId: 'Game.tsx:fetchPlayers.cardContextSet:L6164',
@@ -9653,11 +9697,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // (357.fetch.players_request diagnostic removed)
 
 
-          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
-            supabase
-              .from('player_cards')
-              .select('player_id, cards')
-              .eq('round_id', targetRoundId));
+          const cardsResult = exactThreeFiveSevenFrame
+            ? {
+                data: exactThreeFiveSevenFrame.playerCards,
+                error: null,
+              }
+            : await timedQuery('player_cards.by-round', 'player_cards', () =>
+                supabase
+                  .from('player_cards')
+                  .select('player_id, cards')
+                  .eq('round_id', targetRoundId));
+          const { data: cardsData, error: cardsError } = cardsResult;
           const localPlayerIdForOutcome: string | null =
             (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
           const localSeatRowForOutcome = localPlayerIdForOutcome
@@ -9754,6 +9804,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             acceptance357 = 'superseded_by_generation';
             setFetchTraceTerminal('player_cards_superseded', 'player_cards_response:fetchToken_superseded');
+          } else if (exactThreeFiveSevenFrame) {
+            // One publication point for the exact game/round/cards identity.
+            // Empty is valid only for an observer/sitting-out viewer; the RPC
+            // envelope validator rejects an empty or partial required hand.
+            const framedCards = (cardsData ?? []).map((cd) => ({
+              player_id: cd.player_id,
+              cards: cd.cards as unknown as CardType[],
+            }));
+            setCardStateContext(newCardContext);
+            setPlayerCards(framedCards);
+            setPlayerCardsIdentity({
+              dealerGameId: gameData.current_game_uuid ?? null,
+              handNumber: typeof roundData.hand_number === 'number'
+                ? roundData.hand_number
+                : (typeof gameData.total_hands === 'number' ? gameData.total_hands : null),
+              roundId: targetRoundId,
+              handContextId: targetRoundId,
+            });
+            acceptance357 = 'accepted';
+            setPlayerCardsCalled357 = true;
+            playerCardsLengthAfter357 = framedCards.length;
+            setFetchTraceTerminal('player_cards_accepted', '357_atomic_frame:cards_accepted', {
+              setPlayerCardsCalled: true,
+              playerCardsLengthAfter: framedCards.length,
+            });
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
             persistSyncDebugEvent({

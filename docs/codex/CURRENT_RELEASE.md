@@ -2,6 +2,36 @@
 
 Date: 2026-08-18
 
+## 3-5-7 atomic current-frame hydration
+
+- Frozen production session `Aug 18 - David DeJesus` proved the repeated
+  R3-to-R1 P0 was not a deal or re-ante failure. PostgreSQL had committed the
+  H3/R1 game pointer, exact round, both three-card rows, and the two-player
+  re-ante batch at cursor 9. Happach Gmail's browser nevertheless rendered the
+  successor identity with an empty private-card source and never recovered.
+- The client previously read game, round, players, and cards in separate
+  requests. It published the new card context before the card request returned;
+  a later generic Realtime refetch could supersede that response. The live
+  selector also fell back to the newest inserted round when the game pointer
+  still named the predecessor, allowing a mixed hand/round frame.
+- Migration `20260818140000_atomic_357_current_frame.sql` is installed on owned
+  production. `three_five_seven_current_frame` returns the exact game pointer,
+  exact round, decision roster, and caller-visible cards from one PostgreSQL
+  snapshot. Active participants fail closed if their complete hand is absent.
+  Realtime only requests this RPC; it never clears or rotates 3-5-7 card state.
+- `Game.tsx` admits the returned frame as one unit, rejects slower older
+  requests and regressive/conflicting live identities, and no longer selects a
+  standalone successor round. The H2/R3-to-H3/R1 boundary now publishes game,
+  round, roster, card context, and cards together. The paused production
+  session was not mutated.
+- The complete rollback proof passed before and after installation, including
+  authorization, bootstrap, winner, tie, duplicate/replay, R3-to-R1
+  continuation with the caller's exact three cards, terminal/late replay, and
+  the complete scheduled recovery function. Eight focused frame/race tests,
+  the existing 16 advancement/progress tests, TypeScript, all 33 build-required
+  Cribbage assertions, and the production build pass. Published two-client
+  smoke remains the acceptance gate.
+
 ## Shared atomic dealer configuration handoff
 
 - Migration `20260817230000_atomic_dealer_game_setup_handoff.sql` is installed

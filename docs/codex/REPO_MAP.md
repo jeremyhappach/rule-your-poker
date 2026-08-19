@@ -326,10 +326,16 @@ reset transient/presentation state when those identities change.
   `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` owns correct leg
   reserve accounting and exact postgame setup-owner decline; the browser RPC
   adapter is `src/lib/threeFiveSeven/declineSetup.ts`.
+- Atomic read projection: migration
+  `20260818140000_atomic_357_current_frame.sql` defines
+  `three_five_seven_current_frame`; `src/lib/threeFiveSeven/currentFrame.ts`
+  validates exact identity/full viewer-hand admission, rejects late or
+  regressive frames, and supplies the strict round selector used by `Game.tsx`.
 - Settlement/terminal: `three_five_seven_settle_game` accepts exact committed
   resolution identity and retains the established atomic chip/snapshot
   settlement implementation behind its authority wrapper.
 - Focused tests: `threeFiveSeven/advanceRound.test.ts`,
+  `threeFiveSeven/currentFrame.test.ts`,
   `threeFiveSevenProgress.test.ts`,
   `supabase/tests/three_five_seven_authority_rollback_proof.sql`,
   `supabase/tests/three_five_seven_rollover_proof.sql`, and shared card
