@@ -16,6 +16,8 @@ DECLARE
   v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
   v_st1 uuid; v_st2 uuid; v_session_terminal_round uuid;
+  v_case record; v_case_game uuid; v_case_dealer uuid; v_case_round uuid;
+  v_case_p1 uuid; v_case_p2 uuid;
   v_result jsonb; v_replay jsonb; v_frame jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
   v_opening_cursor bigint; v_late_cursor bigint;
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
@@ -359,6 +361,7 @@ BEGIN
   PERFORM set_config('app.three_five_seven_recovery_game_id',v_cron_game::text,true);
   SELECT private.advance_due_three_five_seven_state() INTO v_result;
   PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  PERFORM set_config('app.three_five_seven_recovery','off',true);
   IF (SELECT status FROM public.games WHERE id=v_cron_game)<>'in_progress'
      OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>1
      OR coalesce((v_result#>>'{games,0,result,opening_transfer_cursor}')::bigint,0)<=0
@@ -393,6 +396,7 @@ BEGIN
   PERFORM set_config('app.three_five_seven_recovery_game_id',v_cron_game::text,true);
   PERFORM private.advance_due_three_five_seven_state();
   PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  PERFORM set_config('app.three_five_seven_recovery','off',true);
   IF (SELECT current_round FROM public.games WHERE id=v_cron_game)<>2
      OR (SELECT total_hands FROM public.games WHERE id=v_cron_game)<>1
      OR (SELECT count(*) FROM public.rounds WHERE dealer_game_id=v_cron_dealer)<>2
@@ -486,6 +490,7 @@ BEGIN
   PERFORM set_config('app.three_five_seven_recovery_game_id',v_terminal_game::text,true);
   SELECT private.advance_due_three_five_seven_state() INTO v_result;
   PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  PERFORM set_config('app.three_five_seven_recovery','off',true);
   IF v_result->>'outcome'<>'recovered' OR NOT EXISTS (
     SELECT 1 FROM jsonb_array_elements(v_result->'games') recovered
      WHERE (recovered->>'game_id')::uuid=v_terminal_game
@@ -551,6 +556,215 @@ BEGIN
     RAISE EXCEPTION '357_authority_proof:make_it_take_it_disable_not_returned';
   END IF;
 
+  -- The exact postgame claim owns participation reconciliation. Prove each
+  -- precedence branch, next-dealer derivation after a waiting player rejoins,
+  -- and durable replay when a terminal-winning bot is deleted.
+  FOR v_case IN
+    SELECT *
+      FROM (VALUES
+        ('waiting_rejoin', false, false, false, false, false, true,  true,  'game_selection'),
+        ('sit_out_precedes_waiting', false, false, true,  false, true,  false, false, 'waiting'),
+        ('auto_fold_precedes_waiting', false, false, false, true,  true,  false, false, 'waiting'),
+        ('human_stand_up', false, true,  false, false, false, false, false, 'waiting'),
+        ('bot_stand_up_winner', true,  true,  false, false, false, false, false, 'waiting')
+      ) AS cases(
+        case_name,
+        winner_is_bot,
+        winner_stand_up,
+        winner_sit_out,
+        winner_auto_fold,
+        winner_waiting,
+        peer_sitting_out,
+        peer_waiting,
+        expected_status
+      )
+  LOOP
+    v_case_game := gen_random_uuid();
+    v_case_dealer := gen_random_uuid();
+    v_case_round := gen_random_uuid();
+    v_case_p1 := gen_random_uuid();
+    v_case_p2 := gen_random_uuid();
+
+    PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+    INSERT INTO public.games(
+      id,name,status,game_type,current_game_uuid,current_host,dealer_position,
+      ante_amount,rollover_amount,leg_value,legs_to_win,total_hands,current_round,
+      pot,real_money
+    ) VALUES(
+      v_case_game,
+      'Codex rollback proof - 357 postgame ' || v_case.case_name,
+      'game_over','3-5-7',v_case_dealer,v_users[2],1,
+      0,1,1,1,1,1,0,false
+    );
+    INSERT INTO public.dealer_games(id,session_id,dealer_user_id,game_type)
+    VALUES(v_case_dealer,v_case_game,v_users[2],'3-5-7');
+    INSERT INTO public.players(
+      id,game_id,user_id,position,chips,status,sitting_out,is_bot,
+      stand_up_next_hand,sit_out_next_hand,auto_fold,waiting,legs
+    ) VALUES
+      (
+        v_case_p1,v_case_game,v_users[1],1,100,'active',false,
+        v_case.winner_is_bot,v_case.winner_stand_up,v_case.winner_sit_out,
+        v_case.winner_auto_fold,v_case.winner_waiting,1
+      ),
+      (
+        v_case_p2,v_case_game,v_users[2],2,100,'active',
+        v_case.peer_sitting_out,false,false,false,false,v_case.peer_waiting,2
+      );
+    INSERT INTO public.rounds(
+      id,game_id,dealer_game_id,hand_number,round_number,cards_dealt,status,pot
+    ) VALUES(
+      v_case_round,v_case_game,v_case_dealer,1,1,3,'completed',0
+    );
+    INSERT INTO private.three_five_seven_round_resolutions(
+      game_id,dealer_game_id,round_id,hand_number,round_number,outcome,
+      winner_player_id,result,presentation_fallback_at
+    ) VALUES(
+      v_case_game,v_case_dealer,v_case_round,1,1,'terminal',v_case_p1,
+      jsonb_build_object(
+        'outcome','terminal',
+        'winner_player_id',v_case_p1,
+        'round_id',v_case_round,
+        'dealer_game_id',v_case_dealer,
+        'hand_number',1,
+        'round_number',1
+      ),
+      clock_timestamp()+interval '30 seconds'
+    );
+    INSERT INTO public.game_results(
+      game_id,dealer_game_id,hand_number,settlement_key,game_type,
+      winner_player_id,winning_hand_description,pot_won,
+      player_chip_changes,is_chopped
+    ) VALUES(
+      v_case_game,v_case_dealer,1,'three_five_seven_terminal','3-5-7',
+      v_case_p1,'1 legs',0,
+      jsonb_build_object(v_case_p1::text,0,v_case_p2::text,0),false
+    );
+    PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+    PERFORM set_config(
+      'request.jwt.claim.sub',
+      CASE WHEN v_case.case_name='human_stand_up'
+        THEN v_users[1]::text ELSE v_users[2]::text END,
+      true
+    );
+    PERFORM set_config(
+      'request.jwt.claims',
+      jsonb_build_object(
+        'role','authenticated',
+        'sub',CASE WHEN v_case.case_name='human_stand_up'
+          THEN v_users[1] ELSE v_users[2] END
+      )::text,
+      true
+    );
+
+    SELECT public.three_five_seven_advance_postgame(
+      v_case_game,v_case_round,v_case_dealer,1
+    ) INTO v_result;
+
+    IF v_case.case_name='waiting_rejoin' THEN
+      PERFORM set_config('request.jwt.claim.sub',v_outsider::text,true);
+      PERFORM set_config(
+        'request.jwt.claims',
+        jsonb_build_object('role','authenticated','sub',v_outsider)::text,
+        true
+      );
+      BEGIN
+        PERFORM public.three_five_seven_advance_postgame(
+          v_case_game,v_case_round,v_case_dealer,1
+        );
+        RAISE EXCEPTION '357_authority_proof:outsider_postgame_replay_succeeded';
+      EXCEPTION WHEN OTHERS THEN
+        IF SQLERRM='357_authority_proof:outsider_postgame_replay_succeeded'
+           OR SQLERRM NOT LIKE '%not_in_session%' THEN
+          RAISE;
+        END IF;
+      END;
+      PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
+      PERFORM set_config(
+        'request.jwt.claims',
+        jsonb_build_object('role','authenticated','sub',v_users[2])::text,
+        true
+      );
+    END IF;
+
+    SELECT public.three_five_seven_advance_postgame(
+      v_case_game,v_case_round,v_case_dealer,1
+    ) INTO v_replay;
+
+    IF v_result->>'outcome'<>'advanced'
+       OR v_result->>'status'<>v_case.expected_status
+       OR v_replay->>'outcome'<>'already_advanced'
+       OR v_replay->>'status'<>v_case.expected_status
+       OR (SELECT status FROM public.games WHERE id=v_case_game)<>v_case.expected_status
+       OR (SELECT current_game_uuid FROM public.games WHERE id=v_case_game) IS NOT NULL
+       OR (SELECT current_round FROM public.games WHERE id=v_case_game) IS NOT NULL
+       OR (SELECT total_hands FROM public.games WHERE id=v_case_game) IS DISTINCT FROM 0
+       OR EXISTS(
+         SELECT 1 FROM public.players player
+          WHERE player.game_id=v_case_game
+            AND (
+              coalesce(player.waiting,false)
+              OR coalesce(player.stand_up_next_hand,false)
+              OR coalesce(player.sit_out_next_hand,false)
+              OR coalesce(player.auto_fold,false)
+              OR coalesce(player.legs,0)<>0
+            )
+       )
+       OR (SELECT count(*) FROM private.three_five_seven_postgame_advances claim
+            WHERE claim.game_id=v_case_game
+              AND claim.dealer_game_id=v_case_dealer
+              AND claim.round_id=v_case_round
+              AND claim.hand_number=1
+              AND claim.winner_player_id=v_case_p1
+              AND claim.result->>'winner_player_id'=v_case_p1::text)<>1 THEN
+      RAISE EXCEPTION
+        '357_authority_proof:postgame_participation_case_invalid:%:%/%',
+        v_case.case_name,v_result,v_replay;
+    END IF;
+
+    IF v_case.case_name='waiting_rejoin' AND (
+         NOT EXISTS(
+           SELECT 1 FROM public.players
+            WHERE id=v_case_p2 AND NOT sitting_out AND NOT waiting
+         )
+         OR (v_result->>'dealer_position')::integer<>2
+         OR (SELECT config_deadline FROM public.games WHERE id=v_case_game) IS NULL
+       ) THEN
+      RAISE EXCEPTION '357_authority_proof:waiting_rejoin_invalid:%',v_result;
+    END IF;
+
+    IF v_case.case_name IN ('sit_out_precedes_waiting','auto_fold_precedes_waiting')
+       AND NOT EXISTS(
+         SELECT 1 FROM public.players
+          WHERE id=v_case_p1 AND sitting_out AND NOT waiting
+       ) THEN
+      RAISE EXCEPTION
+        '357_authority_proof:postgame_sit_out_invalid:%:%',
+        v_case.case_name,v_result;
+    END IF;
+
+    IF v_case.case_name='human_stand_up' AND NOT EXISTS(
+      SELECT 1 FROM public.players
+       WHERE id=v_case_p1 AND status='left' AND sitting_out AND NOT waiting
+    ) THEN
+      RAISE EXCEPTION '357_authority_proof:human_stand_up_invalid:%',v_result;
+    END IF;
+
+    IF v_case.case_name='bot_stand_up_winner' AND (
+         EXISTS(SELECT 1 FROM public.players WHERE id=v_case_p1)
+         OR (SELECT winner_player_id FROM private.three_five_seven_round_resolutions
+              WHERE game_id=v_case_game AND dealer_game_id=v_case_dealer
+                AND round_id=v_case_round AND hand_number=1 AND round_number=1)
+              IS DISTINCT FROM v_case_p1
+         OR (SELECT winner_player_id FROM private.three_five_seven_postgame_advances
+              WHERE game_id=v_case_game AND dealer_game_id=v_case_dealer
+                AND round_id=v_case_round AND hand_number=1)
+              IS DISTINCT FROM v_case_p1
+       ) THEN
+      RAISE EXCEPTION '357_authority_proof:bot_stand_up_replay_claim_invalid:%',v_result;
+    END IF;
+  END LOOP;
+
   -- A pending session end retains the same exact terminal round through its
   -- connected-client frame, then the complete scheduler clears that address.
   PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
@@ -599,6 +813,7 @@ BEGIN
   PERFORM set_config('app.three_five_seven_recovery_game_id',v_session_terminal_game::text,true);
   SELECT private.advance_due_three_five_seven_state() INTO v_result;
   PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  PERFORM set_config('app.three_five_seven_recovery','off',true);
   IF v_result->>'outcome'<>'recovered'
      OR (SELECT status FROM public.games WHERE id=v_session_terminal_game)<>'session_ended'
      OR (SELECT current_game_uuid FROM public.games WHERE id=v_session_terminal_game) IS NOT NULL

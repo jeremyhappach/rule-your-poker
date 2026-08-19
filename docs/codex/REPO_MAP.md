@@ -65,7 +65,7 @@ the authority over generated declarations.
 | `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
 | `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
 | `src/hooks/useHighCardDealerSelection.ts` | Initial/session dealer-selection behavior. |
-| `src/pages/Game.tsx:handleGameOverComplete` | Shared post-presentation continuation owner: consumes pending session end, evaluates participant state, selects/rotates the next dealer, and enters dealer/game selection. |
+| `src/pages/Game.tsx:handleGameOverComplete` | Post-presentation continuation router. 3-5-7 and Yahtzee branch to their exact database postgame owners before shared browser leader/evaluation work; legacy/shared paths consume pending session end, evaluate participant state, select/rotate the next dealer, and enter dealer/game selection. |
 | `src/components/canonicalShell/SessionEndedTablePhase.tsx` | Local Session Ended announcement, felt Results panel, and Back to Lobby action. Fresh mounts of an already-ended session are redirected by `Game.tsx`; connected clients retain the shell first. |
 
 ## Canonical shell ownership

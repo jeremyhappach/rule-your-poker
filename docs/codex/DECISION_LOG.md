@@ -909,3 +909,25 @@ A pre-handoff `game_over` or `session_ended` frame missing its exact round
 identity fails explicitly on both the database and client boundaries. A
 postgame `session_ended` frame is valid only with the deliberately cleared
 dealer-game, hand counter, and round address.
+
+## D-068 - 3-5-7 postgame participation is part of the exact handoff
+
+After terminal presentation, a 3-5-7 browser submits the exact settled
+`(game, dealer game, round, hand)` identity directly to PostgreSQL. It does not
+run shared browser leader election, participation mutation, transient cleanup,
+or dealer derivation first. Every connected client may submit; one durable
+claim commits the transition and exact duplicates receive its stored result.
+
+The locked postgame transaction verifies terminal resolution and settlement,
+then applies queued participation intent in the established precedence:
+Stand Up, Sit Out, 3-5-7 auto-fold, then waiting/rejoin. Only the reconciled
+cohort may influence make-it-take-it, dealer rotation, configuration deadline,
+or waiting/session-terminal disposition. It also clears player ephemerals and
+the outgoing dealer-game identity before publishing that disposition.
+
+A human marked left remains authorized to replay this exact claim but cannot
+use that status to initiate a different transition; unrelated callers remain
+rejected. Stood-up bots are removed, while the private terminal resolution and
+postgame claim retain the immutable winner UUID so deletion cannot erase the
+authority identity. Realtime synchronizes peers and scheduled recovery remains
+a disconnect fallback; neither is the connected-client handoff trigger.

@@ -11223,11 +11223,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, 100);
   };
 
-  const handleGameOverComplete = useCallback(async () => {
+  const handleGameOverComplete = useCallback(async (fresh357Identity?: {
+    dealerGameId: string | null;
+    handNumber: number | null;
+  }) => {
     const _gocId = () => ({
       gameId: gameId ?? null,
       dealerGameId: game?.current_game_uuid ?? null,
-      roundId: game?.current_round != null ? String(game.current_round) : null,
+      roundId: currentRound?.dealer_game_id === game?.current_game_uuid
+        && currentRound?.hand_number === game?.total_hands
+        ? currentRound.id
+        : null,
       handNumber: game?.total_hands ?? null,
       viewerPlayerId: user?.id ?? null,
       clientKnownStatus: game?.status ?? null,
@@ -11336,6 +11342,111 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           await fetchGameData();
         } catch (refetchError) {
           console.error('[YAHTZEE POSTGAME] Recovery refetch failed:', refetchError);
+        }
+      } finally {
+        gameOverTransitionRef.current = false;
+      }
+      return;
+    }
+
+    // 3-5-7 owns the exact terminal handoff in PostgreSQL. Every client may
+    // submit the settled identity; the durable claim dedupes simultaneous and
+    // late callers. Do not enter shared browser leader election or player
+    // evaluation before this RPC: participation intent and dealer derivation
+    // are committed atomically by the authoritative function.
+    if (is357GameType) {
+      gameOverTransitionRef.current = true;
+      try {
+        const outgoingDealerGameId = fresh357Identity
+          ? fresh357Identity.dealerGameId
+          : game?.current_game_uuid ?? null;
+        const outgoingHandNumber = fresh357Identity
+          ? fresh357Identity.handNumber
+          : game?.total_hands ?? null;
+        let terminalRoundId = (
+          currentRound?.dealer_game_id === outgoingDealerGameId
+          && currentRound?.hand_number === outgoingHandNumber
+        ) ? currentRound.id : null;
+
+        if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+          const { data: terminalRound, error: terminalRoundError } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('dealer_game_id', outgoingDealerGameId)
+            .eq('hand_number', outgoingHandNumber)
+            .eq('status', 'completed')
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (terminalRoundError) throw terminalRoundError;
+          terminalRoundId = terminalRound?.id ?? null;
+        }
+
+        if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+          throw new Error('3-5-7 postgame identity is incomplete; no transition was attempted.');
+        }
+
+        emit357GameOverCompleteDiag('advance_begin', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          branch: 'three-five-seven-authoritative-postgame',
+        });
+
+        const { data: postgameResult, error: postgameError } = await supabase.rpc(
+          'three_five_seven_advance_postgame' as any,
+          {
+            p_game_id: gameId,
+            p_round_id: terminalRoundId,
+            p_dealer_game_id: outgoingDealerGameId,
+            p_hand_number: outgoingHandNumber,
+          } as any,
+        );
+        if (postgameError) throw postgameError;
+
+        const postgame = postgameResult as {
+          outcome?: string;
+          status?: string;
+          dealer_position?: number | null;
+        } | null;
+        if (!['advanced', 'already_advanced', 'stale_identity'].includes(postgame?.outcome ?? '')) {
+          throw new Error(`Unexpected 3-5-7 postgame outcome: ${postgame?.outcome ?? 'missing'}`);
+        }
+
+        emit357GameOverCompleteDiag('advance_complete', {
+          ..._gocId(),
+          outgoingDealerGameId,
+          terminalRoundId,
+          outgoingHandNumber,
+          resultingStatus: postgame?.status ?? null,
+          selectedNextDealerPosition: postgame?.dealer_position ?? null,
+          claimLost: postgame?.outcome !== 'advanced',
+        });
+
+        anteAnimationFiredRef.current = null;
+        await fetchGameData();
+        emit357GameOverCompleteDiag('complete', {
+          ..._gocId(),
+          finalStatus: postgame?.status ?? null,
+        });
+      } catch (error: any) {
+        emit357GameOverCompleteDiag('advance_error', {
+          ..._gocId(),
+          branch: 'three-five-seven-authoritative-postgame',
+          error,
+        });
+        console.error('[357 POSTGAME] Authoritative handoff failed:', error);
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to advance 3-5-7. Please try again.',
+          variant: 'destructive',
+        });
+        try {
+          await fetchGameData();
+        } catch (refetchError) {
+          console.error('[357 POSTGAME] Recovery refetch failed:', refetchError);
         }
       } finally {
         gameOverTransitionRef.current = false;
@@ -11635,53 +11746,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       return;
     }
-
-    if (is357GameType) {
-      const outgoingDealerGameId = gameData?.current_game_uuid ?? game.current_game_uuid ?? null;
-      const outgoingHandNumber = gameData?.total_hands ?? game.total_hands ?? null;
-      let terminalRoundId = (
-        currentRound?.dealer_game_id === outgoingDealerGameId
-        && currentRound?.hand_number === outgoingHandNumber
-      ) ? currentRound.id : null;
-
-      if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
-        const { data: terminalRound, error: terminalRoundError } = await supabase
-          .from('rounds')
-          .select('id')
-          .eq('game_id', gameId)
-          .eq('dealer_game_id', outgoingDealerGameId)
-          .eq('hand_number', outgoingHandNumber)
-          .eq('status', 'completed')
-          .order('round_number', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (terminalRoundError) throw terminalRoundError;
-        terminalRoundId = terminalRound?.id ?? null;
-      }
-      if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
-        throw new Error('3-5-7 postgame identity is incomplete; no transition was attempted.');
-      }
-
-      const { data: postgameResult, error: postgameError } = await supabase.rpc(
-        'three_five_seven_advance_postgame' as any,
-        {
-          p_game_id: gameId,
-          p_round_id: terminalRoundId,
-          p_dealer_game_id: outgoingDealerGameId,
-          p_hand_number: outgoingHandNumber,
-        } as any,
-      );
-      if (postgameError) throw postgameError;
-      const postgame = postgameResult as { outcome?: string; status?: string } | null;
-      if (!['advanced', 'already_advanced', 'stale_identity'].includes(postgame?.outcome ?? '')) {
-        throw new Error(`Unexpected 3-5-7 postgame outcome: ${postgame?.outcome ?? 'missing'}`);
-      }
-      gameOverTransitionRef.current = false;
-      anteAnimationFiredRef.current = null;
-      await fetchGameData();
-      return;
-    }
-
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
@@ -13711,7 +13775,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const _gocIdentity357 = {
       gameId: gameId ?? null,
       dealerGameId: game?.current_game_uuid ?? null,
-      roundId: game?.current_round != null ? String(game.current_round) : null,
+      roundId: currentRound?.dealer_game_id === game?.current_game_uuid
+        && currentRound?.hand_number === game?.total_hands
+        ? currentRound.id
+        : null,
       handNumber: game?.total_hands ?? null,
       viewerPlayerId: user?.id ?? null,
       winnerPlayerId: threeFiveSevenWinnerId ?? null,
@@ -13826,7 +13893,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     try {
-      await handleGameOverComplete();
+      await handleGameOverComplete({
+        dealerGameId: fetchError
+          ? game?.current_game_uuid ?? null
+          : freshGame?.current_game_uuid ?? null,
+        handNumber: fetchError
+          ? game?.total_hands ?? null
+          : freshGame?.total_hands ?? null,
+      });
     } catch (e) {
       emit357GameOverCompleteDiag('returned', {
         ..._gocIdentity357,

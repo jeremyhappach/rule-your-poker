@@ -2,6 +2,40 @@
 
 Date: 2026-08-19
 
+## 3-5-7 atomic terminal participation handoff
+
+- Production dealer game `d36b5353-ba30-4e10-85f0-1c4a82e8a31f` completed
+  settlement and its connected-client win presentation normally, but then
+  remained visually idle for 10.964 seconds. Presentation completed at
+  `20:59:10.575Z`; the durable postgame claim was not committed until
+  `20:59:21.539Z`. The browser advanced it 7.4 seconds before the scheduled
+  fallback, so cron and the win animation were not the delay owners.
+- `Game.tsx` still routed 3-5-7 through shared browser leader election and
+  `evaluatePlayerStatesEndOfGame` before its authoritative postgame RPC. With
+  no participation changes, that path made eight serial database requests
+  before the one transition that mattered. Simply skipping it was unsafe
+  because the existing RPC cleared queued Sit Out, Stand Up, auto-fold, and
+  waiting flags without first applying them.
+- Migration `20260819213000_atomic_357_postgame_participation.sql` is installed
+  on owned production. Under the exact terminal round/game locks it verifies
+  settlement, applies participation precedence (`Stand Up` > `Sit Out` >
+  3-5-7 auto-fold > waiting/rejoin), removes stood-up bots, derives the active
+  cohort and make-it-take-it dealer, clears outgoing transients, publishes the
+  next phase, and records one exact replay result. Former participants may
+  replay their own stored result; outsiders remain rejected. Private terminal
+  winner UUIDs survive deletion of a winning bot.
+- The browser now enters this RPC before shared leader election or player
+  evaluation, consumes/refetches the committed result, and surfaces failures.
+  Its diagnostics also use the exact round UUID instead of attempting to write
+  a round number into `debug_events.round_id`.
+- The complete candidate and deployed rollback proofs pass normal terminal
+  settlement, make-it-take-it, waiting rejoin, Sit Out, auto-fold, human and bot
+  Stand Up, winner-bot deletion, former-participant and outsider replay,
+  duplicate/late replay, session terminal handling, and the complete scheduled
+  recovery function. Ninety focused 3-5-7/client assertions and TypeScript
+  pass, as do all 33 build-required Cribbage assertions and the production
+  build; two-client terminal smoke remains the acceptance gate.
+
 ## 3-5-7 exact terminal round identity
 
 - Production dealer game `f6e1f5cd-cc1d-4d84-b0f3-6a91b39b97d4`
