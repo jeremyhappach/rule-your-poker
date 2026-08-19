@@ -2,6 +2,37 @@
 
 Date: 2026-08-19
 
+## 3-5-7 exact terminal round identity
+
+- Production dealer game `f6e1f5cd-cc1d-4d84-b0f3-6a91b39b97d4`
+  committed its final-leg resolution, leg/sweep/pot transfers, exact terminal
+  result, and `game_over` disposition immediately. Both connected browsers
+  received the Realtime game update, but neither presented the award or win.
+  The scheduled recovery function advanced the already-settled game only after
+  its 30-second presentation fallback.
+- Settlement had cleared `games.current_round` while preserving the outgoing
+  dealer game and hand. The atomic frame reader therefore returned
+  `game_over` without a round, and both clients correctly rejected H4/R1 to
+  H4/R-null as a regressive active identity. Realtime was only a refetch
+  signal, so the initiating client and peer failed at the same frame-admission
+  boundary.
+- Migrations `20260819193000_preserve_357_terminal_round_identity.sql` and
+  `20260819200000_guard_357_session_terminal_identity.sql` are installed on
+  owned production. Terminal settlement now preserves the exact
+  `(current_game_uuid, total_hands, current_round)` through presentation; the
+  existing exact postgame owner remains solely responsible for clearing that
+  identity and publishing the next setup disposition. Database and client
+  frame validation fail explicitly if pre-handoff `game_over` or
+  `session_ended` ever lacks that identity; the deliberately cleared postgame
+  `session_ended` frame remains valid.
+- The complete authority rollback proof passed before and after installation.
+  It now proves the exact terminal frame and private hand, financial batch
+  order, settlement replay, full scheduled terminal recovery statement,
+  postgame duplicate claim, identity clearing, setup authorization, and late
+  replay safety. Fourteen focused frame tests, TypeScript, all 33 build-required
+  Cribbage assertions, and the production build pass. Frontend publication and
+  two-client final-leg smoke remain the acceptance gates.
+
 ## 3-5-7 exact opening-transfer claim
 
 - Frozen production session `Aug 19 - Brandon Morrow` proved the repeated
@@ -30,8 +61,8 @@ Date: 2026-08-19
   scheduled recovery function. A read-only assertion also verified the frozen
   `Brandon Morrow` round against its exact immutable ante batch. Thirty focused
   client assertions, TypeScript, all 33 build-required Cribbage assertions,
-  and the production build pass. Publication and two-client smoke remain the
-  release gates at this checkpoint.
+  and the production build pass. Published two-client rollover smoke passed
+  on 2026-08-19 at commit `d025d95825a88e87b01e8404a01d218e8ca91367`.
 
 ## 3-5-7 atomic current-frame hydration
 

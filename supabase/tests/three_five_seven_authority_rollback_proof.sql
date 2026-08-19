@@ -10,10 +10,12 @@ DECLARE
   v_cron_game uuid:=gen_random_uuid(); v_cron_dealer uuid:=gen_random_uuid();
   v_leg_game uuid:=gen_random_uuid(); v_leg_dealer uuid:=gen_random_uuid();
   v_terminal_game uuid:=gen_random_uuid(); v_terminal_dealer uuid:=gen_random_uuid();
+  v_session_terminal_game uuid:=gen_random_uuid(); v_session_terminal_dealer uuid:=gen_random_uuid();
   v_p1 uuid; v_p2 uuid; v_round uuid; v_r2 uuid; v_r3 uuid; v_r1_next uuid;
   v_cron_p1 uuid; v_cron_p2 uuid; v_cron_round uuid;
   v_l1 uuid; v_l2 uuid; v_leg_round uuid;
   v_t1 uuid; v_t2 uuid; v_terminal_round uuid; v_new_dealer uuid:=gen_random_uuid();
+  v_st1 uuid; v_st2 uuid; v_session_terminal_round uuid;
   v_result jsonb; v_replay jsonb; v_frame jsonb; v_chips1 integer; v_chips2 integer; v_count integer; v_cursor integer;
   v_opening_cursor bigint; v_late_cursor bigint;
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
@@ -425,12 +427,33 @@ BEGIN
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
   IF v_result#>>'{resolution,outcome}'<>'terminal' OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'game_over'
+     OR (SELECT current_game_uuid FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM v_terminal_dealer
+     OR (SELECT total_hands FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM 1
+     OR (SELECT current_round FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM 1
+     OR (SELECT status FROM public.rounds WHERE id=v_terminal_round)<>'completed'
      OR (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_terminal_dealer AND settlement_key='three_five_seven_terminal')<>1
      OR (SELECT chips FROM public.players WHERE id=v_t1)<>105
      OR (SELECT chips FROM public.players WHERE id=v_t2)<>100
      OR (SELECT pot FROM public.games WHERE id=v_terminal_game)<>0
      OR (SELECT sum(chips) FROM public.players WHERE game_id=v_terminal_game)<>205 THEN
     RAISE EXCEPTION '357_authority_proof:terminal_settlement_invalid:%',v_result;
+  END IF;
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  SELECT public.three_five_seven_current_frame(v_terminal_game) INTO v_frame;
+  IF v_frame#>>'{game,status}'<>'game_over'
+     OR (v_frame#>>'{identity,dealer_game_id}')::uuid IS DISTINCT FROM v_terminal_dealer
+     OR (v_frame#>>'{identity,hand_number}')::integer IS DISTINCT FROM 1
+     OR (v_frame#>>'{identity,round_number}')::integer IS DISTINCT FROM 1
+     OR (v_frame#>>'{identity,round_id}')::uuid IS DISTINCT FROM v_terminal_round
+     OR (v_frame#>>'{round,id}')::uuid IS DISTINCT FROM v_terminal_round
+     OR NOT EXISTS (
+       SELECT 1
+         FROM jsonb_array_elements(v_frame->'player_cards') cards
+        WHERE (cards->>'player_id')::uuid=v_t1
+          AND jsonb_array_length(cards->'cards')=3
+     ) THEN
+    RAISE EXCEPTION '357_authority_proof:terminal_current_frame_invalid:%',v_frame;
   END IF;
   SELECT array_agg(reason ORDER BY cursor) INTO v_reasons
     FROM public.gameplay_transfer_batches
@@ -442,8 +465,6 @@ BEGIN
   IF (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_terminal_dealer AND settlement_key='three_five_seven_terminal')<>1 THEN
     RAISE EXCEPTION '357_authority_proof:terminal_replay_duplicated';
   END IF;
-  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
-  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
   SELECT public.three_five_seven_reveal_terminal_cards(
     v_terminal_game,v_terminal_round,v_terminal_dealer,1,v_t1
   ) INTO v_result;
@@ -457,10 +478,28 @@ BEGIN
   IF coalesce((v_setting->>'enabled')::boolean,false) IS NOT TRUE THEN
     RAISE EXCEPTION '357_authority_proof:make_it_take_it_enable_not_returned';
   END IF;
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  UPDATE private.three_five_seven_round_resolutions
+     SET presentation_fallback_at=clock_timestamp()-interval '1 second'
+   WHERE game_id=v_terminal_game AND round_id=v_terminal_round;
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  PERFORM set_config('app.three_five_seven_recovery_game_id',v_terminal_game::text,true);
+  SELECT private.advance_due_three_five_seven_state() INTO v_result;
+  PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  IF v_result->>'outcome'<>'recovered' OR NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(v_result->'games') recovered
+     WHERE (recovered->>'game_id')::uuid=v_terminal_game
+       AND recovered#>>'{result,outcome}'='advanced'
+  ) THEN
+    RAISE EXCEPTION '357_authority_proof:complete_terminal_recovery_failed:%',v_result;
+  END IF;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_result;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_replay;
-  IF v_result->>'outcome'<>'advanced' OR v_replay->>'outcome'<>'already_advanced'
+  IF v_result->>'outcome'<>'already_advanced' OR v_replay->>'outcome'<>'already_advanced'
      OR (v_result->>'dealer_position')::integer<>1
+     OR (SELECT current_game_uuid FROM public.games WHERE id=v_terminal_game) IS NOT NULL
+     OR (SELECT current_round FROM public.games WHERE id=v_terminal_game) IS NOT NULL
+     OR (SELECT total_hands FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM 0
      OR (SELECT count(*) FROM private.three_five_seven_postgame_advances WHERE game_id=v_terminal_game AND dealer_game_id=v_terminal_dealer)<>1 THEN
     RAISE EXCEPTION '357_authority_proof:postgame_replay_invalid:%/%',v_result,v_replay;
   END IF;
@@ -510,6 +549,62 @@ BEGIN
    RETURNING value INTO v_setting;
   IF coalesce((v_setting->>'enabled')::boolean,true) IS NOT FALSE THEN
     RAISE EXCEPTION '357_authority_proof:make_it_take_it_disable_not_returned';
+  END IF;
+
+  -- A pending session end retains the same exact terminal round through its
+  -- connected-client frame, then the complete scheduler clears that address.
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  INSERT INTO public.games(
+    id,name,status,game_type,current_game_uuid,current_host,dealer_position,
+    ante_amount,rollover_amount,leg_value,legs_to_win,total_hands,pot,real_money,pending_session_end
+  ) VALUES(
+    v_session_terminal_game,'Codex rollback proof - 357 terminal session','ante_decision','3-5-7',
+    v_session_terminal_dealer,v_users[1],1,0,1,1,1,0,0,false,true
+  );
+  INSERT INTO public.dealer_games(id,session_id,dealer_user_id,game_type)
+  VALUES(v_session_terminal_dealer,v_session_terminal_game,v_users[1],'3-5-7');
+  INSERT INTO public.players(game_id,user_id,position,chips,status,sitting_out,is_bot,ante_decision) VALUES
+    (v_session_terminal_game,v_users[1],1,100,'active',false,false,'ante_up'),
+    (v_session_terminal_game,v_users[2],2,100,'active',false,false,'ante_up');
+  SELECT id INTO v_st1 FROM public.players WHERE game_id=v_session_terminal_game AND user_id=v_users[1];
+  SELECT id INTO v_st2 FROM public.players WHERE game_id=v_session_terminal_game AND user_id=v_users[2];
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  SELECT public.three_five_seven_begin_game(v_session_terminal_game) INTO v_result;
+  v_session_terminal_round:=(v_result->>'round_id')::uuid;
+  PERFORM public.three_five_seven_submit_decision(
+    v_session_terminal_game,v_session_terminal_round,v_session_terminal_dealer,1,1,v_st1,'stay'
+  );
+  PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
+  PERFORM public.three_five_seven_submit_decision(
+    v_session_terminal_game,v_session_terminal_round,v_session_terminal_dealer,1,1,v_st2,'fold'
+  );
+  PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  SELECT public.three_five_seven_current_frame(v_session_terminal_game) INTO v_frame;
+  IF v_frame#>>'{game,status}'<>'session_ended'
+     OR (v_frame#>>'{identity,dealer_game_id}')::uuid IS DISTINCT FROM v_session_terminal_dealer
+     OR (v_frame#>>'{identity,hand_number}')::integer IS DISTINCT FROM 1
+     OR (v_frame#>>'{identity,round_number}')::integer IS DISTINCT FROM 1
+     OR (v_frame#>>'{identity,round_id}')::uuid IS DISTINCT FROM v_session_terminal_round THEN
+    RAISE EXCEPTION '357_authority_proof:session_terminal_current_frame_invalid:%',v_frame;
+  END IF;
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  UPDATE private.three_five_seven_round_resolutions
+     SET presentation_fallback_at=clock_timestamp()-interval '1 second'
+   WHERE game_id=v_session_terminal_game AND round_id=v_session_terminal_round;
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
+  PERFORM set_config('app.three_five_seven_recovery_game_id',v_session_terminal_game::text,true);
+  SELECT private.advance_due_three_five_seven_state() INTO v_result;
+  PERFORM set_config('app.three_five_seven_recovery_game_id','',true);
+  IF v_result->>'outcome'<>'recovered'
+     OR (SELECT status FROM public.games WHERE id=v_session_terminal_game)<>'session_ended'
+     OR (SELECT current_game_uuid FROM public.games WHERE id=v_session_terminal_game) IS NOT NULL
+     OR (SELECT current_round FROM public.games WHERE id=v_session_terminal_game) IS NOT NULL
+     OR (SELECT total_hands FROM public.games WHERE id=v_session_terminal_game) IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION '357_authority_proof:complete_session_terminal_recovery_failed:%',v_result;
   END IF;
 
   -- Ambiguous simultaneous 3/5/7 sweeps are rejected atomically.

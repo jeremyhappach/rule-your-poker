@@ -890,3 +890,22 @@ from the same transaction's pending ante journal; it is never reconstructed
 from the current game cursor. Existing history is backfilled only from an
 unambiguous charge-result/batch mapping. Missing, ambiguous, or mismatched live
 claims fail explicitly instead of parking a client presentation gate.
+
+## D-067 - 3-5-7 terminal presentation retains exact round identity
+
+Final settlement may publish `game_over`, but it may not erase the outgoing
+3-5-7 round address. The exact `(dealer_game_id, hand_number, round_number,
+round_id)` that produced the committed terminal result remains authoritative
+through the connected-client win sequence. The same atomic frame therefore
+contains the terminal disposition, completed round, caller-visible cards, and
+settlement cursor without an active-identity regression.
+
+Only the exact replay-safe postgame handoff clears the outgoing dealer-game,
+hand, and round pointers while publishing the next setup or terminal
+disposition. Realtime remains a refetch signal, and scheduled recovery remains
+a fallback for disconnected or stalled presentation; neither is the trigger
+that makes a connected browser able to observe terminal settlement. A
+A pre-handoff `game_over` or `session_ended` frame missing its exact round
+identity fails explicitly on both the database and client boundaries. A
+postgame `session_ended` frame is valid only with the deliberately cleared
+dealer-game, hand counter, and round address.

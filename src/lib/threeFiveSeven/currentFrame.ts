@@ -112,7 +112,19 @@ export function parseThreeFiveSevenCurrentFrame<
   }
 
   const status = typeof game.status === 'string' ? game.status : '';
-  const active = status === 'in_progress' || status === 'game_over';
+  const sessionTerminalIdentityPresent = status === 'session_ended' && (
+    !!gameDealerGameId
+    || (gameHandNumber != null && gameHandNumber > 0)
+    || gameRoundNumber != null
+  );
+  const terminalIdentityRequired = status === 'game_over' || sessionTerminalIdentityPresent;
+  const active = status === 'in_progress' || status === 'game_over' || sessionTerminalIdentityPresent;
+  if (
+    terminalIdentityRequired
+    && (!gameDealerGameId || gameHandNumber == null || gameHandNumber < 1 || gameRoundNumber == null)
+  ) {
+    throw new Error('three_five_seven_current_frame:terminal_round_identity_missing');
+  }
   if (active && gameDealerGameId && gameHandNumber != null && gameRoundNumber != null && !round) {
     throw new Error('three_five_seven_current_frame:exact_round_missing');
   }
@@ -213,8 +225,12 @@ export function acceptThreeFiveSevenFrame(
     return { accepted: false, reason: 'older_request' };
   }
 
-  const currentActive = current.status === 'in_progress' || current.status === 'game_over';
-  const incomingActive = incoming.status === 'in_progress' || incoming.status === 'game_over';
+  const currentActive = current.status === 'in_progress'
+    || current.status === 'game_over'
+    || (current.status === 'session_ended' && !!current.dealerGameId);
+  const incomingActive = incoming.status === 'in_progress'
+    || incoming.status === 'game_over'
+    || (incoming.status === 'session_ended' && !!incoming.dealerGameId);
   const sameDealerGame = !!incoming.dealerGameId && incoming.dealerGameId === current.dealerGameId;
   if (currentActive && incomingActive && sameDealerGame) {
     const currentHand = current.handNumber ?? -1;

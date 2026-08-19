@@ -21,6 +21,11 @@
   initiating-client committed RPC result, immediate private-card refetch, and
   exact durable transfer cursor; do not make Realtime the bootstrap or deal-
   admission trigger again.
+- The 3-5-7 exact charged-Round-1 opening-transfer claim passed published
+  two-client rollover smoke on 2026-08-19 at commit
+  `d025d95825a88e87b01e8404a01d218e8ca91367`. Preserve the round-owned
+  immutable ante cursor returned to the initiating client; do not derive
+  opening presentation from the mutable game cursor or a peer Realtime event.
 - The 3-5-7 final-leg baseline and Round 1 deal-presentation gate passed
   published two-client smoke on 2026-08-17 at commit `845f5865b`. Preserve the
   immutable `targetLegs - 1` terminal baseline and exact-hand DealRuntime

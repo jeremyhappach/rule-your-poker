@@ -88,6 +88,80 @@ describe('3-5-7 atomic current frame', () => {
     expect(acceptThreeFiveSevenFrame(prior, next)).toEqual({ accepted: true, reason: 'forward_active_identity' });
   });
 
+  it('admits the exact final round when its status becomes game_over', () => {
+    const prior = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 10);
+    const base = rawFrame();
+    const terminal = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: { ...base.game, status: 'game_over' },
+      round: { ...base.round, status: 'completed' },
+    })), 11);
+
+    expect(acceptThreeFiveSevenFrame(prior, terminal)).toEqual({
+      accepted: true,
+      reason: 'same_active_identity',
+    });
+  });
+
+  it('rejects game_over when settlement dropped the final round identity', () => {
+    const base = rawFrame();
+    expect(() => parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: { ...base.game, status: 'game_over', current_round: null },
+      round: null,
+      player_cards: [],
+      viewer_cards_required: false,
+      viewer_cards_present: false,
+      identity: {
+        ...base.identity,
+        round_number: null,
+        round_id: null,
+        opening_transfer_required: false,
+        opening_transfer_cursor: null,
+      },
+    }))).toThrow(/terminal_round_identity_missing/);
+  });
+
+  it('keeps a pre-handoff session_ended frame on the exact final round', () => {
+    const prior = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 10);
+    const base = rawFrame();
+    const terminal = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: { ...base.game, status: 'session_ended' },
+      round: { ...base.round, status: 'completed' },
+    })), 11);
+
+    expect(acceptThreeFiveSevenFrame(prior, terminal)).toEqual({
+      accepted: true,
+      reason: 'same_active_identity',
+    });
+  });
+
+  it('admits the deliberately cleared postgame session_ended frame', () => {
+    const base = rawFrame();
+    const frame = parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: {
+        ...base.game,
+        status: 'session_ended',
+        current_game_uuid: null,
+        total_hands: 0,
+        current_round: null,
+      },
+      round: null,
+      player_cards: [],
+      viewer_cards_required: false,
+      viewer_cards_present: false,
+      identity: {
+        ...base.identity,
+        dealer_game_id: null,
+        hand_number: 0,
+        round_number: null,
+        round_id: null,
+        opening_transfer_required: false,
+        opening_transfer_cursor: null,
+      },
+    }));
+
+    expect(frame.round).toBeNull();
+  });
+
   it('rejects a late older request after the successor frame committed', () => {
     const current = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 12);
     const latePrior = {
