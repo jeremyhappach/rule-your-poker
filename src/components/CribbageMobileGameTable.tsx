@@ -89,6 +89,7 @@ import {
   logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
 import { useGameStateSync } from '@/lib/gameStateSync';
+import { evaluateCribbageWriterAdmission } from '@/lib/cribbage/writerAdmission';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
@@ -1606,32 +1607,39 @@ export const CribbageMobileGameTable = ({
 
 
   // ── Action identity guard ──
-  // A user-driven mutation may only fire when the canonical identity chain is
-  // aligned end-to-end. Parent `roundId` / `handNumber` props are advisory only
-  // and MUST NOT gate action legality once canonical identities are aligned.
-  //   • renderHandKey === currentHandKey  → presentation matches local writer
-  //   • writerMatchesAuth                 → writer matches authoritative identity
-  //   • syncHandle.interactionsAllowed    → framework sync gate open
-  //   • renderHandKey !== ''              → there IS a hand to act on
-  const writerMatchesAuth = !authIdentity || (
-    (!authIdentity.roundId || authIdentity.roundId === currentRoundId) &&
-    (
-      typeof authIdentity.handNumber !== 'number' ||
-      authIdentity.handNumber === currentHandNumber
-    )
-  );
-  const interactionsAllowed = !!(
-    renderHandKey &&
-    currentHandKey &&
-    renderHandKey === currentHandKey &&
-    currentRoundId &&
-    writerMatchesAuth &&
-    syncHandle.interactionsAllowed
-  );
-  const interactionsAllowedRef = useRef(interactionsAllowed);
-  useEffect(() => {
-    interactionsAllowedRef.current = interactionsAllowed;
-  }, [interactionsAllowed]);
+  // One synchronous admission owner feeds both render enablement and every
+  // mutation handler. `canInteractNow()` reads the framework's refs directly,
+  // avoiding the render/effect lag that previously let an enabled discard
+  // button reach a stale, separately-maintained handler gate.
+  const evaluateWriterIdentity = useCallback((action: string) => (
+    evaluateCribbageWriterAdmission({
+      action,
+      authIdentity,
+      presentationIdentity: syncHandle.presentationIdentity,
+      writerRoundId: currentRoundId,
+      writerHandNumber: currentHandNumber,
+      renderHandKey,
+      currentHandKey,
+      propRoundId: roundId,
+      propHandNumber: handNumber,
+      frameworkCanInteractNow: syncHandle.canInteractNow(),
+      frameworkInteractionsAllowed: syncHandle.interactionsAllowed,
+    })
+  ), [
+    authIdentity,
+    syncHandle.presentationIdentity,
+    syncHandle.canInteractNow,
+    syncHandle.interactionsAllowed,
+    currentRoundId,
+    currentHandNumber,
+    renderHandKey,
+    currentHandKey,
+    roundId,
+    handNumber,
+  ]);
+  const currentWriterAdmission = evaluateWriterIdentity('render');
+  const writerMatchesAuth = currentWriterAdmission.checks.writerMatchesAuth;
+  const interactionsAllowed = currentWriterAdmission.ok;
 
   // ══ Always-on: crib:interaction_gate_blocked ══════════════════════════
   // Persists when the local interaction gate is closed while phase is
@@ -1658,7 +1666,7 @@ export const CribbageMobileGameTable = ({
       !renderMatches ? 'render!=current' : null,
       !currentRoundId ? 'no-currentRoundId' : null,
       !writerMatchesAuth ? 'writer!=auth' : null,
-      !syncHandle.interactionsAllowed ? 'framework-blocked' : null,
+      !currentWriterAdmission.checks.frameworkCanInteractNow ? 'framework-blocked' : null,
     ].filter(Boolean).join(',');
     const key = `${phase}|${failing}|${currentHandKey ?? ''}|${renderHandKey ?? ''}`;
     if (_lastGateBlockedKeyRef.current === key) return;
@@ -1681,6 +1689,7 @@ export const CribbageMobileGameTable = ({
           currentRoundId: currentRoundId ?? null,
           writerMatchesAuth,
           frameworkInteractionsAllowed: syncHandle.interactionsAllowed,
+          frameworkCanInteractNow: currentWriterAdmission.checks.frameworkCanInteractNow,
           authIdentity: authIdentity ? {
             dealerGameId: authIdentity.dealerGameId,
             roundId: authIdentity.roundId,
@@ -1701,6 +1710,7 @@ export const CribbageMobileGameTable = ({
     currentHandKey,
     currentRoundId,
     writerMatchesAuth,
+    currentWriterAdmission.checks.frameworkCanInteractNow,
     syncHandle.interactionsAllowed,
     gameId,
     currentHandNumber,
@@ -1711,110 +1721,14 @@ export const CribbageMobileGameTable = ({
     roundId,
     handNumber,
   ]);
-  // Framework-level gate (independent of local identity check) — kept as a
-  // ref so writer callbacks can read it synchronously.
-  const frameworkInteractionsAllowedRef = useRef(syncHandle.interactionsAllowed);
-  useEffect(() => {
-    frameworkInteractionsAllowedRef.current = syncHandle.interactionsAllowed;
-  }, [syncHandle.interactionsAllowed]);
-
-  // ── Phase 2 hardening: centralized identity refs for sync access ─────────
-  // All writer / snapshot / divergence checks read these refs synchronously.
+  // Realtime callbacks still need the latest authoritative identity without
+  // forcing channel resubscription on each identity render.
   const authIdentityRef = useRef<AuthoritativeIdentity | null>(authIdentity);
   useEffect(() => { authIdentityRef.current = authIdentity; }, [
     authIdentity?.roundId,
     authIdentity?.handNumber,
     authIdentity?.dealerGameId,
   ]);
-  const presentationIdentityRef = useRef(syncHandle.presentationIdentity);
-  useEffect(() => { presentationIdentityRef.current = syncHandle.presentationIdentity; }, [
-    syncHandle.presentationIdentity?.roundId,
-    syncHandle.presentationIdentity?.handNumber,
-  ]);
-
-  /**
-   * Centralized writer-side identity invariant.
-   *
-   * PRECEDENCE (canonical source order):
-   *   1. authIdentity   — authoritative; wins all ties
-   *   2. snapshotIdentity (=currentRoundId for cribbage) — must match auth
-   *   3. propIdentity (parent roundId/handNumber) — may lag but cannot unlock writes
-   *   4. mirrorIdentity (local cribbageState) — may lag but cannot unlock writes
-   *   5. presentationIdentity — may lag only as non-interactive placeholder
-   *   6. writerIdentity (currentRoundId/currentHandNumber) — must equal auth at write time
-   *
-   * Returns ok=true ONLY if every layer is aligned. Otherwise returns a structured
-   * divergence payload suitable for `crib-action-suppressed-stale-identity` events.
-   */
-  const evaluateWriterIdentity = useCallback((action: string) => {
-    const auth = authIdentityRef.current;
-    const pres = presentationIdentityRef.current;
-    const divergence: Record<string, unknown> = {
-      action,
-      authIdentity: auth ? { roundId: auth.roundId?.slice(0, 8), hand: auth.handNumber } : null,
-      snapshotIdentity: currentRoundId?.slice(0, 8) ?? null,
-      propIdentity: { roundId: roundId?.slice(0, 8), hand: handNumber },
-      mirrorIdentity: { handKey: currentHandKey?.slice(0, 30) ?? null },
-      presentationIdentity: pres ? { roundId: pres.roundId?.slice(0, 8), hand: pres.handNumber } : null,
-      writerIdentity: { roundId: currentRoundId?.slice(0, 8), hand: currentHandNumber },
-      renderHandKey: renderHandKey?.slice(0, 30) ?? null,
-      frameworkInteractionsAllowed: frameworkInteractionsAllowedRef.current,
-      localInteractionsAllowed: interactionsAllowedRef.current,
-    };
-
-    const renderAndMirrorAligned = !!(
-      renderHandKey &&
-      currentHandKey &&
-      renderHandKey === currentHandKey &&
-      currentRoundId
-    );
-    const writerMatchesAuth = !!(
-      !auth ||
-      (
-        (!auth.roundId || auth.roundId === currentRoundId) &&
-        (typeof auth.handNumber !== 'number' || auth.handNumber === currentHandNumber)
-      )
-    );
-    const presentationMatchesAuth = !!(
-      !pres ||
-      !auth ||
-      !pres.roundId ||
-      !auth.roundId ||
-      pres.roundId === auth.roundId
-    );
-    // P0 discard unblock: parent props can lag one hand behind while the
-    // actionable sources (auth/current/presentation/render) are already aligned.
-    // In that case the UI is safe to submit the discard; the backend RPC still
-    // validates phase, player ownership, and selected indices atomically.
-    const discardBlockedOnlyByStaleParentProps = !!(
-      action === 'discard' &&
-      !interactionsAllowedRef.current &&
-      renderAndMirrorAligned &&
-      writerMatchesAuth &&
-      presentationMatchesAuth &&
-      frameworkInteractionsAllowedRef.current
-    );
-
-    if (!interactionsAllowedRef.current && !discardBlockedOnlyByStaleParentProps) {
-      return { ok: false, reason: 'local-identity-misaligned', divergence };
-    }
-    if (!frameworkInteractionsAllowedRef.current) {
-      return { ok: false, reason: 'framework-identity-stale-or-frozen', divergence };
-    }
-    if (auth && currentRoundId && auth.roundId && auth.roundId !== currentRoundId) {
-      return { ok: false, reason: 'writer-vs-auth-roundid-mismatch', divergence };
-    }
-    if (auth && typeof auth.handNumber === 'number' && auth.handNumber !== currentHandNumber) {
-      return { ok: false, reason: 'writer-vs-auth-hand-mismatch', divergence };
-    }
-    if (pres && auth && pres.roundId && auth.roundId && pres.roundId !== auth.roundId) {
-      return { ok: false, reason: 'presentation-vs-auth-mismatch', divergence };
-    }
-    return { ok: true as const, reason: 'aligned', divergence };
-  }, [
-    currentRoundId, currentHandNumber, currentHandKey, renderHandKey, roundId, handNumber,
-  ]);
-
   // ── Identity divergence observer ──
   // Fires `crib-identity-divergence` (throttled per-identity-signature) whenever
   // the six identity sources disagree in a way that is NOT a normal lag-window.

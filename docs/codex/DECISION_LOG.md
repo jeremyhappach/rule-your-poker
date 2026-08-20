@@ -1012,3 +1012,18 @@ harnesses may not silently disable that transport simulation.
 Network simulation remains client-local and cannot mutate payloads or become
 gameplay authority. Its persistent logging preference is independent as well.
 No separate global network gate is inferred from the game-harness setting.
+
+## D-074 - A visible game action has one writer-admission owner
+
+A game control and its mutation handler must consume the same synchronous
+writer-admission decision. Rendered booleans and effect-maintained callback
+refs may not become competing gates: their timing can diverge during an
+identity, freeze, or presentation edge and reject an action the UI just
+enabled.
+
+For Cribbage, admission requires the exact render/current hand boundary,
+writer/auth identity, presentation/auth identity, and the shared sync
+framework's ref-backed `canInteractNow()` verdict. This client containment is
+not gameplay authority. The exact-round PostgreSQL RPC still authenticates,
+locks, validates phase and ownership, applies the action atomically, and
+publishes the authoritative result.

@@ -2,6 +2,24 @@
 
 Date: 2026-08-20
 
+## Cribbage opening-hand writer admission
+
+- Cribbage card controls and the discard, pegging-play, and `go` handlers now
+  consume one synchronous writer-admission predicate. The prior handler-only
+  effect refs could lag the rendered gate during the dealer-selection to
+  opening-hand transition, so an enabled Send to Crib button could be rejected
+  locally with `Hand updating — try again` before any RPC reached PostgreSQL.
+- Admission still requires matching render/current hand keys, current writer
+  round and hand, authoritative identity, presentation identity, and the shared
+  sync framework's ref-backed `canInteractNow()` verdict. Stale, mismatched,
+  frozen, and visual-contract states remain fail-closed. The deployed
+  `cribbage_apply_discard` RPC continues to own authentication, membership,
+  player ownership, phase, discard-count, index validation, serialization, and
+  authoritative publication; no schema or production-state mutation is part
+  of this frontend correction.
+- Focused writer-admission, shared sync-reset, and Cribbage render-guard suites
+  pass (36 assertions), as does the installed TypeScript compiler.
+
 ## Network simulation is independent of game harnesses
 
 - A user's `profiles.network_sim_mode` and `network_sim_logging` settings now
