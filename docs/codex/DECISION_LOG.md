@@ -931,3 +931,26 @@ rejected. Stood-up bots are removed, while the private terminal resolution and
 postgame claim retain the immutable winner UUID so deletion cannot erase the
 authority identity. Realtime synchronizes peers and scheduled recovery remains
 a disconnect fallback; neither is the connected-client handoff trigger.
+
+## D-069 - Game recovery has one serialized scheduler owner
+
+PostgreSQL recovery functions may retain independent game-specific authority,
+but their cadence is published by one non-overlapping scheduled dispatcher.
+The dispatcher runs complete recovery functions sequentially under a
+transaction advisory lock; one-second owners run every tick and slower owners
+are admitted from durable cadence state. Independent high-frequency cron jobs
+must not compete for the shared Postgres/PostgREST pool.
+
+Each task executes inside its own exception subtransaction. A failure is
+persisted as one durable, rate-limited task claim and does not roll back other
+successful owners or cause overlapping retries. Recovery proof invokes the
+complete installed dispatcher, not only its helpers. A protected game may be
+mutated only through the same narrowly scoped trusted server context already
+recognized by its authority guard; scheduler consolidation never weakens that
+guard.
+
+Client recovery signals are game-capability-specific. An empty shared
+`player_cards` projection can indicate a missing hand only for games that
+publish through that table. Diagnostic persistence is explicit and scoped to
+the exact mounted game family and identity; a diagnostic wrapper may not turn
+ordinary presentation rerenders into database traffic.

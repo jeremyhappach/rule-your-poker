@@ -14,6 +14,11 @@ if (typeof window !== 'undefined') {
 
 export { emitWartime } from './emit';
 export {
+  isWartimeCaptureEnabled,
+  setWartimeActiveGameContext,
+  shouldCaptureWartime,
+} from './capture';
+export {
   bootstrapWartime,
   checkWartimeReady,
   isWartimeReadyForHarness,

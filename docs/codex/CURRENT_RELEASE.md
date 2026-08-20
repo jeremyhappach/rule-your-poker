@@ -1,6 +1,36 @@
 # Current release and cutover state
 
-Date: 2026-08-19
+Date: 2026-08-20
+
+## Serialized cross-game recovery and scoped 3-5-7 diagnostics
+
+- The paused Antelope Yahtzee session was not corrupt. At `01:58:53Z`, the
+  independent one-second Holm, Cribbage, Gin, Yahtzee, and 3-5-7 recovery jobs
+  overlapped for as long as 7.256 seconds; subsequent jobs missed startup for
+  11--20 seconds and PostgREST returned global 503s. The separate abandonment
+  job also failed every five seconds because it reached protected 3-5-7 state
+  without the trusted server context. Antelope advanced normally once the
+  database recovered, so no historical session mutation was performed.
+- Migration `20260820023000_serialize_game_recovery_scheduler.sql` is installed
+  on owned production. One advisory-locked one-second dispatcher now runs the
+  complete Holm, Cribbage, Gin, Yahtzee, and 3-5-7 recovery functions in
+  sequence and admits Horses/SCC plus abandonment every five seconds. Each
+  task has its own exception boundary and one durable, rate-limited failure
+  claim, so one broken owner cannot roll back or stampede the rest. The
+  abandonment owner receives the existing transaction-local trusted 3-5-7
+  context; the authority trigger remains strict.
+- The complete rollback proof passed before and after installation, including
+  an injected task failure, durable failure capture, recovery, all seven real
+  task owners, five-second admission, immediate replay, and the exact installed
+  cron statement. A later live-cadence check found one active schedule, no task
+  failures, 60/60 successful recent runs, and a 78 ms maximum runtime.
+- `Game.tsx` now treats an empty shared `player_cards` projection as recovery
+  evidence only for Holm and 3-5-7, and skips that read entirely for Cribbage,
+  Gin, Yahtzee, Horses, and Ship Captain Crew. The separate 3-5-7 database
+  wartime sink is fail-closed unless Wartime Debug is explicitly enabled and
+  the mounted table is an exact 3-5-7 game. Its timer-owner callbacks no longer
+  change identity on ordinary React renders, preventing cancel/recreate event
+  floods even during an enabled trace.
 
 ## 3-5-7 zero-transfer terminal sweep bypass
 

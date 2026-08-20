@@ -41,10 +41,11 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
-| Schema history | `supabase/migrations/` (290 versioned migration files). Later definitions supersede earlier same-named functions. |
+| Schema history | `supabase/migrations/` (310 versioned migration files). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
 | Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql` first split normal final-leg 3-5-7 presentation; `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` corrects owned leg reserve so it never enters the pot and publishes ordered `leg`/`sweep`/`transfer` stages. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. `ChipPresentationLedger` performs an exact one-shot batch lookup when an endpoint cursor proves its INSERT event was missed. `ChipTransportProvider` and `CanonicalSeatCluster` keep the ledger-owned source seat visible throughout an outbound flight. |
 | Post-game participation and abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` and `20260809200000_extend_fake_money_postgame_presence.sql` own result-backed post-game watches, three consecutive five-second missed windows, absent-player sit-out, and real/fake terminal disposition when presence is ambiguous. `20260815163818_atomic_explicit_postgame_stand_up.sql` separately owns authenticated explicit Stand Up plus its immediate zero/one/eligible cohort decision in one transaction. Initial waiting and live dealer games remain outside these owners; the legacy `enforce-all-deadlines` Edge Function remains separate. |
+| Serialized scheduled recovery | `supabase/migrations/20260820023000_serialize_game_recovery_scheduler.sql` installs the sole one-second `private.advance_due_game_state()` cron owner. It serializes the complete Holm, Cribbage, Gin, Yahtzee, 3-5-7, Horses/SCC, and abandonment functions behind an advisory lock, isolates each task failure, and persists one active failure claim per task. `supabase/tests/game_recovery_scheduler_rollback_proof.sql` proves the complete scheduled statement and failure/recovery boundary. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in
@@ -60,7 +61,7 @@ the authority over generated declarations.
 |---|---|
 | `src/components/GameLobby.tsx` | Lobby listing, create/join navigation, lobby realtime, admin/settings entry, and completed-session results access. |
 | `src/lib/lobbyFetch.ts:fetchLobbyGames` | Bounded lobby query, player/profile projection, ended-session snapshot lookup, and abort handling. |
-| `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config, ante completion, game startup, game-over continuation, and local Session Ended admission. |
+| `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config, ante completion, game startup, game-over continuation, and local Session Ended admission. `src/lib/sharedPlayerCards.ts` limits shared `player_cards` reads and empty-hand recovery to Holm and 3-5-7; dedicated-state and dice games never enter that recovery path. |
 | `src/components/PreGameLobby.tsx`, `src/components/WaitingForPlayersTable.tsx` | Pregame and waiting-room presentation inside the persistent table shell. |
 | `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
 | `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
@@ -454,6 +455,12 @@ and hooks are `runtimeCache.ts`, `useDebugHarness.ts`, and
 execution boundary: a configured profile may execute only when the globally
 persisted `harnesses_mode` gate is on. `getConfiguredHarnessCached` is
 display-only for the Admin surface.
+
+The separate database-backed 3-5-7 wartime stream is gated by
+`src/lib/threeFiveSeven/wartime/capture.ts`: Wartime Debug must be explicitly
+enabled, the mounted route must currently own a 3-5-7 game, and scoped events
+must match that game id. `Game.tsx` publishes that route context and keeps its
+diagnostic timer wrappers stable across ordinary renders.
 
 | Game | Profiles excluding `none` |
 |---|---|

@@ -13,8 +13,11 @@ import {
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
   isTargetedWartimePreflightReadyForHarness,
+  bootstrapWartime as __bootstrapWartime,
+  setWartimeActiveGameContext as __setWartimeActiveGameContext,
 } from "@/lib/threeFiveSeven/wartime";
 import { readDebugHarness } from "@/lib/debugHarness/useDebugHarness";
+import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 
 
 // 3-5-7 Wartime — canonical production owner for realtime.causality.
@@ -118,6 +121,7 @@ import {
   type ThreeFiveSevenCurrentFrame,
   type ThreeFiveSevenFrameCursor,
 } from "@/lib/threeFiveSeven/currentFrame";
+import { expectsSharedPlayerCards } from "@/lib/sharedPlayerCards";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -2014,6 +2018,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameType: (game as { game_type?: string | null } | null)?.game_type ?? null,
     },
   });
+  const __wartimeGameOwnerRef = useRef(__wartimeGameOwner);
+  __wartimeGameOwnerRef.current = __wartimeGameOwner;
+  const __wartimeCardStateContextRef = useRef(cardStateContext);
+  __wartimeCardStateContextRef.current = cardStateContext;
+  const __wartimeDebugEnabled = useWartimeEnabled();
+
+  useLayoutEffect(() => {
+    __setWartimeActiveGameContext({
+      enabled: __wartimeDebugEnabled,
+      gameId: game?.id ?? gameId ?? null,
+      gameType: game?.game_type ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
+    void __bootstrapWartime();
+    return () => __setWartimeActiveGameContext(null);
+  }, [__wartimeDebugEnabled, game?.id, game?.game_type, game?.current_game_uuid, gameId]);
+
   __useWartimeStateWrite({
     fieldName: 'is357WinAnimationActive',
     sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id,
@@ -2030,19 +2051,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, []);
 
   const __wartimeLiveGameIdentity = useCallback(() => {
-    const liveGame = lastGameRef.current ?? game;
+    const liveGame = lastGameRef.current;
+    const liveCardStateContext = __wartimeCardStateContextRef.current;
     const liveCurrentPlayer = playersRef.current.find((p) => p.user_id === user?.id) ?? null;
     return {
       gameId: liveGame?.id ?? gameId ?? null,
       dealerGameId: liveGame?.current_game_uuid ?? null,
-      roundId: cardStateContext?.roundId ?? (liveGame?.current_round != null ? String(liveGame.current_round) : null),
+      roundId: liveCardStateContext?.roundId ?? (liveGame?.current_round != null ? String(liveGame.current_round) : null),
       handNumber: liveGame?.total_hands ?? null,
-      handContextId: cardStateContext?.roundId ?? null,
+      handContextId: liveCardStateContext?.roundId ?? null,
       terminalResultIdentity: liveGame?.last_round_result ?? null,
       currentPlayerId: liveCurrentPlayer?.id ?? null,
       currentPlayerPosition: liveCurrentPlayer?.position ?? null,
     };
-  }, [cardStateContext?.roundId, game, gameId, user?.id]);
+  }, [gameId, user?.id]);
 
   const __wartimeIdentityMatches = useCallback((captured: ReturnType<typeof __wartimeLiveGameIdentity>, live: ReturnType<typeof __wartimeLiveGameIdentity>) => (
     captured.gameId === live.gameId &&
@@ -2064,7 +2086,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       kind: 'timeout',
       sourceSiteId: opts.sourceSiteId,
       identity: capturedIdentity,
-      owner: __wartimeGameOwner,
+      owner: __wartimeGameOwnerRef.current,
       delayMs: opts.delayMs,
       extra: {
         capturedDealerGameId: capturedIdentity.dealerGameId,
@@ -2094,7 +2116,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, opts.delayMs);
     __wartimeAsyncOwnersRef.current.set(timerId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
     return timerId;
-  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+  }, [__wartimeIdentityMatches, __wartimeLiveGameIdentity]);
 
   const __scheduleWartimeInterval = useCallback((opts: {
     sourceSiteId: string;
@@ -2110,7 +2132,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       kind: 'interval',
       sourceSiteId: opts.sourceSiteId,
       identity: capturedIdentity,
-      owner: __wartimeGameOwner,
+      owner: __wartimeGameOwnerRef.current,
       delayMs: opts.intervalMs,
       extra: {
         intervalCadenceMs: opts.intervalMs,
@@ -2143,7 +2165,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, opts.intervalMs);
     __wartimeAsyncOwnersRef.current.set(intervalId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
     return intervalId;
-  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+  }, [__wartimeIdentityMatches, __wartimeLiveGameIdentity]);
 
   const __cancelWartimeAsyncOwner = useCallback((timerOrIntervalId: number | null | undefined, reason: string) => {
     if (timerOrIntervalId == null) return;
@@ -5534,7 +5556,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const isCreator = currentPlayer?.position === 1;
     
     // Check if player just anted up but has no cards yet (critical race condition)
-    const justAntedUpNoCards = 
+    const justAntedUpNoCards =
+      expectsSharedPlayerCards(game?.game_type) &&
       currentPlayer && 
       currentPlayer.ante_decision === 'ante_up' && 
       !currentPlayer.sitting_out &&
@@ -9375,9 +9398,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       Boolean(gameData.last_round_result);
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
     const shouldFetchCards =
-      gameData.status === 'in_progress' ||
-      gameData.status === 'game_over' ||
-      shouldFetchHolmLiveTerminalCards;
+      expectsSharedPlayerCards(gameData.game_type) &&
+      (
+        gameData.status === 'in_progress' ||
+        gameData.status === 'game_over' ||
+        shouldFetchHolmLiveTerminalCards
+      );
     const shouldFetchCardsReason357 = `status=${gameData.status ?? 'null'}`;
 
     // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over

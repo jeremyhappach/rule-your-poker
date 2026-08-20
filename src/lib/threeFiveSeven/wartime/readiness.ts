@@ -41,6 +41,7 @@ import {
   runSinkRoundTripProbe,
 } from './sink';
 import { SRC, listSourceSites, getSourceSite } from './sourceSites';
+import { isWartimeCaptureEnabled } from './capture';
 
 /**
  * Reporting-only: reflects how much of the wartime instrumentation
@@ -398,6 +399,9 @@ export interface WartimeReadinessSnapshot {
 }
 
 export async function bootstrapWartime(): Promise<void> {
+  // Realtime diagnostics are opt-in and scoped by the mounted 3-5-7 route.
+  // Keep this before bootstrapKicked so a later explicit enable can bootstrap.
+  if (!isWartimeCaptureEnabled()) return;
   if (bootstrapKicked) return;
   bootstrapKicked = true;
   const sessionId = ensureWartimeSession();

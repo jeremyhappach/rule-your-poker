@@ -14,6 +14,7 @@ import { allocSequence, ensureWartimeSession, makeEventId } from './session';
 import { enqueue } from './sink';
 import { getSourceSite } from './sourceSites';
 import { noteRuntimeEvent } from './coverage';
+import { isWartimeCaptureEnabled } from './capture';
 
 export interface WartimeIdentity {
   gameId?: string | null;
@@ -49,6 +50,10 @@ export interface WartimeEmit {
 }
 
 export function emitWartime(input: WartimeEmit): string {
+  if (!isWartimeCaptureEnabled(input.identity?.gameId ?? null)) {
+    return 'wartime-disabled';
+  }
+
   const site = getSourceSite(input.sourceSiteId);
   const sessionId = ensureWartimeSession();
   const seq = allocSequence();
