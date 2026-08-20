@@ -37,9 +37,6 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 const recordCribbageActiveHand: (..._args: unknown[]) => void = () => {};
 const recordCribbageActiveHandContradiction: (..._args: unknown[]) => void = () => {};
 const setCribbageDealIdentityAmbient: (..._args: unknown[]) => void = () => {};
-import { traceCribbageScoring } from '@/lib/cribbage/cribbageScoringTrace';
-
-
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
@@ -119,6 +116,7 @@ import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
   getCribbageBootstrapAnnouncementKind,
+  getCribbagePlannedCountingBaseline,
   hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
   shouldEnterCribbageStaleCompleteBootstrap,
@@ -133,9 +131,7 @@ import {
   resetCribbageTracking,
   checkCribbageHandReversion,
   checkCribbageScoreReversion,
-  
   resetCribbageReversionTracking,
-  checkCribbageTapFailure,
   logCribbageScoringStart,
   logCribbageResultDisplay,
   logCribbageDealerGameStart,
@@ -1674,7 +1670,7 @@ export const CribbageMobileGameTable = ({
         gameType: 'cribbage',
         handNumber: currentHandNumber ?? 0,
         roundId: currentRoundId ?? null,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: 'warn',
         eventName: 'crib:interaction_gate_blocked',
         payload: {
@@ -1861,7 +1857,7 @@ export const CribbageMobileGameTable = ({
         gameType: 'cribbage',
         handNumber: auth.handNumber ?? null,
         roundId: auth.roundId ?? null,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: reason === 'prop-lag-vs-auth' || reason === 'writer-lag-vs-auth' ? 'info' : 'warn',
         eventName: 'crib-identity-divergence',
         payload: {
@@ -1900,6 +1896,8 @@ export const CribbageMobileGameTable = ({
   // Counting presentation scores derive from the immutable plan committed with
   // the counting transition; the peg board never invents combo values locally.
   const [countingScoreOverrides, setCountingScoreOverrides] = useState<Record<string, number> | null>(null);
+  const plannedCountingBaseline = getCribbagePlannedCountingBaseline(cribbageState);
+  const effectiveCountingScoreOverrides = countingScoreOverrides ?? plannedCountingBaseline;
 
   // IMPORTANT: Keep a stable baseline for the counting animation.
   // If the counting overlay ever remounts/re-inits, it must start from the pegging baseline
@@ -2120,14 +2118,14 @@ export const CribbageMobileGameTable = ({
     const presentationScores: Record<string, number> = {};
     const authoritativeScores: Record<string, number> = {};
     for (const [pid, ps] of Object.entries(state.playerStates ?? {})) {
-      presentationScores[pid] = ps.pegScore ?? 0;
+      presentationScores[pid] = effectiveCountingScoreOverrides?.[pid] ?? ps.pegScore ?? 0;
     }
     if (cribbageState) {
       for (const [pid, ps] of Object.entries(cribbageState.playerStates ?? {})) {
         authoritativeScores[pid] = ps.pegScore ?? 0;
       }
     }
-    const scoreSource = countingScoreOverrides ? 'counting-overrides' : countingStateSnapshot ? 'counting-snapshot' : viewState ? 'sync-presentation' : 'authoritative-fallback';
+    const scoreSource = effectiveCountingScoreOverrides ? 'counting-overrides' : countingStateSnapshot ? 'counting-snapshot' : viewState ? 'sync-presentation' : 'authoritative-fallback';
     checkCribbageScoreReversion(
       gameId,
       currentHandNumber,
@@ -2137,40 +2135,6 @@ export const CribbageMobileGameTable = ({
       currentRoundId || undefined,
       dealerGameId || undefined,
     );
-
-    // ── Persistent Cribbage scoring diagnostics ─────────────────
-    // Always-on, event-driven, deduplicated. Emits to `debug_events`
-    // only when a tracked scoring value or animation owner changes.
-    {
-      const seatedHumansMap: Record<string, string> = {};
-      for (const p of players) {
-        if (p.is_bot) continue;
-        if (p.position === null || p.position === undefined) continue;
-        seatedHumansMap[p.id] = p.profiles?.username ?? p.id.slice(0, 8);
-      }
-      const railStates =
-        (isGameplayMode && gameplayRenderState
-          ? gameplayRenderState.playerStates
-          : latchedPegboardDataRef.current?.playerStates) ?? {};
-      const railScores: Record<string, number> = {};
-      for (const [pid, ps] of Object.entries(railStates)) {
-        railScores[pid] = (ps as { pegScore?: number })?.pegScore ?? 0;
-      }
-      traceCribbageScoring({
-        gameId,
-        dealerGameId,
-        roundId: currentRoundId,
-        handNumber: currentHandNumber,
-        cribbagePhase: state.phase ?? null,
-        viewerPlayerId: currentPlayerId ?? null,
-        currentTurnPlayerId: state.pegging?.currentTurnPlayerId ?? null,
-        peggingCount: state.pegging?.currentCount ?? null,
-        seatedHumans: seatedHumansMap,
-        authoritativeScores,
-        railScores,
-        countingScoreOverrides: countingScoreOverrides ?? null,
-      });
-    }
 
     // Presentation source trace — track when hand/score sources change
 
@@ -2187,47 +2151,6 @@ export const CribbageMobileGameTable = ({
       checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, 'counting', 'scoring');
     } else if (state.phase === 'discarding' || state.phase === 'cutting' || state.phase === 'pegging') {
       checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, state.phase, 'input');
-    }
-
-    // INV-7: tap-failure — detect when cards should be tappable but interaction is blocked
-    if (!isSnapshotPhase && instrPlayer) {
-      const myState = state.playerStates?.[instrPlayer.id];
-      const isMyPeggingTurn = state.pegging?.currentTurnPlayerId === instrPlayer.id;
-      const hasPlayable = myState?.hand ? myState.hand.some(
-        (c: CribbageCard) => {
-          const val = c.rank === 'A' ? 1 : ['J','Q','K'].includes(c.rank) ? 10 : parseInt(c.rank);
-          return val + (state.pegging?.currentCount ?? 0) <= 31;
-        }
-      ) : false;
-      // Inline check for whether cards tab would be mounted (isGameplayMode is declared later)
-      const wouldBeGameplayMode = parentAuthoritativeGameplayFallback || (!effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey);
-      const cardsTabMounted = activeTab === 'cards' && wouldBeGameplayMode && !isTransitioning
-        && !countingStateSnapshot && !countingAnimationActiveRef.current
-        && ((renderHandKey === currentHandKey && !!viewState) || parentAuthoritativeGameplayFallback);
-
-      checkCribbageTapFailure({
-        gameId,
-        handNumber: currentHandNumber,
-        roundId: currentRoundId || undefined,
-        dealerGameId: dealerGameId || undefined,
-        phase: state.phase,
-        isMyTurn: isMyPeggingTurn,
-        isProcessing,
-        canPlayAnyCard: hasPlayable,
-        haveDiscarded: (myState?.discardedToCrib?.length ?? 0) > 0,
-        cardCount: myState?.hand?.length ?? 0,
-        cardsTabMounted,
-        extra: {
-          renderHandKey: renderHandKey?.slice(0, 30),
-          currentHandKey: currentHandKey?.slice(0, 30),
-          isTransitioning,
-          isFrozen: syncHandle.isFrozen,
-          activeTab,
-          wouldBeGameplayMode,
-          parentAuthoritativeGameplayFallback,
-          authoritativeHandCounts: cribbageAuthoritativeHandCounts(cribbageState),
-        },
-      });
     }
 
     // Debug-gated transition: scoring-start (fire once when counting overlay is actually shown)
@@ -3469,7 +3392,7 @@ export const CribbageMobileGameTable = ({
         gameId,
         gameType: 'cribbage',
         handNumber: currentHandNumber,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: 'warn',
         eventName: 'crib-replay-detected',
         payload: {
@@ -3492,7 +3415,7 @@ export const CribbageMobileGameTable = ({
         gameId,
         gameType: 'cribbage',
         handNumber: currentHandNumber,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: 'warn',
         eventName: 'crib-animation-replay-detected',
         payload: {
@@ -3622,7 +3545,7 @@ export const CribbageMobileGameTable = ({
           gameId,
           gameType: 'cribbage',
           handNumber: currentHandNumber,
-          eventType: 'invariant',
+          eventType: 'sync-gate',
           severity: mismatches.some(m => m.delta > 2) ? 'error' : 'info',
           eventName: 'crib-last-pegging-score-mismatch',
           payload: {
@@ -4043,7 +3966,7 @@ export const CribbageMobileGameTable = ({
           gameId,
           gameType: 'cribbage',
           handNumber: currentHandNumber,
-          eventType: 'invariant',
+          eventType: 'sync-gate',
           severity: 'warn',
           eventName: 'crib-reactive-win-stale-rejected',
           payload: {
@@ -4113,7 +4036,7 @@ export const CribbageMobileGameTable = ({
               gameId,
               gameType: 'cribbage',
               handNumber: scheduledIdentity.handNumber,
-              eventType: 'invariant',
+              eventType: 'sync-gate',
               severity: 'warn',
               eventName: 'crib-reactive-win-delayed-aborted',
               payload: {
@@ -4273,19 +4196,23 @@ export const CribbageMobileGameTable = ({
       
       console.log('[CRIBBAGE] Loading state for round:', fetchRoundId);
 
-      const { data: roundData, error } = await supabase
-        .from('rounds')
-        .select('hand_number')
-        .eq('id', fetchRoundId)
-        .single();
-
-      let authorityState: CribbageState | null = null;
-      if (!error) {
-        try {
-          authorityState = await fetchCribbageState(fetchRoundId);
-        } catch (stateError) {
-          console.error('[CRIBBAGE] Error loading authoritative state:', stateError);
-        }
+      // Hydrate the exact identity directly and in parallel with the public
+      // round metadata. A metadata failure must not discard a valid private
+      // state response for the requested round.
+      const [roundResult, authorityResult] = await Promise.all([
+        supabase
+          .from('rounds')
+          .select('hand_number')
+          .eq('id', fetchRoundId)
+          .single(),
+        fetchCribbageState(fetchRoundId)
+          .then((state) => ({ state, error: null as unknown }))
+          .catch((error: unknown) => ({ state: null, error })),
+      ]);
+      const { data: roundData, error } = roundResult;
+      const authorityState = authorityResult.state;
+      if (authorityResult.error) {
+        console.error('[CRIBBAGE] Error loading authoritative state:', authorityResult.error);
       }
 
       // FIX B: Check token after DB fetch
@@ -4300,7 +4227,7 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
-      if (error) {
+      if (error && !authorityState) {
         console.error('[CRIBBAGE] Error loading state:', error);
         setInitialLoadComplete(true);
         return;
@@ -4350,7 +4277,7 @@ export const CribbageMobileGameTable = ({
               gameId,
               gameType: 'cribbage',
               handNumber: fetchHandNumber,
-              eventType: 'invariant',
+              eventType: 'sync-gate',
               severity: 'warn',
               eventName: 'crib-animation-replay-detected',
               payload: {
@@ -4364,7 +4291,7 @@ export const CribbageMobileGameTable = ({
               gameId,
               gameType: 'cribbage',
               handNumber: fetchHandNumber,
-              eventType: 'invariant',
+              eventType: 'sync-gate',
               severity: 'warn',
               eventName: 'crib-replay-detected',
               payload: {
@@ -4383,7 +4310,7 @@ export const CribbageMobileGameTable = ({
             gameId,
             gameType: 'cribbage',
             handNumber: fetchHandNumber,
-            eventType: 'invariant',
+            eventType: 'sync-gate',
             severity: 'warn',
             eventName: 'crib-replay-detected',
             payload: {
@@ -4469,7 +4396,7 @@ export const CribbageMobileGameTable = ({
             gameId,
             gameType: 'cribbage',
             handNumber: fetchHandNumber,
-            eventType: 'invariant',
+            eventType: 'sync-gate',
             severity: 'warn',
             eventName: 'crib-replay-detected',
             payload: {
@@ -4530,7 +4457,7 @@ export const CribbageMobileGameTable = ({
           gameId,
           gameType: 'cribbage',
           handNumber: fetchHandNumber,
-          eventType: 'invariant',
+          eventType: 'sync-gate',
           severity: 'warn',
           eventName: 'crib-replay-detected',
           payload: {
@@ -5157,21 +5084,19 @@ export const CribbageMobileGameTable = ({
     });
   }, [currentRoundId]);
 
-  // Realtime subscription with polling fallback
-  // This ensures updates are received even if WebSocket connection degrades
+  // Exact-round realtime subscription. Initial hydration above and every
+  // notification fetch private state for this identity; no recurring database
+  // poll competes with gameplay RPCs when a client is idle.
   useEffect(() => {
     if (!currentRoundId) return;
 
-    let pollInterval = 2000; // Start at 2 seconds
-    let pollTimeoutId: ReturnType<typeof setTimeout>;
-    let lastSyncTimestamp: string | null = null;
     let isActive = true;
 
-    // Handler for state updates (from realtime or polling) — routes through sync framework.
-    const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
+    // Handler for exact-round realtime updates — routes through sync framework.
+    const handleStateUpdate = (newCribbageState: CribbageState) => {
       if (!isActive) return;
-      
-      const source = fromRealtime ? 'realtime' : 'poll';
+
+      const source = 'realtime';
       const traceId = newTraceId();
       
       // ── Identity latch guard ──
@@ -5213,7 +5138,7 @@ export const CribbageMobileGameTable = ({
             gameType: 'cribbage',
             handNumber: currentHandNumber,
             roundId: currentRoundId,
-            eventType: 'invariant',
+            eventType: 'sync-gate',
             severity: 'warn',
             eventName,
             payload: {
@@ -5255,7 +5180,7 @@ export const CribbageMobileGameTable = ({
           gameId, gameType: 'cribbage',
           handNumber: currentHandNumber,
           roundId: currentRoundId,
-          eventType: result.accepted ? 'transition' : 'invariant',
+          eventType: result.accepted ? 'transition' : 'sync-gate',
           severity: result.accepted ? 'info' : 'warn',
           eventName: result.accepted ? 'crib-snapshot-accepted' : 'crib-snapshot-rejected-progress',
           payload: {
@@ -5363,38 +5288,8 @@ export const CribbageMobileGameTable = ({
         }
       }
       
-      // Reset poll interval when realtime works
-      if (fromRealtime) {
-        pollInterval = 2000;
-      }
     };
 
-    // Use a simple state signature since rounds doesn't have updated_at
-    // Cover every server-owned progress axis used by fallback polling.
-    const getStateSignature = (state: CribbageState): string => {
-      const playersSignature = Object.entries(state.playerStates)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([id, player]) => `${id}:${player.hand.length}:${player.discardedToCrib.length}:${player.pegScore}:${player.hasCalledGo ? 1 : 0}`)
-        .join('|');
-      return [
-        state.phase,
-        state.pegging.eventSequence ?? 0,
-        state.pegging.playedCards.length,
-        state.pegging.currentCount,
-        state.pegging.currentTurnPlayerId,
-        state.pegging.sequenceStartIndex ?? 0,
-        state.pegging.goCalledBy?.join(',') ?? '',
-        state.crib.length,
-        state.cutCard ? `${state.cutCard.rank}:${state.cutCard.suit}` : '',
-        state.countingTargetIndex ?? 0,
-        state.countingBeatIndex ?? -1,
-        state.countingResolution?.outcome ?? '',
-        state.winnerPlayerId ?? '',
-        playersSignature,
-      ].join('~');
-    };
-
-    // Primary: Realtime subscription
     const channel = supabase
       .channel(`cribbage-mobile-${currentRoundId}`)
       .on(
@@ -5408,8 +5303,7 @@ export const CribbageMobileGameTable = ({
         () => {
           void fetchCribbageState(currentRoundId).then((newState) => {
             if (!isActive) return;
-            lastSyncTimestamp = getStateSignature(newState);
-            handleStateUpdate(newState, true);
+            handleStateUpdate(newState);
           }).catch((error) => {
             console.warn('[CRIBBAGE_REALTIME] Private-state fetch failed:', error);
           });
@@ -5417,48 +5311,12 @@ export const CribbageMobileGameTable = ({
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[CRIBBAGE_REALTIME] Channel error, relying on polling fallback:', err);
-          // Polling will continue as fallback
+          console.warn('[CRIBBAGE_REALTIME] Exact-round channel error:', err);
         }
       });
 
-    // Fallback: Polling with exponential backoff
-
-    const poll = async () => {
-      if (!isActive) return;
-
-      try {
-        const newState = await fetchCribbageState(currentRoundId);
-        if (isActive) {
-          // Check if data has changed using state signature
-          const newSignature = getStateSignature(newState);
-          const hasNewData = !lastSyncTimestamp || newSignature !== lastSyncTimestamp;
-          
-          if (hasNewData) {
-            lastSyncTimestamp = newSignature;
-            handleStateUpdate(newState, false);
-            pollInterval = 2000; // Reset on new data
-          } else {
-            // Backoff when no changes (max 5 seconds to stay responsive during pegging)
-            pollInterval = Math.min(pollInterval * 1.2, 5000);
-          }
-        }
-      } catch (err) {
-        console.error('[CRIBBAGE_POLL] Poll error:', err);
-        pollInterval = Math.min(pollInterval * 1.3, 8000);
-      }
-
-      if (isActive) {
-        pollTimeoutId = setTimeout(poll, pollInterval);
-      }
-    };
-
-    // Start polling after initial delay (let realtime work first)
-    pollTimeoutId = setTimeout(poll, pollInterval);
-
     return () => {
       isActive = false;
-      clearTimeout(pollTimeoutId);
       supabase.removeChannel(channel);
     };
   }, [currentRoundId]); // CRITICAL: Only depend on currentRoundId to prevent channel teardown on unrelated state changes
@@ -5709,7 +5567,7 @@ export const CribbageMobileGameTable = ({
           persistSyncDebugEvent({
             gameId, gameType: 'cribbage',
             handNumber: currentHandNumber, roundId: currentRoundId,
-            eventType: 'invariant', severity: 'warn',
+            eventType: 'sync-gate', severity: 'warn',
             eventName: 'crib-action-suppressed-stale-identity',
             payload: { ...verdict.divergence, suppressReason: verdict.reason, cardIndices },
           });
@@ -6264,7 +6122,7 @@ export const CribbageMobileGameTable = ({
           persistSyncDebugEvent({
             gameId, gameType: 'cribbage',
             handNumber: currentHandNumber, roundId: currentRoundId,
-            eventType: 'invariant', severity: 'warn',
+            eventType: 'sync-gate', severity: 'warn',
             eventName: 'crib-action-suppressed-stale-identity',
             payload: { ...verdict.divergence, suppressReason: verdict.reason, cardIndex },
           });
@@ -6511,7 +6369,7 @@ export const CribbageMobileGameTable = ({
           persistSyncDebugEvent({
             gameId, gameType: 'cribbage',
             handNumber: currentHandNumber, roundId: currentRoundId,
-            eventType: 'invariant', severity: 'warn',
+            eventType: 'sync-gate', severity: 'warn',
             eventName: 'crib-action-suppressed-stale-identity',
             payload: { ...verdict.divergence, suppressReason: verdict.reason },
           });
@@ -6847,7 +6705,7 @@ export const CribbageMobileGameTable = ({
           gameId,
           gameType: 'cribbage',
           handNumber: currentHandNumber,
-          eventType: 'invariant',
+          eventType: 'sync-gate',
           severity: 'warn',
           eventName: 'crib-counting-complete-stale-rejected',
           payload: {
@@ -8056,7 +7914,7 @@ export const CribbageMobileGameTable = ({
       gameType: 'cribbage',
       handNumber: currentHandNumber,
       roundId: currentRoundId ?? null,
-      eventType: 'invariant',
+      eventType: 'sync-gate',
       severity: 'warn',
       eventName: 'crib-stale-active-hand-blocked',
       payload: {
@@ -8086,7 +7944,7 @@ export const CribbageMobileGameTable = ({
         gameId,
         gameType: 'cribbage',
         handNumber: currentHandNumber,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: 'warn',
         eventName: 'crib-replay-detected',
         payload: {
@@ -8144,7 +8002,7 @@ export const CribbageMobileGameTable = ({
         gameId,
         gameType: 'cribbage',
         handNumber: currentHandNumber,
-        eventType: 'invariant',
+        eventType: 'sync-gate',
         severity: 'warn',
         eventName: 'crib-replay-detected',
         payload: {
@@ -8854,7 +8712,7 @@ export const CribbageMobileGameTable = ({
                   sequenceStartIndex={sequenceStartIndex}
                   getPlayerUsername={getPlayerUsername}
                   cardBackColors={cardBackColors}
-                  countingScoreOverrides={countingScoreOverrides ?? undefined}
+                  countingScoreOverrides={effectiveCountingScoreOverrides ?? undefined}
                   countingOutroActive={countingDelayActive && !!countingStateSnapshot}
                   thirtyOneDelayActive={thirtyOneDelayActive}
                   handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
@@ -8916,7 +8774,7 @@ export const CribbageMobileGameTable = ({
                     ? gameplayRenderState.pointsToWin
                     : latchedPegboardDataRef.current.winningScore
                 }
-                overrideScores={countingScoreOverrides ?? undefined}
+                overrideScores={effectiveCountingScoreOverrides ?? undefined}
               />}
             </Wave4PegboardSlot>
           )}

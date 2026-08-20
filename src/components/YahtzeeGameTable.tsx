@@ -35,7 +35,7 @@ import {
 import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
-import { applyYahtzeeAction } from "@/lib/yahtzeeAuthority";
+import { applyYahtzeeAction, setYahtzeeHolds } from "@/lib/yahtzeeAuthority";
 import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
@@ -217,6 +217,10 @@ const DiceIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+function holdMasksEqual(left: readonly boolean[], right: readonly boolean[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -367,9 +371,26 @@ export function YahtzeeGameTable({
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
   const authoritativeYahtzeeState = yahtzeeSync.authoritativeState;
+  const latestActionStateRef = useRef<YahtzeeState | null>(authoritativeYahtzeeState);
+  const latestActionRoundIdRef = useRef<string | null>(currentRoundId ?? null);
+  const activeRoundIdRef = useRef<string | null>(currentRoundId ?? null);
+  activeRoundIdRef.current = currentRoundId ?? null;
+  if (latestActionRoundIdRef.current !== (currentRoundId ?? null)) {
+    latestActionRoundIdRef.current = currentRoundId ?? null;
+    latestActionStateRef.current = authoritativeYahtzeeState;
+  } else if (
+    authoritativeYahtzeeState &&
+    (!latestActionStateRef.current ||
+      (authoritativeYahtzeeState.actionSequence ?? 0) >=
+        (latestActionStateRef.current.actionSequence ?? 0))
+  ) {
+    latestActionStateRef.current = authoritativeYahtzeeState;
+  }
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
   const acceptCommittedState = useCallback((state: YahtzeeState) => {
+    latestActionStateRef.current = state;
+    latestActionRoundIdRef.current = currentRoundId ?? null;
     const stamped = {
       ...state,
       __syncRound: getRoundOrd(currentRoundId),
@@ -528,6 +549,14 @@ export function YahtzeeGameTable({
   const lastAnnouncedScoreSequenceRef = useRef<number | null>(null);
   const activeScorePresentationRef = useRef<{ roundId: string; sequence: number } | null>(null);
   const actionInFlightRef = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
+  const [holdSyncPending, setHoldSyncPending] = useState(false);
+  const holdIntentRef = useRef<{
+    roundId: string;
+    playerId: string;
+    mask: boolean[];
+  } | null>(null);
+  const holdSyncPromiseRef = useRef<Promise<void> | null>(null);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -599,6 +628,10 @@ export function YahtzeeGameTable({
     completionLatchRoundIdRef.current = null;
     prevTurnRef.current = null;
     actionInFlightRef.current = false;
+    holdIntentRef.current = null;
+    holdSyncPromiseRef.current = null;
+    setActionPending(false);
+    setHoldSyncPending(false);
     activeScorePresentationRef.current = null;
     setCachedOpponentDice(null);
     setScoringInProgress(false);
@@ -1116,30 +1149,150 @@ export function YahtzeeGameTable({
     prevTurnRef.current = currentTurnPlayerId || null;
   }, [currentTurnPlayerId]);
 
+  /**
+   * Drain the latest desired five-die mask through one authoritative request
+   * at a time. Taps update presentation immediately; taps received while a
+   * request is in flight replace the queued mask instead of being discarded.
+   */
+  const ensureHoldMaskSynced = useCallback((): Promise<void> => {
+    const existing = holdSyncPromiseRef.current;
+    if (existing) return existing;
+    if (!holdIntentRef.current) return Promise.resolve();
+
+    let run: Promise<void>;
+    run = (async () => {
+      setHoldSyncPending(true);
+      try {
+        while (holdIntentRef.current) {
+          const intent = holdIntentRef.current;
+          if (activeRoundIdRef.current !== intent.roundId) {
+            holdIntentRef.current = null;
+            return;
+          }
+
+          const currentState = latestActionStateRef.current;
+          const currentPlayerState = currentState?.playerStates?.[intent.playerId];
+          if (
+            !currentState ||
+            !currentPlayerState ||
+            currentState.currentTurnPlayerId !== intent.playerId
+          ) {
+            throw new Error('Yahtzee hold sync lost the exact active-turn identity.');
+          }
+
+          const committedMask = currentPlayerState.dice.map((die) => die.isHeld);
+          if (holdMasksEqual(committedMask, intent.mask)) {
+            if (holdIntentRef.current === intent) holdIntentRef.current = null;
+            continue;
+          }
+
+          const requestedMask = [...intent.mask];
+          const result = await setYahtzeeHolds({
+            roundId: intent.roundId,
+            playerId: intent.playerId,
+            holdMask: requestedMask,
+            expectedActionSequence: currentState.actionSequence ?? 0,
+          });
+
+          // An old round's response has no authority over the newly mounted
+          // identity, even if it arrives after the network request completes.
+          if (activeRoundIdRef.current !== intent.roundId) return;
+
+          acceptCommittedState(result.state);
+          if (result.outcome === 'rejected') {
+            throw new Error(`Yahtzee hold rejected: ${result.reason ?? 'unknown reason'}`);
+          }
+
+          const committedPlayerState = result.state.playerStates[intent.playerId];
+          if (!committedPlayerState) {
+            throw new Error('Yahtzee hold result omitted the acting player state.');
+          }
+
+          const latestIntent = holdIntentRef.current;
+          if (result.outcome === 'stale_action') {
+            const desiredMask = latestIntent?.roundId === intent.roundId && latestIntent.playerId === intent.playerId
+              ? latestIntent.mask
+              : intent.mask;
+            const optimisticDice = committedPlayerState.dice.map((die, index) => ({
+              ...die,
+              isHeld: desiredMask[index],
+            }));
+            localDiceRef.current = optimisticDice;
+            setLocalDice(optimisticDice);
+            continue;
+          }
+
+          const hasNewerDesiredMask = Boolean(
+            latestIntent &&
+            latestIntent.roundId === intent.roundId &&
+            latestIntent.playerId === intent.playerId &&
+            !holdMasksEqual(latestIntent.mask, requestedMask)
+          );
+
+          if (hasNewerDesiredMask && latestIntent) {
+            const optimisticDice = committedPlayerState.dice.map((die, index) => ({
+              ...die,
+              isHeld: latestIntent.mask[index],
+            }));
+            localDiceRef.current = optimisticDice;
+            setLocalDice(optimisticDice);
+          } else {
+            if (holdIntentRef.current === intent) holdIntentRef.current = null;
+            localDiceRef.current = committedPlayerState.dice;
+            setLocalDice(committedPlayerState.dice);
+          }
+        }
+      } catch (error) {
+        const currentState = latestActionStateRef.current;
+        const intent = holdIntentRef.current;
+        const committedPlayerState = intent
+          ? currentState?.playerStates?.[intent.playerId]
+          : null;
+        holdIntentRef.current = null;
+        if (committedPlayerState && activeRoundIdRef.current === intent?.roundId) {
+          localDiceRef.current = committedPlayerState.dice;
+          setLocalDice(committedPlayerState.dice);
+        }
+        console.error('[YAHTZEE] Authoritative hold-mask sync failed', error);
+        onRefetch();
+        throw error;
+      } finally {
+        if (holdSyncPromiseRef.current === run) {
+          holdSyncPromiseRef.current = null;
+          setHoldSyncPending(false);
+        }
+      }
+    })();
+
+    holdSyncPromiseRef.current = run;
+    return run;
+  }, [acceptCommittedState, onRefetch]);
+
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
-    const rawState = authoritativeYahtzeeState;
-    const myPs = rawState?.playerStates?.[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining <= 0) {
-      console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', {
-        hasRawState: !!rawState,
-        hasPs: !!myPs,
-        rolls: myPs?.rollsRemaining,
-        snapshot: describeYahtzeeSnapshot(rawState),
-      });
-      return;
-    }
-
-    const turnKey = `${currentTurnPlayerId}-${currentRoundId}`;
-    turnSeededKeyRef.current = turnKey;
-
-    const isFirstRoll = myPs.rollsRemaining === 3;
-    const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
     actionInFlightRef.current = true;
+    setActionPending(true);
     try {
+      await ensureHoldMaskSynced();
+      const rawState = latestActionStateRef.current;
+      const myPs = rawState?.playerStates?.[myPlayer.id];
+      if (!myPs || rawState?.currentTurnPlayerId !== myPlayer.id || myPs.rollsRemaining <= 0) {
+        console.warn('[YAHTZEE] handleRoll blocked: no exact player state or no rolls', {
+          hasRawState: !!rawState,
+          hasPs: !!myPs,
+          rolls: myPs?.rollsRemaining,
+          snapshot: describeYahtzeeSnapshot(rawState),
+        });
+        return;
+      }
+
+      const turnKey = `${currentTurnPlayerId}-${currentRoundId}`;
+      turnSeededKeyRef.current = turnKey;
+      const isFirstRoll = myPs.rollsRemaining === 3;
+      const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
       const result = await applyYahtzeeAction({
         roundId: currentRoundId,
         playerId: myPlayer.id,
@@ -1175,50 +1328,58 @@ export function YahtzeeGameTable({
       onRefetch();
     } finally {
       actionInFlightRef.current = false;
+      setActionPending(false);
     }
-  }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling, acceptCommittedState, onRefetch]);
+  }, [isMyTurn, currentRoundId, currentTurnPlayerId, myPlayer, rolling, acceptCommittedState, ensureHoldMaskSynced, onRefetch]);
 
   /* ---- Hold toggle ---- */
-  const handleToggleHold = useCallback(async (dieIndex: number) => {
+  const handleToggleHold = useCallback((dieIndex: number) => {
     if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       return;
     }
-    const rawState = authoritativeYahtzeeState;
+    const rawState = latestActionStateRef.current;
     const myPs = rawState?.playerStates[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) {
+    if (
+      !myPs ||
+      rawState?.currentTurnPlayerId !== myPlayer.id ||
+      myPs.rollsRemaining === 3 ||
+      myPs.rollsRemaining === 0 ||
+      dieIndex < 0 ||
+      dieIndex >= myPs.dice.length
+    ) {
       return;
     }
-    actionInFlightRef.current = true;
-    try {
-      const result = await applyYahtzeeAction({
-        roundId: currentRoundId,
-        playerId: myPlayer.id,
-        action: 'hold',
-        dieIndex,
-        expectedActionSequence: rawState.actionSequence ?? 0,
-      });
-      acceptCommittedState(result.state);
-      if (result.outcome === 'rejected') {
-        throw new Error(`Yahtzee hold rejected: ${result.reason ?? 'unknown reason'}`);
-      }
-      const committedPs = result.state.playerStates[myPlayer.id];
-      if (!committedPs) throw new Error('Yahtzee hold result omitted the acting player state.');
-      localDiceRef.current = committedPs.dice;
-      setLocalDice(committedPs.dice);
-    } catch (error) {
-      console.error('[YAHTZEE] Authoritative hold failed', error);
-      onRefetch();
-    } finally {
-      actionInFlightRef.current = false;
-    }
-  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, acceptCommittedState, onRefetch]);
+
+    const queued = holdIntentRef.current;
+    const baseMask = queued?.roundId === currentRoundId && queued.playerId === myPlayer.id
+      ? queued.mask
+      : localDiceRef.current.map((die) => die.isHeld);
+    const nextMask = [...baseMask];
+    nextMask[dieIndex] = !nextMask[dieIndex];
+    holdIntentRef.current = {
+      roundId: currentRoundId,
+      playerId: myPlayer.id,
+      mask: nextMask,
+    };
+
+    const optimisticDice = localDiceRef.current.map((die, index) => ({
+      ...die,
+      isHeld: nextMask[index],
+    }));
+    localDiceRef.current = optimisticDice;
+    setLocalDice(optimisticDice);
+
+    // Attach a rejection handler for tap-only usage. Roll/score callers await
+    // the same shared promise and therefore still observe a failed flush.
+    void ensureHoldMaskSynced().catch(() => {});
+  }, [isMyTurn, currentRoundId, myPlayer, rolling, ensureHoldMaskSynced]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
     if (!isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) {
       return;
     }
-    const rawState = authoritativeYahtzeeState;
+    const rawState = latestActionStateRef.current;
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) {
       return;
@@ -1242,37 +1403,43 @@ export function YahtzeeGameTable({
 
     await commitScoreCategory(category);
 
-  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, scoringInProgress]);
+  }, [isMyTurn, currentRoundId, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
     if (!currentRoundId || !myPlayer || actionInFlightRef.current) return;
-    const rawState = authoritativeYahtzeeState;
-    const myPs = rawState?.playerStates?.[myPlayer.id];
-    if (!myPs) return;
-    const diceValues = myPs.dice.map(d => d.value);
-    const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
-    const pendingScore = jokerValid ? getJokerScore(category, diceValues) : calculateCategoryScore(category, diceValues);
-
     actionInFlightRef.current = true;
-    setScoringInProgress(true);
-    setLastScoredCategory(category);
-    setLastScoredValue(pendingScore);
-
-    // If this upper category pushes us to the bonus threshold, fire the overlay now
-    if (UPPER_CATEGORIES.includes(category) && myPs.scorecard.scores[category] === undefined) {
-      const currentUpperSum = UPPER_CATEGORIES.reduce((s, c) => s + (myPs.scorecard.scores[c] ?? 0), 0);
-      const hadBonus = currentUpperSum >= UPPER_BONUS_THRESHOLD;
-      const newUpperSum = currentUpperSum + pendingScore;
-      if (!hadBonus && newUpperSum >= UPPER_BONUS_THRESHOLD) {
-        setShowBonusOverlay(getPlayerUsername(myPlayer));
-      }
-    }
-
-    const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
-    setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
+    setActionPending(true);
     let presentationFrozen = false;
     let scorePresentation: { roundId: string; sequence: number } | null = null;
     try {
+      await ensureHoldMaskSynced();
+      const rawState = latestActionStateRef.current;
+      const myPs = rawState?.playerStates?.[myPlayer.id];
+      if (!myPs || rawState?.currentTurnPlayerId !== myPlayer.id) {
+        throw new Error('Yahtzee score lost the exact active-turn identity.');
+      }
+      const diceValues = myPs.dice.map(d => d.value);
+      const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
+      const pendingScore = jokerValid
+        ? getJokerScore(category, diceValues)
+        : calculateCategoryScore(category, diceValues);
+
+      setScoringInProgress(true);
+      setLastScoredCategory(category);
+      setLastScoredValue(pendingScore);
+
+      // If this upper category pushes us to the bonus threshold, fire the overlay now
+      if (UPPER_CATEGORIES.includes(category) && myPs.scorecard.scores[category] === undefined) {
+        const currentUpperSum = UPPER_CATEGORIES.reduce((s, c) => s + (myPs.scorecard.scores[c] ?? 0), 0);
+        const hadBonus = currentUpperSum >= UPPER_BONUS_THRESHOLD;
+        const newUpperSum = currentUpperSum + pendingScore;
+        if (!hadBonus && newUpperSum >= UPPER_BONUS_THRESHOLD) {
+          setShowBonusOverlay(getPlayerUsername(myPlayer));
+        }
+      }
+
+      const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+      setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
       yahtzeeSync.freezePresentation();
       presentationFrozen = true;
       const result = await applyYahtzeeAction({
@@ -1320,8 +1487,9 @@ export function YahtzeeGameTable({
       }
       if (presentationFrozen) yahtzeeSync.unfreezePresentation();
       actionInFlightRef.current = false;
+      setActionPending(false);
     }
-  }, [currentRoundId, authoritativeYahtzeeState, myPlayer, acceptCommittedState, onRefetch, yahtzeeSync, clearActiveScorePresentation]);
+  }, [currentRoundId, myPlayer, acceptCommittedState, ensureHoldMaskSynced, onRefetch, yahtzeeSync, clearActiveScorePresentation]);
 
   /* ---- P9.3b: end-of-game presentation effect ----
    * Fires on EVERY client (active scorer, non-scoring active, observer) when
@@ -2341,7 +2509,7 @@ export function YahtzeeGameTable({
                   rollKey={feltRollKey}
                   heldMaskBeforeComplete={useCached ? undefined : diceState?.heldMaskBeforeComplete}
                   cacheKey={stableCacheKey}
-                  traceContext={{
+                  traceContext={useCached ? undefined : {
                     gameId,
                     dealerGameId: dealerGameId ?? null,
                     roundId: currentRoundId ?? null,
@@ -2505,7 +2673,7 @@ export function YahtzeeGameTable({
                           value={die.value}
                           isHeld={showHeldStyling}
                           isRolling={shouldAnimate}
-                          canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
+                          canToggle={!rolling && !actionPending && localRollsRemaining > 0 && localRollsRemaining < 3}
                           onToggle={() => handleToggleHold(idx)}
                           size={resolvedDieSize}
                           sizePx={fluidDiePx ?? undefined}
@@ -2533,7 +2701,8 @@ export function YahtzeeGameTable({
                         <Button
                           size="sm"
                           onClick={handleRoll}
-                          disabled={rolling}
+                          disabled={rolling || actionPending}
+                          aria-busy={actionPending || holdSyncPending}
                           className="font-bold text-sm px-6"
                         >
                           <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />

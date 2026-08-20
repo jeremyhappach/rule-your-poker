@@ -4,6 +4,7 @@ import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
   getCribbageBootstrapAnnouncementKind,
+  getCribbagePlannedCountingBaseline,
   resolveCribbageVisibleHand,
   shouldEnterCribbageStaleCompleteBootstrap,
 } from './cribbageRenderGuards';
@@ -148,6 +149,30 @@ describe('Cribbage render guards', () => {
     expect(mode.parentAuthoritativeGameplayFallback).toBe(true);
     expect(mode.isGameplayMode).toBe(true);
     expect(mode.isBootstrapMode).toBe(false);
+  });
+
+  it('derives the committed counting baseline before an effect can paint final scores', () => {
+    const counting = state('counting');
+    counting.playerStates.p1.pegScore = 17;
+    counting.playerStates.p2.pegScore = 13;
+    counting.countingPlan = {
+      version: 1,
+      baselineScores: { p1: 9, p2: 8 },
+      targets: [],
+    };
+
+    expect(getCribbagePlannedCountingBaseline(counting)).toEqual({ p1: 9, p2: 8 });
+  });
+
+  it('does not invent a counting baseline from incomplete plan data', () => {
+    const counting = state('counting');
+    counting.countingPlan = {
+      version: 1,
+      baselineScores: { p1: 4 },
+      targets: [],
+    };
+
+    expect(getCribbagePlannedCountingBaseline(counting)).toBeNull();
   });
 
   it('suppresses bootstrap ambient while counting owns the restored announcement', () => {

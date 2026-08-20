@@ -68,6 +68,27 @@ export interface CribbageParentRenderMode {
   isGameplayMode: boolean;
 }
 
+/**
+ * Returns the database-committed pre-count score baseline synchronously.
+ * React effects run after paint; deriving this value during render prevents a
+ * one-frame final-score -> baseline regression when a client enters counting.
+ */
+export function getCribbagePlannedCountingBaseline(
+  state: CribbageState | null | undefined,
+): Record<string, number> | null {
+  if (state?.phase !== 'counting' || state.countingPlan?.version !== 1) return null;
+
+  const playerIds = Object.keys(state.playerStates ?? {});
+  if (playerIds.length === 0) return null;
+  const baseline: Record<string, number> = {};
+  for (const playerId of playerIds) {
+    const value = state.countingPlan.baselineScores[playerId];
+    if (!Number.isFinite(value) || value < 0) return null;
+    baseline[playerId] = value;
+  }
+  return baseline;
+}
+
 export type CribbageBootstrapAnnouncementKind =
   | 'awaiting_ante'
   | 'waiting_for_next_round';

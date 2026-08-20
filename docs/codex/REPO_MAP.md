@@ -184,7 +184,10 @@ reset transient/presentation state when those identities change.
 - State/actions: `private.cribbage_round_states` owns hidden and mutable truth;
   `rounds.cribbage_state` is its redacted realtime projection.
   `src/lib/cribbageAuthority.ts` fetches caller-specific state and submits
-  pegging intent; `CribbageMobileGameTable.tsx` owns presentation only.
+  pegging intent; `CribbageMobileGameTable.tsx` owns presentation only. Exact
+  round Realtime notifications trigger private-state refetches; there is no
+  recurring browser fallback poll. `cribbageRenderGuards.ts` derives the
+  committed counting-plan baseline for the first counting paint.
 - Lifecycle: `public.cribbage_begin_dealer_selection` atomically consumes the
   completed-ante boundary and publishes the dealer result;
   `src/lib/cribbageRoundLogic.ts:startCribbageRound` submits the replay-safe
@@ -276,9 +279,13 @@ reset transient/presentation state when those identities change.
   exact round and action sequence. A later authoritative sequence retires that
   local presentation before paint; this does not advance game state.
 - State/actions: `rounds.yahtzee_state` is written only through
-  `public.yahtzee_apply_action`; `src/lib/yahtzeeAuthority.ts` submits exact
-  intent/action sequence and consumes the committed result. Pure client rule
-  helpers remain preview/presentation support.
+  `public.yahtzee_apply_action` and the full-mask
+  `public.yahtzee_set_holds` RPC in
+  `20260820140918_atomic_yahtzee_hold_mask.sql`;
+  `src/lib/yahtzeeAuthority.ts` submits exact intent/action sequence and
+  consumes the committed result. `YahtzeeGameTable.tsx` coalesces optimistic
+  hold intent and drains the latest mask before roll or score. Pure client
+  rule helpers remain preview/presentation support.
 - Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound` calls atomic
   `public.start_yahtzee_round`; `public.yahtzee_advance_postgame` owns the
   exact-settlement handoff; `private.advance_due_yahtzee_state` owns recovery.
@@ -301,6 +308,16 @@ reset transient/presentation state when those identities change.
   `yahtzeeProgress.test.ts`, `yahtzeeAuthority.test.ts`,
   `yahtzeePresentation.test.ts`, `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
   `liveTerminalPresentationHold.test.ts`, and shared die-row/shell tests.
+
+### Production diagnostics
+
+- `src/lib/invariantEventLogger.ts` is the always-on, edge-deduplicated writer
+  for true invariant violations in `debug_events`.
+- `src/lib/persistSyncDebugEvent.ts` retains opt-in sync/proof events in
+  `debug_sync_events`; ordinary transition, correction, and gate events do not
+  persist without the exact debug channel.
+- Game-specific detailed traces, including `yahtzeeHeldDieTrace.ts` and 3-5-7
+  wartime capture, are fail-closed and require their explicit channel.
 
 ### 3-5-7
 

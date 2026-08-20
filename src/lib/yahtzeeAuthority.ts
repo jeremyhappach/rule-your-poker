@@ -4,13 +4,30 @@ import type { YahtzeeCategory, YahtzeeState } from './yahtzeeTypes';
 export interface YahtzeeActionResult {
   outcome: 'applied' | 'stale_action' | 'rejected';
   reason?: string;
-  action?: 'roll' | 'hold' | 'score';
+  action?: 'roll' | 'hold' | 'set_holds' | 'score';
   actionSequence: number;
   state: YahtzeeState;
   category?: YahtzeeCategory;
   score?: number;
   terminal?: boolean;
   settlement?: Record<string, unknown> | null;
+}
+
+function parseYahtzeeActionResult(data: any): YahtzeeActionResult {
+  if (!data || !['applied', 'stale_action', 'rejected'].includes(data.outcome) || !data.state) {
+    throw new Error('Yahtzee action RPC returned an invalid result');
+  }
+  return {
+    outcome: data.outcome,
+    reason: data.reason ?? undefined,
+    action: data.action ?? undefined,
+    actionSequence: Number(data.action_sequence ?? data.state.actionSequence ?? 0),
+    state: data.state as YahtzeeState,
+    category: data.category ?? undefined,
+    score: data.score == null ? undefined : Number(data.score),
+    terminal: data.terminal == null ? undefined : Boolean(data.terminal),
+    settlement: data.settlement ?? null,
+  };
 }
 
 export async function applyYahtzeeAction(args: {
@@ -32,20 +49,23 @@ export async function applyYahtzeeAction(args: {
     _expected_action_sequence: args.expectedActionSequence ?? null,
   });
   if (error) throw error;
-  if (!data || !['applied', 'stale_action', 'rejected'].includes(data.outcome) || !data.state) {
-    throw new Error('Yahtzee action RPC returned an invalid result');
-  }
-  return {
-    outcome: data.outcome,
-    reason: data.reason ?? undefined,
-    action: data.action ?? undefined,
-    actionSequence: Number(data.action_sequence ?? data.state.actionSequence ?? 0),
-    state: data.state as YahtzeeState,
-    category: data.category ?? undefined,
-    score: data.score == null ? undefined : Number(data.score),
-    terminal: data.terminal == null ? undefined : Boolean(data.terminal),
-    settlement: data.settlement ?? null,
-  };
+  return parseYahtzeeActionResult(data);
+}
+
+export async function setYahtzeeHolds(args: {
+  roundId: string;
+  playerId: string;
+  holdMask: boolean[];
+  expectedActionSequence: number;
+}): Promise<YahtzeeActionResult> {
+  const { data, error } = await (supabase as any).rpc('yahtzee_set_holds', {
+    _round_id: args.roundId,
+    _player_id: args.playerId,
+    _hold_mask: args.holdMask,
+    _expected_action_sequence: args.expectedActionSequence,
+  });
+  if (error) throw error;
+  return parseYahtzeeActionResult(data);
 }
 
 export async function advanceYahtzeePostgame(args: {

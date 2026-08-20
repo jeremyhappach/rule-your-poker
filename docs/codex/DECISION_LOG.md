@@ -954,3 +954,27 @@ Client recovery signals are game-capability-specific. An empty shared
 publish through that table. Diagnostic persistence is explicit and scoped to
 the exact mounted game family and identity; a diagnostic wrapper may not turn
 ordinary presentation rerenders into database traffic.
+
+## D-070 - Production diagnostics persist invariants, not normal activity
+
+Ordinary transitions, presentation renders, polling, expected snapshot
+rejection, and guarded duplicate work are silent unless an exact forensic
+channel is explicitly enabled. They may not create continuous production
+database traffic.
+
+A true invariant violation always persists through the canonical
+`debug_events` owner, independent of a browser debug flag. The writer dedupes
+the same exact game/round/hand/invariant edge for a short bounded window so a
+single broken state remains visible without amplifying database pressure.
+
+## D-071 - Yahtzee holds are one replaceable authoritative mask
+
+A human Yahtzee client presents hold intent immediately and replaces one
+desired five-die mask as taps continue. PostgreSQL commits that full mask under
+the exact round and action-sequence guard; an identical replay is read-only,
+and roll or score drains the latest pending intent before acting.
+
+Per-die requests may not lock the entire dice row or silently discard a later
+tap while network work is in flight. Optimistic presentation never becomes
+authority: rejection restores the last committed mask and refetches the exact
+round.

@@ -7,7 +7,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: { rpc },
 }));
 
-import { advanceYahtzeePostgame, applyYahtzeeAction } from './yahtzeeAuthority';
+import { advanceYahtzeePostgame, applyYahtzeeAction, setYahtzeeHolds } from './yahtzeeAuthority';
 import { startYahtzeeRound } from './yahtzeeRoundLogic';
 import type { YahtzeeState } from './yahtzeeTypes';
 
@@ -57,6 +57,31 @@ describe('Yahtzee authority RPC clients', () => {
       dieIndex: 0,
       expectedActionSequence: 9,
     })).rejects.toBe(error);
+  });
+
+  it('commits a complete hold mask under the exact action sequence', async () => {
+    rpc.mockResolvedValue({
+      data: { outcome: 'applied', action: 'set_holds', action_sequence: 10, state },
+      error: null,
+    });
+
+    await expect(setYahtzeeHolds({
+      roundId: '11111111-1111-4111-8111-111111111111',
+      playerId: '22222222-2222-4222-8222-222222222222',
+      holdMask: [true, false, true, false, true],
+      expectedActionSequence: 9,
+    })).resolves.toMatchObject({
+      outcome: 'applied',
+      action: 'set_holds',
+      actionSequence: 10,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('yahtzee_set_holds', {
+      _round_id: '11111111-1111-4111-8111-111111111111',
+      _player_id: '22222222-2222-4222-8222-222222222222',
+      _hold_mask: [true, false, true, false, true],
+      _expected_action_sequence: 9,
+    });
   });
 
   it('bootstraps atomically and exposes the committed round to the initiating client', async () => {
@@ -116,5 +141,19 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(table).not.toContain('updateYahtzeeState');
     expect(table).not.toMatch(/\.from\(["']rounds["']\)[\s\S]{0,200}\.update\(\{\s*yahtzee_state/);
     expect(bootstrap).not.toMatch(/\.from\(["']rounds["']\)[\s\S]{0,200}\.insert\(/);
+  });
+
+  it('coalesces optimistic die taps into the authoritative full-mask RPC', () => {
+    const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
+    const toggleStart = table.indexOf('const handleToggleHold');
+    const toggleEnd = table.indexOf('/* ---- Score category ---- */', toggleStart);
+    const toggleHandler = table.slice(toggleStart, toggleEnd);
+
+    expect(toggleHandler).toContain('holdIntentRef.current =');
+    expect(toggleHandler).toContain('setLocalDice(optimisticDice)');
+    expect(toggleHandler).toContain('ensureHoldMaskSynced()');
+    expect(toggleHandler).not.toContain("action: 'hold'");
+    expect(table).toContain('setYahtzeeHolds({');
+    expect(table).toContain('traceContext={useCached ? undefined : {');
   });
 });

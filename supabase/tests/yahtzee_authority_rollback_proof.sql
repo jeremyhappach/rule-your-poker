@@ -129,17 +129,52 @@ BEGIN
   END IF;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_outsider,'role','authenticated')::text,true);
   BEGIN
-    PERFORM public.yahtzee_apply_action(v_round_id,v_player_one,'hold',0,NULL,NULL,1);
+    PERFORM public.yahtzee_set_holds(
+      v_round_id,v_player_one,ARRAY[true,false,true,false,true],1
+    );
     RAISE EXCEPTION 'outsider_action_was_allowed';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM='outsider_action_was_allowed' THEN RAISE; END IF;
   END;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_one,'role','authenticated')::text,true);
-  v_result:=public.yahtzee_apply_action(v_round_id,v_player_one,'hold',0,NULL,NULL,1);
-  IF v_result->>'outcome'<>'applied' OR (v_result->>'action_sequence')::integer<>2 THEN
-    RAISE EXCEPTION 'authoritative_hold_failed:%',v_result;
+  BEGIN
+    PERFORM public.yahtzee_set_holds(v_round_id,v_player_one,ARRAY[true,false],1);
+    RAISE EXCEPTION 'invalid_hold_mask_was_allowed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='invalid_hold_mask_was_allowed' THEN RAISE; END IF;
+  END;
+  v_result:=public.yahtzee_set_holds(
+    v_round_id,v_player_one,ARRAY[true,false,true,false,true],1
+  );
+  IF v_result->>'outcome'<>'applied'
+     OR v_result->>'action'<>'set_holds'
+     OR (v_result->>'action_sequence')::integer<>2
+     OR (SELECT array_agg((die->>'isHeld')::boolean ORDER BY ordinality)
+           FROM jsonb_array_elements(v_result->'state'->'playerStates'->v_player_one::text->'dice')
+                WITH ORDINALITY item(die,ordinality))
+        <> ARRAY[true,false,true,false,true] THEN
+    RAISE EXCEPTION 'authoritative_hold_mask_failed:%',v_result;
   END IF;
-  v_result:=public.yahtzee_apply_action(v_round_id,v_player_one,'score',NULL,'chance',NULL,2);
+  v_replay:=public.yahtzee_set_holds(
+    v_round_id,v_player_one,ARRAY[true,false,true,false,true],2
+  );
+  IF v_replay->>'outcome'<>'applied'
+     OR v_replay->>'deduped'<>'true'
+     OR (v_replay->>'action_sequence')::integer<>2 THEN
+    RAISE EXCEPTION 'hold_mask_idempotent_replay_failed:%',v_replay;
+  END IF;
+  v_result:=public.yahtzee_set_holds(
+    v_round_id,v_player_one,ARRAY[false,true,false,true,false],2
+  );
+  IF v_result->>'outcome'<>'applied'
+     OR (v_result->>'action_sequence')::integer<>3
+     OR (SELECT array_agg((die->>'isHeld')::boolean ORDER BY ordinality)
+           FROM jsonb_array_elements(v_result->'state'->'playerStates'->v_player_one::text->'dice')
+                WITH ORDINALITY item(die,ordinality))
+        <> ARRAY[false,true,false,true,false] THEN
+    RAISE EXCEPTION 'coalesced_hold_mask_replacement_failed:%',v_result;
+  END IF;
+  v_result:=public.yahtzee_apply_action(v_round_id,v_player_one,'score',NULL,'chance',NULL,3);
   IF v_result->>'outcome'<>'applied' OR v_result->>'terminal'<>'false'
      OR (v_result->'state'->>'currentTurnPlayerId')::uuid<>v_player_two
      OR NOT (v_result->'state'->'playerStates'->v_player_one::text->'scorecard'->'scores' ? 'chance') THEN

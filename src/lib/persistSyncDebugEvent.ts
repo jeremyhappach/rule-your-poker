@@ -1,14 +1,17 @@
 /**
  * Persistent sync debug event writer.
  *
- * Writes structured events to `debug_sync_events` table.
- * - Invariant violations and explicitly bounded proof events ALWAYS persist.
- * - All other events gated by localStorage: ptp_debug_sync_events = "1"
+ * Writes opt-in forensic events to `debug_sync_events`.
+ * - True invariant violations ALWAYS route through the canonical
+ *   `debug_events` writer, with edge deduplication.
+ * - Explicitly bounded proof events may persist to `debug_sync_events`.
+ * - All other events require the sync debug channel.
  *
  * All writes are fire-and-forget — never blocks UI.
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { persistInvariantEvent } from './invariantEventLogger';
 
 // ── Toggle ────────────────────────────────────────────────────
 //
@@ -97,8 +100,25 @@ export interface SyncDebugEvent {
 export function persistSyncDebugEvent(event: SyncDebugEvent): void {
   const isInvariant = event.eventType === 'invariant';
 
-  // Gate: invariants always persist; others only when enabled
-  if (!isInvariant && event.alwaysPersist !== true && !isSyncDebugEnabled()) {
+  // Production invariants have one canonical sink. `debug_sync_events` is a
+  // debug-gated forensic stream; impossible-state violations belong in
+  // `debug_events` so ordinary sync churn can never share their write path.
+  if (isInvariant) {
+    persistInvariantEvent({
+      gameId: event.gameId,
+      gameType: event.gameType,
+      handNumber: event.handNumber,
+      roundId: event.roundId ?? null,
+      invariantName: event.eventName,
+      severity: event.severity === 'info' ? 'warn' : event.severity,
+      context: event.payload,
+      onResult: event.onResult,
+    });
+    return;
+  }
+
+  // Gate: non-invariant proof/trace events are off unless explicitly enabled.
+  if (event.alwaysPersist !== true && !isSyncDebugEnabled()) {
     event.onResult?.(false, 'gated');
     return;
   }

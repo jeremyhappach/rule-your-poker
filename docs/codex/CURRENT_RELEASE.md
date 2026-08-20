@@ -2,6 +2,32 @@
 
 Date: 2026-08-20
 
+## Antelope diagnostics, Yahtzee holds, and Cribbage continuity
+
+- Yahtzee hold taps no longer wait on one RPC per die. The client now applies
+  the full desired mask immediately, coalesces changes made while a request is
+  in flight, and commits that mask through the exact-round,
+  action-sequence-guarded `public.yahtzee_set_holds` RPC. Roll and score wait
+  for the latest hold intent instead of silently dropping taps. Migration
+  `20260820140918_atomic_yahtzee_hold_mask.sql` is installed on owned
+  production; its rollback proof passed authorization, malformed-mask,
+  replacement, idempotent replay, stale replay, handoff, and late-player cases.
+- Yahtzee's completed-roll cache no longer compares a previous scorer's dice
+  with the next player's authoritative state. Detailed held-die traces are now
+  opt-in, removing the false invariant traffic that made Yahtzee look like a
+  database writer during ordinary play.
+- Cribbage's first counting paint now derives the committed plan baseline
+  before effects run, so authoritative final scores cannot flash before the
+  visible count begins. Exact-round Realtime remains the refetch signal; the
+  client-wide 2--8 second fallback poll and always-on scoring trace are
+  removed. Expected stale/future snapshot rejection and guarded duplicate
+  work are opt-in sync diagnostics, not invariant failures.
+- Production diagnostics are silent by default for transitions, rendering,
+  polling, and expected gate rejection. True invariant violations continue to
+  persist through the canonical `debug_events` writer with a 30-second
+  edge-deduplication window. Targeted sync, Yahtzee-held, and 3-5-7 forensic
+  traces require their explicit debug channels.
+
 ## Serialized cross-game recovery and scoped 3-5-7 diagnostics
 
 - The paused Antelope Yahtzee session was not corrupt. At `01:58:53Z`, the

@@ -14,17 +14,17 @@
  */
 
 import { persistInvariantViolation } from './persistSyncDebugEvent';
+import { isDebugChannel } from './debugChannels';
 
 // ── Toggle ────────────────────────────────────────────────────
-// Trace is ALWAYS active during held-die corruption investigation.
-// Console logging is sampled (1-in-10) to avoid spam.
+// Verbose tuple capture is explicitly opt-in. Impossible-state checks remain
+// always-on at their exact live-dice call site.
 
 let _consoleLogCounter = 0;
 const CONSOLE_SAMPLE_RATE = 10; // log 1 in N trace events
 
-/** @deprecated Always returns true — kept for call-site compat */
 export function isYahtzeeHeldTraceEnabled(): boolean {
-  return true;
+  return isDebugChannel('yahtzee-held');
 }
 
 // ── Per-die tuple ─────────────────────────────────────────────

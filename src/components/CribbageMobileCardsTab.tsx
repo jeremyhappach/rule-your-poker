@@ -462,7 +462,7 @@ export const CribbageMobileCardsTab = ({
           gameType: 'cribbage',
           handNumber: renderTrace.handNumber,
           roundId: expectedRoundId ?? null,
-          eventType: 'invariant',
+          eventType: 'sync-gate',
           severity: 'warn',
           eventName: 'crib-stale-active-hand-blocked',
           payload: {
