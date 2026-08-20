@@ -656,7 +656,7 @@ const Index = () => {
                     {/* No Timers — global admin harness (sibling of Maintenance). */}
                     <NoTimersSettingRow />
 
-                    {/* Harnesses (master gate for all debug harnesses) */}
+                    {/* Harnesses (master gate for game-rule harness profiles) */}
                     <div className="flex items-center justify-between py-2 bg-red-900/20 rounded-lg px-3 border border-red-600/30">
                       <div className="space-y-0.5">
                         <Label htmlFor="global-debug-mode" className="flex items-center gap-2">
@@ -664,7 +664,7 @@ const Index = () => {
                           Harnesses
                         </Label>
                         <p className="text-xs text-muted-foreground">
-                          Master gate for all Debug Harnesses. OFF = harness selections are ignored at runtime (selections preserved). Affects new games only.
+                          Master gate for game-rule harness profiles. Network simulation is independent. OFF = game harness selections are ignored at runtime (selections preserved). Affects new games only.
                         </p>
                       </div>
                       <Switch

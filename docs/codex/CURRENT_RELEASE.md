@@ -2,6 +2,18 @@
 
 Date: 2026-08-20
 
+## Network simulation is independent of game harnesses
+
+- A user's `profiles.network_sim_mode` and `network_sim_logging` settings now
+  directly control that client's Realtime transport simulation. The app-level
+  provider no longer reads, subscribes to, or fails closed on the global
+  `harnesses_mode` setting.
+- Harnesses Mode remains the master gate only for configured game-rule
+  profiles. Cross-Country Chaos can therefore run while Holm, Gin, Cribbage,
+  and other rule-changing harnesses remain inert. Existing per-user profile
+  settings, client-local simulation behavior, and logging policy are
+  preserved; no schema or production-data migration is involved.
+
 ## Canonical database-owned game timers
 
 - Migrations `20260820180000_canonical_game_timer_ownership.sql` and

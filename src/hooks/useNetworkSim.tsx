@@ -7,11 +7,6 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { configureNetworkSim, NetworkSimMode } from '@/lib/networkSim';
 import { resolveNetworkSimulation } from '@/lib/networkSimGate';
-import {
-  isHarnessesModeCached,
-  refreshHarnessCache,
-  subscribeHarnessesMode,
-} from '@/lib/debugHarness/runtimeCache';
 
 interface NetworkSimContextValue {
   mode: NetworkSimMode;
@@ -24,11 +19,9 @@ const NetworkSimContext = createContext<NetworkSimContextValue | null>(null);
 export function NetworkSimProvider({ children, userId }: { children: ReactNode; userId: string | undefined }) {
   const [configuredMode, setConfiguredMode] = useState<NetworkSimMode>('off');
   const [configuredLogging, setConfiguredLogging] = useState(false);
-  const [harnessesModeEnabled, setHarnessesModeEnabled] = useState(false);
   const effective = resolveNetworkSimulation(
     configuredMode,
     configuredLogging,
-    harnessesModeEnabled,
   );
 
   const refresh = useCallback(async () => {
@@ -51,20 +44,6 @@ export function NetworkSimProvider({ children, userId }: { children: ReactNode; 
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const unsubscribe = subscribeHarnessesMode((enabled) => {
-      if (!cancelled) setHarnessesModeEnabled(enabled);
-    });
-    void refreshHarnessCache().then((ok) => {
-      if (!cancelled) setHarnessesModeEnabled(ok && isHarnessesModeCached());
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     configureNetworkSim({

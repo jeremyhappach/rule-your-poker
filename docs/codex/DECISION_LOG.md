@@ -1000,3 +1000,15 @@ This ownership rule does not create a timer where game policy has none. Gin
 Rummy and Cribbage human decisions remain untimed until a separate real-money
 rule is chosen. Deterministic scheduled progression such as Cribbage's forced
 `go` is recovery of an already-forced state, not a player timeout.
+
+## D-073 - Network simulation is not a game-rule harness
+
+Harnesses Mode gates only configured profiles that alter game rules, cards,
+dice, scoring, or presentation progression. A signed-in user's
+`profiles.network_sim_mode` independently controls local Realtime delivery
+delay, reordering, and simulated disconnect behavior; disabling game
+harnesses may not silently disable that transport simulation.
+
+Network simulation remains client-local and cannot mutate payloads or become
+gameplay authority. Its persistent logging preference is independent as well.
+No separate global network gate is inferred from the game-harness setting.

@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { resolveNetworkSimulation } from '@/lib/networkSimGate';
 
 describe('resolveNetworkSimulation', () => {
-  it('fails closed while Harnesses Mode is off', () => {
-    expect(resolveNetworkSimulation('cross_country_chaos', true, false)).toEqual({
-      mode: 'off',
-      loggingEnabled: false,
+  it('admits the configured network profile without a game-harness gate', () => {
+    expect(resolveNetworkSimulation('cross_country_chaos', true)).toEqual({
+      mode: 'cross_country_chaos',
+      loggingEnabled: true,
     });
   });
 
-  it('admits the configured profile only while Harnesses Mode is on', () => {
-    expect(resolveNetworkSimulation('cross_country_chaos', true, true)).toEqual({
-      mode: 'cross_country_chaos',
-      loggingEnabled: true,
+  it('keeps an explicitly disabled network profile off', () => {
+    expect(resolveNetworkSimulation('off', false)).toEqual({
+      mode: 'off',
+      loggingEnabled: false,
     });
   });
 });

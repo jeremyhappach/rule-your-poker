@@ -987,9 +987,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         </div>
         <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <div className="space-y-0.5">
-            <Label htmlFor="harnesses-mode-gate">Harnesses Mode (master gate)</Label>
+            <Label htmlFor="harnesses-mode-gate">Game Harnesses (master gate)</Label>
             <p className="text-xs text-muted-foreground">
-              Harness profiles only execute while this is on.
+              Game-rule harness profiles only execute while this is on. Network simulation is independent.
             </p>
           </div>
           <Switch

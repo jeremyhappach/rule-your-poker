@@ -473,6 +473,11 @@ execution boundary: a configured profile may execute only when the globally
 persisted `harnesses_mode` gate is on. `getConfiguredHarnessCached` is
 display-only for the Admin surface.
 
+Per-user network simulation is a separate transport concern.
+`src/hooks/useNetworkSim.tsx` reads `profiles.network_sim_mode` and
+`network_sim_logging`, applies them through `src/lib/networkSim.ts`, and does
+not consult the game-rule `harnesses_mode` cache.
+
 The separate database-backed 3-5-7 wartime stream is gated by
 `src/lib/threeFiveSeven/wartime/capture.ts`: Wartime Debug must be explicitly
 enabled, the mounted route must currently own a 3-5-7 game, and scoped events

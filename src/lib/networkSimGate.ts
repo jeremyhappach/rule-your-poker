@@ -3,8 +3,8 @@ import type { NetworkSimMode } from './networkSim';
 export function resolveNetworkSimulation(
   configuredMode: NetworkSimMode,
   configuredLogging: boolean,
-  harnessesModeEnabled: boolean,
 ): { mode: NetworkSimMode; loggingEnabled: boolean } {
-  if (!harnessesModeEnabled) return { mode: 'off', loggingEnabled: false };
+  // Network conditions are a per-user transport preference, not a game-rule
+  // harness. The global Harnesses Mode gate must never change this result.
   return { mode: configuredMode, loggingEnabled: configuredLogging };
 }
