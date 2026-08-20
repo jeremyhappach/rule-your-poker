@@ -97,6 +97,11 @@ import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/th
 import { declineThreeFiveSevenSetup } from "@/lib/threeFiveSeven/declineSetup";
 import type { DealerGameSetupCommitResult } from "@/lib/dealerGameSetupAuthority";
 import {
+  advanceAntePhase,
+  advanceSessionDealerSelection,
+  setGamePaused,
+} from "@/lib/gameTimerAuthority";
+import {
   parseThreeFiveSevenRolloverAdvanceResult,
   selectThreeFiveSevenRolloverPresentation,
   type ThreeFiveSevenRolloverPresentation,
@@ -3006,6 +3011,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[CHECK GAME] missing-strike-reset (game still present)');
         }
         missingGameStrikesRef.current = 0;
+        missingGameHandledRef.current = false;
         return;
       }
 
@@ -3046,21 +3052,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         description: 'Not enough players, deleting this empty session.',
         duration: 3000,
       });
-      setTimeout(() => {
-        recordTerminalRecovery('game-missing-confirmed', { gameId, strikes: missingGameStrikesRef.current });
-        releaseRecoveryLease('confirmed-unavailable', { gameId });
-        navigate('/');
-      }, 2000);
+      recordTerminalRecovery('game-missing-confirmed', { gameId, strikes: missingGameStrikesRef.current });
+      releaseRecoveryLease('confirmed-unavailable', { gameId });
+      navigate('/', { replace: true });
 
     };
 
     checkGameExists();
     // Poll every 3 seconds to check if game still exists
     const interval = window.setInterval(checkGameExists, 3000);
+    const checkOnFocus = () => { void checkGameExists(); };
+    const checkOnVisibility = () => {
+      if (document.visibilityState === 'visible') void checkGameExists();
+    };
+    window.addEventListener('focus', checkOnFocus);
+    document.addEventListener('visibilitychange', checkOnVisibility);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      window.removeEventListener('focus', checkOnFocus);
+      document.removeEventListener('visibilitychange', checkOnVisibility);
     };
   }, [gameId, user?.id, navigate, toast]);
 
@@ -3374,92 +3386,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
     if (!game || !gameId) return;
-    
     const newPausedState = !game.is_paused;
-    
-    // Get current round for deadline updates.
-    // CRITICAL: Must be scoped to dealer_game_id, otherwise 3-5-7 Round 1 can be mistaken for Holm Round 1.
-    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee')
-      ? pickActiveSingleRoundGameRound(game.rounds, {
-          dealerGameId: game.current_game_uuid,
-          currentRoundNumber: game.current_round,
-          currentHandNumber: game.total_hands,
-        })
-      : pickActive357Round(game.rounds, {
-          currentRoundNumber: game.current_round,
-          currentHandNumber: game.total_hands,
-          dealerGameId: game.current_game_uuid,
-        }) ?? null;
-    
-    if (newPausedState) {
-      // PAUSING: Save current remaining time
-      const deadlineRemaining = decisionDeadline
-        ? Math.max(0, Math.floor((new Date(decisionDeadline).getTime() - Date.now()) / 1000))
-        : null;
-      const remainingTime = timeLeft ?? deadlineRemaining ?? decisionTimerRef.current;
-      console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
-      
-      // Optimistic UI update
-      setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
-      
-      const { error } = await supabase
-        .from('games')
-        .update({ 
-          is_paused: true, 
-          paused_time_remaining: remainingTime 
-        })
-        .eq('id', gameId);
-      
-      if (error) {
-        console.error('[PAUSE] Error pausing:', error);
-        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-        toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
+    setGame(prev => prev ? { ...prev, is_paused: newPausedState } : prev);
+    try {
+      const result = await setGamePaused(gameId, newPausedState);
+      if (!['paused', 'resumed', 'already_set'].includes(result.outcome ?? '')) {
+        throw new Error(`Pause authority rejected the request: ${result.outcome ?? 'unknown'}`);
       }
-    } else {
-      // RESUMING: Continue the frozen decision window instead of granting a
-      // fresh maximum. This also keeps the visual-bug pause/resume flow from
-      // rewriting the active timer as a refill.
-      const remainingTime = Math.max(
-        0,
-        Math.floor(game.paused_time_remaining ?? timeLeft ?? decisionTimerRef.current),
-      );
-      const newDeadline = new Date(Date.now() + remainingTime * 1000).toISOString();
-      console.log('[PAUSE] Resuming game from saved remaining time:', newDeadline, 'with', remainingTime, 'seconds');
-      
-      // Update the deadline while every client is still paused. Publishing the
-      // unpaused game first briefly exposed the expired pre-pause deadline.
-      if (currentRoundData?.id) {
-        const { error: roundError } = await supabase
-          .from('rounds')
-          .update({ decision_deadline: newDeadline })
-          .eq('id', currentRoundData.id);
-        
-        if (roundError) {
-          console.error('[PAUSE] Error updating round deadline:', roundError);
-          toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
-          return;
-        }
-      }
-
-      const { error: gameError } = await supabase
-        .from('games')
-        .update({
-          is_paused: false,
-          paused_time_remaining: null,
-        })
-        .eq('id', gameId);
-      
-      if (gameError) {
-        console.error('[PAUSE] Error resuming:', gameError);
-        toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
-        return;
-      }
-
-      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-      // Normalize ISO to canonical form to prevent identity drift across realtime payloads.
-      setDecisionDeadline(new Date(newDeadline).toISOString());
+    } catch (error) {
+      console.error('[PAUSE] Database pause transition failed:', error);
+      setGame(prev => prev ? { ...prev, is_paused: !newPausedState } : prev);
+      toast({
+        title: "Error",
+        description: newPausedState ? "Failed to pause game" : "Failed to resume game",
+        variant: "destructive",
+      });
     }
-  }, [decisionDeadline, game, gameId, timeLeft, toast]);
+  }, [game, gameId, toast]);
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -5512,9 +5455,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             caller: 'allDecided true after bot write (no-refetch)',
             gameId,
           });
-          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn (no-refetch)', { t: Date.now() });
+          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → requesting database ante advance', { t: Date.now() });
           anteProcessingRef.current = true;
-          handleAllAnteDecisionsIn();
+          void advanceAntePhase(gameId!, game?.current_game_uuid)
+            .catch((error) => console.warn('[BOT ANTE] Database advance failed', error))
+            .finally(() => { anteProcessingRef.current = false; });
         } else {
           recordStartupFlight('EFFECT TIMELINE', 'bot ante effect exited via fallback fetch', {
             file: 'src/pages/Game.tsx',
@@ -6053,62 +5998,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.id, game?.status, game?.config_complete, game?.current_game_uuid, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
-  // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
-  // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
+  // Expiry is database-owned. The client may request an immediate exact check
+  // when its display reaches zero, but it never writes player/session state.
   useEffect(() => {
-    // No-Timers harness: ante timer-expiry auto-sit-out is forbidden.
     if (isNoTimersEnabledCached()) return;
     if (game?.is_paused) return;
-    if (anteTimeLeft !== 0 || game?.status !== 'ante_decision' || !user) return;
-
-    const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer || currentPlayer.ante_decision) return;
-
-    let cancelled = false;
-    (async () => {
-      // Confirm DB still says: game in ante_decision, not paused, deadline expired, player undecided.
-      const [{ data: freshGame }, { data: freshPlayer }] = await Promise.all([
-        supabase
-          .from('games')
-          .select('status, is_paused, ante_decision_deadline')
-          .eq('id', gameId)
-          .maybeSingle(),
-        supabase
-          .from('players')
-          .select('id, ante_decision, sitting_out')
-          .eq('id', currentPlayer.id)
-          .maybeSingle(),
-      ]);
-      if (cancelled) return;
-
-      const deadlineMs = freshGame?.ante_decision_deadline ? new Date(freshGame.ante_decision_deadline).getTime() : 0;
-      const stillValid =
-        freshGame &&
-        freshGame.status === 'ante_decision' &&
-        !freshGame.is_paused &&
-        deadlineMs > 0 &&
-        deadlineMs <= Date.now() &&
-        freshPlayer &&
-        !freshPlayer.ante_decision;
-
-      if (!stillValid) {
-        console.log('[ANTE AUTO-SIT-OUT] auto-sit-out-suppressed (state changed)', {
-          status: freshGame?.status,
-          is_paused: freshGame?.is_paused,
-          deadlineMs,
-          ante_decision: freshPlayer?.ante_decision,
-        });
-        return;
-      }
-
-      await supabase
-        .from('players')
-        .update({ ante_decision: 'sit_out', sitting_out: true, waiting: false })
-        .eq('id', currentPlayer.id);
-    })();
-
-    return () => { cancelled = true; };
-  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user?.id]);
+    if (anteTimeLeft !== 0 || game?.status !== 'ante_decision') return;
+    void advanceAntePhase(gameId!, game.current_game_uuid).catch((error) => {
+      console.warn('[ANTE DEADLINE] Authoritative expiry check failed', error);
+    });
+  }, [anteTimeLeft, game?.status, game?.is_paused, game?.current_game_uuid, gameId]);
 
   // Session ending tracking (removed toast)
 
@@ -6133,7 +6032,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (sessionEndedTableAdmitted) return;
 
     let cancelled = false;
-    const t = setTimeout(async () => {
+    void (async () => {
       if (cancelled) return;
       const { data: freshGame, error } = await supabase
         .from('games')
@@ -6152,136 +6051,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       recordTerminalRecovery('session-ended-confirmed', { gameId });
       releaseRecoveryLease('session-ended-confirmed', { gameId });
-      navigate('/');
+      navigate('/', { replace: true });
 
-    }, 2000);
-    return () => { cancelled = true; clearTimeout(t); };
+    })();
+    return () => { cancelled = true; };
   }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted]);
 
-  // Check if all ante decisions are in - with polling fallback
-  // CRITICAL: Also enforce deadline for disconnected players
+  // Ask the database for one exact check when ante state is admitted. Realtime
+  // decisions use the fast path below; expiry remains owned by the scheduler.
   useEffect(() => {
-    console.log('[ANTE CHECK] Effect triggered - status:', game?.status, 'gameId:', gameId, 'paused:', game?.is_paused);
-    
     if (game?.status !== 'ante_decision') {
-      // Reset the ref when we exit ante_decision status
       anteProcessingRef.current = false;
-      console.log('[ANTE CHECK] Not in ante_decision status, resetting ref');
       return;
     }
-    
-    // CRITICAL: Skip ante processing if game is paused
-    if (game?.is_paused) {
-      console.log('[ANTE CHECK] Game is paused, skipping ante check');
-      return;
-    }
+    if (game?.is_paused || anteProcessingRef.current) return;
 
-    const checkAnteDecisions = async () => {
-      console.log('[ANTE CHECK] checkAnteDecisions called, anteProcessingRef:', anteProcessingRef.current);
-      // Skip if already processing
-      if (anteProcessingRef.current) {
-        console.log('[ANTE CHECK] Already processing, skipping');
-        return;
-      }
-      
-      // Check pause state from database (in case local state is stale)
-      const { data: freshGamePause } = await supabase
-        .from('games')
-        .select('is_paused')
-        .eq('id', gameId)
-        .single();
-      
-      if (freshGamePause?.is_paused) {
-        console.log('[ANTE CHECK] Game is paused (from DB), skipping');
-        return;
-      }
-      
-      // CRITICAL: Fetch fresh player AND game data directly from database
-      const [playersResult, gameResult] = await Promise.all([
-        supabase.from('players').select('*').eq('game_id', gameId).neq('status', 'left'),
-        supabase.from('games').select('ante_decision_deadline').eq('id', gameId).single()
-      ]);
-      
-      if (playersResult.error || !playersResult.data) {
-        console.log('[ANTE CHECK] Error fetching players:', playersResult.error);
-        return;
-      }
-      
-      const freshPlayers = playersResult.data;
-      const deadline = gameResult.data?.ante_decision_deadline;
-      
-      // Check if deadline has passed - if so, auto-sit-out undecided players
-      if (deadline) {
-        const deadlineTime = new Date(deadline).getTime();
-        const now = Date.now();
-        if (now > deadlineTime) {
-          const undecidedPlayers = freshPlayers.filter(p => !p.ante_decision);
-          if (undecidedPlayers.length > 0) {
-            console.log('[ANTE CHECK] Deadline expired! Auto-sitting-out disconnected players:', undecidedPlayers.map(p => p.position));
-            
-            // Batch update all undecided players to sit_out
-            const undecidedIds = undecidedPlayers.map(p => p.id);
-            await supabase
-              .from('players')
-              .update({
-                ante_decision: 'sit_out',
-                sitting_out: true,
-                waiting: false,
-              })
-              .in('id', undecidedIds);
-            
-            // Re-fetch to get updated state
-            const { data: updatedPlayers } = await supabase
-              .from('players')
-              .select('*')
-              .eq('game_id', gameId);
-            
-            if (updatedPlayers) {
-              const allNowDecided = updatedPlayers.every(p => p.ante_decision);
-              if (allNowDecided && updatedPlayers.length > 0) {
-                console.log('[ANTE CHECK] All players now decided after deadline enforcement, proceeding');
-                anteProcessingRef.current = true;
-                handleAllAnteDecisionsIn();
-              }
-            }
-            return;
-          }
-        }
-      }
-      
-      // CRITICAL FIX: Only check decisions from players who are NOT sitting_out
-      // Players who are already sitting_out should not block the ante phase
-      const activePlayers = freshPlayers.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
-      const decidedCount = activePlayers.filter(p => p.ante_decision).length;
-      const allDecided = activePlayers.every(p => p.ante_decision);
-      console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Active (not sitting out):', activePlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', activePlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
-      
-      if (allDecided && freshPlayers.length > 0) {
-        console.log('[ANTE CHECK] All players decided, proceeding to start round');
-        anteProcessingRef.current = true;
-        handleAllAnteDecisionsIn();
-      }
-    };
-
-    // Check immediately
-    checkAnteDecisions();
-
-    if (safetyPollsDisabled) return;
-
-    // Poll every 3 seconds as fallback for ante detection (not 1 second which hammers DB)
-    const pollInterval = setInterval(() => {
-      checkAnteDecisions();
-    }, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [game?.status, game?.is_paused, gameId]);
+    anteProcessingRef.current = true;
+    void advanceAntePhase(gameId!, game.current_game_uuid)
+      .catch((error) => console.warn('[ANTE CHECK] Authoritative phase check failed', error))
+      .finally(() => { anteProcessingRef.current = false; });
+  }, [game?.status, game?.is_paused, game?.current_game_uuid, gameId]);
 
   // FAST-PATH: Reactive ante-completion detector.
   // The polling effect above only re-runs on status/paused/gameId changes,
   // so realtime player updates (the second human submitting their ante) had
   // to wait up to 3s for the next poll tick. Watch local `players` state
   // directly — when every active, non-observer participant has an
-  // ante_decision, immediately invoke handleAllAnteDecisionsIn.
+  // ante_decision, immediately request the exact database transition.
   const anteSignature = useMemo(() => {
     if (game?.status !== 'ante_decision') return '';
     return players
@@ -6310,10 +6106,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (activePlayers.length === 0) return;
     const allDecided = activePlayers.every((p) => !!p.ante_decision);
     if (!allDecided) return;
-    console.log('[ANTE FAST-PATH] All active players decided (reactive) — advancing immediately');
+    console.log('[ANTE FAST-PATH] All active players decided — requesting database advance');
     anteProcessingRef.current = true;
-    handleAllAnteDecisionsIn();
-  }, [anteSignature, game?.status, game?.is_paused]);
+    void advanceAntePhase(gameId!, game?.current_game_uuid)
+      .catch((error) => console.warn('[ANTE FAST-PATH] Database advance failed', error))
+      .finally(() => { anteProcessingRef.current = false; });
+  }, [anteSignature, game?.status, game?.is_paused, game?.current_game_uuid, gameId, players]);
 
 
 
@@ -11127,38 +10925,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
 
-    console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
-
-    // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
-    const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
-    const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
-    
-    // Log session events
-    await logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`);
-    await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer');
-    
-    const { error } = await supabase
-      .from('games')
-      .update({ 
-        status: 'game_selection',
-        dealer_position: dealerPosition,
-        config_deadline: configDeadline,
-        dealer_selection_state: null // Clear selection state after dealer is chosen
-      })
-      .eq('id', gameId);
-
-    if (error) {
-      console.error('Failed to select dealer:', error);
-      return;
+    console.log('[DEALER SELECT] Presentation completed for position:', dealerPosition);
+    try {
+      const result = await advanceSessionDealerSelection(gameId);
+      if (!['advanced', 'presentation_pending', 'stale_identity'].includes(result.outcome ?? '')) {
+        console.warn('[DEALER SELECT] Database advance was not accepted', result);
+      }
+    } catch (error) {
+      console.warn('[DEALER SELECT] Database advance request failed', error);
     }
-
-    console.log('[DEALER SELECT] Successfully updated game status to game_selection');
-
-    // Immediate refetch to ensure UI updates immediately
-    await fetchGameData();
-    
-    // Secondary refetch after short delay for any race conditions
-    setTimeout(() => fetchGameData(), 300);
   };
 
   const handleConfigComplete = async (result: DealerGameSetupCommitResult) => {
@@ -15695,6 +15470,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
+  const hasLiveConfigDeadline = !game.is_paused && !!game.config_deadline &&
+    new Date(game.config_deadline).getTime() > Date.now();
 
   // Route-stable shell mount: the PersistentTableShell parent is
   // decided once per /game/:gameId session at route entry and never
@@ -16270,7 +16047,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isWaitingPhase={true}
                   />
                 )}
-                {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
+                {hasLiveConfigDeadline && (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
@@ -16707,6 +16484,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   // the prior dealer seat when the session closes.
                   (game.status === 'game_over' && !(game as any).config_complete)) &&
                   !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                  hasLiveConfigDeadline &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
@@ -17696,7 +17474,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </PlayfieldSlotController>
         )}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
+        {game.status === 'ante_decision' && showAnteDialog && user &&
+          game.ante_amount !== undefined && isRunningItBack !== null &&
+          !!game.current_game_uuid && !!game.ante_decision_deadline &&
+          new Date(game.ante_decision_deadline).getTime() > Date.now() && (() => {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
@@ -17713,6 +17494,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           return (
             <AnteUpDialog
               gameId={gameId!}
+              dealerGameId={game.current_game_uuid!}
               playerId={currentPlayer?.id || ''}
               gameType={game.game_type}
               anteAmount={game.ante_amount}
@@ -17726,7 +17508,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isRunningItBack={isRunningItBack}
               autoAnte={currentPlayer?.auto_ante ?? false}
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
-              anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
+              anteDecisionDeadline={game.ante_decision_deadline!}
               onDecisionMade={(decision) => {
                 // ── Set latch BEFORE hiding so transient server regression cannot re-trigger ──
                 const currentPlayer = players.find(p => p.user_id === user.id);
@@ -17765,9 +17547,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     decision,
                   });
                   if (allDecided && !anteProcessingRef.current) {
-                    console.log('[GIN_RUNTIME_TIMELINE] dealer-submit:allDecided=true → immediate handleAllAnteDecisionsIn');
+                    console.log('[GIN_RUNTIME_TIMELINE] dealer-submit:allDecided=true → immediate database ante advance');
                     anteProcessingRef.current = true;
-                    handleAllAnteDecisionsIn();
+                    void advanceAntePhase(gameId!, game.current_game_uuid)
+                      .catch((error) => console.warn('[ANTE SUBMIT] Database advance failed', error))
+                      .finally(() => { anteProcessingRef.current = false; });
                   }
                 }
 

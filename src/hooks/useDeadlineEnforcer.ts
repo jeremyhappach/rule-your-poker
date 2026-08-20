@@ -1,71 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { isClientDeadlineEnforcementDisabled } from '@/lib/debugFlags';
-import { isNoTimersEnabledCached } from '@/lib/geometryLab/noTimersStore';
-
 /**
- * Smart deadline enforcer that polls the enforce-deadlines edge function.
- * Uses adaptive polling: every 10s normally, every 2s when deadline is imminent.
+ * Compatibility hook retained while call sites migrate.
+ *
+ * Deadline progression is owned by PostgreSQL's serialized one-second timer
+ * dispatcher. Mounting, reconnecting, focusing, or closing a browser must not
+ * create or remove an enforcement owner.
  */
-export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: string | undefined) => {
-  const lastCallRef = useRef<number>(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (isClientDeadlineEnforcementDisabled()) {
-      return;
-    }
-    if (isNoTimersEnabledCached()) {
-      return;
-    }
-    if (!gameId) return;
-    
-    // Only enforce for active game states - must include ALL states with deadlines
-    const activeStatuses = [
-      'waiting_for_players', 
-      'dealer_selection',           // Has config_deadline
-      'game_selection',             // Has config_deadline  
-      'configuring',                // Has config_deadline
-      'cribbage_dealer_selection',  // Cribbage high-card phase (may need deadline handling)
-      'ante_decision',              // Has ante_decision_deadline
-      'betting',                    // Has decision_deadline
-      'in_progress',                // Has decision_deadline
-    ];
-    if (!gameStatus || !activeStatuses.includes(gameStatus)) {
-      return;
-    }
-
-    const callEnforceDeadlines = async () => {
-      const now = Date.now();
-      // Debounce: don't call more than once every 3 seconds to prevent rapid-fire after turn changes
-      if (now - lastCallRef.current < 3000) return;
-      lastCallRef.current = now;
-
-      try {
-        await supabase.functions.invoke('enforce-deadlines', {
-          body: { 
-            gameId,
-            source: 'client-polling',
-            requestId: crypto.randomUUID()
-          }
-        });
-      } catch (error) {
-        // Silent fail - edge function errors shouldn't crash the UI
-        console.warn('[DeadlineEnforcer] Failed to call enforce-deadlines:', error);
-      }
-    };
-
-    // Initial call
-    callEnforceDeadlines();
-
-    // Poll every 10 seconds
-    intervalRef.current = setInterval(callEnforceDeadlines, 10000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [gameId, gameStatus]);
-};
+export const useDeadlineEnforcer = (
+  _gameId: string | undefined,
+  _gameStatus: string | undefined,
+) => undefined;

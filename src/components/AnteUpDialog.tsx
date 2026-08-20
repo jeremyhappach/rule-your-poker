@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
+import { submitAnteDecision } from "@/lib/gameTimerAuthority";
 
 interface AnteUpDialogProps {
   gameId: string;
+  dealerGameId: string;
   playerId: string;
   gameType: string | null;
   anteAmount: number;
@@ -23,12 +25,13 @@ interface AnteUpDialogProps {
   isRunningItBack?: boolean;
   autoAnte?: boolean;
   autoAnteRunback?: boolean;
-  anteDecisionTimerSeconds?: number;
+  anteDecisionDeadline: string;
   onDecisionMade: (decision?: 'ante_up' | 'sit_out') => void;
 }
 
 export const AnteUpDialog = ({
   gameId,
+  dealerGameId,
   playerId,
   gameType,
   anteAmount,
@@ -42,7 +45,7 @@ export const AnteUpDialog = ({
   isRunningItBack = false,
   autoAnte = false,
   autoAnteRunback = false,
-  anteDecisionTimerSeconds = 30,
+  anteDecisionDeadline,
   onDecisionMade,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
@@ -62,7 +65,11 @@ export const AnteUpDialog = ({
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
-  const [timeLeft, setTimeLeft] = useState(anteDecisionTimerSeconds);
+  const secondsUntilDeadline = () => Math.max(
+    0,
+    Math.ceil((new Date(anteDecisionDeadline).getTime() - Date.now()) / 1000),
+  );
+  const [timeLeft, setTimeLeft] = useState(secondsUntilDeadline);
   const [hasDecided, setHasDecided] = useState(false);
   const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
   const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);
@@ -105,19 +112,12 @@ export const AnteUpDialog = ({
 
   useEffect(() => {
     if (isNoTimersEnabledCached()) return;
-    if (timeLeft <= 0 && !hasDecided) {
-      handleSitOut();
-    }
-  }, [timeLeft, hasDecided]);
-
-  useEffect(() => {
-    if (isNoTimersEnabledCached()) return;
     const timer = setInterval(() => {
-      setTimeLeft(prev => Math.max(0, prev - 1));
+      setTimeLeft(secondsUntilDeadline());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [anteDecisionDeadline]);
 
   const handleAnteUp = async () => {
     if (hasDecided) return;
@@ -133,18 +133,22 @@ export const AnteUpDialog = ({
     });
     setHasDecided(true);
 
-    const { error } = await supabase
-      .from('players')
-      .update({
-        ante_decision: 'ante_up',
-        sitting_out: false,
-        auto_ante: localAutoAnte,
-        auto_ante_runback: localAutoAnteRunback,
-      })
-      .eq('id', playerId);
-
-    if (error) {
+    try {
+      const result = await submitAnteDecision({
+        gameId,
+        dealerGameId,
+        playerId,
+        decision: 'ante_up',
+        autoAnte: localAutoAnte,
+        autoAnteRunback: localAutoAnteRunback,
+      });
+      if (!['accepted', 'already_decided'].includes(result.outcome ?? '')) {
+        setHasDecided(false);
+        return;
+      }
+    } catch (error) {
       console.error('Failed to ante up:', error);
+      setHasDecided(false);
       return;
     }
 
@@ -203,16 +207,22 @@ export const AnteUpDialog = ({
     });
     setHasDecided(true);
 
-    const { error } = await supabase
-      .from('players')
-      .update({
-        ante_decision: 'sit_out',
-        sitting_out: true,
-      })
-      .eq('id', playerId);
-
-    if (error) {
+    try {
+      const result = await submitAnteDecision({
+        gameId,
+        dealerGameId,
+        playerId,
+        decision: 'sit_out',
+        autoAnte: localAutoAnte,
+        autoAnteRunback: localAutoAnteRunback,
+      });
+      if (!['accepted', 'already_decided'].includes(result.outcome ?? '')) {
+        setHasDecided(false);
+        return;
+      }
+    } catch (error) {
       console.error('Failed to sit out:', error);
+      setHasDecided(false);
       return;
     }
 
@@ -222,7 +232,7 @@ export const AnteUpDialog = ({
   };
 
   return (
-    <Dialog open={!hasDecided} onOpenChange={() => {}}>
+    <Dialog open={!hasDecided && timeLeft > 0} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-center text-2xl">

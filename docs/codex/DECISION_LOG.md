@@ -978,3 +978,25 @@ Per-die requests may not lock the entire dice row or silently discard a later
 tap while network work is in flight. Optimistic presentation never becomes
 authority: rejection restores the last committed mask and refetches the exact
 round.
+
+## D-072 - Expiring game phases are registered database work
+
+Every gameplay, setup, ante, and postgame deadline that can change persistent
+state is registered under exact authoritative identity and drained by the one
+serialized PostgreSQL scheduler. A browser may submit intent or request an
+idempotent early drain, but it may not own expiry, reset the clock on remount,
+or be required for progression. Registration is generation-guarded,
+replay-safe, and cancelled at game, dealer-game, round, or actor identity
+boundaries.
+
+Pause/resume is one authenticated database mutation that suspends and restores
+all registered deadlines together with their authoritative source fields.
+Fresh admission trusts current database phase and deadline state: expired
+setup/ante UI does not remount, already-ended or confirmed-missing sessions go
+directly to the lobby, and connected clients that observed the live terminal
+scope retain the canonical Session Ended phase.
+
+This ownership rule does not create a timer where game policy has none. Gin
+Rummy and Cribbage human decisions remain untimed until a separate real-money
+rule is chosen. Deterministic scheduled progression such as Cribbage's forced
+`go` is recovery of an already-forced state, not a player timeout.

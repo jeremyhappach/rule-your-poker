@@ -2,6 +2,33 @@
 
 Date: 2026-08-20
 
+## Canonical database-owned game timers
+
+- Migrations `20260820180000_canonical_game_timer_ownership.sql` and
+  `20260820190000_index_canonical_game_timer_foreign_keys.sql` are installed
+  on owned production. A private exact-identity registry now feeds the one
+  serialized recovery dispatcher for session dealer selection, dealer setup,
+  ante decisions, Holm decisions, Horses/SCC round progression, and their
+  postgame continuation. Expiry no longer requires a mounted or connected
+  browser.
+- Ante submission and pause/resume are atomic authenticated RPCs. Pausing a
+  game suspends registered deadlines and their authoritative state fields;
+  resume restores the remaining window. Fresh route admission renders only an
+  unexpired authoritative setup/ante deadline, redirects already-ended or
+  confirmed-missing sessions to the lobby, and otherwise hydrates the current
+  table state. Connected live-flow clients still retain the canonical Session
+  Ended table presentation.
+- Timer admission is future-only at the migration cutover, so historical
+  expired rows were not swept or fabricated. The rollback proof passed before
+  installation and against the deployed definitions for authorization,
+  winner, tie, duplicate, replay, late replay, continuation, terminal state,
+  and pause/resume cases. The two registry foreign keys have covering indexes;
+  the remaining advisor notices are the intended private RLS/no-policy and
+  signed-in `SECURITY DEFINER` wrapper boundaries.
+- Gin Rummy and Cribbage human choices intentionally remain untimed. Their
+  deterministic database recovery (including Cribbage's mandatory `go`)
+  remains scheduled progression, not a human-turn timeout or auto-fold rule.
+
 ## Antelope diagnostics, Yahtzee holds, and Cribbage continuity
 
 - Yahtzee hold taps no longer wait on one RPC per die. The client now applies

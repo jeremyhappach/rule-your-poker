@@ -880,6 +880,13 @@ export function useHighCardDealerSelection({
 
     if (hasInitializedRef.current) return;
 
+    // Session-level dealer selection is prepared and advanced by PostgreSQL.
+    // This hook only renders the stored receipt; host presence is irrelevant.
+    if (!isCribbageVariant) {
+      hasInitializedRef.current = true;
+      return;
+    }
+
     if (eligibleDealers.length === 0) {
       hasInitializedRef.current = true;
       const activePlayers = sortedPlayers.filter((p) => !p.sitting_out);
