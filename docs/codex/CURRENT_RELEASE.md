@@ -2,6 +2,27 @@
 
 Date: 2026-08-20
 
+## Holm durable showdown stage receipts
+
+- The live `Aug 20 - Hamilton Boulevard` repro settled its first multiplayer
+  showdown exactly once in PostgreSQL, but both connected clients stopped
+  between the pot-award and replacement-pot presentation stages. The server's
+  continuation lease correctly prepared later hands; the browsers remained
+  held on hand 1 because the local phase machine consumed only a transient
+  React batch-settled callback.
+- `MobileGameTable` now observes the shell ledger's durable state for the exact
+  adjacent showdown cursors: the final published cursor identifies the
+  replacement-pot batch and its predecessor identifies the pot award. A
+  `settled` receipt drains a missed callback, while `reconciled` releases a
+  reconnect/historical baseline without replaying chip movement. Exact
+  hand/cursor identity and per-action dedupe prevent hidden successors or
+  repeated renders from releasing the wrong presentation barrier.
+- Database settlement, balances, recovery leases, and RPC behavior are
+  unchanged. The focused Holm suite passes 44 assertions, the installed
+  TypeScript compiler passes, and the production build passes with all 35
+  required Cribbage assertions. Published two-client Holm showdown smoke
+  remains required.
+
 ## Holm Chucky canonical flip presentation
 
 - Holm's configured Chucky reveal scheduler remains the sole cadence owner,

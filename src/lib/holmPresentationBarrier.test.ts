@@ -5,6 +5,8 @@ import {
   classifyHolmRouteEntryMode,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
+  getHolmShowdownDurablePresentationAction,
+  getHolmShowdownPresentationCursors,
   isHolmPreHandRouteStatus,
   isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
@@ -90,6 +92,56 @@ describe('Holm route-entry provenance', () => {
 });
 
 describe('Holm presented-hand barrier', () => {
+  it('derives the exact adjacent showdown cursors from the final transfer identity', () => {
+    expect(getHolmShowdownPresentationCursors(hand('round-1', 1, 12))).toEqual({
+      potAwardCursor: 11,
+      replacementPotCursor: 12,
+    });
+    expect(getHolmShowdownPresentationCursors(hand('round-1', 1, 1))).toBeNull();
+    expect(getHolmShowdownPresentationCursors(null)).toBeNull();
+  });
+
+  it('drains a missed showdown callback from durable exact-cursor receipts', () => {
+    expect(getHolmShowdownDurablePresentationAction({
+      phase: 'pot-to-winner',
+      potAwardCursorState: 'settled',
+      replacementPotCursorState: 'queued',
+    })).toBe('advance-to-replacement-pot');
+    expect(getHolmShowdownDurablePresentationAction({
+      phase: 'losers-to-pot',
+      potAwardCursorState: 'settled',
+      replacementPotCursorState: 'settled',
+    })).toBe('complete-replacement-pot');
+  });
+
+  it('treats authoritative reconciliation as terminal without replaying money', () => {
+    expect(getHolmShowdownDurablePresentationAction({
+      phase: 'pot-to-winner',
+      potAwardCursorState: 'reconciled',
+      replacementPotCursorState: 'reconciled',
+    })).toBe('advance-to-replacement-pot');
+    expect(getHolmShowdownDurablePresentationAction({
+      phase: 'losers-to-pot',
+      potAwardCursorState: 'reconciled',
+      replacementPotCursorState: 'reconciled',
+    })).toBe('complete-replacement-pot');
+  });
+
+  it('does not advance from incomplete cursors or the wrong phase', () => {
+    for (const state of ['unknown', 'queued', 'running', 'reconciling'] as const) {
+      expect(getHolmShowdownDurablePresentationAction({
+        phase: 'pot-to-winner',
+        potAwardCursorState: state,
+        replacementPotCursorState: 'settled',
+      })).toBeNull();
+    }
+    expect(getHolmShowdownDurablePresentationAction({
+      phase: 'idle',
+      potAwardCursorState: 'settled',
+      replacementPotCursorState: 'settled',
+    })).toBeNull();
+  });
+
   it('separates stable hand-plan identity from exact transfer completion identity', () => {
     const firstShowdownBatch = hand('round-1', 1, 8);
     const secondShowdownBatch = hand('round-1', 1, 9);

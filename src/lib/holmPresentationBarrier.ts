@@ -1,3 +1,5 @@
+import type { ChipPresentationCursorState } from './canonicalShell/ChipPresentationLedger';
+
 export type HolmContinuationPresentationStage =
   | 'showdown-replacement-pot'
   | 'chucky-loss'
@@ -80,6 +82,65 @@ export interface HolmAdmittedTransferPresentation {
 }
 
 export type HolmPresentationBarrier = HolmPresentationIdentity;
+
+export type HolmShowdownPresentationPhase =
+  | 'idle'
+  | 'pot-to-winner'
+  | 'losers-to-pot';
+
+export type HolmShowdownDurablePresentationAction =
+  | 'advance-to-replacement-pot'
+  | 'complete-replacement-pot';
+
+/**
+ * Multiplayer showdown settlement emits one pot-award batch followed
+ * immediately by the final replacement-pot batch whose cursor is published
+ * on the Holm presentation identity.
+ */
+export function getHolmShowdownPresentationCursors(
+  identity: HolmPresentationIdentity | null | undefined,
+): { potAwardCursor: number; replacementPotCursor: number } | null {
+  if (!identity || !Number.isInteger(identity.transferCursor) || identity.transferCursor < 2) {
+    return null;
+  }
+  return {
+    potAwardCursor: identity.transferCursor - 1,
+    replacementPotCursor: identity.transferCursor,
+  };
+}
+
+function isHolmPresentationCursorComplete(state: ChipPresentationCursorState): boolean {
+  return state === 'settled' || state === 'reconciled';
+}
+
+/**
+ * Convert durable, exact-cursor ledger receipts into level-triggered Holm
+ * stage drains. This is deliberately independent of the transient batch
+ * settlement callback so a dropped React edge cannot strand the phase.
+ */
+export function getHolmShowdownDurablePresentationAction({
+  phase,
+  potAwardCursorState,
+  replacementPotCursorState,
+}: {
+  phase: HolmShowdownPresentationPhase;
+  potAwardCursorState: ChipPresentationCursorState;
+  replacementPotCursorState: ChipPresentationCursorState;
+}): HolmShowdownDurablePresentationAction | null {
+  if (
+    phase === 'pot-to-winner'
+    && isHolmPresentationCursorComplete(potAwardCursorState)
+  ) {
+    return 'advance-to-replacement-pot';
+  }
+  if (
+    phase === 'losers-to-pot'
+    && isHolmPresentationCursorComplete(replacementPotCursorState)
+  ) {
+    return 'complete-replacement-pot';
+  }
+  return null;
+}
 
 export function getHolmPresentationHandKey(
   identity: Pick<HolmPresentationIdentity, 'dealerGameId' | 'roundId' | 'handNumber'>,

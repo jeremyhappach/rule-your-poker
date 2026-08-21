@@ -295,6 +295,9 @@ import {
   captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
   getHolmPresentationHandKey,
+  getHolmPresentationIdentityKey,
+  getHolmShowdownDurablePresentationAction,
+  getHolmShowdownPresentationCursors,
   type HolmAdmittedTransferPresentation,
   type HolmContinuationPresentationCompletion,
   type HolmPresentationIdentity,
@@ -2993,6 +2996,7 @@ export const MobileGameTable = ({
   const holmAdmittedTransferPresentationsRef = useRef(
     new Map<string, HolmAdmittedTransferPresentation>(),
   );
+  const holmDurableShowdownActionsRef = useRef(new Set<string>());
   const holmAdmittedTransferDealerGameRef = useRef<string | null>(
     holmPresentationIdentity?.dealerGameId ?? null,
   );
@@ -4651,6 +4655,48 @@ export const MobileGameTable = ({
     onChipTransferPresentationBatchSettled,
     onChipTransferPresentationBatchStarted,
   );
+
+  // The callback above remains the fast path. Exact cursor receipts are the
+  // durable level-triggered path when React misses that one settlement edge.
+  const holmShowdownPresentationCursors = getHolmShowdownPresentationCursors(
+    gameType === 'holm-game' && holmShowdownPhase !== 'idle'
+      ? holmPresentationIdentity
+      : null,
+  );
+  const holmShowdownPotAwardCursorState = useChipPresentationCursorState(
+    holmShowdownPresentationCursors?.potAwardCursor ?? null,
+  );
+  const holmShowdownReplacementPotCursorState = useChipPresentationCursorState(
+    holmShowdownPresentationCursors?.replacementPotCursor ?? null,
+  );
+  const holmDurableShowdownAction = getHolmShowdownDurablePresentationAction({
+    phase: holmShowdownPhase,
+    potAwardCursorState: holmShowdownPotAwardCursorState,
+    replacementPotCursorState: holmShowdownReplacementPotCursorState,
+  });
+  useEffect(() => {
+    if (!holmPresentationIdentity || !holmDurableShowdownAction) return;
+    const actionKey = `${getHolmPresentationIdentityKey(holmPresentationIdentity)}|${holmDurableShowdownAction}`;
+    if (holmDurableShowdownActionsRef.current.has(actionKey)) return;
+    holmDurableShowdownActionsRef.current.add(actionKey);
+
+    if (holmDurableShowdownAction === 'advance-to-replacement-pot') {
+      onHolmShowdownPotToWinnerEnded?.();
+      return;
+    }
+
+    onHolmShowdownLosersEnded?.();
+    onHolmContinuationPresentationComplete?.({
+      ...holmPresentationIdentity,
+      stage: 'showdown-replacement-pot',
+    });
+  }, [
+    holmDurableShowdownAction,
+    holmPresentationIdentity,
+    onHolmContinuationPresentationComplete,
+    onHolmShowdownLosersEnded,
+    onHolmShowdownPotToWinnerEnded,
+  ]);
 
   // ── TERMINAL PRESENTATION HOLD (Holm) ────────────────────────────────────
   // Authoritative settlement now lands in ONE transaction, so `status` can flip
