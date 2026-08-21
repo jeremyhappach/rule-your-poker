@@ -51,11 +51,38 @@ export const isGinMaskedCard = (
   card: { rank?: string; suit?: string; masked?: boolean } | null | undefined,
 ): boolean => !!card && (card.masked === true || card.rank === '?' || card.suit === '?');
 
+export type GinSelfDrawReleaseGate = {
+  animationSettled: boolean;
+  authoritativeCardReady: boolean;
+};
+
+export type GinSelfDrawReleaseEvent =
+  | 'animation-settled'
+  | 'authoritative-card-ready';
+
 /**
- * Keep an in-flight self draw out of the active hand until its canonical
- * transport settles. This projection runs independently of opening-deal
- * admission so both a masked stock placeholder and a known discard card stay
- * withheld when the authoritative hand has already grown past ten cards.
+ * A self draw may enter the visible hand only after its transport has landed
+ * and the caller-specific projection has supplied the real card. Keeping the
+ * receipts independent makes both network-first and animation-first ordering
+ * safe without extending either lifecycle with another timer.
+ */
+export const advanceGinSelfDrawReleaseGate = (
+  gate: GinSelfDrawReleaseGate,
+  event: GinSelfDrawReleaseEvent,
+): GinSelfDrawReleaseGate => ({
+  animationSettled: gate.animationSettled || event === 'animation-settled',
+  authoritativeCardReady:
+    gate.authoritativeCardReady || event === 'authoritative-card-ready',
+});
+
+export const canReleaseGinSelfDraw = (gate: GinSelfDrawReleaseGate): boolean =>
+  gate.animationSettled && gate.authoritativeCardReady;
+
+/**
+ * Keep an in-flight self draw out of the active hand until its release gate
+ * removes the withholding claim. This projection runs independently of
+ * opening-deal admission so both a masked stock placeholder and a known
+ * discard card stay withheld when the hand has already grown past ten cards.
  */
 export const withholdGinDrawnCards = <T extends { rank: string; suit: string }>(
   hand: T[],

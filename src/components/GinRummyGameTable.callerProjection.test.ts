@@ -64,4 +64,13 @@ describe('Gin caller-specific projection admission', () => {
     expect(currentPlayerIdIndex).toBeGreaterThan(-1);
     expect(reconcileHookIndex).toBeGreaterThan(currentPlayerIdIndex);
   });
+
+  it('requires both draw receipts and clears their holds at a hand identity boundary', () => {
+    expect(componentSource).toContain("'animation-settled'");
+    expect(componentSource).toContain("'authoritative-card-ready'");
+    expect(componentSource).toContain(
+      'setSelfDrawIntents(prev => Object.keys(prev).length === 0 ? prev : {});',
+    );
+    expect(componentSource).toContain('}, [handContextId]);');
+  });
 });

@@ -1,11 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  advanceGinSelfDrawReleaseGate,
+  canReleaseGinSelfDraw,
   ginPresentationActionKey,
   isGinMaskedCard,
   withholdGinDrawnCards,
 } from './presentationIdentity';
 
 const handContextId = 'dealer-game-1#rround-1#h1';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('Gin presentation action identity', () => {
   it('dedupes optimistic and committed projections with different timestamps', () => {
@@ -47,6 +53,34 @@ describe('Gin presentation action identity', () => {
   it('recognizes projected hidden-card placeholders', () => {
     expect(isGinMaskedCard({ rank: '?', suit: '?', masked: true })).toBe(true);
     expect(isGinMaskedCard({ rank: 'K', suit: '♠' })).toBe(false);
+  });
+
+  it('keeps a draw withheld when its 700ms animation beats the caller RPC', () => {
+    vi.useFakeTimers();
+    let gate = { animationSettled: false, authoritativeCardReady: false };
+    setTimeout(() => {
+      gate = advanceGinSelfDrawReleaseGate(gate, 'animation-settled');
+    }, 700);
+
+    vi.advanceTimersByTime(699);
+    expect(canReleaseGinSelfDraw(gate)).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(gate).toEqual({ animationSettled: true, authoritativeCardReady: false });
+    expect(canReleaseGinSelfDraw(gate)).toBe(false);
+
+    gate = advanceGinSelfDrawReleaseGate(gate, 'authoritative-card-ready');
+    expect(canReleaseGinSelfDraw(gate)).toBe(true);
+  });
+
+  it('keeps an authority-first draw withheld until its animation lands', () => {
+    const pending = { animationSettled: false, authoritativeCardReady: false };
+    const committed = advanceGinSelfDrawReleaseGate(pending, 'authoritative-card-ready');
+
+    expect(committed).toEqual({ animationSettled: false, authoritativeCardReady: true });
+    expect(canReleaseGinSelfDraw(committed)).toBe(false);
+
+    const landed = advanceGinSelfDrawReleaseGate(committed, 'animation-settled');
+    expect(canReleaseGinSelfDraw(landed)).toBe(true);
   });
 
   it('withholds a masked stock placeholder after the hand grows to eleven cards', () => {

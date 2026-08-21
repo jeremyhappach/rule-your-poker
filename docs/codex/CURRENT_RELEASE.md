@@ -2,6 +2,25 @@
 
 Date: 2026-08-21
 
+## Gin self-draw hidden-card admission
+
+- The `Aug 20 - Hamilton Boulevard` real-money session retained 12 complete
+  Gin hands with 621 valid private card instances and no missing or masked
+  ranks/suits. Its public projection correctly masked all 264 stock instances,
+  proving the observed `?/?` face was a presentation leak rather than persisted
+  card corruption.
+- Gin self draws now keep their exact action-scoped withholding claim until
+  both independent receipts exist: the 700 ms transport has settled and the
+  caller-specific authoritative projection has supplied an unmasked real card.
+  Either receipt may arrive first. Failed actions release only after recovery
+  restores committed state, and hand-identity changes discard stale claims.
+- PostgreSQL card authority, peer redaction, caller projection, action legality,
+  pile geometry, and draw animation cadence are unchanged. All 98 Gin tests
+  pass, including focused animation-first, authority-first, masked-card, and
+  identity-reset assertions; the installed TypeScript compiler and production
+  Vite build also pass. Published cross-country two-client smoke remains
+  required.
+
 ## Cribbage durable high-card completion receipt
 
 - The live `Aug 20 - Hamilton Boulevard` repro committed its Cribbage dealer

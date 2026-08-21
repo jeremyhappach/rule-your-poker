@@ -7,6 +7,8 @@ import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
 import {
+  advanceGinSelfDrawReleaseGate,
+  canReleaseGinSelfDraw,
   type GinPresentationIdentity,
   ginIdentityEqual,
   ginIdentityKey,
@@ -993,10 +995,10 @@ export const GinRummyGameTable = ({
   // resolves to the active-player box (`[data-gin-active-pane-content]`).
   //
   // Keyed by intentId so each in-flight transport tracks its own card
-  // identity. The withheld-card display gate releases that exact card
-  // when its own SELF_DRAW_TRANSPORT_SETTLED fires — independent of any
-  // subsequent draw. This prevents the "one card behind" leak where a
-  // stale withholding from the prior draw kept the prior card hidden.
+  // identity. The withheld-card display gate releases that exact card only
+  // after its transport settles AND its caller-specific unmasked projection
+  // arrives — independent of any subsequent draw. This prevents both masked
+  // stock leakage and the "one card behind" stale-withholding failure.
   interface SelfDrawIntent {
     intentId: string;
     source: 'stock' | 'discard';
@@ -1004,6 +1006,8 @@ export const GinRummyGameTable = ({
     drawnCardId: string | null;
     handContextId: string | null;
     actionKey: string;
+    animationSettled: boolean;
+    authoritativeCardReady: boolean;
     /**
      * Optional estimated landing rect (viewport-space) for the drawn
      * card's projected sorted position in the local fan. Captured
@@ -1013,6 +1017,9 @@ export const GinRummyGameTable = ({
     targetRect: { x: number; y: number; width: number; height: number } | null;
   }
   const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
+  useEffect(() => {
+    setSelfDrawIntents(prev => Object.keys(prev).length === 0 ? prev : {});
+  }, [handContextId]);
   // Discard transport overlay (visual-only). Mirrors the draw animation
   // pattern but reverses direction: source = local active pane or
   // opponent card-back stack; destination = [data-card-anchor="discard"].
@@ -1080,13 +1087,23 @@ export const GinRummyGameTable = ({
     // real caller card remains withheld until the original transport settles.
     setSelfDrawIntents(prev => {
       const existing = prev[intentId];
-      if (!existing || existing.drawnCardId === committedCardId) return prev;
+      if (!existing) return prev;
+      const releaseGate = advanceGinSelfDrawReleaseGate(
+        existing,
+        'authoritative-card-ready',
+      );
+      if (canReleaseGinSelfDraw(releaseGate)) {
+        const next = { ...prev };
+        delete next[intentId];
+        return next;
+      }
       return {
         ...prev,
         [intentId]: {
           ...existing,
           card: action.card ?? null,
           drawnCardId: committedCardId,
+          ...releaseGate,
         },
       };
     });
@@ -1396,6 +1413,8 @@ export const GinRummyGameTable = ({
               drawnCardId: drawnIdForIntent,
               handContextId: handContextId ?? null,
               actionKey,
+              animationSettled: false,
+              authoritativeCardReady: !!drawnCard && !isGinMaskedCard(drawnCard),
               targetRect: null,
             },
           };
@@ -2283,12 +2302,22 @@ export const GinRummyGameTable = ({
       console.error('[GIN-RUMMY] Error updating state:', err);
       // Clear presentation optimism and restore the caller-specific committed
       // projection before surfacing the error to the action handler.
+      const failedActionKey = ginPresentationActionKey(newState, handContextId);
+      const failedIntentId = failedActionKey ? `self-draw-${failedActionKey}` : null;
       ginSync.clearOptimistic();
       if (roundId) {
         try {
           const authoritativeState = await fetchGinRummyState(roundId);
           ginSync.receiveAuthoritativeUpdate(authoritativeState);
           setGinState(authoritativeState);
+          if (failedIntentId) {
+            setSelfDrawIntents(prev => {
+              if (!prev[failedIntentId]) return prev;
+              const next = { ...prev };
+              delete next[failedIntentId];
+              return next;
+            });
+          }
         } catch (refetchError) {
           console.error('[GIN-RUMMY] Authoritative recovery refetch failed:', refetchError);
         }
@@ -2309,7 +2338,7 @@ export const GinRummyGameTable = ({
   // Shared pre-hold path for every self-draw action (stock, discard, and
   // take_first_draw upcard). Registers the pending-withheld intent before
   // any optimistic state commit or async await, so the drawn card never
-  // renders in the active hand until its transport settles.
+  // renders in the active hand until transport and authority both settle.
   const beginSelfDrawPresentation = (args: {
     source: 'stock' | 'discard';
     selectedCard: GinRummyCard | null;
@@ -2341,6 +2370,8 @@ export const GinRummyGameTable = ({
         drawnCardId: drawnId,
         handContextId: handContextId ?? null,
         actionKey: _actionKey,
+        animationSettled: false,
+        authoritativeCardReady: false,
         targetRect,
       },
     });
@@ -2519,8 +2550,8 @@ export const GinRummyGameTable = ({
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
       // Route take_first_draw through the same shared pre-hold path as
       // normal stock/discard so the upcard is synchronously withheld
-      // before the optimistic commit and released only on its matching
-      // transport settle.
+      // before the optimistic commit and released only after its matching
+      // transport and authoritative receipts.
       beginSelfDrawPresentation({
         source: 'discard',
         selectedCard: topDiscard,
@@ -2892,7 +2923,7 @@ export const GinRummyGameTable = ({
             />
 
             {/* Self Draw Animations — one per in-flight intent.
-                Each releases its OWN withheld card on settle. */}
+                Settlement records one of the two required release receipts. */}
             {Object.values(selfDrawIntents).map(intent => (
               <GinRummySelfDrawAnimation
                 key={intent.intentId}
@@ -2903,10 +2934,24 @@ export const GinRummyGameTable = ({
                 targetRect={intent.targetRect}
                 onSettled={() => {
                   setSelfDrawIntents(prev => {
-                    if (!prev[intent.intentId]) return prev;
-                    const next = { ...prev };
-                    delete next[intent.intentId];
-                    return next;
+                    const existing = prev[intent.intentId];
+                    if (!existing) return prev;
+                    const releaseGate = advanceGinSelfDrawReleaseGate(
+                      existing,
+                      'animation-settled',
+                    );
+                    if (canReleaseGinSelfDraw(releaseGate)) {
+                      const next = { ...prev };
+                      delete next[intent.intentId];
+                      return next;
+                    }
+                    return {
+                      ...prev,
+                      [intent.intentId]: {
+                        ...existing,
+                        ...releaseGate,
+                      },
+                    };
                   });
                 }}
               />
