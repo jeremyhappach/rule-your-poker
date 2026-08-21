@@ -133,6 +133,13 @@ export function useHighCardDealerSelection({
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
+  const onCompleteRef = useRef(onComplete);
+  const onCardsUpdateRef = useRef(onCardsUpdate);
+  const onWinnerPositionUpdateRef = useRef(onWinnerPositionUpdate);
+
+  onCompleteRef.current = onComplete;
+  onCardsUpdateRef.current = onCardsUpdate;
+  onWinnerPositionUpdateRef.current = onWinnerPositionUpdate;
 
   // TRACE-4: log on mount with received syncedState (observation only)
   useEffect(() => {
@@ -412,6 +419,90 @@ export function useHighCardDealerSelection({
   const lastCardsLenRef = useRef<number>(0);
   const lastWinnerRef = useRef<number | null>(null);
   const lastNonHostReceiptKeyRef = useRef<string | null>(null);
+  const lastDrainedHostReceiptKeyRef = useRef<string | null>(null);
+  const hostCompletionReceipt =
+    isHost &&
+    isCribbageVariant &&
+    syncedState?.isComplete &&
+    syncedState.winnerPosition !== null
+      ? {
+          key: `${gameId}:${getDealerSelectionReceiptKey(syncedState)}`,
+          cards: syncedState.cards ?? [],
+          announcement: syncedState.announcement,
+          winnerPosition: syncedState.winnerPosition,
+        }
+      : null;
+  const hostCompletionReceiptRef = useRef(hostCompletionReceipt);
+  hostCompletionReceiptRef.current = hostCompletionReceipt;
+  const hostCompletionReceiptKey = hostCompletionReceipt?.key ?? null;
+
+  // Cribbage completion is a durable database receipt that can arrive after
+  // this hook has already initialized. Drain it from its own exact-keyed
+  // effect so eligible-player stability cannot suppress the host handoff.
+  useEffect(() => {
+    if (!hostCompletionReceiptKey) return;
+    if (lastDrainedHostReceiptKeyRef.current === hostCompletionReceiptKey) return;
+
+    const receipt = hostCompletionReceiptRef.current;
+    if (!receipt || receipt.key !== hostCompletionReceiptKey) return;
+
+    hasCompletedRef.current = true;
+    lastAnnouncementRef.current = receipt.announcement ?? lastAnnouncementRef.current;
+    const nextCards = receipt.cards;
+    if (nextCards.length === 0) {
+      recordHighCardCardsClear({
+        source: 'host-complete-sync',
+        callsite: 'src/hooks/useHighCardDealerSelection.ts:host-complete-receipt-drain',
+        reason: 'host completion receipt arrived with empty cards array',
+        cardsLengthBeforeClear: lastCardsLenRef.current,
+        cardsLengthAfterClear: 0,
+        gameStatus: 'dealer_selection',
+        winnerPosition: receipt.winnerPosition,
+        dealerSelectionComplete: true,
+        gameId,
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+      });
+    }
+    {
+      const previousCardIds = (hookStateRef.current.cards ?? []).map(
+        (card) =>
+          `${card.position}:${card.card?.rank}${card.card?.suit?.[0] ?? '?'}:r${card.roundNumber}`,
+      );
+      const nextCardIds = nextCards.map(
+        (card) =>
+          `${card.position}:${card.card?.rank}${card.card?.suit?.[0] ?? '?'}:r${card.roundNumber}`,
+      );
+      recordHighCardWriter({
+        gameId,
+        source: 'host-complete-sync',
+        callsite:
+          'src/hooks/useHighCardDealerSelection.ts:host-complete-receipt-drain onCardsUpdate(nextCards)',
+        reason: 'host completion receipt drain mirrors database cards to local presentation',
+        previousLength: previousCardIds.length,
+        nextLength: nextCardIds.length,
+        previousCardIds,
+        nextCardIds,
+        renderPath: 'host',
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        winnerPosition: receipt.winnerPosition,
+        isComplete: true,
+      });
+    }
+    onCardsUpdateRef.current(nextCards);
+    onWinnerPositionUpdateRef.current?.(receipt.winnerPosition);
+
+    const timer = addTimeout(() => {
+      const latestReceipt = hostCompletionReceiptRef.current;
+      if (!latestReceipt || latestReceipt.key !== hostCompletionReceiptKey) return;
+      if (lastDrainedHostReceiptKeyRef.current === hostCompletionReceiptKey) return;
+
+      lastDrainedHostReceiptKeyRef.current = hostCompletionReceiptKey;
+      onCompleteRef.current(receipt.winnerPosition);
+    }, WINNER_ANNOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [addTimeout, gameId, hostCompletionReceiptKey]);
+
   useEffect(() => {
     if (isHost) return;
     if (!syncedState) {
@@ -826,6 +917,7 @@ export function useHighCardDealerSelection({
   // HOST: run the selection sequence and sync to DB
   useEffect(() => {
     if (
+      !isCribbageVariant &&
       isHost &&
       syncedState?.isComplete &&
       syncedState.winnerPosition !== null &&

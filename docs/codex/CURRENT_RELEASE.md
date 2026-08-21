@@ -1,6 +1,27 @@
 # Current release and cutover state
 
-Date: 2026-08-20
+Date: 2026-08-21
+
+## Cribbage durable high-card completion receipt
+
+- The live `Aug 20 - Hamilton Boulevard` repro committed its Cribbage dealer
+  receipt and server fallback exactly once, then completed all eight hands and
+  terminal settlement cleanly. The host browser nevertheless remained on the
+  high-card presentation for roughly 44 seconds because the completion branch
+  lived inside an initialization effect keyed only by host and eligible-player
+  identity; the asynchronously arriving database receipt could not rerun it.
+- Cribbage host completion now drains from its own exact, dealer-game-scoped
+  receipt effect. It preserves the 2.2-second winner dwell, mirrors the stored
+  cards and winner, uses the latest callbacks without restarting that dwell,
+  deduplicates realtime/refetch delivery, and cancels cleanly when authoritative
+  recovery advances first. Non-host behavior and the default/session dealer
+  path are unchanged.
+- Database fallback, replay-safe first-hand creation, balances, settlement, and
+  all financial authority are unchanged. Eight focused delayed-arrival,
+  dedupe, non-host, recovery, callback-continuity, and boundary assertions pass,
+  as do the installed TypeScript compiler, all 35 build-required Cribbage
+  assertions, and the production Vite build. Published Cribbage high-card smoke
+  remains required.
 
 ## Holm durable showdown stage receipts
 
