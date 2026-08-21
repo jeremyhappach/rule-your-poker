@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync(join(__dirname, 'MobileGameTable.tsx'), 'utf8');
+const revealCardSource = readFileSync(join(__dirname, 'HolmChuckyRevealCard.tsx'), 'utf8');
 const chuckyFaceSection = source.slice(
   source.indexOf('function MeasuredHolmChuckyCardFace'),
   source.indexOf('/**\n * CommunityStageHolmSwitch'),
@@ -21,7 +22,8 @@ describe('Holm Chucky canonical face sizing', () => {
 
   it('passes the measured width to the canonical PlayingCard face resolver', () => {
     expect(chuckyStageSection).toContain('<MeasuredHolmChuckyCardFace>');
+    expect(chuckyStageSection).toContain('<HolmChuckyRevealCard');
     expect(chuckyStageSection).toContain('faceFillPx={faceFillPx}');
-    expect(chuckyStageSection).toContain('style={{ width: \'100%\', height: \'100%\' }}');
+    expect(revealCardSource).toContain("style={{ width: '100%', height: '100%' }}");
   });
 });

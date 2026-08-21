@@ -112,7 +112,7 @@ import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 // CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
 // is now the single stable instance across DEALING → READY → GAMEPLAY.
 import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
-import { ChuckyHand } from "./ChuckyHand";
+import { HolmChuckyRevealCard } from "./HolmChuckyRevealCard";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
@@ -3303,6 +3303,11 @@ export const MobileGameTable = ({
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
+  const [chuckyFlipCompletedHandContextId, setChuckyFlipCompletedHandContextId] = useState<string | null>(null);
+  const handleHolmChuckyFlipComplete = useCallback((completedHandContextId: string | null) => {
+    if (!completedHandContextId) return;
+    setChuckyFlipCompletedHandContextId(completedHandContextId);
+  }, []);
   const chuckyVisualRevealCompleteRef = useRef(false);
   const chuckyLossTransportPresentationReadyRef = useRef(false);
   const chuckyNormalRevealBranchLockedRef = useRef(false);
@@ -4357,8 +4362,17 @@ export const MobileGameTable = ({
       chuckyActive ||
       requiredRevealCount > 0
     );
+  const chuckyFlipPresentationHandContextId =
+    handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
+  const chuckyFlipAnimationComplete =
+    requiredRevealCount === 0 ||
+    (
+      chuckyFlipPresentationHandContextId !== null &&
+      chuckyFlipCompletedHandContextId === chuckyFlipPresentationHandContextId
+    );
   const chuckyVisualRevealComplete =
-    !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+    !isHolmSoloChucky ||
+    (visualRevealCount >= requiredRevealCount && chuckyFlipAnimationComplete);
   chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
   const chuckyLossTransportPresentationReady = canPresentHolmChuckyLossTransport({
     chuckyVisualRevealComplete,
@@ -4369,7 +4383,7 @@ export const MobileGameTable = ({
   const chuckyNormalRevealBranchLocked =
     isHolmSoloChucky &&
     requiredRevealCount > 0 &&
-    visualRevealCount < requiredRevealCount &&
+    !chuckyVisualRevealComplete &&
     !!cachedChuckyCards &&
     cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
@@ -14193,6 +14207,7 @@ export const MobileGameTable = ({
                     {chuckyCardsForRender.map((card, index) => {
                       const isRevealed = index < chuckyRevealedCountForRender;
                       const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
+                      const chuckyCardPresentationKey = `${chuckyHandIdForRender ?? 'no-hand'}#chucky-${index}#${card.rank}${card.suit}`;
                       return (
                         <div
                           key={index}
@@ -14241,15 +14256,18 @@ export const MobileGameTable = ({
                           <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
                             <MeasuredHolmChuckyCardFace>
                               {(faceFillPx) => (
-                                <PlayingCard
+                                <HolmChuckyRevealCard
+                                  key={chuckyCardPresentationKey}
                                   card={card}
-                                  isHidden={!isRevealed}
-                                  size="lg"
-                                  tier="medium"
-                                  borderColor="border-red-500"
-                                  isDimmed={shouldDimChucky}
-                                  style={{ width: '100%', height: '100%' }}
+                                  presentationKey={chuckyCardPresentationKey}
+                                  revealed={isRevealed}
                                   faceFillPx={faceFillPx}
+                                  dimmed={shouldDimChucky}
+                                  onRevealComplete={
+                                    index === chuckyTotalForRender - 1
+                                      ? () => handleHolmChuckyFlipComplete(chuckyHandIdForRender)
+                                      : undefined
+                                  }
                                 />
                               )}
                             </MeasuredHolmChuckyCardFace>

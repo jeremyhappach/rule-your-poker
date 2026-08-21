@@ -2,6 +2,25 @@
 
 Date: 2026-08-20
 
+## Holm Chucky canonical flip presentation
+
+- Holm's configured Chucky reveal scheduler remains the sole cadence owner,
+  but each admitted canonical Chucky card now turns from the existing card back
+  to its measured face with a 600 ms three-dimensional flip instead of swapping
+  surfaces instantly. Canonical slot geometry, face sizing, deck art, and the
+  configured per-card delays are unchanged.
+- The exact-hand presentation gate now remains closed until the final card's
+  visible flip completes, so result announcements, Chucky-loss transport, and
+  win-pot presentation cannot outrun the animation. The existing cache/sticky
+  hold covers that final flip without changing database reveal, settlement, or
+  financial authority.
+- Already-revealed rejoin/historical mounts reconcile directly without replay,
+  reduced-motion clients complete directly, and an exact card/hand identity
+  change resets before the new surface can paint. Nine focused flip, timing-
+  ownership, gate, and sizing assertions pass, as do focused ESLint, the
+  installed TypeScript compiler, all 35 build-required Cribbage assertions,
+  and the production Vite build. Published Holm smoke remains required.
+
 ## Yahtzee diagnostic deployment continuity
 
 - A live tab left open across the Yahtzee observer-fix deployment remained on
