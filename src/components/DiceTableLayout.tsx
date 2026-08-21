@@ -6,6 +6,10 @@ import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useIsRectDriven } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import {
+  selectDicePresentation,
+  shouldDebounceObserverDice,
+} from "@/lib/diceObserverPresentation";
 
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
@@ -362,16 +366,19 @@ export function DiceTableLayout({
   const completionTransitionTimeoutRef = useRef<number | null>(null);
   
    // ── Observer hold-state presentation debounce ───────────────────────
-   // When isObserver, rapid hold/unhold toggles from the roller arrive as separate
-   // realtime snapshots ~50-100ms apart. Rendering each intermediate state causes dice
-   // to teleport scatter→held→scatter. Instead, debounce: store the latest incoming
-   // dice and apply after 100ms of quiet, so only the final hold state renders.
+   // Horses/SCC can still receive separate hold snapshots and retain their legacy
+   // observer debounce. Yahtzee commits one atomic full mask, so its accepted dice
+   // must directly own held membership on every client.
    const [debouncedDice, setDebouncedDice] = useState(dice);
    const observerDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   const shouldDebounceObserverHolds = shouldDebounceObserverDice(isObserver, gameType);
 
    useEffect(() => {
-     if (!isObserver) {
-       // Roller: no debounce, immediate
+     if (!shouldDebounceObserverHolds) {
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
        setDebouncedDice(dice);
        return;
      }
@@ -421,14 +428,16 @@ export function DiceTableLayout({
          observerDebounceTimerRef.current = null;
        }
      };
-   }, [dice, isObserver]);
-   // Alias for downstream: observer uses debounced, roller uses raw
-   const presentationDice = isObserver ? debouncedDice : dice;
+   }, [dice, shouldDebounceObserverHolds]);
+   const presentationDice = selectDicePresentation(
+     dice,
+     debouncedDice,
+     isObserver,
+     gameType,
+   );
 
-   // CRITICAL: For observers, ALL visual/layout/count/registry derivations must flow from
-   // presentationDice (the debounced source). Using raw `dice` anywhere in observer render
-   // paths causes mixed-source frames where counts disagree with layout positions.
-   // For the roller, visualDice === dice (no debounce).
+   // CRITICAL: All visual/layout/count/registry derivations must flow from the selected
+   // presentation source. For Yahtzee and the active roller, visualDice === dice.
    const visualDice = presentationDice;
 
    // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid

@@ -2,6 +2,19 @@
 
 Date: 2026-08-20
 
+## Yahtzee observer hold-mask parity
+
+- The live DeMar DeRozan repro confirmed that PostgreSQL and the active roller
+  agreed on two held sixes while an observer retained a stale intermediate
+  `6-4-4` hold presentation.
+- Yahtzee observers now derive held membership directly from the latest
+  accepted atomic full-mask state. The shared component's legacy observer
+  debounce remains unchanged for Horses and Ship, Captain, Crew; database
+  authority, RPC behavior, dice movement, and roll animation ownership are
+  unchanged.
+- The focused observer-policy and existing Yahtzee authority, progress, and
+  presentation suites pass (29 assertions), and the production build passes.
+
 ## Cribbage opening-hand writer admission
 
 - Cribbage card controls and the discard, pegging-play, and `go` handlers now
