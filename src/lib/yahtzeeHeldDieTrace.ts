@@ -23,6 +23,18 @@ import { isDebugChannel } from './debugChannels';
 let _consoleLogCounter = 0;
 const CONSOLE_SAMPLE_RATE = 10; // log 1 in N trace events
 
+/**
+ * Keep optional trace work outside the caller's render/effect stack and prevent
+ * instrumentation failures from reaching the application's global error UI.
+ */
+export function runYahtzeeHeldDiagnostic(
+  task: () => void | Promise<void>,
+): Promise<void> {
+  return Promise.resolve()
+    .then(task)
+    .catch(() => undefined);
+}
+
 export function isYahtzeeHeldTraceEnabled(): boolean {
   return isDebugChannel('yahtzee-held');
 }

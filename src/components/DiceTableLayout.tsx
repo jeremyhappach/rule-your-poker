@@ -22,6 +22,16 @@ import {
   type DieRenderDecision,
   type DiceOverlapEvent,
 } from "@/lib/dicePresentationTrace";
+import {
+  buildDieTuples,
+  checkCrossRollStateReuse,
+  checkHeldDieInScatter,
+  checkHeldDieReanimated,
+  checkValueHoldMismatch,
+  isYahtzeeHeldTraceEnabled,
+  runYahtzeeHeldDiagnostic,
+  traceYahtzeeHeldDie,
+} from "@/lib/yahtzeeHeldDieTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
 // MobileGameTable intentionally remounts DiceTableLayout when the dice "owner" changes,
@@ -1727,10 +1737,7 @@ export function DiceTableLayout({
 
   // ── HELD-DIE CORRUPTION TRACE: Render boundary ──
   if (traceContext && gameType === 'yahtzee' && precomputedRenderDecisions.length > 0) {
-    import('@/lib/yahtzeeHeldDieTrace').then(({
-      traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled,
-      checkHeldDieInScatter, checkHeldDieReanimated, checkValueHoldMismatch, checkCrossRollStateReuse,
-    }) => {
+    void runYahtzeeHeldDiagnostic(() => {
       const rollGen = rollKey != null ? String(rollKey) : null;
       const renderDice = precomputedRenderDecisions.map(d => ({ value: d.value, isHeld: d.isHeld }));
       const renderDecisions = precomputedRenderDecisions.map(d => ({

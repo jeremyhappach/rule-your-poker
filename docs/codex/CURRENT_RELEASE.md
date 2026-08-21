@@ -2,6 +2,23 @@
 
 Date: 2026-08-20
 
+## Yahtzee diagnostic deployment continuity
+
+- A live tab left open across the Yahtzee observer-fix deployment remained on
+  build `a1c6def` and attempted to lazy-load its retired
+  `yahtzeeHeldDieTrace-B7pMZs5a.js` asset immediately after production moved to
+  `c57361f`. The module request received the new SPA document, rejected, and
+  repeatedly reached the global error toast while hold writes continued to
+  commit normally.
+- The always-on Yahtzee held-die trace is now statically bundled at all three
+  call sites. Trace work remains deferred outside the caller stack, and both
+  synchronous and asynchronous diagnostic failures are contained before they
+  can reach gameplay or global error presentation. Gameplay state, hold RPCs,
+  Supabase schema/data, and Horses/SCC behavior are unchanged.
+- The focused diagnostic-containment and Yahtzee hold, authority, progress,
+  and presentation suites pass (32 assertions), and the production build
+  passes without emitting a separate `yahtzeeHeldDieTrace` asset.
+
 ## Yahtzee observer hold-mask parity
 
 - The live DeMar DeRozan repro confirmed that PostgreSQL and the active roller

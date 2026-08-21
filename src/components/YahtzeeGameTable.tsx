@@ -37,6 +37,12 @@ import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import { applyYahtzeeAction, setYahtzeeHolds } from "@/lib/yahtzeeAuthority";
 import {
+  buildDieTuples,
+  isYahtzeeHeldTraceEnabled,
+  runYahtzeeHeldDiagnostic,
+  traceYahtzeeHeldDie,
+} from "@/lib/yahtzeeHeldDieTrace";
+import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
   isYahtzeeScorePresentationSuperseded,
@@ -345,7 +351,7 @@ export function YahtzeeGameTable({
       if (yahtzeeState.currentTurnPlayerId) {
         const turnPs = yahtzeeState.playerStates[yahtzeeState.currentTurnPlayerId];
         if (turnPs?.dice?.length) {
-          import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+          void runYahtzeeHeldDiagnostic(() => {
             if (!isYahtzeeHeldTraceEnabled()) return;
             const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
             traceYahtzeeHeldDie({
@@ -510,7 +516,7 @@ export function YahtzeeGameTable({
 
     if (!turnChanged && !rollChanged) return;
 
-    import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+    void runYahtzeeHeldDiagnostic(() => {
       if (!isYahtzeeHeldTraceEnabled()) return;
       const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
       const reason = turnChanged ? 'turn-change' : 'roll-end';
