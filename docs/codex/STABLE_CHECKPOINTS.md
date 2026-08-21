@@ -2,6 +2,12 @@
 
 ## Platform
 
+- All seven games passed a clean published production smoke on 2026-08-21 at
+  commit `8dd5e5b2d16e6304c89280e978c070ddd009b6d0`, using two human
+  clients with Cross-Country Chaos enabled. This accepts the current end-to-end
+  database authority, cross-client synchronization, presentation continuity,
+  and game-rule behavior as a stable checkpoint. Do not reopen any accepted
+  behavior without a new production repro.
 - Around 2026-07-03 all seven games were smoke-tested with general geometry/polish considered good.
 - Canonical table/felt/shell continuity must not be replaced by per-game table swaps.
 - Chat stability and lobby performance had accepted fixes.

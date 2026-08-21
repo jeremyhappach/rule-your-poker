@@ -2,6 +2,18 @@
 
 Date: 2026-08-21
 
+## All-games dual-human Cross-Country Chaos checkpoint
+
+- Jeremy reported the complete published production smoke clean on 2026-08-21
+  at commit `8dd5e5b2d16e6304c89280e978c070ddd009b6d0`. All seven games
+  played cleanly across two human clients with Cross-Country Chaos enabled.
+  This is the current stable runtime checkpoint; reopen an accepted behavior
+  only with a new production repro.
+- This smoke accepts the current Gin self-draw admission, Cribbage durable
+  high-card completion receipt, and Holm durable showdown stage-receipt work.
+  Canonical database authority, cross-client synchronization, presentation
+  continuity, and game rules remain the preserve boundary.
+
 ## Gin self-draw hidden-card admission
 
 - The `Aug 20 - Hamilton Boulevard` real-money session retained 12 complete
@@ -18,8 +30,8 @@ Date: 2026-08-21
   pile geometry, and draw animation cadence are unchanged. All 98 Gin tests
   pass, including focused animation-first, authority-first, masked-card, and
   identity-reset assertions; the installed TypeScript compiler and production
-  Vite build also pass. Published cross-country two-client smoke remains
-  required.
+  Vite build also pass. Jeremy accepted the published cross-country two-client
+  smoke as part of the all-games checkpoint above.
 
 ## Cribbage durable high-card completion receipt
 
@@ -39,8 +51,8 @@ Date: 2026-08-21
   all financial authority are unchanged. Eight focused delayed-arrival,
   dedupe, non-host, recovery, callback-continuity, and boundary assertions pass,
   as do the installed TypeScript compiler, all 35 build-required Cribbage
-  assertions, and the production Vite build. Published Cribbage high-card smoke
-  remains required.
+  assertions, and the production Vite build. Jeremy accepted the published
+  Cribbage high-card smoke as part of the all-games checkpoint above.
 
 ## Holm durable showdown stage receipts
 
@@ -60,8 +72,8 @@ Date: 2026-08-21
 - Database settlement, balances, recovery leases, and RPC behavior are
   unchanged. The focused Holm suite passes 44 assertions, the installed
   TypeScript compiler passes, and the production build passes with all 35
-  required Cribbage assertions. Published two-client Holm showdown smoke
-  remains required.
+  required Cribbage assertions. Jeremy accepted the published two-client Holm
+  showdown smoke as part of the all-games checkpoint above.
 
 ## Holm Chucky canonical flip presentation
 
