@@ -61,7 +61,11 @@ Date: 2026-08-21
   change resets before the new surface can paint. Nine focused flip, timing-
   ownership, gate, and sizing assertions pass, as do focused ESLint, the
   installed TypeScript compiler, all 35 build-required Cribbage assertions,
-  and the production Vite build. Published Holm smoke remains required.
+  and the production Vite build. Jeremy confirmed the production Holm smoke on
+  2026-08-21 at commit `fcce653ecd8906e967eb78a58e40daf7338c5f63`:
+  every Chucky card retained the established reveal cadence, flipped visibly,
+  and completed the final flip before the result presentation. This polish is
+  accepted and closed.
 
 ## Yahtzee diagnostic deployment continuity
 

@@ -117,6 +117,13 @@
 
 ## Holm
 
+- Holm Chucky canonical flip presentation passed production smoke on
+  2026-08-21 at commit `fcce653ecd8906e967eb78a58e40daf7338c5f63`:
+  every Chucky card retained the configured reveal cadence, flipped visibly in
+  its existing canonical slot, and completed the final flip before result and
+  transfer presentation. Preserve the configured scheduler as cadence owner,
+  the measured `faceFillPx` geometry, and the exact-hand final-flip completion
+  gate; rejoin/historical mounts must remain direct and replay-free.
 - Holm Chucky card-face sizing passed the reported Chrome desktop
   mobile-emulator smoke on 2026-08-16 at commit
   `9509c16bfb9fdf43c2e2e469fa09e57fc9cffdb0`: rank and suit art derives from
