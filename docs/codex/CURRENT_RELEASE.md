@@ -4,6 +4,28 @@ Date: 2026-08-22
 
 ## Ante-decision Sit Out client identity continuity
 
+- The first published two-human 3-5-7 rerun on build `156104a36` proved the
+  client correction was active but surfaced a deeper PostgreSQL rejection:
+  `three_five_seven_game_authority_mutation:rpc_required`. In session
+  `Aug 22 - War Drive`, the dealer had already anted, so the other player's
+  Sit Out reached the shared fake-money not-enough-players disposition. That
+  resolver established its existing local service claim only after the
+  disposition branch; the 3-5-7 authority trigger correctly rejected the
+  untrusted `ante_decision -> waiting` update and atomically rolled back the
+  player's decision.
+- Migration `20260822193000_fix_ante_decision_authority_context.sql` is
+  installed on the owned Supabase project. The shared private ante resolver now
+  establishes its transaction-local service claim immediately before both the
+  insufficient-player disposition and normal game bootstrap. Public wrapper
+  authentication and player ownership checks remain first; the private
+  function retains an empty search path and remains non-executable by browser
+  roles. No game-authority trigger was weakened.
+- The complete rollback proof passed before and after installation with zero
+  persisted rows. It clears every dealer-setup authority flag between simulated
+  HTTP requests and directly covers authenticated final Sit Out for 3-5-7 and
+  Yahtzee, 3-5-7 continuation, authorization, winner, tie, duplicate, replay,
+  late replay, and terminal state. Published two-human Sit Out smoke remains
+  the acceptance gate.
 - Published human-client smoke reported that **Sit Out** on the ante-decision
   dialog could appear to do nothing. Production runtime logs contained no
   matching server exception, and a rollback-only production proof confirmed

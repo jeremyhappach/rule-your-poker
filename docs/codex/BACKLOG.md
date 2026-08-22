@@ -6,18 +6,31 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### 0ANTE. Ante-decision Sit Out can silently no-op
 
-Status: Approved correction implemented and locally validated on 2026-08-22;
-published human-client smoke remains the acceptance gate.
+Status: Database correction installed and fully rollback-proven on 2026-08-22;
+published two-human Sit Out smoke remains the acceptance gate.
 
 - Jeremy reported that clicking **Sit Out** on the ante-decision dialog produced
   no visible action. Expected behavior is one authoritative voluntary
   `sit_out` decision, immediate dialog dismissal, and normal database-owned
   continuation or return to Waiting when too few players ante.
-- Production Vercel/PostgreSQL logs contained no matching runtime exception.
-  A rollback-only production proof passed after the waiting-presence migration:
-  `submit_ante_decision` accepted the voluntary choice, set
-  `ante_decision='sit_out'` plus `sitting_out=true`, and returned the two-player
-  fake-money session to Waiting. The proof persisted no rows.
+- Session `Aug 22 - War Drive` ran the published `156104a36` client. Clicking
+  **Sit Out** surfaced the new visible rejection while 24 seconds remained.
+  PostgreSQL recorded
+  `three_five_seven_game_authority_mutation:rpc_required` at
+  `2026-08-22 19:01:43.398+00`; Vercel recorded no runtime exception.
+- The exact failure is in `private.advance_ante_phase_exact`. When the dealer
+  has already anted and the other player chooses Sit Out, the shared resolver
+  reaches its fake-money `v_anted < 2` branch and tries to move the game from
+  `ante_decision` to Waiting. It establishes its existing local service claim
+  only *after* that branch, so the 3-5-7 game-authority trigger rejects the
+  otherwise-authoritative status update and PostgreSQL atomically rolls back
+  the player's Sit Out decision.
+- The earlier rollback proof did not model the HTTP transaction boundary:
+  `configure_dealer_game` and `submit_ante_decision` ran in one SQL transaction,
+  allowing setup's transaction-local authority flag to remain active for the
+  second RPC. A corrected rollback-only reproduction explicitly cleared that
+  flag between the simulated requests, reproduced the exact rejection, proved
+  that no partial player/game mutation survived, and persisted zero rows.
 - The client has a split identity boundary. `Game.tsx` decides to show the
   dialog from a fresh `players` query, but later renders `AnteUpDialog` with the
   player id from the older route roster (or an empty string when that roster is
@@ -31,6 +44,18 @@ published human-client smoke remains the acceptance gate.
   dealer auto-ante, all seven games, and the new waiting-presence rules. Add
   focused coverage for a route-roster lag/missing player, voluntary Sit Out,
   duplicate response, stale phase/deadline, and an actual RPC error.
+- Follow-up correction: move the resolver's already-existing transaction-local
+  service claim immediately before the `v_anted < 2` branch, so both the
+  not-enough-players disposition and normal game bootstrap run under the same
+  admitted private authority owner. Extend the rollback proof to reset every
+  setup RPC authority flag between simulated requests and directly cover the
+  authenticated final Sit Out path for protected game types, especially 3-5-7
+  and Yahtzee. Do not weaken any game-authority trigger or add a client bypass.
+- Migration `20260822193000_fix_ante_decision_authority_context.sql` implements
+  that exact correction on the owned project. The complete proof passed before
+  and after installation with zero persisted rows; deployed-definition checks
+  confirm the private function remains unavailable to browser roles and keeps
+  its empty search path.
 
 ### 0PVP. 3-5-7 showdown and Holm Rabbit Hunt financial pacing
 
