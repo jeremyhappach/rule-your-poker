@@ -1067,3 +1067,25 @@ Terminal status may arrive before terminal presentation finishes. While an
 exact `game_over` or `session_ended` presentation signal remains active, the
 gameplay seat ring stays the sole mounted owner; only true completion permits
 the single handoff to the pre-session seat layer.
+
+## D-077 - Waiting presence leases are phase- and role-specific
+
+D-076's forced-versus-voluntary distinction remains, but its postgame lease
+policy is superseded here. Initial Waiting begins only after the first seated
+human exists: a waiting human releases after five minutes without a database-
+stamped heartbeat, and zero seated humans deletes only a proven-pristine
+session. Returning to Waiting after leaving that initial phase is Subsequent
+Waiting even when a setup timeout occurred before the first result.
+
+On Subsequent Waiting, a timer-forced sitter releases after 15 seconds without
+heartbeat, a voluntary sitter after 60 seconds, and an active human becomes
+involuntarily Sitting Out after 60 seconds before receiving the 15-second
+release confirmation. A heartbeat after any forced claim cancels stand-up but
+does not reactivate the player; they retain the seat as Sitting Out and opt back
+in normally. Visibility does not select a different lease.
+
+Session disposition counts seated humans, not active eligibility or bots. Zero
+seated humans ends a Subsequent Waiting session through its financial-safe
+terminal path; a connected sitter keeps it open. Releasing the host atomically
+transfers host identity to the deterministic next seated human. Live gameplay,
+setup, ante, and terminal presentation remain outside the Waiting reconciler.

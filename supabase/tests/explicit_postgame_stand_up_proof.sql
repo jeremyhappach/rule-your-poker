@@ -14,6 +14,7 @@ DECLARE
   v_fake_dealer_game_id uuid := gen_random_uuid();
   v_fake_player_one_id uuid := gen_random_uuid();
   v_fake_player_two_id uuid := gen_random_uuid();
+  v_fake_bot_id uuid := gen_random_uuid();
   v_real_game_id uuid := gen_random_uuid();
   v_real_dealer_game_id uuid := gen_random_uuid();
   v_real_player_one_id uuid := gen_random_uuid();
@@ -95,20 +96,20 @@ BEGIN
     RAISE EXCEPTION 'explicit_postgame_stand_up_proof:unauthorized:%', v_result;
   END IF;
 
-  -- Exact fake-money reproduction: one human already Sitting Out and the
-  -- other explicitly stands at post-game Waiting. The same transaction ends
-  -- the session without financial rows or a heartbeat grace period.
+  -- A seated voluntary sitter keeps the session alive when the other human
+  -- stands. Only the last seated human standing ends the fake-money session.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
     v_fake_game_id, 'Codex rollback proof - fake zero humans',
-    'waiting', v_users[1], 1, 0, false
+    'game_selection', v_users[1], 1, 0, false
   );
   INSERT INTO public.players (
     id, game_id, user_id, position, chips, status, sitting_out, is_bot
   ) VALUES
     (v_fake_player_one_id, v_fake_game_id, v_users[1], 3, 0, 'active', true, false),
-    (v_fake_player_two_id, v_fake_game_id, v_users[2], 7, 0, 'active', false, false);
+    (v_fake_player_two_id, v_fake_game_id, v_users[2], 7, 0, 'active', false, false),
+    (v_fake_bot_id, v_fake_game_id, v_users[3], 5, 0, 'active', false, true);
   INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
   VALUES (v_fake_dealer_game_id, v_fake_game_id, v_users[1], 'holm');
   INSERT INTO public.game_results (
@@ -122,6 +123,7 @@ BEGIN
       v_fake_player_two_id::text, 0
     )
   );
+  PERFORM private.resolve_postgame_participation(v_fake_game_id);
 
   PERFORM set_config('request.jwt.claim.sub', v_users[2]::text, true);
   PERFORM set_config(
@@ -130,9 +132,10 @@ BEGIN
     true
   );
   v_result := public.stand_up_and_resolve_postgame(v_fake_game_id);
-  IF v_result->>'outcome' <> 'session-ended-without-financial-settlement'
+  IF v_result->>'outcome' <> 'waiting-insufficient-eligible-participants'
      OR (v_result->>'lifecycle_resolved')::boolean IS NOT TRUE
      OR (v_result->>'active_humans')::integer <> 0
+     OR (v_result->>'seated_humans')::integer <> 1
      OR NOT EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_fake_player_two_id
@@ -144,15 +147,15 @@ BEGIN
      )
      OR NOT EXISTS (
        SELECT 1 FROM public.games
-        WHERE id = v_fake_game_id
-          AND status = 'session_ended'
-          AND session_ended_at IS NOT NULL
+         WHERE id = v_fake_game_id
+          AND status = 'waiting'
      )
-     OR EXISTS (
+     OR NOT EXISTS (
        SELECT 1 FROM private.session_abandonment_watches
         WHERE game_id = v_fake_game_id
+          AND waiting_kind = 'subsequent'
      ) THEN
-    RAISE EXCEPTION 'explicit_postgame_stand_up_proof:fake-terminal:%', v_result;
+    RAISE EXCEPTION 'explicit_postgame_stand_up_proof:fake-seat-retained:%', v_result;
   END IF;
   SELECT count(*) INTO v_count
     FROM public.player_transactions
@@ -160,6 +163,24 @@ BEGIN
      AND transaction_type = 'SessionResult';
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'explicit_postgame_stand_up_proof:fake-financials:%', v_count;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', v_users[1]::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_users[1], 'role', 'authenticated')::text,
+    true
+  );
+  v_result := public.stand_up_and_resolve_postgame(v_fake_game_id);
+  IF v_result->>'outcome' <> 'session-ended-without-financial-settlement'
+     OR (v_result->>'lifecycle_resolved')::boolean IS NOT TRUE
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games
+        WHERE id = v_fake_game_id
+          AND status = 'session_ended'
+          AND session_ended_at IS NOT NULL
+     ) THEN
+    RAISE EXCEPTION 'explicit_postgame_stand_up_proof:fake-terminal:%', v_result;
   END IF;
 
   v_result := public.stand_up_and_resolve_postgame(v_fake_game_id);
@@ -207,6 +228,36 @@ BEGIN
     (v_real_game_id, v_real_dealer_game_id, 1, v_real_player_two_id,
      v_users[2], v_usernames[2], 3, false);
 
+  PERFORM set_config('request.jwt.claim.sub', v_users[2]::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_users[2], 'role', 'authenticated')::text,
+    true
+  );
+  v_result := public.stand_up_and_resolve_postgame(v_real_game_id);
+  SELECT count(*), COALESCE(sum(amount), 0)
+    INTO v_count, v_sum
+    FROM public.player_transactions
+   WHERE source_game_id = v_real_game_id
+     AND transaction_type = 'SessionResult';
+  IF v_result->>'outcome' <> 'waiting-insufficient-eligible-participants'
+     OR (v_result->>'lifecycle_resolved')::boolean IS NOT TRUE
+     OR (v_result->>'seated_humans')::integer <> 1
+     OR v_count <> 0
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games
+        WHERE id = v_real_game_id AND status = 'waiting'
+     ) THEN
+    RAISE EXCEPTION 'explicit_postgame_stand_up_proof:real-seat-retained:%:%,%',
+      v_result, v_count, v_sum;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', v_users[1]::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_users[1], 'role', 'authenticated')::text,
+    true
+  );
   v_result := public.stand_up_and_resolve_postgame(v_real_game_id);
   SELECT count(*), COALESCE(sum(amount), 0)
     INTO v_count, v_sum
@@ -334,9 +385,8 @@ BEGIN
     RAISE EXCEPTION 'explicit_postgame_stand_up_proof:continuation:%', v_result;
   END IF;
 
-  -- Never-started Waiting and a live dealer game remain outside this new
-  -- lifecycle owner. The client keeps its established cleanup for the former;
-  -- the latter is not advanced or ended by post-game logic.
+  -- Initial Waiting remains outside post-game resolution while a seat remains,
+  -- but the last voluntary stand-up deletes the pristine session atomically.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
@@ -360,11 +410,29 @@ BEGIN
      OR (v_result->>'lifecycle_resolved')::boolean IS NOT FALSE
      OR NOT EXISTS (
        SELECT 1 FROM public.games
-        WHERE id = v_initial_game_id AND status = 'waiting'
+        WHERE id = v_initial_game_id
+          AND status = 'waiting'
+          AND current_host = v_users[2]
      ) THEN
     RAISE EXCEPTION 'explicit_postgame_stand_up_proof:initial-waiting:%', v_result;
   END IF;
 
+  PERFORM set_config('request.jwt.claim.sub', v_users[2]::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_users[2], 'role', 'authenticated')::text,
+    true
+  );
+  v_result := public.stand_up_and_resolve_postgame(v_initial_game_id);
+  IF v_result->>'outcome' <> 'deleted-pristine-initial-session'
+     OR (v_result->>'lifecycle_resolved')::boolean IS NOT TRUE
+     OR EXISTS (
+       SELECT 1 FROM public.games WHERE id = v_initial_game_id
+     ) THEN
+    RAISE EXCEPTION 'explicit_postgame_stand_up_proof:initial-delete:%', v_result;
+  END IF;
+
+  -- A live dealer game remains outside this lifecycle owner.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (

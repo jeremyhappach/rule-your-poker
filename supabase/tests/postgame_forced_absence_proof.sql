@@ -1,4 +1,4 @@
--- Rollback-only proof for forced config-timeout eviction and hidden-tab grace.
+-- Rollback-only proof for forced config-timeout eviction and role-based leases.
 -- It uses existing profiles only as FK parents and leaves no persistent rows.
 
 BEGIN;
@@ -15,6 +15,9 @@ DECLARE
   v_present_dealer_game_id uuid := gen_random_uuid();
   v_present_player_id uuid := gen_random_uuid();
   v_present_survivor_id uuid := gen_random_uuid();
+  v_ante_game_id uuid := gen_random_uuid();
+  v_ante_player_id uuid := gen_random_uuid();
+  v_ante_survivor_id uuid := gen_random_uuid();
   v_deadline timestamptz := clock_timestamp() - interval '1 second';
   v_present_deadline timestamptz := clock_timestamp() - interval '1 second';
   v_forced_armed_at timestamptz;
@@ -54,15 +57,19 @@ BEGIN
   END IF;
 
   SELECT CASE
-           WHEN value ->> 'hidden_grace_seconds' ~ '^[0-9]+$'
-             THEN (value ->> 'hidden_grace_seconds')::integer
-           ELSE NULL
+           WHEN value @> jsonb_build_object(
+             'subsequent_active_grace_seconds', 60,
+             'subsequent_sitting_out_grace_seconds', 60,
+             'forced_absence_confirmation_seconds', 15,
+             'initial_waiting_grace_seconds', 300
+           ) THEN 1
+           ELSE 0
          END
     INTO v_count
     FROM public.system_settings
    WHERE key = 'postgame_presence';
-  IF v_count NOT BETWEEN 30 AND 3600 THEN
-    RAISE EXCEPTION 'postgame_forced_absence_proof:hidden-grace:%', v_count;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'postgame_forced_absence_proof:presence-settings:%', v_count;
   END IF;
 
   INSERT INTO public.games (
@@ -81,14 +88,6 @@ BEGIN
     (v_survivor_player_id, v_game_id, v_users[2], 7, 0, 'active', false, false);
   INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
   VALUES (v_dealer_game_id, v_game_id, v_users[1], 'three-five-seven');
-  INSERT INTO public.game_results (
-    game_id, dealer_game_id, game_type, hand_number, pot_won,
-    winner_player_id, winner_username, player_chip_changes
-  ) VALUES (
-    v_game_id, v_dealer_game_id, 'three-five-seven', 1, 0,
-    v_absent_player_id, v_usernames[1],
-    jsonb_build_object(v_absent_player_id::text, 0, v_survivor_player_id::text, 0)
-  );
 
   SELECT private.handle_config_deadline_timeout_exact(v_game_id, v_deadline, 3)
     INTO v_outcome;
@@ -129,7 +128,7 @@ BEGIN
     v_game_id,
     v_forced_armed_at + interval '14 seconds'
   ) INTO v_reconcile_outcome;
-  IF v_reconcile_outcome <> 'active-humans'
+  IF v_reconcile_outcome <> 'seated-humans'
      OR EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_absent_player_id AND status = 'left'
@@ -142,7 +141,7 @@ BEGIN
     v_game_id,
     v_forced_armed_at + interval '15 seconds'
   ) INTO v_reconcile_outcome;
-  IF v_reconcile_outcome <> 'active-humans'
+  IF v_reconcile_outcome <> 'seated-humans'
      OR NOT EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_absent_player_id
@@ -163,8 +162,8 @@ BEGIN
       v_reconcile_outcome;
   END IF;
 
-  -- The survivor may be backgrounded without being treated as departed after
-  -- only 15 seconds. The system setting deliberately grants five minutes.
+  -- Hidden and foreground heartbeats both reset the same active-player lease.
+  -- The role, not the tab visibility, controls the one-minute grace period.
   UPDATE public.voice_presence_heartbeats
      SET status = 'hidden',
          last_heartbeat_at = clock_timestamp()
@@ -176,14 +175,14 @@ BEGIN
      AND tab_id = 'codex-survivor-' || v_game_id::text;
   SELECT private.reconcile_session_abandonment(
     v_game_id,
-    v_hidden_seen_at + interval '60 seconds'
+    v_hidden_seen_at + interval '59 seconds'
   ) INTO v_reconcile_outcome;
-  IF v_reconcile_outcome <> 'active-humans'
+  IF v_reconcile_outcome <> 'seated-humans'
      OR EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_survivor_player_id AND sitting_out = true
      ) THEN
-    RAISE EXCEPTION 'postgame_forced_absence_proof:hidden-tab-expired:%',
+    RAISE EXCEPTION 'postgame_forced_absence_proof:hidden-heartbeat-lease:%',
       v_reconcile_outcome;
   END IF;
 
@@ -240,7 +239,7 @@ BEGIN
     v_present_game_id,
     v_forced_armed_at + interval '15 seconds'
   ) INTO v_reconcile_outcome;
-  IF v_reconcile_outcome <> 'active-humans'
+  IF v_reconcile_outcome <> 'seated-humans'
      OR EXISTS (
        SELECT 1 FROM private.postgame_forced_absence_watches
         WHERE game_id = v_present_game_id AND player_id = v_present_player_id
@@ -252,6 +251,68 @@ BEGIN
           AND sitting_out = true
      ) THEN
     RAISE EXCEPTION 'postgame_forced_absence_proof:present-seat-retention:%',
+      v_reconcile_outcome;
+  END IF;
+
+  -- Ante expiry is the other canonical timer-forced Sitting Out path. It uses
+  -- the same short confirmation lease and transfers host ownership on release.
+  INSERT INTO public.games (
+    id, name, status, current_host, ante_amount, pot, real_money,
+    ante_decision_deadline
+  ) VALUES (
+    v_ante_game_id, 'Codex rollback proof - ante timeout',
+    'ante_decision', v_users[1], 1, 0, false,
+    clock_timestamp() - interval '1 second'
+  );
+  INSERT INTO public.players (
+    id, game_id, user_id, position, chips, status, sitting_out, is_bot
+  ) VALUES
+    (v_ante_player_id, v_ante_game_id, v_users[1], 3, 0, 'active', false, false),
+    (v_ante_survivor_id, v_ante_game_id, v_users[2], 7, 0, 'active', false, false);
+  UPDATE public.players
+     SET ante_decision = 'sit_out',
+         sitting_out = true
+   WHERE id = v_ante_player_id;
+  SELECT armed_at INTO v_forced_armed_at
+    FROM private.postgame_forced_absence_watches
+   WHERE game_id = v_ante_game_id
+     AND player_id = v_ante_player_id
+     AND reason = 'ante_timeout';
+  IF v_forced_armed_at IS NULL THEN
+    RAISE EXCEPTION 'postgame_forced_absence_proof:ante-watch-not-armed';
+  END IF;
+  UPDATE public.games
+     SET status = 'waiting',
+         ante_decision_deadline = NULL
+   WHERE id = v_ante_game_id;
+  SELECT private.reconcile_session_abandonment(
+    v_ante_game_id,
+    v_forced_armed_at + interval '14 seconds'
+  ) INTO v_reconcile_outcome;
+  IF v_reconcile_outcome <> 'seated-humans'
+     OR EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_ante_player_id AND status = 'left'
+     ) THEN
+    RAISE EXCEPTION 'postgame_forced_absence_proof:ante-early-release:%',
+      v_reconcile_outcome;
+  END IF;
+  SELECT private.reconcile_session_abandonment(
+    v_ante_game_id,
+    v_forced_armed_at + interval '15 seconds'
+  ) INTO v_reconcile_outcome;
+  IF v_reconcile_outcome <> 'seated-humans'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_ante_player_id AND status = 'left'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games
+        WHERE id = v_ante_game_id
+          AND status = 'waiting'
+          AND current_host = v_users[2]
+     ) THEN
+    RAISE EXCEPTION 'postgame_forced_absence_proof:ante-release:%',
       v_reconcile_outcome;
   END IF;
 

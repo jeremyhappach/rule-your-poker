@@ -2,6 +2,31 @@
 
 Date: 2026-08-22
 
+## Waiting-table presence and abandoned-seat release
+
+- Waiting-table cleanup is now phase-specific and based on physical human
+  seats rather than active eligibility. On subsequent Waiting, timer-forced
+  sitters release after 15 seconds without heartbeat, voluntary sitters after
+  60 seconds, and active humans become involuntarily Sitting Out after 60
+  seconds before receiving the 15-second release confirmation. A heartbeat
+  after that presence demotion cancels stand-up but deliberately leaves the
+  player Sitting Out so they opt back in through the normal action.
+- Initial Waiting is armed only after the first player row exists, avoiding the
+  game-creation race. Waiting humans release after a five-minute heartbeat
+  failure; zero seated humans deletes only a database-proven pristine session.
+  Subsequent zero-seat sessions enter Session Ended, with result-bearing real
+  money continuing through the existing snapshot-guarded exactly-once
+  finalizer. Bots never keep an abandoned human session alive, and a departed
+  host transfers atomically to the next deterministic seated human.
+- Migration `20260822180000_waiting_presence_seat_release.sql` is installed on
+  the owned Supabase project. The complete rollback proof passed before and
+  after installation, covering winner, tie, duplicate and late replay,
+  authorization, continuation, terminal state, initial cleanup, voluntary and
+  involuntary leases, heartbeat recovery, config/ante timeout, host transfer,
+  and bot exclusion. The installed TypeScript compiler also passes. The
+  published two-human production smoke remains before this becomes a stable
+  checkpoint.
+
 ## 3-5-7 postgame disconnect seat continuity
 
 - Production session `Aug 22 - Duncan Keith` proved the server-owned config
@@ -35,8 +60,9 @@ Date: 2026-08-22
   config-timeout forced stand-up, and hidden-tab retention passed. Production
   session `Aug 22 - Lake Avenue` then proved the absent survivor follows the
   configured 300-second hidden lease and reached `session_ended` about five
-  minutes after its final hidden heartbeat. General absent-seat release and
-  pristine waiting-room cleanup remain a separate queued lifecycle correction.
+  minutes after its final hidden heartbeat. The phase-specific absent-seat and
+  pristine Waiting cleanup follow-up is now installed as described above and
+  awaits published smoke.
 
 ## Player-v-player showdown financial pacing
 

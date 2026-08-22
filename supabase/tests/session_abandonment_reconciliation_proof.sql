@@ -23,6 +23,7 @@ DECLARE
   v_initial_waiting_player_id uuid := gen_random_uuid();
   v_in_progress_game_id uuid := gen_random_uuid();
   v_armed_at timestamptz;
+  v_heartbeat_at timestamptz;
   v_next_check_at timestamptz;
   v_missed_heartbeat_counts jsonb;
   v_outcome text;
@@ -86,9 +87,9 @@ BEGIN
       v_public_outcome;
   END IF;
 
-  -- Winner: one remaining human returns to post-game waiting. The watch takes
-  -- three complete five-second missed windows before it marks that player
-  -- Sitting Out, then the finalizer closes once with net-zero financials.
+  -- Winner: one remaining human returns to subsequent Waiting. Sixty seconds
+  -- without a heartbeat marks that player involuntarily Sitting Out, and the
+  -- 15-second forced-absence confirmation then releases the seat and settles.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
@@ -124,7 +125,7 @@ BEGIN
 
   SELECT private.resolve_postgame_participation(v_winner_game_id)
     INTO v_outcome;
-  IF v_outcome <> 'waiting-active-humans:1'
+  IF v_outcome <> 'waiting-seated-humans:2;active-humans:1;active-players:1'
      OR NOT EXISTS (
        SELECT 1 FROM public.games
         WHERE id = v_winner_game_id AND status = 'waiting'
@@ -145,7 +146,7 @@ BEGIN
     v_winner_game_id,
     v_armed_at + interval '4 seconds'
   ) INTO v_outcome;
-  IF v_outcome <> 'active-humans'
+  IF v_outcome <> 'seated-humans'
      OR EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_winner_player_one_id AND sitting_out = true
@@ -161,7 +162,7 @@ BEGIN
     INTO v_missed_heartbeat_counts
     FROM private.session_abandonment_watches
    WHERE game_id = v_winner_game_id;
-  IF v_outcome <> 'active-humans'
+  IF v_outcome <> 'seated-humans'
      OR COALESCE((v_missed_heartbeat_counts ->> v_winner_player_one_id::text)::integer, -1) <> 1
      OR EXISTS (
        SELECT 1 FROM public.players
@@ -179,7 +180,7 @@ BEGIN
     INTO v_missed_heartbeat_counts
     FROM private.session_abandonment_watches
    WHERE game_id = v_winner_game_id;
-  IF v_outcome <> 'active-humans'
+  IF v_outcome <> 'seated-humans'
      OR COALESCE((v_missed_heartbeat_counts ->> v_winner_player_one_id::text)::integer, -1) <> 2
      OR EXISTS (
        SELECT 1 FROM public.players
@@ -191,12 +192,46 @@ BEGIN
 
   SELECT private.reconcile_session_abandonment(
     v_winner_game_id,
-    v_armed_at + interval '15 seconds'
+    v_armed_at + interval '60 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id
+          AND sitting_out = true
+          AND status <> 'left'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM private.postgame_forced_absence_watches
+        WHERE game_id = v_winner_game_id
+          AND player_id = v_winner_player_one_id
+          AND reason = 'presence_timeout'
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:winner-demotion:%', v_outcome;
+  END IF;
+
+  SELECT private.reconcile_session_abandonment(
+    v_winner_game_id,
+    v_armed_at + interval '74 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans'
+     OR EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id AND status = 'left'
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:winner-early-release:%', v_outcome;
+  END IF;
+
+  SELECT private.reconcile_session_abandonment(
+    v_winner_game_id,
+    v_armed_at + interval '75 seconds'
   ) INTO v_outcome;
   IF v_outcome <> 'session-ended-with-results'
      OR NOT EXISTS (
        SELECT 1 FROM public.players
-        WHERE id = v_winner_player_one_id AND sitting_out = true
+        WHERE id = v_winner_player_one_id
+          AND sitting_out = true
+          AND status = 'left'
      )
      OR NOT EXISTS (
        SELECT 1 FROM public.games
@@ -236,8 +271,8 @@ BEGIN
     RAISE EXCEPTION 'session_abandonment_proof:late-replay:%', v_outcome;
   END IF;
 
-  -- Tie: a zero-delta/chopped result still has durable history and closes
-  -- exactly once when every human is explicitly Sitting Out.
+  -- Tie: voluntary sitters retain their seats while present, then both are
+  -- released after 60 seconds without heartbeat and settle exactly once.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
@@ -273,6 +308,27 @@ BEGIN
 
   SELECT private.resolve_postgame_participation(v_tie_game_id)
     INTO v_outcome;
+  IF v_outcome <> 'waiting-seated-humans:2;active-humans:0;active-players:0'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games
+        WHERE id = v_tie_game_id AND status = 'waiting'
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:tie-waiting:%', v_outcome;
+  END IF;
+  SELECT armed_at INTO v_armed_at
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_tie_game_id;
+  SELECT private.reconcile_session_abandonment(
+    v_tie_game_id,
+    v_armed_at + interval '59 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans' THEN
+    RAISE EXCEPTION 'session_abandonment_proof:tie-early-release:%', v_outcome;
+  END IF;
+  SELECT private.reconcile_session_abandonment(
+    v_tie_game_id,
+    v_armed_at + interval '60 seconds'
+  ) INTO v_outcome;
   IF v_outcome <> 'session-ended-with-results'
      OR NOT EXISTS (
        SELECT 1 FROM public.games
@@ -328,7 +384,7 @@ BEGIN
     INTO v_missed_heartbeat_counts
     FROM private.session_abandonment_watches
    WHERE game_id = v_connected_game_id;
-  IF v_outcome <> 'active-humans'
+  IF v_outcome <> 'seated-humans'
      OR COALESCE((v_missed_heartbeat_counts ->> v_connected_player_one_id::text)::integer, -1) <> 2 THEN
     RAISE EXCEPTION 'session_abandonment_proof:heartbeat-precondition:%:%',
       v_outcome, v_missed_heartbeat_counts;
@@ -339,15 +395,19 @@ BEGIN
     v_users[1], 'codex-postgame-heartbeat', v_connected_game_id,
     '/game/' || v_connected_game_id::text, 'active', clock_timestamp()
   );
+  SELECT updated_at INTO v_heartbeat_at
+    FROM public.voice_presence_heartbeats
+   WHERE user_id = v_users[1]
+     AND tab_id = 'codex-postgame-heartbeat';
   SELECT private.reconcile_session_abandonment(
     v_connected_game_id,
-    clock_timestamp() + interval '5 seconds'
+    v_heartbeat_at + interval '5 seconds'
   ) INTO v_outcome;
   SELECT missed_heartbeat_counts
     INTO v_missed_heartbeat_counts
     FROM private.session_abandonment_watches
    WHERE game_id = v_connected_game_id;
-  IF v_outcome <> 'active-humans'
+  IF v_outcome <> 'seated-humans'
      OR COALESCE((v_missed_heartbeat_counts ->> v_connected_player_one_id::text)::integer, 3) >= 3
      OR EXISTS (
        SELECT 1 FROM public.players
@@ -357,29 +417,125 @@ BEGIN
       v_outcome;
   END IF;
 
-  -- Initial waiting and active dealer games are never presence-reconciled.
+  -- Once the active lease expires, a later heartbeat cancels the 15-second
+  -- forced stand-up but deliberately leaves the player Sitting Out.
+  SELECT private.reconcile_session_abandonment(
+    v_connected_game_id,
+    v_heartbeat_at + interval '60 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_connected_player_one_id
+          AND status <> 'left'
+          AND sitting_out = true
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM private.postgame_forced_absence_watches
+        WHERE game_id = v_connected_game_id
+          AND player_id = v_connected_player_one_id
+          AND reason = 'presence_timeout'
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:presence-demotion:%', v_outcome;
+  END IF;
+
+  UPDATE private.postgame_forced_absence_watches
+     SET armed_at = clock_timestamp() - interval '1 second'
+   WHERE game_id = v_connected_game_id
+     AND player_id = v_connected_player_one_id;
+  INSERT INTO public.voice_presence_heartbeats (
+    user_id, tab_id, game_id, route, status, last_heartbeat_at
+  ) VALUES (
+    v_users[1], 'codex-post-demotion-' || v_connected_game_id::text,
+    v_connected_game_id, '/game/' || v_connected_game_id::text, 'active',
+    clock_timestamp()
+  );
+  SELECT updated_at INTO v_heartbeat_at
+    FROM public.voice_presence_heartbeats
+   WHERE user_id = v_users[1]
+     AND tab_id = 'codex-post-demotion-' || v_connected_game_id::text;
+  SELECT private.reconcile_session_abandonment(
+    v_connected_game_id,
+    v_heartbeat_at + interval '14 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_connected_player_one_id
+          AND status <> 'left'
+          AND sitting_out = true
+     )
+     OR EXISTS (
+       SELECT 1 FROM private.postgame_forced_absence_watches
+        WHERE game_id = v_connected_game_id
+          AND player_id = v_connected_player_one_id
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:heartbeat-cancelled-release:%',
+      v_outcome;
+  END IF;
+
+  SELECT private.reconcile_session_abandonment(
+    v_connected_game_id,
+    v_heartbeat_at + interval '59 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'seated-humans' THEN
+    RAISE EXCEPTION 'session_abandonment_proof:recovered-sitter-early-release:%',
+      v_outcome;
+  END IF;
+  SELECT private.reconcile_session_abandonment(
+    v_connected_game_id,
+    v_heartbeat_at + interval '60 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'session-ended-with-results' THEN
+    RAISE EXCEPTION 'session_abandonment_proof:recovered-sitter-release:%',
+      v_outcome;
+  END IF;
+
+  -- Initial Waiting is armed only after the first seated human appears and a
+  -- pristine abandoned session is deleted after the five-minute lease.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
     v_initial_waiting_game_id, 'Codex rollback proof - initial waiting',
     'waiting', v_users[1], 1, 0, true
   );
+  IF EXISTS (
+    SELECT 1 FROM private.session_abandonment_watches
+     WHERE game_id = v_initial_waiting_game_id
+  ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:bare-game-armed-before-player';
+  END IF;
   INSERT INTO public.players (
     id, game_id, user_id, position, chips, status, sitting_out, is_bot
   ) VALUES (
     v_initial_waiting_player_id, v_initial_waiting_game_id, v_users[1],
     1, 0, 'active', false, false
   );
+  SELECT armed_at INTO v_armed_at
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_initial_waiting_game_id
+     AND waiting_kind = 'initial';
   SELECT private.reconcile_session_abandonment(
     v_initial_waiting_game_id,
-    clock_timestamp() + interval '1 day'
+    v_armed_at + interval '299 seconds'
   ) INTO v_outcome;
-  IF v_outcome <> 'ineligible-state'
-     OR EXISTS (
-       SELECT 1 FROM private.session_abandonment_watches
-        WHERE game_id = v_initial_waiting_game_id
+  IF v_outcome <> 'seated-humans'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_initial_waiting_player_id AND status <> 'left'
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:initial-waiting-touched:%',
+    RAISE EXCEPTION 'session_abandonment_proof:initial-waiting-early-release:%',
+      v_outcome;
+  END IF;
+  SELECT private.reconcile_session_abandonment(
+    v_initial_waiting_game_id,
+    v_armed_at + interval '300 seconds'
+  ) INTO v_outcome;
+  IF v_outcome <> 'deleted-pristine-initial-session'
+     OR EXISTS (
+       SELECT 1 FROM public.games WHERE id = v_initial_waiting_game_id
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:initial-waiting-not-deleted:%',
       v_outcome;
   END IF;
 

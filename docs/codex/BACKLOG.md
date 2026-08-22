@@ -513,9 +513,9 @@ Source-proven ingestion findings:
 
 ### 3B.1. Silent waiting-table departure must release the seat before cleanup
 
-Status: Diagnosed P1 on 2026-08-22 from the accepted two-human 3-5-7 smoke;
-correction awaits approval. This is shared human-v-human waiting-table
-lifecycle work, not a 3-5-7 rule change.
+Status: Implemented and deployed on 2026-08-22; awaiting published two-human
+acceptance. This is shared human-v-human waiting-table lifecycle work, not a
+3-5-7 rule change.
 
 - Production session `Aug 22 - Lake Avenue`
   (`224115fb-508d-4ea0-bbdf-f261a65e2b5a`) did resolve, but only after the
@@ -531,10 +531,11 @@ lifecycle work, not a 3-5-7 rule change.
   later `status='left'` stand-up. Initial/no-history Waiting rooms are expressly
   ineligible for the server reconciler, so a silent last-client departure there
   has no equivalent no-client cleanup owner.
-- Clarified subsequent-Waiting contract: this applies only after a dealer game
-  has produced history, `games.status` is `waiting`/`waiting_for_players`, and
-  `current_game_uuid` is null. A timer-forced Sitting Out human who then has no
-  heartbeat for 15 seconds is stood up. A voluntarily Sitting Out human is
+- Clarified subsequent-Waiting contract: this applies after the session has
+  left Initial Waiting and returns with `games.status` equal to `waiting` or
+  `waiting_for_players` and `current_game_uuid` null, including a first setup
+  timeout before result history exists. A timer-forced Sitting Out human who
+  then has no heartbeat for 15 seconds is stood up. A voluntary sitter is
   stood up after 60 seconds without a heartbeat. An active human is marked
   involuntarily Sitting Out after 60 seconds without a heartbeat, receives a
   private exact-player absence claim, and is stood up after another 15 seconds
@@ -543,9 +544,9 @@ lifecycle work, not a 3-5-7 rule change.
   scheduler execution must not create or forgive misses. If a heartbeat returns
   during a timer-forced player's stand-up confirmation, retire the claim but
   retain Sitting Out because the missed gameplay/setup timer still governs
-  participation. If it returns during a presence-only active-player demotion,
-  retire the claim and restore active participation because that Sitting Out
-  state was never the player's choice.
+  participation. The same recovery rule applies after a presence-only active-
+  player demotion: retire the stand-up claim, keep the restored seat Sitting
+  Out, and let the player opt back in through the ordinary action.
 - Subsequent-session disposition is based on physical human seats, not active
   eligibility: a human is seated when its row has a position and status is
   neither `observer` nor `left`. Bots do not keep an abandoned human session
@@ -568,6 +569,11 @@ lifecycle work, not a 3-5-7 rule change.
 - Preserve every live dealer-game, setup, ante, and terminal-presentation
   exclusion; the five-second indexed recovery scheduler; reconnect/fresh-mount
   terminal behavior; and the accepted one-seat owner through final animation.
+- Implemented by
+  `20260822180000_waiting_presence_seat_release.sql`. Its rollback proof passed
+  before and after production installation across the complete lifecycle,
+  lease, authorization, replay, settlement, host-transfer, and initial-delete
+  matrix. Published human-v-human smoke remains acceptance truth.
 
 ### 3D. 3-5-7 rollover-ante transfer reason and instant-sweep projection
 
