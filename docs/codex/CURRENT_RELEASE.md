@@ -2,6 +2,36 @@
 
 Date: 2026-08-22
 
+## 3-5-7 postgame disconnect seat continuity
+
+- Production session `Aug 22 - Duncan Keith` proved the server-owned config
+  timeout returned the surviving client to Waiting, but the forced-absent
+  dealer remained an active seated row because the abandonment reconciler
+  intentionally excluded ordinary Sitting Out players. The same smoke exposed
+  a background-tab false absence and a competing seat-owner handoff during the
+  final-leg award.
+- A private exact-player forced-absence watch now distinguishes config-timeout
+  absence from voluntary Sitting Out. A heartbeat after timeout retires the
+  watch and preserves the red Sitting Out seat; otherwise three complete
+  five-second windows commit canonical Stand Up (`status=left`). Active/no-
+  heartbeat players retain the accepted 15-second lease, while a latest hidden
+  heartbeat receives the configurable `postgame_presence.hidden_grace_seconds`
+  lease, defaulting to 300 seconds. Heartbeat lease timestamps now use actual
+  server write time rather than transaction-start time.
+- The canonical route now retains gameplay seat ownership through both
+  `game_over` and `session_ended` while the exact terminal presentation signal
+  is active. 3-5-7's final-leg cards, cluster, award, and transfer destination
+  therefore remain under one mounted owner before the normal single handoff to
+  Waiting/game selection.
+- Migrations `20260822170000_postgame_forced_absence_and_hidden_presence.sql`
+  and `20260822171500_index_postgame_forced_absence_player.sql` are installed on
+  the owned Supabase project. The complete rollback proof passed before and
+  after installation, including winner, tie, replay, authorization, terminal,
+  canonical timer, and full serialized recovery cases. Eighteen focused client
+  assertions, the installed TypeScript compiler, all 35 build-required
+  Cribbage assertions, and the production Vite build pass. The published
+  candidate awaits repeat two-human production smoke before becoming stable.
+
 ## Player-v-player showdown financial pacing
 
 - 3-5-7's server-authoritative multi-stayer showdown publishes its immutable

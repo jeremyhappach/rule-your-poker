@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceLiveTerminalPresentationScope,
   shouldHoldLiveTerminalPresentation,
+  shouldHoldTerminalSeatOwnership,
   terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationObservation,
 } from './liveTerminalPresentationHold';
@@ -122,6 +123,32 @@ describe('live terminal presentation hold', () => {
     };
 
     expect(advanceLiveTerminalPresentationScope(armed, holm)).toBeNull();
+  });
+});
+
+describe('terminal seat ownership hold', () => {
+  it('retains gameplay seats through a 3-5-7 game_over presentation', () => {
+    expect(
+      shouldHoldTerminalSeatOwnership('game_over', true, false, false),
+    ).toBe(true);
+  });
+
+  it('retains gameplay seats through the existing session-ended hold signals', () => {
+    expect(
+      shouldHoldTerminalSeatOwnership('session_ended', false, true, false),
+    ).toBe(true);
+    expect(
+      shouldHoldTerminalSeatOwnership('session_ended', false, false, true),
+    ).toBe(true);
+  });
+
+  it('releases once presentation completes or lifecycle leaves terminal status', () => {
+    expect(
+      shouldHoldTerminalSeatOwnership('game_over', false, false, false),
+    ).toBe(false);
+    expect(
+      shouldHoldTerminalSeatOwnership('game_selection', true, false, false),
+    ).toBe(false);
   });
 });
 

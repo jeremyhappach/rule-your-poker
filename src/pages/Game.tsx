@@ -151,6 +151,7 @@ import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import {
   advanceLiveTerminalPresentationScope,
   shouldHoldLiveTerminalPresentation,
+  shouldHoldTerminalSeatOwnership,
   terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationScope,
 } from "@/lib/canonicalShell/liveTerminalPresentationHold";
@@ -15401,21 +15402,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ]);
   // ── SHARED TERMINAL-PRESENTATION HOLD SEAM ─────────────────────────
   // Cross-game invariant (recorded for the later cross-game terminal
-  // audit): authoritative `session_ended` may land BEFORE the local
-  // terminal presentation finishes. While it is still presenting, the
+  // audit): authoritative `game_over` or `session_ended` may land BEFORE the
+  // local terminal presentation finishes. While it is still presenting, the
   // full gameplay presentation shell — felt, seat ring, HUD stacks, pot
   // anchors — must stay admitted with the SAME mounted instances. This
   // single predicate is the only owner of that widening; every render
   // gate that would otherwise release the gameplay surface at
-  // `session_ended` consults it. No status rewrite, no timer, no
+  // either terminal status consults it. No status rewrite, no timer, no
   // duplicate surface.
-  const _terminalPresentationHold =
-    (
-      terminalPresentationActive ||
-      holmLastHandPresentationPending ||
-      liveTerminalPresentationPending
-    ) &&
-    (game.status as string) === 'session_ended';
+  const _terminalPresentationHold = shouldHoldTerminalSeatOwnership(
+    game.status,
+    terminalPresentationActive,
+    holmLastHandPresentationPending,
+    liveTerminalPresentationPending,
+  );
   // Shared SESSION ENDED TABLE PHASE (client-local, read-only). Structurally
   // like Waiting: same persistent shell, same felt, same seat ring, HUD/tab
   // rail intact — every game-specific artifact retired (not blurred, not

@@ -103,6 +103,26 @@ export function shouldHoldLiveTerminalPresentation(
 }
 
 /**
+ * Keeps the gameplay seat owner mounted while an already-observed terminal
+ * presentation is still running. `game_over` is included because 3-5-7
+ * publishes that authoritative status before its final-leg award completes;
+ * `session_ended` remains the cross-game terminal hold boundary.
+ */
+export function shouldHoldTerminalSeatOwnership(
+  status: string | null | undefined,
+  terminalPresentationActive: boolean,
+  holmLastHandPresentationPending: boolean,
+  liveTerminalPresentationPending: boolean,
+): boolean {
+  return Boolean(
+    (terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      liveTerminalPresentationPending) &&
+      (status === 'game_over' || status === 'session_ended'),
+  );
+}
+
+/**
  * True when a game-owned terminal completion token belongs to the exact live
  * scope retained by the route. This makes Session Ended admission independent
  * of whether presentation completion or the terminal database snapshot arrives

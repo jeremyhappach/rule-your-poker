@@ -404,8 +404,10 @@ Cribbage post-settlement freeze on 2026-08-16.
 
 ### 3B. 3-5-7 disconnected winner during next-game setup
 
-Status: Queued for a subsequent disconnect-lifecycle pass; reported during
-production smoke on 2026-08-09.
+Status: Published candidate on 2026-08-22; repeat two-human production smoke
+pending. Server-owned setup expiry had returned the survivor to Waiting, but
+forced-absence eviction, hidden-tab presence, and terminal seat continuity
+failed in the first acceptance run.
 
 - Scenario: Player 1 chooses Stay in 3-5-7, disconnects, and wins the terminal
   leg while Player 2 folds and remains connected. Player 2 must see the normal
@@ -419,6 +421,43 @@ production smoke on 2026-08-09.
 - Preserve the separate current correction: the 15-second absence grace begins
   only after a completed session reaches post-game waiting, never while a
   dealer game or its setup/terminal presentation is live.
+- Production evidence from `Aug 22 - Duncan Keith`
+  (`f925f9ee-2153-4947-9fec-a412c60c311f`): the absent dealer's last heartbeat
+  was `2026-08-22 15:15:30.261+00`; terminal settlement committed at
+  `15:15:36.429+00`; setup expiry executed at `15:16:44.035+00` with
+  `outcome=waiting` and `active_humans=1`. The dealer was correctly marked
+  Sitting Out, but remained an active seated row, so Waiting continued to show
+  two seated players after more than one minute.
+- Deployed-owner finding: `private.handle_config_deadline_timeout_exact` marks
+  the expired setup owner `sitting_out=true`, while
+  `private.reconcile_session_abandonment` computes and applies missed-heartbeat
+  windows only to `sitting_out=false` players. The forced-absent dealer can
+  therefore never reach canonical stand-up through the heartbeat path. The
+  correction must distinguish setup-timeout-forced absence from voluntary Sit
+  Out so accepted seat-retention behavior remains unchanged.
+- The same smoke exposed a false abandonment of the surviving client after its
+  tab became hidden: its last hidden heartbeat was `15:18:41.725+00`, and the
+  fake-money session moved to `session_ended` at `15:18:58.954+00`. The current
+  three-five-second-window lease is shorter than browser background timer
+  throttling and must not treat a connected hidden tab as departed.
+- Presentation evidence: during 3-5-7 `game_over`, `Game.tsx` admits the shell
+  pre-session seat layer before the terminal presentation completion token,
+  while the gameplay table still owns the final-leg cards and award. This
+  competing ownership explains the absent player's full cluster disappearing
+  during the award and cardbacks returning without the stack. Preserve one
+  canonical seat owner through the full final-leg presentation, then hand off
+  once to Waiting/game selection.
+- Delivered candidate: config expiry writes a private exact-player forced-
+  absence watch only after settled postgame history exists. A post-timeout
+  heartbeat clears the watch and preserves voluntary Sitting Out; three missed
+  five-second windows instead commit canonical Stand Up. A latest hidden
+  heartbeat uses the configurable 300-second default lease, while active or
+  never-seen players keep the accepted 15-second rule.
+- `game_over` now shares the existing terminal-presentation seat hold, so the
+  gameplay cluster remains the sole owner until the final-leg completion token
+  and then hands off once to the pre-session layer. Migrations are installed;
+  complete pre/post rollback proofs, focused client coverage, TypeScript, and
+  the production build pass.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 

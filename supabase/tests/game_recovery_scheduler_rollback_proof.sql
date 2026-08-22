@@ -63,7 +63,7 @@ BEGIN
   v_tick := private.advance_due_game_state();
   IF v_tick->>'outcome' <> 'completed'
      OR coalesce((v_tick->>'failure_count')::integer, -1) <> 0
-     OR jsonb_array_length(v_tick->'tasks') NOT IN (5, 7) THEN
+     OR jsonb_array_length(v_tick->'tasks') NOT IN (7, 8) THEN
     RAISE EXCEPTION 'game_recovery_scheduler_proof:complete_tick_failed:%', v_tick;
   END IF;
 
@@ -72,7 +72,7 @@ BEGIN
   IF v_replay->>'outcome' <> 'completed'
      OR coalesce((v_replay->>'failure_count')::integer, -1) <> 0
      OR coalesce((v_replay->>'ran_five_second_tasks')::boolean, true)
-     OR jsonb_array_length(v_replay->'tasks') <> 5 THEN
+     OR jsonb_array_length(v_replay->'tasks') <> 7 THEN
     RAISE EXCEPTION 'game_recovery_scheduler_proof:replay_failed:%', v_replay;
   END IF;
 

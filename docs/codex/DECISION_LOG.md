@@ -1047,3 +1047,23 @@ result/transfer/final-card joins, choose or activate a successor, or become a
 database settlement clock. Both timing values are bounded Game Defaults;
 PostgreSQL remains the owner of balances, cursors, successor preparation, and
 disconnect recovery.
+
+## D-076 - Forced absence is distinct from voluntary Sitting Out
+
+Sitting Out continues to retain a physical seat. A server-owned setup timeout
+may create a private exact-player forced-absence watch only after a settled
+postgame boundary. A qualifying heartbeat after that timeout retires the watch
+and preserves ordinary Sitting Out; three server-measured missed windows instead
+commit canonical Stand Up. The client may not infer or author either outcome.
+
+Browser visibility is presence evidence, not departure evidence. Active or
+never-seen tabs keep the fast postgame absence lease, while the latest hidden
+heartbeat receives a bounded configurable grace that tolerates browser timer
+throttling. All leases use actual server write timestamps. Session abandonment
+remains legal only at settled postgame Waiting and continues through the one
+serialized database recovery owner.
+
+Terminal status may arrive before terminal presentation finishes. While an
+exact `game_over` or `session_ended` presentation signal remains active, the
+gameplay seat ring stays the sole mounted owner; only true completion permits
+the single handoff to the pre-session seat layer.

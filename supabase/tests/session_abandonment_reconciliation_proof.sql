@@ -71,10 +71,10 @@ BEGIN
 
   SELECT count(*) INTO v_count
    FROM cron.job
-   WHERE jobname = 'reconcile-abandoned-real-money-sessions'
+   WHERE jobname = 'advance-due-game-state-1s'
      AND active = true
-     AND schedule = '5 seconds'
-     AND command = 'SELECT private.reconcile_abandoned_sessions();';
+     AND schedule = '1 second'
+     AND command = 'SELECT private.advance_due_game_state();';
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'session_abandonment_proof:cron-shape:%', v_count;
   END IF;
