@@ -404,10 +404,10 @@ Cribbage post-settlement freeze on 2026-08-16.
 
 ### 3B. 3-5-7 disconnected winner during next-game setup
 
-Status: Published candidate on 2026-08-22; repeat two-human production smoke
-pending. Server-owned setup expiry had returned the survivor to Waiting, but
-forced-absence eviction, hidden-tab presence, and terminal seat continuity
-failed in the first acceptance run.
+Status: 3-5-7 correction production-smoked and stable on 2026-08-22 at commit
+`e1ee17935967d3408d419febfbc437a6c492ac84`. Server-owned setup expiry had
+returned the survivor to Waiting, but forced-absence eviction, hidden-tab
+presence, and terminal seat continuity failed in the first acceptance run.
 
 - Scenario: Player 1 chooses Stay in 3-5-7, disconnects, and wins the terminal
   leg while Player 2 folds and remains connected. Player 2 must see the normal
@@ -458,6 +458,13 @@ failed in the first acceptance run.
   and then hands off once to the pre-session layer. Migrations are installed;
   complete pre/post rollback proofs, focused client coverage, TypeScript, and
   the production build pass.
+- Repeat two-human production smoke passed in `Aug 22 - Lake Avenue`
+  (`224115fb-508d-4ea0-bbdf-f261a65e2b5a`). The final-leg cluster remained
+  continuous, the timed-out setup owner was stood up after its exact forced-
+  absence lease, and the connected hidden survivor retained its seat. The same
+  session later reached `session_ended` at `2026-08-22 17:36:33.837+00`, about
+  five minutes after that survivor's final hidden heartbeat. The remaining
+  ordinary absent-seat lifecycle policy is tracked separately below.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
@@ -503,6 +510,45 @@ Source-proven ingestion findings:
   migrating normal 3-5-7. Its missing post-payout snapshot, broad function ACL,
   initial-Round-1 client path, and incomplete-round re-ante repair remain the
   final residual slice rather than expanding the normal-terminal correction.
+
+### 3B.1. Silent waiting-table departure must release the seat before cleanup
+
+Status: Diagnosed P1 on 2026-08-22 from the accepted two-human 3-5-7 smoke;
+correction awaits approval. This is shared human-v-human waiting-table
+lifecycle work, not a 3-5-7 rule change.
+
+- Production session `Aug 22 - Lake Avenue`
+  (`224115fb-508d-4ea0-bbdf-f261a65e2b5a`) did resolve, but only after the
+  configured 300-second hidden-tab lease. The survivor's last hidden heartbeat
+  was `2026-08-22 17:31:31.917+00`; the database marked that row Sitting Out and
+  moved the fake-money session to `session_ended` at
+  `2026-08-22 17:36:33.837+00`. The player row remained `status='active'`, so
+  ordinary silent absence did not canonically release the seat.
+- Exact owner/failure boundary: `private.reconcile_session_abandonment` gives a
+  latest hidden heartbeat 300 seconds and an active/never-seen heartbeat 15
+  seconds, then changes only `sitting_out=true`. It immediately resolves on
+  zero active humans. Only a config-timeout-specific private watch performs the
+  later `status='left'` stand-up. Initial/no-history Waiting rooms are expressly
+  ineligible for the server reconciler, so a silent last-client departure there
+  has no equivalent no-client cleanup owner.
+- Recommended correction: generalize the private forced-absence provenance to
+  any active seated human whose configurable safe-Waiting presence lease
+  expires. Default the active-player lease to 60 seconds, then retain a
+  separately configurable 15-second stand-up confirmation. A renewed heartbeat
+  must cancel the absence claim; a second expiry commits canonical Stand Up.
+  Preserve immediate explicit zero-active closure and voluntary Sitting Out
+  seat retention by applying this two-stage path only to absence-forced state.
+- After the last physical seat is released, the database owns disposition:
+  result-bearing real-money sessions use the existing snapshot-guarded,
+  exactly-once finalizer; result-bearing fake-money sessions enter
+  `session_ended` without financial rows. A no-history room may be deleted only
+  after the existing pristine-room evidence checks prove there are no results,
+  snapshots, transactions, dealer games, rounds, audits, hands, pot, active
+  dealer-game identity, or nonzero player chips; inconsistent evidence is
+  preserved and reported rather than guessed away.
+- Preserve every live dealer-game, setup, ante, and terminal-presentation
+  exclusion; the five-second indexed recovery scheduler; reconnect/fresh-mount
+  terminal behavior; and the accepted one-seat owner through final animation.
 
 ### 3D. 3-5-7 rollover-ante transfer reason and instant-sweep projection
 
