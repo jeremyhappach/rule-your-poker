@@ -30,6 +30,7 @@ function mkSnap(overrides: Partial<ThreeFiveSevenAuthoritativeSnapshot> = {}): T
     currentTurnPosition: 0,
     decisionDeadline: null,
     pot: 0,
+    chipTransferCursor: 0,
     lastRoundResult: null,
     awaitingNextRound: false,
     buckPosition: 0,

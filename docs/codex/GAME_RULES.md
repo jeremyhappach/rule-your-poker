@@ -65,7 +65,10 @@ contradictions.
   pot. Later Holm hands preserve the replacement pot and do not re-ante.
 - If everyone folds, no one wins the pot. When Pussy Tax is enabled, each
   eligible player pays the configured tax into the carry-forward pot. Rabbit
-  Hunt may reveal the hidden community cards for presentation. A new hand
+  Hunt may reveal the hidden community cards for presentation. Tax movement
+  and its announcement remain concurrent with those flips; after the final
+  card visibly completes, the exact continuation waits the configured
+  `holm_rabbit_hunt_post_reveal_delay_ms` (default 1000 ms) before a new hand
   begins.
 - If exactly one player stays, hidden community cards are revealed and Chucky
   receives the configured number of private cards from the undealt deck. The
@@ -372,8 +375,13 @@ contradictions.
   leg completion and instant sweep settle through exact-identity database
   transitions. `three_five_seven_advance_postgame` owns the terminal handoff;
   `three_five_seven_decline_setup` owns a setup owner's explicit Sit Out.
-- `reveal_at_showdown` controls opponent proof-card presentation. An
-  identity-guarded `show-cards` broadcast is presentation only.
+- `reveal_at_showdown` controls opponent proof-card presentation. When enabled,
+  the permitted opponent faces paint before the configured
+  `three_five_seven_showdown_delay_ms` reading dwell (default 2000 ms), after
+  which the exact player-to-player batch and result announcement release
+  together. When disabled, that transfer and announcement remain immediate and
+  no reveal dwell runs. An identity-guarded `show-cards` broadcast is
+  presentation only.
 - Bots use the same Stay/Fold action with hand-strength/aggression probability
   and staggered connected-client scheduling.
 

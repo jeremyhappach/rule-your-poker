@@ -65,6 +65,7 @@ export interface ThreeFiveSevenAuthoritativeSnapshot {
 
   // Game context
   pot: number;
+  chipTransferCursor: number;
   lastRoundResult: string | null;
   awaitingNextRound: boolean;
   buckPosition: number;

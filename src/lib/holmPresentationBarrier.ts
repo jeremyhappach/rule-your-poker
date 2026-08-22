@@ -271,16 +271,19 @@ export function canCompleteHolmAllFoldPresentation({
   resultPainted,
   rabbitHuntRequired,
   rabbitRevealComplete,
+  rabbitPostRevealDwellComplete,
   pussyTaxSettled,
 }: {
   result: string | null | undefined;
   resultPainted: boolean;
   rabbitHuntRequired: boolean;
   rabbitRevealComplete: boolean;
+  rabbitPostRevealDwellComplete: boolean;
   pussyTaxSettled: boolean;
 }): boolean {
   if (result !== 'Pussy Tax!' && result !== 'Everyone folded! No penalty.') return false;
   if (!resultPainted) return false;
   if (rabbitHuntRequired && !rabbitRevealComplete) return false;
+  if (rabbitHuntRequired && !rabbitPostRevealDwellComplete) return false;
   return result !== 'Pussy Tax!' || pussyTaxSettled;
 }

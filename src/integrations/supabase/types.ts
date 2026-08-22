@@ -1498,6 +1498,7 @@ export type Database = {
           holm_multi_showdown_delay_ms: number
           holm_presentation_ack_fallback_seconds: number
           holm_pre_chucky_delay_ms: number
+          holm_rabbit_hunt_post_reveal_delay_ms: number
           id: string
           leg_value: number
           legs_to_win: number
@@ -1514,6 +1515,7 @@ export type Database = {
           skunk_threshold: number
           timeout_action: string
           timeout_enforcement_enabled: boolean
+          three_five_seven_showdown_delay_ms: number
           undercut_bonus: number
           updated_at: string
         }
@@ -1538,6 +1540,7 @@ export type Database = {
           holm_multi_showdown_delay_ms?: number
           holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
+          holm_rabbit_hunt_post_reveal_delay_ms?: number
           id?: string
           leg_value?: number
           legs_to_win?: number
@@ -1554,6 +1557,7 @@ export type Database = {
           skunk_threshold?: number
           timeout_action?: string
           timeout_enforcement_enabled?: boolean
+          three_five_seven_showdown_delay_ms?: number
           undercut_bonus?: number
           updated_at?: string
         }
@@ -1578,6 +1582,7 @@ export type Database = {
           holm_multi_showdown_delay_ms?: number
           holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
+          holm_rabbit_hunt_post_reveal_delay_ms?: number
           id?: string
           leg_value?: number
           legs_to_win?: number
@@ -1594,6 +1599,7 @@ export type Database = {
           skunk_threshold?: number
           timeout_action?: string
           timeout_enforcement_enabled?: boolean
+          three_five_seven_showdown_delay_ms?: number
           undercut_bonus?: number
           updated_at?: string
         }

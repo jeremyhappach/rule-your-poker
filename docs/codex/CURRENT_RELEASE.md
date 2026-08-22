@@ -1,6 +1,34 @@
 # Current release and cutover state
 
-Date: 2026-08-21
+Date: 2026-08-22
+
+## Player-v-player showdown financial pacing
+
+- 3-5-7's server-authoritative multi-stayer showdown publishes its immutable
+  player-to-player batch with reason `win`, while the prior client admission
+  gate recognized only the legacy `transfer` label. The current batch therefore
+  bypassed opponent-card presentation and could begin before those faces were
+  visible.
+- `Game.tsx` now carries the accepted atomic frame's transfer cursor into the
+  3-5-7 presentation snapshot. `showdownPresentation.ts` captures the exact
+  game/dealer-game/round/hand/result/stayer/cursor identity and gates both the
+  current `win` batch and generic result announcement. With Secret Reveal on,
+  permitted opponent faces paint first, then one animation frame and the
+  configured 2000 ms reading dwell elapse before transfer and announcement
+  release together. With Secret Reveal off, both remain immediate and no cards
+  are exposed.
+- Holm preserves its established Rabbit Hunt concurrency: Pussy Tax movement
+  and narration may release while community cards 3 and 4 flip. Only the exact
+  continuation acknowledgement waits for the final-card visual completion
+  receipt plus the configured 1000 ms post-reveal dwell; settlement, successor
+  preparation, and disconnect fallback remain database-owned.
+- Migration `20260822090000_pvp_showdown_pacing_defaults.sql` is installed on
+  the owned Supabase project. It adds non-null, range-checked Game Defaults for
+  both delays, and the Admin editor validates 0-10000 ms. The complete
+  rollback proof passed before and after installation. Eight focused suites
+  pass 88 assertions, the build-required 35 Cribbage assertions pass, and the
+  production Vite build succeeds. Production two-human smoke remains required
+  before this change becomes a stable checkpoint.
 
 ## All-games dual-human Cross-Country Chaos checkpoint
 

@@ -43,7 +43,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
 | Schema history | `supabase/migrations/` (310 versioned migration files). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
-| Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql` first split normal final-leg 3-5-7 presentation; `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` corrects owned leg reserve so it never enters the pot and publishes ordered `leg`/`sweep`/`transfer` stages. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. `ChipPresentationLedger` performs an exact one-shot batch lookup when an endpoint cursor proves its INSERT event was missed. `ChipTransportProvider` and `CanonicalSeatCluster` keep the ledger-owned source seat visible throughout an outbound flight. |
+| Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql` first split normal final-leg 3-5-7 presentation; `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` corrects owned leg reserve so it never enters the pot and publishes ordered `leg`/`sweep`/`transfer` stages. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. `ChipPresentationLedger` performs an exact one-shot batch lookup when an endpoint cursor proves its INSERT event was missed. `ChipTransportProvider` and `CanonicalSeatCluster` keep the ledger-owned source seat visible throughout an outbound flight. Game-owned admission prerequisites include `src/lib/threeFiveSeven/showdownPresentation.ts` for the exact Secret Reveal/result/cursor boundary. |
 | Post-game participation and abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` and `20260809200000_extend_fake_money_postgame_presence.sql` own result-backed post-game watches, three consecutive five-second missed windows, absent-player sit-out, and real/fake terminal disposition when presence is ambiguous. `20260815163818_atomic_explicit_postgame_stand_up.sql` separately owns authenticated explicit Stand Up plus its immediate zero/one/eligible cohort decision in one transaction. Initial waiting and live dealer games remain outside these owners; the legacy `enforce-all-deadlines` Edge Function remains separate. |
 | Serialized scheduled recovery | `supabase/migrations/20260820023000_serialize_game_recovery_scheduler.sql` installs the sole one-second `private.advance_due_game_state()` cron owner. `20260820180000_canonical_game_timer_ownership.sql` adds the exact-identity `private.game_timer_registry` and its canonical drain task for session dealer selection, dealer setup, ante, Holm decisions, Horses/SCC progression, and postgame continuation; `20260820190000_index_canonical_game_timer_foreign_keys.sql` completes its foreign-key indexes. The dispatcher serializes game-specific owners behind an advisory lock, isolates each task failure, and persists one active failure claim per task. Rollback proofs live in `supabase/tests/game_recovery_scheduler_rollback_proof.sql` and `supabase/tests/canonical_game_timer_rollback_proof.sql`. |
 
@@ -349,6 +349,11 @@ reset transient/presentation state when those identities change.
   `three_five_seven_current_frame`; `src/lib/threeFiveSeven/currentFrame.ts`
   validates exact identity/full viewer-hand admission, rejects late or
   regressive frames, and supplies the strict round selector used by `Game.tsx`.
+- PvP showdown pacing: `src/lib/threeFiveSeven/showdownPresentation.ts` binds
+  opponent-face readiness, the configured reading dwell, the immutable `win`
+  transfer batch, and generic result announcement to the accepted atomic frame.
+  Migration `20260822090000_pvp_showdown_pacing_defaults.sql` owns that delay
+  and Holm's Rabbit Hunt post-final-flip continuation delay.
 - Settlement/terminal: `three_five_seven_settle_game` accepts exact committed
   resolution identity and retains the established atomic chip/snapshot
   settlement implementation behind its authority wrapper.
@@ -447,7 +452,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Capability | Latest repository evidence |
 |---|---|
 | Holm terminal settlement | `holm_settle_hand` with staged-showdown projection in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`; wrapper `src/lib/holmSettleHand.ts`. |
-| Holm showdown presentation cadence | `game_defaults` columns in `supabase/migrations/20260811113000_holm_showdown_presentation_timing_defaults.sql`; server availability reader in `src/lib/holmGameLogic.ts`; active felt admission in `src/components/MobileGameTable.tsx`; Admin controls in `src/components/GameDefaultsConfig.tsx`. |
+| Holm showdown presentation cadence | `game_defaults` columns in `supabase/migrations/20260811113000_holm_showdown_presentation_timing_defaults.sql` plus the Rabbit Hunt post-reveal continuation dwell in `20260822090000_pvp_showdown_pacing_defaults.sql`; server availability reader in `src/lib/holmGameLogic.ts`; active felt admission in `src/components/MobileGameTable.tsx`; Admin controls in `src/components/GameDefaultsConfig.tsx`. |
 | 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
 | Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
@@ -509,7 +514,8 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - Cribbage: focused component and logic tests are listed in the Cribbage map.
 - Gin: focused component, game logic, scoring, and harness tests are listed in
   the Gin map.
-- 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts`.
+- 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts` and
+  `src/lib/threeFiveSeven/showdownPresentation.test.ts`.
 - Yahtzee: `src/lib/yahtzeeScoring.test.ts`,
   `src/lib/yahtzeeGameLogic.test.ts`,
   `src/lib/yahtzeeSettleGame.test.ts`, and Yahtzee terminal-scope cases in

@@ -1027,3 +1027,23 @@ framework's ref-backed `canInteractNow()` verdict. This client containment is
 not gameplay authority. The exact-round PostgreSQL RPC still authenticates,
 locks, validates phase and ownership, applies the action atomically, and
 publishes the authoritative result.
+
+## D-075 - PvP financial pacing follows exact visible presentation identity
+
+A committed player-to-player batch may wait behind a presentation prerequisite
+without changing settlement truth. For a 3-5-7 multi-stayer showdown, one exact
+game, dealer-game, round, hand, result, stayer set, and transfer cursor owns the
+opponent-card boundary, reading dwell, batch admission, and result announcement.
+When Secret Reveal is enabled, permitted opponent faces paint before the
+configurable dwell begins; transfer and announcement then release from the same
+ready identity. When Secret Reveal is disabled, both are immediate and the
+dwell owner is inert.
+
+Holm Rabbit Hunt keeps Pussy Tax movement and narration concurrent with cards
+3 and 4. Its configurable post-reveal dwell begins only from the canonical
+community row's exact final-flip completion receipt and delays only the
+continuation acknowledgement. It may not delay tax admission, replace the
+result/transfer/final-card joins, choose or activate a successor, or become a
+database settlement clock. Both timing values are bounded Game Defaults;
+PostgreSQL remains the owner of balances, cursors, successor preparation, and
+disconnect recovery.

@@ -24,6 +24,8 @@ interface GameDefaults {
   holm_after_tabled_delay_ms: number;
   holm_pre_chucky_delay_ms: number;
   holm_multi_showdown_delay_ms: number;
+  holm_rabbit_hunt_post_reveal_delay_ms: number;
+  three_five_seven_showdown_delay_ms: number;
   bot_fold_probability: number;
   bot_decision_delay_seconds: number;
   bot_use_hand_strength: boolean;
@@ -168,6 +170,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         if (!Number.isInteger(multiShowdownDelay) || multiShowdownDelay < 0 || multiShowdownDelay > 10000) {
           validationErrors.push(`Holm: Multi-player showdown delay must be a whole number from 0-10000 ms`);
         }
+
+        const rabbitHuntPostRevealDelay = Number(defaultConfig.holm_rabbit_hunt_post_reveal_delay_ms);
+        if (!Number.isInteger(rabbitHuntPostRevealDelay) || rabbitHuntPostRevealDelay < 0 || rabbitHuntPostRevealDelay > 10000) {
+          validationErrors.push(`Holm: Rabbit Hunt post-reveal delay must be a whole number from 0-10000 ms`);
+        }
         
         const chuckyCards = Number(defaultConfig.chucky_cards);
         if (isNaN(chuckyCards) || chuckyCards < 1 || chuckyCards > 7) {
@@ -189,6 +196,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         const legsToWin = Number(defaultConfig.legs_to_win);
         if (isNaN(legsToWin) || legsToWin < 1 || legsToWin > 10) {
           validationErrors.push(`3-5-7: Legs to win must be 1-10`);
+        }
+
+        const showdownDelay = Number(defaultConfig.three_five_seven_showdown_delay_ms);
+        if (!Number.isInteger(showdownDelay) || showdownDelay < 0 || showdownDelay > 10000) {
+          validationErrors.push(`3-5-7: Secret Reveal reading delay must be a whole number from 0-10000 ms`);
         }
       }
       
@@ -235,6 +247,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       holm_after_tabled_delay_ms: Number(d.holm_after_tabled_delay_ms),
       holm_pre_chucky_delay_ms: Number(d.holm_pre_chucky_delay_ms),
       holm_multi_showdown_delay_ms: Number(d.holm_multi_showdown_delay_ms),
+      holm_rabbit_hunt_post_reveal_delay_ms: Number(d.holm_rabbit_hunt_post_reveal_delay_ms),
+      three_five_seven_showdown_delay_ms: Number(d.three_five_seven_showdown_delay_ms),
       chucky_cards: Number(d.chucky_cards),
       leg_value: Number(d.leg_value),
       legs_to_win: Number(d.legs_to_win),
@@ -258,6 +272,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             holm_after_tabled_delay_ms: defaultConfig.holm_after_tabled_delay_ms,
             holm_pre_chucky_delay_ms: defaultConfig.holm_pre_chucky_delay_ms,
             holm_multi_showdown_delay_ms: defaultConfig.holm_multi_showdown_delay_ms,
+            holm_rabbit_hunt_post_reveal_delay_ms: defaultConfig.holm_rabbit_hunt_post_reveal_delay_ms,
+            three_five_seven_showdown_delay_ms: defaultConfig.three_five_seven_showdown_delay_ms,
             bot_fold_probability: defaultConfig.bot_fold_probability,
             bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
             bot_use_hand_strength: defaultConfig.bot_use_hand_strength,
@@ -526,6 +542,18 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <p className="text-xs text-muted-foreground">Reading time after players expose their hands before community cards 3 and 4 begin to flip</p>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="holm-rabbit-hunt-post-reveal-delay">Rabbit Hunt Post-Reveal Delay (ms)</Label>
+          <Input
+            id="holm-rabbit-hunt-post-reveal-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_rabbit_hunt_post_reveal_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_rabbit_hunt_post_reveal_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Pause after the final Rabbit Hunt card lands before the next hand</p>
+        </div>
+
         <div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm font-medium">
             Chucky Settings
@@ -642,6 +670,18 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               checked={defaults357.reveal_at_showdown ?? false}
               onCheckedChange={(checked) => updateDefault('3-5-7', 'reveal_at_showdown', checked)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="357-showdown-delay">Secret Reveal Reading Delay (ms)</Label>
+            <Input
+              id="357-showdown-delay"
+              type="text"
+              inputMode="numeric"
+              value={defaults357.three_five_seven_showdown_delay_ms}
+              onChange={(e) => updateDefault('3-5-7', 'three_five_seven_showdown_delay_ms', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Applied after opponent cards reveal; Secret Reveal off remains immediate</p>
           </div>
         </div>
 

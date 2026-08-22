@@ -21,6 +21,12 @@ import {
   retainThreeFiveSevenFinancialPresentation,
 } from "@/lib/threeFiveSeven/financialPresentation";
 import {
+  buildThreeFiveSevenShowdownPresentation,
+  getThreeFiveSevenShowdownTransferAdmission,
+  isThreeFiveSevenOpponentRevealBoundaryReady,
+  isThreeFiveSevenShowdownPresentationReady,
+} from "@/lib/threeFiveSeven/showdownPresentation";
+import {
   isTerminal357SweepCreditBatch,
   isTerminal357SweepCreditReleased,
   selectTerminal357SweepCreditCheckpoint,
@@ -1086,8 +1092,12 @@ interface MobileGameTableProps {
   threeFiveSevenAuthoritativeRoundNumber?: number | null;
   /** 3-5-7 lower-zone trace: presentation view round id from Game.tsx. */
   threeFiveSevenViewRoundId?: string | null;
+  /** Exact hand number from the accepted atomic 3-5-7 presentation frame. */
+  threeFiveSevenViewHandNumber?: number | null;
   /** 3-5-7 lower-zone trace: presentation view round number from Game.tsx. */
   threeFiveSevenViewRoundNumber?: number | null;
+  /** Exact latest transfer cursor from the same accepted atomic 3-5-7 frame. */
+  threeFiveSevenViewTransferCursor?: number | null;
   /** Exact committed H2+ / R1 rollover batch returned by the advance RPC or refetch. */
   threeFiveSevenRolloverPresentation?: ThreeFiveSevenRolloverPresentation | null;
   /** Exact completed all-fold round and pussy-tax ledger batch. */
@@ -1394,7 +1404,9 @@ export const MobileGameTable = ({
   threeFiveSevenAuthoritativeRoundId,
   threeFiveSevenAuthoritativeRoundNumber,
   threeFiveSevenViewRoundId,
+  threeFiveSevenViewHandNumber,
   threeFiveSevenViewRoundNumber,
+  threeFiveSevenViewTransferCursor,
   threeFiveSevenRolloverPresentation,
   threeFiveSevenAllFoldPresentation,
   onThreeFiveSevenAllFoldPresentationComplete,
@@ -2982,6 +2994,8 @@ export const MobileGameTable = ({
   // HOLM: Gate announcement display until the canonical community row reports
   // that card 4 has visibly completed its flip for this hand.
   const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
+  const [holmRabbitHuntPostRevealDwellCompleteHandKey, setHolmRabbitHuntPostRevealDwellCompleteHandKey] =
+    useState<string | null>(null);
   const holmPresentationHandKey = holmPresentationIdentity
     ? getHolmPresentationHandKey(holmPresentationIdentity)
     : null;
@@ -3004,7 +3018,11 @@ export const MobileGameTable = ({
     afterTabled: 1500,
     preChucky: 1500,
     multiShowdown: 2000,
+    rabbitHuntPostReveal: 1000,
   });
+  const [threeFiveSevenShowdownDelayMs, setThreeFiveSevenShowdownDelayMs] = useState(2000);
+  const [threeFiveSevenDelayedShowdownPresentationKey, setThreeFiveSevenDelayedShowdownPresentationKey] =
+    useState<string | null>(null);
   // This cap is presentation-only. The database may advance to four cards
   // while the active felt is still in a deliberate tabled/reading phase.
   const [holmCommunityRevealAdmission, setHolmCommunityRevealAdmission] = useState(
@@ -3032,7 +3050,7 @@ export const MobileGameTable = ({
     let cancelled = false;
     void __mgtSupabase
       .from('game_defaults')
-      .select('holm_after_tabled_delay_ms, holm_pre_chucky_delay_ms, holm_multi_showdown_delay_ms')
+      .select('holm_after_tabled_delay_ms, holm_pre_chucky_delay_ms, holm_multi_showdown_delay_ms, holm_rabbit_hunt_post_reveal_delay_ms')
       .eq('game_type', 'holm')
       .maybeSingle()
       .then(({ data, error }) => {
@@ -3045,7 +3063,26 @@ export const MobileGameTable = ({
           afterTabled: delay(data.holm_after_tabled_delay_ms, 1500),
           preChucky: delay(data.holm_pre_chucky_delay_ms, 1500),
           multiShowdown: delay(data.holm_multi_showdown_delay_ms, 2000),
+          rabbitHuntPostReveal: delay(data.holm_rabbit_hunt_post_reveal_delay_ms, 1000),
         });
+      });
+    return () => { cancelled = true; };
+  }, [gameType, handContextId]);
+
+  useEffect(() => {
+    if (!__is357GameType(gameType)) return;
+    let cancelled = false;
+    void __mgtSupabase
+      .from('game_defaults')
+      .select('three_five_seven_showdown_delay_ms')
+      .eq('game_type', '3-5-7')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        const parsed = Number(data.three_five_seven_showdown_delay_ms);
+        if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 10000) {
+          setThreeFiveSevenShowdownDelayMs(parsed);
+        }
       });
     return () => { cancelled = true; };
   }, [gameType, handContextId]);
@@ -3063,6 +3100,7 @@ export const MobileGameTable = ({
     holmShowdownPresentationHandRef.current = nextHandContextId;
     setHolmCommunityRevealAdmission(isHydratingExistingReveal ? (communityCardsRevealed || 4) : 2);
     setHolmCommunityFullyRevealed(false);
+    setHolmRabbitHuntPostRevealDwellCompleteHandKey(null);
     setSoloTabledCardsLandedHand(null);
     setSoloCommunityDelayCompleteHand(null);
     setSoloAnnouncementEmittedHand(null);
@@ -4051,6 +4089,40 @@ export const MobileGameTable = ({
     threeFiveSevenDealerGameScope && threeFiveSevenHandIdentity
       ? `${threeFiveSevenDealerGameScope}#${threeFiveSevenHandIdentity}`
       : null;
+  const threeFiveSevenShowdownStayedPlayerIdentity = players
+    .filter((player) => player.current_decision === 'stay')
+    .map((player) => player.id)
+    .sort()
+    .join(',');
+  const threeFiveSevenShowdownPresentation = useMemo(
+    () => buildThreeFiveSevenShowdownPresentation({
+      gameId,
+      dealerGameId: threeFiveSevenDealerGameScope,
+      roundId: threeFiveSevenViewRoundId,
+      handNumber: threeFiveSevenViewHandNumber,
+      roundNumber: threeFiveSevenViewRoundNumber,
+      transferCursor: threeFiveSevenViewTransferCursor,
+      result: lastRoundResult,
+      revealAtShowdown,
+      stayedPlayerIds: threeFiveSevenShowdownStayedPlayerIdentity
+        ? threeFiveSevenShowdownStayedPlayerIdentity.split(',')
+        : [],
+      roundCompleted: roundStatus === 'completed' || awaitingNextRound,
+    }),
+    [
+      awaitingNextRound,
+      gameId,
+      lastRoundResult,
+      revealAtShowdown,
+      roundStatus,
+      threeFiveSevenDealerGameScope,
+      threeFiveSevenShowdownStayedPlayerIdentity,
+      threeFiveSevenViewHandNumber,
+      threeFiveSevenViewRoundId,
+      threeFiveSevenViewRoundNumber,
+      threeFiveSevenViewTransferCursor,
+    ],
+  );
   const threeFiveSevenWaveContextId =
     threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
       ? `${threeFiveSevenHandContextId}#r${currentRound}`
@@ -4482,10 +4554,6 @@ export const MobileGameTable = ({
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
     );
-    const movesPlayerToPlayer = batch.transfers.some(
-      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
-    );
-
     if (gameType === 'holm-game') {
       const dealerGameId = holmPresentationIdentity?.dealerGameId ?? null;
       if (holmAdmittedTransferDealerGameRef.current !== dealerGameId) {
@@ -4538,6 +4606,12 @@ export const MobileGameTable = ({
         retainedThreeFiveSevenRolloverPresentation,
       );
       if (playerToPotAdmission != null) return playerToPotAdmission;
+      const showdownAdmission = getThreeFiveSevenShowdownTransferAdmission(
+        batch,
+        threeFiveSevenShowdownPresentation,
+        threeFiveSevenDelayedShowdownPresentationKey,
+      );
+      if (showdownAdmission != null) return showdownAdmission;
       // Normal final-leg settlement publishes the reserve return as an
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
@@ -4551,13 +4625,6 @@ export const MobileGameTable = ({
       }
       if (movesPotToPlayer) {
         return threeFiveSevenWinPhase === 'pot-to-player';
-      }
-      if (movesPlayerToPlayer && batch.reason === 'transfer') {
-        return (
-          chipTransferWinnerId !== null &&
-          chipTransferLoserIds.length > 0 &&
-          chipTransferAmount > 0
-        );
       }
       return true;
     }
@@ -4582,12 +4649,11 @@ export const MobileGameTable = ({
     lastRoundResult,
     retainedThreeFiveSevenAllFoldPresentation,
     retainedThreeFiveSevenRolloverPresentation,
+    threeFiveSevenShowdownPresentation,
+    threeFiveSevenDelayedShowdownPresentationKey,
     normal357SweepCreditCheckpoint,
     normal357SweepDescriptor,
     threeFiveSevenWinPhase,
-    chipTransferWinnerId,
-    chipTransferLoserIds,
-    chipTransferAmount,
     horsesWinPotTriggerId,
   ]);
   const onChipTransferPresentationBatchStarted = useCallback((batch: ChipPresentationBatch) => {
@@ -5241,6 +5307,29 @@ export const MobileGameTable = ({
     setHolmCommunityRevealAdmission(4);
   }, [isRabbitHuntRevealActive, handContextId]);
 
+  // Rabbit Hunt's tax and announcement remain concurrent with cards 3/4.
+  // Only continuation waits after the exact final-card receipt, preserving a
+  // short reading surface before the prepared successor can replace this hand.
+  useEffect(() => {
+    if (
+      !isRabbitHuntRevealActive
+      || !holmCommunityFullyRevealed
+      || !holmPresentationHandKey
+    ) return;
+    if (holmRabbitHuntPostRevealDwellCompleteHandKey === holmPresentationHandKey) return;
+
+    const timer = window.setTimeout(() => {
+      setHolmRabbitHuntPostRevealDwellCompleteHandKey(holmPresentationHandKey);
+    }, holmShowdownTiming.rabbitHuntPostReveal);
+    return () => window.clearTimeout(timer);
+  }, [
+    holmCommunityFullyRevealed,
+    holmPresentationHandKey,
+    holmRabbitHuntPostRevealDwellCompleteHandKey,
+    holmShowdownTiming.rabbitHuntPostReveal,
+    isRabbitHuntRevealActive,
+  ]);
+
   // The explicit all-fold result is the authoritative Rabbit Hunt identity.
   // Do not let mutable player-decision or solo-presentation latches suppress
   // its icon after settlement has already committed the four-card reveal.
@@ -5441,6 +5530,51 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const threeFiveSevenViewerStayed = currentPlayer?.current_decision === 'stay';
+  const threeFiveSevenShowdownFaceReadyPlayerIds =
+    threeFiveSevenShowdownPresentation?.stayedPlayerIds.filter(
+      (playerId) => isPlayerCardsExposed(playerId) && getPlayerCards(playerId).length > 0,
+    ) ?? [];
+  const threeFiveSevenShowdownRevealBoundaryReady =
+    isThreeFiveSevenOpponentRevealBoundaryReady({
+      presentation: threeFiveSevenShowdownPresentation,
+      viewerPlayerId: currentPlayer?.id,
+      viewerStayed: threeFiveSevenViewerStayed,
+      faceReadyPlayerIds: threeFiveSevenShowdownFaceReadyPlayerIds,
+    });
+
+  // The cache/exposure predicates above drive the same render that mounts the
+  // face-up opponent hands. One frame lets that render commit before starting
+  // the configurable reading dwell. The exact key prevents a predecessor's
+  // timer from admitting a later round or transfer cursor.
+  useEffect(() => {
+    const presentation = threeFiveSevenShowdownPresentation;
+    if (
+      !presentation?.revealAtShowdown
+      || !threeFiveSevenShowdownRevealBoundaryReady
+      || threeFiveSevenDelayedShowdownPresentationKey === presentation.key
+    ) return;
+
+    let cancelled = false;
+    let timer: number | null = null;
+    const frame = window.requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        if (!cancelled) {
+          setThreeFiveSevenDelayedShowdownPresentationKey(presentation.key);
+        }
+      }, threeFiveSevenShowdownDelayMs);
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    threeFiveSevenDelayedShowdownPresentationKey,
+    threeFiveSevenShowdownDelayMs,
+    threeFiveSevenShowdownPresentation,
+    threeFiveSevenShowdownRevealBoundaryReady,
+  ]);
   const normal357TerminalDescriptor =
     gameType !== 'holm-game' && threeFiveSevenTerminalDescriptor?.source === 'normal-win'
       ? threeFiveSevenTerminalDescriptor
@@ -7397,6 +7531,8 @@ export const MobileGameTable = ({
       resultPainted: holmAllFoldResultPaintedHandKey === holmPresentationHandKey,
       rabbitHuntRequired: isRabbitHuntRevealActive,
       rabbitRevealComplete: holmCommunityFullyRevealed,
+      rabbitPostRevealDwellComplete:
+        holmRabbitHuntPostRevealDwellCompleteHandKey === holmPresentationHandKey,
       pussyTaxSettled: pussyTaxSettledForPresentedHand,
     });
     if (!canComplete) return;
@@ -7420,6 +7556,7 @@ export const MobileGameTable = ({
     holmPresentationHandKey,
     holmPresentationIdentity,
     holmPussyTaxSettledCompletion,
+    holmRabbitHuntPostRevealDwellCompleteHandKey,
     isAllFoldRabbitHuntResult,
     isRabbitHuntRevealActive,
     lastRoundResult,
@@ -7766,6 +7903,14 @@ export const MobileGameTable = ({
     // bespoke 3-5-7 terminal sequence plays underneath.
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
+    if (
+      gameType === '3-5-7'
+      && threeFiveSevenShowdownPresentation
+      && !isThreeFiveSevenShowdownPresentationReady(
+        threeFiveSevenShowdownPresentation,
+        threeFiveSevenDelayedShowdownPresentationKey,
+      )
+    ) return;
     // Rabbit Hunt announces with its concurrent tax/reveal presentation. All
     // other Holm server results wait for community and any Chucky visual
     // reveal; the solo player's pre-Chucky hand call is emitted separately
@@ -7842,6 +7987,7 @@ export const MobileGameTable = ({
     allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
     currentRound, announcements, threeFiveSevenTerminalDescriptor, isSoloVsChucky, presentationPot,
     isAllFoldRabbitHuntResult, hasDedicatedThreeFiveSevenResultAnnouncement,
+    threeFiveSevenShowdownPresentation, threeFiveSevenDelayedShowdownPresentationKey,
   ]);
 
   // The server is allowed to settle a winning solo-vs-Chucky hand before the

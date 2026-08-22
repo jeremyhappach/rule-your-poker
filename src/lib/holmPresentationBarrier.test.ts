@@ -281,18 +281,32 @@ describe('Holm presented-hand barrier', () => {
       resultPainted: true,
       rabbitHuntRequired: true,
       rabbitRevealComplete: false,
+      rabbitPostRevealDwellComplete: false,
       pussyTaxSettled: true,
     };
     expect(canCompleteHolmAllFoldPresentation(base)).toBe(false);
     expect(canCompleteHolmAllFoldPresentation({
       ...base,
       rabbitRevealComplete: true,
+      rabbitPostRevealDwellComplete: true,
       pussyTaxSettled: false,
     })).toBe(false);
     expect(canCompleteHolmAllFoldPresentation({
       ...base,
       rabbitRevealComplete: true,
+      rabbitPostRevealDwellComplete: true,
     })).toBe(true);
+  });
+
+  it('holds next-hand continuation during the post-Rabbit reading dwell', () => {
+    expect(canCompleteHolmAllFoldPresentation({
+      result: 'Pussy Tax!',
+      resultPainted: true,
+      rabbitHuntRequired: true,
+      rabbitRevealComplete: true,
+      rabbitPostRevealDwellComplete: false,
+      pussyTaxSettled: true,
+    })).toBe(false);
   });
 
   it('completes no-penalty all-fold without inventing a transfer', () => {
@@ -301,6 +315,7 @@ describe('Holm presented-hand barrier', () => {
       resultPainted: true,
       rabbitHuntRequired: true,
       rabbitRevealComplete: true,
+      rabbitPostRevealDwellComplete: true,
       pussyTaxSettled: false,
     })).toBe(true);
   });

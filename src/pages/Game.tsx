@@ -879,6 +879,7 @@ function buildThreeFiveSevenSnapshot(
     currentTurnPosition: currentRound.current_turn_position ?? null,
     decisionDeadline: currentRound.decision_deadline,
     pot: gameData.pot ?? 0,
+    chipTransferCursor: gameData.chip_transfer_cursor ?? 0,
     lastRoundResult: gameData.last_round_result ?? null,
     awaitingNextRound: gameData.awaiting_next_round ?? false,
     buckPosition: gameData.buck_position ?? 0,
@@ -17362,7 +17363,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenAuthoritativeRoundId={is357GameType ? (currentRound?.id ?? null) : null}
               threeFiveSevenAuthoritativeRoundNumber={is357GameType ? (currentRound?.round_number ?? null) : null}
               threeFiveSevenViewRoundId={is357GameType ? (threeFiveSevenView?.roundId ?? null) : null}
+              threeFiveSevenViewHandNumber={is357GameType ? (threeFiveSevenView?.handNumber ?? null) : null}
               threeFiveSevenViewRoundNumber={is357GameType ? (threeFiveSevenView?.roundNumber ?? null) : null}
+              threeFiveSevenViewTransferCursor={is357GameType ? (threeFiveSevenView?.chipTransferCursor ?? null) : null}
               threeFiveSevenRolloverPresentation={is357GameType ? threeFiveSevenRolloverPresentation : null}
               threeFiveSevenAllFoldPresentation={is357GameType ? threeFiveSevenAllFoldPresentation : null}
               onThreeFiveSevenAllFoldPresentationComplete={is357GameType
