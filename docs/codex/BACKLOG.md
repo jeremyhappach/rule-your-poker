@@ -531,21 +531,40 @@ lifecycle work, not a 3-5-7 rule change.
   later `status='left'` stand-up. Initial/no-history Waiting rooms are expressly
   ineligible for the server reconciler, so a silent last-client departure there
   has no equivalent no-client cleanup owner.
-- Recommended correction: generalize the private forced-absence provenance to
-  any active seated human whose configurable safe-Waiting presence lease
-  expires. Default the active-player lease to 60 seconds, then retain a
-  separately configurable 15-second stand-up confirmation. A renewed heartbeat
-  must cancel the absence claim; a second expiry commits canonical Stand Up.
-  Preserve immediate explicit zero-active closure and voluntary Sitting Out
-  seat retention by applying this two-stage path only to absence-forced state.
-- After the last physical seat is released, the database owns disposition:
-  result-bearing real-money sessions use the existing snapshot-guarded,
-  exactly-once finalizer; result-bearing fake-money sessions enter
-  `session_ended` without financial rows. A no-history room may be deleted only
-  after the existing pristine-room evidence checks prove there are no results,
-  snapshots, transactions, dealer games, rounds, audits, hands, pot, active
-  dealer-game identity, or nonzero player chips; inconsistent evidence is
-  preserved and reported rather than guessed away.
+- Clarified subsequent-Waiting contract: this applies only after a dealer game
+  has produced history, `games.status` is `waiting`/`waiting_for_players`, and
+  `current_game_uuid` is null. A timer-forced Sitting Out human who then has no
+  heartbeat for 15 seconds is stood up. A voluntarily Sitting Out human is
+  stood up after 60 seconds without a heartbeat. An active human is marked
+  involuntarily Sitting Out after 60 seconds without a heartbeat, receives a
+  private exact-player absence claim, and is stood up after another 15 seconds
+  without a heartbeat.
+- A database-stamped heartbeat resets the applicable elapsed lease; delayed
+  scheduler execution must not create or forgive misses. If a heartbeat returns
+  during a timer-forced player's stand-up confirmation, retire the claim but
+  retain Sitting Out because the missed gameplay/setup timer still governs
+  participation. If it returns during a presence-only active-player demotion,
+  retire the claim and restore active participation because that Sitting Out
+  state was never the player's choice.
+- Subsequent-session disposition is based on physical human seats, not active
+  eligibility: a human is seated when its row has a position and status is
+  neither `observer` nor `left`. Bots do not keep an abandoned human session
+  alive. Zero seated humans ends the session; result-bearing real-money uses the
+  existing snapshot-guarded exactly-once finalizer, while result-bearing fake-
+  money enters `session_ended` without financial rows. This intentionally
+  supersedes the prior zero-active behavior: one connected voluntary sitter
+  keeps the subsequent Waiting session open even if every other human stands.
+- Clarified initial-Waiting contract: no Sit Out action is available. Human
+  rows are active, seated, and waiting/ready; after 300 seconds without a
+  heartbeat they are stood up directly. Zero seated humans deletes the session
+  after the database asserts the pristine identity: no results, snapshots,
+  financial transactions, dealer games, rounds, audits, hands, pot, or active
+  dealer-game identity. The five-minute player lease is the deletion grace;
+  inconsistent evidence is preserved and reported rather than guessed away.
+- Standing up an absent session host while other humans remain must atomically
+  transfer `games.current_host` to the deterministic next seated human. A stale
+  host pointer must not leave a populated Waiting table with nobody authorized
+  to start it.
 - Preserve every live dealer-game, setup, ante, and terminal-presentation
   exclusion; the five-second indexed recovery scheduler; reconnect/fresh-mount
   terminal behavior; and the accepted one-seat owner through final animation.
