@@ -29,8 +29,14 @@ Date: 2026-08-22
   after installation, including winner, tie, replay, authorization, terminal,
   canonical timer, and full serialized recovery cases. Eighteen focused client
   assertions, the installed TypeScript compiler, all 35 build-required
-  Cribbage assertions, and the production Vite build pass. The published
-  candidate awaits repeat two-human production smoke before becoming stable.
+  Cribbage assertions, and the production Vite build pass. Jeremy accepted the
+  repeat two-human production smoke on 2026-08-22 at commit
+  `e1ee17935967d3408d419febfbc437a6c492ac84`: final-leg seat continuity,
+  config-timeout forced stand-up, and hidden-tab retention passed. Production
+  session `Aug 22 - Lake Avenue` then proved the absent survivor follows the
+  configured 300-second hidden lease and reached `session_ended` about five
+  minutes after its final hidden heartbeat. General absent-seat release and
+  pristine waiting-room cleanup remain a separate queued lifecycle correction.
 
 ## Player-v-player showdown financial pacing
 

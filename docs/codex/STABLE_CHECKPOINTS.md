@@ -210,6 +210,15 @@
 
 ## Sitting Out seat retention
 
+- The 3-5-7 disconnected-winner postgame correction passed repeat two-human
+  production smoke on 2026-08-22 at commit
+  `e1ee17935967d3408d419febfbc437a6c492ac84`. Preserve the single gameplay
+  seat owner through the final-leg award, the exact config-timeout forced-
+  absence watch, canonical stand-up after its confirmation lease, and hidden-
+  tab protection. `Aug 22 - Lake Avenue` subsequently reached
+  `session_ended` through the configured five-minute hidden lease; general
+  silent-departure seat release is separate queued lifecycle work and is not
+  part of this checkpoint.
 - The shared Sitting Out seat-retention correction passed smoke on 2026-08-09
   at commit `52abf4628b651ed899c0b178207972b4edbfec84`. A player who sits out
   remains seated in the relative-seat projection, while next-game eligibility
