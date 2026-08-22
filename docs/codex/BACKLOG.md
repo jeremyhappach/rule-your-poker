@@ -4,6 +4,35 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## P0 — release/correctness
 
+### 0PVP. 3-5-7 showdown and Holm Rabbit Hunt financial pacing
+
+Status: Completed and accepted in published two-human production smoke on
+2026-08-22 at commit `8d873a5b6`.
+Player-v-player work takes priority over bot follow-ups.
+
+- In a 3-5-7 multi-player showdown, the immutable player-to-player batch and
+  generic winner announcement are admitted directly from the authoritative
+  result metadata. Neither waits for the opponent proof-card surface to paint,
+  so chip flight can begin before the opponent cards reveal. When
+  `reveal_at_showdown` permits the viewer to see those cards, their visible
+  reveal must complete first; then hold the exact showdown for a configurable
+  2000 ms reading window before releasing both the canonical player-to-player
+  transfer and its announcement from the same gate. With
+  `reveal_at_showdown` disabled, add no reading delay: preserve the immediate
+  player-to-player transfer and result announcement without exposing cards.
+- In Holm Rabbit Hunt, the community row already reports an exact hand-scoped
+  final-card completion receipt. Preserve the current concurrent presentation:
+  the Pussy Tax player-to-pot animation and announcement release while Rabbit
+  Hunt cards 3 and 4 are revealing. After card 4 lands, apply a configurable
+  1000 ms dwell only to the exact all-fold continuation acknowledgement before
+  the next hand may replace the completed Rabbit Hunt surface.
+- Preserve PostgreSQL settlement and continuation authority, immutable transfer
+  cursors/balances, reveal consent, replay/reconnect behavior, all-fold result
+  paint, transfer-settlement acknowledgements, and every non-showdown transfer.
+  Timers are presentation cadence only and must reset across dealer-game,
+  hand, round, result, and transfer identities. The Holm dwell must not gate or
+  reorder its Pussy Tax financial batch or announcement.
+
 ### 0. Shared dealer configuration handoff can expose a torn ante phase
 
 Status: Database migration installed on 2026-08-17 and the approved high-risk

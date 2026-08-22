@@ -2,6 +2,16 @@
 
 ## Platform
 
+- Player-v-player showdown financial pacing passed published two-human
+  production smoke on 2026-08-22 at commit
+  `8d873a5b6971254da1ad9fbe5da2253d35d056a9`. In 3-5-7, Secret Reveal on
+  reveals permitted opponent cards and holds the configured reading dwell
+  before releasing the player-to-player transfer and announcement together;
+  Secret Reveal off remains immediate and exposes no cards. In Holm Rabbit
+  Hunt, Pussy Tax transfer and narration remain concurrent with the reveals,
+  while continuation holds for the configured dwell after the final card
+  lands. Preserve these exact presentation gates without moving settlement or
+  continuation authority out of PostgreSQL.
 - All seven games passed a clean published production smoke on 2026-08-21 at
   commit `8dd5e5b2d16e6304c89280e978c070ddd009b6d0`, using two human
   clients with Cross-Country Chaos enabled. This accepts the current end-to-end

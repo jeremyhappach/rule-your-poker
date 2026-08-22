@@ -27,8 +27,13 @@ Date: 2026-08-22
   both delays, and the Admin editor validates 0-10000 ms. The complete
   rollback proof passed before and after installation. Eight focused suites
   pass 88 assertions, the build-required 35 Cribbage assertions pass, and the
-  production Vite build succeeds. Production two-human smoke remains required
-  before this change becomes a stable checkpoint.
+  production Vite build succeeds. Jeremy accepted the published two-human
+  production smoke on 2026-08-22 at commit
+  `8d873a5b6971254da1ad9fbe5da2253d35d056a9`: Secret Reveal on preserved the
+  opponent-card reveal and configured reading dwell before transfer, Secret
+  Reveal off remained immediate, and Holm preserved concurrent Pussy Tax
+  presentation plus the post-Rabbit-Hunt continuation dwell. This is now a
+  stable checkpoint.
 
 ## All-games dual-human Cross-Country Chaos checkpoint
 
