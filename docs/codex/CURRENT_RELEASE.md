@@ -2,6 +2,33 @@
 
 Date: 2026-08-22
 
+## Ante-decision Sit Out client identity continuity
+
+- Published human-client smoke reported that **Sit Out** on the ante-decision
+  dialog could appear to do nothing. Production runtime logs contained no
+  matching server exception, and a rollback-only production proof confirmed
+  that the installed `submit_ante_decision` RPC still atomically accepts a
+  voluntary Sit Out, marks the player Sitting Out, and performs the normal
+  database-owned continuation. No proof rows persisted.
+- The client dialog had split admission identity: its eligibility effect used a
+  fresh player query, while its render/submission could fall back to the older
+  route roster or an empty player id. The exact fresh player/dealer-game
+  identity now owns dialog visibility and submission together. An accepted
+  action closes the dialog; a lagging route roster receives one exact
+  authoritative refetch.
+- While either decision is in flight, the clicked action visibly reads
+  `Submitting…` and both choices are disabled. Stale identity, deadline expiry,
+  changed eligibility, pause, authorization, and RPC errors now display an
+  explanation and trigger one authoritative reconciliation instead of silently
+  reopening. Database ante authority, expiry, game startup/continuation, all
+  seven game types, auto-ante preferences, and waiting-presence rules are
+  unchanged.
+- Nine focused assertions pass for accepted/duplicate Sit Out, stale route
+  identity, deadline expiry, RPC failure, and source ownership. The installed
+  TypeScript compiler, all 35 build-required Cribbage assertions, and the
+  production Vite build pass. Published human-client Sit Out smoke remains the
+  acceptance gate.
+
 ## Waiting-table presence and abandoned-seat release
 
 - Waiting-table cleanup is now phase-specific and based on physical human

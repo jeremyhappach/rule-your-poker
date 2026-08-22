@@ -456,6 +456,13 @@ interface Player {
   };
 }
 
+interface AnteDialogIdentity {
+  dealerGameId: string;
+  playerId: string;
+  autoAnte: boolean;
+  autoAnteRunback: boolean;
+}
+
 /**
  * F5.1/F4.2: Read the `all_decisions_in` flag identity-scoped to a specific
  * round id. The raw `games.all_decisions_in` boolean can persist across hand/
@@ -1222,7 +1229,8 @@ const Game = () => {
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
-  const [showAnteDialog, setShowAnteDialog] = useState(false);
+  const [anteDialogIdentity, setAnteDialogIdentity] = useState<AnteDialogIdentity | null>(null);
+  const showAnteDialog = anteDialogIdentity !== null;
   
   // ── Ante latch: prevents modal re-show after confirm within same dealerGame ──
   const anteConfirmedLatchRef = useRef<string | null>(null); // stores "gameId|dealerGameId|playerId"
@@ -5891,7 +5899,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .eq('id', freshCurrentPlayer.id);
           
           console.log('[ANTE DIALOG] Auto-ante complete');
-          setShowAnteDialog(false);
+          setAnteDialogIdentity(null);
           return;
         }
         
@@ -5926,7 +5934,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
-          setShowAnteDialog(true);
+          setAnteDialogIdentity({
+            dealerGameId: game.current_game_uuid,
+            playerId: freshCurrentPlayer.id,
+            autoAnte: !!freshCurrentPlayer.auto_ante,
+            autoAnteRunback: !!freshCurrentPlayer.auto_ante_runback,
+          });
           // ── HANDOFF TRACE #5a: ante modal SHOWN ──
           emitCribbageHandoffTrace({
             gameId: gameId!,
@@ -5955,7 +5968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isDealer,
             sittingOut: freshCurrentPlayer?.sitting_out
           });
-          setShowAnteDialog(false);
+          setAnteDialogIdentity(null);
           // ── HANDOFF TRACE #5b: ante modal HIDDEN (not eligible) ──
           emitCribbageHandoffTrace({
             gameId: gameId!,
@@ -5977,7 +5990,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         noUser: !user,
         actualStatus: game?.status
       });
-      setShowAnteDialog(false);
+      setAnteDialogIdentity(null);
       
       // ── Reset ante latch when status leaves ante_decision ──
       if (game?.status !== 'ante_decision' && anteConfirmedLatchRef.current !== null) {
@@ -17477,9 +17490,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </PlayfieldSlotController>
         )}
 
-        {game.status === 'ante_decision' && showAnteDialog && user &&
+        {game.status === 'ante_decision' && showAnteDialog && anteDialogIdentity && user &&
           game.ante_amount !== undefined && isRunningItBack !== null &&
           !!game.current_game_uuid && !!game.ante_decision_deadline &&
+          anteDialogIdentity.dealerGameId === game.current_game_uuid &&
           new Date(game.ante_decision_deadline).getTime() > Date.now() && (() => {
           logDebugEvent({
             gameId: gameId!,
@@ -17493,12 +17507,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               anteAmount: game.ante_amount,
             },
           });
-          const currentPlayer = players.find(p => p.user_id === user.id);
+          const exactAnteIdentity = anteDialogIdentity;
           return (
             <AnteUpDialog
+              key={`${gameId}|${exactAnteIdentity.dealerGameId}|${exactAnteIdentity.playerId}`}
               gameId={gameId!}
-              dealerGameId={game.current_game_uuid!}
-              playerId={currentPlayer?.id || ''}
+              dealerGameId={exactAnteIdentity.dealerGameId}
+              playerId={exactAnteIdentity.playerId}
               gameType={game.game_type}
               anteAmount={game.ante_amount}
               legValue={game.leg_value ?? 0}
@@ -17509,17 +17524,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               potMaxValue={game.pot_max_value || 10}
               chuckyCards={game.chucky_cards}
               isRunningItBack={isRunningItBack}
-              autoAnte={currentPlayer?.auto_ante ?? false}
-              autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
+              autoAnte={exactAnteIdentity.autoAnte}
+              autoAnteRunback={exactAnteIdentity.autoAnteRunback}
               anteDecisionDeadline={game.ante_decision_deadline!}
               onDecisionMade={(decision) => {
                 // ── Set latch BEFORE hiding so transient server regression cannot re-trigger ──
-                const currentPlayer = players.find(p => p.user_id === user.id);
-                const latchKey = `${gameId}|${game.current_game_uuid ?? ''}|${currentPlayer?.id ?? ''}`;
+                const currentPlayer = players.find(p => p.id === exactAnteIdentity.playerId);
+                const latchKey = `${gameId}|${exactAnteIdentity.dealerGameId}|${exactAnteIdentity.playerId}`;
                 anteConfirmedLatchRef.current = latchKey;
                 console.log('[ANTE LATCH] Set:', latchKey);
-                
-                setShowAnteDialog(false);
+
+                setAnteDialogIdentity(null);
 
                 // ISSUE 2 FIX: optimistic local merge — immediately reflect the
                 // dealer's own ante decision in local players state, and if all
@@ -17556,6 +17571,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       .catch((error) => console.warn('[ANTE SUBMIT] Database advance failed', error))
                       .finally(() => { anteProcessingRef.current = false; });
                   }
+                } else if (decision) {
+                  // The dialog may have been admitted from its fresh player
+                  // snapshot before the route roster caught up. The accepted
+                  // RPC is authoritative; one exact refetch repairs that lag.
+                  void fetchGameData('manual');
                 }
 
                 // ── HANDOFF TRACE #5c: ante modal CONFIRMED (decision made) ──
@@ -17570,6 +17590,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     latchKey,
                   },
                 });
+              }}
+              onDecisionRejected={async (outcome, error) => {
+                console.warn('[ANTE SUBMIT] Decision rejected; reconciling authoritative state', {
+                  gameId,
+                  dealerGameId: exactAnteIdentity.dealerGameId,
+                  playerId: exactAnteIdentity.playerId,
+                  outcome,
+                  error,
+                });
+                await fetchGameData('manual');
               }}
 
             />

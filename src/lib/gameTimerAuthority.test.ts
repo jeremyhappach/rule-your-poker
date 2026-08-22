@@ -15,7 +15,7 @@ describe('canonical game timer ownership', () => {
   it('admits exact timer identities through the serialized database dispatcher', () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS private.game_timer_registry');
     expect(migration).toContain("WHEN 'canonical_timers' THEN");
-    expect(migration).toContain("'three_five_seven',\n    'horses_scc'");
+    expect(migration).toMatch(/'three_five_seven',\r?\n    'horses_scc'/);
     expect(migration).toContain('Future-only cutover admission');
     expect(migration).toContain('game_row.config_deadline>v_cutover');
   });
@@ -31,6 +31,11 @@ describe('canonical game timer ownership', () => {
     expect(anteSource).toContain('submitAnteDecision({');
     expect(anteSource).toContain('new Date(anteDecisionDeadline).getTime() - Date.now()');
     expect(anteSource).not.toContain('timeLeft <= 0 && !hasDecided');
+    expect(gameSource).toContain('setAnteDialogIdentity({');
+    expect(gameSource).toContain('playerId: freshCurrentPlayer.id');
+    expect(gameSource).toContain('playerId={exactAnteIdentity.playerId}');
+    expect(gameSource).not.toContain("playerId={currentPlayer?.id || ''}");
+    expect(anteSource).toContain("await onDecisionRejected(outcome, error)");
     expect(gameSource).toContain('const hasLiveConfigDeadline =');
     expect(gameSource).toContain('advanceSessionDealerSelection(gameId)');
     expect(gameSource).toContain('await setGamePaused(gameId, newPausedState)');

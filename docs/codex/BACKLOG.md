@@ -4,6 +4,34 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## P0 — release/correctness
 
+### 0ANTE. Ante-decision Sit Out can silently no-op
+
+Status: Approved correction implemented and locally validated on 2026-08-22;
+published human-client smoke remains the acceptance gate.
+
+- Jeremy reported that clicking **Sit Out** on the ante-decision dialog produced
+  no visible action. Expected behavior is one authoritative voluntary
+  `sit_out` decision, immediate dialog dismissal, and normal database-owned
+  continuation or return to Waiting when too few players ante.
+- Production Vercel/PostgreSQL logs contained no matching runtime exception.
+  A rollback-only production proof passed after the waiting-presence migration:
+  `submit_ante_decision` accepted the voluntary choice, set
+  `ante_decision='sit_out'` plus `sitting_out=true`, and returned the two-player
+  fake-money session to Waiting. The proof persisted no rows.
+- The client has a split identity boundary. `Game.tsx` decides to show the
+  dialog from a fresh `players` query, but later renders `AnteUpDialog` with the
+  player id from the older route roster (or an empty string when that roster is
+  behind). `AnteUpDialog` then silently reopens on every RPC exception or
+  non-success outcome, so a stale/empty actor identity appears to do nothing.
+- Minimal correction: carry the exact fresh eligible player/dealer-game
+  identity into the rendered dialog and refuse to render without it; reconcile
+  stale/deadline/ineligible RPC outcomes from an immediate authoritative
+  refresh instead of silently reopening. Preserve the atomic authenticated
+  ante RPC, database-owned phase continuation, timer expiry, auto-ante settings,
+  dealer auto-ante, all seven games, and the new waiting-presence rules. Add
+  focused coverage for a route-roster lag/missing player, voluntary Sit Out,
+  duplicate response, stale phase/deadline, and an actual RPC error.
+
 ### 0PVP. 3-5-7 showdown and Holm Rabbit Hunt financial pacing
 
 Status: Completed and accepted in published two-human production smoke on

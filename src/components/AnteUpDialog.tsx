@@ -27,6 +27,7 @@ interface AnteUpDialogProps {
   autoAnteRunback?: boolean;
   anteDecisionDeadline: string;
   onDecisionMade: (decision?: 'ante_up' | 'sit_out') => void;
+  onDecisionRejected: (outcome: string, error?: unknown) => Promise<void> | void;
 }
 
 export const AnteUpDialog = ({
@@ -47,6 +48,7 @@ export const AnteUpDialog = ({
   autoAnteRunback = false,
   anteDecisionDeadline,
   onDecisionMade,
+  onDecisionRejected,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
   const isHorsesGame = gameType === 'horses';
@@ -71,6 +73,8 @@ export const AnteUpDialog = ({
   );
   const [timeLeft, setTimeLeft] = useState(secondsUntilDeadline);
   const [hasDecided, setHasDecided] = useState(false);
+  const [submittingDecision, setSubmittingDecision] = useState<'ante_up' | 'sit_out' | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
   const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);
 
@@ -119,8 +123,19 @@ export const AnteUpDialog = ({
     return () => clearInterval(timer);
   }, [anteDecisionDeadline]);
 
+  const reconcileRejectedDecision = async (outcome: string, error?: unknown) => {
+    try {
+      await onDecisionRejected(outcome, error);
+    } catch (reconcileError) {
+      console.error('Failed to reconcile rejected ante decision:', reconcileError);
+      setSubmissionError('The ante decision was not accepted and table state could not be refreshed. Please try again.');
+    } finally {
+      setSubmittingDecision(null);
+    }
+  };
+
   const handleAnteUp = async () => {
-    if (hasDecided) return;
+    if (hasDecided || submittingDecision) return;
     logDebugEvent({
       gameId,
       userId: playerId,
@@ -131,7 +146,8 @@ export const AnteUpDialog = ({
         timeLeft,
       },
     });
-    setHasDecided(true);
+    setSubmittingDecision('ante_up');
+    setSubmissionError(null);
 
     try {
       const result = await submitAnteDecision({
@@ -143,15 +159,19 @@ export const AnteUpDialog = ({
         autoAnteRunback: localAutoAnteRunback,
       });
       if (!['accepted', 'already_decided'].includes(result.outcome ?? '')) {
-        setHasDecided(false);
+        const outcome = result.outcome ?? 'unknown';
+        setSubmissionError(getSubmissionError(outcome));
+        await reconcileRejectedDecision(outcome);
         return;
       }
     } catch (error) {
       console.error('Failed to ante up:', error);
-      setHasDecided(false);
+      setSubmissionError('Your ante decision could not be submitted. Table state was refreshed; please try again.');
+      await reconcileRejectedDecision('rpc_error', error);
       return;
     }
 
+    setHasDecided(true);
     onDecisionMade('ante_up');
 
   };
@@ -193,7 +213,7 @@ export const AnteUpDialog = ({
   };
 
   const handleSitOut = async () => {
-    if (hasDecided) return;
+    if (hasDecided || submittingDecision) return;
     logDebugEvent({
       gameId,
       userId: playerId,
@@ -205,7 +225,8 @@ export const AnteUpDialog = ({
         wasAutoTimeout: timeLeft <= 0,
       },
     });
-    setHasDecided(true);
+    setSubmittingDecision('sit_out');
+    setSubmissionError(null);
 
     try {
       const result = await submitAnteDecision({
@@ -217,15 +238,19 @@ export const AnteUpDialog = ({
         autoAnteRunback: localAutoAnteRunback,
       });
       if (!['accepted', 'already_decided'].includes(result.outcome ?? '')) {
-        setHasDecided(false);
+        const outcome = result.outcome ?? 'unknown';
+        setSubmissionError(getSubmissionError(outcome));
+        await reconcileRejectedDecision(outcome);
         return;
       }
     } catch (error) {
       console.error('Failed to sit out:', error);
-      setHasDecided(false);
+      setSubmissionError('Sit Out could not be submitted. Table state was refreshed; please try again.');
+      await reconcileRejectedDecision('rpc_error', error);
       return;
     }
 
+    setHasDecided(true);
     console.log('Sitting out this game');
     onDecisionMade('sit_out');
 
@@ -294,20 +319,28 @@ export const AnteUpDialog = ({
           <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={handleAnteUp}
+              disabled={submittingDecision !== null}
               size="lg"
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
-              Ante Up! 💰
+              {submittingDecision === 'ante_up' ? 'Submitting…' : 'Ante Up! 💰'}
             </Button>
             <Button
               onClick={handleSitOut}
+              disabled={submittingDecision !== null}
               size="lg"
               variant="destructive"
               className="font-bold"
             >
-              Sit Out 🪑
+              {submittingDecision === 'sit_out' ? 'Submitting…' : 'Sit Out 🪑'}
             </Button>
           </div>
+
+          {submissionError && (
+            <p role="alert" className="text-sm font-medium text-destructive">
+              {submissionError}
+            </p>
+          )}
           
           {/* Auto-ante options */}
           <div className="flex flex-col gap-3 pt-2 border-t border-border">
@@ -342,3 +375,20 @@ export const AnteUpDialog = ({
     </Dialog>
   );
 };
+
+function getSubmissionError(outcome: string): string {
+  switch (outcome) {
+    case 'deadline_expired':
+      return 'The ante window closed before the decision arrived. Table state was refreshed.';
+    case 'stale_identity':
+      return 'The game changed before the decision arrived. Table state was refreshed.';
+    case 'player_ineligible':
+      return 'Your seat status changed before the decision arrived. Table state was refreshed.';
+    case 'paused':
+      return 'The game is paused. Try again when play resumes.';
+    case 'not_authorized':
+      return 'Your player identity could not be verified. Table state was refreshed.';
+    default:
+      return 'The ante decision was not accepted. Table state was refreshed; please try again.';
+  }
+}
