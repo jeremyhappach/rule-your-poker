@@ -10,85 +10,54 @@
  *   - cross_country    : ~250ms ± 100ms + occasional 1.2s spikes
  *
  * SAFETY:
- *   - Never mutates payload contents, only delays delivery to the local handler.
+ *   - Never mutates payload contents or retries writes.
  *   - When mode === 'off', `simulateRealtime` calls callback synchronously (no allocation).
  *   - Always-visible UI indicator surfaces the active mode.
  *   - Server logic is untouched.
  */
 import { supabase } from '@/integrations/supabase/client';
 import {
-  chaosDeliver,
+  getActiveChaosProfile,
   startChaosSession,
   stopChaosSession,
+  subscribeChaosEvents,
   updateChaosRole,
   type ChaosClientRole,
 } from './networkSimChaos';
+import {
+  getNetworkSimRuntime,
+  NETWORK_SIM_MODE_LABELS,
+  NETWORK_SIM_PROFILES,
+  updateNetworkSimRuntime,
+  type NetworkSimMode,
+  type NetworkSimRuntimeState,
+} from './networkSimRuntime';
 
-export type NetworkSimMode =
-  | 'off'
-  | 'moderate'
-  | 'heavy'
-  | 'reorder'
-  | 'cross_country'
-  | 'cross_country_chaos';
+export { NETWORK_SIM_MODE_LABELS } from './networkSimRuntime';
+export type { NetworkSimMode } from './networkSimRuntime';
 
-export const NETWORK_SIM_MODE_LABELS: Record<NetworkSimMode, string> = {
-  off: 'Off',
-  moderate: 'Moderate Lag',
-  heavy: 'Heavy Lag',
-  reorder: 'Reorder/Burst',
-  cross_country: 'Cross-Country',
-  cross_country_chaos: 'Cross-Country Chaos',
-};
+let anonymousClientKey: string | null = null;
 
-interface ModeProfile {
-  baseMs: number;
-  jitterMs: number;
-  spikeChance: number; // 0..1
-  spikeMs: number;
-}
-
-const PROFILES: Record<NetworkSimMode, ModeProfile> = {
-  off:           { baseMs: 0,   jitterMs: 0,   spikeChance: 0,    spikeMs: 0 },
-  moderate:      { baseMs: 150, jitterMs: 75,  spikeChance: 0,    spikeMs: 0 },
-  heavy:         { baseMs: 500, jitterMs: 250, spikeChance: 0,    spikeMs: 0 },
-  reorder:       { baseMs: 0,   jitterMs: 600, spikeChance: 0,    spikeMs: 0 },
-  cross_country: { baseMs: 250, jitterMs: 100, spikeChance: 0.10, spikeMs: 1200 },
-  // chaos delivery bypasses PROFILES — see chaosDeliver().
-  cross_country_chaos: { baseMs: 0, jitterMs: 0, spikeChance: 0, spikeMs: 0 },
-};
-
-// ── Global runtime state (set by NetworkSimProvider) ──────────────
-interface RuntimeState {
-  mode: NetworkSimMode;
-  loggingEnabled: boolean;
-  userId: string | null;
-  gameId: string | null;
-  roundId: string | null;
-  handNumber: number | null;
-}
-
-const state: RuntimeState = {
-  mode: 'off',
-  loggingEnabled: false,
-  userId: null,
-  gameId: null,
-  roundId: null,
-  handNumber: null,
-};
-
-export function configureNetworkSim(partial: Partial<RuntimeState>): void {
-  const prevMode = state.mode;
-  Object.assign(state, partial);
+export function configureNetworkSim(partial: Partial<NetworkSimRuntimeState>): void {
+  const previous = getNetworkSimRuntime();
+  const prevMode = previous.mode;
+  updateNetworkSimRuntime(partial);
+  const state = getNetworkSimRuntime();
   const nextMode = state.mode;
   if (prevMode !== nextMode) {
     if (nextMode === 'cross_country_chaos') {
       const seedStr = typeof window !== 'undefined' ? window.localStorage.getItem('ptp_chaos_seed') : null;
       const seed = seedStr ? Number(seedStr) >>> 0 : undefined;
-      const clientKey = state.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
+      anonymousClientKey ??= `anon-${Math.random().toString(36).slice(2, 10)}`;
+      const clientKey = state.userId ?? anonymousClientKey;
       startChaosSession({ seed, clientKey });
     } else if (prevMode === 'cross_country_chaos') {
       stopChaosSession();
+    }
+  } else if (nextMode === 'cross_country_chaos') {
+    const activeProfile = getActiveChaosProfile();
+    if (state.userId && activeProfile && activeProfile.clientKey !== state.userId) {
+      startChaosSession({ seed: activeProfile.seed, clientKey: state.userId, role: activeProfile.role });
     }
   }
 }
@@ -99,11 +68,11 @@ export function setChaosClientRole(role: ChaosClientRole): void {
 }
 
 export function getNetworkSimMode(): NetworkSimMode {
-  return state.mode;
+  return getNetworkSimRuntime().mode;
 }
 
 export function isNetworkSimActive(): boolean {
-  return state.mode !== 'off';
+  return getNetworkSimRuntime().mode !== 'off';
 }
 
 // ── Logging (batched) ─────────────────────────────────────────────
@@ -141,6 +110,7 @@ function scheduleLogFlush(): void {
 }
 
 function logEvent(eventType: string, source: string, originalTs: number, deliveryTs: number, summary: Record<string, unknown>): void {
+  const state = getNetworkSimRuntime();
   if (!state.loggingEnabled || !state.userId) return;
   logQueue.push({
     user_id: state.userId,
@@ -183,17 +153,20 @@ function summarizePayload(payload: unknown): Record<string, unknown> {
  */
 export function simulateRealtime<T>(source: string, callback: (payload: T) => void): (payload: T) => void {
   return (payload: T) => {
+    const state = getNetworkSimRuntime();
     const mode = state.mode;
     if (mode === 'off') {
       callback(payload);
       return;
     }
     if (mode === 'cross_country_chaos') {
-      chaosDeliver(source, payload, callback);
+      // Chaos is already applied to the shared Supabase transport. Applying it
+      // again here would double-delay the selected callbacks this wrapper owns.
+      callback(payload);
       return;
     }
 
-    const profile = PROFILES[mode];
+    const profile = NETWORK_SIM_PROFILES[mode];
     const originalTs = Date.now();
     const jitter = profile.jitterMs > 0 ? Math.floor(Math.random() * profile.jitterMs) : 0;
     const spike = profile.spikeChance > 0 && Math.random() < profile.spikeChance ? profile.spikeMs : 0;
@@ -221,3 +194,11 @@ export function simulateRealtime<T>(source: string, callback: (payload: T) => vo
     }, totalDelay);
   };
 }
+
+subscribeChaosEvents((event) => {
+  logEvent(event.type, event.source ?? 'chaos', event.ts, Date.now(), {
+    cycleIndex: event.cycleIndex,
+    phaseIndex: event.phaseIndex,
+    ...event.detail,
+  });
+});

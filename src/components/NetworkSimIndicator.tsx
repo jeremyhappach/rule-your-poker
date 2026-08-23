@@ -4,9 +4,10 @@
  *
  * UI-only consolidation — no simulation logic changes.
  */
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useNetworkSim } from '@/hooks/useNetworkSim';
 import { NETWORK_SIM_MODE_LABELS } from '@/lib/networkSim';
+import { getChaosStatus, subscribeChaosStatus } from '@/lib/networkSimChaos';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
@@ -16,6 +17,7 @@ const MODE_ORDER: Array<{ key: string; label: string }> = [
   { key: 'heavy', label: 'Heavy Lag' },
   { key: 'reorder', label: 'Reorder / Burst' },
   { key: 'cross_country', label: 'Cross-Country' },
+  { key: 'cross_country_chaos', label: 'Cross-Country Chaos' },
 ];
 
 function shortMode(mode: string): string {
@@ -28,6 +30,8 @@ function shortMode(mode: string): string {
       return 'ROR';
     case 'cross_country':
       return 'XCO';
+    case 'cross_country_chaos':
+      return 'XCC';
     default:
       return mode.toUpperCase().slice(0, 3);
   }
@@ -35,6 +39,7 @@ function shortMode(mode: string): string {
 
 export function NetworkSimIndicator() {
   const { mode, loggingEnabled } = useNetworkSim();
+  const chaosStatus = useSyncExternalStore(subscribeChaosStatus, getChaosStatus, getChaosStatus);
   const [expanded, setExpanded] = useState(false);
   const inTray = useInDebugTray();
   const pillEnabled = useDebugPillEnabled('networkSim');
@@ -126,6 +131,11 @@ export function NetworkSimIndicator() {
         <div className="mb-1" style={{ fontWeight: 700, color: 'hsl(0 84% 65%)' }}>
           Mode: {NETWORK_SIM_MODE_LABELS[mode]}
         </div>
+        {mode === 'cross_country_chaos' && chaosStatus.active ? (
+          <div className="mb-1 text-muted-foreground">
+            Cycle {chaosStatus.cycleIndex + 1} · {chaosStatus.phaseKind} · {chaosStatus.clientClass}
+          </div>
+        ) : null}
         {loggingEnabled && (
           <div className="mb-1" style={{ color: 'hsl(0 84% 65%)' }}>
             Logging enabled

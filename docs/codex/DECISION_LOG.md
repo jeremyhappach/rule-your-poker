@@ -1118,3 +1118,21 @@ A true dealer-game/round/hand identity boundary outranks every within-hand
 presentation latch. Solo and Chucky caches, reveal counters, ownership refs,
 and admission stages must hard-reset even if the prior reveal was incomplete;
 no cosmetic artifact may cross into the prepared successor.
+
+## D-080 - Cross-country testing impairs the shared transport continuously
+
+Cross-Country Chaos belongs beneath the shared Supabase client, not in selected
+game callback wrappers. It must affect every HTTP request and every Realtime
+channel on that client with one deterministic, client-specific, continuously
+cycling schedule. An offline phase closes the actual Realtime socket so normal
+channel status, resubscribe, and authoritative snapshot recovery are exercised.
+Radio stalls may hold inbound delivery, but WebSocket message order remains the
+order provided by the socket.
+
+The harness may fail an HTTP operation only before delegating it and may never
+retry writes. This preserves the database as gameplay and financial authority
+and prevents the test tool itself from creating duplicate mutations. Profile
+control and simulation telemetry bypass impairment so Chaos remains observable
+and locally reversible even during its own offline phase. The harness may expose
+phase/cycle status, but it may not add a polling owner, fabricate state, advance
+gameplay, or replace the existing reconnect snapshot path.

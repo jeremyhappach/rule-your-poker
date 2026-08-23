@@ -2,6 +2,29 @@
 
 Date: 2026-08-23
 
+## Continuous Cross-Country Chaos transport harness
+
+- Cross-Country Chaos now runs below the shared Supabase client instead of
+  wrapping only selected game callbacks. Every Supabase HTTP request and every
+  Realtime channel on the client therefore experiences the same long-haul
+  conditions used during the run.
+- A seeded client-specific cycle continuously repeats healthy latency,
+  long-haul lag, heavy jitter, a bounded radio stall, recovery, a true offline
+  interval, reconnect recovery, and another healthy interval. The old finite
+  approximately 90-second schedule can no longer stop on its last impairment.
+- Offline physically closes the Supabase WebSocket and defers reconnect attempts
+  until recovery, exercising the existing `CHANNEL_ERROR`/`CLOSED`, resubscribe,
+  and authoritative snapshot catch-up owners. WebSocket frame order is retained;
+  the harness does not invent a transport behavior TCP cannot produce.
+- HTTP failures occur only before a request is sent, and the harness never
+  retries writes, preventing simulation from creating duplicate or ambiguous
+  financial mutations. Profile-control and simulation-telemetry requests bypass
+  impairment so an affected client can always turn the harness off.
+- Twelve focused assertions cover deterministic replay, required phase coverage,
+  continuous cycling, offline/recovery status, socket closure and deferred
+  reconnect, fail-before-send requests, exactly-once write delegation, shared
+  Supabase wiring, and preservation of the reconnect snapshot owner.
+
 ## Cross-game freeze hardening
 
 - Production evidence from the Aug 22 real-money session isolated four

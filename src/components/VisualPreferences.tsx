@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Palette, Volume2, Vibrate, Wifi } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode, useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { NetworkSimMode, NETWORK_SIM_MODE_LABELS } from '@/lib/networkSim';
+import { useNetworkSim } from '@/hooks/useNetworkSim';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -33,6 +34,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   // call, the provider only re-fetches on userId change, and the user's
   // newly-saved card-back preference stays stale across the app.
   const { refreshPreferences } = useVisualPreferences();
+  const { refresh: refreshNetworkSim } = useNetworkSim();
   const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
@@ -86,7 +88,9 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
     } else {
       // Refresh the shared provider so every CanonicalCardBack /
       // table-felt consumer picks up the new colors immediately.
-      await refreshPreferences();
+      // The profile control request bypasses the impairment layer, so this
+      // explicit refresh can always disable Chaos even during an offline phase.
+      await Promise.all([refreshPreferences(), refreshNetworkSim()]);
       toast.success('Preferences saved');
       onSave?.();
     }
@@ -272,7 +276,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         </div>
         <p className="text-xs text-muted-foreground">
           Simulate cross-country / poor-network conditions on this client only.
-          Server logic is unaffected. A red banner appears bottom-left whenever simulation is on.
+          Chaos continuously affects every Supabase request and Realtime channel,
+          including radio stalls and socket reconnects. Server logic is unaffected.
         </p>
 
         <div className="space-y-2">
@@ -291,7 +296,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Off · Moderate (~150ms) · Heavy (~500ms) · Reorder/Burst · Cross-Country (~250ms + spikes)
+            Off · Moderate (~150ms) · Heavy (~500ms) · Reorder/Burst · Cross-Country · Continuous Chaos
           </p>
         </div>
 

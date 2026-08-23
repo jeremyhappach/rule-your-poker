@@ -482,7 +482,14 @@ display-only for the Admin surface.
 Per-user network simulation is a separate transport concern.
 `src/hooks/useNetworkSim.tsx` reads `profiles.network_sim_mode` and
 `network_sim_logging`, applies them through `src/lib/networkSim.ts`, and does
-not consult the game-rule `harnesses_mode` cache.
+not consult the game-rule `harnesses_mode` cache. Shared mode state lives in
+`src/lib/networkSimRuntime.ts`. For Cross-Country Chaos,
+`src/lib/networkSimChaos.ts` generates the continuous deterministic phase
+cycle and `src/lib/networkSimTransport.ts` applies it to the shared Supabase
+HTTP fetch and WebSocket transport configured by
+`src/integrations/supabase/client.ts`. The profile-control and simulation-event
+routes bypass impairment so the local harness remains reversible and its
+evidence remains writable.
 
 The separate database-backed 3-5-7 wartime stream is gated by
 `src/lib/threeFiveSeven/wartime/capture.ts`: Wartime Debug must be explicitly
