@@ -436,8 +436,8 @@ Canonical snapshot identity is
 | `Game.tsx` channel `game-${gameId}` | `games` UPDATE plus an exact-id `games` DELETE ejection listener, `players` all events, and `rounds` all events. Fetches are debounced 300 ms. A five-second fallback poll starts only after channel failure unless safety polls are disabled. |
 | `Game.tsx` channel `session-history-${gameId}` | INSERTs into `session_player_snapshots`. |
 | `Game.tsx` channel `show-cards-${gameId}` | Ephemeral 3-5-7 `show-cards` broadcast, guarded by dealer-game identity. |
-| `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. |
-| `GinRummyGameTable.tsx` | `gin-rummy-${roundId}` watches the current `rounds` row. |
+| `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. Both perform exact authoritative catch-up on every `SUBSCRIBED` edge and central recovery receipt. |
+| `GinRummyGameTable.tsx` | `gin-rummy-${roundId}` watches the current `rounds` row and refetches caller-specific authority on every `SUBSCRIBED` edge and central recovery receipt. |
 | `SessionEndedTablePhase.tsx` | `session-ended-results-${gameId}` watches snapshot INSERTs. |
 | `GameLobby.tsx` | Separate all-event `games` and `players` lobby channels, plus bounded refresh on focus/visibility and every five seconds. |
 | `ReleaseVersionGate.tsx` | Watches the `system_settings.release_publication` UPDATE, then rechecks the public build manifest. Realtime is lobby-update UX only; the keyed game-route entry boundary independently verifies the manifest before game admission. |
@@ -446,6 +446,11 @@ Canonical snapshot identity is
 Yahtzee intentionally relies on the central `Game.tsx` round subscription.
 Cribbage and Gin add current-round subscriptions on top of the central owner;
 that overlap must be considered before changing fetch/realtime behavior.
+`src/lib/realtimeAuthoritativeCatchup.ts` owns latest-trigger-wins exact reads,
+complete channel-loss classification, and the local recovery receipt emitted
+after successful reconnect/resume/fallback snapshots. The central channel is
+the only fallback poll owner. `useAuthoritativeIdentity` consumes the same
+receipt for its dealer-game-scoped round feed.
 
 ## Key migrations and RPCs
 

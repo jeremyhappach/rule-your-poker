@@ -22,6 +22,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import {
+  createLatestAuthoritativeLoader,
+  handleAuthoritativeRealtimeStatus,
+  subscribeAuthoritativeRecoverySnapshot,
+} from '@/lib/realtimeAuthoritativeCatchup';
 
 export {
   authoritativeIdentityEquals,
@@ -112,15 +117,31 @@ export function useAuthoritativeIdentity(
     let cancelled = false;
     setLoading(true);
 
-    void supabase
-      .from('rounds')
-      .select('id, dealer_game_id, hand_number, round_number')
-      .eq('dealer_game_id', dealerGameId)
-      .then(({ data, error }) => {
+    const identityLoader = createLatestAuthoritativeLoader<RoundRow[]>({
+      load: async () => {
+        const { data, error } = await supabase
+          .from('rounds')
+          .select('id, dealer_game_id, hand_number, round_number')
+          .eq('dealer_game_id', dealerGameId);
+        if (error) throw error;
+        return (data ?? []) as RoundRow[];
+      },
+      apply: (rows) => {
         if (cancelled) return;
-        if (!error && data) setRounds(data as RoundRow[]);
+        setRounds(rows);
         setLoading(false);
-      });
+      },
+      onError: (error, source) => {
+        if (cancelled) return;
+        console.warn('[AUTHORITATIVE_IDENTITY] Exact snapshot failed:', { source, error });
+        setLoading(false);
+      },
+    });
+    const unsubscribeRecovery = subscribeAuthoritativeRecoverySnapshot((source) => {
+      void identityLoader.refresh(`parent-${source}`);
+    });
+
+    void identityLoader.refresh('initial-hydration');
 
     const channel = supabase
       .channel(`auth-identity-${dealerGameId}`)
@@ -134,6 +155,8 @@ export function useAuthoritativeIdentity(
         },
         (payload) => {
           if (cancelled) return;
+          identityLoader.invalidate();
+          setLoading(false);
           setRounds((prev) => {
             const next = [...prev];
             const newRow = payload.new as RoundRow | null;
@@ -150,10 +173,17 @@ export function useAuthoritativeIdentity(
           });
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        handleAuthoritativeRealtimeStatus(status, err, {
+          source: `authoritative-identity-${dealerGameId}`,
+          catchUp: identityLoader.refresh,
+        });
+      });
 
     return () => {
       cancelled = true;
+      unsubscribeRecovery();
+      identityLoader.dispose();
       void supabase.removeChannel(channel);
     };
   }, [dealerGameId, enabled]);

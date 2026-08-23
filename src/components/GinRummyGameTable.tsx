@@ -34,6 +34,11 @@ import { toast } from 'sonner';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { useChangeTracker, useUnmountSnapshot } from '@/lib/canonicalShell/shellLifecycleLog';
 import { ginTrace } from '@/lib/ginStartupTrace';
+import {
+  createLatestAuthoritativeLoader,
+  handleAuthoritativeRealtimeStatus,
+  subscribeAuthoritativeRecoverySnapshot,
+} from '@/lib/realtimeAuthoritativeCatchup';
 
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import {
@@ -1659,6 +1664,17 @@ export const GinRummyGameTable = ({
       }
     };
 
+    const exactStateLoader = createLatestAuthoritativeLoader({
+      load: async () => fetchGinRummyState(roundId),
+      apply: (state, source) => applyState(state, source),
+      onError: (error, source) => {
+        console.error('[GIN-RUMMY] Authoritative state fetch failed:', { source, error });
+      },
+    });
+    const unsubscribeRecovery = subscribeAuthoritativeRecoverySnapshot((source) => {
+      void exactStateLoader.refresh(`parent-${source}`);
+    });
+
     // Primary: realtime subscription
     const channel = supabase
       .channel(`gin-rummy-${roundId}`)
@@ -1680,14 +1696,10 @@ export const GinRummyGameTable = ({
             oldValue: null,
             newValue: { roundId, source: 'authoritative-refetch' },
           });
-          void fetchGinRummyState(roundId)
-            .then((state) => applyState(state, 'realtime-refetch'))
-            .catch((error) => {
-              console.error('[GIN-RUMMY] Authoritative realtime refetch failed:', error);
-            });
+          void exactStateLoader.refresh('realtime-refetch');
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log('[GIN-RUMMY] Realtime subscription status:', status);
         recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable subscription status', {
           file: 'src/components/GinRummyGameTable.tsx',
@@ -1696,10 +1708,16 @@ export const GinRummyGameTable = ({
           oldValue: null,
           newValue: status,
         });
+        handleAuthoritativeRealtimeStatus(status, err, {
+          source: `gin-private-${roundId}`,
+          catchUp: exactStateLoader.refresh,
+        });
       });
 
     return () => {
       isActive = false;
+      unsubscribeRecovery();
+      exactStateLoader.dispose();
       supabase.removeChannel(channel);
     };
   }, [roundId]); // ← onGameComplete intentionally excluded; using ref instead

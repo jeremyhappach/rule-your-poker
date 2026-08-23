@@ -2,6 +2,29 @@
 
 Date: 2026-08-23
 
+## Gameplay supplemental Realtime reconnect recovery
+
+- The central game subscription's authoritative reconnect snapshot now fans out
+  to every gameplay-critical supplemental state owner. Cribbage private state,
+  Cribbage dealer selection, Gin caller-specific state, and the dealer-game-
+  scoped authoritative round identity can no longer remain stale after the
+  public game/round snapshot has recovered.
+- Every successful supplemental `SUBSCRIBED` edge performs one exact database
+  snapshot, closing both cold subscribe and reconnect blind windows. Channel
+  loss handles `CHANNEL_ERROR`, `TIMED_OUT`, and `CLOSED` and retains the full
+  Supabase error object for diagnosis.
+- The existing central five-second fallback remains the only recovery poll.
+  When it succeeds while WebSocket transport remains unavailable, it emits one
+  local recovery receipt that refreshes the supplemental owners; no second poll
+  or gameplay authority was added.
+- Exact reads use latest-trigger-wins admission. A newer Realtime edge,
+  reconnect, resume, or fallback receipt invalidates older in-flight reads so a
+  slow stale response cannot roll presentation or authoritative identity back.
+- Twenty-five focused assertions cover initial/reconnect catch-up, every loss
+  status, stale-response rejection, recovery fan-out, all four wiring sites,
+  monotonic identity, the shared sync framework, and the central reconnect
+  owner. The installed TypeScript compiler passes.
+
 ## Continuous Cross-Country Chaos transport harness
 
 - Cross-Country Chaos now runs below the shared Supabase client instead of

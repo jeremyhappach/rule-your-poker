@@ -1136,3 +1136,19 @@ control and simulation telemetry bypass impairment so Chaos remains observable
 and locally reversible even during its own offline phase. The harness may expose
 phase/cycle status, but it may not add a polling owner, fabricate state, advance
 gameplay, or replace the existing reconnect snapshot path.
+
+## D-081 - Supplemental gameplay channels reconcile from the central recovery receipt
+
+Every gameplay-critical supplemental Realtime subscription must close its
+fetch-before-subscribe blind window with an exact authoritative snapshot on
+each `SUBSCRIBED` edge. A private-state or dealer-game identity owner may not
+assume that recovery of the central public game channel also repaired its own
+local projection.
+
+The central game subscription remains the only owner of fallback polling. A
+successful reconnect, visibility resume, BFCache restore, or fallback snapshot
+emits one local recovery receipt; mounted supplemental owners perform their own
+exact read from that receipt. Snapshot application is latest-trigger-wins so an
+older in-flight response cannot overwrite a newer Realtime edge. This receipt
+does not carry gameplay data, advance state, add a scheduler, or replace the
+database as authority.

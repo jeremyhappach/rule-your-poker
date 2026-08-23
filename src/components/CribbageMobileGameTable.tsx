@@ -97,6 +97,11 @@ import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugC
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { getMsSinceVisibilityResume, getRealtimeStatus } from '@/lib/resumeSignals';
+import {
+  createLatestAuthoritativeLoader,
+  handleAuthoritativeRealtimeStatus,
+  subscribeAuthoritativeRecoverySnapshot,
+} from '@/lib/realtimeAuthoritativeCatchup';
 import { traceGoRace, peggingSnapshot } from '@/lib/cribbageGoRaceTrace';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
@@ -4428,37 +4433,43 @@ export const CribbageMobileGameTable = ({
 
     let cancelled = false;
 
-    const load = async () => {
-      const { data, error } = await supabase
-        .from('games')
-        .select('dealer_selection_state')
-        .eq('id', gameId)
-        .maybeSingle();
+    const dealerSelectionLoader = createLatestAuthoritativeLoader<DealerSelectionState | null>({
+      load: async () => {
+        const { data, error } = await supabase
+          .from('games')
+          .select('dealer_selection_state')
+          .eq('id', gameId)
+          .maybeSingle();
+        if (error) throw error;
+        return (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+      },
+      apply: (raw, source) => {
+        if (cancelled) return;
+        // TRACE-2: log DB load (observation only)
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:bugA:db_load_synced_state',
+          payload: {
+            txId: hcTransitionIdRef.current,
+            source,
+            isDealerSelection,
+            dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+            hasData: !!raw,
+            cardCount: raw?.cards?.length ?? 0,
+            isComplete: raw?.isComplete ?? null,
+          },
+        });
+        setHighCardSyncedState(raw);
+      },
+      onError: (error, source) => {
+        console.error('[CRIBBAGE] Failed to load dealer_selection_state:', { source, error });
+      },
+    });
+    const unsubscribeRecovery = subscribeAuthoritativeRecoverySnapshot((source) => {
+      void dealerSelectionLoader.refresh(`parent-${source}`);
+    });
 
-      if (cancelled) return;
-      if (error) {
-        console.error('[CRIBBAGE] Failed to load dealer_selection_state:', error);
-        return;
-      }
-
-      const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-      // TRACE-2: log DB load (observation only)
-      logDebugEvent({
-        gameId,
-        eventType: 'crib:bugA:db_load_synced_state',
-        payload: {
-          txId: hcTransitionIdRef.current,
-          isDealerSelection,
-          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-          hasData: !!raw,
-          cardCount: raw?.cards?.length ?? 0,
-          isComplete: raw?.isComplete ?? null,
-        },
-      });
-      setHighCardSyncedState(raw);
-    };
-
-    load();
+    void dealerSelectionLoader.refresh('initial-hydration');
 
     const channel = supabase
       .channel(`cribbage-dealer-selection-${gameId}`)
@@ -4471,6 +4482,7 @@ export const CribbageMobileGameTable = ({
           filter: `id=eq.${gameId}`,
         },
         (payload) => {
+          dealerSelectionLoader.invalidate();
           const next = (payload.new as any)?.dealer_selection_state ?? null;
           // TRACE-2b: log realtime update (observation only)
           logDebugEvent({
@@ -4488,10 +4500,17 @@ export const CribbageMobileGameTable = ({
           setHighCardSyncedState(next as DealerSelectionState | null);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        handleAuthoritativeRealtimeStatus(status, err, {
+          source: `cribbage-dealer-selection-${gameId}`,
+          catchUp: dealerSelectionLoader.refresh,
+        });
+      });
 
     return () => {
       cancelled = true;
+      unsubscribeRecovery();
+      dealerSelectionLoader.dispose();
       supabase.removeChannel(channel);
     };
   }, [gameId]);
@@ -5007,10 +5026,9 @@ export const CribbageMobileGameTable = ({
     let isActive = true;
 
     // Handler for exact-round realtime updates — routes through sync framework.
-    const handleStateUpdate = (newCribbageState: CribbageState) => {
+    const handleStateUpdate = (newCribbageState: CribbageState, source = 'realtime') => {
       if (!isActive) return;
 
-      const source = 'realtime';
       const traceId = newTraceId();
       
       // ── Identity latch guard ──
@@ -5204,6 +5222,17 @@ export const CribbageMobileGameTable = ({
       
     };
 
+    const exactStateLoader = createLatestAuthoritativeLoader({
+      load: async () => fetchCribbageState(currentRoundId),
+      apply: (newState, source) => handleStateUpdate(newState, source),
+      onError: (error, source) => {
+        console.warn('[CRIBBAGE_REALTIME] Private-state fetch failed:', { source, error });
+      },
+    });
+    const unsubscribeRecovery = subscribeAuthoritativeRecoverySnapshot((source) => {
+      void exactStateLoader.refresh(`parent-${source}`);
+    });
+
     const channel = supabase
       .channel(`cribbage-mobile-${currentRoundId}`)
       .on(
@@ -5215,22 +5244,20 @@ export const CribbageMobileGameTable = ({
           filter: `id=eq.${currentRoundId}`,
         },
         () => {
-          void fetchCribbageState(currentRoundId).then((newState) => {
-            if (!isActive) return;
-            handleStateUpdate(newState);
-          }).catch((error) => {
-            console.warn('[CRIBBAGE_REALTIME] Private-state fetch failed:', error);
-          });
+          void exactStateLoader.refresh('realtime-refetch');
         }
       )
       .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[CRIBBAGE_REALTIME] Exact-round channel error:', err);
-        }
+        handleAuthoritativeRealtimeStatus(status, err, {
+          source: `cribbage-private-${currentRoundId}`,
+          catchUp: exactStateLoader.refresh,
+        });
       });
 
     return () => {
       isActive = false;
+      unsubscribeRecovery();
+      exactStateLoader.dispose();
       supabase.removeChannel(channel);
     };
   }, [currentRoundId]); // CRITICAL: Only depend on currentRoundId to prevent channel teardown on unrelated state changes

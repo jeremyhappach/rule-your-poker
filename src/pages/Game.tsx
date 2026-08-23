@@ -398,6 +398,7 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
+import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
@@ -3905,7 +3906,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         intervalMs: 5000,
         extra: { purpose: 'realtime fallback polling' },
         fn: () => {
-        fetchGameData();
+        fetchGameData('realtime_fallback');
         },
       });
     };
@@ -8835,7 +8836,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Removed failsafe - countdown component now handles completion reliably
 
   const fetchGameData = async (
-    fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
+    fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const fetchStartedAt = Date.now();
@@ -10499,6 +10500,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (!isStale()) {
       setLoading(false);
+      if (
+        fetchTrigger === 'visibility'
+        || fetchTrigger === 'focus'
+        || fetchTrigger === 'pageshow'
+        || fetchTrigger === 'realtime_reconnect'
+        || fetchTrigger === 'realtime_fallback'
+      ) {
+        dispatchAuthoritativeRecoverySnapshot(fetchTrigger);
+      }
     }
     fetchSpan.end({ status: gameData?.status, round: gameData?.current_round });
     finishFetchTrace(
