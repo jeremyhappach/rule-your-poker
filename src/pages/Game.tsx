@@ -62,6 +62,10 @@ import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import {
+  resolveThreeFiveSevenRouteEntryMode,
+  type ThreeFiveSevenRouteEntryIdentity,
+} from "@/lib/threeFiveSeven/routeEntryMode";
+import {
   classifyHolmRouteEntryMode,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
@@ -1009,11 +1013,7 @@ const Game = () => {
   // differs from this baseline was introduced AFTER route mount → LIVE
   // (run the opening wave animation). A matching identity is a
   // refresh/rejoin into a pre-existing hand → HISTORICAL (skip replay).
-  const initial357IdentityRef = useRef<{
-    captured: boolean;
-    dealerGameId: string | null;
-    handNumber: number | null;
-  }>({ captured: false, dealerGameId: null, handNumber: null });
+  const initial357IdentityRef = useRef<ThreeFiveSevenRouteEntryIdentity | null>(null);
   const initialHolmIdentityRef = useRef<{
     captured: boolean;
     dealerGameId: string | null;
@@ -17268,23 +17268,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           let _three57EntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;
           if (is357GameType) {
             const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
+            const _authRoundId357 = currentRound?.id ?? null;
             const _authHandNumber357 = currentRound?.hand_number ?? null;
-            if (!initial357IdentityRef.current.captured) {
-              initial357IdentityRef.current = {
-                captured: true,
+            const _resolved357Entry = resolveThreeFiveSevenRouteEntryMode(
+              initial357IdentityRef.current,
+              {
                 dealerGameId: _authDealerGameId357,
+                roundId: _authRoundId357,
                 handNumber: _authHandNumber357,
-              };
-            }
-            const _b357 = initial357IdentityRef.current;
-            _three57EntryMode =
-              _b357.captured &&
-              _b357.dealerGameId !== null &&
-              _b357.dealerGameId === _authDealerGameId357 &&
-              _b357.handNumber !== null &&
-              _b357.handNumber === _authHandNumber357
-              ? 'historical-entry'
-              : 'live-transition';
+              },
+            );
+            initial357IdentityRef.current = _resolved357Entry.baseline;
+            _three57EntryMode = _resolved357Entry.entryMode;
           }
 
           let _holmEntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;

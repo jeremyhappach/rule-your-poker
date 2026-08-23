@@ -30,8 +30,8 @@ const reportHolmSettlementFailure = (branch: string, err: unknown) => {
 };
 
 const HOLM_SHOWDOWN_TIMING_FALLBACK_MS = {
-  afterTabled: 1500,
-  preChucky: 1500,
+  afterTabled: 500,
+  preChucky: 500,
   multiShowdown: 2000,
 } as const;
 

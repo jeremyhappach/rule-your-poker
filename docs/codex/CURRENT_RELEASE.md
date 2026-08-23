@@ -1,6 +1,39 @@
 # Current release and cutover state
 
-Date: 2026-08-22
+Date: 2026-08-23
+
+## Cross-game freeze hardening
+
+- Production evidence from the Aug 22 real-money session isolated four
+  separate boundaries: one 52-second serialized scheduler convoy, Holm's
+  all-client successor acknowledgement plus long cosmetic chain, a 3-5-7
+  refresh baseline captured before round hydration, and `set_game_paused`
+  resuming a protected 3-5-7 round without the authoritative-write context.
+- Migrations `20260823010000_freeze_hardening.sql` and
+  `20260823011000_restore_freeze_hardening_canonical_timers.sql` are installed.
+  Each serialized recovery task now has a 750 ms lock-wait budget and durable
+  14-day slow/error evidence, while the single scheduler/pool-protection owner
+  is preserved. A post-install proof caught and corrected a missing later-added
+  `canonical_timers` runner branch; active recovery failures are zero and the
+  latest cron runs succeed.
+- Holm prepared successors now release when the exact current actor's canonical
+  deal acknowledgement arrives; other clients finish the immutable cosmetics
+  locally and the 30-second database fallback remains. Untouched default
+  presentation cadence is reduced to 500 ms tabled/pre-Chucky, 500 ms reveal
+  steps, and an 800 ms final card. Exact hand boundaries bypass within-hand
+  reveal latches and clear all solo/Chucky presentation state.
+- 3-5-7 route provenance now waits for complete dealer-game, round, and hand
+  identity. A cold refresh enters the already-persisted wave historically,
+  while later exact waves on the mounted route remain live transitions. The
+  pause RPC retains its existing host/admin/service authorization and gains
+  only the transaction-local authority required for its protected 3-5-7 round
+  deadline update.
+- The complete migration passed a rollback-only compile/permission/ownership
+  proof before installation. The TypeScript compiler, 56 focused freeze/owner
+  assertions, 35 build-required Cribbage assertions, and the production Vite
+  build pass. The reported real-money game was not resumed or advanced; it
+  remains paused in hand 4, round 3 with 30 seconds remaining. Published
+  two-client Holm and 3-5-7 refresh/resume smoke remains the acceptance gate.
 
 ## Ante-decision Sit Out client identity continuity
 

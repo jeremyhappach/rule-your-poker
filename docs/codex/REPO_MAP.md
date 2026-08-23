@@ -465,7 +465,8 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Admin fake-money smoke teardown | `admin_blast_fake_money_game` in `supabase/migrations/20260815180000_admin_blast_fake_money_game.sql`; `PlayerOptionsMenu.tsx` exposes it only through the admin/fake-money guard in `Game.tsx`, whose DELETE listener returns connected clients to the lobby. |
 | Published build signal | `supabase/migrations/20260815170000_add_release_publication_signal.sql` seeds the single release row; `supabase/functions/publish-release/index.ts` verifies the public manifest then writes it; `.github/workflows/publish-release.yml` invokes that publisher after a `main` deployment is public. Client enforcement is `src/components/ReleaseVersionGate.tsx` and `src/lib/releaseVersion/`. |
 | Real-money abandonment reconciliation | Post-game waiting boundary, private finalizer/triggers, and the `reconcile-abandoned-real-money-sessions` pg_cron job latest in `supabase/migrations/20260809173000_postgame_waiting_session_resolution.sql`; rollback proof in `supabase/tests/session_abandonment_reconciliation_proof.sql`. |
-| Deadline/lifecycle helpers | `supabase/migrations/20260820180000_canonical_game_timer_ownership.sql` is the latest owner of exact dealer-selection, configuration, ante, gameplay, pause/resume, and Horses/SCC postgame deadlines. `src/lib/gameTimerAuthority.ts` exposes authenticated browser intent; the legacy Edge enforcers are not the progression owner. |
+| Deadline/lifecycle helpers | `supabase/migrations/20260820180000_canonical_game_timer_ownership.sql` owns exact dealer-selection, configuration, ante, gameplay, pause/resume, and Horses/SCC postgame deadlines. `20260823010000_freeze_hardening.sql` bounds each child owner's lock wait and records private slow/error evidence; `20260823011000_restore_freeze_hardening_canonical_timers.sql` preserves the later canonical-timer runner branch. `src/lib/gameTimerAuthority.ts` exposes authenticated browser intent; the legacy Edge enforcers are not the progression owner. |
+| Refresh/rejoin presentation provenance | 3-5-7 exact wave classification is `src/lib/threeFiveSeven/routeEntryMode.ts`, owned by the persistent route baseline in `Game.tsx`; Holm identity/barrier classification is `src/lib/holmPresentationBarrier.ts`. Partial hydration is never captured as a historical baseline. |
 | Cutover write lock and fake-history purge | `supabase/migrations/20260802184800_cutover_readiness.sql`; the lock is inert until its `system_settings` flag is enabled, and the controlled import bypass is session-local. |
 
 ## Debug harness registry
@@ -514,8 +515,10 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - Cribbage: focused component and logic tests are listed in the Cribbage map.
 - Gin: focused component, game logic, scoring, and harness tests are listed in
   the Gin map.
-- 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts` and
-  `src/lib/threeFiveSeven/showdownPresentation.test.ts`.
+- 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts`,
+  `src/lib/threeFiveSeven/showdownPresentation.test.ts`, and
+  `src/lib/threeFiveSeven/routeEntryMode.test.ts`.
+- Freeze ownership/migrations: `src/lib/freezeHardeningMigration.test.ts`.
 - Yahtzee: `src/lib/yahtzeeScoring.test.ts`,
   `src/lib/yahtzeeGameLogic.test.ts`,
   `src/lib/yahtzeeSettleGame.test.ts`, and Yahtzee terminal-scope cases in

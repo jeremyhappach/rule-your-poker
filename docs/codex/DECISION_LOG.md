@@ -1089,3 +1089,32 @@ seated humans ends a Subsequent Waiting session through its financial-safe
 terminal path; a connected sitter keeps it open. Releasing the host atomically
 transfers host identity to the deterministic next seated human. Live gameplay,
 setup, ante, and terminal presentation remain outside the Waiting reconciler.
+
+## D-078 - Serialized recovery owns admission, not unbounded task waiting
+
+The platform retains one non-overlapping recovery dispatcher to protect the
+Postgres/PostgREST pool. Each child owner has its own exception boundary and a
+bounded lock-wait budget, so a locked Holm, Cribbage, Gin, Yahtzee, 3-5-7,
+Horses/SCC, canonical-timer, or abandonment row cannot convoy every later
+game. A bounded failure retries on the normal future tick; it does not create a
+second scheduler, polling owner, or client progression path.
+
+Task-level duration and failure evidence is durable and private because a cron
+job's successful outer statement cannot prove every isolated child succeeded.
+The dispatcher task list is cumulative architecture: replacing its runner must
+preserve later-added owners such as `canonical_timers`.
+
+## D-079 - Holm continuation waits for the current actor, not every cosmetic client
+
+Settlement still prepares one exact non-actionable successor and the database
+still owns activation, deadline, replay protection, pause, fallback, and
+financial state. Normal release requires the exact prepared hand's current
+actor to reach the canonical deal-ready boundary. Other connected clients may
+finish that same immutable presentation locally; their animation completion is
+not global gameplay authority. A bot actor is ready by definition, while a
+missing/disconnected human actor retains the existing database fallback lease.
+
+A true dealer-game/round/hand identity boundary outranks every within-hand
+presentation latch. Solo and Chucky caches, reveal counters, ownership refs,
+and admission stages must hard-reset even if the prior reveal was incomplete;
+no cosmetic artifact may cross into the prepared successor.

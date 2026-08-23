@@ -3015,8 +3015,8 @@ export const MobileGameTable = ({
     holmPresentationIdentity?.dealerGameId ?? null,
   );
   const [holmShowdownTiming, setHolmShowdownTiming] = useState({
-    afterTabled: 1500,
-    preChucky: 1500,
+    afterTabled: 500,
+    preChucky: 500,
     multiShowdown: 2000,
     rabbitHuntPostReveal: 1000,
   });
@@ -3060,8 +3060,8 @@ export const MobileGameTable = ({
           return Number.isInteger(parsed) && parsed >= 0 && parsed <= 10000 ? parsed : fallback;
         };
         setHolmShowdownTiming({
-          afterTabled: delay(data.holm_after_tabled_delay_ms, 1500),
-          preChucky: delay(data.holm_pre_chucky_delay_ms, 1500),
+          afterTabled: delay(data.holm_after_tabled_delay_ms, 500),
+          preChucky: delay(data.holm_pre_chucky_delay_ms, 500),
           multiShowdown: delay(data.holm_multi_showdown_delay_ms, 2000),
           rabbitHuntPostReveal: delay(data.holm_rabbit_hunt_post_reveal_delay_ms, 1000),
         });
@@ -4929,28 +4929,29 @@ export const MobileGameTable = ({
     const wasSolo = prevHandWasSoloRef.current;
     prevHandContextForSoloDestroyRef.current = next;
     prevHandWasSoloRef.current = false;
-    if (!chuckyNormalRevealBranchLockedRef.current) {
-      chuckyVisualResetForHand(next);
-    } else {
-      recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
-        instanceId: chuckyInstanceIdRef.current,
-        renderSeq: chuckyRenderSeqRef.current,
-        writer: 'soloDestroyOnHandChange',
-        reason: 'blocked chuckyVisualResetForHand while visual reveal incomplete',
-        attemptedClear: 'chuckyVisualResetForHand',
-        handContextId: prev,
-        nextHandContextId: next,
-        phase: chuckyPhaseRef.current ?? null,
-        cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
-        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
-      }, prev);
-    }
+
+    // A true hand identity boundary outranks the within-hand reveal latch.
+    // The ordinary setters intentionally reject mid-reveal clears, so using
+    // them here allowed old Chucky cards/counts to survive into the prepared
+    // successor. Reset the backing state and ownership refs atomically.
+    chuckyNormalRevealBranchLockedRef.current = false;
+    chuckyTargetRevealedRef.current = 0;
+    cachedChuckyHandContextRef.current = null;
+    cachedChuckyCardsLiveRef.current = null;
+    lastChuckyRevealedRef.current = 0;
+    _setCachedChuckyCardsRaw(null);
+    _setCachedChuckyActiveRaw(false);
+    _setCachedChuckyCardsRevealedRaw(0);
+    chuckyVisualResetForHand(next);
+
+    setSoloTabledCardsLandedHand(null);
+    setSoloCommunityDelayCompleteHand(null);
+    setSoloAnnouncementEmittedHand(null);
+    setSoloChuckyAdmissionHand(null);
+    setMultiShowdownDelayCompleteHand(null);
+    setChuckyLossAnnouncementPaintedKey(null);
+
     if (!wasSolo) return;
-    // Force-destroy regardless of deferral state.
-    setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
-    setCachedChuckyActive(false);
-    setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
-    clearChuckyRevealOwnership('soloDestroyOnHandChange', 'NEW_HAND_STARTED (was solo)');
     lonePlayerStageSnapshotRef.current = null;
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
@@ -4960,7 +4961,7 @@ export const MobileGameTable = ({
       prevHandContextId: prev,
       nextHandContextId: next,
     }, prev);
-  }, [gameType, handContextId, clearChuckyRevealOwnership]);
+  }, [gameType, handContextId]);
 
   // ── WAR-TIME: SOLO_STATE_CHANGED watcher ──
   // Pure instrumentation: fire on every observable transition of the
@@ -9266,8 +9267,6 @@ export const MobileGameTable = ({
     // idx === 3, total === 3) without arming the final card.
     const sessionRevealTotal = totalLenForReveal;
 
-    const HOLM_REVEAL_FALLBACK_MS = 1500;
-
     const tick = () => {
       if (cancelled) return;
       const total = sessionRevealTotal;
@@ -9283,7 +9282,8 @@ export const MobileGameTable = ({
         return;
       }
       const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
-      const delayMs = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
+      const fallbackDelayMs = idx === total - 1 ? 800 : 500;
+      const delayMs = cfgDelay.ms ?? fallbackDelayMs;
       const source: 'gameDefaults' | 'fallback' =
         cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
       const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
