@@ -2,6 +2,33 @@
 
 Date: 2026-08-23
 
+## Horses / SCC connected progression authority
+
+- A completed Horses or Ship/Captain/Crew round no longer enters the
+  browser-owned tie claim, history insert, re-ante, and successor-round chain.
+  Every connected participant submits the exact game, dealer-game, round, and
+  hand identity to `public.horses_scc_advance_completed_round`; PostgreSQL
+  re-evaluates the persisted dice and atomically selects the existing tie-
+  rollover owner or terminal-settlement owner.
+- Connected win presentation now calls
+  `public.horses_scc_advance_postgame` before shared browser leader election,
+  participant evaluation, or dealer rotation. The existing 15-second canonical
+  timer uses the same hardened private standard-postgame owner, and the former
+  Horses/SCC client fallback timer is removed.
+- Dice postgame admission locks the exact completed round before the game and
+  requires exactly one matching `horses_terminal` settlement. `game_over`
+  alone cannot clear a dealer game. Duplicate clients, peer replays, and late
+  replays are read-only; SCC keeps its distinct 6-5-4/cargo evaluator and LAST
+  HAND still ends directly in settlement.
+- Migration `20260823173530_horses_scc_connected_authority.sql` is installed.
+  Its complete rollback proof passed before and after installation for winner,
+  connected tie with healthy heartbeats, authorization, continuation,
+  duplicate, peer and late replay, SCC terminal state, full canonical-timer
+  recovery, and unsettled rejection. Thirty-one focused authority, freeze,
+  timer, and Horses progression assertions pass, as do the installed
+  TypeScript compiler and production build (including 35 required Cribbage
+  regression assertions).
+
 ## Holm authoritative postgame handoff
 
 - Connected Holm presentation completion no longer enters the shared browser

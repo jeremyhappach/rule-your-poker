@@ -47,6 +47,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Post-game participation and abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` and `20260809200000_extend_fake_money_postgame_presence.sql` own result-backed post-game watches, three consecutive five-second missed windows, absent-player sit-out, and real/fake terminal disposition when presence is ambiguous. `20260815163818_atomic_explicit_postgame_stand_up.sql` separately owns authenticated explicit Stand Up plus its immediate zero/one/eligible cohort decision in one transaction. Initial waiting and live dealer games remain outside these owners; the legacy `enforce-all-deadlines` Edge Function remains separate. |
 | Serialized scheduled recovery | `supabase/migrations/20260820023000_serialize_game_recovery_scheduler.sql` installs the sole one-second `private.advance_due_game_state()` cron owner. `20260820180000_canonical_game_timer_ownership.sql` adds the exact-identity `private.game_timer_registry` and its canonical drain task for session dealer selection, dealer setup, ante, Holm decisions, Horses/SCC progression, and postgame continuation; `20260820190000_index_canonical_game_timer_foreign_keys.sql` completes its foreign-key indexes. The dispatcher serializes game-specific owners behind an advisory lock, isolates each task failure, and persists one active failure claim per task. Rollback proofs live in `supabase/tests/game_recovery_scheduler_rollback_proof.sql` and `supabase/tests/canonical_game_timer_rollback_proof.sql`. |
 | Holm postgame authority | `supabase/migrations/20260823171449_holm_postgame_authority.sql` hardens `private.advance_standard_postgame` with exact completed-round and `chucky_final_award` settlement admission for Holm, and exposes authenticated `public.holm_advance_postgame`. Connected clients and the existing canonical timer converge on the same durable `(game_id, dealer_game_id, hand_number)` claim. Rollback proof: `supabase/tests/holm_postgame_authority_rollback_proof.sql`. |
+| Horses/SCC connected authority | `supabase/migrations/20260823173530_horses_scc_connected_authority.sql` routes connected completed rounds through `public.horses_scc_advance_completed_round`, which chooses the shared atomic tie-rollover or terminal-settlement owner from exact persisted dice. `public.horses_scc_advance_postgame` and the canonical timer converge on the hardened standard-postgame owner, which requires the exact completed dice round and one `horses_terminal` result. Rollback proof: `supabase/tests/horses_scc_connected_authority_rollback_proof.sql`; typed client: `src/lib/horsesSccAuthority.ts`. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in
@@ -67,7 +68,7 @@ the authority over generated declarations.
 | `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
 | `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
 | `src/hooks/useHighCardDealerSelection.ts` | Presentation of database-owned initial/session dealer selection; the existing Cribbage authority path remains separate. |
-| `src/pages/Game.tsx:handleGameOverComplete` | Post-presentation continuation router. Holm, 3-5-7, and Yahtzee branch to their exact database postgame owners before shared browser leader/evaluation work; legacy/shared paths consume pending session end, evaluate participant state, select/rotate the next dealer, and enter dealer/game selection. Holm's typed client is `src/lib/holmPostgameAuthority.ts`. |
+| `src/pages/Game.tsx:handleGameOverComplete` | Post-presentation continuation router. Holm, Horses/SCC, 3-5-7, and Yahtzee branch to their exact database postgame owners before shared browser leader/evaluation work; legacy/shared paths consume pending session end, evaluate participant state, select/rotate the next dealer, and enter dealer/game selection. Typed clients include `src/lib/holmPostgameAuthority.ts` and `src/lib/horsesSccAuthority.ts`. |
 | `src/components/canonicalShell/SessionEndedTablePhase.tsx` | Local Session Ended announcement, felt Results panel, and Back to Lobby action. Fresh mounts of an already-ended session are redirected by `Game.tsx`; connected clients retain the shell first. |
 
 ## Canonical shell ownership
@@ -394,8 +395,10 @@ reset transient/presentation state when those identities change.
   The RPC derives the persisted-dice outcome and atomically owns the result
   claim, pot transfer, snapshots, and terminal disposition. The dedicated
   `enforce-horses-scc-deadlines-5s` database job resolves expired no-client
-  turns and all-absent tie rollovers; mounted code retains presentation and
-  connected tie rollover only.
+  turns and all-absent tie rollovers. Connected completed rounds now submit
+  exact identity through `src/lib/horsesSccAuthority.ts`; PostgreSQL selects
+  that same tie owner or terminal settlement. Connected win presentation and
+  canonical-timer recovery also share the exact standard-postgame owner.
 
 ### Ship Captain Crew
 
@@ -407,7 +410,8 @@ reset transient/presentation state when those identities change.
   `determineSCCWinners`; `useHorsesMobileController` is the mounted owner.
 - Lifecycle/bots: `sccRoundLogic.ts:startSCCRound` and `endSCCRound`;
   `sccBotLogic.ts:getSCCBotDecision` and `shouldSCCBotStopRolling`.
-- RPC/settlement: reuses the Horses action RPCs and the shared
+- RPC/settlement: reuses the Horses action RPCs, connected-round/postgame
+  authority, and the shared
   `public.horses_settle_game` terminal owner above. Its server evaluator keeps
   6-5-4 qualification/cargo rules distinct from Horses wild scoring.
 

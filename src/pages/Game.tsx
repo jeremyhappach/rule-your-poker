@@ -373,6 +373,7 @@ import {
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { advanceYahtzeePostgame } from "@/lib/yahtzeeAuthority";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
+import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
@@ -1738,15 +1739,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status]);
 
-  // ── Primary tie-rollover re-ante animation bridge ───────────────
-  // useHorsesMobileController's primary tie-rollover path calls
-  // startHorsesRound/startSCCRound directly and bypasses the
-  // awaiting_next_round fallback effect that normally publishes
-  // anteAnimationTriggerId. Listen for the controller's window event
-  // and publish the trigger here so the chip animation actually
-  // renders. (Without this bridge the state transition occurs but
-  // no trigger reaches AnteUpAnimation, producing the reported
-  // "balances update, no animation" symptom.)
+  // ── Authoritative tie-rollover re-ante presentation bridge ──────
+  // The controller receives the exact committed PostgreSQL rollover result
+  // and publishes only its presentation snapshot here. This event cannot
+  // create a round, deduct chips, or advance gameplay.
   useEffect(() => {
     if (!gameId) return;
     const handler = (ev: Event) => {
@@ -8407,77 +8403,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               });
             }
 
-            // Horses: proceed by starting a new Horses round (not startRound)
-            // NOTE: Do NOT pre-claim awaiting_next_round here — startHorsesRound / startSCCRound
-            // have their own atomic rollover claim guards. Pre-consuming the flag here causes
-            // startHorsesRound to see awaiting_next_round=false and hit BLOCKED_NOT_READY.
-            if (freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew' || freshGame?.game_type === 'yahtzee') {
-              console.log('[AWAITING_NEXT_ROUND] Dice game detected — starting next hand (re-ante)', freshGame?.game_type);
-
-              // Capture pre-ante chips BEFORE startRound deducts them
-              const { data: playersBeforeAnte } = await supabase
-                .from('players')
-                .select('id, chips, sitting_out, status')
-                .eq('game_id', gameId);
-
-              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
-              const perPlayerAmount = freshGame?.ante_amount || 0;
-              const activeCount = activePlayersForAnte.length;
-
-              const preChipsSnapshot: Record<string, number> = {};
-              const expectedChipsSnapshot: Record<string, number> = {};
-              activePlayersForAnte.forEach(p => {
-                preChipsSnapshot[p.id] = p.chips;
-                expectedChipsSnapshot[p.id] = p.chips - perPlayerAmount;
-              });
-
-              // Calculate expected pot: existing pot (from tie) + new antes
-              const currentPot = freshGame?.pot || 0;
-              const expectedPot = currentPot + (perPlayerAmount * activeCount);
-
-              // Start the appropriate round type — these functions handle their own
-              // atomic guards for awaiting_next_round and multi-client deduplication
-              if (freshGame?.game_type === 'ship-captain-crew') {
-                await startSCCRound(gameId, false, {
-                  caller: 'Game.tsx:awaiting_next_round-effect',
-                  reason: 'tie-rollover-re-ante',
-                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
-                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
-                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
-                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
-                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
-                });
-              } else if (freshGame?.game_type === 'yahtzee') {
-                await startYahtzeeRound(gameId, false, currentRound?.id ?? null);
-                await fetchGameData();
-              } else {
-                await startHorsesRound(gameId, false, {
-                  caller: 'Game.tsx:awaiting_next_round-effect',
-                  reason: 'tie-rollover-re-ante',
-                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
-                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
-                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
-                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
-                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
-                });
-              }
-
-              // Trigger ante animation for dice game re-ante
-              if (perPlayerAmount > 0 && activeCount > 0) {
-                setPreAnteChips(preChipsSnapshot);
-                setExpectedPostAnteChips(expectedChipsSnapshot);
-                setAnteAnimationExpectedPot(expectedPot);
-
-                const triggerKey = `dice-reante-${expectedPot}-${Date.now()}`;
-                if (anteAnimationFiredRef.current !== triggerKey) {
-                  anteAnimationFiredRef.current = triggerKey;
-                  setAnteAnimationTriggerId(`ante-${Date.now()}`);
-                  console.log('[DICE RE-ANTE] Triggered ante animation:', { perPlayerAmount, activeCount, expectedPot });
-                }
-              }
+            // Yahtzee retains its dedicated tie-successor RPC. Horses and
+            // SCC completed rounds never enter this browser fallback; their
+            // exact connected/no-client owner advances ties atomically.
+            if (freshGame?.game_type === 'yahtzee') {
+              console.log('[AWAITING_NEXT_ROUND] Yahtzee tie detected — starting exact successor');
+              await startYahtzeeRound(gameId, false, currentRound?.id ?? null);
+              await fetchGameData();
               return;
             }
-            
+
             // CRITICAL FIX: Check if this is a final leg win scenario
             // If the result says "won a leg" we need to check if any player reached legs_to_win
             // The backend's handleGameOver runs after a 4-second delay (same as this timer)
@@ -11247,6 +11182,63 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Horses/SCC terminal settlement, connected win presentation, and the
+    // disconnected-client timer converge on one exact PostgreSQL postgame
+    // owner. Never enter browser leader election, participant evaluation, or
+    // dealer rotation for these games.
+    if (game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew') {
+      gameOverTransitionRef.current = true;
+      try {
+        const outgoingDealerGameId = game.current_game_uuid ?? null;
+        const outgoingHandNumber = game.total_hands ?? null;
+        let terminalRoundId = (
+          currentRound?.dealer_game_id === outgoingDealerGameId
+          && currentRound?.hand_number === outgoingHandNumber
+        ) ? currentRound.id : null;
+
+        if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+          const { data: terminalRound, error: terminalRoundError } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('dealer_game_id', outgoingDealerGameId)
+            .eq('hand_number', outgoingHandNumber)
+            .eq('status', 'completed')
+            .maybeSingle();
+          if (terminalRoundError) throw terminalRoundError;
+          terminalRoundId = terminalRound?.id ?? null;
+        }
+
+        if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+          throw new Error('Horses/SCC postgame identity is incomplete; no transition was attempted.');
+        }
+
+        await advanceHorsesSccPostgame({
+          gameId,
+          roundId: terminalRoundId,
+          dealerGameId: outgoingDealerGameId,
+          handNumber: outgoingHandNumber,
+        });
+        anteAnimationFiredRef.current = null;
+        await fetchGameData();
+      } catch (error: any) {
+        console.error('[HORSES/SCC POSTGAME] Authoritative handoff failed:', error);
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to advance the dice game. Please try again.',
+          variant: 'destructive',
+        });
+        try {
+          await fetchGameData();
+        } catch (refetchError) {
+          console.error('[HORSES/SCC POSTGAME] Recovery refetch failed:', refetchError);
+        }
+      } finally {
+        gameOverTransitionRef.current = false;
+      }
+      return;
+    }
+
     // 3-5-7 owns the exact terminal handoff in PostgreSQL. Every client may
     // submit the settled identity; the durable claim dedupes simultaneous and
     // late callers. Do not enter shared browser leader election or player
@@ -12292,46 +12284,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
-
-  // SAFETY AUTO-ADVANCE (Horses / SCC only):
-  // Horses and SCC dealer games end after a single hand. If the win animation
-  // (horsesWinPotTriggerId) never fires — e.g. because pot caching missed or the
-  // animation handler bailed silently — the game can sit in 'game_over' with
-  // game_over_at already set and no UI affordance to advance.
-  //
-  // We deliberately scope this fallback to Horses/SCC ONLY:
-  //   - Holm has its own auto-confirm path
-  //   - 3-5-7, Cribbage, Gin Rummy, Yahtzee have their own dealer-driven completion
-  //     flows; a broad fallback there would mask real bugs and could preempt
-  //     legitimate animations.
-  //
-  // Triggers only after game_over_at + 15s, only if no win animation is active,
-  // and only after re-verifying status from the DB.
-  useEffect(() => {
-    if (game?.status !== 'game_over') return;
-    if (!game?.game_over_at) return;
-    const gt = game?.game_type;
-    if (gt !== 'horses' && gt !== 'ship-captain-crew') return;
-    if (horsesWinPotTriggerId) return; // win animation in progress
-
-    const ageMs = Date.now() - new Date(game.game_over_at).getTime();
-    const delayMs = Math.max(0, 15_000 - ageMs);
-
-    console.log('[HORSES/SCC GAME-OVER FALLBACK] Scheduled', { gt, delayMs, ageMs });
-
-    const timer = window.setTimeout(async () => {
-      const { data: fresh } = await supabase
-        .from('games')
-        .select('status, game_over_at')
-        .eq('id', gameId)
-        .single();
-      if (fresh?.status !== 'game_over') return;
-      console.warn('[HORSES/SCC GAME-OVER FALLBACK] Forcing handleGameOverComplete');
-      await handleGameOverComplete();
-    }, delayMs);
-
-    return () => window.clearTimeout(timer);
-  }, [game?.status, game?.game_over_at, game?.game_type, gameId, horsesWinPotTriggerId, handleGameOverComplete]);
 
   // Unmount cleanup for 357 timers (don't rely on effect cleanups that run on every re-render)
   useEffect(() => {

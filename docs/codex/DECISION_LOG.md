@@ -1168,3 +1168,21 @@ existing durable claim dedupes connected clients, timer recovery, and late
 replays. Presentation still decides when to submit while connected; the
 15-second database timer remains the disconnect fallback and never depends on
 a surviving browser.
+
+## D-083 - Dice completed-round progression is one exact database decision
+
+Horses and Ship/Captain/Crew clients may submit only the exact game,
+dealer-game, round, and hand identity after persisted dice reach complete.
+They may not claim a tie in `games`, insert tie history, deduct re-antes, create
+the successor round, or settle a winner through browser-authored multi-write
+chains. `public.horses_scc_advance_completed_round` re-evaluates the persisted
+dice and delegates to the same atomic tie-rollover or terminal-settlement owner
+used by no-client recovery.
+
+Connected win presentation similarly submits exact identity through
+`public.horses_scc_advance_postgame`. That wrapper and the canonical timer use
+one durable standard-postgame claim, which admits only an exact completed dice
+round with one matching `horses_terminal` settlement. Browser leader election,
+participant evaluation, dealer rotation, and client fallback timers are not
+Horses/SCC progression owners. SCC retains its separate 6-5-4/cargo rules;
+shared authority does not merge game semantics.

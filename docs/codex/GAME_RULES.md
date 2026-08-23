@@ -415,11 +415,11 @@ contradictions.
 | Setup/config | `src/components/DealerGameSetup.tsx`: positive ante/stake; global Make It Take It setting from `src/hooks/useMakeItTakeIt.ts`. |
 | Rules/actions | `src/lib/horsesGameLogic.ts:createInitialHand`, `rollDice`, `toggleHold`, `lockInHand`, `evaluateHand`, and `determineWinners`. |
 | Lifecycle | `src/lib/horsesRoundLogic.ts:startHorsesRound` and `endHorsesRound`. |
-| Mounted controller | `src/hooks/useHorsesMobileController.ts` owns actions, timers, bot controller, completion, tie rollover, and terminal writes. |
+| Mounted controller | `src/hooks/useHorsesMobileController.ts` owns actions, presentation, and exact completed-round submission; PostgreSQL owns tie rollover and terminal writes. |
 | Bots | `src/lib/horsesBotLogic.ts:getBotHoldDecision`, `shouldBotStopRolling`, and `applyHoldDecision`. |
 | State acceptance | `src/lib/gameStateSync/horsesProgress.ts:getHorsesProgress`. |
 | RPCs | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn`; latest files are named in `REPO_MAP.md`. |
-| Settlement | Client completion effect in `useHorsesMobileController.ts`; no Horses settlement RPC. |
+| Settlement/progression | `public.horses_scc_advance_completed_round` selects atomic tie rollover or `public.horses_settle_game`; `public.horses_scc_advance_postgame` shares the canonical timer's replay-safe postgame owner. Latest migration: `20260823173530_horses_scc_connected_authority.sql`. |
 
 ### Implemented rules
 
@@ -447,22 +447,19 @@ contradictions.
   turns have no human deadline.
 - Bots hold ones and dice matching their selected target. They generally use
   all rolls unless they reach five of a kind.
-- The mounted completion owner claims `games.status='game_over'`, then
-  separately awards the pot, inserts `game_results`, starts a fire-and-forget
-  snapshot, and clears the pot. Result identity uses current
-  `dealer_game_id + hand_number`.
-- Shared `Game.tsx:handleGameOverComplete` handles next dealer/game or pending
-  session end.
+- The mounted completion owner submits exact immutable identity. PostgreSQL
+  evaluates persisted dice and atomically either creates the tied successor
+  with re-ante or claims `horses_terminal`, awards the pot, snapshots, and
+  publishes `game_over`/`session_ended`.
+- After connected win presentation, `Game.tsx:handleGameOverComplete` delegates
+  exact identity to the same replay-safe postgame owner used by the canonical
+  timer. Browser leader election and participant/dealer writes are bypassed.
 
 ### Contradictions and risk
 
-- The game-status claim commits before payout/result/snapshot/pot clear. A
-  disconnect after the claim can strand settlement, and another client will
-  fail the status guard.
-- Tie claim, history insert, re-ante, new-round creation, and animation are
-  separate client/database operations rather than one replay-safe transition.
-- Round creation and ante collection are client-owned multi-write logic. The
-  action RPCs protect per-turn JSON but do not settle the hand.
+- Round creation and ante collection at initial dealer-game startup still use
+  the shared setup/start boundary. Completed-round tie rollover, terminal
+  settlement, and postgame continuation are database-owned and replay-safe.
 
 ## Ship Captain Crew
 
@@ -476,7 +473,7 @@ contradictions.
 | Mounted controller/RPCs | `src/hooks/useHorsesMobileController.ts`; state remains in `rounds.horses_state` and reuses all Horses RPCs. |
 | Bots | `src/lib/sccBotLogic.ts:getSCCBotDecision` and `shouldSCCBotStopRolling`. |
 | State acceptance | Shared `src/lib/gameStateSync/horsesProgress.ts:getHorsesProgress`. |
-| Settlement | Shared client completion effect in `src/hooks/useHorsesMobileController.ts`; no SCC settlement RPC. |
+| Settlement/progression | Shared `public.horses_scc_advance_completed_round`, `public.horses_settle_game`, and `public.horses_scc_advance_postgame` owners; SCC evaluation remains distinct. |
 
 ### Implemented rules
 
@@ -502,20 +499,20 @@ contradictions.
 
 ### Contradictions and risk
 
-- SCC inherits the Horses status-before-payout disconnect seam and the
-  non-transactional tie/re-ante seam.
+- SCC shares Horses' atomic completed-round, settlement, and postgame owners;
+  it does not share Horses' scoring semantics.
 - SCC has distinct game rules but stores them in a field and RPC family named
   `horses_state`/`horses_*`. This is an intentional shared controller
   implementation, not permission to merge rule semantics.
-- No focused SCC rule, settlement, or timeout test exists; the only dedicated
-  deterministic harness is `force_no_qualify`.
+- The shared rollback proof covers SCC terminal settlement and direct terminal
+  disposition; broader dedicated SCC rule/harness coverage remains limited.
 
 ## Cross-source discrepancy register
 
 | Severity | Disagreement |
 |---|---|
 | Release blocker | Published iOS runtime shows the Session Ended Results panel contains all participants but does not vertically scroll. Source CSS in `SessionEndedTablePhase.tsx` claims a WebKit scroll owner; runtime evidence wins. This is presentation, not a game-rule change. |
-| Financial authority | Holm, Cribbage, and Yahtzee terminal settlement plus the 3-5-7 atomic R1 sweep combine their terminal consequences in database functions. Gin, Horses, SCC, and normal 3-5-7 retain claim-to-payout client seams. |
+| Financial authority | Current deployed migrations supersede this audit's former Horses/SCC client seams: their tie rollover, terminal settlement, and postgame continuation are now database-owned. |
 | Cribbage | Three-player source constructs a three-card crib while a source comment expects the dealer's extra fourth card. |
 | Gin | Configurable gin/undercut bonuses are stored but scoring hardcodes 25; per-hand result chip deltas describe transfers that do not occur. |
 | Yahtzee | The fixed terminal stake does not enter a pot; direct round JSON mutation still cannot prove roll/category provenance; its ascending-position turn order conflicts with canonical lower-position clockwise order. |

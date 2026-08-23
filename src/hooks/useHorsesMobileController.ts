@@ -40,9 +40,7 @@ import {
 } from "@/lib/horsesBotLogic";
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { getRollNumber } from "@/lib/diceAudit";
-import { startHorsesRound } from "@/lib/horsesRoundLogic";
-import { startSCCRound } from "@/lib/sccRoundLogic";
-import { settleHorsesGame } from "@/lib/horsesSettleGame";
+import { advanceHorsesSccCompletedRound } from "@/lib/horsesSccAuthority";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -2525,216 +2523,70 @@ export function useHorsesMobileController({
       }
       processedWinRoundRef.current = originatingRoundId;
 
-      // Replace closure-captured winningPlayerIds/completedResults with auth-derived ones.
-      const winningPlayerIds = authWinningIds;
-      const completedResults = authCompletedResults;
-
-      if (winningPlayerIds.length > 1) {
-        // ATOMIC GUARD: Only one client claims the tie processing.
-        // Filter on awaiting_next_round=false so the claim is a TRUE one-shot at the DB level —
-        // even if local refs reset or the effect re-runs (presentation oscillation, identity reset),
-        // a second claim is rejected. This prevents the SCC no-qualify overlay/rollover loop.
-        const { data: claimed, error: claimError } = await supabase
-          .from("games")
-          .update({
-            awaiting_next_round: true,
-            last_round_result: "One tie all tie - rollover",
-          })
-          .eq("id", gameId)
-          .eq("status", "in_progress")
-          .eq("awaiting_next_round", false)
-          .select("id, total_hands, current_game_uuid");
-
-        if (claimError || !claimed || claimed.length === 0) {
-          persistSyncDebugEvent({
-            gameId: gameId ?? null,
-            gameType: resolvedGameType,
-            handNumber: monotonicHandNumber,
-            roundId: currentRoundId,
-            eventType: 'invariant', severity: 'warn',
-            eventName: 'horses-tie-rollover-claim-skipped',
-            payload: {
-              reason: claimError ? 'error' : 'already-claimed',
-              errorMessage: claimError?.message ?? null,
-              clientUserId: currentUserId?.slice(0, 8) ?? null,
-              myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
-              currentRoundId: currentRoundId?.slice(0, 8) ?? null,
-              winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
-              tsClient: Date.now(),
-            },
-          });
-          return;
-        }
-
-        // Claim WON — record who actually won the atomic rollover claim.
-        persistSyncDebugEvent({
-          gameId: gameId ?? null,
-          gameType: resolvedGameType,
-          handNumber: monotonicHandNumber,
-          roundId: currentRoundId,
-          eventType: 'invariant', severity: 'info',
-          eventName: 'horses-tie-rollover-claim-won',
-          payload: {
-            clientUserId: currentUserId?.slice(0, 8) ?? null,
-            myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
-            currentRoundId: currentRoundId?.slice(0, 8) ?? null,
-            claimedHandNumber: (claimed[0] as any)?.total_hands ?? null,
-            claimedDealerGameId: (claimed[0] as any)?.current_game_uuid?.slice(0, 8) ?? null,
-            winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
-            tsClient: Date.now(),
-          },
-        });
-
-        // Record CHOP event for history with EMPTY chip changes
-        // In dice games, pot carries over - no chips are distributed during rollover
-        const tiedPlayerNames = winningPlayerIds
-          .map(id => {
-            const p = players.find(pl => pl.id === id);
-            if (!p) return "Unknown";
-            return getPlayerUsername(p);
-          })
-          .join(" & ");
-
-        const tiedResult = completedResults.find(r => winningPlayerIds.includes(r.playerId));
-        const handNumber = (claimed[0] as any).total_hands || 1;
-        const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
-
-        await supabase.from("game_results").insert({
-          game_id: gameId,
-          hand_number: handNumber,
-          winner_player_id: null, // No winner in a rollover
-          winner_username: tiedPlayerNames,
-          winning_hand_description: `TIE: ${tiedResult?.result.description || "Unknown"} - Rollover`,
-          pot_won: 0, // No chips awarded in a rollover
-          player_chip_changes: {}, // Empty - no chip movements
-          is_chopped: true,
-          game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
-          dealer_game_id: currentGameUuid,
-        });
-
-        // PRIMARY tie rollover path: the client that wins the atomic tie claim
-        // must immediately create the re-ante round. Game.tsx's awaiting_next_round
-        // timer remains a recovery/fallback only; relying on it produced 20s+
-        // visible stalls when realtime/fetch timing missed the primary window.
-        persistSyncDebugEvent({
-          gameId: gameId ?? null,
-          gameType: resolvedGameType,
-          handNumber,
-          roundId: originatingRoundId,
-          eventType: 'invariant', severity: 'info',
-          eventName: 'horses-tie-rollover-primary-start-attempt',
-          payload: {
-            clientUserId: currentUserId?.slice(0, 8) ?? null,
-            currentRoundId: originatingRoundId.slice(0, 8),
-            currentGameUuid: currentGameUuid?.slice(0, 8) ?? null,
-            source: 'useHorsesMobileController:tie-claim-winner',
-            tsClient: Date.now(),
-          },
-        });
-
-        try {
-          const callerContext = {
-            caller: 'useHorsesMobileController:tie-claim-winner',
-            reason: 'tie-rollover-primary-re-ante',
-            trigger: 'atomic tie rollover claim won',
-            prevDealerGameId: currentGameUuid,
-            prevRoundId: originatingRoundId,
-            prevGamePhase: authState.gamePhase,
-            prevCurrentTurnPlayerId: authState.currentTurnPlayerId,
-            prevAllComplete: true,
-            prevAwaitingNextRound: true,
-            extra: {
-              tiedPlayerCount: winningPlayerIds.length,
-              winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
-            },
-          };
-
-          // ── Re-ante chip animation trigger ─────────────────────
-          // The fallback awaiting_next_round path in Game.tsx (which
-          // owns anteAnimationTriggerId) is BYPASSED by this primary
-          // tie-rollover path. Snapshot pre-ante chips & pot from
-          // props BEFORE startHorsesRound/startSCCRound deducts antes,
-          // then dispatch a window event so Game.tsx can publish the
-          // animation trigger. This is the diverge-point between the
-          // (succeeding) state transition and the (missing) animation.
-          try {
-            const perPlayerAmount = anteAmount || 0;
-            if (perPlayerAmount > 0 && gameId) {
-              const activeForAnte = players.filter(p => !p.sitting_out);
-              if (activeForAnte.length > 0) {
-                const preChipsSnapshot: Record<string, number> = {};
-                const expectedChipsSnapshot: Record<string, number> = {};
-                activeForAnte.forEach(p => {
-                  preChipsSnapshot[p.id] = p.chips;
-                  expectedChipsSnapshot[p.id] = p.chips - perPlayerAmount;
-                });
-                const expectedPot = (pot || 0) + perPlayerAmount * activeForAnte.length;
-                console.log('[HORSES_TIE_ROLLOVER] dispatching primary re-ante animation trigger', {
-                  gameId: gameId.slice(0, 8),
-                  perPlayerAmount,
-                  activeCount: activeForAnte.length,
-                  expectedPot,
-                });
-                window.dispatchEvent(new CustomEvent('horses:primary-re-ante', {
-                  detail: {
-                    gameId,
-                    preChipsSnapshot,
-                    expectedChipsSnapshot,
-                    expectedPot,
-                    perPlayerAmount,
-                    activeCount: activeForAnte.length,
-                  },
-                }));
-              }
-            }
-          } catch (dispatchErr) {
-            console.warn('[HORSES_TIE_ROLLOVER] failed to dispatch animation trigger', dispatchErr);
-          }
-
-          if (gameType === "ship-captain-crew") {
-            await startSCCRound(gameId, false, callerContext);
-          } else {
-            await startHorsesRound(gameId, false, callerContext);
-          }
-        } catch (error) {
-          persistSyncDebugEvent({
-            gameId: gameId ?? null,
-            gameType: resolvedGameType,
-            handNumber,
-            roundId: originatingRoundId,
-            eventType: 'invariant', severity: 'error',
-            eventName: 'horses-tie-rollover-primary-start-failed',
-            payload: {
-              errorMessage: error instanceof Error ? error.message : String(error),
-              clientUserId: currentUserId?.slice(0, 8) ?? null,
-              tsClient: Date.now(),
-            },
-          });
-          throw error;
-        }
-
-        return;
-      }
-
       try {
         const { data: identity, error: identityError } = await supabase
           .from("games")
           .select("current_game_uuid, total_hands")
           .eq("id", gameId)
           .maybeSingle();
-        if (identityError || !identity?.current_game_uuid || !identity.total_hands) return;
+        if (identityError) throw identityError;
+        if (!identity?.current_game_uuid || identity.total_hands == null) {
+          throw new Error("Horses/SCC completed-round identity is incomplete.");
+        }
 
-        // The browser submits only immutable identity. PostgreSQL re-evaluates
-        // persisted dice, claims the settlement key, pays the pot, snapshots,
-        // and chooses game_over/session_ended atomically.
-        await settleHorsesGame(
+        // Every connected client may submit the exact completed round.
+        // PostgreSQL derives the persisted-dice outcome and atomically selects
+        // tie rollover versus terminal settlement. The no-client deadline
+        // runner uses these same private owners.
+        const completion = await advanceHorsesSccCompletedRound({
           gameId,
-          originatingRoundId,
-          identity.current_game_uuid,
-          identity.total_hands,
-        );
-      } catch (settlementError) {
-        console.error("[HORSES] Terminal settlement replay failed:", settlementError);
+          roundId: originatingRoundId,
+          dealerGameId: identity.current_game_uuid,
+          handNumber: identity.total_hands,
+        });
+
+        if (completion.transition === "tie_rollover"
+            && completion.status !== "stale_identity"
+            && completion.anteAmount
+            && completion.activeCount
+            && completion.pot != null
+            && completion.preChips
+            && completion.postChips) {
+          window.dispatchEvent(new CustomEvent("horses:primary-re-ante", {
+            detail: {
+              gameId,
+              preChipsSnapshot: completion.preChips,
+              expectedChipsSnapshot: completion.postChips,
+              expectedPot: completion.pot,
+              perPlayerAmount: completion.anteAmount,
+              activeCount: completion.activeCount,
+              dealerGameId: identity.current_game_uuid,
+              predecessorRoundId: originatingRoundId,
+              successorHandNumber: completion.handNumber,
+              outcome: completion.status,
+            },
+          }));
+        }
+
+        persistSyncDebugEvent({
+          gameId,
+          gameType: resolvedGameType,
+          handNumber: identity.total_hands,
+          roundId: originatingRoundId,
+          eventType: "invariant",
+          severity: "info",
+          eventName: "horses-scc-authoritative-completed-round",
+          payload: {
+            transition: completion.transition,
+            outcome: completion.status,
+            successorHandNumber: completion.handNumber,
+            clientUserId: currentUserId?.slice(0, 8) ?? null,
+            tsClient: Date.now(),
+          },
+        });
+      } catch (completionError) {
+        processedWinRoundRef.current = null;
+        console.error("[HORSES/SCC] Authoritative completed-round handoff failed:", completionError);
       }
     };
 
@@ -2745,11 +2597,7 @@ export function useHorsesMobileController({
     currentRoundId,
     // P0 #2: depend on AUTHORITATIVE state, not presentation-derived winningPlayerIds.
     incomingHorsesState,
-    players,
     currentUserId,
-    pot,
-    anteAmount,
-    getPlayerUsername,
     myPlayer,
     isPaused,
     isSCC,
