@@ -41,7 +41,7 @@ contradictions.
 | Responsibility | Source |
 |---|---|
 | Setup/config | `src/components/DealerGameSetup.tsx`: ante, Chucky card count (2-7), optional Pussy Tax/value, optional pot cap/value, and Rabbit Hunt. |
-| Start/lifecycle | `public.start_holm_initial_hand` owns hand one; `public.proceed_to_next_holm_hand` owns later hands; `src/lib/holmGameLogic.ts:endHolmRound` orchestrates multi-player showdown presentation. |
+| Start/lifecycle | `public.start_holm_initial_hand` owns hand one; `public.proceed_to_next_holm_hand` owns later hands; `public.holm_advance_postgame` owns exact terminal continuation; `src/lib/holmGameLogic.ts:endHolmRound` orchestrates multi-player showdown presentation. |
 | Legal action | `src/lib/gameLogic.ts:makeDecision` submits exact `(game, round, player)` identity to `public.holm_submit_decision`; the database guards `rounds.current_turn_position` and atomically advances the next turn/deadline. |
 | Hand ranking | `src/lib/cardUtils.ts:evaluateHand`. |
 | Bots | `src/lib/botPlayer.ts:makeBotDecisions`; fold probability in `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduler/recovery in `src/pages/Game.tsx`. |
@@ -93,7 +93,10 @@ contradictions.
   `chucky_final_award` ends the dealer game.
 - If `pending_session_end` is true on a final award, the RPC writes
   `session_ended`; otherwise it writes `game_over` and shared lifecycle
-  continuation follows.
+  presentation follows. Connected presentation completion and the canonical
+  disconnect timer both enter the same exact, replay-safe PostgreSQL postgame
+  owner before participation intent, next-dealer derivation, and lifecycle
+  continuation are committed.
 - Bots use the same Fold/Stay action. Their configured aggression/hand strength
   determines fold probability; the current-turn bot is scheduled by the
   mounted client, while database decision locks reject duplicate actions.

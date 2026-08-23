@@ -1152,3 +1152,19 @@ exact read from that receipt. Snapshot application is latest-trigger-wins so an
 older in-flight response cannot overwrite a newer Realtime edge. This receipt
 does not carry gameplay data, advance state, add a scheduler, or replace the
 database as authority.
+
+## D-082 - Holm connected and disconnected postgame share one database owner
+
+A completed Holm presentation may submit only the exact game, dealer-game,
+round, and hand identity. It may not elect a browser leader to consume queued
+participation, derive the next dealer, clear the outgoing dealer game, or
+publish the next lifecycle phase.
+
+`public.holm_advance_postgame` validates session admission and exact round
+identity, then delegates to the same private, replay-safe standard-postgame
+owner used by the canonical timer. That owner requires the completed Holm
+round and its single `chucky_final_award` settlement before mutation. The
+existing durable claim dedupes connected clients, timer recovery, and late
+replays. Presentation still decides when to submit while connected; the
+15-second database timer remains the disconnect fallback and never depends on
+a surviving browser.

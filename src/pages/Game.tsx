@@ -372,6 +372,7 @@ import {
 } from "@/lib/startupFlightRecorder";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { advanceYahtzeePostgame } from "@/lib/yahtzeeAuthority";
+import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
@@ -11168,6 +11169,77 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           await fetchGameData();
         } catch (refetchError) {
           console.error('[YAHTZEE POSTGAME] Recovery refetch failed:', refetchError);
+        }
+      } finally {
+        gameOverTransitionRef.current = false;
+      }
+      return;
+    }
+
+    // Holm terminal settlement, connected presentation completion, and the
+    // disconnected-client timer now converge on the same PostgreSQL owner.
+    // Every client may submit the exact settled identity; the durable standard
+    // postgame claim makes simultaneous and late callers read-only. Do not
+    // enter the legacy browser leader/evaluation/rotation chain.
+    if (game?.game_type === 'holm' || game?.game_type === 'holm-game') {
+      gameOverTransitionRef.current = true;
+      try {
+        const outgoingDealerGameId = game.current_game_uuid ?? null;
+        const outgoingHandNumber = game.total_hands ?? null;
+        let terminalRoundId = (
+          currentRound?.dealer_game_id === outgoingDealerGameId
+          && currentRound?.hand_number === outgoingHandNumber
+        ) ? currentRound.id : null;
+
+        if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
+          const { data: terminalRound, error: terminalRoundError } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('dealer_game_id', outgoingDealerGameId)
+            .eq('hand_number', outgoingHandNumber)
+            .eq('status', 'completed')
+            .maybeSingle();
+          if (terminalRoundError) throw terminalRoundError;
+          terminalRoundId = terminalRound?.id ?? null;
+        }
+
+        if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
+          throw new Error('Holm postgame identity is incomplete; no transition was attempted.');
+        }
+
+        const postgame = await advanceHolmPostgame({
+          gameId,
+          roundId: terminalRoundId,
+          dealerGameId: outgoingDealerGameId,
+          handNumber: outgoingHandNumber,
+        });
+        anteAnimationFiredRef.current = null;
+        await fetchGameData();
+        recordHolmLifecycle('postgame.authoritative-complete', {
+          outgoingDealerGameId,
+          outgoingHandNumber,
+          terminalRoundId,
+          outcome: postgame.outcome,
+          status: postgame.status,
+          dealerPosition: postgame.dealerPosition,
+        });
+      } catch (error: any) {
+        console.error('[HOLM POSTGAME] Authoritative handoff failed:', error);
+        recordHolmLifecycle('postgame.authoritative-error', {
+          message: error?.message ?? String(error),
+          dealerGameId: game.current_game_uuid ?? null,
+          handNumber: game.total_hands ?? null,
+        });
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to advance Holm. Please try again.',
+          variant: 'destructive',
+        });
+        try {
+          await fetchGameData();
+        } catch (refetchError) {
+          console.error('[HOLM POSTGAME] Recovery refetch failed:', refetchError);
         }
       } finally {
         gameOverTransitionRef.current = false;

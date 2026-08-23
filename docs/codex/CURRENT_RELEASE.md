@@ -2,6 +2,30 @@
 
 Date: 2026-08-23
 
+## Holm authoritative postgame handoff
+
+- Connected Holm presentation completion no longer enters the shared browser
+  leader/evaluation/rotation chain. Every client submits the exact game,
+  dealer-game, round, and hand identity to `public.holm_advance_postgame`
+  before that legacy boundary; the existing durable standard-postgame claim
+  admits one transition and makes concurrent or late callers read-only.
+- The existing 15-second canonical timer remains the disconnected-client
+  fallback and now uses the same hardened private owner as connected clients.
+  Holm admission requires one completed exact round and one matching
+  `chucky_final_award` settlement, so `game_over` alone cannot clear an
+  outgoing dealer game.
+- Queued Stand Up, Sit Out, auto-fold, and rejoin intent is consumed under the
+  locked game/player cohort before the next dealer or terminal disposition is
+  derived. Settlement, balances, result/snapshot identity, presentation
+  cadence, Horses/SCC behavior, and the frozen production game are unchanged.
+- Migration `20260823171449_holm_postgame_authority.sql` is installed. Its
+  complete rollback proof passed before and after installation for winner,
+  chopped/tie, authorization, continuation, duplicate, peer replay, late
+  replay, timer-only recovery, unsettled rejection, and Session Ended.
+  Forty-four focused Holm/freeze assertions, the installed TypeScript
+  compiler, all 35 build-required Cribbage assertions, and the production Vite
+  build pass.
+
 ## Gameplay supplemental Realtime reconnect recovery
 
 - The central game subscription's authoritative reconnect snapshot now fans out
