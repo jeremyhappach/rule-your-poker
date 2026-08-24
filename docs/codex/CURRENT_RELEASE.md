@@ -1,6 +1,34 @@
 # Current release and cutover state
 
-Date: 2026-08-23
+Date: 2026-08-24
+
+## Real-money liveness admission and action-surface recovery
+
+- The serialized database recovery pass now publishes a completion heartbeat,
+  outcome, duration, and consecutive partial-failure count. The authenticated
+  `get_real_money_liveness_health` RPC reports that heartbeat, active recovery
+  failures, and exact overdue timers for one participant's session without
+  exposing private gameplay state.
+- A new database trigger guards the atomic dealer-configuration handoff. A new
+  real-money dealer game cannot enter ante decision while the sole recovery
+  scheduler is stale, partially failing, has an active task failure, or has an
+  overdue exact timer. The whole setup transaction rolls back, so the guard
+  cannot leave a dealer game or ante half-committed.
+- Paused games are excluded from stagnation inspection and were not mutated.
+  Gin and Cribbage human turns remain intentionally untimed; their bot,
+  scoring, counting, terminal, and presentation recovery owners are unchanged.
+- Holm/3-5-7, Horses/SCC, Yahtzee, Gin, and Cribbage now assert that an
+  authoritative local action owner has a rendered action surface. A mismatch
+  requests one parent-owned serialized snapshot for the exact identity and
+  records durable evidence; it never selects an action or advances gameplay.
+- Migrations `20260823235121_real_money_liveness_contract.sql` and
+  `20260824000455_fix_real_money_liveness_phase_column.sql` are installed. The
+  rollback proof passed for winner, tie, duplicate, replay, late replay,
+  authorization, continuation, terminal state, and unchanged gameplay and
+  financial rows. Post-install verification reports a healthy scheduler, zero
+  active recovery failures, successful cron ticks, and no overdue timers for
+  any unpaused active real-money game. The liveness gauntlet passes all 149
+  assertions.
 
 ## Cross-game liveness and real cross-country recovery
 

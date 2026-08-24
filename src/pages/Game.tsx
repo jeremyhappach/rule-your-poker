@@ -403,6 +403,10 @@ import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
 import { createSerializedAuthoritativeFetch } from "@/lib/serializedAuthoritativeFetch";
+import {
+  subscribeActionSurfaceRecoveryRequests,
+  type ActionSurfaceRecoveryRequest,
+} from "@/lib/actionSurfaceRecovery";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
@@ -2929,7 +2933,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
-  type GameDataFetchTrigger = 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'realtime_update' | 'manual' | 'unknown';
+  type GameDataFetchTrigger = 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'action_surface_mismatch' | 'realtime_update' | 'manual' | 'unknown';
   const serializedFetchRef = useRef<ReturnType<typeof createSerializedAuthoritativeFetch<GameDataFetchTrigger>> | null>(null);
   if (!serializedFetchRef.current) {
     serializedFetchRef.current = createSerializedAuthoritativeFetch<GameDataFetchTrigger>();
@@ -10461,6 +10465,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         || fetchTrigger === 'pageshow'
         || fetchTrigger === 'realtime_reconnect'
         || fetchTrigger === 'realtime_fallback'
+        || fetchTrigger === 'action_surface_mismatch'
       ) {
         dispatchAuthoritativeRecoverySnapshot(fetchTrigger);
       }
@@ -10493,6 +10498,80 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const fetchGameData = (fetchTrigger: GameDataFetchTrigger = 'unknown'): Promise<boolean> => {
     return serializedFetchRef.current!.request(fetchTrigger);
   };
+
+  const actionSurfaceRecoveryContextRef = useRef({
+    gameId,
+    realMoney: game?.real_money === true,
+    userId: user?.id ?? null,
+    toast,
+  });
+  actionSurfaceRecoveryContextRef.current = {
+    gameId,
+    realMoney: game?.real_money === true,
+    userId: user?.id ?? null,
+    toast,
+  };
+
+  // Child game surfaces can report a presentation invariant failure, but the
+  // parent remains the single snapshot owner. The repair is one serialized
+  // authoritative read; it never chooses a move or advances server state.
+  useEffect(() => subscribeActionSurfaceRecoveryRequests((request: ActionSurfaceRecoveryRequest) => {
+    const context = actionSurfaceRecoveryContextRef.current;
+    if (!context.gameId || request.gameId !== context.gameId) return;
+    request.handled = true;
+
+    void (async () => {
+      void logSessionEvent({
+        gameId: request.gameId,
+        eventType: 'action_surface_recovery_requested' as any,
+        eventData: {
+          gameType: request.gameType,
+          identityKey: request.identityKey,
+          surface: request.surface,
+        },
+        userId: context.userId ?? undefined,
+      });
+
+      const snapshotSucceeded = await fetchGameData('action_surface_mismatch');
+      if (!snapshotSucceeded) {
+        context.toast({
+          title: 'Restoring game controls',
+          description: 'The authoritative table refresh failed. Your action was not changed.',
+          variant: 'destructive',
+        });
+        request.respond(false);
+        return;
+      }
+
+      if (context.realMoney) {
+        const { data: health, error: healthError } = await supabase.rpc(
+          'get_real_money_liveness_health' as never,
+          { p_game_id: request.gameId } as never,
+        );
+        const healthResult = health as unknown as {
+          admission_allowed?: boolean;
+          reason?: string;
+        } | null;
+        if (
+          healthError
+          || (
+            healthResult?.admission_allowed === false
+            && healthResult.reason !== 'game_paused'
+          )
+        ) {
+          context.toast({
+            title: 'Game recovery needs attention',
+            description: healthResult?.reason
+              ? `Server recovery reported: ${healthResult.reason}. No action was chosen for you.`
+              : 'Could not verify server recovery health. No action was chosen for you.',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      request.respond(true);
+    })();
+  }), [gameId]);
 
   const recordStartGameNormalizationDbg = async (
     checkpoint: 'before-normalize' | 'after-normalize' | 'after-status-flip',

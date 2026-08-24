@@ -154,6 +154,14 @@ interface GameDefaults {
   reveal_at_showdown: boolean;
 }
 
+const dealerSetupFailureMessage = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('real_money_liveness_unavailable')) {
+    return 'Real-money deal blocked because server recovery is not healthy. No ante or game state was committed. Try again shortly.';
+  }
+  return 'Could not configure the game';
+};
+
 const DealerGameSetupInner = ({
   gameId,
   dealerUsername,
@@ -914,7 +922,7 @@ const DealerGameSetupInner = ({
       console.error('[DEALER SETUP] Atomic card setup failed:', error);
       hasSubmittedRef.current = false;
       setIsSubmitting(false);
-      toast.error('Could not configure the game');
+      toast.error(dealerSetupFailureMessage(error));
     }
   };
 
@@ -1135,7 +1143,7 @@ const DealerGameSetupInner = ({
       console.error('[DEALER SETUP] Atomic simple-game setup failed:', error);
       hasSubmittedRef.current = false;
       setIsSubmitting(false);
-      toast.error('Could not configure the game');
+      toast.error(dealerSetupFailureMessage(error));
     }
   };
 

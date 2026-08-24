@@ -73,6 +73,7 @@ import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { useAuthoritativeActionSurfaceGuard } from "@/lib/actionSurfaceRecovery";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncementContext, useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
@@ -888,6 +889,17 @@ export function YahtzeeGameTable({
     && !remoteScorePresentation.active
     && gamePhase === "playing"
     && localRollsRemaining < 3;
+  useAuthoritativeActionSurfaceGuard({
+    expected: gamePhase === 'playing'
+      && isMyTurn
+      && activeTab === 'cards'
+      && !remoteScorePresentation.active,
+    gameId,
+    gameType: 'yahtzee',
+    identityKey: `${dealerGameId ?? 'no-dealer-game'}:${currentRoundId ?? 'no-round'}:${stableTurnPlayerId ?? 'no-player'}:${viewState?.actionSequence ?? 0}`,
+    surface: 'yahtzee-turn',
+    selector: '[data-authoritative-action-surface="yahtzee-turn"]',
+  });
 
   // Wave 2E — fluid dice-row sizing.
   const paneContentRef = useRef<HTMLDivElement | null>(null);
@@ -2697,7 +2709,11 @@ export function YahtzeeGameTable({
                     incoming player only after a remote scorer's presentation
                     releases; opponent-turn UI uses the scorecard block below. */}
                 {gamePhase === 'playing' && isMyTurn && !remoteScorePresentation.active && (
-                  <ActionStripSlot className="mt-1 mb-1" density="compact">
+                  <ActionStripSlot
+                    data-authoritative-action-surface="yahtzee-turn"
+                    className="mt-1 mb-1"
+                    density="compact"
+                  >
                     {scoringInProgress ? (
                       <ActionStripStatusPill emphasis="muted">
                         Scoring…

@@ -26,6 +26,7 @@ import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
 import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
+import { useAuthoritativeActionSurfaceGuard } from '@/lib/actionSurfaceRecovery';
 // cardHighlight tokens retired — highlight is now a first-class
 // PlayingCard prop that renders inside the card face itself.
 
@@ -603,6 +604,23 @@ export const CribbageMobileCardsTab = ({
   
   // Pre-discard: show 6 cards compactly; post-discard: show 4 cards relaxed
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
+  const expectsCribbageHumanAction = isPreDiscard || (
+    cribbageState.phase === 'pegging'
+    && isMyTurn
+    && !!canPlayAnyCard
+    && !peggingBoundaryBlocked
+    && !selfPlayUnresolved
+  );
+  useAuthoritativeActionSurfaceGuard({
+    expected: expectsCribbageHumanAction,
+    gameId,
+    gameType: 'cribbage',
+    identityKey: `${expectedRoundId ?? roundId ?? 'no-round'}:${cribbageState.phase}:${cribbageState.pegging.currentTurnPlayerId ?? 'no-turn'}:${currentPlayerId}`,
+    surface: 'cribbage-human-turn',
+    selector: isPreDiscard
+      ? '[data-authoritative-action-surface="cribbage-discard"]'
+      : '[data-cribbage-hand-card-key]',
+  });
   const cardCount = renderedHand.length;
 
   // ────────────────────────────────────────────────────────────────
@@ -1132,6 +1150,7 @@ export const CribbageMobileCardsTab = ({
       >
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
+            data-authoritative-action-surface="cribbage-discard"
             onClick={handleDiscard}
             disabled={isProcessing || selectedCards.length !== expectedDiscard || renderTrace?.interactionsAllowed === false}
             className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-6"

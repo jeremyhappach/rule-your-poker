@@ -1211,3 +1211,18 @@ It may not claim readiness with an empty ledger, and persistent cross-country
 routes must classify entry from the preceding hydrated game type rather than
 from component mount alone. Every browser-authoritative timeout or whole-state
 repair is prohibited when an exact database action/recovery owner exists.
+
+## D-085 - Real-money admission requires a healthy recovery owner
+
+A new real-money dealer game may cross the atomic configuration-to-ante
+boundary only while the single serialized database recovery owner has a fresh
+successful completion heartbeat, no active task failure, and no overdue exact
+timer for that unpaused session. The guard fails the entire setup transaction;
+it may not partially publish a dealer game, ante, or financial state.
+
+This is an admission circuit breaker, not a second scheduler. It does not pause
+or advance an existing game, and paused games are excluded from stagnation
+inspection. Gin and Cribbage human turns remain explicit untimed exceptions.
+When authoritative client state expects a visible action but its presentation
+surface is absent, the client may request one serialized authoritative
+snapshot for that exact identity. It may not infer or submit the missing move.

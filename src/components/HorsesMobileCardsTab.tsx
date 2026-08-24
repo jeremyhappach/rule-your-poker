@@ -21,6 +21,7 @@ import {
   ActionStripStatusPill,
 } from "@/components/canonicalShell/actionStrip";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthoritativeActionSurfaceGuard } from "@/lib/actionSurfaceRecovery";
 
 // Wave 2D: discrete HorsesDie size ladder (must match HorsesDie sizeClasses).
 // The resolver returns a fluid die edge in px; we snap to the nearest bucket
@@ -51,6 +52,7 @@ const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
 const ACTIVE_ROLL_AGAIN_MS = 1800;   // Rolls 2/3: ~1.8s
 
 interface HorsesMobileCardsTabProps {
+  gameId: string;
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean; sitting_out?: boolean; waiting?: boolean };
   horses: ReturnType<typeof useHorsesMobileController>;
   onAutoFoldChange?: (autoFold: boolean) => void;
@@ -65,6 +67,7 @@ interface HorsesMobileCardsTabProps {
 }
 
 export function HorsesMobileCardsTab({
+  gameId,
   currentUserPlayer,
   horses,
   onAutoFoldChange,
@@ -302,6 +305,16 @@ export function HorsesMobileCardsTab({
   const diceSize = isTablet || isDesktop ? "lg" : "lg";
   // roll label should never exceed 3 (and we hide the button after roll 3)
   const rollNumber = Math.min(3, Math.max(1, 4 - horses.localHand.rollsRemaining));
+  useAuthoritativeActionSurfaceGuard({
+    expected: horses.gamePhase === 'playing'
+      && horses.isMyTurn
+      && horses.localHand.rollsRemaining > 0,
+    gameId,
+    gameType: gameType ?? 'horses',
+    identityKey: `${horses.dealerGameId ?? 'no-dealer-game'}:${horses.presentationRoundId ?? 'no-round'}:${horses.currentTurnPlayerId ?? 'no-player'}:${horses.localHand.rollsRemaining}`,
+    surface: 'horses-scc-turn',
+    selector: '[data-authoritative-action-surface="horses-scc-turn"]',
+  });
 
   // Wave 2D — fluid dice-row sizing.
   // The dice tray is an active-player pane artifact: its horizontal budget
@@ -451,7 +464,10 @@ export function HorsesMobileCardsTab({
       >
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
-            <ActionStripButtonRow className={cn(isTablet || isDesktop ? "gap-4" : "gap-2")}>
+            <ActionStripButtonRow
+              data-authoritative-action-surface="horses-scc-turn"
+              className={cn(isTablet || isDesktop ? "gap-4" : "gap-2")}
+            >
               {/* Left spacer keeps the Roll button perfectly centered even when Lock appears */}
               <div className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")} aria-hidden="true" />
 

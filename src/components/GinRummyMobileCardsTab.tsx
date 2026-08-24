@@ -15,6 +15,7 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 import { isGinMaskedCard, withholdGinDrawnCards } from '@/lib/ginRummy/presentationIdentity';
+import { useAuthoritativeActionSurfaceGuard } from '@/lib/actionSurfaceRecovery';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -431,6 +432,19 @@ export const GinRummyMobileCardsTab = ({
   const iAmKnocker = knockerId === currentPlayerId;
   const isLayingOff = (ginState.phase === 'knocking' || ginState.phase === 'laying_off') &&
     ginState.currentTurnPlayerId === currentPlayerId && !iAmKnocker;
+  const expectsGinHumanAction = isMyTurn && (
+    ginState.phase === 'first_draw'
+    || ginState.phase === 'playing'
+    || isLayingOff
+  );
+  useAuthoritativeActionSurfaceGuard({
+    expected: expectsGinHumanAction,
+    gameId,
+    gameType: 'gin-rummy',
+    identityKey: `${handIdentityKey ?? `hand-${ginState.handNumber ?? 'unknown'}`}:${ginState.phase}:${ginState.turnPhase}:${ginState.actionCount ?? 0}:${currentPlayerId}`,
+    surface: 'gin-human-turn',
+    selector: '[data-authoritative-action-surface^="gin-human-turn"]',
+  });
 
   const layOffOptions = useMemo(() => {
     if (!isLayingOff || !knockerId || !myState) return [];
@@ -740,7 +754,7 @@ export const GinRummyMobileCardsTab = ({
 
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
-          <>
+          <div data-authoritative-action-surface="gin-human-turn:first-draw" className="flex items-center gap-2">
             <Button onClick={onTakeFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-green-200 text-green-900 font-bold hover:bg-green-300 border border-green-400 px-4 disabled:opacity-50" size="sm">
               Take
             </Button>
@@ -748,7 +762,7 @@ export const GinRummyMobileCardsTab = ({
               Pass
             </Button>
 
-          </>
+          </div>
         )}
 
         {ginState.phase === 'first_draw' && !isMyTurn && (
@@ -757,12 +771,12 @@ export const GinRummyMobileCardsTab = ({
 
         {/* Draw phase */}
         {ginState.phase === 'playing' && ginState.turnPhase === 'draw' && isMyTurn && (
-          <p className="text-poker-gold text-sm font-medium animate-pulse">Tap stock or discard on felt</p>
+          <p data-authoritative-action-surface="gin-human-turn:draw" className="text-poker-gold text-sm font-medium animate-pulse">Tap stock or discard on felt</p>
         )}
 
         {/* Discard phase - card selected */}
         {ginState.phase === 'playing' && ginState.turnPhase === 'discard' && isMyTurn && selectedCardIndex !== null && (
-          <>
+          <div data-authoritative-action-surface="gin-human-turn:discard" className="flex items-center gap-2">
             <Button onClick={handleDiscard} disabled={isProcessing} className="bg-amber-700 hover:bg-amber-600 text-white font-bold px-4" size="sm">
               Discard
             </Button>
@@ -776,12 +790,12 @@ export const GinRummyMobileCardsTab = ({
                 GIN! 🎉
               </Button>
             )}
-          </>
+          </div>
         )}
 
         {/* Discard phase - no card selected */}
         {ginState.phase === 'playing' && ginState.turnPhase === 'discard' && isMyTurn && selectedCardIndex === null && (
-          <p className="text-poker-gold text-sm font-medium animate-pulse">Tap a card to select</p>
+          <p data-authoritative-action-surface="gin-human-turn:select" className="text-poker-gold text-sm font-medium animate-pulse">Tap a card to select</p>
         )}
 
         {/* Waiting for opponent during play */}
@@ -791,7 +805,7 @@ export const GinRummyMobileCardsTab = ({
 
         {/* Laying off - my turn as non-knocker */}
         {isLayingOff && (
-          <div className="flex items-center gap-2 flex-wrap justify-center">
+          <div data-authoritative-action-surface="gin-human-turn:lay-off" className="flex items-center gap-2 flex-wrap justify-center">
             <Button onClick={onFinishLayingOff} disabled={isProcessing} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4" size="sm">
               Done Laying Off
             </Button>

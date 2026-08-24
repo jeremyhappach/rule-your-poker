@@ -22,7 +22,8 @@ export type AuthoritativeRecoverySource =
   | 'focus'
   | 'pageshow'
   | 'realtime_reconnect'
-  | 'realtime_fallback';
+  | 'realtime_fallback'
+  | 'action_surface_mismatch';
 
 const AUTHORITATIVE_RECOVERY_EVENT = 'app:authoritative-recovery-snapshot';
 

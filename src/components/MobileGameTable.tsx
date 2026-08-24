@@ -261,6 +261,7 @@ import { Card as CardType, evaluateHand, formatHandRank, formatHandRankDetailed,
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
+import { useAuthoritativeActionSurfaceGuard } from "@/lib/actionSurfaceRecovery";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import cubsLogo from "@/assets/cubs-logo.png";
 
@@ -6893,6 +6894,18 @@ export const MobileGameTable = ({
   const lowerZoneTraceRoundNumber = threeFiveSevenAuthoritativeRoundNumber ?? currentRound ?? null;
   const lowerZoneTraceViewRoundId = threeFiveSevenViewRoundId ?? null;
   const lowerZoneTraceViewRoundNumber = threeFiveSevenViewRoundNumber ?? (__is357GameType(gameType) ? currentRound : null);
+  useAuthoritativeActionSurfaceGuard({
+    expected: !!canDecide
+      && activeTab === 'cards'
+      && !isWaitingPhase
+      && !isDealerConfigPhase,
+    gameId,
+    gameType: gameType ?? 'unknown',
+    identityKey: authoritativeDecisionIdentityKey
+      ?? `${holmDealerGameId ?? horsesDealerGameId ?? 'no-dealer-game'}:${lowerZoneTraceRoundId ?? 'no-round'}:${currentPlayer?.id ?? 'no-player'}`,
+    surface: 'holm-357-decision',
+    selector: '[data-authoritative-action-surface="holm-357-decision"]',
+  });
   const getLowerZoneSuppressReason = (): string => {
     if (!currentPlayer) return 'no_currentPlayer';
     if (currentPlayer.auto_fold && !currentPlayer.sitting_out) return 'currentPlayer.auto_fold';
@@ -14988,6 +15001,7 @@ export const MobileGameTable = ({
               {!isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
                 diceGameplayUiActive ? (
                   <HorsesMobileCardsTab
+                    gameId={gameId ?? ''}
                     currentUserPlayer={currentPlayer as any}
                     horses={horsesController}
                     gameType={gameType}
@@ -15470,7 +15484,10 @@ export const MobileGameTable = ({
                         )}>Auto-fold (will sit out next hand)</span>
                       </label>
                     ) : canDecide && !currentPlayer.auto_fold ? (
-                      <div className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}>
+                      <div
+                        data-authoritative-action-surface="holm-357-decision"
+                        className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}
+                      >
                         <Button
                           variant="destructive"
                           size="default"
