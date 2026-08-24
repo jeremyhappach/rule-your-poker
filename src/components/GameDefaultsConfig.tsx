@@ -55,6 +55,14 @@ interface GameDefaultsConfigProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface SessionDealerDrawTieHarnessStatus {
+  outcome?: string;
+  armed?: boolean;
+  expiresAt?: string | null;
+  consumedAt?: string | null;
+  consumedGameId?: string | null;
+}
+
 // Game type display info
 const GAME_TYPES = [
   { value: 'holm', label: 'Holm', icon: Spade, category: 'card' },
@@ -72,12 +80,69 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedGameType, setSelectedGameType] = useState<string>('holm');
+  const [dealerDrawTieHarness, setDealerDrawTieHarness] = useState<SessionDealerDrawTieHarnessStatus>({ armed: false });
+  const [dealerDrawTieHarnessLoading, setDealerDrawTieHarnessLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchDefaults();
+      void fetchDealerDrawTieHarness();
     }
   }, [open]);
+
+  const fetchDealerDrawTieHarness = async () => {
+    const { data, error } = await supabase.rpc(
+      'get_session_dealer_draw_tie_harness' as any,
+    );
+    if (error) {
+      console.error('Failed to read session dealer-draw tie harness:', error);
+      return;
+    }
+    setDealerDrawTieHarness((data ?? { armed: false }) as SessionDealerDrawTieHarnessStatus);
+  };
+
+  const armDealerDrawTieHarness = async () => {
+    setDealerDrawTieHarnessLoading(true);
+    try {
+      const { data, error } = await supabase.rpc(
+        'arm_session_dealer_draw_tie_harness' as any,
+        { p_ttl_seconds: 600 } as any,
+      );
+      if (error) throw error;
+      const result = (data ?? {}) as SessionDealerDrawTieHarnessStatus;
+      if (result.outcome !== 'armed') {
+        throw new Error(result.outcome ?? 'arm_failed');
+      }
+      setDealerDrawTieHarness(result);
+      toast.success('Your next session dealer draw will tie once');
+    } catch (error) {
+      console.error('Failed to arm session dealer-draw tie harness:', error);
+      toast.error('Failed to arm the tied dealer draw');
+    } finally {
+      setDealerDrawTieHarnessLoading(false);
+    }
+  };
+
+  const cancelDealerDrawTieHarness = async () => {
+    setDealerDrawTieHarnessLoading(true);
+    try {
+      const { data, error } = await supabase.rpc(
+        'cancel_session_dealer_draw_tie_harness' as any,
+      );
+      if (error) throw error;
+      const result = (data ?? {}) as SessionDealerDrawTieHarnessStatus;
+      if (result.outcome !== 'cancelled') {
+        throw new Error(result.outcome ?? 'cancel_failed');
+      }
+      setDealerDrawTieHarness(result);
+      toast.success('Tied dealer draw cancelled');
+    } catch (error) {
+      console.error('Failed to cancel session dealer-draw tie harness:', error);
+      toast.error('Failed to cancel the tied dealer draw');
+    } finally {
+      setDealerDrawTieHarnessLoading(false);
+    }
+  };
 
   const fetchDefaults = async () => {
     setLoading(true);
@@ -1122,6 +1187,48 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <div className="py-8 text-center text-muted-foreground">Loading...</div>
         ) : (
           <div className="space-y-4">
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <FlaskConical className="h-4 w-4" />
+                Session Dealer Draw Smoke Fixture
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Arms one real high-card tie for the next session dealer draw you host. It is scoped to your account,
+                consumed after one draw, and expires after 10 minutes. It does not enable saved game harnesses.
+              </p>
+              {dealerDrawTieHarness.armed ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-destructive">
+                    Armed: your next hosted session will draw tied aces, then a K/Q tiebreaker.
+                  </p>
+                  {dealerDrawTieHarness.expiresAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Expires {new Date(dealerDrawTieHarness.expiresAt).toLocaleTimeString()}
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={dealerDrawTieHarnessLoading}
+                    onClick={() => void cancelDealerDrawTieHarness()}
+                  >
+                    Cancel Forced Tie
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={dealerDrawTieHarnessLoading}
+                  onClick={() => void armDealerDrawTieHarness()}
+                >
+                  Force My Next Dealer Draw to Tie
+                </Button>
+              )}
+            </div>
+
             {/* Game Type Dropdown */}
             <div className="space-y-2">
               <Label>Game Type</Label>

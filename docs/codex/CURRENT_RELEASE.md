@@ -2,6 +2,26 @@
 
 Date: 2026-08-24
 
+## One-shot session dealer-draw tie smoke fixture
+
+- Admin Game Defaults now exposes a dedicated session dealer-draw smoke
+  fixture. Arming it targets only the authenticated admin's next hosted
+  session, expires after ten minutes, and is consumed atomically by one draw.
+- PostgreSQL remains the dealer-draw owner. The fixture orders a legal unique
+  deck so the first two eligible seats receive tied aces and the tiebreaker
+  receives K/Q; the ordinary rank loop, stored multi-wave receipt, winner,
+  canonical timer, and setup continuation all run unchanged.
+- This control does not turn on the persistent `harnesses_mode` gate, so saved
+  Cribbage, Gin, Holm, or other game profiles cannot become active as a side
+  effect. Wrong-host, expired, duplicate, late-replay, paused, and terminal
+  paths fail closed or retain the normal shuffle.
+- A rollback-safe database proof covers authorization, tie/winner, deck
+  uniqueness, one-shot consumption, host/expiry isolation, replay, lifecycle
+  continuation, terminal rejection, and preservation of the global harness
+  gate. The installed definition passed that proof; TypeScript, all 232
+  liveness assertions across 39 files, all 35 build-required Cribbage
+  assertions, and the production build pass.
+
 ## Session dealer-draw tie presentation and setup admission correction
 
 - Production smoke `Aug 24 - Chalk Dust Torture` produced a valid two-player

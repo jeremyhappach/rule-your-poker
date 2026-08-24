@@ -1297,3 +1297,18 @@ may withhold its own successor modal until its final presentation dwell
 completes, while the canonical database timer continues to guarantee progress
 for delayed or absent clients. Cold mounts already beyond the presentation
 phase do not replay the historical result.
+
+## D-091 - Destructive test fixtures are exact-owner, expiring, and one-shot
+
+A production smoke fixture that changes authoritative game input may not be a
+global source patch or a persistent game profile when either can leak into an
+unrelated session. The session dealer-draw tie fixture is armed only by an
+authenticated admin, matches the exact `games.current_host` user id, expires
+after ten minutes, locks its request with the game, and atomically records the
+single consuming game before commit.
+
+The fixture changes only deck order. The existing database rank loop, stored
+result, timer, winner, and continuation remain authoritative. It is deliberately
+independent of the persistent `harnesses_mode` switch because enabling that
+switch would activate other saved profiles; arming or consuming this fixture
+must leave that global gate byte-for-byte unchanged.

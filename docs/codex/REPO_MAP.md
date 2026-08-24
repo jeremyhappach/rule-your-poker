@@ -527,6 +527,15 @@ evidence remains writable. The deterministic response-loss phase delegates an
 HTTP operation exactly once and discards its response, exercising ambiguous
 commit recovery without permitting a harness retry.
 
+The session dealer-draw tie smoke fixture is a separate one-shot authoritative
+input request, not a persistent game profile. Admin arm/cancel/status controls
+live in `src/components/GameDefaultsConfig.tsx`; the host-scoped, ten-minute,
+atomically consumed database owner is
+`supabase/migrations/20260824165309_session_dealer_draw_tie_harness.sql`; its
+rollback proof is
+`supabase/tests/session_dealer_draw_tie_harness_proof.sql`. It never reads or
+mutates `harnesses_mode`.
+
 The separate database-backed 3-5-7 wartime stream is gated by
 `src/lib/threeFiveSeven/wartime/capture.ts`: Wartime Debug must be explicitly
 enabled, the mounted route must currently own a 3-5-7 game, and scoped events
