@@ -25,6 +25,8 @@ const context = {
   showdownWinnerIds: ['winner-a', 'winner-b'],
   showdownLoserIds: ['loser-a'],
   showdownMatchAmount: 6,
+  chuckyWinPlayerIds: ['chucky-winner'],
+  chuckyWinAmount: 8,
   chuckyLossPlayerIds: ['chucky-loser'],
   chuckyLossAmount: 3,
   pussyTaxPlayerIds: ['winner-a', 'winner-b', 'loser-a'],
@@ -52,6 +54,15 @@ describe('classifyHolmTransferPresentationStage', () => {
         { id: '2', amount: 3, from: { kind: 'pot' }, to: { kind: 'player', playerId: 'winner-b' } },
       ],
     }), context)).toBe('showdown-pot-award');
+  });
+
+  it('recognizes a Chucky final award under its actual transfer journal reason', () => {
+    expect(classifyHolmTransferPresentationStage(baseBatch({
+      reason: 'transfer',
+      transfers: [
+        { id: '1', amount: 8, from: { kind: 'pot' }, to: { kind: 'player', playerId: 'chucky-winner' } },
+      ],
+    }), context)).toBe('chucky-final-award');
   });
 
   it('recognizes only the exact loser cohort as a replacement-pot stage', () => {
@@ -135,6 +146,39 @@ describe('canAdmitHolmTransferPresentation', () => {
     expect(canAdmitHolmTransferPresentation(loss, admissionState({
       chuckyLossTransportPresentationReady: true,
     }))).toBe(true);
+  });
+
+  it('holds an exact Chucky final award until reveal, result, and cursor identity all match', () => {
+    const award = baseBatch({
+      transfers: [
+        { id: '1', amount: 8, from: { kind: 'pot' }, to: { kind: 'player', playerId: 'chucky-winner' } },
+      ],
+    });
+
+    expect(canAdmitHolmTransferPresentation(award, admissionState())).toBe(false);
+    expect(canAdmitHolmTransferPresentation(award, admissionState({
+      communityFullyRevealed: true,
+      chuckyVisualRevealComplete: true,
+      winPotPresentationReady: true,
+    }))).toBe(true);
+    expect(canAdmitHolmTransferPresentation({ ...award, cursor: 2 }, admissionState({
+      communityFullyRevealed: true,
+      chuckyVisualRevealComplete: true,
+      winPotPresentationReady: true,
+    }))).toBe(false);
+  });
+
+  it('fails closed for an unclassified pot award instead of borrowing the win gate', () => {
+    const unrelatedAward = baseBatch({
+      transfers: [
+        { id: '1', amount: 8, from: { kind: 'pot' }, to: { kind: 'player', playerId: 'not-the-winner' } },
+      ],
+    });
+    expect(canAdmitHolmTransferPresentation(unrelatedAward, admissionState({
+      communityFullyRevealed: true,
+      chuckyVisualRevealComplete: true,
+      winPotPresentationReady: true,
+    }))).toBe(false);
   });
 
   it('preserves ordered multi-player replacement-pot and pussy-tax stages', () => {

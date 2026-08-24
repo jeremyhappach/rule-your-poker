@@ -72,6 +72,7 @@ export interface HolmContinuationPresentationCompletion extends HolmPresentation
 
 export type HolmAdmittedTransferStage =
   | 'showdown-pot-award'
+  | 'chucky-final-award'
   | 'showdown-replacement-pot'
   | 'chucky-loss'
   | 'pussy-tax';
@@ -111,6 +112,34 @@ export function getHolmShowdownPresentationCursors(
 
 function isHolmPresentationCursorComplete(state: ChipPresentationCursorState): boolean {
   return state === 'settled' || state === 'reconciled';
+}
+
+/**
+ * The connected Holm terminal handoff needs two independent receipts: the
+ * visible celebration clock and the exact immutable Chucky-award cursor. The
+ * returned key is level-triggered and identity-scoped so either arrival order
+ * is safe and duplicate renders remain harmless.
+ */
+export function getHolmChuckyWinPresentationCompletionKey({
+  identity,
+  activeTriggerId,
+  completedTriggerId,
+  cursorState,
+}: {
+  identity: HolmPresentationIdentity | null | undefined;
+  activeTriggerId: string | null | undefined;
+  completedTriggerId: string | null | undefined;
+  cursorState: ChipPresentationCursorState;
+}): string | null {
+  if (
+    !identity
+    || !activeTriggerId
+    || completedTriggerId !== activeTriggerId
+    || !isHolmPresentationCursorComplete(cursorState)
+  ) {
+    return null;
+  }
+  return `${getHolmPresentationIdentityKey(identity)}|chucky-win:${activeTriggerId}`;
 }
 
 /**
@@ -181,7 +210,7 @@ export function captureHolmAdmittedTransferPresentation(
   stage: HolmAdmittedTransferStage,
 ): HolmAdmittedTransferPresentation {
   const continuationStage: HolmContinuationPresentationStage | null =
-    stage === 'showdown-pot-award' ? null : stage;
+    stage === 'showdown-pot-award' || stage === 'chucky-final-award' ? null : stage;
   const completion = continuationStage
     && identity
     && batchCursor === identity.transferCursor

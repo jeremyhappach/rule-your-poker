@@ -1266,3 +1266,19 @@ A full-screen overlay that must cover HUD Stack row 2 must mount beside the
 tab-rail portal on `document.body` and use a named `SHELL_Z` band above
 `HUD_TAB_RAIL`. A large descendant z-index cannot escape an ancestor stacking
 context and is not valid proof of shell-wide ordering.
+
+## D-089 - Holm terminal continuation requires the exact award receipt
+
+A connected Holm client may submit terminal postgame only after two
+identity-matched presentation receipts exist: the Chucky-win celebration has
+completed and the immutable `chucky_final_award` transfer cursor is durably
+`settled` or `reconciled`. A presentation-only clock, effect completion, or
+result string is not sufficient financial-presentation evidence by itself.
+
+The stage classifier derives this award from the exact pot-to-recipient
+topology, winner UUID cohort, amount, and published cursor even though the
+database journal reason is `transfer`. Unclassified Holm pot awards fail
+closed. Reconciliation may release a reconnect without replaying financial
+motion; if no browser obtains both receipts, the existing 15-second canonical
+database timer remains the sole liveness fallback and converges on the same
+replay-safe postgame claim.

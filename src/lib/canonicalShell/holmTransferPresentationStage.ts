@@ -2,6 +2,7 @@ import type { ChipPresentationBatch, ChipPresentationTransfer } from './ChipPres
 
 export type HolmTransferPresentationStage =
   | 'showdown-pot-award'
+  | 'chucky-final-award'
   | 'showdown-replacement-pot'
   | 'chucky-loss'
   | 'pussy-tax'
@@ -11,6 +12,8 @@ export interface HolmTransferPresentationContext {
   showdownWinnerIds: readonly string[];
   showdownLoserIds: readonly string[];
   showdownMatchAmount: number;
+  chuckyWinPlayerIds: readonly string[];
+  chuckyWinAmount: number;
   chuckyLossPlayerIds: readonly string[];
   chuckyLossAmount: number;
   pussyTaxPlayerIds: readonly string[];
@@ -169,6 +172,23 @@ export function classifyHolmTransferPresentationStage(
     return 'showdown-pot-award';
   }
 
+  // `holm_settle_hand` journals dealer-game-ending Chucky awards as a
+  // financial `transfer`, not `win`. Match the immutable recipient cohort and
+  // exact pot amount so this terminal batch cannot fall through to the generic
+  // pot-to-player gate and lose its completion identity.
+  if (
+    batch.reason === 'transfer'
+    && potAwards.length === transfers.length
+    && samePlayerSet(
+      potAwards.map((transfer) => transfer.to.playerId ?? ''),
+      context.chuckyWinPlayerIds,
+    )
+    && context.chuckyWinAmount > 0
+    && potAwards.reduce((sum, transfer) => sum + transfer.amount, 0) === context.chuckyWinAmount
+  ) {
+    return 'chucky-final-award';
+  }
+
   const potContributions = transfers.filter(
     (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
   );
@@ -252,6 +272,12 @@ export function canAdmitHolmTransferPresentation(
       && state.showdownPhase === 'pot-to-winner'
     );
   }
+  if (stage === 'chucky-final-award') {
+    return batch.cursor === state.presentationTransferCursor
+      && state.communityFullyRevealed
+      && state.chuckyVisualRevealComplete
+      && state.winPotPresentationReady;
+  }
   if (stage === 'showdown-replacement-pot') {
     return batch.cursor === state.presentationTransferCursor
       && state.showdownPhase === 'losers-to-pot';
@@ -271,13 +297,9 @@ export function canAdmitHolmTransferPresentation(
   const movesPotToPlayer = batch.transfers.some(
     (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
   );
-  if (movesPotToPlayer) {
-    return (
-      state.communityFullyRevealed
-      && state.chuckyVisualRevealComplete
-      && state.winPotPresentationReady
-    );
-  }
+  // Every Holm pot award has an exact semantic stage. An unclassified award
+  // must wait for its result context instead of borrowing a generic win gate.
+  if (movesPotToPlayer) return false;
 
   // Immutable antes and non-terminal transfers do not borrow a showdown gate.
   return true;

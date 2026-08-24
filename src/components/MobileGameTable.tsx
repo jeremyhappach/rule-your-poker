@@ -305,6 +305,7 @@ import {
 import {
   captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
+  getHolmChuckyWinPresentationCompletionKey,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
   getHolmShowdownDurablePresentationAction,
@@ -3043,6 +3044,9 @@ export const MobileGameTable = ({
   const [holmPussyTaxSettledCompletion, setHolmPussyTaxSettledCompletion] = useState<
     HolmContinuationPresentationCompletion | null
   >(null);
+  const [holmWinCelebrationCompletedTriggerId, setHolmWinCelebrationCompletedTriggerId] =
+    useState<string | null>(null);
+  const releasedHolmWinPresentationKeysRef = useRef(new Set<string>());
   const [holmAllFoldResultPaintedHandKey, setHolmAllFoldResultPaintedHandKey] = useState<string | null>(null);
   const holmAllFoldCompletionAcknowledgedRef = useRef<string | null>(null);
   const holmAdmittedTransferPresentationsRef = useRef(
@@ -4503,10 +4507,21 @@ export const MobileGameTable = ({
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyLossTransportPresentationReady ? chuckyLossTriggerId : null;
+  const holmWinPlayerIds = useMemo(() => {
+    const winnerPositions = holmWinWinnerPositions.length > 0
+      ? holmWinWinnerPositions
+      : [holmWinWinnerPosition];
+    const positionSet = new Set(winnerPositions);
+    return players
+      .filter((player) => positionSet.has(player.position))
+      .map((player) => player.id);
+  }, [holmWinWinnerPosition, holmWinWinnerPositions, players]);
   const holmTransferPresentationContext = useMemo(() => ({
     showdownWinnerIds: holmShowdownWinnerIds,
     showdownLoserIds: holmShowdownLoserIds,
     showdownMatchAmount: holmShowdownMatchAmount,
+    chuckyWinPlayerIds: holmWinPlayerIds,
+    chuckyWinAmount: holmWinPotAmount,
     chuckyLossPlayerIds,
     chuckyLossAmount,
     pussyTaxPlayerIds: players
@@ -4517,6 +4532,8 @@ export const MobileGameTable = ({
   }), [
     chuckyLossAmount,
     chuckyLossPlayerIds,
+    holmWinPlayerIds,
+    holmWinPotAmount,
     holmShowdownLoserIds,
     holmShowdownMatchAmount,
     holmShowdownWinnerIds,
@@ -4765,6 +4782,12 @@ export const MobileGameTable = ({
         onHolmShowdownPotToWinnerEnded?.();
         return;
       }
+      if (admittedPresentation?.stage === 'chucky-final-award') {
+        // The exact durable cursor plus the celebration receipt jointly own
+        // terminal release below. The transient settlement edge is not an
+        // independent progression owner.
+        return;
+      }
       if (admittedPresentation?.stage === 'showdown-replacement-pot') {
         const completion = admittedPresentation.completion;
         if (!completion) return;
@@ -4817,6 +4840,26 @@ export const MobileGameTable = ({
     onChipTransferPresentationBatchSettled,
     onChipTransferPresentationBatchStarted,
   );
+
+  const holmWinAwardCursorState = useChipPresentationCursorState(
+    gameType === 'holm-game'
+      && holmWinPotTriggerIdGated
+      && holmPresentationIdentity
+      ? holmPresentationIdentity.transferCursor
+      : null,
+  );
+  const holmWinPresentationCompletionKey = getHolmChuckyWinPresentationCompletionKey({
+    identity: holmPresentationIdentity,
+    activeTriggerId: holmWinPotTriggerIdGated,
+    completedTriggerId: holmWinCelebrationCompletedTriggerId,
+    cursorState: holmWinAwardCursorState,
+  });
+  useEffect(() => {
+    if (!holmWinPresentationCompletionKey) return;
+    if (releasedHolmWinPresentationKeysRef.current.has(holmWinPresentationCompletionKey)) return;
+    releasedHolmWinPresentationKeysRef.current.add(holmWinPresentationCompletionKey);
+    onHolmWinPotAnimationComplete?.();
+  }, [holmWinPresentationCompletionKey, onHolmWinPotAnimationComplete]);
 
   // The callback above remains the fast path. Exact cursor receipts are the
   // durable level-triggered path when React misses that one settlement edge.
@@ -12842,11 +12885,14 @@ export const MobileGameTable = ({
               }
             }}
             onAnimationComplete={() => {
-              // FIX: Mark animation as completed to keep pot hidden
+              // This is only the visible celebration receipt. Connected
+              // postgame may proceed after the exact immutable Chucky-award
+              // cursor is also settled/reconciled; this clock cannot advance
+              // the dealer game by itself.
               console.log('[HOLM WIN] Animation complete - setting holmWinPotHiddenUntilReset=true');
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false); // Clear POT-OUT flag
-              onHolmWinPotAnimationComplete?.();
+              setHolmWinCelebrationCompletedTriggerId(holmWinPotTriggerIdGated);
               try {
                 recordHolmPotComplete(
                   {

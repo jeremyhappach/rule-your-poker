@@ -2,6 +2,36 @@
 
 Date: 2026-08-24
 
+## Holm Chucky-win presentation completion correction
+
+- Fake-money smoke `Aug 24 - DeMar DeRozan` settled the terminal Holm hand and
+  immutable cursor-7 award exactly once: $6 moved from the pot to Hap and both
+  endpoint balances reconciled. Both connected clients nevertheless entered
+  postgame about nine seconds later without a visible win-pot sequence. The
+  connected callback, not the 15-second database fallback, advanced setup.
+- The canonical-ledger cutover had hidden `HolmWinPotAnimation`'s legacy chip
+  markup with `presentationOwned` while retaining its 5.5-second completion
+  clock. That clock plus the existing three-second dwell could submit postgame
+  even if the canonical transfer never settled locally. Separately, the
+  database journals `chucky_final_award` as reason `transfer`, while Holm's
+  stage classifier recognized only reason `win` pot awards, so the exact batch
+  settlement was not a terminal completion owner.
+- Holm now classifies the exact Chucky recipient cohort, amount, and published
+  cursor as `chucky-final-award`. Connected postgame requires both the existing
+  celebration completion receipt and a durable `settled`/`reconciled` receipt
+  for that immutable cursor. The legacy timer cannot advance by itself;
+  unknown pot awards fail closed. PostgreSQL settlement, balances, Chucky
+  reveal cadence, three-second result dwell, replay-safe postgame claim, and
+  the 15-second disconnected-client fallback are unchanged.
+- The permanent real-money liveness gauntlet now covers this exact gate,
+  actual `transfer` journal reason, both receipt orderings, reconciliation,
+  wrong-cursor rejection, and the absence of the legacy direct callback. All
+  220 gauntlet assertions, 56 focused assertions, TypeScript, all 35
+  build-required Cribbage assertions, and the production build pass. One
+  pre-existing `HolmCanonicalCommunityRow` test remains independently red
+  because it does not clean up its first DOM render; no community-row source or
+  test was changed in this correction.
+
 ## Sweep-the-Legs HUD stacking regression correction
 
 - The accepted freeze smoke exposed a separate P1 presentation regression:
