@@ -38,6 +38,12 @@ function offlinePhase() {
   return phase;
 }
 
+function responseLossPhase() {
+  const phase = getActiveChaosProfile()?.phases.find((candidate) => candidate.kind === 'response-loss');
+  if (!phase) throw new Error('Chaos profile must include a response-loss phase');
+  return phase;
+}
+
 describe('Supabase network simulation transport', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -97,6 +103,20 @@ describe('Supabase network simulation transport', () => {
     expect(nativeFetch).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1_000);
     await request;
+
+    expect(nativeFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('simulates an ambiguous committed write by losing only its response', async () => {
+    const nativeFetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', nativeFetch);
+    const phase = responseLossPhase();
+    await vi.advanceTimersByTimeAsync(phase.startMs);
+
+    const request = simulatedSupabaseFetch('https://example.test/rest/v1/rounds', { method: 'PATCH' });
+    const assertion = expect(request).rejects.toThrow('response loss after send');
+    await vi.advanceTimersByTimeAsync(2_000);
+    await assertion;
 
     expect(nativeFetch).toHaveBeenCalledTimes(1);
   });

@@ -172,19 +172,74 @@ export interface DealRuntimeProps {
    * suppress historical replay. Defaults to 'PRE_DEAL' (live-deal path).
    */
   initialPhase?: DealPhase;
+  /**
+   * Historical reconstruction for a server-dealt hand mounted directly in
+   * GAMEPLAY. Counts are converted into deterministic, hand-scoped ownership
+   * claims so a later additive wave can grow from the persisted baseline.
+   * Live PRE_DEAL mounts must not provide this value.
+   */
+  initialSettledByRecipient?: Readonly<Record<string, number>>;
   children: ReactNode;
+}
+
+function buildInitialSettlement(
+  handContextId: string,
+  initialPhase: DealPhase,
+  counts: Readonly<Record<string, number>> | undefined,
+) {
+  const settledCardIds = new Set<string>();
+  const settledByRecipient = new Map<string, number>();
+  const settledCardIdsByRecipient = new Map<string, string[]>();
+  if (initialPhase !== 'GAMEPLAY' || !counts) {
+    return { expectedCount: 0, settledCardIds, settledByRecipient, settledCardIdsByRecipient };
+  }
+
+  for (const [playerId, rawCount] of Object.entries(counts)) {
+    const count = Math.max(0, Math.floor(rawCount));
+    if (count === 0) continue;
+    const ids = Array.from(
+      { length: count },
+      (_, index) => `${handContextId}#historical#${playerId}#${index}`,
+    );
+    settledByRecipient.set(playerId, count);
+    settledCardIdsByRecipient.set(playerId, ids);
+    ids.forEach((id) => settledCardIds.add(id));
+  }
+  return {
+    expectedCount: settledCardIds.size,
+    settledCardIds,
+    settledByRecipient,
+    settledCardIdsByRecipient,
+  };
 }
 
 /**
  * Mount DealRuntime with a `key={handContextId}` from the host so a new
  * hand naturally resets state via remount.
  */
-export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PRE_DEAL', children }: DealRuntimeProps) {
+export function DealRuntime({
+  handContextId,
+  gameType = null,
+  initialPhase = 'PRE_DEAL',
+  initialSettledByRecipient,
+  children,
+}: DealRuntimeProps) {
+  const [initialSettlement] = useState(() => buildInitialSettlement(
+    handContextId,
+    initialPhase,
+    initialSettledByRecipient,
+  ));
   const [phase, setPhase] = useState<DealPhase>(initialPhase);
-  const [expectedCount, setExpectedCount] = useState(0);
-  const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
-  const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
-  const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
+  const [expectedCount, setExpectedCount] = useState(initialSettlement.expectedCount);
+  const [settledCardIds, setSettledCardIds] = useState<Set<string>>(
+    () => new Set(initialSettlement.settledCardIds),
+  );
+  const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(
+    () => new Map(initialSettlement.settledByRecipient),
+  );
+  const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(
+    () => new Map(initialSettlement.settledCardIdsByRecipient),
+  );
   // Per-recipient ordered payload ledger — captures the intent's
   // `visibleFace` at settle time so consumers can render local cards
   // purely from transport-owned metadata during DEALING (no authoritative
@@ -198,7 +253,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
   // Reset to false on every beginDeal / beginWave / resetForHand /
   // beginDealForHand / beginWaveForHand.
-  const [readyReleased, setReadyReleased] = useState(false);
+  const [readyReleased, setReadyReleased] = useState(initialSettlement.expectedCount > 0);
   const ctx = useCardTransportInternal();
   const expectedCardIdsRef = useRef<Set<string>>(new Set());
   const processedSettledIntentIdsRef = useRef<Set<string>>(new Set());

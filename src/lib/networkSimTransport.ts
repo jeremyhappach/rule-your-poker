@@ -67,8 +67,19 @@ export const simulatedSupabaseFetch: typeof fetch = async (input, init) => {
     throw offlineError();
   }
 
-  // A request is delegated exactly once. Writes are never retried by the harness.
-  return nativeFetch(input, init);
+  // A request is delegated exactly once. Writes are never retried by the
+  // harness. In the response-loss phase the server response is intentionally
+  // discarded after that one delegation, reproducing an ambiguous commit.
+  const response = await nativeFetch(input, init);
+  if (decision.loseResponseAfterSend) {
+    recordChaosTransportEvent('http_response_lost_after_send', method, {
+      kind,
+      phase: decision.phaseKind,
+      url: new URL(url).pathname,
+    });
+    throw new TypeError('Cross-Country Chaos simulated response loss after send');
+  }
+  return response;
 };
 
 type SocketEventName = 'open' | 'message' | 'close' | 'error';

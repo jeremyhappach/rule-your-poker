@@ -34,6 +34,11 @@ function TransportHarness({ store }: { store: Store }) {
   return null;
 }
 
+function DealCapture({ store }: { store: Store }) {
+  store.deal = useDealRuntime();
+  return null;
+}
+
 function DealHarness({ store, expected }: { store: Store; expected: CardTransportIntent[] }) {
   const deal = useDealRuntime();
   const transport = useCardTransport();
@@ -190,5 +195,45 @@ describe('Holm card manifest reconciliation', () => {
       dropped: 1,
       allOwned: false,
     });
+  });
+});
+
+describe('historical deal reconstruction', () => {
+  it('reconstructs a settled 3-5-7 baseline and admits a later additive wave', () => {
+    const store: Store = { transport: null, internal: null, deal: null };
+    act(() => {
+      root.render(
+        <CardTransportProvider gameId="game" gameType="three-five-seven">
+          <DealRuntime
+            handContextId="dealer-2#h1"
+            gameType="three-five-seven"
+            initialPhase="GAMEPLAY"
+            initialSettledByRecipient={{ player1: 3, player2: 3 }}
+          >
+            <DealCapture store={store} />
+          </DealRuntime>
+        </CardTransportProvider>,
+      );
+    });
+
+    expect(store.deal).toMatchObject({
+      phase: 'GAMEPLAY',
+      expectedCount: 6,
+      dealSettled: true,
+      readyReleased: true,
+      timerAllowed: true,
+    });
+    expect(store.deal!.getSettledCountForPlayer('player1')).toBe(3);
+    expect(store.deal!.getSettledCardIdsForPlayer('player1')).toHaveLength(3);
+
+    act(() => store.deal!.beginWave(4));
+    expect(store.deal).toMatchObject({
+      phase: 'DEALING',
+      expectedCount: 10,
+      dealSettled: false,
+      readyReleased: false,
+      timerAllowed: false,
+    });
+    expect(store.deal!.settledCardIds).toHaveLength(6);
   });
 });

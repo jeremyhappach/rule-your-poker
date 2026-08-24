@@ -19,11 +19,19 @@ describe("fetchPublishedBuildManifest", () => {
 
     expect(receivedUrl).toBe("/build-manifest.json");
     expect(receivedInit?.cache).toBe("no-store");
+    expect(receivedInit?.signal).toBeInstanceOf(AbortSignal);
     expect(manifest.buildId).toBe(SHA);
   });
 
   it("fails closed when the manifest is not a valid production identity", async () => {
     await expect(fetchPublishedBuildManifest(async () => new Response("{}")))
       .rejects.toThrow("release-manifest-invalid");
+  });
+
+  it("fails closed within a bounded interval when the manifest request hangs", async () => {
+    await expect(fetchPublishedBuildManifest(
+      async () => new Promise<Response>(() => undefined),
+      5,
+    )).rejects.toThrow("release-manifest-timeout");
   });
 });

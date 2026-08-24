@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test:cribbage-rejoin": "vitest run src/lib/cribbage/cribbageCutPresentation.test.ts src/components/CribbageCutCardReveal.test.tsx src/lib/cribbage/cribbageRenderGuards.test.ts",
+    "test:liveness-gauntlet": "vitest run src/lib/crossCountryRouteGauntlet.test.ts src/lib/threeFiveSeven/routeEntryMode.test.ts src/lib/threeFiveSeven/presentationReadiness.test.ts src/lib/canonicalShell/cardTransport/CardTransportProvider.holmManifest.test.tsx src/lib/serializedAuthoritativeFetch.test.ts src/lib/realtimeAuthoritativeCatchup.test.ts src/lib/realtimeAuthoritativeCatchupWiring.test.ts src/pages/Game.realtimePlayerCatchup.test.ts src/lib/releaseVersion/releaseManifest.test.ts src/lib/networkSimChaos.test.ts src/lib/networkSimTransport.test.ts src/lib/horsesSccDatabaseAuthority.test.ts src/lib/freezeHardeningMigration.test.ts src/lib/canonicalShell/timerEligibility.test.ts src/lib/canonicalShell/ShellTimerRail.test.tsx src/lib/holmDatabaseResolutionOwnership.test.ts src/lib/threeFiveSeven/currentFrame.test.ts src/lib/cribbageSettleGame.test.ts src/lib/gameStateSync/cribbageProgress.test.ts src/lib/ginRummyGameLogic.test.ts src/lib/gameStateSync/ginRummyProgress.test.ts src/lib/horsesSccAuthority.test.ts src/lib/yahtzeeAuthority.test.ts",
     "build": "npm run test:cribbage-rejoin && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

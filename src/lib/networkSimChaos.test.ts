@@ -30,6 +30,7 @@ describe('continuous Cross-Country Chaos profile', () => {
       'healthy',
       'long-haul-lag',
       'jitter-burst',
+      'response-loss',
       'radio-stall',
       'recovery',
       'offline',

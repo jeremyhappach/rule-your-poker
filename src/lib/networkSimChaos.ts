@@ -34,6 +34,7 @@ export type ChaosPhaseKind =
   | 'healthy'
   | 'long-haul-lag'
   | 'jitter-burst'
+  | 'response-loss'
   | 'radio-stall'
   | 'offline'
   | 'recovery';
@@ -66,6 +67,7 @@ export type ChaosEventType =
   | 'reconnect'
   | 'http_delayed'
   | 'http_failed_before_send'
+  | 'http_response_lost_after_send'
   | 'websocket_open_deferred'
   | 'websocket_forced_close'
   | 'realtime_delayed'
@@ -103,6 +105,7 @@ export interface ChaosTransportDecision {
   delayMs: number;
   drop: boolean;
   failBeforeSend: boolean;
+  loseResponseAfterSend: boolean;
   phaseKind: ChaosPhaseKind | null;
 }
 
@@ -160,6 +163,10 @@ function generateProfile(
     { kind: 'healthy', duration: [14_000, 24_000], base: [45, 110], jitter: [15, 55], readFailureRate: 0 },
     { kind: 'long-haul-lag', duration: [18_000, 32_000], base: [220, 480], jitter: [80, 260], readFailureRate: 0.02 },
     { kind: 'jitter-burst', duration: [10_000, 18_000], base: [140, 340], jitter: [450, 1_400], readFailureRate: 0.04 },
+    // The server receives and commits a write, but the client never receives
+    // its response. This is the essential ambiguous-commit condition missing
+    // from the original cross-country profile.
+    { kind: 'response-loss', duration: [2_000, 4_500], base: [140, 320], jitter: [80, 260], readFailureRate: 0 },
     { kind: 'radio-stall', duration: [1_800, 5_500], base: [0, 0], jitter: [0, 0], readFailureRate: 0 },
     { kind: 'recovery', duration: [7_000, 13_000], base: [160, 320], jitter: [120, 380], readFailureRate: 0.02 },
     { kind: 'offline', duration: [2_500, 8_000], base: [0, 0], jitter: [0, 0], readFailureRate: 1 },
@@ -324,21 +331,28 @@ export function subscribeChaosEvents(listener: (event: ChaosTimelineEvent) => vo
 function makeDecision(kind: 'read' | 'write' | 'realtime'): ChaosTransportDecision {
   const session = activeSession;
   const phase = currentPhase(session);
-  if (!session || !phase) return { delayMs: 0, drop: false, failBeforeSend: false, phaseKind: null };
+  if (!session || !phase) return { delayMs: 0, drop: false, failBeforeSend: false, loseResponseAfterSend: false, phaseKind: null };
   if (phase.disconnected) {
-    return { delayMs: 0, drop: kind === 'realtime', failBeforeSend: kind !== 'realtime', phaseKind: phase.kind };
+    return { delayMs: 0, drop: kind === 'realtime', failBeforeSend: kind !== 'realtime', loseResponseAfterSend: false, phaseKind: phase.kind };
   }
   if (phase.stallTransport) {
     return {
       delayMs: Math.max(0, session.cycleStartedAt + phase.endMs - Date.now()),
       drop: false,
       failBeforeSend: false,
+      loseResponseAfterSend: false,
       phaseKind: phase.kind,
     };
   }
   const delayMs = phase.baseLatencyMs + pickInt(session.decisionRng, 0, phase.jitterMs);
   const failBeforeSend = kind === 'read' && session.decisionRng() < phase.readFailureRate;
-  return { delayMs, drop: false, failBeforeSend, phaseKind: phase.kind };
+  return {
+    delayMs,
+    drop: false,
+    failBeforeSend,
+    loseResponseAfterSend: kind === 'write' && phase.kind === 'response-loss',
+    phaseKind: phase.kind,
+  };
 }
 
 export function getChaosRequestDecision(kind: 'read' | 'write'): ChaosTransportDecision {

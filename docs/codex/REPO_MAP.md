@@ -25,7 +25,8 @@ claim that every owner is already database-authoritative.
 | Web build/runtime config | `vite.config.ts`, `index.html`, `tsconfig*.json`, `tailwind.config.ts`, `postcss.config.js`. Vite serves on port 8080 by default. |
 | Native wrapper | `capacitor.config.ts` plus `@capacitor/android` and `@capacitor/ios` dependencies. |
 
-Package scripts in `package.json` are `dev: vite`, `build: vite build`,
+Package scripts in `package.json` include `dev: vite`, the focused
+`test:liveness-gauntlet`, `build: vite build`,
 `build:dev: vite build --mode development`, `lint: eslint .`, and
 `preview: vite preview`. There is no package `typecheck` script. Repository
 policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
@@ -63,7 +64,7 @@ the authority over generated declarations.
 |---|---|
 | `src/components/GameLobby.tsx` | Lobby listing, create/join navigation, lobby realtime, admin/settings entry, and completed-session results access. |
 | `src/lib/lobbyFetch.ts:fetchLobbyGames` | Bounded lobby query, player/profile projection, ended-session snapshot lookup, and abort handling. |
-| `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config presentation, ante intent, game startup, game-over continuation, and local Session Ended admission. Expiring phase mutations are submitted through `src/lib/gameTimerAuthority.ts`; `src/hooks/useDeadlineEnforcer.ts` is a compatibility no-op rather than a client scheduler. Fresh admission suppresses expired setup/ante UI and sends already-ended or confirmed-missing sessions directly to the lobby. `src/lib/sharedPlayerCards.ts` limits shared `player_cards` reads and empty-hand recovery to Holm and 3-5-7; dedicated-state and dice games never enter that recovery path. |
+| `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config presentation, ante intent, game startup, game-over continuation, and local Session Ended admission. Full snapshots run through `src/lib/serializedAuthoritativeFetch.ts`; burst triggers coalesce and recovery stays armed until a snapshot succeeds. Expiring phase mutations are submitted through `src/lib/gameTimerAuthority.ts`; `src/hooks/useDeadlineEnforcer.ts` is a compatibility no-op rather than a client scheduler. Fresh admission suppresses expired setup/ante UI and sends already-ended or confirmed-missing sessions directly to the lobby. `src/lib/sharedPlayerCards.ts` limits shared `player_cards` reads and empty-hand recovery to Holm and 3-5-7; dedicated-state and dice games never enter that recovery path. |
 | `src/components/PreGameLobby.tsx`, `src/components/WaitingForPlayersTable.tsx` | Pregame and waiting-room presentation inside the persistent table shell. |
 | `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
 | `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
@@ -327,6 +328,13 @@ reset transient/presentation state when those identities change.
   `ThreeFiveSevenAnchoredSlot.tsx`, `ThreeFiveSevenDealOrchestrator.tsx`,
   `ThreeFiveSevenProofCardsAnimation.tsx`, and
   `ThreeFiveSevenTerminalController.tsx`.
+- Route provenance and historical deal reconstruction:
+  `src/lib/threeFiveSeven/routeEntryMode.ts` classifies the first hydrated
+  3-5-7 identity from the preceding persistent-route game type.
+  `cardTransport/DealRuntime.tsx` reconstructs the authoritative cumulative
+  per-recipient settled baseline for refresh/rejoin; later waves remain
+  additive. `src/lib/crossCountryRouteGauntlet.test.ts` covers all 49 ordered
+  route pairs and lagging/cold-client variants.
 - State/actions: `src/lib/gameLogic.ts:startRound`, `makeDecision`,
   `autoFoldUndecided`, `endRound`, and `proceedToNextRound`;
   `src/lib/cardUtils.ts:evaluateHand`; seam helpers in
@@ -374,8 +382,10 @@ reset transient/presentation state when those identities change.
   `HorsesHandResultDisplay.tsx`, and `HorsesPlayerArea.tsx`.
 - State/actions: `rounds.horses_state`;
   `horsesGameLogic.ts:rollDice`, `toggleHold`, `lockInHand`,
-  `evaluateHand`, and `determineWinners`; mounted action/timeout/recovery
-  owner is `useHorsesMobileController`.
+  `evaluateHand`, and `determineWinners`; connected intent adapter is
+  `useHorsesMobileController`. It does not write the whole state, initialize
+  rounds, repair null turns, or advance timeouts. Database action RPCs and the
+  canonical recovery timer own those mutations.
 - Lifecycle: `horsesRoundLogic.ts:startHorsesRound` and
   `endHorsesRound`.
 - Bots: `horsesBotLogic.ts:getBotHoldDecision`,
@@ -438,7 +448,7 @@ Canonical snapshot identity is
 
 | Channel owner | Payload |
 |---|---|
-| `Game.tsx` channel `game-${gameId}` | `games` UPDATE plus an exact-id `games` DELETE ejection listener, `players` all events, and `rounds` all events. Fetches are debounced 300 ms. A five-second fallback poll starts only after channel failure unless safety polls are disabled. |
+| `Game.tsx` channel `game-${gameId}` | `games` UPDATE plus an exact-id `games` DELETE ejection listener, `players` all events, and `rounds` all events. Fetches are debounced 300 ms and serialized/coalesced. A five-second fallback runs after channel loss or failed subscribe catch-up, and stops only after both subscription and one complete snapshot succeed. |
 | `Game.tsx` channel `session-history-${gameId}` | INSERTs into `session_player_snapshots`. |
 | `Game.tsx` channel `show-cards-${gameId}` | Ephemeral 3-5-7 `show-cards` broadcast, guarded by dealer-game identity. |
 | `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. Both perform exact authoritative catch-up on every `SUBSCRIBED` edge and central recovery receipt. |
@@ -451,7 +461,7 @@ Canonical snapshot identity is
 Yahtzee intentionally relies on the central `Game.tsx` round subscription.
 Cribbage and Gin add current-round subscriptions on top of the central owner;
 that overlap must be considered before changing fetch/realtime behavior.
-`src/lib/realtimeAuthoritativeCatchup.ts` owns latest-trigger-wins exact reads,
+`src/lib/realtimeAuthoritativeCatchup.ts` owns successful-application ordering for exact reads,
 complete channel-loss classification, and the local recovery receipt emitted
 after successful reconnect/resume/fallback snapshots. The central channel is
 the only fallback poll owner. `useAuthoritativeIdentity` consumes the same
@@ -499,7 +509,9 @@ cycle and `src/lib/networkSimTransport.ts` applies it to the shared Supabase
 HTTP fetch and WebSocket transport configured by
 `src/integrations/supabase/client.ts`. The profile-control and simulation-event
 routes bypass impairment so the local harness remains reversible and its
-evidence remains writable.
+evidence remains writable. The deterministic response-loss phase delegates an
+HTTP operation exactly once and discards its response, exercising ambiguous
+commit recovery without permitting a harness retry.
 
 The separate database-backed 3-5-7 wartime stream is gated by
 `src/lib/threeFiveSeven/wartime/capture.ts`: Wartime Debug must be explicitly

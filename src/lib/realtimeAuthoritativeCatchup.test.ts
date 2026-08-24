@@ -52,6 +52,28 @@ describe('authoritative Realtime catch-up', () => {
     expect(applied).toEqual(['newest']);
   });
 
+  it('keeps an older successful snapshot when the newer request fails', async () => {
+    let resolveFirst!: (value: string) => void;
+    let rejectSecond!: (error: Error) => void;
+    const first = new Promise<string>((resolve) => { resolveFirst = resolve; });
+    const second = new Promise<string>((_resolve, reject) => { rejectSecond = reject; });
+    const loads = [first, second];
+    const applied: string[] = [];
+    const loader = createLatestAuthoritativeLoader({
+      load: async () => loads.shift()!,
+      apply: (value) => applied.push(value),
+    });
+
+    const firstRefresh = loader.refresh('cold-mount');
+    const secondRefresh = loader.refresh('reconnect');
+    rejectSecond(new Error('transient reconnect failure'));
+    expect(await secondRefresh).toBe(false);
+    resolveFirst('valid-cold-snapshot');
+    expect(await firstRefresh).toBe(true);
+
+    expect(applied).toEqual(['valid-cold-snapshot']);
+  });
+
   it('invalidates an in-flight snapshot when a newer Realtime payload arrives', async () => {
     let resolveLoad!: (value: string) => void;
     const pending = new Promise<string>((resolve) => { resolveLoad = resolve; });

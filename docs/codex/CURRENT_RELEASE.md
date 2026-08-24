@@ -2,6 +2,37 @@
 
 Date: 2026-08-23
 
+## Cross-game liveness and real cross-country recovery
+
+- The persistent game route now records the game type that actually preceded
+  each 3-5-7 dealer game. A live cross-country transition is no longer
+  misclassified as a refresh merely because the route stayed mounted, so the
+  canonical deal reaches its settled gameplay barrier and the Stay/Fold
+  controls and timer can render.
+- A genuine refresh/rejoin reconstructs the exact cumulative settled-card
+  counts for the current 3-5-7 wave instead of declaring an empty skipped deal
+  complete. Later waves grow from that reconstructed ledger, preserving both
+  action admission and timer eligibility without replaying old animations.
+- Full authoritative snapshots are serialized and burst triggers coalesce.
+  Realtime transport is not treated as recovered until a full snapshot
+  succeeds; a failed newer catch-up no longer suppresses an older successful
+  response, and the canonical bootstrap visibly reports reconnect recovery
+  instead of presenting an unexplained empty surface.
+- The public build-manifest gate has an eight-second abort boundary, preventing
+  a hung cache/version request from black-screening a game route indefinitely.
+- Horses/SCC browser initialization, timeout auto-fold, null-turn repair, and
+  full-state completion writes were removed. Connected clients now submit
+  exact actions/identity through the existing RPC owners; database timers and
+  recovery remain the only progression fallback.
+- Cross-Country Chaos now includes a deterministic response-lost-after-send
+  phase. The server receives the operation exactly once, while the client sees
+  an ambiguous network failure and must recover from authoritative state. The
+  liveness gauntlet covers all 49 ordered cross-country route pairs plus
+  refresh, lag, reconnect, response-loss, deal, timer, Horses/SCC, Holm,
+  Cribbage, Gin, and Yahtzee ownership seams. All 141 gauntlet assertions, 35
+  build-required Cribbage assertions, TypeScript, and the production build
+  pass.
+
 ## Horses / SCC connected progression authority
 
 - A completed Horses or Ship/Captain/Crew round no longer enters the
@@ -68,9 +99,9 @@ Date: 2026-08-23
   When it succeeds while WebSocket transport remains unavailable, it emits one
   local recovery receipt that refreshes the supplemental owners; no second poll
   or gameplay authority was added.
-- Exact reads use latest-trigger-wins admission. A newer Realtime edge,
-  reconnect, resume, or fallback receipt invalidates older in-flight reads so a
-  slow stale response cannot roll presentation or authoritative identity back.
+- Full central snapshots are serialized and coalesced. Supplemental exact
+  reads remain anti-regressive, but a newer failed read cannot suppress an
+  older successful authoritative result solely because it started later.
 - Twenty-five focused assertions cover initial/reconnect catch-up, every loss
   status, stale-response rejection, recovery fan-out, all four wiring sites,
   monotonic identity, the shared sync framework, and the central reconnect
@@ -90,14 +121,16 @@ Date: 2026-08-23
   until recovery, exercising the existing `CHANNEL_ERROR`/`CLOSED`, resubscribe,
   and authoritative snapshot catch-up owners. WebSocket frame order is retained;
   the harness does not invent a transport behavior TCP cannot produce.
-- HTTP failures occur only before a request is sent, and the harness never
-  retries writes, preventing simulation from creating duplicate or ambiguous
-  financial mutations. Profile-control and simulation-telemetry requests bypass
-  impairment so an affected client can always turn the harness off.
-- Twelve focused assertions cover deterministic replay, required phase coverage,
+- HTTP failures occur before send or after one exact delegation whose response
+  is discarded. The harness never retries writes, so it can exercise an
+  ambiguous committed request without manufacturing a duplicate mutation.
+  Profile-control and simulation-telemetry requests bypass impairment so an
+  affected client can always turn the harness off.
+- Focused assertions cover deterministic replay, required phase coverage,
   continuous cycling, offline/recovery status, socket closure and deferred
-  reconnect, fail-before-send requests, exactly-once write delegation, shared
-  Supabase wiring, and preservation of the reconnect snapshot owner.
+  reconnect, fail-before-send and response-loss requests, exactly-once write
+  delegation, shared Supabase wiring, and preservation of the reconnect
+  snapshot owner.
 
 ## Cross-game freeze hardening
 

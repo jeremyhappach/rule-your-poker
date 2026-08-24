@@ -1129,10 +1129,13 @@ channel status, resubscribe, and authoritative snapshot recovery are exercised.
 Radio stalls may hold inbound delivery, but WebSocket message order remains the
 order provided by the socket.
 
-The harness may fail an HTTP operation only before delegating it and may never
-retry writes. This preserves the database as gameplay and financial authority
-and prevents the test tool itself from creating duplicate mutations. Profile
-control and simulation telemetry bypass impairment so Chaos remains observable
+The harness may fail an HTTP operation before delegation or discard the
+response after exactly one delegation, and may never retry writes. The latter
+models the real ambiguous-commit boundary: the database may have committed
+while the client believes the request failed, so recovery must come from an
+authoritative snapshot. This preserves the database as gameplay and financial
+authority and prevents the test tool itself from creating duplicate mutations.
+Profile control and simulation telemetry bypass impairment so Chaos remains observable
 and locally reversible even during its own offline phase. The harness may expose
 phase/cycle status, but it may not add a polling owner, fabricate state, advance
 gameplay, or replace the existing reconnect snapshot path.
@@ -1148,8 +1151,11 @@ local projection.
 The central game subscription remains the only owner of fallback polling. A
 successful reconnect, visibility resume, BFCache restore, or fallback snapshot
 emits one local recovery receipt; mounted supplemental owners perform their own
-exact read from that receipt. Snapshot application is latest-trigger-wins so an
-older in-flight response cannot overwrite a newer Realtime edge. This receipt
+exact read from that receipt. Full central snapshots are serialized and trigger
+bursts coalesce, so they do not race. Supplemental reads retain anti-regression
+admission; when reads were already in flight, a newer failed request must not
+suppress an older successful authoritative result merely because the newer
+request started later. This receipt
 does not carry gameplay data, advance state, add a scheduler, or replace the
 database as authority.
 
@@ -1186,3 +1192,22 @@ round with one matching `horses_terminal` settlement. Browser leader election,
 participant evaluation, dealer rotation, and client fallback timers are not
 Horses/SCC progression owners. SCC retains its separate 6-5-4/cargo rules;
 shared authority does not merge game semantics.
+
+## D-084 - Liveness is proven by authoritative progress, not transport health
+
+A subscribed WebSocket, a completed animation callback, or a response-start
+order is not proof that a client has recovered. A game is live only when the
+client has successfully reconciled a complete authoritative snapshot and its
+presentation-only barriers can be derived from that snapshot.
+
+Full game snapshots therefore run serially and coalesce burst triggers. A
+failed newest request cannot invalidate an older successful result. Recovery
+polling remains armed only while the Realtime channel or its full catch-up is
+unhealthy, and it stops after one successful snapshot; it is not a gameplay
+progression owner.
+
+Skipped historical presentation must reconstruct its exact settled baseline.
+It may not claim readiness with an empty ledger, and persistent cross-country
+routes must classify entry from the preceding hydrated game type rather than
+from component mount alone. Every browser-authoritative timeout or whole-state
+repair is prohibited when an exact database action/recovery owner exists.

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveThreeFiveSevenRouteEntryMode } from './routeEntryMode';
+import {
+  classifyInitialThreeFiveSevenEntry,
+  resolveThreeFiveSevenRouteEntryMode,
+} from './routeEntryMode';
 
 describe('3-5-7 route entry provenance', () => {
   it('waits for the exact round identity before classifying a refresh', () => {
@@ -42,5 +45,29 @@ describe('3-5-7 route entry provenance', () => {
       roundId: 'round-3',
       handNumber: 1,
     }).entryMode).toBe('live-transition');
+  });
+
+  it('keeps the first complete identity live when 3-5-7 starts on a persistent route', () => {
+    const identity = {
+      dealerGameId: 'dealer-2',
+      roundId: 'round-1',
+      handNumber: 1,
+    };
+
+    const first = resolveThreeFiveSevenRouteEntryMode(null, identity, 'live-transition');
+    expect(first).toEqual({ baseline: identity, entryMode: 'live-transition' });
+
+    expect(resolveThreeFiveSevenRouteEntryMode(
+      first.baseline,
+      identity,
+      'live-transition',
+    ).entryMode).toBe('live-transition');
+  });
+
+  it('distinguishes cold entry from every non-3-5-7 persistent-route transition', () => {
+    expect(classifyInitialThreeFiveSevenEntry(null, '3-5-7')).toBe('historical-entry');
+    for (const previous of ['holm-game', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee']) {
+      expect(classifyInitialThreeFiveSevenEntry(previous, '3-5-7')).toBe('live-transition');
+    }
   });
 });

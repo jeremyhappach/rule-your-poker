@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
-import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
 import { useGameStateSync } from "@/lib/gameStateSync/useGameStateSync";
 import { useAuthoritativeIdentity } from "@/lib/gameStateSync/authoritativeIdentity";
@@ -96,14 +95,6 @@ export type DiceDebugEvent = {
   message: string;
   data?: unknown;
 };
-
-async function updateHorsesState(roundId: string, state: HorsesStateFromDB): Promise<Error | null> {
-  const { error } = await supabase
-    .from("rounds")
-    .update({ horses_state: state } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    .eq("id", roundId);
-  return error;
-}
 
 async function horsesSetPlayerState(
   roundId: string,
@@ -626,7 +617,6 @@ export function useHorsesMobileController({
   const botProcessingKeyRef = useRef<string | null>(null);
   const botStuckTimerRef = useRef<number | null>(null);
 
-  const initializingRef = useRef(false);
 
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
@@ -734,27 +724,12 @@ export function useHorsesMobileController({
   const lastTurnDeadlineRef = useRef<string | null>(null);
   const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
   const clearAnnouncementTimerRef = useRef<number | null>(null);
-  const timeoutProcessedRef = useRef<string | null>(null);
 
 
   const activePlayers = useMemo(
     () => players.filter((p) => !p.sitting_out).sort((a, b) => a.position - b.position),
     [players],
   );
-
-  const getTurnOrder = useCallback(() => {
-    if (activePlayers.length === 0) return [];
-
-    const dealerIdx = activePlayers.findIndex((p) => p.position === dealerPosition);
-    if (dealerIdx === -1) return activePlayers.map((p) => p.id);
-
-    const order: string[] = [];
-    for (let i = 1; i <= activePlayers.length; i++) {
-      const idx = (dealerIdx + i) % activePlayers.length;
-      order.push(activePlayers[idx].id);
-    }
-    return order;
-  }, [activePlayers, dealerPosition]);
 
   const turnOrder = horsesState?.turnOrder || [];
   const currentTurnPlayerId = horsesState?.currentTurnPlayerId ?? null;
@@ -817,7 +792,6 @@ export function useHorsesMobileController({
       lastResetTurnKeyRef.current = myKey;
       lastLocalEditAtRef.current = 0; // Clear protection window for fresh turn
       heldMaskAtLastRollStartRef.current = null;
-      timeoutProcessedRef.current = null; // Clear timeout lock for new turn
       
       // Reset to fresh hand immediately - DB state will sync in below
       const freshHand = isSCC ? createInitialSCCHand() : createInitialHand();
@@ -977,184 +951,6 @@ export function useHorsesMobileController({
   useEffect(() => {
     candidateBotControllerUserIdRef.current = candidateBotControllerUserId;
   }, [candidateBotControllerUserId]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    if (!currentRoundId || !gameId) return;
-    if (horsesState?.turnOrder?.length) return;
-    if (initializingRef.current) return;
-    if (activePlayers.length === 0) return;
-
-    initializingRef.current = true;
-
-    const initializeGame = async () => {
-      try {
-        // CRITICAL: Never initialize based on a possibly-stale local horsesState snapshot.
-        // If another client already initialized, our local state may briefly be empty while
-        // realtime catches up. Re-initializing would overwrite live playerStates and cause
-        // observers to see held dice revert (held → scatter → held).
-        const { data: roundRow, error: roundErr } = await supabase
-          .from("rounds")
-          .select("horses_state")
-          .eq("id", currentRoundId)
-          .single();
-
-        if (roundErr) {
-          console.warn("[HORSES] init: failed to fetch current state, aborting init", roundErr);
-          return;
-        }
-
-        const existingState = (roundRow as any)?.horses_state as HorsesStateFromDB | null | undefined;
-        const existingTurnOrder = (existingState as any)?.turnOrder;
-        if (Array.isArray(existingTurnOrder) && existingTurnOrder.length > 0) {
-          return;
-        }
-
-        const order = getTurnOrder();
-
-        const controllerUserId =
-          order
-            .map((id) => activePlayers.find((p) => p.id === id))
-            .find((p) => p && !p.is_bot)?.user_id ?? null;
-
-        // Deterministic single-writer: only the chosen controller should initialize.
-        // Prevents multiple clients from racing and overwriting horses_state.
-        if (controllerUserId && currentUserId && controllerUserId !== currentUserId) {
-          return;
-        }
-
-      // Set deadline for the first player's turn (skip for bots)
-      const firstPlayer = activePlayers.find((p) => p.id === order[0]);
-      const deadline = firstPlayer?.is_bot
-        ? null
-        : new Date(Date.now() + HORSES_TURN_TIMER_SECONDS * 1000).toISOString();
-
-      const initialState: HorsesStateFromDB = {
-        currentTurnPlayerId: order[0] ?? null,
-        playerStates: {},
-        gamePhase: "playing",
-        turnOrder: order,
-        botControllerUserId: controllerUserId,
-        turnDeadline: deadline,
-      };
-
-      order.forEach((playerId) => {
-        // Initialize with appropriate hand type based on game
-        const initHand = isSCC ? createInitialSCCHand() : createInitialHand();
-        initialState.playerStates[playerId] = {
-          dice: initHand.dice as any,
-          rollsRemaining: initHand.rollsRemaining,
-          isComplete: false,
-        };
-      });
-
-        const error = await updateHorsesState(currentRoundId, initialState);
-        if (error) console.error("[HORSES] Failed to initialize state:", error);
-      } finally {
-        initializingRef.current = false;
-      }
-    };
-
-    void initializeGame();
-  }, [enabled, currentRoundId, gameId, horsesState?.turnOrder?.length, activePlayers.length, getTurnOrder, currentUserId]);
-
-  // Recovery: if gamePhase is "playing" but currentTurnPlayerId is null/missing and we have turnOrder,
-  // re-initialize the current turn to the first incomplete player
-  const stuckRecoveryKeyRef = useRef<string | null>(null);
-  
-  useEffect(() => {
-    if (!enabled) return;
-    if (!currentRoundId || !gameId) return;
-    if (gamePhase !== "playing") return;
-    if (currentTurnPlayerId) return; // Not stuck - there's a current player
-    if (!turnOrder.length) return; // No turn order yet - init effect will handle
-    if (!currentUserId) return;
-    
-    // Only let one client (bot controller or first human) attempt recovery
-    const iAmController = candidateBotControllerUserId === currentUserId;
-    if (!iAmController) return;
-    
-    const key = `recovery:${currentRoundId}`;
-    if (stuckRecoveryKeyRef.current === key) return;
-    stuckRecoveryKeyRef.current = key;
-    
-    console.warn("[HORSES] Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
-
-    // ALWAYS persist this invariant — stuck state is a real bug signal
-    import("@/lib/persistSyncDebugEvent").then(({ persistInvariantViolation }) => {
-      persistInvariantViolation(
-        gameId,
-        isSCC ? "ship-captain-crew" : "horses",
-        horsesState?.turnOrder?.length ?? 0,
-        "stuck-null-turn",
-        {
-          currentRoundId,
-          turnOrderLength: turnOrder.length,
-          gamePhase,
-          playerStatesKeys: Object.keys(horsesState?.playerStates ?? {}),
-          completedPlayers: Object.entries(horsesState?.playerStates ?? {})
-            .filter(([, s]: [string, any]) => s?.isComplete)
-            .map(([id]) => id.slice(0, 8)),
-        },
-      );
-    }).catch(() => {});
-    
-    const recover = async () => {
-      // CRITICAL: Use the latest persisted horses_state as the base for recovery.
-      // Spreading a stale in-memory horsesState snapshot can clobber just-updated holds,
-      // which shows up to observers as held dice briefly reverting to the scatter area.
-      const { data: roundRow, error: roundErr } = await supabase
-        .from("rounds")
-        .select("horses_state")
-        .eq("id", currentRoundId)
-        .single();
-
-      if (roundErr) {
-        console.warn("[HORSES] recovery: failed to fetch current state, aborting", roundErr);
-        return;
-      }
-
-      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null | undefined;
-      const baseState = latestState && typeof latestState === "object" ? latestState : horsesState;
-      if (!baseState) return;
-
-      const latestTurnOrder = Array.isArray(baseState.turnOrder) ? baseState.turnOrder : turnOrder;
-      const latestPlayerStates = (baseState.playerStates ?? {}) as Record<string, any>;
-
-      // Find the first player who hasn't completed their turn
-      const nextPlayerId = latestTurnOrder.find((pid) => !latestPlayerStates?.[pid]?.isComplete);
-      
-      if (!nextPlayerId) {
-        // Everyone is complete - set to complete phase
-        await updateHorsesState(currentRoundId, {
-          ...baseState,
-          currentTurnPlayerId: null,
-          gamePhase: "complete",
-        });
-      } else {
-        // Set the next incomplete player as current
-        await updateHorsesState(currentRoundId, {
-          ...baseState,
-          currentTurnPlayerId: nextPlayerId,
-          gamePhase: "playing",
-        });
-      }
-    };
-    
-    // Small delay to avoid race with normal initialization
-    const t = window.setTimeout(recover, 1000);
-    return () => window.clearTimeout(t);
-  }, [
-    enabled,
-    currentRoundId,
-    gameId,
-    gamePhase,
-    currentTurnPlayerId,
-    turnOrder,
-    horsesState,
-    currentUserId,
-    candidateBotControllerUserId,
-  ]);
 
   const saveMyState = useCallback(
     async (
@@ -1597,39 +1393,13 @@ export function useHorsesMobileController({
     if (stuckAdvanceKeyRef.current === key) return;
     stuckAdvanceKeyRef.current = key;
 
-    const allPlayersComplete = turnOrder.length > 0 && turnOrder.every(
-      (playerId) => horsesState?.playerStates?.[playerId]?.isComplete,
-    );
-
-    // Capture raw round id for DB write targets after identity gating passes.
-    const writeRoundId = currentRoundId;
-
     const t = window.setTimeout(() => {
       if (!syncHandle.canInteractNow()) {
-        logSuppressedWrite('stuckAdvance-forceComplete-or-advance');
+        logSuppressedWrite('stuckAdvance-advance');
         return;
       }
-      if (allPlayersComplete) {
-        void (async () => {
-          if (!writeRoundId) return;
-          const { data: roundRow } = await supabase
-            .from("rounds")
-            .select("horses_state")
-            .eq("id", writeRoundId)
-            .single();
-
-          const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
-          if (!latestState) return;
-
-          await updateHorsesState(writeRoundId, {
-            ...latestState,
-            currentTurnPlayerId: null,
-            gamePhase: "complete",
-          });
-        })();
-        return;
-      }
-
+      // horses_advance_turn owns both ordinary turn movement and the
+      // last-player transition to gamePhase=complete atomically.
       void advanceToNextTurn(currentTurnPlayerId);
     }, HORSES_POST_TURN_PAUSE_MS);
 
@@ -1646,15 +1416,11 @@ export function useHorsesMobileController({
     currentUserId,
     candidateBotControllerUserId,
     advanceToNextTurn,
-    turnOrder,
-    horsesState?.playerStates,
   ]);
 
   // Timer countdown effect - calculate time remaining from deadline
-  // NOTE: If no server deadline is present yet, we still show a local countdown for UI,
-  // but we DO NOT process timeouts unless a real deadline exists.
-  // CRITICAL FIX: We ONLY set timeLeft=0 after a gradual countdown, never immediately on mount.
-  // This prevents false timeouts when mounting with a stale deadline from a previous turn.
+  // This is presentation only. The database owns every expiry and subsequent
+  // mutation; reaching zero here never advances play.
   useEffect(() => {
     // Don't run timer when paused - time freezes
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId || isPaused) {
@@ -1700,14 +1466,10 @@ export function useHorsesMobileController({
       setEffectiveMaxTime(Math.max(initialRemaining, HORSES_TURN_TIMER_SECONDS));
     }
 
-    // CRITICAL FIX: If the deadline is already in the past when we mount, DON'T immediately
-    // set timeLeft=0 as that would trigger a false timeout. Instead, set to null and let
-    // the timeout handler's own guards (checking if player already completed, etc.) decide.
-    // This handles stale deadlines from previous turns that haven't been updated yet.
+    // A past deadline is already database recovery work. Avoid painting a
+    // misleading fresh countdown while that authoritative transition lands.
     if (initialRemaining <= 0) {
-      // Don't set timeLeft at all for already-expired deadlines on mount
-      // The timeout handler requires a real countdown to 0, not instant 0
-      console.log('[TIMER] Deadline already past on mount - not setting timeLeft to avoid false timeout');
+      console.log('[TIMER] Deadline already past on mount - awaiting database recovery');
       setTimeLeft(null);
       return;
     }
@@ -1715,7 +1477,7 @@ export function useHorsesMobileController({
     // Start with actual remaining time
     setTimeLeft(initialRemaining);
 
-    // Update every second - only the countdown reaching 0 triggers timeout
+    // Update the display every second; zero has no gameplay side effect.
     const interval = window.setInterval(() => {
       const currentTime = Date.now();
       const remaining = Math.max(0, Math.ceil((deadlineTime - currentTime) / 1000));
@@ -1734,130 +1496,6 @@ export function useHorsesMobileController({
     currentTurnPlayer?.auto_fold,
     horsesState?.turnDeadline,
     isPaused,
-  ]);
-
-  // Timeout handler - set auto_fold so bot loop takes over with animated rolls
-  // NOTE: We no longer force-complete here. The bot auto-play loop (below) handles
-  // players with auto_fold=true and animates their rolls properly.
-  // CRITICAL: This only fires when timeLeft counts down to 0 (not when it starts at 0/null).
-  useEffect(() => {
-    if (!enabled || gamePhase !== "playing") return;
-    if (isPaused) return; // Never enforce timeouts when game is paused
-    if (!presentationRoundId || !currentTurnPlayerId) return;
-    if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
-    if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
-    if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
-    
-    // CRITICAL: timeLeft must be exactly 0 (counted down), not null (never started)
-    // This prevents false timeouts when the component mounts with stale deadline data
-    if (timeLeft !== 0) return;
-
-    // Additional safety: verify the deadline is actually for the current turn
-    // by checking it's not too far in the past (> 30 seconds = definitely stale)
-    const deadlineTime = new Date(horsesState.turnDeadline).getTime();
-    const now = Date.now();
-    const msSinceDeadline = now - deadlineTime;
-    if (msSinceDeadline > 30000) {
-      return;
-    }
-
-    // Only the player whose turn it is OR the bot controller should handle the timeout
-    const iAmTurnOwner = currentTurnPlayer?.user_id === currentUserId;
-    const iAmController = candidateBotControllerUserId === currentUserId;
-    if (!iAmTurnOwner && !iAmController) return;
-
-    // Prevent duplicate timeout processing
-    const timeoutKey = `${presentationRoundId}:${currentTurnPlayerId}:timeout`;
-    if (timeoutProcessedRef.current === timeoutKey) return;
-    timeoutProcessedRef.current = timeoutKey;
-
-    const handleTimeout = async () => {
-      if (!syncHandle.canInteractNow()) {
-        persistSyncDebugEvent({
-          gameId: gameId ?? null,
-          gameType: resolvedGameType,
-          handNumber: monotonicHandNumber,
-          roundId: currentRoundId,
-          eventType: 'invariant',
-          severity: 'warn',
-          eventName: 'horses-timeout-mutation-suppressed',
-          payload: {
-            reason: 'interactions-blocked-or-identity-stale',
-            interactionsAllowed: interactionsAllowedRef.current,
-            isIdentityStale: isIdentityStaleRef.current,
-            turnPlayer: currentTurnPlayerId?.slice(0, 8) ?? null,
-          },
-        });
-        return;
-      }
-
-      // Get current player state
-      const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
-
-      // IMPORTANT: If player has already completed their turn, do NOT mark them as timed out!
-      if (playerState?.isComplete) {
-        setTimeout(() => {
-          advanceToNextTurn(currentTurnPlayerId);
-        }, HORSES_POST_TURN_PAUSE_MS);
-        return;
-      }
-
-      // TIMEOUT CONTRACT (dice): set auto_fold (drives bot auto-roll loop for the
-      // remaining hands in this dealer game) AND sit_out_next_hand=true so the
-      // pending sit-out is reconciled at the next dealer-game boundary (not the
-      // next hand boundary).
-      await supabase
-        .from("players")
-        .update({ auto_fold: true, sit_out_next_hand: true })
-        .eq("id", currentTurnPlayerId);
-
-      // Extend the deadline to give the bot loop time to animate (15 seconds)
-      const extendedDeadline = new Date(Date.now() + 15000).toISOString();
-      await supabase
-        .from("rounds")
-        .update({
-          horses_state: {
-            ...horsesState,
-            turnDeadline: extendedDeadline,
-          } as any,
-        })
-        .eq("id", currentRoundId);
-
-
-      // Log this for debugging (before the bot loop kicks in)
-      await logSitOutNextHandSet(
-        currentTurnPlayerId,
-        currentTurnPlayer?.user_id || '',
-        gameId,
-        currentTurnPlayer?.profiles?.username,
-        currentTurnPlayer?.is_bot || false,
-        false,
-        'Player timed out during Horses turn - setting auto_fold for bot takeover',
-        'useHorsesMobileController.ts:handleTimeout',
-        { round_id: currentRoundId }
-      );
-
-      // The bot auto-play loop will now kick in because currentTurnPlayer.auto_fold is true
-      // After the bot loop completes all rolls, it will mark sit_out_next_hand
-    };
-
-    handleTimeout();
-  }, [
-    enabled,
-    gamePhase,
-    isPaused,
-    presentationRoundId,
-    currentRoundId,
-    currentTurnPlayerId,
-    currentTurnPlayer,
-    currentUserId,
-    candidateBotControllerUserId,
-    timeLeft,
-    horsesState?.turnDeadline,
-    horsesState?.playerStates,
-    horsesState,
-    advanceToNextTurn,
-    gameId,
   ]);
 
   const handleRoll = useCallback(async () => {
@@ -2602,67 +2240,6 @@ export function useHorsesMobileController({
     isPaused,
     isSCC,
   ]);
-
-  // RECOVERY: If gamePhase is "playing" but ALL players in turnOrder have isComplete,
-  // force transition to "complete". This handles cases where the advance RPC succeeded
-  // but the state update was lost or the RPC set currentTurnPlayerId to null without
-  // setting gamePhase to "complete".
-  const allCompleteRecoveryRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    if (gamePhase !== "playing") return;
-    if (!presentationRoundId || !gameId) return;
-    if (!turnOrder.length) return;
-
-    const playerStates = horsesState?.playerStates ?? {};
-    const allComplete = turnOrder.every(pid => playerStates[pid]?.isComplete);
-    if (!allComplete) return;
-
-    const key = `allcomplete:${presentationRoundId}`;
-    if (allCompleteRecoveryRef.current === key) return;
-    allCompleteRecoveryRef.current = key;
-
-    console.warn("[HORSES] All players complete but gamePhase still 'playing' - forcing complete");
-    
-    const writeRoundId = currentRoundId;
-    const forceComplete = async () => {
-      if (!writeRoundId) return;
-      // NOTE: Intentionally NOT gated by syncHandle.canInteractNow().
-      // This is an authoritative terminal state advancement (all players
-      // complete, currentTurnPlayerId already null), not a user interaction.
-      // The presentation/identity writer gate is the wrong guard here — it
-      // can stay locked during terminal visual-contract timing and strand
-      // the hand in "playing" forever. Downstream atomicity is already
-      // protected by processWin / rollover-claim guards
-      // (.eq("awaiting_next_round", false)), preventing double advancement.
-      // Fetch latest state from DB to avoid clobbering
-      const { data: roundRow } = await supabase
-        .from("rounds")
-        .select("horses_state")
-        .eq("id", writeRoundId)
-        .single();
-
-      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
-      if (!latestState) return;
-
-      // Re-verify all-complete against latest DB state before writing.
-      const latestPlayerStates = latestState.playerStates ?? {};
-      const stillAllComplete = turnOrder.every(pid => latestPlayerStates[pid]?.isComplete);
-      if (!stillAllComplete) return;
-      if (latestState.gamePhase === "complete") return;
-
-      await updateHorsesState(writeRoundId, {
-        ...latestState,
-        currentTurnPlayerId: null,
-        gamePhase: "complete",
-      });
-    };
-
-    // Tiny debounce only — no meaningful "normal advance" remains once all
-    // players are complete and currentTurnPlayerId is null.
-    const t = window.setTimeout(forceComplete, 250);
-    return () => window.clearTimeout(t);
-  }, [enabled, gamePhase, presentationRoundId, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
 
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;

@@ -62,6 +62,7 @@ import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import {
+  classifyInitialThreeFiveSevenEntry,
   resolveThreeFiveSevenRouteEntryMode,
   type ThreeFiveSevenRouteEntryIdentity,
 } from "@/lib/threeFiveSeven/routeEntryMode";
@@ -401,6 +402,7 @@ import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
+import { createSerializedAuthoritativeFetch } from "@/lib/serializedAuthoritativeFetch";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
@@ -1017,6 +1019,8 @@ const Game = () => {
   // (run the opening wave animation). A matching identity is a
   // refresh/rejoin into a pre-existing hand → HISTORICAL (skip replay).
   const initial357IdentityRef = useRef<ThreeFiveSevenRouteEntryIdentity | null>(null);
+  const initial357EntryModeRef = useRef<'live-transition' | 'historical-entry' | undefined>(undefined);
+  const routeHydratedGameTypeRef = useRef<{ gameId: string | null; gameType: string } | null>(null);
   const initialHolmIdentityRef = useRef<{
     captured: boolean;
     dealerGameId: string | null;
@@ -1142,6 +1146,7 @@ const Game = () => {
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bootstrapRecoveryPending, setBootstrapRecoveryPending] = useState(false);
   useStartupRenderTrace('Game', {
     routeGameId: gameId ?? null,
     loading,
@@ -2924,6 +2929,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+  type GameDataFetchTrigger = 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'realtime_update' | 'manual' | 'unknown';
+  const serializedFetchRef = useRef<ReturnType<typeof createSerializedAuthoritativeFetch<GameDataFetchTrigger>> | null>(null);
+  if (!serializedFetchRef.current) {
+    serializedFetchRef.current = createSerializedAuthoritativeFetch<GameDataFetchTrigger>();
+  }
   // 3-5-7 publishes one exact game/round/roster/card frame. The request
   // sequence rejects a slow replay from an older fetch (including an outgoing
   // dealer game); exact hand/round identity rejects active-state regression.
@@ -3893,6 +3903,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Fallback polling if realtime subscription drops.
     // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
     let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
+    let realtimeSubscribed = false;
     const startFallbackPolling = () => {
       if (safetyPollsDisabled) return;
       if (fallbackPollInterval) return;
@@ -3903,7 +3914,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         intervalMs: 5000,
         extra: { purpose: 'realtime fallback polling' },
         fn: () => {
-        fetchGameData('realtime_fallback');
+          void fetchGameData('realtime_fallback').then((succeeded) => {
+            if (succeeded && realtimeSubscribed) stopFallbackPolling();
+          });
         },
       });
     };
@@ -4619,7 +4632,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
-          stopFallbackPolling();
+          realtimeSubscribed = true;
+          // A healthy socket is not proof that the HTTP catch-up succeeded.
+          // Keep recovery armed until one full snapshot completes.
+          startFallbackPolling();
           // The first SUBSCRIBED edge closes the cold-mount blind window. A
           // Close the fetch-before-subscribe blind window with one full
           // authoritative snapshot. This must be owned here rather than by the
@@ -4627,8 +4643,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // fetch but before this channel becomes SUBSCRIBED, and that effect
           // may not be mounted yet. Keep the event for non-fetch reconnect
           // drains (for example the Holm bot scheduler).
-          void fetchGameData('realtime_reconnect').catch((error) => {
-            console.warn('[SUBSCRIPTION] Authoritative catch-up failed:', error);
+          void fetchGameData('realtime_reconnect').then((succeeded) => {
+            if (succeeded) stopFallbackPolling();
+            else console.warn('[SUBSCRIPTION] Authoritative catch-up failed; recovery remains armed');
           });
           try {
             window.dispatchEvent(new CustomEvent('app:realtime-reconnect'));
@@ -4637,6 +4654,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          realtimeSubscribed = false;
           console.warn('[SUBSCRIPTION] Realtime issue; enabling fallback polling:', status);
           startFallbackPolling();
         }
@@ -8771,8 +8789,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Removed failsafe - countdown component now handles completion reliably
 
-  const fetchGameData = async (
-    fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
+  const performFetchGameData = async (
+    fetchTrigger: GameDataFetchTrigger = 'unknown'
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const fetchStartedAt = Date.now();
@@ -8958,20 +8976,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // post-write replica race. Defer to the polling checkGameExists effect, which
         // requires repeated strikes + a fresh confirm before navigating.
         console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
+        if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
         finishFetchTrace('returned_game_error', 'game_query_missing_deferred');
-        return;
+        return false;
       }
 
       console.error('Failed to fetch game:', gameError);
-      finishFetchTrace('returned_game_error', 'game_query_error');
-      return;
+      throw gameError;
     }
 
     if (!gameData) {
       // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
+      if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
       finishFetchTrace('returned_no_game_data', 'game_query_no_data');
-      return;
+      return false;
     }
 
     // 3-5-7 STATE OWNERSHIP: replace the split games -> rounds -> players ->
@@ -9116,8 +9135,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (playersError) {
       console.error('Failed to fetch players:', playersError);
-      finishFetchTrace('returned_players_error', 'players_query_error');
-      return;
+      throw playersError;
     }
 
     console.log('[FETCH] Players fetched:', playersData?.length, 'Status:', gameData?.status, 'Ante decisions:', playersData?.map(p => ({ 
@@ -10436,6 +10454,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (!isStale()) {
       setLoading(false);
+      setBootstrapRecoveryPending(false);
       if (
         fetchTrigger === 'visibility'
         || fetchTrigger === 'focus'
@@ -10451,16 +10470,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       fetchTraceTerminalOutcome ?? 'completed_other',
       fetchTraceTerminalExitStage ?? 'normal_completion',
     );
+    return true;
     } catch (error) {
       finishFetchTrace('threw_exception', 'catch:fetchGameData_exception', {
         gameErrorMessage: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
+      console.warn('[FETCH] Authoritative snapshot failed; recovery remains armed', error);
+      return false;
     } finally {
       if (!fetchTraceFinished) {
         finishFetchTrace('completed_other', 'finally:missing_terminal_outcome');
       }
     }
+  };
+
+  serializedFetchRef.current.setRunner(performFetchGameData);
+
+  // Serialize full authoritative snapshots and coalesce bursts into the most
+  // recent trigger. Every caller joins the same drain and resolves only after
+  // any queued catch-up has also run.
+  const fetchGameData = (fetchTrigger: GameDataFetchTrigger = 'unknown'): Promise<boolean> => {
+    return serializedFetchRef.current!.request(fetchTrigger);
   };
 
   const recordStartGameNormalizationDbg = async (
@@ -14693,24 +14724,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // When player opts back in, extend the turn deadline so they have time to act
-    // before the deadline enforcer re-triggers auto_fold.
-    if (!autoFold && currentRound?.id && game?.game_type && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
-      const horsesState = currentRound?.horses_state as any;
-      if (horsesState) {
-        const extendedDeadline = new Date(Date.now() + (decisionTimerRef.current || 30) * 1000).toISOString();
-        await supabase
-          .from('rounds')
-          .update({
-            horses_state: {
-              ...horsesState,
-              turnDeadline: extendedDeadline,
-            },
-          })
-          .eq('id', currentRound.id);
-        console.log('[AUTO_FOLD] Extended turn deadline after opt-back-in:', extendedDeadline);
-      }
-    }
+    // Dice turn deadlines remain database-owned. Opting back in applies to
+    // future authoritative turns; the browser must not extend a whole JSON
+    // state snapshot that can race the expiry scheduler.
   };
 
   const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
@@ -15400,9 +15416,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           <div
             data-canonical-bootstrap=""
             data-lifecycle-branch="bootstrap"
-            className={isMobile ? 'flex-1 min-h-0 flex flex-col' : 'min-h-screen'}
+            className={isMobile ? 'relative flex-1 min-h-0 flex flex-col' : 'relative min-h-screen'}
             aria-busy="true"
           >
+            {bootstrapRecoveryPending ? (
+              <p
+                role="status"
+                data-canonical-bootstrap-recovery=""
+                className="absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-6 text-center text-sm text-muted-foreground"
+              >
+                Reconnecting to the table…
+              </p>
+            ) : null}
             {/* Reserve the exact waiting table/HUD/content composition so
                 the shell-owned felt frame is already painted at the same
                 y-coordinate as the hydrated waiting surface. */}
@@ -17300,7 +17325,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Capture once at first hydrated render; classify current
           // authoritative identity against the baseline.
           let _three57EntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;
+          const _routeTypeBeforeRender = routeHydratedGameTypeRef.current?.gameId === (gameId ?? null)
+            ? routeHydratedGameTypeRef.current.gameType
+            : null;
+          if (routeHydratedGameTypeRef.current?.gameId !== (gameId ?? null)) {
+            initial357IdentityRef.current = null;
+            initial357EntryModeRef.current = undefined;
+          }
           if (is357GameType) {
+            if (initial357EntryModeRef.current === undefined) {
+              initial357EntryModeRef.current = classifyInitialThreeFiveSevenEntry(
+                _routeTypeBeforeRender,
+                game.game_type,
+              );
+            }
             const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
             const _authRoundId357 = currentRound?.id ?? null;
             const _authHandNumber357 = currentRound?.hand_number ?? null;
@@ -17311,9 +17349,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 roundId: _authRoundId357,
                 handNumber: _authHandNumber357,
               },
+              initial357EntryModeRef.current,
             );
             initial357IdentityRef.current = _resolved357Entry.baseline;
             _three57EntryMode = _resolved357Entry.entryMode;
+          }
+          if (game.game_type) {
+            routeHydratedGameTypeRef.current = {
+              gameId: gameId ?? null,
+              gameType: game.game_type,
+            };
           }
 
           let _holmEntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;

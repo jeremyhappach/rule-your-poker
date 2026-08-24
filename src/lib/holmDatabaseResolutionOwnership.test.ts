@@ -109,7 +109,9 @@ describe('Holm database resolution ownership', () => {
     expect(dealRuntimeSource).toContain("if (initialPhase === 'GAMEPLAY') markHolmHandReady(handContextId);");
     // Regression guard for the rolled-back P0: provenance must open the live
     // path; a skipped runtime must never be declared settled by construction.
-    expect(dealRuntimeSource).toContain('const [readyReleased, setReadyReleased] = useState(false);');
+    expect(dealRuntimeSource).toContain(
+      'const [readyReleased, setReadyReleased] = useState(initialSettlement.expectedCount > 0);',
+    );
     expect(dealRuntimeSource).toContain(
       'const dealSettledNow = expectedCount > 0 && settledCardIds.size >= expectedCount;',
     );

@@ -32,7 +32,6 @@ export function isThreeFiveSevenRuntimeWaveReady(args: {
   historicalEntry: boolean;
 }): boolean {
   if (!args.runtimeAllowed) return false;
-  if (args.historicalEntry && args.runtimeExpectedCount === 0) return true;
   return args.runtimeExpectedCount === args.expectedCumulativeCount;
 }
 

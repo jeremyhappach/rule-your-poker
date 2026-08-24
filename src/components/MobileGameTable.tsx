@@ -12125,6 +12125,16 @@ export const MobileGameTable = ({
     )}
     <ThreeFiveSevenDealRuntimeMaybe
       handContextId={threeFiveSevenHandContextId}
+      initialSettledByRecipient={
+        three57EntryMode === 'historical-entry' && typeof currentRound === 'number' && currentRound >= 1
+          ? Object.fromEntries(
+              threeFiveSevenActiveSeats.map(({ playerId }) => [
+                playerId,
+                totalAfterWaveFor357(currentRound),
+              ]),
+            )
+          : undefined
+      }
       /* Contract A (refresh/rejoin) — Approved authoritative gate.
          Initialize GAMEPLAY only when BOTH source-proven authoritative
          conditions hold:

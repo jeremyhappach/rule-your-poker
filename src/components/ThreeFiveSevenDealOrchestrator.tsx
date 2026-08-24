@@ -1318,17 +1318,25 @@ export function Use357SelfHand<T>({
 export function ThreeFiveSevenDealRuntimeMaybe({
   handContextId,
   initialPhase,
+  initialSettledByRecipient,
   children,
 }: {
   handContextId: string | null | undefined;
   /** Contract A (refresh/rejoin): pass 'GAMEPLAY' when authoritative state
    *  proves the current wave's cards are already dealt on the server. */
   initialPhase?: 'PRE_DEAL' | 'GAMEPLAY';
+  initialSettledByRecipient?: Readonly<Record<string, number>>;
   children: ReactNode;
 }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="three-five-seven" initialPhase={initialPhase}>
+    <DealRuntime
+      key={handContextId}
+      handContextId={handContextId}
+      gameType="three-five-seven"
+      initialPhase={initialPhase}
+      initialSettledByRecipient={initialSettledByRecipient}
+    >
       {children}
     </DealRuntime>
   );

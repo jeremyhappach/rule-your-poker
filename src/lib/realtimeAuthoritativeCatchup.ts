@@ -44,14 +44,16 @@ export function subscribeAuthoritativeRecoverySnapshot(
 }
 
 /**
- * Runs exact authoritative snapshots with latest-trigger-wins semantics.
- * A later Realtime edge or reconnect invalidates every older in-flight read,
- * preventing a slow stale response from overwriting newer accepted state.
+ * Applies exact authoritative snapshots monotonically. A newer successful read
+ * supersedes an older one, while a newer failed read cannot erase an older
+ * successful snapshot that is still valid.
  */
 export function createLatestAuthoritativeLoader<T>(
   options: LatestAuthoritativeLoaderOptions<T>,
 ): LatestAuthoritativeLoader {
   let generation = 0;
+  let latestAppliedGeneration = 0;
+  let invalidatedThroughGeneration = 0;
   let disposed = false;
 
   return {
@@ -59,7 +61,16 @@ export function createLatestAuthoritativeLoader<T>(
       const requestGeneration = ++generation;
       try {
         const value = await options.load(source);
-        if (disposed || requestGeneration !== generation) return false;
+        // A request is obsolete only when a newer snapshot actually applied,
+        // or an authoritative Realtime payload explicitly invalidated it.
+        // Merely starting a newer request must not erase an older successful
+        // snapshot when the newer request fails.
+        if (
+          disposed
+          || requestGeneration <= invalidatedThroughGeneration
+          || requestGeneration < latestAppliedGeneration
+        ) return false;
+        latestAppliedGeneration = requestGeneration;
         options.apply(value, source);
         return true;
       } catch (error) {
@@ -70,10 +81,12 @@ export function createLatestAuthoritativeLoader<T>(
       }
     },
     invalidate(): void {
+      invalidatedThroughGeneration = generation;
       generation += 1;
     },
     dispose(): void {
       disposed = true;
+      invalidatedThroughGeneration = generation;
       generation += 1;
     },
   };

@@ -64,13 +64,19 @@ describe('3-5-7 deal presentation readiness', () => {
     })).toBe(true);
   });
 
-  it('preserves historical-entry reconstruction with no replayed intents', () => {
+  it('requires historical-entry reconstruction to publish its settled baseline', () => {
     expect(isThreeFiveSevenRuntimeWaveReady({
       runtimeAllowed: true,
-      runtimeExpectedCount: 0,
+      runtimeExpectedCount: 10,
       expectedCumulativeCount: 10,
       historicalEntry: true,
     })).toBe(true);
+    expect(isThreeFiveSevenRuntimeWaveReady({
+      runtimeAllowed: false,
+      runtimeExpectedCount: 0,
+      expectedCumulativeCount: 10,
+      historicalEntry: true,
+    })).toBe(false);
   });
 });
 
