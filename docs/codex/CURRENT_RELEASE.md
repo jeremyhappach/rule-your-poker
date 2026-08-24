@@ -2,6 +2,23 @@
 
 Date: 2026-08-24
 
+## Sweep-the-Legs HUD stacking regression correction
+
+- The accepted freeze smoke exposed a separate P1 presentation regression:
+  HUD Stack row 2 painted above the restored normal 3-5-7 Sweep-the-Legs
+  celebration. The tab rail correctly lives in a `document.body` portal, but
+  this older celebration still relied on a local `z-[1000]` inside the
+  transformed gameplay tree. Its ancestor stacking context therefore lost to
+  the body-portaled rail despite the larger local number.
+- The shared Sweep-the-Legs owner now portals beside the tab rail and uses the
+  named `SHELL_Z.CELEBRATION` band. Its backdrop covers and disables the rail
+  during the four-second terminal beat. All three existing call paths inherit
+  the correction without changing settlement, completion gates, animation
+  duration, or the tab-rail owner.
+- The permanent liveness gauntlet now asserts the portal target, canonical
+  z-band ordering, and backdrop pointer ownership so a locally high z-index
+  cannot silently recreate this failure.
+
 ## DG1 live-entry and dealer-draw regression correction
 
 - The post-release two-client production smoke rejected the prior handoff

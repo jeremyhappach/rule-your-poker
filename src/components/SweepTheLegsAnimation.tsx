@@ -3,7 +3,9 @@
 // src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
 // as-is until its consumer migrates in a later wave.
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import sweepTheLegImage from "@/assets/sweep-the-leg.png";
+import { SHELL_Z } from "@/lib/canonicalShell/zLayers";
 import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSTL } from "@/lib/threeFiveSeven/wartime";
 
 interface SweepTheLegsAnimationProps {
@@ -42,13 +44,23 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
   }, [show]);
 
   if (!visible) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center z-[1000] pointer-events-none overflow-hidden">
-      {/* Dark dramatic overlay — fixed so it escapes any local stacking
-          context created by the gameplay container and reliably renders
-          above the shell HUD chrome during the leg-sweep beat. */}
-      <div className="absolute inset-0 bg-black/45" />
+  // The tab rail is itself portaled to document.body. Mount this celebration
+  // beside it so the shared shell z-band, rather than an ancestor stacking
+  // context, determines their order.
+  const node = (
+    <div
+      data-sweep-the-legs-overlay
+      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
+      style={{ zIndex: SHELL_Z.CELEBRATION }}
+    >
+      {/* Cover and disable HUD row 2 throughout the terminal celebration. */}
+      <div
+        data-sweep-the-legs-backdrop
+        className="absolute inset-0 bg-black/45"
+        style={{ pointerEvents: 'auto' }}
+      />
       
       {/* Karate leg sweep image - the hero visual */}
       <div className="relative z-10 animate-[imageSlideIn_0.6s_ease-out_forwards] flex-1 flex items-center justify-center w-full">
@@ -173,4 +185,6 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
       `}</style>
     </div>
   );
+
+  return createPortal(node, document.body);
 };

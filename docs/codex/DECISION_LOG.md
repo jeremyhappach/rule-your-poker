@@ -1259,3 +1259,10 @@ current exception is active 3-5-7. Its live-versus-historical deal provenance
 is route evidence: an already-mounted route that witnessed pre-hand lifecycle
 is live even when 3-5-7 is DG1, while a cold mount first observed in active
 gameplay reconstructs without replay.
+
+## D-088 - Body-portaled HUD peers require body-portaled blocking overlays
+
+A full-screen overlay that must cover HUD Stack row 2 must mount beside the
+tab-rail portal on `document.body` and use a named `SHELL_Z` band above
+`HUD_TAB_RAIL`. A large descendant z-index cannot escape an ancestor stacking
+context and is not valid proof of shell-wide ordering.
