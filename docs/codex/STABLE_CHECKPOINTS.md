@@ -2,6 +2,14 @@
 
 ## Platform
 
+- The multi-wave session dealer draw passed published two-client production
+  smoke on 2026-08-24 at commit
+  `f97aa9caec063ce8e4a88f30e3084baf124dd930`, using the host-scoped one-shot
+  tie fixture in `Aug 24 - Dansby Swanson`. Both clients presented the tied
+  first wave and K/Q tiebreaker cleanly before Dealer Setup; the setup modal
+  won shell stacking, and the fixture atomically consumed itself. Preserve the
+  `preparedAt` receipt identity, exact painted-card acknowledgement, local
+  setup admission gate, canonical modal z-band, and database-owned lifecycle.
 - Player-v-player showdown financial pacing passed published two-human
   production smoke on 2026-08-22 at commit
   `8d873a5b6971254da1ad9fbe5da2253d35d056a9`. In 3-5-7, Secret Reveal on

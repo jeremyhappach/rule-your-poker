@@ -4,6 +4,10 @@ Date: 2026-08-24
 
 ## One-shot session dealer-draw tie smoke fixture
 
+- Published two-client production smoke `Aug 24 - Dansby Swanson` passed at
+  commit `f97aa9caec063ce8e4a88f30e3084baf124dd930`: both clients presented the
+  tied first wave and K/Q tiebreaker before Dealer Setup, the modal covered the
+  completed draw correctly, and the one-shot request consumed itself.
 - Admin Game Defaults now exposes a dedicated session dealer-draw smoke
   fixture. Arming it targets only the authenticated admin's next hosted
   session, expires after ten minutes, and is consumed atomically by one draw.
