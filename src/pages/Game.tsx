@@ -410,9 +410,12 @@ import {
 } from "@/lib/authoritativeGameState";
 import { applyThreeFiveSevenDecisionReceipt } from "@/lib/threeFiveSeven/decisionReceipt";
 import {
+  advanceSessionDealerDrawPresentationFrame,
+  deriveSessionDealerDrawPresentationFrames,
   deriveSessionDealerDrawPresentationReceipt,
+  getSessionDealerDrawPresentationFrameDwellMs,
   getSessionDealerDrawPresentationKey,
-  SESSION_DEALER_DRAW_RECEIPT_DWELL_MS,
+  type SessionDealerDrawPresentationFrame,
   type SessionDealerDrawPresentationReceipt,
 } from "@/lib/sessionDealerDrawPresentation";
 import {
@@ -1444,8 +1447,15 @@ const Game = () => {
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
   const [sessionDealerDrawReceiptHold, setSessionDealerDrawReceiptHold] =
     useState<SessionDealerDrawPresentationReceipt | null>(null);
+  const [sessionDealerDrawPlayback, setSessionDealerDrawPlayback] = useState<{
+    receiptKey: string;
+    state: DealerSelectionState;
+    frameIndex: number;
+  } | null>(null);
   const sessionDealerDrawReceiptHoldRef = useRef<SessionDealerDrawPresentationReceipt | null>(null);
-  const sessionDealerDrawVisibleReceiptKeysRef = useRef(new Set<string>());
+  const sessionDealerDrawPlaybackRef = useRef(sessionDealerDrawPlayback);
+  sessionDealerDrawPlaybackRef.current = sessionDealerDrawPlayback;
+  const sessionDealerDrawCompletedReceiptKeysRef = useRef(new Set<string>());
   const sessionDealerDrawReleaseTimerRef = useRef<number | null>(null);
   const sessionDealerDrawPreviousStatusRef = useRef<string | null>(null);
   const gameStatusRef = useRef<string | null>(null);
@@ -1464,18 +1474,53 @@ const Game = () => {
     dealerSelectionSyncedCardsRef.current = Array.isArray(syncedCards) ? syncedCards : [];
   }, [game]);
 
-  const handleSessionDealerDrawPresentationVisible = useCallback((receiptKey: string) => {
-    sessionDealerDrawVisibleReceiptKeysRef.current.add(receiptKey);
-    const held = sessionDealerDrawReceiptHoldRef.current;
-    if (!held || held.key !== receiptKey || sessionDealerDrawReleaseTimerRef.current !== null) {
-      return;
+  const beginSessionDealerDrawPlayback = useCallback((state: DealerSelectionState) => {
+    const frames = deriveSessionDealerDrawPresentationFrames(state);
+    if (frames.length === 0) return;
+    const receiptKey = frames[0].receiptKey;
+    if (sessionDealerDrawPlaybackRef.current?.receiptKey === receiptKey) return;
+    if (sessionDealerDrawReleaseTimerRef.current !== null) {
+      window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
+      sessionDealerDrawReleaseTimerRef.current = null;
     }
+    const nextPlayback = { receiptKey, state, frameIndex: 0 };
+    sessionDealerDrawPlaybackRef.current = nextPlayback;
+    setSessionDealerDrawPlayback(nextPlayback);
+  }, []);
+
+  const handleSessionDealerDrawPresentationVisible = useCallback((frameKey: string) => {
+    const playback = sessionDealerDrawPlaybackRef.current;
+    if (!playback || sessionDealerDrawReleaseTimerRef.current !== null) return;
+    const frames = deriveSessionDealerDrawPresentationFrames(playback.state);
+    const frame = frames[playback.frameIndex];
+    if (!frame || frame.key !== frameKey) return;
+
+    const dwellMs = getSessionDealerDrawPresentationFrameDwellMs(frame);
     sessionDealerDrawReleaseTimerRef.current = window.setTimeout(() => {
       sessionDealerDrawReleaseTimerRef.current = null;
-      if (sessionDealerDrawReceiptHoldRef.current?.key !== receiptKey) return;
-      sessionDealerDrawReceiptHoldRef.current = null;
-      setSessionDealerDrawReceiptHold(null);
-    }, SESSION_DEALER_DRAW_RECEIPT_DWELL_MS);
+      const current = sessionDealerDrawPlaybackRef.current;
+      if (!current || current.receiptKey !== playback.receiptKey) return;
+      const currentFrames = deriveSessionDealerDrawPresentationFrames(current.state);
+      const advance = advanceSessionDealerDrawPresentationFrame({
+        frames: currentFrames,
+        frameIndex: current.frameIndex,
+        visibleFrameKey: frameKey,
+      });
+      if (!advance) return;
+
+      if (!advance.receiptComplete) {
+        const nextPlayback = { ...current, frameIndex: advance.nextFrameIndex };
+        sessionDealerDrawPlaybackRef.current = nextPlayback;
+        setSessionDealerDrawPlayback(nextPlayback);
+        return;
+      }
+
+      sessionDealerDrawCompletedReceiptKeysRef.current.add(current.receiptKey);
+      if (sessionDealerDrawReceiptHoldRef.current?.key === current.receiptKey) {
+        sessionDealerDrawReceiptHoldRef.current = null;
+        setSessionDealerDrawReceiptHold(null);
+      }
+    }, dwellMs);
   }, []);
 
   useEffect(() => () => {
@@ -1493,38 +1538,60 @@ const Game = () => {
       window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
       sessionDealerDrawReleaseTimerRef.current = null;
     }
-    sessionDealerDrawVisibleReceiptKeysRef.current.clear();
+    sessionDealerDrawCompletedReceiptKeysRef.current.clear();
     sessionDealerDrawPreviousStatusRef.current = null;
     sessionDealerDrawReceiptHoldRef.current = null;
+    sessionDealerDrawPlaybackRef.current = null;
     setSessionDealerDrawReceiptHold(null);
+    setSessionDealerDrawPlayback(null);
   }, [gameId]);
 
   useLayoutEffect(() => {
     const nextStatus = game?.status ?? null;
+    const incomingState = (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined;
     const receipt = deriveSessionDealerDrawPresentationReceipt({
       previousStatus: sessionDealerDrawPreviousStatusRef.current,
       nextStatus,
-      incomingState: (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined,
-      visibleReceiptKeys: sessionDealerDrawVisibleReceiptKeysRef.current,
+      incomingState,
+      completedReceiptKeys: sessionDealerDrawCompletedReceiptKeysRef.current,
     });
     sessionDealerDrawPreviousStatusRef.current = nextStatus;
-    if (!receipt || sessionDealerDrawReceiptHoldRef.current?.key === receipt.key) return;
-    if (sessionDealerDrawReleaseTimerRef.current !== null) {
-      window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
-      sessionDealerDrawReleaseTimerRef.current = null;
+    if (nextStatus === 'dealer_selection' && incomingState?.isComplete) {
+      beginSessionDealerDrawPlayback(incomingState);
     }
+    if (!receipt || sessionDealerDrawReceiptHoldRef.current?.key === receipt.key) return;
+    beginSessionDealerDrawPlayback(receipt.state);
     sessionDealerDrawReceiptHoldRef.current = receipt;
     setSessionDealerDrawReceiptHold(receipt);
-  }, [game?.status, (game as any)?.dealer_selection_state]);
+  }, [beginSessionDealerDrawPlayback, game?.status, (game as any)?.dealer_selection_state]);
 
+  const liveSessionDealerDrawState = game?.status === 'dealer_selection'
+    ? (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined
+    : null;
+  const sessionDealerDrawPresentationState =
+    sessionDealerDrawReceiptHold?.state ?? liveSessionDealerDrawState ?? null;
+  const sessionDealerDrawPresentationFrames =
+    deriveSessionDealerDrawPresentationFrames(sessionDealerDrawPresentationState);
+  const sessionDealerDrawPresentationReceiptKey =
+    sessionDealerDrawPresentationState
+      ? getSessionDealerDrawPresentationKey(sessionDealerDrawPresentationState)
+      : null;
+  const sessionDealerDrawPresentationFrameIndex =
+    sessionDealerDrawPlayback?.receiptKey === sessionDealerDrawPresentationReceiptKey
+      ? Math.min(
+          sessionDealerDrawPlayback.frameIndex,
+          Math.max(0, sessionDealerDrawPresentationFrames.length - 1),
+        )
+      : 0;
+  const sessionDealerDrawPresentationFrame: SessionDealerDrawPresentationFrame | null =
+    sessionDealerDrawPresentationFrames[sessionDealerDrawPresentationFrameIndex] ?? null;
   const sessionDealerDrawPresentationCards =
-    sessionDealerDrawReceiptHold?.state.cards ?? dealerSelectionCards;
+    sessionDealerDrawPresentationFrame?.state.cards ?? dealerSelectionCards;
   const sessionDealerDrawPresentationWinnerPosition =
-    sessionDealerDrawReceiptHold?.state.winnerPosition ?? dealerSelectionWinnerPosition;
-  const sessionDealerDrawPresentationKey = getSessionDealerDrawPresentationKey({
-    cards: sessionDealerDrawPresentationCards,
-    winnerPosition: sessionDealerDrawPresentationWinnerPosition,
-  });
+    sessionDealerDrawPresentationFrame?.state.winnerPosition ?? dealerSelectionWinnerPosition;
+  const sessionDealerDrawPresentationFrameKey =
+    sessionDealerDrawPresentationFrame?.key ?? null;
+  const sessionDealerDrawPresentationPending = sessionDealerDrawReceiptHold !== null;
 
   // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
   // event each time the local cards array length changes (mount, deal,
@@ -4053,16 +4120,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
              previousStatus: oldData?.status ?? gameStatusRef.current,
              nextStatus: newData?.status ?? null,
              incomingState: newData?.dealer_selection_state as DealerSelectionState | null | undefined,
-             visibleReceiptKeys: sessionDealerDrawVisibleReceiptKeysRef.current,
+             completedReceiptKeys: sessionDealerDrawCompletedReceiptKeysRef.current,
            });
            if (
              dealerDrawReceipt
              && sessionDealerDrawReceiptHoldRef.current?.key !== dealerDrawReceipt.key
            ) {
-             if (sessionDealerDrawReleaseTimerRef.current !== null) {
-               window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
-               sessionDealerDrawReleaseTimerRef.current = null;
-             }
+             beginSessionDealerDrawPlayback(dealerDrawReceipt.state);
              sessionDealerDrawReceiptHoldRef.current = dealerDrawReceipt;
              setSessionDealerDrawReceiptHold(dealerDrawReceipt);
            }
@@ -16269,7 +16333,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSelectionCards={sessionDealerDrawPresentationCards}
                     dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
                     dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
-                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationFrameKey}
                     onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
                   />
                 {/* High Card Dealer Selection */}
@@ -16353,11 +16417,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSelectionCards={sessionDealerDrawPresentationCards}
                     dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
                     dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
-                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationFrameKey}
                     onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
                   />
                 )}
-                {hasLiveConfigDeadline && (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
+                {hasLiveConfigDeadline && !sessionDealerDrawPresentationPending &&
+                  (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
@@ -16794,6 +16859,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   // the prior dealer seat when the session closes.
                   (game.status === 'game_over' && !(game as any).config_complete)) &&
                   !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                  !sessionDealerDrawPresentationPending &&
                   hasLiveConfigDeadline &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
@@ -17700,7 +17766,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               dealerSelectionCards={sessionDealerDrawPresentationCards}
               dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
               dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
-              dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+              dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationFrameKey}
               onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
               anteAnimationTriggerId={anteAnimationTriggerId}
               anteAnimationExpectedPot={anteAnimationExpectedPot}

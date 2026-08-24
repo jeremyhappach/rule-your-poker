@@ -1282,3 +1282,18 @@ closed. Reconciliation may release a reconnect without replaying financial
 motion; if no browser obtains both receipts, the existing 15-second canonical
 database timer remains the sole liveness fallback and converges on the same
 replay-safe postgame claim.
+
+## D-090 - Durable multi-wave results are presented locally without becoming progression authority
+
+When PostgreSQL resolves a bounded multi-wave result atomically, connected
+clients may derive an ordered presentation from authoritative wave identity.
+For the session dealer draw, `preparedAt` identifies the receipt and each
+card's `roundNumber` identifies its cumulative visual wave. A wave is complete
+only after every expected card reaches the real DOM; stale or duplicate wave
+acknowledgements cannot advance the presentation.
+
+The database lifecycle never waits for client acknowledgement. A live client
+may withhold its own successor modal until its final presentation dwell
+completes, while the canonical database timer continues to guarantee progress
+for delayed or absent clients. Cold mounts already beyond the presentation
+phase do not replay the historical result.

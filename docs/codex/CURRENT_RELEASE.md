@@ -2,6 +2,33 @@
 
 Date: 2026-08-24
 
+## Session dealer-draw tie presentation and setup admission correction
+
+- Production smoke `Aug 24 - Chalk Dust Torture` produced a valid two-player
+  tie in the session dealer draw. PostgreSQL correctly published one completed
+  four-card receipt containing rounds 1 and 2, but the normal client rendered
+  all four cards at once. The Cross-Country Chaos dealer did not paint the
+  receipt until its local status was already `game_selection`, so Dealer Setup
+  mounted before that client completed the draw presentation.
+- The database remains the sole shuffle, winner, lifecycle, and timeout owner.
+  Each connected client now derives cumulative visual waves from the durable
+  cards' `roundNumber`, acknowledges a wave only when every expected card is in
+  the DOM, and completes the receipt only after the final winner dwell. A live
+  setup modal is withheld on that client until this receipt completes; an
+  absent client never blocks PostgreSQL progression or setup timeout recovery.
+- Receipt identity now includes authoritative `preparedAt`, so a later draw in
+  the same session cannot be mistaken for an earlier identical card result.
+  Delayed acknowledgements from an older wave are rejected, while a cold mount
+  already in setup still does not replay historical cards.
+- `DealerGameSetup` no longer uses global Tailwind `z-50` below the shell's z78
+  high-card portal. Every setup surface uses the named canonical modal band and
+  therefore covers high-card, chip, and card-transport layers defensively.
+- The permanent real-money liveness gauntlet now includes ordered two- and
+  three-wave ties, stale-wave rejection, exact DOM-card admission, both setup
+  mount gates, and modal-layer ordering. All 229 assertions across 38 files,
+  TypeScript, all 35 build-required Cribbage assertions, and the production
+  build pass.
+
 ## Holm Chucky-win presentation completion correction
 
 - Fake-money smoke `Aug 24 - DeMar DeRozan` settled the terminal Holm hand and

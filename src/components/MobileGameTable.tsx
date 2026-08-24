@@ -1384,7 +1384,7 @@ const DealerSelectionVisibilityTracker = ({
           && Array.from(document.querySelectorAll<HTMLElement>('[data-dealer-selection-receipt-key]'))
             .some((container) => (
               container.dataset.dealerSelectionReceiptKey === presentationReceiptKey
-              && container.querySelector('[data-dsel-card="1"]') !== null
+              && container.querySelectorAll('[data-dsel-card="1"]').length === cardCount
             ));
         if (exactReceiptRendered) onPresentationVisible(presentationReceiptKey);
       });

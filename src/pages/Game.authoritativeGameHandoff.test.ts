@@ -60,6 +60,17 @@ describe('Game authoritative games-row handoffs', () => {
     );
   });
 
+  it('keeps both dealer-setup mounts closed while this client drains a dealer-draw receipt', () => {
+    const setupMounts = source.match(/<DealerGameSetup/g) ?? [];
+    const setupBarriers = source.match(/!sessionDealerDrawPresentationPending/g) ?? [];
+
+    expect(setupMounts).toHaveLength(2);
+    expect(setupBarriers).toHaveLength(2);
+    expect(source).toContain('getSessionDealerDrawPresentationFrameDwellMs');
+    expect(source).toContain('advanceSessionDealerDrawPresentationFrame');
+    expect(source).toContain('deriveSessionDealerDrawPresentationFrames');
+  });
+
   it('consumes both Stay and Fold decision receipts before reconciliation fetches', () => {
     expect(source.match(/applyThreeFiveSevenDecisionReceipt\(/g)).toHaveLength(2);
     expect(source).not.toContain('setGame(gameDataToApply);');

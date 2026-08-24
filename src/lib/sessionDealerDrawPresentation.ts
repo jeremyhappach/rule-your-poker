@@ -4,10 +4,24 @@ import type {
 } from '@/hooks/useHighCardDealerSelection';
 
 export const SESSION_DEALER_DRAW_RECEIPT_DWELL_MS = 2200;
+export const SESSION_DEALER_DRAW_TIE_WAVE_DWELL_MS = 1200;
 
 export interface SessionDealerDrawPresentationReceipt {
   key: string;
   state: DealerSelectionState;
+}
+
+export interface SessionDealerDrawPresentationFrame {
+  key: string;
+  receiptKey: string;
+  state: DealerSelectionState;
+  roundNumber: number;
+  isFinal: boolean;
+}
+
+export interface SessionDealerDrawPresentationAdvance {
+  nextFrameIndex: number;
+  receiptComplete: boolean;
 }
 
 function cardKey(card: DealerSelectionCard): string {
@@ -26,9 +40,80 @@ function cardKey(card: DealerSelectionCard): string {
 export function getSessionDealerDrawPresentationKey({
   cards,
   winnerPosition,
-}: Pick<DealerSelectionState, 'cards' | 'winnerPosition'>): string | null {
+  preparedAt,
+}: Pick<DealerSelectionState, 'cards' | 'winnerPosition' | 'preparedAt'>): string | null {
   if (!cards.length) return null;
-  return `${cards.map(cardKey).join('|')}|winner:${winnerPosition ?? 'none'}`;
+  return [
+    `prepared:${preparedAt ?? 'legacy'}`,
+    cards.map(cardKey).join('|'),
+    `winner:${winnerPosition ?? 'none'}`,
+  ].join('|');
+}
+
+/**
+ * PostgreSQL resolves every tie round atomically and stores one completed
+ * receipt. Presentation must still drain that durable result in round order;
+ * rendering the full array directly collapses a tie into four simultaneous
+ * cards. Frames are cumulative so the original tied cards remain on the felt
+ * while the tie-break cards are added.
+ */
+export function deriveSessionDealerDrawPresentationFrames(
+  state: DealerSelectionState | null | undefined,
+): SessionDealerDrawPresentationFrame[] {
+  if (!state?.cards.length) return [];
+  const receiptKey = getSessionDealerDrawPresentationKey(state);
+  if (!receiptKey) return [];
+
+  const roundNumbers = Array.from(new Set(
+    state.cards
+      .map((card) => card.roundNumber)
+      .filter((roundNumber) => Number.isFinite(roundNumber)),
+  )).sort((left, right) => left - right);
+  const normalizedRounds = roundNumbers.length > 0 ? roundNumbers : [1];
+
+  return normalizedRounds.map((roundNumber, index) => {
+    const isFinal = index === normalizedRounds.length - 1;
+    return {
+      key: `${receiptKey}|wave:${roundNumber}`,
+      receiptKey,
+      roundNumber,
+      isFinal,
+      state: isFinal
+        ? state
+        : {
+            ...state,
+            cards: state.cards.filter((card) => card.roundNumber <= roundNumber),
+            announcement: 'Tie! Drawing again...',
+            isComplete: false,
+            winnerPosition: null,
+          },
+    };
+  });
+}
+
+export function getSessionDealerDrawPresentationFrameDwellMs(
+  frame: SessionDealerDrawPresentationFrame,
+): number {
+  return frame.isFinal
+    ? SESSION_DEALER_DRAW_RECEIPT_DWELL_MS
+    : SESSION_DEALER_DRAW_TIE_WAVE_DWELL_MS;
+}
+
+/** Reject stale/duplicate DOM acknowledgements and advance one exact wave. */
+export function advanceSessionDealerDrawPresentationFrame({
+  frames,
+  frameIndex,
+  visibleFrameKey,
+}: {
+  frames: readonly SessionDealerDrawPresentationFrame[];
+  frameIndex: number;
+  visibleFrameKey: string;
+}): SessionDealerDrawPresentationAdvance | null {
+  const frame = frames[frameIndex];
+  if (!frame || frame.key !== visibleFrameKey) return null;
+  return frame.isFinal
+    ? { nextFrameIndex: frameIndex, receiptComplete: true }
+    : { nextFrameIndex: frameIndex + 1, receiptComplete: false };
 }
 
 /**
@@ -41,12 +126,12 @@ export function deriveSessionDealerDrawPresentationReceipt({
   previousStatus,
   nextStatus,
   incomingState,
-  visibleReceiptKeys,
+  completedReceiptKeys,
 }: {
   previousStatus: string | null | undefined;
   nextStatus: string | null | undefined;
   incomingState: DealerSelectionState | null | undefined;
-  visibleReceiptKeys: ReadonlySet<string>;
+  completedReceiptKeys: ReadonlySet<string>;
 }): SessionDealerDrawPresentationReceipt | null {
   if (previousStatus !== 'dealer_selection' || nextStatus === 'dealer_selection') {
     return null;
@@ -59,6 +144,6 @@ export function deriveSessionDealerDrawPresentationReceipt({
     return null;
   }
   const key = getSessionDealerDrawPresentationKey(incomingState);
-  if (!key || visibleReceiptKeys.has(key)) return null;
+  if (!key || completedReceiptKeys.has(key)) return null;
   return { key, state: incomingState };
 }

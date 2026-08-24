@@ -61,6 +61,7 @@ import {
   recordSurfaceOwnership,
   recordWaitingLifecycle,
 } from "@/lib/canonicalShell/waitingTableFlight";
+import { SHELL_Z } from "@/lib/canonicalShell/zLayers";
 
 // P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
 // This identifies which client/code-path creates new dealer_games mid-session
@@ -944,7 +945,10 @@ const DealerGameSetupInner = ({
 
   if (loadingDefaults) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+        style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
+      >
         <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
           <CardContent className="pt-8 pb-8 text-center">
             <p className="text-amber-100">Loading game defaults...</p>
@@ -1194,7 +1198,10 @@ const DealerGameSetupInner = ({
   // Game selection step - tabbed layout with Cards vs Dice
   if (selectionStep === 'game') {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
+      >
         <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
           <CardContent className="pt-6 pb-6 space-y-5">
             {/* Header with Timer */}
@@ -1380,7 +1387,10 @@ const DealerGameSetupInner = ({
                 : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
       
       return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
+        >
           {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
           <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
             <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
@@ -1599,7 +1609,10 @@ const DealerGameSetupInner = ({
 
   // Cards selection step - show poker game tabs
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
+    >
       <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
         <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
           {/* Header with Timer */}
@@ -1872,11 +1885,10 @@ const DealerGameSetupInner = ({
  * Public DealerGameSetup wrapper — portals the modal to document.body
  * so it escapes the PersistentTableShell stacking context. Without
  * this, the shell's PreSessionSeatLayer (a nested zIndex:2 region
- * inside the shell's zIndex:1 stacking context) would paint chip
- * clusters above this modal's `z-50` because z-50 is bounded by its
- * parent context. Portaling lifts the entire modal to <body> so
- * z-50 is global again and the modal fully occludes all seat/chip
- * layers as required.
+ * inside the shell's zIndex:1 stacking context) could paint chip
+ * clusters above the modal. Portaling lifts the entire modal to <body>;
+ * the root then uses the canonical modal band so it also occludes the
+ * shell's z78 high-card reveal and z80/82 transport layers.
  */
 export const DealerGameSetup = (props: DealerGameSetupProps) => {
   if (typeof document === 'undefined') return null;
