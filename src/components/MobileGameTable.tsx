@@ -27,10 +27,14 @@ import {
   isThreeFiveSevenShowdownPresentationReady,
 } from "@/lib/threeFiveSeven/showdownPresentation";
 import {
+  advanceTerminal357NormalSweepGate,
+  createTerminal357NormalSweepGate,
+  isTerminal357NormalSweepGateReady,
   isTerminal357SweepCreditBatch,
   isTerminal357SweepCreditReleased,
   selectTerminal357SweepCreditCheckpoint,
   terminal357SweepCreditMatchesDescriptor,
+  type Terminal357NormalSweepGate,
   type Terminal357SweepCreditCheckpoint,
 } from "@/lib/threeFiveSeven/terminalSweepCredit";
 import { useThreeFiveSevenFinancialAnnouncementOwner } from "@/lib/threeFiveSeven/financialAnnouncementOwner";
@@ -2784,6 +2788,9 @@ export const MobileGameTable = ({
     terminalResultIdentity: string;
     terminalGenerationId: string;
     winnerId: string;
+    completionGate: Terminal357NormalSweepGate;
+    transferCursor: number | null;
+    creditSource: 'batch-settled' | 'cursor-settled' | 'cursor-reconciled' | null;
     beginPotFlight: () => void;
   } | null>(null);
   
@@ -4502,6 +4509,47 @@ export const MobileGameTable = ({
     retireTransientScope: retireCanonicalTransientScope,
   });
 
+  // Normal final-leg settlement has two independent presentation receipts:
+  // the immutable zero-flight reserve return and the visible Sweep the Legs
+  // overlay. Pot flight begins only after both receipts belong to the same
+  // terminal generation, regardless of which completes first.
+  const tryReleasePending357LegSweep = useCallback(() => {
+    const pending = pending357LegSweepCreditRef.current;
+    const presentation = normal357PresentationRef.current;
+    const descriptor = normal357SweepDescriptor;
+    if (!pending || !presentation || !descriptor) return false;
+    if (threeFiveSevenWinPhaseRef.current !== 'sweep-credit') return false;
+    if (
+      pending.terminalGenerationId !== descriptor.terminalGenerationId
+      || pending.dealerGameId !== descriptor.dealerGameId
+      || presentation.generationId !== descriptor.terminalGenerationId
+      || presentation.dealerGameId !== descriptor.dealerGameId
+      || presentation.stage !== 'sweep-credit'
+      || !isTerminal357NormalSweepGateReady(pending.completionGate)
+      || pending.creditSource === null
+      || pending.transferCursor === null
+    ) {
+      return false;
+    }
+
+    pending357LegSweepCreditRef.current = null;
+    emit357RuntimeDiag('sweep_wait_released', {
+      gameId: pending.gameId,
+      dealerGameId: pending.dealerGameId,
+      roundId: pending.roundId,
+      handNumber: pending.handNumber,
+      winnerPlayerId: pending.winnerId,
+      terminalResultIdentity: pending.terminalResultIdentity,
+    }, {
+      releaseReason: 'terminal_sweep_credit_and_overlay_complete',
+      source: pending.creditSource,
+      transferCursor: pending.transferCursor,
+      terminalGenerationId: pending.terminalGenerationId,
+    });
+    pending.beginPotFlight();
+    return true;
+  }, [normal357SweepDescriptor]);
+
   // The ledger owns endpoint display as soon as an immutable batch arrives,
   // while this gate preserves game-owned prerequisite presentation ordering.
   const releasePending357LegSweepCredit = useCallback((
@@ -4531,23 +4579,40 @@ export const MobileGameTable = ({
       return false;
     }
 
-    pending357LegSweepCreditRef.current = null;
-    emit357RuntimeDiag('sweep_wait_released', {
-      gameId: checkpoint.gameId,
-      dealerGameId: checkpoint.dealerGameId,
-      roundId: checkpoint.roundId,
-      handNumber: checkpoint.handNumber,
-      winnerPlayerId: checkpoint.winnerId,
-      terminalResultIdentity: checkpoint.terminalResultIdentity,
-    }, {
-      releaseReason: 'terminal_sweep_credit_committed',
-      source,
-      transferCursor: checkpoint.transferCursor,
-      terminalGenerationId: checkpoint.terminalGenerationId,
-    });
-    pending.beginPotFlight();
+    pending.completionGate = advanceTerminal357NormalSweepGate(
+      pending.completionGate,
+      checkpoint.terminalGenerationId,
+      'credit-settled',
+    );
+    pending.transferCursor = checkpoint.transferCursor;
+    pending.creditSource = source;
+    tryReleasePending357LegSweep();
     return true;
-  }, [normal357SweepDescriptor]);
+  }, [normal357SweepDescriptor, tryReleasePending357LegSweep]);
+
+  const completePending357LegSweepOverlay = useCallback(() => {
+    const pending = pending357LegSweepCreditRef.current;
+    const presentation = normal357PresentationRef.current;
+    const descriptor = normal357SweepDescriptor;
+    if (!pending || !presentation || !descriptor) return false;
+    if (
+      threeFiveSevenWinPhaseRef.current !== 'sweep-credit'
+      || pending.terminalGenerationId !== descriptor.terminalGenerationId
+      || pending.dealerGameId !== descriptor.dealerGameId
+      || presentation.generationId !== descriptor.terminalGenerationId
+      || presentation.dealerGameId !== descriptor.dealerGameId
+      || presentation.stage !== 'sweep-credit'
+    ) {
+      return false;
+    }
+    pending.completionGate = advanceTerminal357NormalSweepGate(
+      pending.completionGate,
+      descriptor.terminalGenerationId,
+      'overlay-complete',
+    );
+    tryReleasePending357LegSweep();
+    return true;
+  }, [normal357SweepDescriptor, tryReleasePending357LegSweep]);
 
   // Capture the exact stage/hand at admission: the ledger settles later, after
   // realtime may already have replaced the mutable result props.
@@ -10253,6 +10318,9 @@ export const MobileGameTable = ({
       terminalResultIdentity: descriptor.terminalResultIdentity,
       terminalGenerationId: descriptor.terminalGenerationId,
       winnerId: descriptor.winnerId,
+      completionGate: createTerminal357NormalSweepGate(descriptor.terminalGenerationId),
+      transferCursor: null,
+      creditSource: null,
       beginPotFlight: () => {
         const legsEntryResult = enterCanonical357TerminalPresentation({
           identity: {
@@ -10302,6 +10370,7 @@ export const MobileGameTable = ({
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
+    setShowSweepTheLegs357(true);
   }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope, normal357TerminalDescriptor]);
 
   // A reconciled cursor is every bit as authoritative as a locally animated
@@ -12397,18 +12466,25 @@ export const MobileGameTable = ({
                 }
               }}
             />
-            {/* Conditional Sweep-The-Legs overlay — armed only when
-                detection-time legs > 0. Its completion (or immediate skip)
-                releases the sweep-wait phase. */}
+            {/* Sweep-The-Legs overlay — instant sweeps arm it when opening
+                legs existed; normal final-leg wins arm it after the visible
+                leg flight. The normal path requires both this completion and
+                its exact sweep-credit cursor before pot flight. */}
             <SweepTheLegsAnimation
               show={showSweepTheLegs357}
               onComplete={() => {
+                const completingNormalTerminalSweep =
+                  threeFiveSevenWinPhaseRef.current === 'sweep-credit';
                 __capture357Checkpoint('sweep_the_legs_complete', {
                   phase: threeFiveSevenWinPhaseRef.current,
                 });
                 retireThreeFiveSevenLegStack(threeFiveSevenDealerGameScope);
                 setShowSweepTheLegs357(false);
-                setSweepCelebrationCompleted(true);
+                if (completingNormalTerminalSweep) {
+                  completePending357LegSweepOverlay();
+                } else {
+                  setSweepCelebrationCompleted(true);
+                }
               }}
             />
           </>

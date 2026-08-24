@@ -96,6 +96,11 @@ forward authoritative snapshots and semantically identical equal-progress
 snapshots. `src/lib/gameStateSync/authoritativeIdentity.ts:useAuthoritativeIdentity`
 tracks dealer-game, hand, and round identity; `Game.tsx` and game components
 reset transient/presentation state when those identities change.
+`src/lib/authoritativeGameState.ts` merges complete `games` Realtime row images
+without dropping joined relations and rejects strictly older row timestamps.
+`src/lib/threeFiveSeven/decisionReceipt.ts` consumes the exact committed
+decision result on the initiating client before Realtime/full-fetch
+reconciliation.
 
 | Game family | Progress adapter |
 |---|---|
@@ -448,7 +453,7 @@ Canonical snapshot identity is
 
 | Channel owner | Payload |
 |---|---|
-| `Game.tsx` channel `game-${gameId}` | `games` UPDATE plus an exact-id `games` DELETE ejection listener, `players` all events, and `rounds` all events. Fetches are debounced 300 ms and serialized/coalesced. A five-second fallback runs after channel loss or failed subscribe catch-up, and stops only after both subscription and one complete snapshot succeed. |
+| `Game.tsx` channel `game-${gameId}` | `games` UPDATE plus an exact-id `games` DELETE ejection listener, `players` all events, and `rounds` all events. Every `games` UPDATE first merges the complete authoritative row image and invalidates an older in-flight snapshot; status-specific side effects cannot suppress co-published dealer cards, results, or cursors. Fetches are debounced 300 ms and serialized/coalesced. A five-second fallback runs after channel loss or failed subscribe catch-up, and stops only after both subscription and one complete snapshot succeed. |
 | `Game.tsx` channel `session-history-${gameId}` | INSERTs into `session_player_snapshots`. |
 | `Game.tsx` channel `show-cards-${gameId}` | Ephemeral 3-5-7 `show-cards` broadcast, guarded by dealer-game identity. |
 | `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. Both perform exact authoritative catch-up on every `SUBSCRIBED` edge and central recovery receipt. |

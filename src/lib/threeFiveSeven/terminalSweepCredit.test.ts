@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Terminal357Descriptor } from './terminalDescriptor';
 import {
+  advanceTerminal357NormalSweepGate,
+  createTerminal357NormalSweepGate,
+  isTerminal357NormalSweepGateReady,
   isTerminal357SweepCreditBatch,
   isTerminal357SweepCreditReleased,
   selectTerminal357SweepCreditCheckpoint,
@@ -104,5 +107,29 @@ describe('3-5-7 terminal sweep-credit checkpoint', () => {
       newerDescriptor,
       'reconciled',
     )).toBe(false);
+  });
+
+  it.each([
+    ['credit-settled', 'overlay-complete'],
+    ['overlay-complete', 'credit-settled'],
+  ] as const)(
+    'releases normal-win pot only after both %s and %s',
+    (first, second) => {
+      let gate = createTerminal357NormalSweepGate('terminal-generation-1');
+      gate = advanceTerminal357NormalSweepGate(gate, 'terminal-generation-1', first);
+      expect(isTerminal357NormalSweepGateReady(gate)).toBe(false);
+      gate = advanceTerminal357NormalSweepGate(gate, 'terminal-generation-1', second);
+      expect(isTerminal357NormalSweepGateReady(gate)).toBe(true);
+    },
+  );
+
+  it('ignores a stale overlay completion from another terminal generation', () => {
+    const gate = createTerminal357NormalSweepGate('terminal-generation-2');
+    expect(advanceTerminal357NormalSweepGate(
+      gate,
+      'terminal-generation-1',
+      'overlay-complete',
+    )).toBe(gate);
+    expect(isTerminal357NormalSweepGateReady(gate)).toBe(false);
   });
 });

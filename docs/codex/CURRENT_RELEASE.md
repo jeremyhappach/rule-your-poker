@@ -2,6 +2,31 @@
 
 Date: 2026-08-24
 
+## Authoritative presentation receipt handoff
+
+- The `Aug 24 - Undermind` two-client production smoke completed without a
+  freeze and with exact financial reconciliation, but exposed an eight- to
+  ten-second client delay between committed 3-5-7 terminal settlement and the
+  winning-leg presentation. The decision RPC already returned the committed
+  game/result receipt; Stay and Fold now consume that receipt immediately
+  before the serialized full snapshot reconciles it.
+- The same smoke proved that both dealer-selection surfaces mounted but only
+  one client rendered the stored two-card draw. The central `games` Realtime
+  owner now merges the complete authoritative row image before status-specific
+  side effects, so a co-published `status` can no longer suppress
+  `dealer_selection_state`, `last_round_result`, or another field. A newer
+  Realtime receipt invalidates an older in-flight snapshot, and strictly older
+  games-row timestamps cannot regress the local projection.
+- Normal third-leg 3-5-7 victories now present the existing Sweep the Legs
+  overlay between the visible leg flight and pot flight. The pot stage requires
+  both the exact immutable zero-flight `sweep` cursor and overlay completion for
+  the same terminal generation; either arrival order is accepted, while stale
+  generation callbacks are rejected. Instant 3-5-7 behavior and financial
+  settlement are unchanged.
+- The permanent liveness gauntlet now includes these handoffs and passes all
+  172 assertions across 30 files. Focused tests, TypeScript, all 35
+  build-required Cribbage assertions, and the production build pass.
+
 ## Real-money liveness admission and action-surface recovery
 
 - The serialized database recovery pass now publishes a completion heartbeat,

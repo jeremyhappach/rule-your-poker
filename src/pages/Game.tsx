@@ -403,6 +403,8 @@ import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
 import { createSerializedAuthoritativeFetch } from "@/lib/serializedAuthoritativeFetch";
+import { mergeAuthoritativeGameState } from "@/lib/authoritativeGameState";
+import { applyThreeFiveSevenDecisionReceipt } from "@/lib/threeFiveSeven/decisionReceipt";
 import {
   subscribeActionSurfaceRecoveryRequests,
   type ActionSurfaceRecoveryRequest,
@@ -542,6 +544,8 @@ interface GameData {
   config_complete?: boolean;
   config_deadline?: string | null;
   current_game_uuid?: string | null;
+  updated_at?: string;
+  dealer_selection_state?: DealerSelectionState | null;
   chip_transfer_cursor?: number | null;
   game_setup_timer_seconds?: number;
   ante_decision_timer_seconds?: number;
@@ -3945,10 +3949,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           channelLabel: `game-${gameId}:games`,
           table: 'games',
           identity: () => ({ gameId, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null }),
-          handler: (payload: any) => {
-          const newData = payload.new as any;
-          const oldData = payload.old as any;
-          recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
+           handler: (payload: any) => {
+           const newData = payload.new as any;
+           const oldData = payload.old as any;
+           // A Postgres Changes UPDATE carries one authoritative games-row
+           // image. Adopt the complete row before status-specific side effects;
+           // `status` is present alongside dealer_selection_state,
+           // last_round_result, and financial cursors and must not suppress
+           // those co-published fields. Invalidate an older in-flight snapshot
+           // first so it cannot overwrite this newer receipt when it lands.
+           fetchSeqRef.current += 1;
+           setGame((previous) => mergeAuthoritativeGameState(previous, newData));
+           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
             table: 'games',
@@ -9860,7 +9872,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setGameOffsetMs: postprocessStartOffsetMs,
     });
 
-    setGame(gameDataToApply);
+    setGame((previous) => previous
+      ? mergeAuthoritativeGameState(previous, gameDataToApply)
+      : gameDataToApply);
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
       fetchSeq,
       offsetMs: Date.now() - fetchStartedAt,
@@ -14885,6 +14899,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       const decisionResult = await makeDecision(gameId, currentPlayer.id, 'stay', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
       if (is357GameType) {
+        setGame((previous) => applyThreeFiveSevenDecisionReceipt(
+          previous,
+          gameId,
+          decisionResult,
+        ));
         const allFoldPresentation = parseThreeFiveSevenAllFoldDecisionResult(gameId, decisionResult);
         if (allFoldPresentation) {
           setDirectThreeFiveSevenAllFoldPresentation(allFoldPresentation);
@@ -14990,6 +15009,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       const decisionResult = await makeDecision(gameId, currentPlayer.id, 'fold', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
       if (is357GameType) {
+        setGame((previous) => applyThreeFiveSevenDecisionReceipt(
+          previous,
+          gameId,
+          decisionResult,
+        ));
         const allFoldPresentation = parseThreeFiveSevenAllFoldDecisionResult(gameId, decisionResult);
         if (allFoldPresentation) {
           setDirectThreeFiveSevenAllFoldPresentation(allFoldPresentation);

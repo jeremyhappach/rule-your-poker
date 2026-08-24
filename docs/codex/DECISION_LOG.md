@@ -1226,3 +1226,19 @@ inspection. Gin and Cribbage human turns remain explicit untimed exceptions.
 When authoritative client state expects a visible action but its presentation
 surface is absent, the client may request one serialized authoritative
 snapshot for that exact identity. It may not infer or submit the missing move.
+
+## D-086 - An authoritative row receipt is indivisible at client ingestion
+
+A PostgreSQL Realtime UPDATE is one authoritative row image. The client must
+merge that image before running field-specific side effects; it may not choose
+one present column such as `status` and silently discard simultaneously
+committed dealer-selection state, result identity, timer state, or financial
+cursor. A newer row receipt invalidates any older in-flight full snapshot, and
+strictly older row timestamps cannot regress the local projection.
+
+An initiating action must consume an exact committed RPC result when the
+database returns one. Realtime remains peer synchronization and the serialized
+full snapshot remains reconciliation; neither is a reason to delay presentation
+already proven by the caller's database receipt. Presentation may gate its own
+ordered stages on exact durable cursors and generation-matched animation
+completion, but it never becomes financial or gameplay authority.

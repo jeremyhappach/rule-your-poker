@@ -21,6 +21,45 @@ export interface Terminal357SweepCreditCheckpoint {
   transferCursor: number;
 }
 
+export type Terminal357NormalSweepSignal = 'credit-settled' | 'overlay-complete';
+
+export interface Terminal357NormalSweepGate {
+  terminalGenerationId: string;
+  creditSettled: boolean;
+  overlayComplete: boolean;
+}
+
+export function createTerminal357NormalSweepGate(
+  terminalGenerationId: string,
+): Terminal357NormalSweepGate {
+  return {
+    terminalGenerationId,
+    creditSettled: false,
+    overlayComplete: false,
+  };
+}
+
+export function advanceTerminal357NormalSweepGate(
+  gate: Terminal357NormalSweepGate,
+  terminalGenerationId: string,
+  signal: Terminal357NormalSweepSignal,
+): Terminal357NormalSweepGate {
+  if (gate.terminalGenerationId !== terminalGenerationId) return gate;
+  if (signal === 'credit-settled' && gate.creditSettled) return gate;
+  if (signal === 'overlay-complete' && gate.overlayComplete) return gate;
+  return {
+    ...gate,
+    creditSettled: gate.creditSettled || signal === 'credit-settled',
+    overlayComplete: gate.overlayComplete || signal === 'overlay-complete',
+  };
+}
+
+export function isTerminal357NormalSweepGateReady(
+  gate: Terminal357NormalSweepGate | null | undefined,
+): boolean {
+  return gate?.creditSettled === true && gate.overlayComplete === true;
+}
+
 /**
  * Resolve the one immutable reserve-return batch belonging to a normal 3-5-7
  * terminal. A dealer game can settle only once, so more than one matching
