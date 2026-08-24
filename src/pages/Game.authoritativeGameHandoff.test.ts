@@ -6,8 +6,12 @@ import { join } from 'node:path';
 const source = readFileSync(join(__dirname, 'Game.tsx'), 'utf8');
 
 describe('Game authoritative games-row handoffs', () => {
-  it('merges the complete Realtime row before status-specific routing', () => {
+  it('applies the family publication policy before status-specific routing', () => {
     const callbackStart = source.indexOf('handler: (payload: any) => {');
+    const policyIndex = source.indexOf(
+      'const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData);',
+      callbackStart,
+    );
     const mergeIndex = source.indexOf(
       'setGame((previous) => mergeAuthoritativeGameState(previous, newData));',
       callbackStart,
@@ -18,17 +22,42 @@ describe('Game authoritative games-row handoffs', () => {
     );
 
     expect(callbackStart).toBeGreaterThan(-1);
-    expect(mergeIndex).toBeGreaterThan(callbackStart);
+    expect(policyIndex).toBeGreaterThan(callbackStart);
+    expect(mergeIndex).toBeGreaterThan(policyIndex);
     expect(statusRoutingIndex).toBeGreaterThan(mergeIndex);
   });
 
-  it('invalidates an older full snapshot before publishing a Realtime receipt', () => {
+  it('invalidates an older full snapshot only inside the direct-publication branch', () => {
+    const directBranch = source.indexOf('if (publishGamesRowDirectly) {');
     const realtimeMerge = source.indexOf(
       'setGame((previous) => mergeAuthoritativeGameState(previous, newData));',
+      directBranch,
     );
     const invalidation = source.lastIndexOf('fetchSeqRef.current += 1;', realtimeMerge);
-    expect(invalidation).toBeGreaterThan(-1);
+    expect(directBranch).toBeGreaterThan(-1);
+    expect(invalidation).toBeGreaterThan(directBranch);
     expect(invalidation).toBeLessThan(realtimeMerge);
+  });
+
+  it('uses an exact-frame refetch instead of a bare active 3-5-7 row', () => {
+    expect(source).toContain('incomingIsAtomicThreeFiveSevenFrame');
+    expect(source).toMatch(
+      /if \(incomingIsAtomicThreeFiveSevenFrame\) \{\s*fetchGameData\('realtime_update'\);\s*return;/,
+    );
+  });
+
+  it('carries an unseen session dealer draw through the neutral status-keyed surface', () => {
+    const statusKeyedStart = source.indexOf('instanceLabel="status-keyed"');
+    const statusKeyedEnd = source.indexOf('/>', statusKeyedStart);
+    const statusKeyedProps = source.slice(statusKeyedStart, statusKeyedEnd);
+
+    expect(statusKeyedStart).toBeGreaterThan(-1);
+    expect(statusKeyedProps).toContain(
+      'dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}',
+    );
+    expect(statusKeyedProps).toContain(
+      'onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}',
+    );
   });
 
   it('consumes both Stay and Fold decision receipts before reconciliation fetches', () => {

@@ -56,14 +56,36 @@ export function resolveThreeFiveSevenRouteEntryMode(
 
 const THREE_FIVE_SEVEN_GAME_TYPES = new Set(['3-5-7', '3-5-7-game', '357']);
 
+const THREE_FIVE_SEVEN_PRE_HAND_ROUTE_STATUSES = new Set([
+  'waiting',
+  'waiting_for_players',
+  'dealer_selection',
+  'game_selection',
+  'configuring',
+  'ante_decision',
+]);
+
+/**
+ * A route that rendered one of these phases before its first complete 3-5-7
+ * identity witnessed a live dealer-game startup. A cold mount whose first
+ * authoritative frame is already `in_progress` did not.
+ */
+export function isThreeFiveSevenPreHandRouteStatus(
+  status: string | null | undefined,
+): boolean {
+  return !!status && THREE_FIVE_SEVEN_PRE_HAND_ROUTE_STATUSES.has(status);
+}
+
 /** Classify the first 3-5-7 identity on a persistent table route. */
 export function classifyInitialThreeFiveSevenEntry(
   previousHydratedGameType: string | null,
   currentGameType: string,
+  observedPreHandLifecycle = false,
 ): ThreeFiveSevenRouteEntryMode | undefined {
   if (!THREE_FIVE_SEVEN_GAME_TYPES.has(currentGameType)) return undefined;
-  return previousHydratedGameType !== null
-    && !THREE_FIVE_SEVEN_GAME_TYPES.has(previousHydratedGameType)
+  return observedPreHandLifecycle
+    || (previousHydratedGameType !== null
+      && !THREE_FIVE_SEVEN_GAME_TYPES.has(previousHydratedGameType))
     ? 'live-transition'
     : 'historical-entry';
 }

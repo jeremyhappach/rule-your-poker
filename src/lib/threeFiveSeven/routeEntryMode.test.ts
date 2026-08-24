@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   classifyInitialThreeFiveSevenEntry,
+  isThreeFiveSevenPreHandRouteStatus,
   resolveThreeFiveSevenRouteEntryMode,
 } from './routeEntryMode';
 
@@ -69,5 +70,26 @@ describe('3-5-7 route entry provenance', () => {
     for (const previous of ['holm-game', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee']) {
       expect(classifyInitialThreeFiveSevenEntry(previous, '3-5-7')).toBe('live-transition');
     }
+  });
+
+  it('treats DG1H1 as live when this route witnessed pre-hand lifecycle with no prior game type', () => {
+    expect(classifyInitialThreeFiveSevenEntry(null, '3-5-7', true))
+      .toBe('live-transition');
+    expect(classifyInitialThreeFiveSevenEntry(null, '3-5-7', false))
+      .toBe('historical-entry');
+  });
+
+  it('arms only before an active 3-5-7 hand exists', () => {
+    expect([
+      'waiting',
+      'waiting_for_players',
+      'dealer_selection',
+      'game_selection',
+      'configuring',
+      'ante_decision',
+    ].every(isThreeFiveSevenPreHandRouteStatus)).toBe(true);
+    expect(isThreeFiveSevenPreHandRouteStatus('in_progress')).toBe(false);
+    expect(isThreeFiveSevenPreHandRouteStatus('game_over')).toBe(false);
+    expect(isThreeFiveSevenPreHandRouteStatus('session_ended')).toBe(false);
   });
 });

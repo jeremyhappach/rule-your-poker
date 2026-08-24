@@ -82,6 +82,7 @@ import {
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
+import { classifyThreeFiveSevenWaveAdmission } from '@/lib/threeFiveSeven/waveAdmission';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 
 // Suit normalizer — accepts either the symbol form (Card) or the word
@@ -274,36 +275,45 @@ export function ThreeFiveSevenDealOrchestrator({
         suppressionReason,
       });
     };
-    // Contract A (refresh/rejoin) — Durable canonical gate. If the host
-    // initialized DealRuntime to a non-PRE_DEAL phase AND no wave has
-    // yet accumulated expected cards on this runtime, the current wave
-    // was already dealt on the server before mount — suppress dispatch
-    // to prevent historical replay. `expectedCount === 0` distinguishes
-    // this from live mid-hand wave transitions (r2/r3) where prior
-    // waves have already grown expectedCount > 0.
-    if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
+    const roundNumber = Number(roundStr ?? '0') || 0;
+    const waveAdmission = classifyThreeFiveSevenWaveAdmission({
+      roundNumber,
+      activePlayerIds: activeSeats.map((seat) => seat.playerId),
+      expectedCount: deal.expectedCount,
+      settledCountForPlayer: deal.getSettledCountForPlayer,
+    });
+    // Exact-wave idempotency is independent of entry-mode classification.
+    // A reconstructed historical wave and an already-admitted live wave both
+    // own their cumulative expected target. Never add the same manifest a
+    // second time merely because a delayed presentation gate later opens.
+    if (waveAdmission !== 'dispatch') {
       dispatchedWaveRef.current = waveContextId;
-      emitDecision('suppress', 'refresh_rejoin_historical_wave_suppressed');
-      __emitWartimeChannelSettled({
-        identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId: selfPlayerId },
-        owner: __wartimeDealOwner,
-        orchestratorInstanceId: __wartimeDealOwner.componentInstanceId,
-        runtimeComponentInstanceId: null,
-        handContextId: waveContextId,
-        expectedCount: deal.expectedCount,
-        authoritativeCount: null,
-        visibleCount: null,
-        transportedCount: null,
-        passthroughStatus: true,
-        passthroughReason: 'refresh_rejoin_historical_wave_suppressed',
-        settledReason: 'refresh_rejoin_reconstruction',
-        runtimePhase: deal.phase,
-        completedLatch: false,
-        settledLatch: false,
-        terminalState: false,
-        advancingState: false,
-        modalMounted: false,
-      });
+      const suppressionReason = waveAdmission === 'already-settled'
+        ? 'exact_wave_already_settled'
+        : 'exact_wave_already_admitted';
+      emitDecision('suppress', suppressionReason);
+      if (waveAdmission === 'already-settled') {
+        __emitWartimeChannelSettled({
+          identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId: selfPlayerId },
+          owner: __wartimeDealOwner,
+          orchestratorInstanceId: __wartimeDealOwner.componentInstanceId,
+          runtimeComponentInstanceId: null,
+          handContextId: waveContextId,
+          expectedCount: deal.expectedCount,
+          authoritativeCount: null,
+          visibleCount: null,
+          transportedCount: null,
+          passthroughStatus: true,
+          passthroughReason: suppressionReason,
+          settledReason: 'refresh_rejoin_reconstruction',
+          runtimePhase: deal.phase,
+          completedLatch: false,
+          settledLatch: false,
+          terminalState: false,
+          advancingState: false,
+          modalMounted: false,
+        });
+      }
       return;
     }
     if (!dispatchAllowed) { emitDecision('defer', 'awaiting_ante_presentation_landing'); return; }

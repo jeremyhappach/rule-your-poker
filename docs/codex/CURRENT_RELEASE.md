@@ -2,6 +2,38 @@
 
 Date: 2026-08-24
 
+## DG1 live-entry and dealer-draw regression correction
+
+- The post-release two-client production smoke rejected the prior handoff
+  release. In first-dealer-game 3-5-7, both connected clients reached DG1H1R1
+  with no preceding hydrated game type, so the route incorrectly classified
+  them as refresh/rejoin clients. That reconstructed six settled cards before
+  the delayed ante presentation gate opened; the same R1 wave then tried to
+  admit six more expected cards, leaving the deal barrier at 6/12 and
+  suppressing both the decision timer and Stay/Fold surface.
+- The persistent route now records whether it witnessed a real pre-hand
+  lifecycle before its first complete 3-5-7 identity. DG1 is live for an
+  already-connected route and historical only for a cold client whose first
+  authoritative frame is already active. Independent exact-wave admission
+  rejects any R1/R2/R3 manifest whose cumulative expected or per-player
+  settled target is already owned, so a delayed presentation gate cannot
+  double the deal ledger.
+- Active 3-5-7 no longer publishes a constituent `games` Realtime row as a
+  complete gameplay frame or lets that row invalidate an in-flight exact
+  frame. Its atomic current-frame RPC remains the sole publisher of game,
+  round, roster, and private-card state. All six other game families and all
+  pre-hand lifecycle phases retain complete games-row publication.
+- A completed session dealer draw now has an exact visual receipt. If status
+  advances before that exact card result reaches the real felt renderer, the
+  route carries the result across the dealer-selection-to-game-selection
+  surface handoff and releases it only after a real render plus the existing
+  winner dwell. Already-rendered and cold stale receipts do not replay.
+- The liveness command now includes explicit first-DG coverage for all seven
+  real-money families plus DG1 live-vs-cold provenance, exact 3-5-7 wave
+  idempotency, atomic-frame publication, and dealer-draw receipt handoff. All
+  189 assertions across 33 gauntlet files pass; TypeScript, all 35
+  build-required Cribbage assertions, and the production build also pass.
+
 ## Authoritative presentation receipt handoff
 
 - The `Aug 24 - Undermind` two-client production smoke completed without a

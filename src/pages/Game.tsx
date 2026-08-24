@@ -63,6 +63,7 @@ import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import {
   classifyInitialThreeFiveSevenEntry,
+  isThreeFiveSevenPreHandRouteStatus,
   resolveThreeFiveSevenRouteEntryMode,
   type ThreeFiveSevenRouteEntryIdentity,
 } from "@/lib/threeFiveSeven/routeEntryMode";
@@ -403,8 +404,17 @@ import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
 import { createSerializedAuthoritativeFetch } from "@/lib/serializedAuthoritativeFetch";
-import { mergeAuthoritativeGameState } from "@/lib/authoritativeGameState";
+import {
+  mergeAuthoritativeGameState,
+  shouldPublishGamesRealtimeRowDirectly,
+} from "@/lib/authoritativeGameState";
 import { applyThreeFiveSevenDecisionReceipt } from "@/lib/threeFiveSeven/decisionReceipt";
+import {
+  deriveSessionDealerDrawPresentationReceipt,
+  getSessionDealerDrawPresentationKey,
+  SESSION_DEALER_DRAW_RECEIPT_DWELL_MS,
+  type SessionDealerDrawPresentationReceipt,
+} from "@/lib/sessionDealerDrawPresentation";
 import {
   subscribeActionSurfaceRecoveryRequests,
   type ActionSurfaceRecoveryRequest,
@@ -1028,6 +1038,10 @@ const Game = () => {
   // refresh/rejoin into a pre-existing hand → HISTORICAL (skip replay).
   const initial357IdentityRef = useRef<ThreeFiveSevenRouteEntryIdentity | null>(null);
   const initial357EntryModeRef = useRef<'live-transition' | 'historical-entry' | undefined>(undefined);
+  const threeFiveSevenPreHandLifecycleRef = useRef<{
+    gameId: string | null;
+    observed: boolean;
+  }>({ gameId: null, observed: false });
   const routeHydratedGameTypeRef = useRef<{ gameId: string | null; gameType: string } | null>(null);
   const initialHolmIdentityRef = useRef<{
     captured: boolean;
@@ -1428,6 +1442,14 @@ const Game = () => {
   // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
+  const [sessionDealerDrawReceiptHold, setSessionDealerDrawReceiptHold] =
+    useState<SessionDealerDrawPresentationReceipt | null>(null);
+  const sessionDealerDrawReceiptHoldRef = useRef<SessionDealerDrawPresentationReceipt | null>(null);
+  const sessionDealerDrawVisibleReceiptKeysRef = useRef(new Set<string>());
+  const sessionDealerDrawReleaseTimerRef = useRef<number | null>(null);
+  const sessionDealerDrawPreviousStatusRef = useRef<string | null>(null);
+  const gameStatusRef = useRef<string | null>(null);
+  gameStatusRef.current = game?.status ?? null;
   // Live refs so the realtime subscription effect (which closes over
   // [gameId] only) can read the latest values when evaluating the
   // high-card clear guard. Without these, the closure reads the initial
@@ -1441,6 +1463,68 @@ const Game = () => {
     const syncedCards = (game as any)?.dealer_selection_state?.cards;
     dealerSelectionSyncedCardsRef.current = Array.isArray(syncedCards) ? syncedCards : [];
   }, [game]);
+
+  const handleSessionDealerDrawPresentationVisible = useCallback((receiptKey: string) => {
+    sessionDealerDrawVisibleReceiptKeysRef.current.add(receiptKey);
+    const held = sessionDealerDrawReceiptHoldRef.current;
+    if (!held || held.key !== receiptKey || sessionDealerDrawReleaseTimerRef.current !== null) {
+      return;
+    }
+    sessionDealerDrawReleaseTimerRef.current = window.setTimeout(() => {
+      sessionDealerDrawReleaseTimerRef.current = null;
+      if (sessionDealerDrawReceiptHoldRef.current?.key !== receiptKey) return;
+      sessionDealerDrawReceiptHoldRef.current = null;
+      setSessionDealerDrawReceiptHold(null);
+    }, SESSION_DEALER_DRAW_RECEIPT_DWELL_MS);
+  }, []);
+
+  useEffect(() => () => {
+    if (sessionDealerDrawReleaseTimerRef.current !== null) {
+      window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
+      sessionDealerDrawReleaseTimerRef.current = null;
+    }
+  }, []);
+
+  const sessionDealerDrawGameIdRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (sessionDealerDrawGameIdRef.current === (gameId ?? null)) return;
+    sessionDealerDrawGameIdRef.current = gameId ?? null;
+    if (sessionDealerDrawReleaseTimerRef.current !== null) {
+      window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
+      sessionDealerDrawReleaseTimerRef.current = null;
+    }
+    sessionDealerDrawVisibleReceiptKeysRef.current.clear();
+    sessionDealerDrawPreviousStatusRef.current = null;
+    sessionDealerDrawReceiptHoldRef.current = null;
+    setSessionDealerDrawReceiptHold(null);
+  }, [gameId]);
+
+  useLayoutEffect(() => {
+    const nextStatus = game?.status ?? null;
+    const receipt = deriveSessionDealerDrawPresentationReceipt({
+      previousStatus: sessionDealerDrawPreviousStatusRef.current,
+      nextStatus,
+      incomingState: (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined,
+      visibleReceiptKeys: sessionDealerDrawVisibleReceiptKeysRef.current,
+    });
+    sessionDealerDrawPreviousStatusRef.current = nextStatus;
+    if (!receipt || sessionDealerDrawReceiptHoldRef.current?.key === receipt.key) return;
+    if (sessionDealerDrawReleaseTimerRef.current !== null) {
+      window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
+      sessionDealerDrawReleaseTimerRef.current = null;
+    }
+    sessionDealerDrawReceiptHoldRef.current = receipt;
+    setSessionDealerDrawReceiptHold(receipt);
+  }, [game?.status, (game as any)?.dealer_selection_state]);
+
+  const sessionDealerDrawPresentationCards =
+    sessionDealerDrawReceiptHold?.state.cards ?? dealerSelectionCards;
+  const sessionDealerDrawPresentationWinnerPosition =
+    sessionDealerDrawReceiptHold?.state.winnerPosition ?? dealerSelectionWinnerPosition;
+  const sessionDealerDrawPresentationKey = getSessionDealerDrawPresentationKey({
+    cards: sessionDealerDrawPresentationCards,
+    winnerPosition: sessionDealerDrawPresentationWinnerPosition,
+  });
 
   // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
   // event each time the local cards array length changes (mount, deal,
@@ -2404,6 +2488,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // 3-5-7 presentation players — overlay decisions from presentation state
   // Action handlers continue to use raw `players` for mutation correctness.
   const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
+  if (threeFiveSevenPreHandLifecycleRef.current.gameId !== (gameId ?? null)) {
+    threeFiveSevenPreHandLifecycleRef.current = {
+      gameId: gameId ?? null,
+      observed: false,
+    };
+  }
+  if (
+    !initial357IdentityRef.current
+    && !threeFiveSevenView
+    && isThreeFiveSevenPreHandRouteStatus(game?.status)
+  ) {
+    threeFiveSevenPreHandLifecycleRef.current.observed = true;
+  }
 
   // ── 357: RENDER-TIME wiring diagnostic (fires every render, not in useEffect) ──
   // This proves whether React state vs ref vs effective are in sync AT RENDER TIME.
@@ -3952,14 +4049,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
            handler: (payload: any) => {
            const newData = payload.new as any;
            const oldData = payload.old as any;
-           // A Postgres Changes UPDATE carries one authoritative games-row
-           // image. Adopt the complete row before status-specific side effects;
-           // `status` is present alongside dealer_selection_state,
-           // last_round_result, and financial cursors and must not suppress
-           // those co-published fields. Invalidate an older in-flight snapshot
-           // first so it cannot overwrite this newer receipt when it lands.
-           fetchSeqRef.current += 1;
-           setGame((previous) => mergeAuthoritativeGameState(previous, newData));
+           const dealerDrawReceipt = deriveSessionDealerDrawPresentationReceipt({
+             previousStatus: oldData?.status ?? gameStatusRef.current,
+             nextStatus: newData?.status ?? null,
+             incomingState: newData?.dealer_selection_state as DealerSelectionState | null | undefined,
+             visibleReceiptKeys: sessionDealerDrawVisibleReceiptKeysRef.current,
+           });
+           if (
+             dealerDrawReceipt
+             && sessionDealerDrawReceiptHoldRef.current?.key !== dealerDrawReceipt.key
+           ) {
+             if (sessionDealerDrawReleaseTimerRef.current !== null) {
+               window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
+               sessionDealerDrawReleaseTimerRef.current = null;
+             }
+             sessionDealerDrawReceiptHoldRef.current = dealerDrawReceipt;
+             setSessionDealerDrawReceiptHold(dealerDrawReceipt);
+           }
+           // Adopt complete games-row receipts before status-specific side
+           // effects for every ordinary family and every pre-game phase.
+           // Active 3-5-7 is the exception: its exact current-frame RPC owns
+           // game + round + roster + private cards atomically, so a bare row is
+           // only a refetch signal and must not invalidate an in-flight frame.
+           const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData);
+           if (publishGamesRowDirectly) {
+             fetchSeqRef.current += 1;
+             setGame((previous) => mergeAuthoritativeGameState(previous, newData));
+           }
            recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
@@ -4014,6 +4130,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
             lastKnownRoundRef.current = null;
+
+            const incomingIsAtomicThreeFiveSevenFrame =
+              isThreeFiveSevenFrameGameType(incomingGameType)
+              && !publishGamesRowDirectly;
             
             // CRITICAL FIX: Immediately update game state to prevent stale rendering
             // This ensures GameTable sees the new game_type BEFORE fetchGameData completes
@@ -4022,15 +4142,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ? newData.current_round
                 : (incomingGameType === 'holm-game' ? 1 : null);
 
-            setGame(prevGame => prevGame ? {
-              ...prevGame,
-              game_type: incomingGameType,
-              // Holm: setup pre-seeds round 1; realtime payload may omit current_round, so default to 1.
-              // 3-5-7: clear to avoid stale card count calculation.
-              current_round: optimisticRound,
-              awaiting_next_round: false,
-              status: newData?.status || prevGame.status
-            } : null);
+            if (!incomingIsAtomicThreeFiveSevenFrame) {
+              setGame(prevGame => prevGame ? {
+                ...prevGame,
+                game_type: incomingGameType,
+                // Holm: setup pre-seeds round 1; realtime payload may omit current_round, so default to 1.
+                // 3-5-7: clear to avoid stale card count calculation.
+                current_round: optimisticRound,
+                awaiting_next_round: false,
+                status: newData?.status || prevGame.status
+              } : null);
+            }
             
             // Clear all card state for this client
             emit357ClearEvent('realtime_game_type_change', 'realtime games UPDATE payload changed game_type', 3530);
@@ -4042,6 +4164,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (debounceTimer) {
               __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'game_type_switch_immediate_fetch');
               clearTimeout(debounceTimer);
+            }
+            if (incomingIsAtomicThreeFiveSevenFrame) {
+              fetchGameData('realtime_update');
+              return;
             }
             // Fetch fresh data after a short delay to allow DB to settle
             __scheduleWartimeTimeout({
@@ -15897,8 +16023,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         allowBotDealers={allowBotDealers}
         dealerPlayer={dealerPlayer as any}
         players={players as any}
-        dealerSelectionCards={dealerSelectionCards as any}
-        dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
+        dealerSelectionCards={sessionDealerDrawPresentationCards as any}
+        dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
       />
 
 
@@ -16140,8 +16266,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                     isWaitingPhase={true}
-                    dealerSelectionCards={dealerSelectionCards}
-                    dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
+                    dealerSelectionCards={sessionDealerDrawPresentationCards}
+                    dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
+                    dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
+                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+                    onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
                   />
                 {/* High Card Dealer Selection */}
                 <HighCardDealerSelection 
@@ -16221,6 +16350,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onChatInputChange={setMobileChatInput}
                     dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
                     isWaitingPhase={true}
+                    dealerSelectionCards={sessionDealerDrawPresentationCards}
+                    dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
+                    dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
+                    dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+                    onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
                   />
                 )}
                 {hasLiveConfigDeadline && (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
@@ -17440,6 +17574,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               initial357EntryModeRef.current = classifyInitialThreeFiveSevenEntry(
                 _routeTypeBeforeRender,
                 game.game_type,
+                threeFiveSevenPreHandLifecycleRef.current.observed,
               );
             }
             const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
@@ -17562,8 +17697,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ? handleThreeFiveSevenAllFoldPresentationComplete
                 : undefined}
               isWaitingPhase={!renderRoundContext}
-              dealerSelectionCards={dealerSelectionCards}
-              dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
+              dealerSelectionCards={sessionDealerDrawPresentationCards}
+              dealerSelectionWinnerPosition={sessionDealerDrawPresentationWinnerPosition}
+              dealerSelectionPresentationActive={!!sessionDealerDrawReceiptHold}
+              dealerSelectionPresentationReceiptKey={sessionDealerDrawPresentationKey}
+              onDealerSelectionPresentationVisible={handleSessionDealerDrawPresentationVisible}
               anteAnimationTriggerId={anteAnimationTriggerId}
               anteAnimationExpectedPot={anteAnimationExpectedPot}
               preAnteChips={preAnteChips}

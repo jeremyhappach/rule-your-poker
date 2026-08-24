@@ -68,7 +68,7 @@ the authority over generated declarations.
 | `src/components/PreGameLobby.tsx`, `src/components/WaitingForPlayersTable.tsx` | Pregame and waiting-room presentation inside the persistent table shell. |
 | `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
 | `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
-| `src/hooks/useHighCardDealerSelection.ts` | Presentation of database-owned initial/session dealer selection; the existing Cribbage authority path remains separate. |
+| `src/hooks/useHighCardDealerSelection.ts` | Presentation of database-owned initial/session dealer selection; the existing Cribbage authority path remains separate. `src/lib/sessionDealerDrawPresentation.ts` owns the exact visual receipt that carries an unseen completed session draw across the status-driven surface handoff without replaying a receipt already rendered or observed only on a cold later mount. |
 | `src/pages/Game.tsx:handleGameOverComplete` | Post-presentation continuation router. Holm, Horses/SCC, 3-5-7, and Yahtzee branch to their exact database postgame owners before shared browser leader/evaluation work; legacy/shared paths consume pending session end, evaluate participant state, select/rotate the next dealer, and enter dealer/game selection. Typed clients include `src/lib/holmPostgameAuthority.ts` and `src/lib/horsesSccAuthority.ts`. |
 | `src/components/canonicalShell/SessionEndedTablePhase.tsx` | Local Session Ended announcement, felt Results panel, and Back to Lobby action. Fresh mounts of an already-ended session are redirected by `Game.tsx`; connected clients retain the shell first. |
 
@@ -98,6 +98,10 @@ tracks dealer-game, hand, and round identity; `Game.tsx` and game components
 reset transient/presentation state when those identities change.
 `src/lib/authoritativeGameState.ts` merges complete `games` Realtime row images
 without dropping joined relations and rejects strictly older row timestamps.
+Its publication policy preserves complete-row ingestion for all pre-hand
+phases and six ordinary families, while active 3-5-7 treats a constituent
+`games` row only as a refetch signal because
+`three_five_seven_current_frame` owns the atomic gameplay projection.
 `src/lib/threeFiveSeven/decisionReceipt.ts` consumes the exact committed
 decision result on the initiating client before Realtime/full-fetch
 reconciliation.
@@ -335,11 +339,16 @@ reconciliation.
   `ThreeFiveSevenTerminalController.tsx`.
 - Route provenance and historical deal reconstruction:
   `src/lib/threeFiveSeven/routeEntryMode.ts` classifies the first hydrated
-  3-5-7 identity from the preceding persistent-route game type.
+  3-5-7 identity from either the preceding persistent-route game type or
+  witnessed pre-hand lifecycle. This makes DG1 live for an already-connected
+  route while retaining historical reconstruction for a cold active-hand
+  mount. `src/lib/threeFiveSeven/waveAdmission.ts` independently enforces one
+  cumulative R1/R2/R3 manifest per exact DealRuntime ledger.
   `cardTransport/DealRuntime.tsx` reconstructs the authoritative cumulative
   per-recipient settled baseline for refresh/rejoin; later waves remain
   additive. `src/lib/crossCountryRouteGauntlet.test.ts` covers all 49 ordered
-  route pairs and lagging/cold-client variants.
+  route pairs and lagging/cold-client variants; `dg1LiveEntryGauntlet.test.ts`
+  protects the first-dealer-game boundary across all seven real-money games.
 - State/actions: `src/lib/gameLogic.ts:startRound`, `makeDecision`,
   `autoFoldUndecided`, `endRound`, and `proceedToNextRound`;
   `src/lib/cardUtils.ts:evaluateHand`; seam helpers in

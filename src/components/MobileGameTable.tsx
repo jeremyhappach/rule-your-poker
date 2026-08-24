@@ -1291,6 +1291,9 @@ interface MobileGameTableProps {
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null; // Position of winner for spotlight effect
+  dealerSelectionPresentationActive?: boolean;
+  dealerSelectionPresentationReceiptKey?: string | null;
+  onDealerSelectionPresentationVisible?: (receiptKey: string) => void;
   /**
    * Legacy `feltOwnership` prop has been retired. Shell-owned felt is the
    * sole canonical mount for every family — no local felt branch exists.
@@ -1313,11 +1316,15 @@ const DealerSelectionVisibilityTracker = ({
   cardCount,
   winnerPosition,
   viewerHasCurrentPlayer,
+  presentationReceiptKey,
+  onPresentationVisible,
 }: {
   gameId: string | undefined;
   cardCount: number;
   winnerPosition: number | null;
   viewerHasCurrentPlayer: boolean;
+  presentationReceiptKey: string | null;
+  onPresentationVisible?: (receiptKey: string) => void;
 }) => {
   const lastCountRef = useRef<number>(0);
   useEffect(() => {
@@ -1366,6 +1373,26 @@ const DealerSelectionVisibilityTracker = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (!presentationReceiptKey || !onPresentationVisible) return;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const exactReceiptRendered = typeof document !== 'undefined'
+          && Array.from(document.querySelectorAll<HTMLElement>('[data-dealer-selection-receipt-key]'))
+            .some((container) => (
+              container.dataset.dealerSelectionReceiptKey === presentationReceiptKey
+              && container.querySelector('[data-dsel-card="1"]') !== null
+            ));
+        if (exactReceiptRendered) onPresentationVisible(presentationReceiptKey);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [onPresentationVisible, presentationReceiptKey]);
   return null;
 };
 
@@ -1516,6 +1543,9 @@ export const MobileGameTable = ({
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
+  dealerSelectionPresentationActive = false,
+  dealerSelectionPresentationReceiptKey = null,
+  onDealerSelectionPresentationVisible,
   three57EntryMode,
   holmEntryMode,
 }: MobileGameTableProps) => {
@@ -13305,7 +13335,8 @@ export const MobileGameTable = ({
           // Acceptance: at "Dealer configuring next game", drawCards=null,
           // spotlight=null, transient overlays empty.
           const hasCards = !!(dealerSelectionCards && dealerSelectionCards.length > 0);
-          const isSessionDealerSelection = gameStatus === 'dealer_selection';
+          const isSessionDealerSelection = gameStatus === 'dealer_selection'
+            || dealerSelectionPresentationActive;
           if (hasCards && !isSessionDealerSelection) {
             recordWaitingLifecycleIfChanged(
               `highcard:leak-suppressed:${gameId}:${gameStatus}:${dealerSelectionCards.length}`,
@@ -13331,9 +13362,10 @@ export const MobileGameTable = ({
           }
           return null;
         })()}
-        {dealerSelectionCards && dealerSelectionCards.length > 0 && gameStatus === 'dealer_selection' && highCardOverlayPortal(
+        {dealerSelectionCards && dealerSelectionCards.length > 0 && (gameStatus === 'dealer_selection' || dealerSelectionPresentationActive) && highCardOverlayPortal(
           <div
             data-wartime-high-card-container={gameId}
+            data-dealer-selection-receipt-key={dealerSelectionPresentationReceiptKey ?? undefined}
             data-wartime-renderer-instance={`MobileGameTable:${instanceLabel}:${gameId ?? 'no-game'}`}
             data-wartime-component="MobileGameTable"
             data-wartime-render-branch="session-dealer-selection-overlay"
@@ -13349,6 +13381,8 @@ export const MobileGameTable = ({
               cardCount={dealerSelectionCards.length}
               winnerPosition={dealerSelectionWinnerPosition ?? null}
               viewerHasCurrentPlayer={!!currentPlayer}
+              presentationReceiptKey={dealerSelectionPresentationReceiptKey}
+              onPresentationVisible={onDealerSelectionPresentationVisible}
             />
 
             {/* Cards for each player position arranged around the table (relative to current player) */}

@@ -55,6 +55,15 @@ describe('cross-country persistent-route gauntlet', () => {
     expect(lagging.entryMode).toBe('historical-entry');
   });
 
+  it('keeps both already-present clients live when 3-5-7 is the first dealer game', () => {
+    const identity = { dealerGameId: 'dealer-dg1', roundId: 'round-dg1', handNumber: 1 };
+    for (const client of ['client-1', 'client-2']) {
+      const initialMode = classifyInitialThreeFiveSevenEntry(null, '3-5-7', true);
+      const first = resolveThreeFiveSevenRouteEntryMode(null, identity, initialMode);
+      expect(first.entryMode, client).toBe('live-transition');
+    }
+  });
+
   it('treats a later 3-5-7 dealer identity as live even after historical entry', () => {
     const baseline = { dealerGameId: 'dealer-1', roundId: 'round-1', handNumber: 1 };
     const next = { dealerGameId: 'dealer-2', roundId: 'round-2', handNumber: 1 };

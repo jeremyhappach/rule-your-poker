@@ -1242,3 +1242,20 @@ full snapshot remains reconciliation; neither is a reason to delay presentation
 already proven by the caller's database receipt. Presentation may gate its own
 ordered stages on exact durable cursors and generation-matched animation
 completion, but it never becomes financial or gameplay authority.
+
+## D-087 - An atomic multi-table frame outranks each constituent row
+
+When a game exposes one exact database projection that joins gameplay identity,
+round state, roster state, and caller-private cards, that projection is the
+only publishable active gameplay frame. A constituent Realtime row remains an
+authoritative change notification, but it may only request a new exact frame;
+it may not be merged into the active projection or invalidate an in-flight
+exact-frame read.
+
+This is a narrow refinement of D-086, not permission to discard ordinary row
+receipts. Complete `games` rows remain directly publishable for every game
+without an atomic frame and during shared pre-hand lifecycle phases. The
+current exception is active 3-5-7. Its live-versus-historical deal provenance
+is route evidence: an already-mounted route that witnessed pre-hand lifecycle
+is live even when 3-5-7 is DG1, while a cold mount first observed in active
+gameplay reconstructs without replay.
