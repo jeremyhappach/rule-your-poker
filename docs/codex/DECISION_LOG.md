@@ -1370,3 +1370,16 @@ that cut and crib from the authoritative facts and releases its controls.
 
 This is presentation-only recovery: it neither infers a player action nor
 changes database, scoring, settlement, or financial authority.
+
+## D-096 - Parallel browser gauntlets require isolated evidence and account-pair leases
+
+A concurrent browser result is admissible only when the worker has a unique
+run namespace and a named identity slot. The harness isolates Playwright
+artifacts by namespace, writes the generated fake-money game UUID and guarded
+cleanup receipt to output, and locally leases a hash of the selected human
+pair. A second local worker selecting the same pair fails before it can create
+a session.
+
+This is harness safety, not gameplay authority. It does not create test users,
+change a product row, relax fake-money-only cleanup, or convert an
+inconclusive concurrent artifact into evidence about the application.

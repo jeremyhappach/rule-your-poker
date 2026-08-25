@@ -2,6 +2,22 @@
 
 Date: 2026-08-25
 
+## Parallel browser-campaign isolation gate
+
+- The first parallel per-game pilot did not produce product evidence for every
+  worker: concurrent processes shared Playwright artifacts and the configured
+  environment supplied only one authenticated human pair. Gin, Holm, and
+  3-5-7 passed their direct runs; Horses and Ship Captain Crew recorded
+  failures; Cribbage and Yahtzee were inconclusive after artifact overwrite.
+  No pilot result is attributed to product behavior beyond its retained direct
+  evidence.
+- Commit `0e85a0920` makes future parallel work fail closed without both a
+  named identity slot and run namespace, leases the selected account pair
+  locally, isolates artifacts/reports by namespace, and writes the generated
+  fake-money game UUID plus guarded-cleanup receipt to the test output.
+- The timeout, rejoin, high-card tie, and cross-dealer transition matrix may
+  begin only after distinct configured identity slots exist for its workers.
+
 ## Branch-smoke matrix — initial execution
 
 - The browser matrix now has eleven independently-run, two-human fake-money
