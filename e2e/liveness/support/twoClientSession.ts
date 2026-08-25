@@ -12,6 +12,10 @@ export type DealerGameType =
 
 type Credentials = { email: string; password: string };
 
+export type DealerGameEntryOptions = {
+  configure?: (configSurface: ReturnType<Page['locator']>, setupPage: Page) => Promise<void>;
+};
+
 export type TwoClientSession = {
   hostContext: BrowserContext;
   peerContext: BrowserContext;
@@ -131,6 +135,7 @@ export async function createTwoClientSession(
 export async function enterDealerGameUnderChaos(
   session: TwoClientSession,
   gameType: DealerGameType,
+  options: DealerGameEntryOptions = {},
 ): Promise<void> {
   const {
     hostPage,
@@ -153,6 +158,7 @@ export async function enterDealerGameUnderChaos(
     `[data-dealer-game-setup-step="config"][data-dealer-game-setup-selected-game="${gameType}"]`,
   );
   await expect(configSurface).toBeVisible();
+  await options.configure?.(configSurface, setupPage);
   await configSurface.locator(`[data-dealer-game-start="${gameType}"]`).click();
 
   const hostAnte = hostPage.locator('[data-authoritative-action-surface="ante-decision"]');

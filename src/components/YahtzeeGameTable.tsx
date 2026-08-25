@@ -2228,6 +2228,8 @@ export function YahtzeeGameTable({
           return (
             <button
               key={cat}
+              data-yahtzee-category={cat}
+              data-yahtzee-category-available={isAvailable && !scoringInProgress ? '1' : '0'}
               onClick={() => isAvailable && !scoringInProgress ? handleScoreCategory(cat) : undefined}
               disabled={!isAvailable || scoringInProgress}
               className={cn(

@@ -712,6 +712,10 @@ export const GinRummyMobileCardsTab = ({
               return (
                 <button
                   data-gin-hand-card-key={`idx-${originalIndex}`}
+                  data-gin-card-index={originalIndex}
+                  data-gin-card-rank={card.rank}
+                  data-gin-card-suit={card.suit}
+                  data-gin-card-value={card.value}
                   onClick={() => handleCardClick(originalIndex)}
                   onPointerUp={(e) => e.currentTarget.blur()}
                   disabled={isProcessing || !canSelect}

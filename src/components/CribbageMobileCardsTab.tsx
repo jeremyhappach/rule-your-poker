@@ -1118,6 +1118,8 @@ export const CribbageMobileCardsTab = ({
               <button
                 onClick={() => handleCardClick(sourceIndex, index)}
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${sourceIndex}`}
+                data-cribbage-card-playable={isPlayable ? '1' : '0'}
+                data-cribbage-card-selected={isSelected ? '1' : '0'}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(

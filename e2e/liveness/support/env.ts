@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-type PlayerCredentials = {
+export type PlayerCredentials = {
   email: string;
   password: string;
 };

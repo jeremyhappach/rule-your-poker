@@ -15304,6 +15304,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
 
     try {
+      const request357SessionEnd = async () => {
+        const { data, error } = await supabase.rpc('three_five_seven_request_session_end', {
+          p_game_id: gameId,
+        });
+        if (error || !(data as { request_recorded?: boolean } | null)?.request_recorded) {
+          throw error ?? new Error('3-5-7 LAST HAND request was not recorded');
+        }
+      };
+      const isThreeFiveSeven = ['3-5-7', '3-5-7-game', '357'].includes(game?.game_type || '');
+
       // If we're in a pre-game state (no active dealer game running),
       // end session immediately instead of deferring to end-of-hand
       const noActiveDealerGame = ['game_selection', 'dealer_selection', 'configuring', 'waiting'].includes(game?.status || '');
@@ -15318,16 +15328,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const hasHistory = (count ?? 0) > 0;
         
         if (hasHistory || game?.real_money) {
-          // Archive to session_ended
-          await supabase
-            .from('games')
-            .update({
-              status: 'session_ended',
-              session_ended_at: new Date().toISOString(),
-              pending_session_end: false,
-              game_over_at: new Date().toISOString(),
-            })
-            .eq('id', gameId);
+          if (isThreeFiveSeven) {
+            await request357SessionEnd();
+          } else {
+            // Archive to session_ended
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                session_ended_at: new Date().toISOString(),
+                pending_session_end: false,
+                game_over_at: new Date().toISOString(),
+              })
+              .eq('id', gameId);
+          }
+        } else if (isThreeFiveSeven) {
+          await request357SessionEnd();
         } else {
           // No history, safe to delete
           // Delete players first, then game
@@ -15336,7 +15352,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       } else {
         // Active game in progress - defer to end-of-hand
-        if (game?.game_type === 'holm' || game?.game_type === 'holm-game') {
+        if (isThreeFiveSeven) {
+          await request357SessionEnd();
+        } else if (game?.game_type === 'holm' || game?.game_type === 'holm-game') {
           // Holm's final decision and terminal settlement are server-owned. This
           // request takes the same game-row lock so LAST HAND cannot be lost if
           // a browser closes while the final decision is resolving.

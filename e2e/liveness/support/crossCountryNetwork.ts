@@ -45,6 +45,7 @@ export class CrossCountryNetwork {
   private sequence = 0;
   private loseResponseFor: RegExp | null = null;
   private pendingDeliveries = 0;
+  private runtimeConfig: { url: string; publishableKey: string } | null = null;
 
   async attach(context: BrowserContext): Promise<void> {
     await context.route('**/*', async (route) => this.handleHttp(route));
@@ -76,6 +77,13 @@ export class CrossCountryNetwork {
     }
   }
 
+  async waitForRuntimeConfig(timeoutMs = 10_000): Promise<{ url: string; publishableKey: string }> {
+    const deadline = Date.now() + timeoutMs;
+    while (!this.runtimeConfig && Date.now() < deadline) await wait(25);
+    if (!this.runtimeConfig) throw new Error('No Supabase runtime request was observed');
+    return this.runtimeConfig;
+  }
+
   private deterministicJitter(maximum: number): number {
     if (maximum <= 0) return 0;
     this.sequence += 1;
@@ -88,6 +96,14 @@ export class CrossCountryNetwork {
     if (!isSupabaseUrl(url)) {
       await route.continue();
       return;
+    }
+
+    const publishableKey = request.headers().apikey;
+    if (!this.runtimeConfig && publishableKey) {
+      this.runtimeConfig = {
+        url: new URL(url).origin,
+        publishableKey,
+      };
     }
 
     const delayMs = this.profile.httpBaseMs + this.deterministicJitter(this.profile.httpJitterMs);
