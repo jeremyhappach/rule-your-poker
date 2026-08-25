@@ -2,6 +2,30 @@
 
 Date: 2026-08-24
 
+## Holm result-first celebration admission and 3-5-7 remount recovery
+
+- Production session `Aug 24 - Dire Wolf` proved two independent client
+  presentation failures while every authoritative Holm result, transfer, and
+  later 3-5-7 postgame transition committed correctly. A lone Holm winner's
+  terminal result could arm confetti and pot presentation before that browser
+  painted the tabled hand. Separately, one 3-5-7 client entered terminal
+  animation, lost its local table owner during the postgame handoff, and
+  remained latched even after another client and PostgreSQL advanced.
+- A Holm Chucky-win result is no longer a visual admission receipt. The exact
+  client must first acknowledge the same hand's tabled cards, community
+  reveal, hand-call emission, Chucky admission, and final Chucky flip before
+  the celebration trigger reaches `HolmWinPotAnimation`. Multi-player Chucky
+  outcomes retain their existing community/Chucky completion boundary.
+- The route-owned 3-5-7 terminal trigger now survives until the real completion
+  callback instead of being erased at animation start. An MGT remount may
+  resume the immutable outgoing descriptor through the authoritative null
+  dealer-game handoff; a missing trigger rejects completed-history replay, and
+  a different concrete dealer game rejects the stale descriptor.
+- No database or financial behavior changed. Thirty-five focused assertions
+  and TypeScript pass. The full liveness gauntlet passes 239 of 240 assertions;
+  its sole failure is the unchanged dealer-draw harness test's CRLF-sensitive
+  source assertion against an untouched SQL migration.
+
 ## One-shot session dealer-draw tie smoke fixture
 
 - Published two-client production smoke `Aug 24 - Dansby Swanson` passed at

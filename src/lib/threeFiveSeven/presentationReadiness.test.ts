@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  canAdmitThreeFiveSevenTerminalPresentation,
   isThreeFiveSevenDealPresentationReady,
   isThreeFiveSevenRuntimeWaveReady,
   isThreeFiveSevenLegStackRetired,
@@ -108,6 +110,46 @@ describe('3-5-7 dealer-game presentation boundary', () => {
       activeDealerGameId: 'dealer-game-2',
       retiredDealerGameId: 'dealer-game-1',
     })).toBe(false);
+  });
+
+  it('resumes an exact terminal presentation after a table remount in the null postgame handoff', () => {
+    expect(canAdmitThreeFiveSevenTerminalPresentation({
+      descriptorDealerGameId: 'dealer-game-1',
+      activeDealerGameId: null,
+      activeTriggerId: 'terminal-trigger-1',
+    })).toBe(true);
+  });
+
+  it('does not replay a completed terminal presentation without its route-owned trigger', () => {
+    expect(canAdmitThreeFiveSevenTerminalPresentation({
+      descriptorDealerGameId: 'dealer-game-1',
+      activeDealerGameId: null,
+      activeTriggerId: null,
+    })).toBe(false);
+  });
+
+  it('rejects a stale terminal presentation after the next concrete dealer game exists', () => {
+    expect(canAdmitThreeFiveSevenTerminalPresentation({
+      descriptorDealerGameId: 'dealer-game-1',
+      activeDealerGameId: 'dealer-game-2',
+      activeTriggerId: 'terminal-trigger-1',
+    })).toBe(false);
+  });
+
+  it('wires null-handoff remount recovery into the normal terminal owner', () => {
+    const source = readFileSync(
+      new URL('../../components/MobileGameTable.tsx', import.meta.url),
+      'utf8',
+    );
+    const normalTerminalOwner = source.slice(
+      source.indexOf('// Normal 3-5-7 terminal prelude: descriptor generation owns the sequence.'),
+      source.indexOf('// The old trigger no longer progresses a normal terminal sequence.'),
+    );
+
+    expect(normalTerminalOwner).toContain('canAdmitThreeFiveSevenTerminalPresentation({');
+    expect(normalTerminalOwner).toContain('activeTriggerId: threeFiveSevenWinTriggerId');
+    expect(normalTerminalOwner).toContain('const isNullHandoffRecovery = threeFiveSevenDealerGameScope == null');
+    expect(normalTerminalOwner).not.toContain('if (!descriptor || isWaitingPhase) return;');
   });
 });
 

@@ -2,6 +2,7 @@ import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleI
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
+  canAdmitThreeFiveSevenTerminalPresentation,
   isThreeFiveSevenDealPresentationReady,
   isThreeFiveSevenLegStackRetired,
   isThreeFiveSevenRuntimeWaveReady,
@@ -305,6 +306,7 @@ import {
 import {
   captureHolmAdmittedTransferPresentation,
   canCompleteHolmAllFoldPresentation,
+  getHolmChuckyWinCelebrationTrigger,
   getHolmChuckyWinPresentationCompletionKey,
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
@@ -4505,7 +4507,16 @@ export const MobileGameTable = ({
     !!cachedChuckyCards &&
     cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
-  const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
+  const holmWinPotTriggerIdGated = getHolmChuckyWinCelebrationTrigger({
+    activeTriggerId: holmWinPotTriggerId,
+    handContextId,
+    isSoloVsChucky: isSoloVsChuckyRaw || soloVsChuckyTableLocked,
+    soloTabledCardsLandedHand,
+    communityFullyRevealed: holmCommunityFullyRevealed,
+    soloAnnouncementEmittedHand,
+    soloChuckyAdmissionHand,
+    chuckyVisualRevealComplete,
+  });
   const chuckyLossTriggerIdGated = chuckyLossTransportPresentationReady ? chuckyLossTriggerId : null;
   const holmWinPlayerIds = useMemo(() => {
     const winnerPositions = holmWinWinnerPositions.length > 0
@@ -9812,20 +9823,26 @@ export const MobileGameTable = ({
   // presentation identity and let the award's real completion advance us.
   useEffect(() => {
     const descriptor = normal357TerminalDescriptor;
-    if (!descriptor || isWaitingPhase) return;
+    if (!descriptor) return;
     const descriptorDealerGameId = descriptor.dealerGameId ?? null;
-    if (
-      !descriptorDealerGameId ||
-      !threeFiveSevenDealerGameScope ||
-      descriptorDealerGameId !== threeFiveSevenDealerGameScope
-    ) {
+    const terminalPresentationAdmitted = canAdmitThreeFiveSevenTerminalPresentation({
+      descriptorDealerGameId,
+      activeDealerGameId: threeFiveSevenDealerGameScope,
+      activeTriggerId: threeFiveSevenWinTriggerId,
+    });
+    if (!terminalPresentationAdmitted) {
       // An old descriptor may remain mounted during dealer-game rotation, and
-      // a transient null scope can appear during settlement. Neither is a
-      // valid surface on which to begin a new presentation.
+      // the completed descriptor deliberately survives the null handoff.
+      // Only the still-active route trigger admits a remount recovery, and a
+      // different concrete dealer game always rejects the stale descriptor.
       return;
     }
     const observedScope = prev357BoundaryIdentityRef.current;
-    if (!observedScope || observedScope.dealerGameId !== descriptorDealerGameId) {
+    const isNullHandoffRecovery = threeFiveSevenDealerGameScope == null;
+    if (
+      !isNullHandoffRecovery
+      && (!observedScope || observedScope.dealerGameId !== descriptorDealerGameId)
+    ) {
       // The boundary owner has not yet observed this concrete dealer game.
       // Defer the first paint until it synchronizes; starting now and then
       // cancelling in the boundary effect is the deployed stutter/replay bug.
@@ -9875,13 +9892,15 @@ export const MobileGameTable = ({
     }
     setWinningLegPlayerId(descriptor.winnerId);
 
-    // The descriptor now owns the local presentation; clear only the parent
-    // trigger, never the generation identity that drives completion.
+    // The descriptor now owns the local presentation. Keep the parent trigger
+    // alive through completion so this exact generation can recover from an
+    // MGT remount during the authoritative null postgame handoff.
     onThreeFiveSevenWinAnimationStarted?.();
   }, [
     normal357TerminalDescriptor,
     isWaitingPhase,
     threeFiveSevenDealerGameScope,
+    threeFiveSevenWinTriggerId,
     normal357ScopeEpoch,
     players,
     showLegEarned,

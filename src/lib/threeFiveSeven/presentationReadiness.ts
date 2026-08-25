@@ -42,6 +42,26 @@ export function resolveThreeFiveSevenDealerGameScope(
   return primaryDealerGameId ?? secondaryDealerGameId ?? null;
 }
 
+/**
+ * A terminal trigger remains route-owned until presentation completion. That
+ * durable local receipt lets a remounted table resume the exact immutable
+ * terminal descriptor while the authoritative postgame handoff temporarily
+ * has no current dealer game. A different concrete dealer game always wins
+ * and rejects the stale presentation.
+ */
+export function canAdmitThreeFiveSevenTerminalPresentation({
+  descriptorDealerGameId,
+  activeDealerGameId,
+  activeTriggerId,
+}: {
+  descriptorDealerGameId: string | null | undefined;
+  activeDealerGameId: string | null | undefined;
+  activeTriggerId: string | null | undefined;
+}): boolean {
+  if (!descriptorDealerGameId || !activeTriggerId) return false;
+  return activeDealerGameId == null || activeDealerGameId === descriptorDealerGameId;
+}
+
 interface ThreeFiveSevenLegRetirementArgs {
   activeDealerGameId: string | null | undefined;
   retiredDealerGameId: string | null | undefined;

@@ -1312,3 +1312,17 @@ result, timer, winner, and continuation remain authoritative. It is deliberately
 independent of the persistent `harnesses_mode` switch because enabling that
 switch would activate other saved profiles; arming or consuming this fixture
 must leave that global gate byte-for-byte unchanged.
+
+## D-092 - Terminal truth does not prove terminal presentation
+
+An authoritative terminal result may settle before a connected browser paints
+the cards and announcements that explain it. Celebration admission therefore
+requires exact, hand-scoped visual receipts; a result string, terminal status,
+or a vacuously complete unhydrated branch is never a substitute.
+
+A local terminal presentation trigger remains identity-bound and live until
+its real completion callback. If the table remounts while the authoritative
+postgame handoff has a null dealer-game identity, that trigger may resume only
+its immutable outgoing descriptor. Completion removes the trigger, and a
+different concrete dealer game rejects the stale descriptor. This provides
+remount recovery without an arbitrary timer or historical replay.

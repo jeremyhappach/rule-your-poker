@@ -13928,11 +13928,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, game?.last_round_result, (game as any)?.current_game_uuid, game?.total_hands, handleGameOverComplete, holmWinPotPresentationKey, markTerminalPresentationComplete]);
 
-  // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
+  // Keep the exact route-owned trigger alive until completion. MobileGameTable
+  // uses it to recover the immutable terminal descriptor after a remount in
+  // the authoritative null postgame handoff; its generation latch prevents a
+  // duplicate start on the same mounted table.
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
-    console.log('[357 WIN] Animation started, clearing trigger to prevent duplicate');
-    setThreeFiveSevenWinTriggerId(null);
-  }, [gameId, game, user?.id]);
+    console.log('[357 WIN] Animation started, retaining trigger until completion');
+  }, []);
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {

@@ -32,4 +32,18 @@ describe('Game 3-5-7 authoritative postgame handoff', () => {
     expect(handler).toContain('? currentRound.id');
     expect(handler).not.toContain('roundId: game?.current_round != null ? String(game.current_round)');
   });
+
+  it('retains the route-owned terminal trigger until the real completion callback', () => {
+    const started = source.slice(
+      source.indexOf('const handleThreeFiveSevenWinAnimationStarted = useCallback'),
+      source.indexOf('// Handle 3-5-7 win animation complete'),
+    );
+    const completed = source.slice(
+      source.indexOf('const handleThreeFiveSevenWinAnimationComplete = useCallback'),
+      source.indexOf('// YAHTZEE game_over transition'),
+    );
+
+    expect(started).not.toContain('setThreeFiveSevenWinTriggerId(null)');
+    expect(completed).toContain('setThreeFiveSevenWinTriggerId(null)');
+  });
 });

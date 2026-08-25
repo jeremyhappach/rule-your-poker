@@ -25,7 +25,11 @@ describe('MobileGameTable Holm Chucky flip gate', () => {
   it('holds reveal completion and cache release until the visible flip completes', () => {
     expect(gateSection).toContain('visualRevealCount >= requiredRevealCount && chuckyFlipAnimationComplete');
     expect(gateSection).toContain('!chuckyVisualRevealComplete');
-    expect(gateSection).toContain('const holmWinPotTriggerIdGated = chuckyVisualRevealComplete');
+    expect(gateSection).toContain('const holmWinPotTriggerIdGated = getHolmChuckyWinCelebrationTrigger({');
+    expect(gateSection).toContain('soloTabledCardsLandedHand,');
+    expect(gateSection).toContain('communityFullyRevealed: holmCommunityFullyRevealed');
+    expect(gateSection).toContain('soloAnnouncementEmittedHand,');
+    expect(gateSection).toContain('soloChuckyAdmissionHand,');
   });
 
   it('reports completion from only the final canonical Chucky card slot', () => {

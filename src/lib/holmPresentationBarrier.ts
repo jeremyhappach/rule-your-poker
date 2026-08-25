@@ -115,6 +115,54 @@ function isHolmPresentationCursorComplete(state: ChipPresentationCursorState): b
 }
 
 /**
+ * Admit a Chucky-win celebration only after this client has painted the
+ * complete showdown that explains the award. The terminal database result may
+ * arrive before any of these presentation receipts; it is never itself proof
+ * that the cards were visible on this browser.
+ */
+export function getHolmChuckyWinCelebrationTrigger({
+  activeTriggerId,
+  handContextId,
+  isSoloVsChucky,
+  soloTabledCardsLandedHand,
+  communityFullyRevealed,
+  soloAnnouncementEmittedHand,
+  soloChuckyAdmissionHand,
+  chuckyVisualRevealComplete,
+}: {
+  activeTriggerId: string | null | undefined;
+  handContextId: string | null | undefined;
+  isSoloVsChucky: boolean;
+  soloTabledCardsLandedHand: string | null | undefined;
+  communityFullyRevealed: boolean;
+  soloAnnouncementEmittedHand: string | null | undefined;
+  soloChuckyAdmissionHand: string | null | undefined;
+  chuckyVisualRevealComplete: boolean;
+}): string | null {
+  if (
+    !activeTriggerId
+    || !handContextId
+    || !communityFullyRevealed
+    || !chuckyVisualRevealComplete
+  ) {
+    return null;
+  }
+
+  if (
+    isSoloVsChucky
+    && (
+      soloTabledCardsLandedHand !== handContextId
+      || soloAnnouncementEmittedHand !== handContextId
+      || soloChuckyAdmissionHand !== handContextId
+    )
+  ) {
+    return null;
+  }
+
+  return activeTriggerId;
+}
+
+/**
  * The connected Holm terminal handoff needs two independent receipts: the
  * visible celebration clock and the exact immutable Chucky-award cursor. The
  * returned key is level-triggered and identity-scoped so either arrival order

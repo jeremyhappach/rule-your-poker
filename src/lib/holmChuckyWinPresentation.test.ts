@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  getHolmChuckyWinCelebrationTrigger,
   getHolmChuckyWinPresentationCompletionKey,
   type HolmPresentationIdentity,
 } from './holmPresentationBarrier';
@@ -14,6 +15,48 @@ const identity: HolmPresentationIdentity = {
 };
 
 describe('Holm Chucky-win terminal presentation gate', () => {
+  const completeSoloPresentation = {
+    activeTriggerId: 'win-trigger',
+    handContextId: 'hand-1',
+    isSoloVsChucky: true,
+    soloTabledCardsLandedHand: 'hand-1',
+    communityFullyRevealed: true,
+    soloAnnouncementEmittedHand: 'hand-1',
+    soloChuckyAdmissionHand: 'hand-1',
+    chuckyVisualRevealComplete: true,
+  } as const;
+
+  it('holds a result-first solo win until the exact cards-landed receipt exists', () => {
+    expect(getHolmChuckyWinCelebrationTrigger({
+      ...completeSoloPresentation,
+      soloTabledCardsLandedHand: null,
+    })).toBeNull();
+  });
+
+  it('holds a solo win through the hand-call and Chucky admission receipts', () => {
+    expect(getHolmChuckyWinCelebrationTrigger({
+      ...completeSoloPresentation,
+      soloAnnouncementEmittedHand: null,
+    })).toBeNull();
+    expect(getHolmChuckyWinCelebrationTrigger({
+      ...completeSoloPresentation,
+      soloChuckyAdmissionHand: null,
+    })).toBeNull();
+  });
+
+  it('starts the solo celebration only after the full exact-hand visual sequence', () => {
+    expect(getHolmChuckyWinCelebrationTrigger(completeSoloPresentation)).toBe('win-trigger');
+  });
+
+  it('never treats an unhydrated Chucky branch as visually complete', () => {
+    expect(getHolmChuckyWinCelebrationTrigger({
+      ...completeSoloPresentation,
+      isSoloVsChucky: false,
+      communityFullyRevealed: false,
+      chuckyVisualRevealComplete: true,
+    })).toBeNull();
+  });
+
   it.each(['settled', 'reconciled'] as const)(
     'releases after both the celebration and exact cursor are %s',
     (cursorState) => {
