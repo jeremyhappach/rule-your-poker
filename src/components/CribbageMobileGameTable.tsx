@@ -4931,6 +4931,18 @@ export const CribbageMobileGameTable = ({
     countingHandKeyRef.current = null;
     countingIdentityRef.current = null;
     lastPeggingScoresRef.current = null;
+    // A cross-country peer can advance directly from a previous hand's
+    // Go/31 presentation hold to this hand without observing the old
+    // counting/non-pegging snapshot. These are presentation-only latches,
+    // but they synchronously block pegging controls, so none may cross an
+    // authoritative hand identity boundary.
+    setThirtyOneDelayActive(false);
+    setHeldSequenceSnapshot(null);
+    setHeldAnnouncementSettledTick(0);
+    setLastReleasedBoundaryEventId(null);
+    thirtyOneDelayRef.current = null;
+    heldAnnouncementSettledRef.current = null;
+    prevSequenceStartIndexRef.current = 0;
     setPostCountingTransitionActive(false);
     // Reset win sequence state to prevent prior-hand win from leaking
     recordCribDoubleSkunkTrace('setWinSequencePhase →idle', {
