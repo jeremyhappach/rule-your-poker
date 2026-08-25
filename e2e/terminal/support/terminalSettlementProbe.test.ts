@@ -36,4 +36,3 @@ describe('terminal settlement probe deadline', () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 });
-

@@ -30,6 +30,10 @@ export type TwoClientSession = {
 };
 
 async function login(page: Page, credentials: Credentials): Promise<void> {
+  const previewAccessUrl = process.env.PTOWN_E2E_PREVIEW_ACCESS_URL?.trim();
+  if (previewAccessUrl) {
+    await page.goto(previewAccessUrl, { waitUntil: 'domcontentloaded' });
+  }
   await page.goto('/auth', { waitUntil: 'domcontentloaded' });
   await page.locator('#login-email').fill(credentials.email);
   await page.locator('#login-password').fill(credentials.password);

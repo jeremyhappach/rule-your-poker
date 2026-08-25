@@ -65,4 +65,3 @@ describe('Gin action transport recovery', () => {
     expect(isRetryableGinTransportError(new Error('rule violation'))).toBe(false);
   });
 });
-
