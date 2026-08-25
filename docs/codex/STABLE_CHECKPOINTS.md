@@ -2,6 +2,17 @@
 
 ## Platform
 
+- The automated two-human browser liveness matrix passed production on
+  2026-08-25 against published frontend commit
+  `716ce39a93e8c38972981b1ab81f555dd2c6b1e1`: Holm, 3-5-7, Cribbage, Gin
+  Rummy, Horses, Ship Captain Crew, Yahtzee, and the isolated-context runner
+  passed 8/8 in 4.0 minutes. Each game survived one client's long-haul
+  HTTP/Realtime disorder, an offline session dealer draw, loss of the exact
+  non-dealer ante RPC response after commit, a second offline burst, and a full
+  route remount. Both clients converged on one authoritative session/dealer-
+  game identity, one shell/felt, and a visible legal-action surface. Preserve
+  the fake-money-only, two-distinct-human, no-bot/no-global-harness boundary and
+  mandatory guarded Blast cleanup.
 - The multi-wave session dealer draw passed published two-client production
   smoke on 2026-08-24 at commit
   `f97aa9caec063ce8e4a88f30e3084baf124dd930`, using the host-scoped one-shot

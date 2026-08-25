@@ -20,13 +20,20 @@ Date: 2026-08-25
   a product-only progression API. Player 1 must have the existing guarded
   fake-money Blast authority, and cleanup is mandatory even after a failed
   scenario. Missing credentials or cleanup acknowledgement fail closed.
-- The two-context runner passes, both application and browser-suite TypeScript
-  checks pass, all 35 build-required Cribbage assertions pass, and the
-  production build passes. The full contract gauntlet remains 239/240: its
-  sole failure is the unchanged CRLF-sensitive dealer-draw migration string
-  assertion. The authenticated seven-game execution still requires two
-  existing test identities because public signup currently returns an Auth
-  database-save error; no test account or game was left behind.
+- The first authenticated production execution exposed and corrected one
+  harness assumption: dealer configuration already commits the dealer's ante,
+  so exactly the non-dealer receives the decision surface. The corrected
+  harness dynamically impairs whichever client owns that decision instead of
+  requiring both clients to see it. The complete rerun passed all seven games
+  plus the isolation runner, 8/8 in 4.0 minutes, against published frontend
+  commit `716ce39a93e8c38972981b1ab81f555dd2c6b1e1`; every fake-money session
+  was removed through the guarded Blast path.
+- Both application and browser-suite TypeScript checks, the new-file lint,
+  all 35 build-required Cribbage assertions, and the production build pass.
+  The full contract gauntlet remains 239/240: its sole failure is the unchanged
+  CRLF-sensitive dealer-draw migration string assertion. Public signup's Auth
+  database-save error remains a separate account-provisioning defect; it did
+  not affect the run with the two supplied existing identities.
 
 ## Holm result-first celebration admission and 3-5-7 remount recovery
 

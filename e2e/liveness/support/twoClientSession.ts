@@ -17,6 +17,7 @@ export type TwoClientSession = {
   peerContext: BrowserContext;
   hostPage: Page;
   peerPage: Page;
+  hostNetwork: CrossCountryNetwork;
   peerNetwork: CrossCountryNetwork;
   gameId: string;
 };
@@ -64,8 +65,12 @@ export async function createTwoClientSession(
     isMobile: true,
     hasTouch: true,
   });
+  const hostNetwork = new CrossCountryNetwork();
   const peerNetwork = new CrossCountryNetwork();
-  await peerNetwork.attach(peerContext);
+  await Promise.all([
+    hostNetwork.attach(hostContext),
+    peerNetwork.attach(peerContext),
+  ]);
 
   const hostPage = await hostContext.newPage();
   const peerPage = await peerContext.newPage();
@@ -85,7 +90,15 @@ export async function createTwoClientSession(
     await createDialog.getByRole('button', { name: 'Create Game', exact: true }).click();
     await expect(hostPage).toHaveURL(/\/game\/[0-9a-f-]{36}$/i);
     const gameId = gameIdFromUrl(hostPage.url());
-    createdSession = { hostContext, peerContext, hostPage, peerPage, peerNetwork, gameId };
+    createdSession = {
+      hostContext,
+      peerContext,
+      hostPage,
+      peerPage,
+      hostNetwork,
+      peerNetwork,
+      gameId,
+    };
 
     await peerPage.goto(`/game/${gameId}`);
     await expect(peerPage.locator('[data-lifecycle-branch="loaded-inner"]')).toHaveCount(1);
@@ -119,7 +132,13 @@ export async function enterDealerGameUnderChaos(
   session: TwoClientSession,
   gameType: DealerGameType,
 ): Promise<void> {
-  const { hostPage, peerPage, peerContext, peerNetwork } = session;
+  const {
+    hostPage,
+    peerPage,
+    peerContext,
+    hostNetwork,
+    peerNetwork,
+  } = session;
   peerNetwork.useLongHaulProfile();
 
   await hostPage.locator('[data-start-game-btn]').click();
@@ -138,20 +157,29 @@ export async function enterDealerGameUnderChaos(
 
   const hostAnte = hostPage.locator('[data-authoritative-action-surface="ante-decision"]');
   const peerAnte = peerPage.locator('[data-authoritative-action-surface="ante-decision"]');
-  await Promise.all([expect(hostAnte).toBeVisible(), expect(peerAnte).toBeVisible()]);
+  await expect.poll(async () => Number(await hostAnte.isVisible()) + Number(await peerAnte.isVisible()), {
+    timeout: 30_000,
+    intervals: [250, 500, 1_000],
+  }).toBe(1);
 
-  // The peer's authoritative ante is committed, but the browser loses that
-  // exact RPC response. Reconciliation must converge without a second write.
-  peerNetwork.loseNextResponse(/\/rest\/v1\/rpc\/submit_ante_decision$/);
-  await Promise.all([
-    hostAnte.getByRole('button', { name: /Ante Up!/ }).click(),
-    peerAnte.getByRole('button', { name: /Ante Up!/ }).click(),
-  ]);
+  const hostMustDecide = await hostAnte.isVisible();
+  const decisionSurface = hostMustDecide ? hostAnte : peerAnte;
+  const decisionNetwork = hostMustDecide ? hostNetwork : peerNetwork;
+
+  // Dealer configuration already commits the dealer's ante. The other human's
+  // authoritative decision is committed, but that browser loses the exact RPC
+  // response. Reconciliation must converge without a second write.
+  decisionNetwork.loseNextResponse(/\/rest\/v1\/rpc\/submit_ante_decision$/);
+  await decisionSurface.getByRole('button', { name: /Ante Up!/ }).click();
 }
 
 export async function closeTwoClientSession(session: TwoClientSession): Promise<void> {
+  session.hostNetwork.useHealthyProfile();
   session.peerNetwork.useHealthyProfile();
-  await session.peerNetwork.waitForDelayedDeliveries().catch(() => {});
+  await Promise.all([
+    session.hostNetwork.waitForDelayedDeliveries().catch(() => {}),
+    session.peerNetwork.waitForDelayedDeliveries().catch(() => {}),
+  ]);
   await Promise.allSettled([session.hostContext.close(), session.peerContext.close()]);
 }
 

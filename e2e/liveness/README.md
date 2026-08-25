@@ -9,7 +9,8 @@ test identities and drives the real UI through:
 1. waiting table join and Start Game;
 2. session dealer high-card draw while the mobile peer goes offline;
 3. dealer configuration for one of all seven game types;
-4. an ante RPC that commits on the server while its response is lost;
+4. the non-dealer's ante RPC committing on the server while its response is
+   lost (dealer configuration already commits the dealer's ante);
 5. live-game entry, a second radio loss, and a full peer route remount;
 6. DOM liveness checks for exactly one canonical shell/felt and at least one
    authoritative legal-action surface.
