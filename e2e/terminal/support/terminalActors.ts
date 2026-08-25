@@ -112,17 +112,19 @@ async function playHolm(
     const peerSurface = session.peerPage.locator(selector);
     try {
       await Promise.all([
-        expect(hostSurface).toBeVisible({ timeout: 45_000 }),
-        expect(peerSurface).toBeVisible({ timeout: 45_000 }),
+        (async () => {
+          await expect(hostSurface).toBeVisible({ timeout: 45_000 });
+          await hostSurface.getByRole('button', { name: 'Stay', exact: true }).click();
+        })(),
+        (async () => {
+          await expect(peerSurface).toBeVisible({ timeout: 45_000 });
+          await peerSurface.getByRole('button', { name: 'Fold', exact: true }).click();
+        })(),
       ]);
     } catch (error) {
       if (await isTerminal(session, probe, dealerGameId, expected)) return;
       throw error;
     }
-    await Promise.all([
-      hostSurface.getByRole('button', { name: 'Stay', exact: true }).click(),
-      peerSurface.getByRole('button', { name: 'Fold', exact: true }).click(),
-    ]);
     await expect(hostSurface).toBeHidden({ timeout: 20_000 }).catch(() => {});
   }
   throw new Error('Holm did not produce a player-vs-Chucky terminal win within 80 hands');
@@ -138,12 +140,14 @@ async function playThreeFiveSeven(
   const hostSurface = session.hostPage.locator(selector);
   const peerSurface = session.peerPage.locator(selector);
   await Promise.all([
-    expect(hostSurface).toBeVisible({ timeout: 45_000 }),
-    expect(peerSurface).toBeVisible({ timeout: 45_000 }),
-  ]);
-  await Promise.all([
-    hostSurface.getByRole('button', { name: 'Stay', exact: true }).click(),
-    peerSurface.getByRole('button', { name: 'Drop', exact: true }).click(),
+    (async () => {
+      await expect(hostSurface).toBeVisible({ timeout: 45_000 });
+      await hostSurface.getByRole('button', { name: 'Stay', exact: true }).click();
+    })(),
+    (async () => {
+      await expect(peerSurface).toBeVisible({ timeout: 45_000 });
+      await peerSurface.getByRole('button', { name: 'Drop', exact: true }).click();
+    })(),
   ]);
   await probe.waitForTerminalResult(session.gameId, dealerGameId, expected);
 }
@@ -153,9 +157,10 @@ async function discardToCrib(page: Page): Promise<void> {
   await expect(surface).toBeVisible({ timeout: 60_000 });
   const cards = page.locator('[data-cribbage-hand-card-key]:not(:disabled):visible');
   await expect(cards).toHaveCount(6, { timeout: 30_000 });
-  await cards.nth(0).click();
-  await cards.nth(1).click();
-  await surface.getByRole('button', { name: /Send to Crib \(2\/2\)/ }).click();
+  await cards.nth(0).click({ timeout: 15_000 });
+  await cards.nth(1).click({ timeout: 15_000 });
+  await expect(surface).toHaveAccessibleName(/Send to Crib \(2\/2\)/);
+  await surface.click({ timeout: 15_000 });
 }
 
 async function playCribbage(
@@ -165,6 +170,29 @@ async function playCribbage(
   expected: TerminalExpectation,
 ): Promise<void> {
   await Promise.all([discardToCrib(session.hostPage), discardToCrib(session.peerPage)]);
+  const tryPlay = async (cards: Locator): Promise<boolean> => {
+    const card = cards.first();
+    if (!(await card.isEnabled().catch(() => false))) return false;
+    try {
+      await card.click({ timeout: 2_000 });
+      return true;
+    } catch {
+      // Realtime can replace or disable the formerly playable card between
+      // discovery and click. The next loop reads the new authoritative turn.
+      return false;
+    }
+  };
+  const describeGate = async (page: Page) => page
+    .locator('[data-cribbage-hand-card-key]:visible')
+    .evaluateAll((cards) => cards.slice(0, 1).map((card) => ({
+      disabled: (card as HTMLButtonElement).disabled,
+      playable: card.getAttribute('data-cribbage-card-playable'),
+      processing: card.getAttribute('data-cribbage-block-processing'),
+      interactions: card.getAttribute('data-cribbage-block-interactions'),
+      boundary: card.getAttribute('data-cribbage-block-boundary'),
+      selfPlay: card.getAttribute('data-cribbage-block-self-play'),
+    }))[0] ?? null);
+  let noActionStreak = 0;
   for (let step = 0; step < 120; step += 1) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
     const playableHost = session.hostPage.locator(
@@ -173,11 +201,20 @@ async function playCribbage(
     const playablePeer = session.peerPage.locator(
       '[data-cribbage-card-playable="1"]:not(:disabled):visible',
     );
-    if (await playableHost.count()) {
-      await playableHost.first().click();
-    } else if (await playablePeer.count()) {
-      await playablePeer.first().click();
+    const acted = await tryPlay(playableHost) || await tryPlay(playablePeer);
+    if (acted) {
+      noActionStreak = 0;
     } else {
+      noActionStreak += 1;
+      if (noActionStreak >= 15) {
+        const [hostGate, peerGate] = await Promise.all([
+          describeGate(session.hostPage),
+          describeGate(session.peerPage),
+        ]);
+        throw new Error(
+          `Cribbage action gate remained blocked: host=${JSON.stringify(hostGate)} peer=${JSON.stringify(peerGate)}`,
+        );
+      }
       await pause(250);
     }
   }

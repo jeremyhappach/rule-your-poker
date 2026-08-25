@@ -37,7 +37,7 @@ BEGIN
     total_hands, pot, real_money
   ) VALUES
     (v_active_game, '357 session end active proof', 'in_progress', '3-5-7', v_active_dealer,
-     v_users[1], 1, 1, 1, 1, 3, 1, 2, false),
+     NULL, 1, 1, 1, 1, 3, 1, 2, false),
     (v_pregame, '357 session end pregame proof', 'game_selection', '3-5-7', NULL,
      v_users[1], 1, 1, 1, 1, 3, 0, 0, false),
     (v_late_game, '357 session end late proof', 'game_over', '3-5-7', v_late_dealer,
@@ -61,6 +61,11 @@ BEGIN
       (v_tie_game, v_users[1], 1), (v_tie_game, v_users[2], 2),
       (v_ended_game, v_users[1], 1), (v_ended_game, v_users[2], 2)
     ) participants(game_id, user_id, position);
+
+  UPDATE public.players
+     SET created_at = clock_timestamp() - interval '1 second'
+   WHERE game_id = v_active_game
+     AND user_id = v_users[1];
 
   SELECT id INTO v_player FROM public.players
    WHERE game_id = v_late_game AND user_id = v_users[1];
@@ -88,7 +93,24 @@ BEGIN
     RAISE EXCEPTION '357_session_end_proof:active_replay_failed:%', v_result;
   END IF;
 
-  -- Only the active human host can request the session end.
+  -- The other seated human cannot use the null-current_host fallback.
+  PERFORM set_config('request.jwt.claim.sub', v_users[2]::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'authenticated', 'sub', v_users[2])::text,
+    true
+  );
+  BEGIN
+    PERFORM public.three_five_seven_request_session_end(v_active_game);
+    RAISE EXCEPTION '357_session_end_proof:nonhost_succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = '357_session_end_proof:nonhost_succeeded'
+       OR SQLERRM NOT LIKE '%not_session_host%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  -- An outsider is rejected before host resolution.
   PERFORM set_config('request.jwt.claim.sub', v_outsider::text, true);
   PERFORM set_config(
     'request.jwt.claims',
@@ -100,7 +122,7 @@ BEGIN
     RAISE EXCEPTION '357_session_end_proof:outsider_succeeded';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = '357_session_end_proof:outsider_succeeded'
-       OR SQLERRM NOT LIKE '%not_active_human_host%' THEN
+       OR SQLERRM NOT LIKE '%not_active_human_participant%' THEN
       RAISE;
     END IF;
   END;
