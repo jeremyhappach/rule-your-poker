@@ -8,8 +8,15 @@ const source = readFileSync(
 
 function authoritativeRoundReset(): string {
   const start = source.indexOf("useLayoutEffect(() => {\n    if (currentRoundId === prevRoundIdRef.current) return;");
-  const end = source.indexOf('  }, [currentRoundId]);', start);
+  const end = source.indexOf('  }, [currentRoundId, clearBoundaryHoldTimers]);', start);
   if (start < 0 || end < 0) throw new Error('Cribbage authoritative round reset not found');
+  return source.slice(start, end);
+}
+
+function boundaryHoldArmEffect(): string {
+  const start = source.indexOf('  // Arm the hold on 31 / Go / last.');
+  const end = source.indexOf('  // Primary release:', start);
+  if (start < 0 || end < 0) throw new Error('Cribbage boundary hold arm effect not found');
   return source.slice(start, end);
 }
 
@@ -24,5 +31,17 @@ describe('Cribbage pegging boundary hand reset wiring', () => {
     expect(reset).toContain('thirtyOneDelayRef.current = null;');
     expect(reset).toContain('heldAnnouncementSettledRef.current = null;');
     expect(reset).toContain('prevSequenceStartIndexRef.current = 0;');
+  });
+
+  it('keeps the armed hold timers alive across same-phase lastEvent replacement', () => {
+    const arm = boundaryHoldArmEffect();
+
+    expect(source).toContain('const boundaryHoldAnnouncementTimerRef = useRef');
+    expect(source).toContain('const boundaryHoldSafetyTimerRef = useRef');
+    expect(source).toContain('clearBoundaryHoldTimers();\n  }, [clearBoundaryHoldTimers]);');
+    expect(arm).toContain('boundaryHoldAnnouncementTimerRef.current = setTimeout');
+    expect(arm).toContain('boundaryHoldSafetyTimerRef.current = setTimeout');
+    expect(arm).not.toContain('return () =>');
+    expect(arm).toContain('setLastReleasedBoundaryEventId(eventKey);');
   });
 });

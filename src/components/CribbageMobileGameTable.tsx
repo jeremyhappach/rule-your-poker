@@ -2473,6 +2473,25 @@ export const CribbageMobileGameTable = ({
     useState<HeldSequenceSnapshot | null>(null);
   const heldAnnouncementSettledRef = useRef<string | null>(null); // armedEventId once its own 3s elapses
   const [heldAnnouncementSettledTick, setHeldAnnouncementSettledTick] = useState(0);
+  // These timers belong to the held presentation, not to any one snapshot.
+  // Realtime is allowed to replace/clear `lastEvent` while the same pegging
+  // presentation is intentionally still visible.
+  const boundaryHoldAnnouncementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const boundaryHoldSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearBoundaryHoldTimers = useCallback(() => {
+    if (boundaryHoldAnnouncementTimerRef.current) {
+      clearTimeout(boundaryHoldAnnouncementTimerRef.current);
+      boundaryHoldAnnouncementTimerRef.current = null;
+    }
+    if (boundaryHoldSafetyTimerRef.current) {
+      clearTimeout(boundaryHoldSafetyTimerRef.current);
+      boundaryHoldSafetyTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    clearBoundaryHoldTimers();
+  }, [clearBoundaryHoldTimers]);
 
   // Turn 2 — canonical Go/31 boundary release identity. Written in the
   // SAME update cycle that clears `thirtyOneDelayActive` / `heldSequenceSnapshot`
@@ -2563,8 +2582,9 @@ export const CribbageMobileGameTable = ({
     const isGoOrLast = lastEvent.type === 'go_point';
     if (!is31 && !isGoOrLast) return;
     const eventKey = lastEvent.id;
-    if (thirtyOneDelayRef.current === eventKey) return;
+    if (thirtyOneDelayRef.current === eventKey || thirtyOneDelayActive || heldSequenceSnapshot) return;
     thirtyOneDelayRef.current = eventKey;
+    clearBoundaryHoldTimers();
 
     // Compute the held slice + count from the SAME source.
     const played = cribbageState.pegging.playedCards ?? [];
@@ -2605,26 +2625,28 @@ export const CribbageMobileGameTable = ({
     // fires, the release effect below can drop the hold (once transport
     // has also settled). It is NOT affected by later pegging events.
     heldAnnouncementSettledRef.current = null;
-    const announceTimer = setTimeout(() => {
+    boundaryHoldAnnouncementTimerRef.current = setTimeout(() => {
+      boundaryHoldAnnouncementTimerRef.current = null;
       heldAnnouncementSettledRef.current = eventKey;
       setHeldAnnouncementSettledTick((n) => n + 1);
     }, 3000);
 
     // Deadman safety only.
-    const safety = setTimeout(() => {
+    boundaryHoldSafetyTimerRef.current = setTimeout(() => {
+      boundaryHoldSafetyTimerRef.current = null;
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
+      setLastReleasedBoundaryEventId(eventKey);
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
-    return () => {
-      clearTimeout(announceTimer);
-      clearTimeout(safety);
-    };
   }, [
     cribbageState?.lastEvent?.id,
     cribbageState?.lastEvent?.type,
     cribbageState?.lastEvent?.count,
     canPresentPeggingEvent,
+    thirtyOneDelayActive,
+    heldSequenceSnapshot,
+    clearBoundaryHoldTimers,
   ]);
 
   // Primary release: the armed event's own announcement window has
@@ -2635,6 +2657,7 @@ export const CribbageMobileGameTable = ({
     if (playCardIntent !== null) return;
     if (heldAnnouncementSettledRef.current !== heldSequenceSnapshot.armedEventId) return;
     const releasedSnapshot = heldSequenceSnapshot;
+    clearBoundaryHoldTimers();
     setThirtyOneDelayActive(false);
     setHeldSequenceSnapshot(null);
     setLastReleasedBoundaryEventId(releasedSnapshot.armedEventId);
@@ -2662,6 +2685,7 @@ export const CribbageMobileGameTable = ({
     playCardIntent,
     heldAnnouncementSettledTick,
     dbSequenceStartIndex,
+    clearBoundaryHoldTimers,
   ]);
 
   // Clear hold when phase moves away from pegging.
@@ -2670,6 +2694,7 @@ export const CribbageMobileGameTable = ({
     if (cribbageState.phase !== 'pegging') {
       const wasActive = thirtyOneDelayActive;
       const snap = heldSequenceSnapshot;
+      clearBoundaryHoldTimers();
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
       if (snap) setLastReleasedBoundaryEventId(snap.armedEventId);
@@ -2694,7 +2719,7 @@ export const CribbageMobileGameTable = ({
       // Turn 2 — phase-exit release of any stuck writer lock.
       releasePlayWriterLock(null, 'phase-exit');
     }
-  }, [cribbageState?.phase, releasePlayWriterLock]);
+  }, [cribbageState?.phase, releasePlayWriterLock, clearBoundaryHoldTimers]);
 
   // Use the previous (pre-reset) index during hold, otherwise use the DB index
   const sequenceStartIndex = thirtyOneDelayActive && heldSequenceSnapshot
@@ -4936,6 +4961,7 @@ export const CribbageMobileGameTable = ({
     // counting/non-pegging snapshot. These are presentation-only latches,
     // but they synchronously block pegging controls, so none may cross an
     // authoritative hand identity boundary.
+    clearBoundaryHoldTimers();
     setThirtyOneDelayActive(false);
     setHeldSequenceSnapshot(null);
     setHeldAnnouncementSettledTick(0);
@@ -5027,7 +5053,7 @@ export const CribbageMobileGameTable = ({
       isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
     });
-  }, [currentRoundId]);
+  }, [currentRoundId, clearBoundaryHoldTimers]);
 
   // Exact-round realtime subscription. Initial hydration above and every
   // notification fetch private state for this identity; no recurring database
