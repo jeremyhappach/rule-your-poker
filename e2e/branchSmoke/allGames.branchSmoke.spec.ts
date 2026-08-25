@@ -49,6 +49,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       const runtime = await session.hostNetwork.waitForRuntimeConfig();
       const probe = await TerminalSettlementProbe.create(runtime.url, runtime.publishableKey, credentials.player1);
       const evidence: Record<string, unknown> = { scenario: scenario.id, coverage: scenario.coverage, status: 'started' };
+      let primaryError: unknown = null;
       try {
         await enterDealerGameUnderChaos(session, scenario.gameType, { configure: (c) => configure(scenario, c) });
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
@@ -76,11 +77,34 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         evidence.status = 'failed';
         evidence.error = error instanceof Error ? error.message : String(error);
         console.error(`[branch-smoke] ${scenario.id} failed: ${evidence.error}`);
-        throw error;
+        primaryError = error;
       } finally {
-        await info.attach('branch-smoke-evidence.json', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
-        try { await blastFakeMoneySession(session); } finally { await closeTwoClientSession(session); }
+        const teardownErrors: unknown[] = [];
+        try {
+          await info.attach('branch-smoke-evidence.json', {
+            body: JSON.stringify(evidence, null, 2),
+            contentType: 'application/json',
+          });
+        } catch (error) {
+          teardownErrors.push(error);
+        }
+        try {
+          await blastFakeMoneySession(session);
+        } catch (error) {
+          teardownErrors.push(error);
+        } finally {
+          await closeTwoClientSession(session);
+        }
+        if (teardownErrors.length) {
+          throw new AggregateError(
+            primaryError ? [primaryError, ...teardownErrors] : teardownErrors,
+            primaryError
+              ? `${scenario.id} failed and teardown also failed`
+              : `${scenario.id} teardown failed`,
+          );
+        }
       }
+      if (primaryError) throw primaryError;
     });
   }
 });

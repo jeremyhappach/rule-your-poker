@@ -13,7 +13,19 @@ type SessionSnapshot = Database['public']['Tables']['session_player_snapshots'][
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function withProbeDeadline<T>(
+function isAbortLike(error: unknown): boolean {
+  const name = error instanceof Error
+    ? error.name
+    : typeof error === 'object' && error && 'name' in error
+      ? String((error as { name?: unknown }).name ?? '')
+      : '';
+  const message = error instanceof Error ? error.message : String(error);
+  return name === 'AbortError'
+    || name === 'TimeoutError'
+    || /abort|failed to fetch|fetch failed|network error/i.test(message);
+}
+
+export async function withProbeDeadline<T>(
   operation: (signal: AbortSignal) => PromiseLike<T>,
   label: string,
   timeoutMs = 10_000,
@@ -29,9 +41,10 @@ async function withProbeDeadline<T>(
     try {
       return await Promise.resolve(operation(controller.signal));
     } catch (error) {
-      if (!timedOut || attempt === attempts) {
-        if (timedOut) throw new Error(`${label} exceeded ${timeoutMs}ms on ${attempts} attempts`);
-        throw error;
+      if (!timedOut && !isAbortLike(error)) throw error;
+      if (attempt === attempts) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`${label} unavailable after ${attempts} attempts: ${detail}`);
       }
     } finally {
       clearTimeout(timer);
@@ -70,8 +83,8 @@ export class TerminalSettlementProbe {
     dealerGameId: string,
     expected: TerminalExpectation,
   ): Promise<TerminalResult | null> {
-    const { data, error } = await withProbeDeadline(
-      (signal) => {
+    const data = await withProbeDeadline(
+      async (signal) => {
         let query = this.client
           .from('game_results')
           .select('*')
@@ -81,11 +94,15 @@ export class TerminalSettlementProbe {
 
         if (expected.eventKind) query = query.eq('event_kind', expected.eventKind);
         if (expected.settlementKey) query = query.eq('settlement_key', expected.settlementKey);
-        return query.order('created_at', { ascending: true }).limit(2).abortSignal(signal);
+        const { data, error } = await query
+          .order('created_at', { ascending: true })
+          .limit(2)
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read terminal settlement: ${error.message}`);
+        return data;
       },
       'Terminal settlement query',
     );
-    if (error) throw new Error(`Could not read terminal settlement: ${error.message}`);
     if (data.length > 1) {
       throw new Error(
         `Expected one terminal settlement for ${expected.gameType}, found ${data.length}`,
@@ -112,12 +129,19 @@ export class TerminalSettlementProbe {
   async waitForLastHand(gameId: string, timeoutMs = 30_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      const { data, error } = await this.client
-        .from('games')
-        .select('pending_session_end')
-        .eq('id', gameId)
-        .single();
-      if (error) throw new Error(`Could not verify LAST HAND: ${error.message}`);
+      const data = await withProbeDeadline(
+        async (signal) => {
+          const { data, error } = await this.client
+            .from('games')
+            .select('pending_session_end')
+            .eq('id', gameId)
+            .single()
+            .abortSignal(signal);
+          if (error) throw new Error(`Could not verify LAST HAND: ${error.message}`);
+          return data;
+        },
+        'LAST HAND verification query',
+      );
       if (data.pending_session_end === true) return;
       await wait(250);
     }
@@ -127,27 +151,43 @@ export class TerminalSettlementProbe {
   async readCribbageProgress(
     gameId: string,
     dealerGameId: string,
-  ): Promise<{ phase: string | null; eventSequence: number }> {
-    const { data, error } = await withProbeDeadline(
-      (signal) => this.client
+  ): Promise<{
+    roundId: string | null;
+    handNumber: number | null;
+    phase: string | null;
+    eventSequence: number;
+    countingReleaseAt: number | null;
+  }> {
+    const data = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
           .from('rounds')
-          .select('cribbage_state')
+          .select('id,hand_number,cribbage_state')
           .eq('game_id', gameId)
           .eq('dealer_game_id', dealerGameId)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-          .abortSignal(signal),
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read Cribbage progress: ${error.message}`);
+        return data;
+      },
       'Cribbage progress query',
     );
-    if (error) throw new Error(`Could not read Cribbage progress: ${error.message}`);
     const state = data?.cribbage_state as {
       phase?: string;
       pegging?: { eventSequence?: number };
+      countingResolution?: { presentationReleaseAt?: string };
     } | null;
+    const releaseAt = state?.countingResolution?.presentationReleaseAt
+      ? Date.parse(state.countingResolution.presentationReleaseAt)
+      : Number.NaN;
     return {
+      roundId: data?.id ?? null,
+      handNumber: data?.hand_number ?? null,
       phase: state?.phase ?? null,
       eventSequence: Number(state?.pegging?.eventSequence ?? 0),
+      countingReleaseAt: Number.isFinite(releaseAt) ? releaseAt : null,
     };
   }
 
@@ -155,8 +195,9 @@ export class TerminalSettlementProbe {
     gameId: string,
     dealerGameId: string,
   ): Promise<{ phase: string | null; turnPhase: string | null; actionCount: number }> {
-    const { data, error } = await withProbeDeadline(
-      (signal) => this.client
+    const data = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
           .from('rounds')
           .select('gin_rummy_state')
           .eq('game_id', gameId)
@@ -164,10 +205,12 @@ export class TerminalSettlementProbe {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-          .abortSignal(signal),
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read Gin progress: ${error.message}`);
+        return data;
+      },
       'Gin progress query',
     );
-    if (error) throw new Error(`Could not read Gin progress: ${error.message}`);
     const state = data?.gin_rummy_state as {
       phase?: string;
       turnPhase?: string;
@@ -192,23 +235,37 @@ export class TerminalSettlementProbe {
     }
     if (!result.winner_player_id) throw new Error('Terminal settlement has no winner_player_id');
 
-    const { data: snapshots, error: snapshotError } = await this.client
-      .from('session_player_snapshots')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('dealer_game_id', dealerGameId)
-      .eq('hand_number', result.hand_number)
-      .eq('is_bot', false)
-      .order('created_at', { ascending: true });
-    if (snapshotError) throw new Error(`Could not read terminal snapshots: ${snapshotError.message}`);
+    const snapshots = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('session_player_snapshots')
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .eq('hand_number', result.hand_number)
+          .eq('is_bot', false)
+          .order('created_at', { ascending: true })
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read terminal snapshots: ${error.message}`);
+        return data;
+      },
+      'Terminal snapshot query',
+    );
     this.assertTwoHumanSnapshots(snapshots);
 
-    const { data: game, error: gameError } = await this.client
-      .from('games')
-      .select('status,pending_session_end,session_ended_at')
-      .eq('id', gameId)
-      .single();
-    if (gameError) throw new Error(`Could not read ended session: ${gameError.message}`);
+    const game = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('games')
+          .select('status,pending_session_end,session_ended_at')
+          .eq('id', gameId)
+          .single()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read ended session: ${error.message}`);
+        return data;
+      },
+      'Ended-session query',
+    );
     if (game.status !== 'session_ended' || game.pending_session_end === true || !game.session_ended_at) {
       throw new Error(
         `Terminal game row is inconsistent: status=${game.status}, pending=${game.pending_session_end}`,

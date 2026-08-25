@@ -171,6 +171,7 @@ async function discardToCrib(page: Page): Promise<void> {
   await cards.nth(1).click({ timeout: 15_000 });
   await expect(surface).toHaveAccessibleName(/Send to Crib \(2\/2\)/);
   await surface.click({ timeout: 15_000 });
+  await expect(surface).toBeHidden({ timeout: 30_000 });
 }
 
 async function playCribbage(
@@ -179,7 +180,6 @@ async function playCribbage(
   dealerGameId: string,
   expected: TerminalExpectation,
 ): Promise<void> {
-  await Promise.all([discardToCrib(session.hostPage), discardToCrib(session.peerPage)]);
   const tryPlay = async (cards: Locator): Promise<boolean> => {
     if (!(await cards.count())) return false;
     const card = cards.first();
@@ -203,52 +203,76 @@ async function playCribbage(
       boundary: card.getAttribute('data-cribbage-block-boundary'),
       selfPlay: card.getAttribute('data-cribbage-block-self-play'),
     }))[0] ?? null);
-  let noActionStreak = 0;
   let lastProgress = await probe.readCribbageProgress(session.gameId, dealerGameId);
   let lastProgressAt = Date.now();
-  for (let step = 0; step < 120; step += 1) {
+  const completedDiscards = new Set<string>();
+  const deadline = Date.now() + 15 * 60_000;
+  while (Date.now() < deadline) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
-    const playableHost = session.hostPage.locator(
-      '[data-cribbage-card-playable="1"]:not(:disabled):visible',
-    );
-    const playablePeer = session.peerPage.locator(
-      '[data-cribbage-card-playable="1"]:not(:disabled):visible',
-    );
-    const acted = await tryPlay(playableHost) || await tryPlay(playablePeer);
-    if (acted) {
-      noActionStreak = 0;
-    } else {
-      noActionStreak += 1;
-      if (noActionStreak >= 15) {
-        const [hostGate, peerGate] = await Promise.all([
-          describeGate(session.hostPage),
-          describeGate(session.peerPage),
-        ]);
-        throw new Error(
-          `Cribbage action gate remained blocked: host=${JSON.stringify(hostGate)} peer=${JSON.stringify(peerGate)}`,
+    let acted = false;
+
+    if (lastProgress.phase === 'discarding' && lastProgress.roundId) {
+      const actors = [
+        { key: `${lastProgress.roundId}:host`, page: session.hostPage },
+        { key: `${lastProgress.roundId}:peer`, page: session.peerPage },
+      ];
+      for (const actor of actors) {
+        if (completedDiscards.has(actor.key)) continue;
+        const surface = actor.page.locator(
+          '[data-authoritative-action-surface="cribbage-discard"]:visible',
         );
+        if (!(await surface.count())) continue;
+        await discardToCrib(actor.page);
+        completedDiscards.add(actor.key);
+        acted = true;
       }
-      await pause(250);
+    } else if (lastProgress.phase === 'pegging') {
+      const playableHost = session.hostPage.locator(
+        '[data-cribbage-card-playable="1"]:not(:disabled):visible',
+      );
+      const playablePeer = session.peerPage.locator(
+        '[data-cribbage-card-playable="1"]:not(:disabled):visible',
+      );
+      acted = await tryPlay(playableHost) || await tryPlay(playablePeer);
     }
+
+    await pause(acted ? 150 : 250);
     const progress = await probe.readCribbageProgress(session.gameId, dealerGameId);
+    const identityAdvanced = progress.roundId !== lastProgress.roundId
+      || progress.handNumber !== lastProgress.handNumber;
     if (
+      acted ||
+      identityAdvanced ||
       progress.phase !== lastProgress.phase ||
       progress.eventSequence > lastProgress.eventSequence
     ) {
       lastProgress = progress;
       lastProgressAt = Date.now();
-    } else if (progress.phase === 'pegging' && Date.now() - lastProgressAt >= 30_000) {
+      continue;
+    }
+
+    lastProgress = progress;
+    const stalledFor = Date.now() - lastProgressAt;
+    const countingHoldExpired = progress.phase === 'counting'
+      && progress.countingReleaseAt !== null
+      && Date.now() >= progress.countingReleaseAt + 15_000;
+    const activePhaseStalled = (progress.phase === 'discarding' || progress.phase === 'pegging')
+      && stalledFor >= 30_000;
+    const passivePhaseStalled = ['dealing', 'cutting', 'counting'].includes(progress.phase ?? '')
+      && stalledFor >= 60_000;
+    if (activePhaseStalled || countingHoldExpired || passivePhaseStalled) {
       const [hostGate, peerGate] = await Promise.all([
         describeGate(session.hostPage),
         describeGate(session.peerPage),
       ]);
       throw new Error(
-        `Cribbage authoritative progress stalled at event ${progress.eventSequence}: ` +
+        `Cribbage authoritative progress stalled in hand ${progress.handNumber ?? 'unknown'} ` +
+        `(${progress.phase}/event ${progress.eventSequence}): ` +
         `host=${JSON.stringify(hostGate)} peer=${JSON.stringify(peerGate)}`,
       );
     }
   }
-  throw new Error('Cribbage did not reach terminal settlement within 120 action checks');
+  throw new Error('Cribbage did not reach terminal settlement within 15 minutes');
 }
 
 type GinDomCard = GinRummyCard & { index: number };
@@ -289,6 +313,7 @@ async function playGin(
   expected: TerminalExpectation,
 ): Promise<void> {
   const pages = [session.hostPage, session.peerPage];
+  let forcedAmbiguousDiscard = false;
   let lastProgress = await probe.readGinProgress(session.gameId, dealerGameId);
   let lastProgressAt = Date.now();
 
@@ -335,6 +360,11 @@ async function playGin(
         await chooseBestGinDiscard(page);
         acted = true;
       } else if (await discard.count()) {
+        if (!forcedAmbiguousDiscard) {
+          const network = page === session.hostPage ? session.hostNetwork : session.peerNetwork;
+          network.loseNextResponse(/\/rest\/v1\/rpc\/gin_rummy_apply_action$/);
+          forcedAmbiguousDiscard = true;
+        }
         const gin = discard.getByRole('button', { name: /GIN!/ });
         const knock = discard.getByRole('button', { name: /Knock!/ });
         if (await gin.count()) await gin.click();

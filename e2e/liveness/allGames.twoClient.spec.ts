@@ -30,6 +30,7 @@ test.describe('two-human cross-country lifecycle gauntlet', () => {
       const credentials = requireTwoPlayerEnvironment();
       const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
 
+      let primaryError: unknown = null;
       try {
         await enterDealerGameUnderChaos(session, gameType);
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
@@ -45,13 +46,27 @@ test.describe('two-human cross-country lifecycle gauntlet', () => {
         ]);
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
         await waitForEitherClientAction(session.hostPage, session.peerPage);
+      } catch (error) {
+        primaryError = error;
       } finally {
+        let cleanupError: unknown = null;
         try {
           await blastFakeMoneySession(session);
+        } catch (error) {
+          cleanupError = error;
         } finally {
           await closeTwoClientSession(session);
         }
+        if (cleanupError) {
+          throw new AggregateError(
+            primaryError ? [primaryError, cleanupError] : [cleanupError],
+            primaryError
+              ? `${gameType} liveness test failed and cleanup also failed`
+              : `${gameType} liveness cleanup failed`,
+          );
+        }
       }
+      if (primaryError) throw primaryError;
     });
   }
 });

@@ -100,8 +100,9 @@ export async function applyGinRummyAction(args: {
   card?: GinRummyCard | null;
   meldIndex?: number | null;
   expectedActionCount?: number | null;
+  signal?: AbortSignal;
 }): Promise<{ outcome: string; state: GinRummyState }> {
-  const { data, error } = await supabase.rpc('gin_rummy_apply_action' as any, {
+  let request = supabase.rpc('gin_rummy_apply_action' as any, {
     _round_id: args.roundId,
     _player_id: args.playerId,
     _action: args.action,
@@ -109,6 +110,8 @@ export async function applyGinRummyAction(args: {
     _meld_index: args.meldIndex ?? null,
     _expected_action_count: args.expectedActionCount ?? null,
   } as any);
+  if (args.signal) request = request.abortSignal(args.signal);
+  const { data, error } = await request;
   if (error) throw error;
   const result = data as GinAuthorityResult | null;
   if (result?.outcome === 'stale_identity') {
@@ -120,10 +123,15 @@ export async function applyGinRummyAction(args: {
   };
 }
 
-export async function fetchGinRummyState(roundId: string): Promise<GinRummyState> {
-  const { data, error } = await supabase.rpc('gin_rummy_get_state' as any, {
+export async function fetchGinRummyState(
+  roundId: string,
+  signal?: AbortSignal,
+): Promise<GinRummyState> {
+  let request = supabase.rpc('gin_rummy_get_state' as any, {
     _round_id: roundId,
   } as any);
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
   if (error) throw error;
   if (!data) throw new Error('Gin state RPC returned no projection');
   return data as unknown as GinRummyState;

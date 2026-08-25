@@ -58,6 +58,7 @@ import {
   fetchGinRummyState,
   type GinRummyAuthorityAction,
 } from '@/lib/ginRummyRoundLogic';
+import { executeReplaySafeGinAction } from '@/lib/ginRummyActionRecovery';
 import { settleGinRummyGame } from '@/lib/ginRummySettleGame';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
@@ -2280,16 +2281,20 @@ export const GinRummyGameTable = ({
       if (!roundId || !currentPlayerId) {
         throw new Error('Gin action identity is incomplete.');
       }
-      const result = await applyGinRummyAction({
-        roundId,
-        playerId: currentPlayerId,
-        action: intent.action,
-        card: intent.card ?? null,
-        meldIndex: intent.meldIndex ?? null,
-        expectedActionCount:
-          intent.expectedActionCount
-          ?? Math.max(0, (newState.actionCount ?? 1) - 1),
-      });
+      const expectedActionCount = intent.expectedActionCount
+        ?? Math.max(0, (newState.actionCount ?? 1) - 1);
+      const result = await executeReplaySafeGinAction(
+        (signal) => applyGinRummyAction({
+          roundId,
+          playerId: currentPlayerId,
+          action: intent.action,
+          card: intent.card ?? null,
+          meldIndex: intent.meldIndex ?? null,
+          expectedActionCount,
+          signal,
+        }),
+        { label: `Gin ${intent.action}` },
+      );
       const committedState = result.state;
       reconcileCommittedSelfDraw(committedState);
       logDebugEvent({
@@ -2325,7 +2330,10 @@ export const GinRummyGameTable = ({
       ginSync.clearOptimistic();
       if (roundId) {
         try {
-          const authoritativeState = await fetchGinRummyState(roundId);
+          const authoritativeState = await executeReplaySafeGinAction(
+            (signal) => fetchGinRummyState(roundId, signal),
+            { label: 'Gin recovery snapshot', attempts: 1 },
+          );
           ginSync.receiveAuthoritativeUpdate(authoritativeState);
           setGinState(authoritativeState);
           if (failedIntentId) {
@@ -2509,12 +2517,17 @@ export const GinRummyGameTable = ({
         });
         await new Promise(resolve => setTimeout(resolve, 3500));
         if (committed && roundId) {
-          const finalized = await applyGinRummyAction({
-            roundId,
-            playerId: currentPlayerId,
-            action: 'finalize_scoring',
-            expectedActionCount: committed.actionCount ?? null,
-          });
+          const expectedActionCount = committed.actionCount ?? null;
+          const finalized = await executeReplaySafeGinAction(
+            (signal) => applyGinRummyAction({
+              roundId,
+              playerId: currentPlayerId,
+              action: 'finalize_scoring',
+              expectedActionCount,
+              signal,
+            }),
+            { label: 'Gin scoring finalization' },
+          );
           ginSync.receiveAuthoritativeUpdate(finalized.state);
           setGinState(finalized.state);
         }

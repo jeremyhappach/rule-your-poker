@@ -42,6 +42,7 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
         credentials.player1,
       );
 
+      let primaryError: unknown = null;
       try {
         await enterDealerGameUnderChaos(session, gameType, {
           configure: (configSurface) => configureShortestTerminal(gameType, configSurface),
@@ -84,15 +85,29 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
         ]);
         await expect(session.peerPage.getByText('Game Lobby', { exact: true }).first()).toBeVisible();
         console.log(`[terminal] ${gameType} client and database proof complete`);
+      } catch (error) {
+        primaryError = error;
       } finally {
+        let cleanupError: unknown = null;
         try {
           console.log(`[terminal] ${gameType} cleanup starting`);
           await blastFakeMoneySession(session);
           console.log(`[terminal] ${gameType} cleanup complete`);
+        } catch (error) {
+          cleanupError = error;
         } finally {
           await closeTwoClientSession(session);
         }
+        if (cleanupError) {
+          throw new AggregateError(
+            primaryError ? [primaryError, cleanupError] : [cleanupError],
+            primaryError
+              ? `${gameType} terminal test failed and cleanup also failed`
+              : `${gameType} terminal cleanup failed`,
+          );
+        }
       }
+      if (primaryError) throw primaryError;
     });
   }
 });

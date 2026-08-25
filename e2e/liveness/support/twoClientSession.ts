@@ -1,4 +1,6 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../../src/integrations/supabase/types';
 import { CrossCountryNetwork, runOfflineBurst } from './crossCountryNetwork';
 
 export type DealerGameType =
@@ -23,6 +25,7 @@ export type TwoClientSession = {
   peerPage: Page;
   hostNetwork: CrossCountryNetwork;
   peerNetwork: CrossCountryNetwork;
+  cleanupClient: SupabaseClient<Database>;
   gameId: string;
 };
 
@@ -85,6 +88,18 @@ export async function createTwoClientSession(
       login(hostPage, hostCredentials),
       login(peerPage, peerCredentials),
     ]);
+    const runtime = await hostNetwork.waitForRuntimeConfig();
+    const cleanupClient = createClient<Database>(runtime.url, runtime.publishableKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    });
+    const { error: cleanupAuthError } = await cleanupClient.auth.signInWithPassword(hostCredentials);
+    if (cleanupAuthError) {
+      throw new Error(`Could not authenticate fake-money cleanup client: ${cleanupAuthError.message}`);
+    }
 
     await hostPage.getByRole('button', { name: 'Create New Game', exact: true }).click();
     const createDialog = hostPage.getByRole('dialog', { name: 'Create New Game' });
@@ -101,6 +116,7 @@ export async function createTwoClientSession(
       peerPage,
       hostNetwork,
       peerNetwork,
+      cleanupClient,
       gameId,
     };
 
@@ -203,14 +219,60 @@ export async function closeTwoClientSession(session: TwoClientSession): Promise<
 }
 
 export async function blastFakeMoneySession(session: TwoClientSession): Promise<void> {
-  const { hostPage } = session;
-  if (hostPage.isClosed()) throw new Error('Host page closed before fake-money cleanup');
+  session.hostNetwork.useHealthyProfile();
+  session.peerNetwork.useHealthyProfile();
+  await Promise.all([
+    session.hostNetwork.waitForDelayedDeliveries(),
+    session.peerNetwork.waitForDelayedDeliveries(),
+  ]);
 
-  const trigger = hostPage.locator('[data-player-options-trigger]').first();
-  await expect(trigger).toBeVisible();
-  await trigger.click();
-  const blast = hostPage.getByRole('menuitem', { name: /Blast This Game/ });
-  await expect(blast).toBeVisible();
-  await blast.click();
-  await expect(hostPage).toHaveURL(/\/$/);
+  const runWithDeadline = async <T>(
+    operation: (signal: AbortSignal) => PromiseLike<T>,
+    label: string,
+  ): Promise<T> => {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+      try {
+        return await Promise.resolve(operation(controller.signal));
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250));
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    const detail = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new Error(`${label} failed after 2 attempts: ${detail}`);
+  };
+
+  const result = await runWithDeadline(
+    async (signal) => {
+      const { data, error } = await session.cleanupClient
+        .rpc('admin_blast_fake_money_game', { p_game_id: session.gameId })
+        .abortSignal(signal);
+      if (error) throw error;
+      return data as { outcome?: string } | null;
+    },
+    'Fake-money blast RPC',
+  );
+  if (result?.outcome !== 'deleted' && result?.outcome !== 'already-deleted') {
+    throw new Error(`Unexpected fake-money blast outcome: ${result?.outcome ?? 'missing'}`);
+  }
+
+  const remaining = await runWithDeadline(
+    async (signal) => {
+      const { data, error } = await session.cleanupClient
+        .from('games')
+        .select('id')
+        .eq('id', session.gameId)
+        .maybeSingle()
+        .abortSignal(signal);
+      if (error) throw error;
+      return data;
+    },
+    'Fake-money cleanup verification',
+  );
+  if (remaining) throw new Error('Fake-money cleanup returned but the session still exists');
 }
