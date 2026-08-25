@@ -21,6 +21,33 @@ export interface CribbageCutPresentationState {
   isPeggingPresentationBlocked: boolean;
 }
 
+export interface CribbageCutPresentationEntryModeArgs {
+  /** Route-mount provenance. It remains authoritative for an initial rejoin. */
+  entryMode: CribbageEntryMode;
+  /** Canonical hand identity for the presentation boundary. */
+  handKey: string;
+  /** Latest authoritative/rendered phase being resolved. */
+  phase: string | null | undefined;
+  /** Hand whose pre-pegging lifecycle this mounted client actually observed. */
+  observedPrePeggingHandKey: string | null;
+}
+
+/**
+ * A route can be live while a later hand is not: a delayed peer may receive
+ * that hand's first usable state directly in pegging, after another client
+ * already completed discard and cut. Do not make that peer wait for a local
+ * reveal it has no animation owner for. A peer that observed any pre-pegging
+ * phase of this exact hand keeps the normal live discard/cut presentation.
+ */
+export function resolveCribbageCutPresentationEntryMode(
+  args: CribbageCutPresentationEntryModeArgs,
+): CribbageEntryMode {
+  if (args.entryMode === 'historical-entry') return 'historical-entry';
+  if (args.observedPrePeggingHandKey === args.handKey) return 'live-transition';
+  if (args.phase === 'pegging') return 'historical-entry';
+  return 'live-transition';
+}
+
 export interface CribbageHistoricalCribHydrationArgs {
   entryMode: CribbageEntryMode;
   authoritativeCribCount: number;

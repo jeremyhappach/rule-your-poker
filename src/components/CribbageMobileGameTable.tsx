@@ -19,6 +19,7 @@ import { CribbageDiscardPresentationQueue } from '@/lib/cribbage/discardPresenta
 import {
   deriveCribbageCutPresentation,
   deriveCribbageHistoricalCribHydrationSeed,
+  resolveCribbageCutPresentationEntryMode,
 } from '@/lib/cribbage/cribbageCutPresentation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 // Wartime + peg-transport instrumentation removed post-cleanup. Local
@@ -2197,8 +2198,25 @@ export const CribbageMobileGameTable = ({
   const [cutRevealCompletedHandKey, setCutRevealCompletedHandKey] = useState<string | null>(null);
   const cutRevealPresentationReadyRef = useRef(false);
   const cutRevealHandKey = currentHandKey || `${currentRoundId}-${currentHandNumber}`;
-  const authoritativeCutPresentation = deriveCribbageCutPresentation({
+  // Route-level entryMode cannot distinguish a connected peer that missed a
+  // later hand's discard/cut sequence. Track whether this exact hand reached
+  // a pre-pegging phase locally, then recover direct-to-pegging entry from
+  // authoritative cut facts instead of waiting for an absent animation.
+  const observedPrePeggingCutHandKeyRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const phase = cribbageState?.phase;
+    if (phase === 'dealing' || phase === 'discarding' || phase === 'cutting') {
+      observedPrePeggingCutHandKeyRef.current = cutRevealHandKey;
+    }
+  }, [cutRevealHandKey, cribbageState?.phase]);
+  const authoritativeCutEntryMode = resolveCribbageCutPresentationEntryMode({
     entryMode,
+    handKey: cutRevealHandKey,
+    phase: cribbageState?.phase,
+    observedPrePeggingHandKey: observedPrePeggingCutHandKeyRef.current,
+  });
+  const authoritativeCutPresentation = deriveCribbageCutPresentation({
+    entryMode: authoritativeCutEntryMode,
     phase: cribbageState?.phase,
     hasCutCard: !!cribbageState?.cutCard,
     authoritativeCribCount: cribbageState?.crib?.length ?? 0,
@@ -5803,7 +5821,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (lastCutRevealHandKeyRef.current === cutRevealHandKey) {
       const hydrationSeed = deriveCribbageHistoricalCribHydrationSeed({
-        entryMode,
+        entryMode: authoritativeCutEntryMode,
         authoritativeCribCount: cribbageState?.crib?.length ?? 0,
         locallySettledCribCount: discardsSettledInHand,
         hasDiscardIntent: discardIntent !== null,
@@ -5831,7 +5849,7 @@ export const CribbageMobileGameTable = ({
     cribbageState?.crib?.length,
     discardIntent,
     discardsSettledInHand,
-    entryMode,
+    authoritativeCutEntryMode,
   ]);
 
   // A historical entry deliberately does not replay already-finished deal or
@@ -7789,8 +7807,14 @@ export const CribbageMobileGameTable = ({
 
   // Latch pegboard data whenever we have valid gameplay state
   const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
-  const renderedCutPresentation = deriveCribbageCutPresentation({
+  const renderedCutEntryMode = resolveCribbageCutPresentationEntryMode({
     entryMode,
+    handKey: cutRevealHandKey,
+    phase: gameplayRenderState?.phase,
+    observedPrePeggingHandKey: observedPrePeggingCutHandKeyRef.current,
+  });
+  const renderedCutPresentation = deriveCribbageCutPresentation({
+    entryMode: renderedCutEntryMode,
     phase: gameplayRenderState?.phase,
     hasCutCard: !!gameplayRenderState?.cutCard,
     authoritativeCribCount: gameplayRenderState?.crib?.length ?? 0,

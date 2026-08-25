@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveCribbageCutPresentation,
   deriveCribbageHistoricalCribHydrationSeed,
+  resolveCribbageCutPresentationEntryMode,
 } from './cribbageCutPresentation';
 
 const liveCut = {
@@ -61,6 +62,32 @@ describe('deriveCribbageCutPresentation', () => {
       cutRevealCompletedHandKey: 'round-a:7',
       handKey: 'round-b:8',
     }).isPeggingPresentationBlocked).toBe(true);
+  });
+
+  it('recovers a delayed live peer that first receives a later hand in pegging', () => {
+    const entryMode = resolveCribbageCutPresentationEntryMode({
+      entryMode: 'live-transition',
+      handKey: 'round-b:8',
+      phase: 'pegging',
+      observedPrePeggingHandKey: 'round-a:7',
+    });
+
+    expect(entryMode).toBe('historical-entry');
+    expect(deriveCribbageCutPresentation({
+      ...liveCut,
+      entryMode,
+      handKey: 'round-b:8',
+      locallySettledCribCount: 0,
+    }).isPeggingPresentationBlocked).toBe(false);
+  });
+
+  it('keeps the normal cut reveal for a live peer that observed this hand pre-pegging', () => {
+    expect(resolveCribbageCutPresentationEntryMode({
+      entryMode: 'live-transition',
+      handKey: 'round-b:8',
+      phase: 'pegging',
+      observedPrePeggingHandKey: 'round-b:8',
+    })).toBe('live-transition');
   });
 });
 
