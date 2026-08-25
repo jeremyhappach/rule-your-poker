@@ -1,6 +1,32 @@
 # Current release and cutover state
 
-Date: 2026-08-24
+Date: 2026-08-25
+
+## Two-human browser liveness gauntlet
+
+- The freeze audit now has an actual browser tier instead of counting Vitest
+  source/contract checks as multi-client proof. Playwright launches two
+  isolated signed-in Chrome contexts, creates a fake-money table, seats two
+  distinct humans, and exercises all seven dealer-game types independently.
+- The mobile peer receives deterministic long-haul HTTP and Realtime delay,
+  loses connectivity during the session dealer draw, loses the exact response
+  to a committed ante RPC, disconnects again after live gameplay exists, and
+  remounts the whole route while delayed frames remain in flight.
+- Each client must converge on the same authoritative session and dealer-game
+  identities with one canonical shell and felt. The run also requires a real
+  visible legal-action surface on at least one entitled client after recovery;
+  an empty table, duplicate shell, bootstrap limbo, or identity split fails.
+- The suite never enables Real Money, bots, a global game harness, polling, or
+  a product-only progression API. Player 1 must have the existing guarded
+  fake-money Blast authority, and cleanup is mandatory even after a failed
+  scenario. Missing credentials or cleanup acknowledgement fail closed.
+- The two-context runner passes, both application and browser-suite TypeScript
+  checks pass, all 35 build-required Cribbage assertions pass, and the
+  production build passes. The full contract gauntlet remains 239/240: its
+  sole failure is the unchanged CRLF-sensitive dealer-draw migration string
+  assertion. The authenticated seven-game execution still requires two
+  existing test identities because public signup currently returns an Auth
+  database-save error; no test account or game was left behind.
 
 ## Holm result-first celebration admission and 3-5-7 remount recovery
 

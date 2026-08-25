@@ -1199,6 +1199,8 @@ const DealerGameSetupInner = ({
   if (selectionStep === 'game') {
     return (
       <div
+        data-dealer-game-setup-step="game-selection"
+        data-dealer-game-setup-game-id={gameId}
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
         style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
       >
@@ -1250,6 +1252,7 @@ const DealerGameSetupInner = ({
                     return (
                       <button
                         key={game.id}
+                        data-dealer-game-option={game.id}
                         onClick={() => handleGameSelect(game.id)}
                         disabled={disabled}
                         className={`
@@ -1294,6 +1297,7 @@ const DealerGameSetupInner = ({
                   {diceGames.map((game) => (
                     <button
                       key={game.id}
+                      data-dealer-game-option={game.id}
                       onClick={() => handleGameSelect(game.id)}
                       className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center gap-3 border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
@@ -1388,6 +1392,9 @@ const DealerGameSetupInner = ({
       
       return (
         <div
+          data-dealer-game-setup-step="config"
+          data-dealer-game-setup-game-id={gameId}
+          data-dealer-game-setup-selected-game={selectedGameType}
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
         >
@@ -1592,6 +1599,7 @@ const DealerGameSetupInner = ({
                   ← Back
                 </button>
                 <Button
+                  data-dealer-game-start={selectedGameType}
                   onClick={() => handleSimpleAnteGameSubmit()}
                   disabled={isSubmitting}
                   className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
@@ -1610,6 +1618,9 @@ const DealerGameSetupInner = ({
   // Cards selection step - show poker game tabs
   return (
     <div
+      data-dealer-game-setup-step="config"
+      data-dealer-game-setup-game-id={gameId}
+      data-dealer-game-setup-selected-game={selectedGameType}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
     >
@@ -1863,6 +1874,7 @@ const DealerGameSetupInner = ({
 
             {/* Start Button */}
             <Button 
+              data-dealer-game-start={selectedGameType}
               onClick={() => handleSubmit()} 
               disabled={isSubmitting}
               className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"

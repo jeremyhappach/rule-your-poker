@@ -1,3 +1,3 @@
-// Re-export the base fixture from the package
-// Override or extend test/expect here if needed
-export { test, expect } from "lovable-agent-playwright-config/fixture";
+// Keep one project-local import point for browser specs. The previous Lovable
+// fixture package disappeared during cutover; Playwright itself is the owner.
+export { test, expect } from '@playwright/test';

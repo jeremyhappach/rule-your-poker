@@ -26,10 +26,22 @@ claim that every owner is already database-authoritative.
 | Native wrapper | `capacitor.config.ts` plus `@capacitor/android` and `@capacitor/ios` dependencies. |
 
 Package scripts in `package.json` include `dev: vite`, the focused
-`test:liveness-gauntlet`, `build: vite build`,
+`test:liveness-contract` / legacy `test:liveness-gauntlet`, the real-browser
+`test:liveness-browser`, its credential-free runner smoke and list commands,
+`build: vite build`,
 `build:dev: vite build --mode development`, `lint: eslint .`, and
 `preview: vite preview`. There is no package `typecheck` script. Repository
 policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
+
+## Browser liveness verification
+
+| Area | Source owner |
+|---|---|
+| Playwright runtime | `playwright.config.ts` owns the local/deployed base URL, one-worker execution, Chrome contexts, failure artifacts, and local Vite startup. `playwright-fixture.ts` exposes the standard Playwright fixture without an external config package. |
+| Two-client lifecycle matrix | `e2e/liveness/allGames.twoClient.spec.ts` runs Holm, 3-5-7, Cribbage, Gin Rummy, Horses, Ship Captain Crew, and Yahtzee as independent two-human fake-money scenarios. `support/twoClientSession.ts` owns login, table creation/join, dealer selection, ambiguous ante commit, and mandatory guarded Blast cleanup. |
+| Cross-country transport | `e2e/liveness/support/crossCountryNetwork.ts` applies delay and deterministic jitter to one browser's actual Supabase HTTP/WebSocket traffic, supports bounded offline bursts, and can discard one exact RPC response only after server processing. It does not modify application transport or global harness state. |
+| Browser liveness contract | `e2e/liveness/support/livenessAssertions.ts` requires one canonical shell/felt, converged session and dealer-game identities, live authoritative status, no bootstrap limbo, and at least one visible legal-action surface. Stable semantic attributes are published by `Game.tsx`, `DealerGameSetup.tsx`, `AnteUpDialog.tsx`, and `PlayerOptionsMenu.tsx`. |
+| Safe execution boundary | `e2e/liveness/support/env.ts` reads the ignored `.env.e2e.local`, requires two distinct existing identities, explicit fake-money-write acknowledgement, and explicit confirmation that player 1 has Blast authority. `e2e/liveness/runner.smoke.spec.ts` verifies the two-context browser runner without writes or credentials. |
 
 ## Supabase boundary
 

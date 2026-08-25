@@ -108,6 +108,8 @@ export const PlayerOptionsMenu = ({
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button 
+            data-player-options-trigger=""
+            aria-label="Player options"
             variant="ghost" 
             size="icon"
             className={variant === 'mobile' 
@@ -160,6 +162,8 @@ export const PlayerOptionsMenu = ({
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button 
+            data-player-options-trigger=""
+            aria-label="Player options"
             variant="ghost" 
             size="icon"
             className={variant === 'mobile' 
@@ -234,6 +238,8 @@ export const PlayerOptionsMenu = ({
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button 
+          data-player-options-trigger=""
+          aria-label="Player options"
           variant="ghost" 
           size="icon"
           className={variant === 'mobile' 

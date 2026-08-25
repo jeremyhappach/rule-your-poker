@@ -258,7 +258,14 @@ export const AnteUpDialog = ({
 
   return (
     <Dialog open={!hasDecided && timeLeft > 0} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        data-authoritative-action-surface="ante-decision"
+        data-ante-decision-game-id={gameId}
+        data-ante-decision-dealer-game-id={dealerGameId}
+        data-ante-decision-game-type={gameType ?? undefined}
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-center text-2xl">
             {isRunningItBack ? "🔥 Running it Back!" : "Game Configuration Set!"}

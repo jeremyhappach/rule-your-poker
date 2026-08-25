@@ -1326,3 +1326,21 @@ postgame handoff has a null dealer-game identity, that trigger may resume only
 its immutable outgoing descriptor. Completion removes the trigger, and a
 different concrete dealer game rejects the stale descriptor. This provides
 remount recovery without an arbitrary timer or historical replay.
+
+## D-093 - Contract coverage and two-client browser liveness are separate evidence tiers
+
+A source assertion, pure state permutation, mocked transport, or component
+render test may prove a useful invariant, but it is not evidence that two real
+browsers survive cross-country disorder. The fast Vitest liveness contract is
+retained for focused regression feedback; only the Playwright tier may claim
+that it exercised independent authenticated clients, real application routes,
+Supabase HTTP/Realtime traffic, a full route remount, and visible DOM recovery.
+
+The browser tier always uses two distinct humans and fake-money sessions. It
+may impair one browser's transport, including discarding an RPC response after
+the database processed the request, but it may not enable bots, Real Money,
+global rule harnesses, polling, hidden progression APIs, or a second gameplay
+owner. Every game type runs independently so one failure does not suppress the
+remaining evidence. Cleanup uses the existing database-guarded admin Blast
+path and is mandatory; missing credentials, authority acknowledgement, or
+cleanup fail the run closed.

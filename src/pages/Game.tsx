@@ -16069,7 +16069,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ) : null;
 
   const innerTree = (
-    <div data-lifecycle-branch="loaded-inner" className={_innerBgClass}>
+    <div
+      data-lifecycle-branch="loaded-inner"
+      data-authoritative-game-id={gameId ?? undefined}
+      data-authoritative-game-status={game.status ?? undefined}
+      data-authoritative-game-type={game.game_type ?? undefined}
+      data-authoritative-dealer-game-id={(game as any).current_game_uuid ?? undefined}
+      data-authoritative-round-id={currentRound?.id ?? undefined}
+      data-authoritative-round-status={currentRound?.status ?? undefined}
+      data-authoritative-game-paused={game.is_paused ? '1' : '0'}
+      className={_innerBgClass}
+    >
       {/*
        * Phase 2, Step 4 — session-level passive lifecycle rail ownership.
        * Emits canonical ambient/transient events for dealer-selection,
