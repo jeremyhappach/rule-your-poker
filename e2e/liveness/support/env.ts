@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { resolveTestRunIsolation } from './runIsolation';
+
 export type PlayerCredentials = {
   email: string;
   password: string;
@@ -30,18 +32,34 @@ function loadEnvFile(fileName: string): void {
 
 loadEnvFile('.env.e2e.local');
 
-function readPlayer(prefix: 'PTOWN_E2E_PLAYER1' | 'PTOWN_E2E_PLAYER2'): PlayerCredentials | null {
-  const email = process.env[`${prefix}_EMAIL`]?.trim() ?? '';
-  const password = process.env[`${prefix}_PASSWORD`] ?? '';
+function readPlayer(
+  prefix: 'PTOWN_E2E_PLAYER1' | 'PTOWN_E2E_PLAYER2',
+  environment: NodeJS.ProcessEnv,
+  identitySlot: string | null,
+): PlayerCredentials | null {
+  const scopedPrefix = identitySlot
+    ? `PTOWN_E2E_${identitySlot.toUpperCase()}_${prefix.slice('PTOWN_E2E_'.length)}`
+    : prefix;
+  const email = environment[`${scopedPrefix}_EMAIL`]?.trim() ?? '';
+  const password = environment[`${scopedPrefix}_PASSWORD`] ?? '';
   return email && password ? { email, password } : null;
 }
 
-export const e2eEnvironment = {
-  player1: readPlayer('PTOWN_E2E_PLAYER1'),
-  player2: readPlayer('PTOWN_E2E_PLAYER2'),
-  player1CanBlast: process.env.PTOWN_E2E_PLAYER1_CAN_BLAST === '1',
-  allowFakeMoneyWrites: process.env.PTOWN_E2E_ALLOW_FAKE_MONEY_WRITES === '1',
-};
+export function resolveE2eEnvironment(environment: NodeJS.ProcessEnv = process.env) {
+  const isolation = resolveTestRunIsolation(environment);
+  const scopedPrefix = (name: string) => isolation.identitySlot
+    ? `PTOWN_E2E_${isolation.identitySlot.toUpperCase()}_${name.slice('PTOWN_E2E_'.length)}`
+    : name;
+  return {
+    player1: readPlayer('PTOWN_E2E_PLAYER1', environment, isolation.identitySlot),
+    player2: readPlayer('PTOWN_E2E_PLAYER2', environment, isolation.identitySlot),
+    player1CanBlast: environment[scopedPrefix('PTOWN_E2E_PLAYER1_CAN_BLAST')] === '1',
+    allowFakeMoneyWrites: environment.PTOWN_E2E_ALLOW_FAKE_MONEY_WRITES === '1',
+    isolation,
+  };
+}
+
+export const e2eEnvironment = resolveE2eEnvironment();
 
 export function requireTwoPlayerEnvironment(): {
   player1: PlayerCredentials;
@@ -50,8 +68,8 @@ export function requireTwoPlayerEnvironment(): {
   const { player1, player2, player1CanBlast, allowFakeMoneyWrites } = e2eEnvironment;
   if (!player1 || !player2) {
     throw new Error(
-      'Two-client liveness gauntlet requires PTOWN_E2E_PLAYER1_EMAIL/PASSWORD and '
-      + 'PTOWN_E2E_PLAYER2_EMAIL/PASSWORD (environment or ignored .env.e2e.local).',
+      'Two-client liveness gauntlet requires a configured PLAYER1/PLAYER2 credential pair. '
+      + 'When PTOWN_E2E_IDENTITY_SLOT is set, use PTOWN_E2E_<SLOT>_PLAYER1_EMAIL/PASSWORD and PLAYER2 equivalents.',
     );
   }
   if (player1.email.toLowerCase() === player2.email.toLowerCase()) {

@@ -1,7 +1,15 @@
 import { defineConfig } from '@playwright/test';
+import path from 'node:path';
 
 const externalBaseUrl = process.env.PTOWN_E2E_BASE_URL?.trim();
 const localBaseUrl = 'http://127.0.0.1:4173';
+const runNamespace = process.env.PTOWN_E2E_RUN_NAMESPACE?.trim();
+if (runNamespace && !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(runNamespace)) {
+  throw new Error('PTOWN_E2E_RUN_NAMESPACE must contain only letters, numbers, underscores, or hyphens.');
+}
+const outputRoot = process.env.PTOWN_E2E_OUTPUT_DIR?.trim() || 'test-results';
+const outputDir = runNamespace ? path.join(outputRoot, runNamespace) : outputRoot;
+const reportDir = runNamespace ? path.join('playwright-report', runNamespace) : 'playwright-report';
 
 export default defineConfig({
   testDir: './e2e',
@@ -10,8 +18,9 @@ export default defineConfig({
   timeout: 3 * 60_000,
   expect: { timeout: 30_000 },
   retries: process.env.CI ? 1 : 0,
+  outputDir,
   reporter: process.env.CI
-    ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
+    ? [['line'], ['html', { open: 'never', outputFolder: reportDir }]]
     : 'line',
   use: {
     baseURL: externalBaseUrl || localBaseUrl,

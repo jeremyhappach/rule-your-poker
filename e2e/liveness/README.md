@@ -42,3 +42,26 @@ cannot remove the session. To test a deployed frontend, also set
 `PTOWN_E2E_BASE_URL`. The command fails closed when credentials, the explicit
 admin-cleanup acknowledgement, or the fake-money write acknowledgement are
 absent. Browser artifacts are retained only on failure.
+
+## Parallel campaign workers
+
+Concurrent workers must not reuse an authenticated pair or the same Playwright
+artifact directory. Set all of the following for each worker:
+
+```text
+PTOWN_E2E_REQUIRE_ISOLATION=1
+PTOWN_E2E_IDENTITY_SLOT=cribbage_a
+PTOWN_E2E_RUN_NAMESPACE=cribbage-a-20260825
+PTOWN_E2E_CRIBBAGE_A_PLAYER1_EMAIL=...
+PTOWN_E2E_CRIBBAGE_A_PLAYER1_PASSWORD=...
+PTOWN_E2E_CRIBBAGE_A_PLAYER2_EMAIL=...
+PTOWN_E2E_CRIBBAGE_A_PLAYER2_PASSWORD=...
+PTOWN_E2E_CRIBBAGE_A_PLAYER1_CAN_BLAST=1
+```
+
+The slot name is normalized to uppercase for environment-variable lookup. Each
+run writes to `test-results/<namespace>` (and an isolated CI HTML report). A
+local fail-closed lease hashes the selected email pair, so a second worker using
+the same two people stops before it can create a game. Test output records only
+the namespace, slot, generated game UUID, and cleanup receipt—never emails or
+passwords.

@@ -2,6 +2,8 @@ import { expect, type Browser, type BrowserContext, type Page } from '@playwrigh
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../../src/integrations/supabase/types';
 import { CrossCountryNetwork, runOfflineBurst } from './crossCountryNetwork';
+import { e2eEnvironment, type PlayerCredentials } from './env';
+import { acquireIdentityLease, type IdentityLease } from './runIsolation';
 
 export type DealerGameType =
   | 'holm-game'
@@ -12,7 +14,7 @@ export type DealerGameType =
   | 'ship-captain-crew'
   | 'yahtzee';
 
-type Credentials = { email: string; password: string };
+type Credentials = PlayerCredentials;
 
 export type DealerGameEntryOptions = {
   configure?: (configSurface: ReturnType<Page['locator']>, setupPage: Page) => Promise<void>;
@@ -27,6 +29,7 @@ export type TwoClientSession = {
   peerNetwork: CrossCountryNetwork;
   cleanupClient: SupabaseClient<Database>;
   gameId: string;
+  identityLease: IdentityLease | null;
 };
 
 async function login(page: Page, credentials: Credentials): Promise<void> {
@@ -70,6 +73,10 @@ export async function createTwoClientSession(
   hostCredentials: Credentials,
   peerCredentials: Credentials,
 ): Promise<TwoClientSession> {
+  const identityLease = acquireIdentityLease(
+    { player1: hostCredentials, player2: peerCredentials },
+    e2eEnvironment.isolation,
+  );
   const hostContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const peerContext = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -122,7 +129,13 @@ export async function createTwoClientSession(
       peerNetwork,
       cleanupClient,
       gameId,
+      identityLease,
     };
+
+    console.log(
+      `[two-client] namespace=${e2eEnvironment.isolation.runNamespace ?? 'default'} `
+      + `identity_slot=${e2eEnvironment.isolation.identitySlot ?? 'default'} game_id=${gameId}`,
+    );
 
     await peerPage.goto(`/game/${gameId}`);
     await expect(peerPage.locator('[data-lifecycle-branch="loaded-inner"]')).toHaveCount(1);
@@ -142,6 +155,7 @@ export async function createTwoClientSession(
       }
     }
     await Promise.allSettled([hostContext.close(), peerContext.close()]);
+    identityLease?.release();
     if (cleanupError) {
       throw new AggregateError(
         [creationError, cleanupError],
@@ -219,7 +233,11 @@ export async function closeTwoClientSession(session: TwoClientSession): Promise<
     session.hostNetwork.waitForDelayedDeliveries().catch(() => {}),
     session.peerNetwork.waitForDelayedDeliveries().catch(() => {}),
   ]);
-  await Promise.allSettled([session.hostContext.close(), session.peerContext.close()]);
+  try {
+    await Promise.allSettled([session.hostContext.close(), session.peerContext.close()]);
+  } finally {
+    session.identityLease?.release();
+  }
 }
 
 export async function blastFakeMoneySession(session: TwoClientSession): Promise<void> {
@@ -279,4 +297,8 @@ export async function blastFakeMoneySession(session: TwoClientSession): Promise<
     'Fake-money cleanup verification',
   );
   if (remaining) throw new Error('Fake-money cleanup returned but the session still exists');
+  console.log(
+    `[two-client] namespace=${e2eEnvironment.isolation.runNamespace ?? 'default'} `
+    + `game_id=${session.gameId} cleanup=verified`,
+  );
 }
