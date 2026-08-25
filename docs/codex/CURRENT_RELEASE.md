@@ -2,6 +2,24 @@
 
 Date: 2026-08-25
 
+## Branch-smoke matrix — initial execution
+
+- The browser matrix now has eleven independently-run, two-human fake-money
+  scenarios. It first drives a named rule branch, then requires the same
+  dealer game to reach exact terminal settlement, connected Session Ended,
+  fresh-client lobby admission, and guarded cleanup under cross-country
+  transport disorder.
+- The first systematic run completed all eleven entries in 30.4 minutes.
+  Nine passed: Holm all-fold carry-forward, solo-vs-Chucky, and multi-stayer
+  showdown; 3-5-7 both-fold, both-stay, and regular-leg-to-terminal; Horses;
+  Ship Captain Crew; and the full Yahtzee scorecard.
+- Cribbage's 61-point multi-hand scenario failed closed when neither client
+  exposed a legal action surface. Gin's multi-hand scenario recorded a
+  bounded authoritative-proof abort and then a cleanup route-redirect failure.
+  Each failure has an independent Playwright trace, screenshots, and attached
+  scenario evidence. No root-cause investigation or product-code change was
+  performed during the matrix run.
+
 ## Two-human terminal-settlement gauntlet
 
 - Production now has an independent full-match browser tier for all seven

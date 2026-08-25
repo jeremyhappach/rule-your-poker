@@ -141,17 +141,25 @@ async function playThreeFiveSeven(
   const selector = '[data-authoritative-action-surface="holm-357-decision"]';
   const hostSurface = session.hostPage.locator(selector);
   const peerSurface = session.peerPage.locator(selector);
-  await Promise.all([
-    (async () => {
-      await expect(hostSurface).toBeVisible({ timeout: 45_000 });
-      await hostSurface.getByRole('button', { name: 'Stay', exact: true }).click();
-    })(),
-    (async () => {
-      await expect(peerSurface).toBeVisible({ timeout: 45_000 });
-      await peerSurface.getByRole('button', { name: 'Drop', exact: true }).click();
-    })(),
-  ]);
-  await probe.waitForTerminalResult(session.gameId, dealerGameId, expected);
+  for (let pair = 0; pair < 40; pair += 1) {
+    if (await isTerminal(session, probe, dealerGameId, expected)) return;
+    try {
+      await Promise.all([
+        (async () => {
+          await expect(hostSurface).toBeVisible({ timeout: 45_000 });
+          await hostSurface.getByRole('button', { name: 'Stay', exact: true }).click();
+        })(),
+        (async () => {
+          await expect(peerSurface).toBeVisible({ timeout: 45_000 });
+          await peerSurface.getByRole('button', { name: 'Drop', exact: true }).click();
+        })(),
+      ]);
+    } catch (error) {
+      if (await isTerminal(session, probe, dealerGameId, expected)) return;
+      throw error;
+    }
+  }
+  throw new Error('3-5-7 did not reach terminal settlement within 40 decision pairs');
 }
 
 async function discardToCrib(page: Page): Promise<void> {

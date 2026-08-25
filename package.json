@@ -13,6 +13,7 @@
     "test:liveness-browser:runner": "playwright test e2e/liveness/runner.smoke.spec.ts",
     "test:liveness-terminal": "playwright test e2e/terminal",
     "test:liveness-terminal:list": "playwright test e2e/terminal --list",
+    "test:branch-smoke": "playwright test e2e/branchSmoke",
     "build": "npm run test:cribbage-rejoin && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
