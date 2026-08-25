@@ -13,6 +13,24 @@ type SessionSnapshot = Database['public']['Tables']['session_player_snapshots'][
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+async function withProbeDeadline<T>(
+  operation: PromiseLike<T>,
+  label: string,
+  timeoutMs = 10_000,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} exceeded ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export class TerminalSettlementProbe {
   private readonly client: SupabaseClient<Database>;
 
@@ -52,7 +70,10 @@ export class TerminalSettlementProbe {
     if (expected.eventKind) query = query.eq('event_kind', expected.eventKind);
     if (expected.settlementKey) query = query.eq('settlement_key', expected.settlementKey);
 
-    const { data, error } = await query.order('created_at', { ascending: true }).limit(2);
+    const { data, error } = await withProbeDeadline(
+      query.order('created_at', { ascending: true }).limit(2),
+      'Terminal settlement query',
+    );
     if (error) throw new Error(`Could not read terminal settlement: ${error.message}`);
     if (data.length > 1) {
       throw new Error(
@@ -90,6 +111,60 @@ export class TerminalSettlementProbe {
       await wait(250);
     }
     throw new Error('LAST HAND was not durably recorded');
+  }
+
+  async readCribbageProgress(
+    gameId: string,
+    dealerGameId: string,
+  ): Promise<{ phase: string | null; eventSequence: number }> {
+    const { data, error } = await withProbeDeadline(
+      this.client
+        .from('rounds')
+        .select('cribbage_state')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', dealerGameId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      'Cribbage progress query',
+    );
+    if (error) throw new Error(`Could not read Cribbage progress: ${error.message}`);
+    const state = data?.cribbage_state as {
+      phase?: string;
+      pegging?: { eventSequence?: number };
+    } | null;
+    return {
+      phase: state?.phase ?? null,
+      eventSequence: Number(state?.pegging?.eventSequence ?? 0),
+    };
+  }
+
+  async readGinProgress(
+    gameId: string,
+    dealerGameId: string,
+  ): Promise<{ phase: string | null; turnPhase: string | null; actionCount: number }> {
+    const { data, error } = await withProbeDeadline(
+      this.client
+        .from('rounds')
+        .select('gin_rummy_state')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', dealerGameId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      'Gin progress query',
+    );
+    if (error) throw new Error(`Could not read Gin progress: ${error.message}`);
+    const state = data?.gin_rummy_state as {
+      phase?: string;
+      turnPhase?: string;
+      actionCount?: number;
+    } | null;
+    return {
+      phase: state?.phase ?? null,
+      turnPhase: state?.turnPhase ?? null,
+      actionCount: Number(state?.actionCount ?? 0),
+    };
   }
 
   async assertTerminalProof(

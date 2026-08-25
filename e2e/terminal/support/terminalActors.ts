@@ -171,8 +171,9 @@ async function playCribbage(
 ): Promise<void> {
   await Promise.all([discardToCrib(session.hostPage), discardToCrib(session.peerPage)]);
   const tryPlay = async (cards: Locator): Promise<boolean> => {
+    if (!(await cards.count())) return false;
     const card = cards.first();
-    if (!(await card.isEnabled().catch(() => false))) return false;
+    if (!(await card.isEnabled({ timeout: 2_000 }).catch(() => false))) return false;
     try {
       await card.click({ timeout: 2_000 });
       return true;
@@ -193,6 +194,8 @@ async function playCribbage(
       selfPlay: card.getAttribute('data-cribbage-block-self-play'),
     }))[0] ?? null);
   let noActionStreak = 0;
+  let lastProgress = await probe.readCribbageProgress(session.gameId, dealerGameId);
+  let lastProgressAt = Date.now();
   for (let step = 0; step < 120; step += 1) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
     const playableHost = session.hostPage.locator(
@@ -216,6 +219,23 @@ async function playCribbage(
         );
       }
       await pause(250);
+    }
+    const progress = await probe.readCribbageProgress(session.gameId, dealerGameId);
+    if (
+      progress.phase !== lastProgress.phase ||
+      progress.eventSequence > lastProgress.eventSequence
+    ) {
+      lastProgress = progress;
+      lastProgressAt = Date.now();
+    } else if (progress.phase === 'pegging' && Date.now() - lastProgressAt >= 30_000) {
+      const [hostGate, peerGate] = await Promise.all([
+        describeGate(session.hostPage),
+        describeGate(session.peerPage),
+      ]);
+      throw new Error(
+        `Cribbage authoritative progress stalled at event ${progress.eventSequence}: ` +
+        `host=${JSON.stringify(hostGate)} peer=${JSON.stringify(peerGate)}`,
+      );
     }
   }
   throw new Error('Cribbage did not reach terminal settlement within 120 action checks');
@@ -242,7 +262,9 @@ async function chooseBestGinDiscard(page: Page): Promise<void> {
   }).sort((left, right) => (
     left.deadwood - right.deadwood || right.candidate.value - left.candidate.value
   ));
-  await page.locator(`[data-gin-card-index="${ranked[0].candidate.index}"]`).click();
+  await page
+    .locator(`[data-gin-card-index="${ranked[0].candidate.index}"]:not(:disabled):visible`)
+    .click();
 }
 
 async function playGin(
@@ -252,9 +274,25 @@ async function playGin(
   expected: TerminalExpectation,
 ): Promise<void> {
   const pages = [session.hostPage, session.peerPage];
+  let lastProgress = await probe.readGinProgress(session.gameId, dealerGameId);
+  let lastProgressAt = Date.now();
+
+  const waitForCommittedAction = async (previousActionCount: number) => {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const progress = await probe.readGinProgress(session.gameId, dealerGameId);
+      if (progress.actionCount > previousActionCount) return progress;
+      if (await isTerminal(session, probe, dealerGameId, expected)) return progress;
+      await pause(200);
+    }
+    throw new Error(`Gin browser action did not commit after action ${previousActionCount}`);
+  };
+
   for (let step = 0; step < 1_200; step += 1) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
     let acted = false;
+    let expectsCommittedAction = false;
+    let actedSurface: Locator | null = null;
     for (const page of pages) {
       const firstDraw = page.locator('[data-authoritative-action-surface="gin-human-turn:first-draw"]:visible');
       const layOff = page.locator('[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible');
@@ -263,11 +301,21 @@ async function playGin(
       const draw = page.locator('[data-authoritative-action-surface="gin-human-turn:draw"]:visible');
 
       if (await firstDraw.count()) {
-        await firstDraw.getByRole('button', { name: 'Pass', exact: true }).click();
-        acted = true;
+        const pass = firstDraw.getByRole('button', { name: 'Pass', exact: true });
+        if (await pass.isEnabled()) {
+          await pass.click();
+          acted = true;
+          expectsCommittedAction = true;
+          actedSurface = firstDraw;
+        }
       } else if (await layOff.count()) {
-        await layOff.getByRole('button', { name: 'Done Laying Off', exact: true }).click();
-        acted = true;
+        const done = layOff.getByRole('button', { name: 'Done Laying Off', exact: true });
+        if (await done.isEnabled()) {
+          await done.click();
+          acted = true;
+          expectsCommittedAction = true;
+          actedSurface = layOff;
+        }
       } else if (await select.count()) {
         await chooseBestGinDiscard(page);
         acted = true;
@@ -278,13 +326,50 @@ async function playGin(
         else if (await knock.count()) await knock.click();
         else await discard.getByRole('button', { name: 'Discard', exact: true }).click();
         acted = true;
+        expectsCommittedAction = true;
+        actedSurface = discard;
       } else if (await draw.count()) {
         await page.locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]').click();
         acted = true;
+        expectsCommittedAction = true;
+        actedSurface = draw;
       }
       if (acted) break;
     }
+
+    if (acted && expectsCommittedAction) {
+      const progress = await waitForCommittedAction(lastProgress.actionCount);
+      lastProgress = progress;
+      lastProgressAt = Date.now();
+      if (actedSurface) {
+        await expect(actedSurface).toBeHidden({ timeout: 15_000 });
+      }
+      continue;
+    }
+
     await pause(acted ? 150 : 350);
+    const progress = await probe.readGinProgress(session.gameId, dealerGameId);
+    if (
+      progress.phase !== lastProgress.phase ||
+      progress.turnPhase !== lastProgress.turnPhase ||
+      progress.actionCount > lastProgress.actionCount
+    ) {
+      lastProgress = progress;
+      lastProgressAt = Date.now();
+    } else if (Date.now() - lastProgressAt >= 30_000) {
+      const surfaces = await Promise.all(pages.map(async (page) => ({
+        firstDraw: await page.locator('[data-authoritative-action-surface="gin-human-turn:first-draw"]:visible').count(),
+        draw: await page.locator('[data-authoritative-action-surface="gin-human-turn:draw"]:visible').count(),
+        select: await page.locator('[data-authoritative-action-surface="gin-human-turn:select"]:visible').count(),
+        discard: await page.locator('[data-authoritative-action-surface="gin-human-turn:discard"]:visible').count(),
+        layOff: await page.locator('[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible').count(),
+        enabledCards: await page.locator('[data-gin-hand-card-key]:not(:disabled):visible').count(),
+      })));
+      throw new Error(
+        `Gin authoritative progress stalled at action ${progress.actionCount} ` +
+        `(${progress.phase}/${progress.turnPhase}): ${JSON.stringify(surfaces)}`,
+      );
+    }
   }
   throw new Error('Gin Rummy did not reach terminal settlement within 1,200 action checks');
 }

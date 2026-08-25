@@ -3101,7 +3101,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
-  type GameDataFetchTrigger = 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_fallback' | 'action_surface_mismatch' | 'realtime_update' | 'manual' | 'unknown';
+  type GameDataFetchTrigger = 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'online' | 'realtime_reconnect' | 'realtime_fallback' | 'action_surface_mismatch' | 'realtime_update' | 'manual' | 'unknown';
   const serializedFetchRef = useRef<ReturnType<typeof createSerializedAuthoritativeFetch<GameDataFetchTrigger>> | null>(null);
   if (!serializedFetchRef.current) {
     serializedFetchRef.current = createSerializedAuthoritativeFetch<GameDataFetchTrigger>();
@@ -4878,7 +4878,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // ~2s of subscription handshake on every auth-state flip.
   }, [gameId]);
 
-  // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
+  // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume)
+  // or the browser regains network connectivity,
   // immediately refetch game data and clear stale caches if the backend shows a different state.
   // This prevents the "stuck in-progress UI" when the user was away and the game transitioned.
   //
@@ -4899,7 +4900,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     let lastResyncTime = 0;
     const RESYNC_DEBOUNCE_MS = 1000; // Don't resync more than once per second
 
-    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow') => {
+    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow' | 'online') => {
       const now = Date.now();
       if (now - lastResyncTime < RESYNC_DEBOUNCE_MS) return;
       if (resyncInFlightRef.current) return;
@@ -4987,6 +4988,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       void handleResync('focus');
     };
 
+    const handleOnline = () => {
+      void handleResync('online');
+    };
+
     // iOS Safari pageshow event (for BFCache restores)
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -4998,11 +5003,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('online', handleOnline);
     window.addEventListener('pageshow', handlePageShow as EventListener);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('online', handleOnline);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
     };
   }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
@@ -10667,6 +10674,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         fetchTrigger === 'visibility'
         || fetchTrigger === 'focus'
         || fetchTrigger === 'pageshow'
+        || fetchTrigger === 'online'
         || fetchTrigger === 'realtime_reconnect'
         || fetchTrigger === 'realtime_fallback'
         || fetchTrigger === 'action_surface_mismatch'

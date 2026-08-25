@@ -21,6 +21,7 @@ export type AuthoritativeRecoverySource =
   | 'visibility'
   | 'focus'
   | 'pageshow'
+  | 'online'
   | 'realtime_reconnect'
   | 'realtime_fallback'
   | 'action_surface_mismatch';

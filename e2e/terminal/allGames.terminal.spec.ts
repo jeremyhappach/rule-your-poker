@@ -62,10 +62,15 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
           probe,
           dealerGameId,
         );
+        console.log(`[terminal] ${gameType} settlement observed: ${result.id}`);
 
         await session.peerPage.close();
         session.peerPage = await session.peerContext.newPage();
-        await session.peerPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded' });
+        await session.peerPage.goto(`/game/${session.gameId}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        });
+        console.log(`[terminal] ${gameType} fresh peer mounted`);
 
         await Promise.all([
           expect(session.hostPage.locator('[data-session-ended-panel]')).toBeVisible({ timeout: 120_000 }),
@@ -78,9 +83,12 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
           ),
         ]);
         await expect(session.peerPage.getByText('Game Lobby', { exact: true }).first()).toBeVisible();
+        console.log(`[terminal] ${gameType} client and database proof complete`);
       } finally {
         try {
+          console.log(`[terminal] ${gameType} cleanup starting`);
           await blastFakeMoneySession(session);
+          console.log(`[terminal] ${gameType} cleanup complete`);
         } finally {
           await closeTwoClientSession(session);
         }
