@@ -4989,6 +4989,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
 
     const handleOnline = () => {
+      // Fan out exact game-specific reads immediately. A full-table rehydrate
+      // can be serialized behind an older request under long-haul conditions;
+      // private action state must not wait behind that queue after connectivity
+      // returns. Each subscriber still enforces its own identity/progress gate.
+      dispatchAuthoritativeRecoverySnapshot('online');
       void handleResync('online');
     };
 

@@ -35,6 +35,7 @@ describe('gameplay supplemental Realtime catch-up wiring', () => {
     expect(gameSource).toContain('dispatchAuthoritativeRecoverySnapshot(fetchTrigger)');
     expect(gameSource).toContain("window.addEventListener('online', handleOnline)");
     expect(gameSource).toContain("window.removeEventListener('online', handleOnline)");
+    expect(gameSource).toContain("dispatchAuthoritativeRecoverySnapshot('online')");
     expect(gameSource).toContain("fetchTrigger === 'online'");
     expect(gameSource).toContain("fetchTrigger === 'realtime_reconnect'");
     expect(gameSource).toContain("fetchTrigger === 'realtime_fallback'");
