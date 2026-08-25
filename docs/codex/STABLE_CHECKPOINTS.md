@@ -334,3 +334,12 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   one legal non-duplicated cut, pegging admission, and inert duplicate/late
   replay. Production recovery selected 5-diamonds and preserved all financial
   and historical state.
+
+## 2026-08-25 — Cribbage multi-hand cross-country preview checkpoint
+
+- Commit `42faab42a` passed the authenticated, two-client
+  `cribbage-multi-hand` scenario through terminal settlement, peer recovery,
+  and guarded fake-money teardown on the deployed preview.
+- This checkpoint specifically covers the delayed later-hand cut and pegging
+  presentation boundary; it is preview evidence, not a substitute for
+  production smoke.

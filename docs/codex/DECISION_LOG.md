@@ -1359,3 +1359,14 @@ progress admission guards. The online event does not infer an action, advance
 gameplay, replay financial movement, or install polling. Duplicate recovery
 receipts are harmless because exact identity and semantic equality remain the
 admission boundary.
+
+## D-095 - Cribbage cut presentation provenance is hand-scoped
+
+Route entry mode remains the authority for opening-table presentation, but it
+must not decide a later hand's cut presentation. For each hand, only a client
+that observed a pre-pegging phase may wait for its local discard/cut sequence.
+A peer first arriving in pegging with an exposed authoritative cut reconstructs
+that cut and crib from the authoritative facts and releases its controls.
+
+This is presentation-only recovery: it neither infers a player action nor
+changes database, scoring, settlement, or financial authority.

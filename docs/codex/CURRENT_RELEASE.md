@@ -3031,3 +3031,15 @@ canonical pot flight together with the winner announcement and confetti. The
 destination-chip bounce remains separate presentation debt in Backlog item 8.
 The same smoke exposed winner cards without an explicit Show Cards action;
 that consent defect is isolated in Backlog item 3H and is not accepted.
+
+## 2026-08-25 — Cross-country liveness release candidate
+
+- The `codex/gin-action-liveness` branch validated a bounded, replay-safe Gin
+  action retry against an intentionally lost action response.
+- Cribbage now resets pegging-boundary presentation at each hand identity,
+  retains live Go/31 release timers across same-phase snapshots, and decides
+  cut-reveal recovery per hand rather than per route mount.
+- The authenticated two-client `cribbage-multi-hand` preview scenario reached
+  terminal settlement, peer recovery, and guarded teardown at commit
+  `42faab42a`. This is preview evidence pending publication of the verified
+  branch to `main` and Jeremy's production smoke.
