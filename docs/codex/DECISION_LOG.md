@@ -1344,3 +1344,18 @@ owner. Every game type runs independently so one failure does not suppress the
 remaining evidence. Cleanup uses the existing database-guarded admin Blast
 path and is mandatory; missing credentials, authority acknowledgement, or
 cleanup fail the run closed.
+
+## D-094 - Browser reconnection fans out exact recovery before full reconciliation
+
+The browser `online` edge is an authoritative recovery trigger, not proof that
+the current client projection is complete. It immediately fans out the
+existing game-specific exact loaders and independently requests the serialized
+full game snapshot. A slow or failed full snapshot may not prevent a Gin,
+Cribbage, Holm, 3-5-7, or dice loader from recovering the exact private or
+round state needed to render a legal action.
+
+Each loader retains its existing game, dealer-game, hand, round, and monotonic
+progress admission guards. The online event does not infer an action, advance
+gameplay, replay financial movement, or install polling. Duplicate recovery
+receipts are harmless because exact identity and semantic equality remain the
+admission boundary.

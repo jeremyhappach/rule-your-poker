@@ -36,7 +36,9 @@ export async function configureShortestTerminal(
     return;
   }
   if (gameType === 'gin-rummy') {
-    await configSurface.getByRole('button', { name: /Short.*50 pts/ }).click();
+    const shortMatch = configSurface.getByRole('button', { name: /Short.*50 pts/ });
+    await shortMatch.click();
+    await expect(shortMatch).toHaveClass(/bg-poker-gold\/20/);
   }
 }
 
@@ -244,7 +246,12 @@ async function playCribbage(
 type GinDomCard = GinRummyCard & { index: number };
 
 async function chooseBestGinDiscard(page: Page): Promise<void> {
-  const cards = await page.locator('[data-gin-hand-card-key]:not(:disabled):visible')
+  const selectableCards = page.locator('[data-gin-hand-card-key]:not(:disabled):visible');
+  await expect.poll(
+    () => selectableCards.count(),
+    { timeout: 15_000, intervals: [100, 200, 500] },
+  ).toBe(11);
+  const cards = await selectableCards
     .evaluateAll((nodes) => nodes.map((node) => ({
       index: Number(node.getAttribute('data-gin-card-index')),
       rank: node.getAttribute('data-gin-card-rank') ?? '',

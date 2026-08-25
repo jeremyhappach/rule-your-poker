@@ -2,6 +2,16 @@
 
 ## Platform
 
+- The full two-human terminal-settlement matrix passed production on
+  2026-08-25 against published runtime commit
+  `4023c6c1ac891f4402e2ace59b132a3776cb0c92`: Holm, 3-5-7, Cribbage, Gin
+  Rummy, Horses, Ship Captain Crew, and Yahtzee each reached one exact terminal
+  settlement after cross-country disorder. Every scenario proved a winner, two
+  distinct human terminal snapshots, connected-client Session Ended, ended
+  database state, fresh-mount lobby admission, and guarded cleanup. Preserve
+  the immediate browser-online fanout to exact game-specific loaders, their
+  identity/progress admission guards, and the database-owned 3-5-7 session-end
+  request. Do not reduce this checkpoint to startup or first-action evidence.
 - The automated two-human browser liveness matrix passed production on
   2026-08-25 against published frontend commit
   `716ce39a93e8c38972981b1ab81f555dd2c6b1e1`: Holm, 3-5-7, Cribbage, Gin

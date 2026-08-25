@@ -2,6 +2,41 @@
 
 Date: 2026-08-25
 
+## Two-human terminal-settlement gauntlet
+
+- Production now has an independent full-match browser tier for all seven
+  games. Each scenario uses two distinct signed-in humans, fake money, the
+  cross-country transport profile, a lost committed ante response, and an
+  offline burst after live gameplay. It plays legal actions until the exact
+  terminal settlement exists; startup or a visible first action is not a pass.
+- Holm, 3-5-7, Cribbage, Gin Rummy, Horses, Ship Captain Crew, and Yahtzee all
+  passed against published runtime commit
+  `4023c6c1ac891f4402e2ace59b132a3776cb0c92`. Every pass proved one exact
+  terminal result with a winner, two distinct human terminal snapshots, the
+  connected host's Session Ended table phase, the ended game row, and a fresh
+  peer mount returning directly to the lobby. Guarded fake-money Blast cleanup
+  completed for every session.
+- The gauntlet found two production liveness defects before the complete pass.
+  The 3-5-7 LAST HAND request was rejected by a direct client patch and now
+  uses the replay-safe authoritative request RPC with the canonical fallback
+  host identity. A Gin peer could remain on `Preparing hand...` after its exact
+  private-state read failed during an offline burst; the browser `online` edge
+  now immediately fans out the existing exact game-specific recovery loaders
+  independently of the serialized full fetch. Existing identity/progress
+  guards remain the admission authority, and no polling was added.
+- Focused recovery assertions pass 10/10, TypeScript and the production build
+  pass, and the existing rollback proof covers the 3-5-7 request's winner,
+  tie, duplicate, replay, late-replay, authorization, continuation, and
+  terminal-state paths. The wider contract run remains 239/240 solely because
+  of the unchanged Windows line-ending assertion in the dealer-draw harness.
+- The final Gin replay also hardened the test itself: simple-game configuration
+  now waits for its defaults read before applying overrides, selectable-card
+  transport must expose all eleven cards before discard, and a single aborted
+  database-proof read gets one bounded retry. The replay passed exact terminal
+  proof in 7.3 minutes. The product UI can still visibly accept a Gin setting
+  before its defaults request resolves; correcting that separate setup race is
+  deferred and is not classified as a gameplay freeze.
+
 ## Two-human browser liveness gauntlet
 
 - The freeze audit now has an actual browser tier instead of counting Vitest

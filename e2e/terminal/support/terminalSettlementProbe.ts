@@ -14,21 +14,31 @@ type SessionSnapshot = Database['public']['Tables']['session_player_snapshots'][
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function withProbeDeadline<T>(
-  operation: PromiseLike<T>,
+  operation: (signal: AbortSignal) => PromiseLike<T>,
   label: string,
   timeoutMs = 10_000,
+  attempts = 2,
 ): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      Promise.resolve(operation),
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} exceeded ${timeoutMs}ms`)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    try {
+      return await Promise.resolve(operation(controller.signal));
+    } catch (error) {
+      if (!timedOut || attempt === attempts) {
+        if (timedOut) throw new Error(`${label} exceeded ${timeoutMs}ms on ${attempts} attempts`);
+        throw error;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    await wait(250);
   }
+  throw new Error(`${label} exhausted its retry budget`);
 }
 
 export class TerminalSettlementProbe {
@@ -60,18 +70,19 @@ export class TerminalSettlementProbe {
     dealerGameId: string,
     expected: TerminalExpectation,
   ): Promise<TerminalResult | null> {
-    let query = this.client
-      .from('game_results')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('dealer_game_id', dealerGameId)
-      .eq('game_type', expected.gameType);
-
-    if (expected.eventKind) query = query.eq('event_kind', expected.eventKind);
-    if (expected.settlementKey) query = query.eq('settlement_key', expected.settlementKey);
-
     const { data, error } = await withProbeDeadline(
-      query.order('created_at', { ascending: true }).limit(2),
+      (signal) => {
+        let query = this.client
+          .from('game_results')
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .eq('game_type', expected.gameType);
+
+        if (expected.eventKind) query = query.eq('event_kind', expected.eventKind);
+        if (expected.settlementKey) query = query.eq('settlement_key', expected.settlementKey);
+        return query.order('created_at', { ascending: true }).limit(2).abortSignal(signal);
+      },
       'Terminal settlement query',
     );
     if (error) throw new Error(`Could not read terminal settlement: ${error.message}`);
@@ -118,14 +129,15 @@ export class TerminalSettlementProbe {
     dealerGameId: string,
   ): Promise<{ phase: string | null; eventSequence: number }> {
     const { data, error } = await withProbeDeadline(
-      this.client
-        .from('rounds')
-        .select('cribbage_state')
-        .eq('game_id', gameId)
-        .eq('dealer_game_id', dealerGameId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      (signal) => this.client
+          .from('rounds')
+          .select('cribbage_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(signal),
       'Cribbage progress query',
     );
     if (error) throw new Error(`Could not read Cribbage progress: ${error.message}`);
@@ -144,14 +156,15 @@ export class TerminalSettlementProbe {
     dealerGameId: string,
   ): Promise<{ phase: string | null; turnPhase: string | null; actionCount: number }> {
     const { data, error } = await withProbeDeadline(
-      this.client
-        .from('rounds')
-        .select('gin_rummy_state')
-        .eq('game_id', gameId)
-        .eq('dealer_game_id', dealerGameId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      (signal) => this.client
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(signal),
       'Gin progress query',
     );
     if (error) throw new Error(`Could not read Gin progress: ${error.message}`);

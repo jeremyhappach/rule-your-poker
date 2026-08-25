@@ -153,7 +153,20 @@ export async function enterDealerGameUnderChaos(
   if (['horses', 'ship-captain-crew', 'yahtzee'].includes(gameType)) {
     await setupPage.getByRole('tab', { name: 'Dice Games', exact: true }).click();
   }
+  const simpleConfigTypes = new Set<DealerGameType>([
+    'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee',
+  ]);
+  const defaultsResponse = simpleConfigTypes.has(gameType)
+    ? setupPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname.endsWith('/rest/v1/game_defaults')
+          && url.searchParams.get('game_type') === `eq.${gameType}`;
+      }, { timeout: 15_000 })
+    : null;
   await setupPage.locator(`[data-dealer-game-option="${gameType}"]`).click();
+  // The config surface mounts before its defaults request resolves. Waiting for
+  // that response prevents a late default from overwriting a harness choice.
+  await defaultsResponse;
   const configSurface = setupPage.locator(
     `[data-dealer-game-setup-step="config"][data-dealer-game-setup-selected-game="${gameType}"]`,
   );
