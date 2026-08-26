@@ -18,6 +18,7 @@ type Credentials = PlayerCredentials;
 
 export type DealerGameEntryOptions = {
   configure?: (configSurface: ReturnType<Page['locator']>, setupPage: Page) => Promise<void>;
+  submitNonDealerAnte?: boolean;
 };
 
 export type TwoClientSession = {
@@ -51,7 +52,7 @@ function gameIdFromUrl(url: string): string {
   return match[1];
 }
 
-async function waitForSetupOwner(hostPage: Page, peerPage: Page): Promise<Page> {
+export async function waitForDealerGameSetupOwner(hostPage: Page, peerPage: Page): Promise<Page> {
   let owner: Page | null = null;
   await expect.poll(async () => {
     if (await hostPage.locator('[data-dealer-game-setup-step="game-selection"]').count()) {
@@ -171,6 +172,28 @@ export async function enterDealerGameUnderChaos(
   gameType: DealerGameType,
   options: DealerGameEntryOptions = {},
 ): Promise<void> {
+  await startSessionUnderChaos(session);
+  await configureDealerGameUnderChaos(session, gameType, options);
+}
+
+/** Starts the real session dealer draw while the peer experiences a radio loss. */
+export async function startSessionUnderChaos(session: TwoClientSession): Promise<void> {
+  const { hostPage, peerContext, peerNetwork } = session;
+  peerNetwork.useLongHaulProfile();
+  await hostPage.locator('[data-start-game-btn]').click();
+  await runOfflineBurst(peerContext, 1_750);
+}
+
+/**
+ * Configures the currently authoritative dealer-setup turn. This is shared by
+ * session entry and cross-dealer-game transition tests: neither caller gets a
+ * browser-owned shortcut around setup, ante, or the ambiguous ante response.
+ */
+export async function configureDealerGameUnderChaos(
+  session: TwoClientSession,
+  gameType: DealerGameType,
+  options: DealerGameEntryOptions = {},
+): Promise<void> {
   const {
     hostPage,
     peerPage,
@@ -179,11 +202,7 @@ export async function enterDealerGameUnderChaos(
     peerNetwork,
   } = session;
   peerNetwork.useLongHaulProfile();
-
-  await hostPage.locator('[data-start-game-btn]').click();
-  await runOfflineBurst(peerContext, 1_750);
-
-  const setupPage = await waitForSetupOwner(hostPage, peerPage);
+  const setupPage = await waitForDealerGameSetupOwner(hostPage, peerPage);
   if (['horses', 'ship-captain-crew', 'yahtzee'].includes(gameType)) {
     await setupPage.getByRole('tab', { name: 'Dice Games', exact: true }).click();
   }
@@ -218,6 +237,8 @@ export async function enterDealerGameUnderChaos(
   const hostMustDecide = await hostAnte.isVisible();
   const decisionSurface = hostMustDecide ? hostAnte : peerAnte;
   const decisionNetwork = hostMustDecide ? hostNetwork : peerNetwork;
+
+  if (options.submitNonDealerAnte === false) return;
 
   // Dealer configuration already commits the dealer's ante. The other human's
   // authoritative decision is committed, but that browser loses the exact RPC
