@@ -20,6 +20,7 @@ export type StartGameStage =
   | 'seat_normalization_completed'
   | 'games_update_started'
   | 'games_update_completed'
+  | 'begin_session_dealer_selection_completed'
   | 'fetch_game_data_scheduled'
   | 'fetch_game_data_completed'
   | 'start_game_aborted'

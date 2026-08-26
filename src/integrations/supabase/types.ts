@@ -3172,6 +3172,10 @@ export type Database = {
         Args: { p_game_id: string }
         Returns: Json
       }
+      begin_session_dealer_selection: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
       advance_357_round: {
         Args: {
           _dealer_game_id: string

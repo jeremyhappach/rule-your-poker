@@ -10897,7 +10897,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
   // This function is called when 2+ players are seated in waiting status
-  const startGameFromWaiting = async () => {
+  // Retained briefly as trace-reference code only. The waiting CTA is bound to
+  // the authoritative RPC implementation below; it never invokes this legacy
+  // multi-request sequence.
+  const startGameFromWaitingLegacy = async () => {
     if (!gameId) return;
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
@@ -11214,6 +11217,77 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     emitStartGameStage(sgTrace, 'start_game_completed', true, {
       returnedRow: gamesResult.data ?? null,
+    });
+  };
+
+  const startGameFromWaiting = async () => {
+    if (!gameId) return;
+
+    const sgTrace = createStartGameTrace(gameId, user?.id ?? null, game?.status ?? null);
+    emitStartGameStage(sgTrace, 'start_game_entered', true, {
+      priorClientGameStatus: game?.status ?? null,
+      owner: 'begin_session_dealer_selection',
+    });
+
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session || authData.session.user.id !== user?.id) {
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'auth.getSession',
+        reason: 'authenticated-session-not-ready',
+      });
+      toast({
+        title: 'Start Game failed',
+        description: 'Your sign-in session is not ready. Please refresh and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('begin_session_dealer_selection', {
+      p_game_id: gameId,
+    });
+    const result = data as { outcome?: string; status?: string; timer_generation?: number } | null;
+    const accepted = result?.outcome === 'started' || result?.outcome === 'already_started';
+    emitStartGameStage(sgTrace, 'begin_session_dealer_selection_completed', !error && accepted, {
+      supabase: capturePostgrestResult({ data, error }),
+      outcome: result?.outcome ?? null,
+      returnedStatus: result?.status ?? null,
+    });
+
+    if (error || !accepted) {
+      const reason = error?.message ?? result?.outcome ?? 'unknown failure';
+      toast({
+        title: 'Start Game failed',
+        description: `Unable to start the session: ${reason}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (result?.outcome === 'started') {
+      void logStatusChanged(
+        gameId,
+        user?.id,
+        game?.status ?? 'waiting',
+        'dealer_selection',
+        'Host started game',
+      );
+    }
+    void logSessionEvent({
+      gameId,
+      eventType: 'start_game_authoritative_result' as any,
+      eventData: {
+        correlationId: sgTrace.correlationId,
+        outcome: result?.outcome ?? null,
+        timerGeneration: result?.timer_generation ?? null,
+      },
+      userId: user?.id,
+    });
+
+    await fetchGameData('manual');
+    emitStartGameStage(sgTrace, 'start_game_completed', true, {
+      outcome: result?.outcome,
+      returnedStatus: result?.status,
     });
   };
 
