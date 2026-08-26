@@ -48,6 +48,75 @@ async function waitForAuthoritativeChange(
   await expect(session.peerPage.locator('[data-lifecycle-branch="loaded-inner"]')).toHaveCount(1);
 }
 
+type GameplaySnapshot = {
+  status: string | null;
+  roundId: string | null;
+  deadline: string | null;
+  turn: number | null;
+  sequence: number | null;
+  decisions: string;
+};
+
+async function readGameplaySnapshot(
+  session: Awaited<ReturnType<typeof createTwoClientSession>>,
+): Promise<GameplaySnapshot> {
+  const [{ data: game, error: gameError }, { data: players, error: playersError }] = await Promise.all([
+    session.cleanupClient
+      .from('games')
+      .select('status, current_game_uuid')
+      .eq('id', session.gameId)
+      .maybeSingle(),
+    session.cleanupClient
+      .from('players')
+      .select('id, current_decision, decision_locked')
+      .eq('game_id', session.gameId)
+      .order('position'),
+  ]);
+  if (gameError) throw gameError;
+  if (playersError) throw playersError;
+  const { data: round, error: roundError } = game?.current_game_uuid == null
+    ? { data: null, error: null }
+    : await session.cleanupClient
+      .from('rounds')
+      .select('id, decision_deadline, current_turn_position, holm_turn_sequence')
+      .eq('game_id', session.gameId)
+      .eq('dealer_game_id', game.current_game_uuid)
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  if (roundError) throw roundError;
+  return {
+    status: game?.status ?? null,
+    roundId: round?.id ?? null,
+    deadline: round?.decision_deadline ?? null,
+    turn: round?.current_turn_position ?? null,
+    sequence: round?.holm_turn_sequence ?? null,
+    decisions: JSON.stringify((players ?? []).map((player) => [
+      player.id,
+      player.current_decision,
+      player.decision_locked,
+    ])),
+  };
+}
+
+async function waitForGameplayDeadlineResolution(
+  session: Awaited<ReturnType<typeof createTwoClientSession>>,
+  previous: GameplaySnapshot,
+): Promise<GameplaySnapshot> {
+  let latest = previous;
+  await expect.poll(async () => {
+    latest = await readGameplaySnapshot(session);
+    return latest.status !== previous.status
+      || latest.roundId !== previous.roundId
+      || latest.deadline !== previous.deadline
+      || latest.turn !== previous.turn
+      || latest.sequence !== previous.sequence
+      || latest.decisions !== previous.decisions;
+  }, { timeout: 90_000, intervals: [500, 1_000, 2_000] }).toBe(true);
+  return latest;
+}
+
 test.describe('two-human cross-country deadline and rejoin campaign', () => {
   test('selected deadline is authoritative across peer remount', async ({ browser }, info) => {
     test.setTimeout(12 * 60_000);
@@ -77,9 +146,11 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
           await waitForAuthoritativeChange(session, 'ante_decision');
         } else {
           await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
+          const beforeTimeout = await readGameplaySnapshot(session);
+          evidence.beforeTimeout = beforeTimeout;
           await runOfflineBurst(session.peerContext, 1_250);
           await remountPeer(session);
-          await waitForAuthoritativeChange(session, 'in_progress');
+          evidence.afterTimeout = await waitForGameplayDeadlineResolution(session, beforeTimeout);
         }
       }
       evidence.status = 'passed';

@@ -12,7 +12,7 @@ import {
   type DealerGameType,
   waitForDealerGameSetupOwner,
 } from '../liveness/support/twoClientSession';
-import { expectCanonicalContinuity, waitForBothClientsInLiveGame } from '../liveness/support/livenessAssertions';
+import { expectAuthoritativeGameType, expectCanonicalContinuity } from '../liveness/support/livenessAssertions';
 import {
   authoritativeDealerGameId,
   configureShortestTerminal,
@@ -76,6 +76,26 @@ async function startSuccessor(
   });
 }
 
+async function waitForBothClientsAtDealerGame(
+  session: Awaited<ReturnType<typeof createTwoClientSession>>,
+  gameType: DealerGameType,
+): Promise<string> {
+  await Promise.all([
+    expectAuthoritativeGameType(session.hostPage, gameType),
+    expectAuthoritativeGameType(session.peerPage, gameType),
+  ]);
+  let dealerGameId = '';
+  await expect.poll(async () => {
+    const [host, peer] = await Promise.all([
+      authoritativeDealerGameId(session),
+      session.peerPage.locator('[data-lifecycle-branch="loaded-inner"]').getAttribute('data-authoritative-dealer-game-id'),
+    ]);
+    dealerGameId = host;
+    return host === peer && host.length > 0;
+  }, { timeout: 60_000, intervals: [250, 500, 1_000] }).toBe(true);
+  return dealerGameId;
+}
+
 test.describe('two-human cross-country dealer-game transition campaign', () => {
   test('selected transition retains only successor state', async ({ browser }, info) => {
     test.setTimeout(45 * 60_000);
@@ -93,14 +113,12 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       await enterDealerGameUnderChaos(session, source, {
         configure: (surface) => configureShortestTerminal(source, surface),
       });
-      await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, source);
-      const sourceDealerGameId = await authoritativeDealerGameId(session);
+      const sourceDealerGameId = await waitForBothClientsAtDealerGame(session, source);
       evidence.sourceDealerGameId = sourceDealerGameId;
       await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
 
       await startSuccessor(scenario, session);
-      await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, target);
-      const successorDealerGameId = await authoritativeDealerGameId(session);
+      const successorDealerGameId = await waitForBothClientsAtDealerGame(session, target);
       evidence.successorDealerGameId = successorDealerGameId;
       expect(successorDealerGameId).not.toBe(sourceDealerGameId);
       await runOfflineBurst(session.peerContext, 1_250);
