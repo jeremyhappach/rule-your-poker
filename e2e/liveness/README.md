@@ -30,18 +30,26 @@ PTOWN_E2E_PLAYER1_CAN_BLAST=1
 PTOWN_E2E_ALLOW_FAKE_MONEY_WRITES=1
 ```
 
-Run against the local frontend (which uses its configured Supabase project):
+Run the ordinary liveness browser suite against the local frontend (which uses
+its configured Supabase project):
 
 ```text
 npm run test:liveness-browser
 ```
 
+The human-chaos scripts (`test:human-chaos-*`) are different: they always use
+the deployed HTTPS production frontend and fail before a table is created if
+the observed Supabase project is not `xvhmbuppghwmwpwrkzao`. They never fall
+back to local Vite, because the retired source project is intentionally
+write-locked.
+
 Player 1 must be an existing admin because every test uses the database-guarded,
 fake-money-only **Blast This Game** action in `finally`; the suite fails if it
-cannot remove the session. To test a deployed frontend, also set
-`PTOWN_E2E_BASE_URL`. The command fails closed when credentials, the explicit
-admin-cleanup acknowledgement, or the fake-money write acknowledgement are
-absent. Browser artifacts are retained only on failure.
+cannot remove the session. Ordinary browser suites may set
+`PTOWN_E2E_BASE_URL` to test a deployed frontend. All commands fail closed when
+credentials, the explicit admin-cleanup acknowledgement, or the fake-money
+write acknowledgement are absent. Browser artifacts are retained only on
+failure.
 
 ## Parallel campaign workers
 

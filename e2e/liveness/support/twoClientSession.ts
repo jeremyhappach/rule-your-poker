@@ -4,6 +4,7 @@ import type { Database } from '../../../src/integrations/supabase/types';
 import { CrossCountryNetwork, runOfflineBurst } from './crossCountryNetwork';
 import { e2eEnvironment, type PlayerCredentials } from './env';
 import { acquireIdentityLease, type IdentityLease } from './runIsolation';
+import { assertHumanChaosRuntimeTarget } from '../../humanChaos/target';
 
 export type DealerGameType =
   | 'holm-game'
@@ -101,6 +102,9 @@ export async function createTwoClientSession(
       login(peerPage, peerCredentials),
     ]);
     const runtime = await hostNetwork.waitForRuntimeConfig();
+    if (process.env.PTOWN_E2E_EXPECTED_SUPABASE_PROJECT_REF) {
+      assertHumanChaosRuntimeTarget(runtime.url);
+    }
     const cleanupClient = createClient<Database>(runtime.url, runtime.publishableKey, {
       auth: {
         autoRefreshToken: false,

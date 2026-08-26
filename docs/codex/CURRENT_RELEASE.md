@@ -3067,6 +3067,12 @@ that consent defect is isolated in Backlog item 3H and is not accepted.
   read-only maintenance state to `GameLobby`; the previous duplicate channel
   name caused Supabase to throw during the second mount and left the lobby
   route blank.
+- Human-chaos commands now use the deployed HTTPS production frontend by
+  default and verify that their first observed Supabase request reaches
+  `xvhmbuppghwmwpwrkzao`. They cannot silently fall back to local Vite, whose
+  intentionally write-locked retired source backend previously made Create
+  Game appear to fail. The production Yahtzee gameplay-timeout/rejoin scenario
+  passed with guarded fake-money cleanup after this target correction.
 - Deployed `yahtzee_human_deadline_recovery`: an expired human Yahtzee turn is
   now recovered by the service scheduler through an exact deadline/action
   sequence identity. The new `deadline_auto` path is rejected for ordinary

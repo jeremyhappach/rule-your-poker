@@ -1408,3 +1408,13 @@ state that is shared by a parent and child therefore has one subscription
 owner; descendants receive the resolved primitive state as props. This removes
 duplicate callbacks, duplicate reads, and a post-login blank-route failure
 without giving presentation a second authoritative owner.
+
+## D-099 - Human-chaos browser evidence is production-targeted and wire-verified
+
+The human-chaos suite is an evidence tier for two live browsers, not a local
+frontend convenience test. Its commands therefore use the deployed HTTPS
+production frontend and require the first observed Supabase runtime origin to
+be the owned production project. Local Vite and a caller-supplied alternate
+backend fail before any table is created. This prevents a write-locked retired
+cutover source from being misclassified as a current gameplay or liveness
+failure while retaining fake-money-only creation and database-guarded cleanup.
