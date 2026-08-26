@@ -16,6 +16,7 @@
     "test:branch-smoke": "playwright test e2e/branchSmoke",
     "test:human-chaos-transition": "playwright test e2e/humanChaos/transitions.humanChaos.spec.ts",
     "test:human-chaos-deadline": "playwright test e2e/humanChaos/deadlines.humanChaos.spec.ts",
+    "test:human-chaos-draw": "playwright test e2e/humanChaos/dealerDraws.humanChaos.spec.ts",
     "build": "npm run test:cribbage-rejoin && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
