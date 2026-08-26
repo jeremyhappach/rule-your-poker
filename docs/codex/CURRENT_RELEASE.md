@@ -3059,3 +3059,31 @@ that consent defect is isolated in Backlog item 3H and is not accepted.
   terminal settlement, peer recovery, and guarded teardown at commit
   `42faab42a`. This is preview evidence pending publication of the verified
   branch to `main` and Jeremy's production smoke.
+
+## 2026-08-26 — Freeze-liveness hardening release candidate
+
+- Deployed `yahtzee_human_deadline_recovery`: an expired human Yahtzee turn is
+  now recovered by the service scheduler through an exact deadline/action
+  sequence identity. The new `deadline_auto` path is rejected for ordinary
+  authenticated callers; existing player actions remain authenticated.
+- A missed local 3-5-7 terminal callback no longer blocks dealer setup after
+  authoritative status leaves the outgoing terminal frame or rotates to a
+  different dealer game.
+- Cribbage Go/31 presentation blocking now requires a non-zero action sequence
+  from the current hand. Auto-Go re-arms when the exact round, hand, action
+  sequence, actor, count, Go set, or actor hand changes.
+- Dealer setup renders and arms its authoritative deadline directly from the
+  game snapshot; optional defaults reads no longer hide the form or gate human
+  timeout enforcement.
+- Human-chaos deadline observation now reads the authoritative JSON state for
+  Horses/SCC and Yahtzee. Terminal probes and guarded fake-money cleanup have a
+  larger bounded transport retry budget, and intentional lost-response fetches
+  have an explicit bound.
+
+Validation: the deployed Yahtzee rollback proof passed; deployed privileges
+and zero overdue human Yahtzee deadlines were verified; TypeScript, focused
+liveness tests, and the production build passed. The broad liveness suite was
+239/240, with the sole failure an unrelated pre-existing Windows line-ending
+source assertion in the session tie-harness test. Two browser attempts stopped
+before table creation at the existing post-login `Game Lobby` assertion, so no
+two-client runtime acceptance is claimed for this candidate yet.

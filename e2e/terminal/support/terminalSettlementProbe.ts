@@ -28,8 +28,8 @@ function isAbortLike(error: unknown): boolean {
 export async function withProbeDeadline<T>(
   operation: (signal: AbortSignal) => PromiseLike<T>,
   label: string,
-  timeoutMs = 10_000,
-  attempts = 2,
+  timeoutMs = 30_000,
+  attempts = 3,
 ): Promise<T> {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const controller = new AbortController();

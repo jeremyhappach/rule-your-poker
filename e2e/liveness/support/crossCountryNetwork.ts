@@ -111,7 +111,7 @@ export class CrossCountryNetwork {
 
     if (this.loseResponseFor?.test(new URL(url).pathname)) {
       this.loseResponseFor = null;
-      await route.fetch();
+      await route.fetch({ timeout: 30_000 });
       await route.abort('failed');
       return;
     }

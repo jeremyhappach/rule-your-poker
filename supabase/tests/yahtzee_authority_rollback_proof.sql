@@ -9,6 +9,8 @@ DECLARE
   v_terminal_dealer_game_id uuid:=gen_random_uuid();
   v_bot_game_id uuid:=gen_random_uuid();
   v_bot_dealer_game_id uuid:=gen_random_uuid();
+  v_human_timeout_game_id uuid:=gen_random_uuid();
+  v_human_timeout_dealer_game_id uuid:=gen_random_uuid();
   v_user_one uuid;
   v_user_two uuid;
   v_outsider uuid:=gen_random_uuid();
@@ -18,10 +20,15 @@ DECLARE
   v_terminal_player_two uuid:=gen_random_uuid();
   v_bot_human uuid:=gen_random_uuid();
   v_bot_player uuid:=gen_random_uuid();
+  v_human_timeout_player_one uuid:=gen_random_uuid();
+  v_human_timeout_player_two uuid:=gen_random_uuid();
+  v_human_timeout_actor uuid;
+  v_human_timeout_actor_user uuid;
   v_round_id uuid;
   v_tie_round_id uuid;
   v_terminal_round_id uuid;
   v_bot_round_id uuid;
+  v_human_timeout_round_id uuid;
   v_result jsonb;
   v_replay jsonb;
   v_state jsonb;
@@ -31,6 +38,7 @@ DECLARE
   v_scores_low jsonb:='{"ones":1,"twos":2,"threes":3,"fours":4,"fives":5,"sixes":6,"three_of_a_kind":0,"four_of_a_kind":0,"full_house":0,"small_straight":0,"large_straight":0,"yahtzee":0,"chance":5}'::jsonb;
   v_scores_tie jsonb:='{"ones":3,"twos":6,"threes":9,"fours":12,"fives":15,"sixes":18,"three_of_a_kind":18,"four_of_a_kind":0,"full_house":25,"small_straight":30,"large_straight":40,"yahtzee":0,"chance":20}'::jsonb;
   v_advanced integer;
+  v_expired_at timestamptz;
 BEGIN
   SELECT profile_ids[1],profile_ids[2] INTO v_user_one,v_user_two
     FROM (
@@ -309,15 +317,98 @@ BEGIN
   v_result:=public.start_yahtzee_round(v_bot_game_id,NULL);
   v_bot_round_id:=(v_result->>'round_id')::uuid;
   SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_bot_round_id;
-  v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(clock_timestamp()-interval '1 second'),true);
+  v_expired_at:=clock_timestamp()-interval '1 second';
+  v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(v_expired_at),true);
   PERFORM set_config('app.yahtzee_authoritative_write','on',true);
-  UPDATE public.rounds SET yahtzee_state=v_state,decision_deadline=clock_timestamp()-interval '1 second' WHERE id=v_bot_round_id;
+  UPDATE public.rounds SET yahtzee_state=v_state,decision_deadline=v_expired_at WHERE id=v_bot_round_id;
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   v_advanced:=private.advance_due_yahtzee_state();
   SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_bot_round_id;
   IF v_advanced<1 OR coalesce((v_state->>'actionSequence')::integer,0)<1
      OR (v_state->'playerStates'->v_bot_player::text->>'rollsRemaining')::integer<>2 THEN
     RAISE EXCEPTION 'complete_scheduled_bot_recovery_failed:%:%',v_advanced,v_state;
+  END IF;
+
+  -- A human deadline is executable only by service_role, only after the exact
+  -- persisted deadline expires, and only once for its action sequence.
+  INSERT INTO public.games(id,name,game_type,status,ante_amount,buy_in,pot,current_round,total_hands,dealer_position,is_first_hand,current_host)
+  VALUES(v_human_timeout_game_id,'Yahtzee human deadline recovery proof','yahtzee','ante_decision',10,100,0,NULL,0,1,true,v_user_one);
+  INSERT INTO public.dealer_games(id,dealer_user_id,game_type,session_id,config)
+  VALUES(v_human_timeout_dealer_game_id,v_user_one,'yahtzee',v_human_timeout_game_id,jsonb_build_object('ante_amount',10));
+  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+  UPDATE public.games SET current_game_uuid=v_human_timeout_dealer_game_id WHERE id=v_human_timeout_game_id;
+  INSERT INTO public.players(id,user_id,game_id,position,chips,is_bot,status,ante_decision)
+  VALUES
+    (v_human_timeout_player_one,v_user_one,v_human_timeout_game_id,1,100,false,'active','ante_up'),
+    (v_human_timeout_player_two,v_user_two,v_human_timeout_game_id,2,100,false,'active','ante_up');
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_result:=public.start_yahtzee_round(v_human_timeout_game_id,NULL);
+  v_human_timeout_round_id:=(v_result->>'round_id')::uuid;
+  SELECT nullif(round_row.yahtzee_state->>'currentTurnPlayerId','')::uuid
+    INTO v_human_timeout_actor
+    FROM public.rounds round_row
+   WHERE round_row.id=v_human_timeout_round_id;
+  SELECT player.user_id INTO v_human_timeout_actor_user
+    FROM public.players player WHERE player.id=v_human_timeout_actor;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_human_timeout_actor_user,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    PERFORM public.yahtzee_apply_action(
+      v_human_timeout_round_id,v_human_timeout_actor,'deadline_auto',NULL,NULL,NULL,0
+    );
+    RAISE EXCEPTION 'human_deadline_auto_was_client_callable';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='human_deadline_auto_was_client_callable'
+       OR SQLERRM NOT LIKE '%deadline_auto_requires_service_role%' THEN
+      RAISE;
+    END IF;
+  END;
+
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_result:=public.yahtzee_apply_action(
+    v_human_timeout_round_id,v_human_timeout_actor,'deadline_auto',NULL,NULL,NULL,0
+  );
+  IF v_result->>'outcome'<>'rejected' OR v_result->>'reason'<>'deadline_not_due' THEN
+    RAISE EXCEPTION 'human_deadline_auto_advanced_early:%',v_result;
+  END IF;
+
+  v_expired_at:=clock_timestamp()-interval '1 second';
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(v_expired_at),true);
+  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+  UPDATE public.rounds
+     SET yahtzee_state=v_state,decision_deadline=v_expired_at
+   WHERE id=v_human_timeout_round_id;
+  UPDATE public.games SET is_paused=true WHERE id=v_human_timeout_game_id;
+  PERFORM private.advance_due_yahtzee_state();
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  IF coalesce((v_state->>'actionSequence')::integer,0)<>0 THEN
+    RAISE EXCEPTION 'paused_human_deadline_advanced:%',v_state;
+  END IF;
+
+  UPDATE public.games SET is_paused=false WHERE id=v_human_timeout_game_id;
+  v_advanced:=private.advance_due_yahtzee_state();
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  IF v_advanced<1 OR coalesce((v_state->>'actionSequence')::integer,0)<>1
+     OR (v_state->'playerStates'->v_human_timeout_actor::text->>'rollsRemaining')::integer<>2 THEN
+    RAISE EXCEPTION 'complete_scheduled_human_recovery_failed:%:%',v_advanced,v_state;
+  END IF;
+
+  v_replay:=public.yahtzee_apply_action(
+    v_human_timeout_round_id,v_human_timeout_actor,'deadline_auto',NULL,NULL,NULL,0
+  );
+  IF v_replay->>'outcome'<>'stale_action'
+     OR coalesce((v_replay->>'action_sequence')::integer,-1)<>1 THEN
+    RAISE EXCEPTION 'human_deadline_replay_not_deduped:%',v_replay;
+  END IF;
+  PERFORM private.advance_due_yahtzee_state();
+  SELECT yahtzee_state INTO v_after FROM public.rounds WHERE id=v_human_timeout_round_id;
+  IF coalesce((v_after->>'actionSequence')::integer,0)<>1 THEN
+    RAISE EXCEPTION 'human_deadline_recovery_replayed:%',v_after;
   END IF;
 END;
 $proof$;

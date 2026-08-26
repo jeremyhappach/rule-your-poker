@@ -52,9 +52,15 @@ type GameplaySnapshot = {
   status: string | null;
   roundId: string | null;
   deadline: string | null;
-  turn: number | null;
+  turn: number | string | null;
   sequence: number | null;
   decisions: string;
+};
+
+type JsonDeadlineState = {
+  turnDeadline?: string | null;
+  currentTurnPlayerId?: string | null;
+  actionSequence?: number | null;
 };
 
 async function readGameplaySnapshot(
@@ -63,7 +69,7 @@ async function readGameplaySnapshot(
   const [{ data: game, error: gameError }, { data: players, error: playersError }] = await Promise.all([
     session.cleanupClient
       .from('games')
-      .select('status, current_game_uuid')
+      .select('status, current_game_uuid, game_type')
       .eq('id', session.gameId)
       .maybeSingle(),
     session.cleanupClient
@@ -78,7 +84,7 @@ async function readGameplaySnapshot(
     ? { data: null, error: null }
     : await session.cleanupClient
       .from('rounds')
-      .select('id, decision_deadline, current_turn_position, holm_turn_sequence')
+      .select('id, decision_deadline, current_turn_position, holm_turn_sequence, horses_state, yahtzee_state')
       .eq('game_id', session.gameId)
       .eq('dealer_game_id', game.current_game_uuid)
       .order('hand_number', { ascending: false })
@@ -86,12 +92,28 @@ async function readGameplaySnapshot(
       .limit(1)
       .maybeSingle();
   if (roundError) throw roundError;
+  const horsesState = (round?.horses_state ?? null) as JsonDeadlineState | null;
+  const yahtzeeState = (round?.yahtzee_state ?? null) as JsonDeadlineState | null;
+  const isHorsesFamily = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew';
+  const isYahtzee = game?.game_type === 'yahtzee';
   return {
     status: game?.status ?? null,
     roundId: round?.id ?? null,
-    deadline: round?.decision_deadline ?? null,
-    turn: round?.current_turn_position ?? null,
-    sequence: round?.holm_turn_sequence ?? null,
+    deadline: isHorsesFamily
+      ? (horsesState?.turnDeadline ?? null)
+      : isYahtzee
+        ? (yahtzeeState?.turnDeadline ?? round?.decision_deadline ?? null)
+        : (round?.decision_deadline ?? null),
+    turn: isHorsesFamily
+      ? (horsesState?.currentTurnPlayerId ?? null)
+      : isYahtzee
+        ? (yahtzeeState?.currentTurnPlayerId ?? null)
+        : (round?.current_turn_position ?? null),
+    sequence: isHorsesFamily
+      ? (horsesState?.actionSequence ?? null)
+      : isYahtzee
+        ? (yahtzeeState?.actionSequence ?? null)
+        : (round?.holm_turn_sequence ?? null),
     decisions: JSON.stringify((players ?? []).map((player) => [
       player.id,
       player.current_decision,

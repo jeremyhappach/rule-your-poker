@@ -274,20 +274,21 @@ export async function blastFakeMoneySession(session: TwoClientSession): Promise<
     label: string,
   ): Promise<T> => {
     let lastError: unknown = null;
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const attempts = 3;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
+      const timer = setTimeout(() => controller.abort(), 30_000);
       try {
         return await Promise.resolve(operation(controller.signal));
       } catch (error) {
         lastError = error;
-        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250));
+        if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 500));
       } finally {
         clearTimeout(timer);
       }
     }
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`${label} failed after 2 attempts: ${detail}`);
+    throw new Error(`${label} failed after ${attempts} attempts: ${detail}`);
   };
 
   const result = await runWithDeadline(

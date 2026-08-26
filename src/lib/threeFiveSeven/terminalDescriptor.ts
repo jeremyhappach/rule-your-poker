@@ -119,3 +119,29 @@ export function isSameTerminal357Descriptor(
   if (!a || !b) return false;
   return a.terminalGenerationId === b.terminalGenerationId;
 }
+
+/**
+ * A local terminal animation may retain the outgoing table only while the
+ * authoritative session is still on that terminal frame. Once authority has
+ * entered setup (or rotated to a different non-null dealer game), a missed
+ * animation callback is stale presentation state and must not block setup.
+ */
+export function shouldRetainTerminal357Presentation(input: {
+  active: boolean;
+  gameStatus: string | null | undefined;
+  currentDealerGameId: string | null | undefined;
+  descriptorDealerGameId: string | null | undefined;
+}): boolean {
+  if (!input.active) return false;
+  if (input.gameStatus !== "game_over" && input.gameStatus !== "session_ended") {
+    return false;
+  }
+  if (
+    input.currentDealerGameId != null
+    && input.descriptorDealerGameId != null
+    && input.currentDealerGameId !== input.descriptorDealerGameId
+  ) {
+    return false;
+  }
+  return true;
+}

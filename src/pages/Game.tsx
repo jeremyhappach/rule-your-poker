@@ -386,6 +386,7 @@ import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHos
 import { Card as CardType, has357Hand } from "@/lib/cardUtils";
 import {
   buildTerminal357GenerationId,
+  shouldRetainTerminal357Presentation,
   type Terminal357Descriptor,
   type Terminal357PlayerLegsSnapshot,
 } from "@/lib/threeFiveSeven/terminalDescriptor";
@@ -2159,6 +2160,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Track if 357 win animation is actively playing (blocks GameOverCountdown)
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
+  const is357TerminalPresentationCurrent = shouldRetainTerminal357Presentation({
+    active: is357WinAnimationActive,
+    gameStatus: game?.status,
+    currentDealerGameId: game?.current_game_uuid,
+    descriptorDealerGameId: terminal357Descriptor?.dealerGameId,
+  });
 
   // F. Win-animation active-flag transition diagnostic.
   const prevIs357WinAnimationActiveRef = useRef<boolean>(false);
@@ -13789,14 +13796,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
-    // CRITICAL: Never clear 357 win state while the client-side win animation sequence is still playing.
-    // If we clear early, MobileGameTable will unmount PotToPlayerAnimation mid-flight.
-    if (is357WinAnimationActiveRef.current) {
+    // Retain only an animation that still belongs to the authoritative
+    // terminal frame. If another client already advanced authority into setup
+    // (or a new dealer game), a missed local callback is stale presentation
+    // state and must not strand the setup surface.
+    if (is357WinAnimationActiveRef.current && is357TerminalPresentationCurrent) {
       console.log('[357 WIN RESET] Deferring reset because win animation is still active', {
         status: game?.status,
         currentRound: game?.current_round,
       });
       return;
+    }
+
+    if (is357WinAnimationActiveRef.current) {
+      console.log('[357 WIN RESET] Releasing stale animation at authoritative identity boundary', {
+        status: game?.status,
+        currentDealerGameId: game?.current_game_uuid ?? null,
+        presentationDealerGameId: terminal357Descriptor?.dealerGameId ?? null,
+      });
+      setIs357WinAnimationActive(false);
+      __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
+      is357WinAnimationActiveRef.current = false;
+      threeFiveSevenWinProcessedRef.current = null;
+      setThreeFiveSevenWinTriggerId(null);
+      setThreeFiveSevenWinnerId(null);
+      setThreeFiveSevenWinPotAmount(0);
+      setThreeFiveSevenWinnerCards([]);
+      setTerminal357WinnerHandExpectation(null);
+      cachedPotFor357WinRef.current = 0;
+      setCachedLegPositions([]);
     }
 
     // Reset on new game start (round 1)
@@ -13838,7 +13866,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // not a safe erase signal — the old table surface can persist
       // through this transition. See the dedicated cleanup effect below.
     }
-  }, [game?.status, game?.current_round, game?.current_game_uuid]);
+  }, [game?.status, game?.current_round, game?.current_game_uuid, is357TerminalPresentationCurrent, terminal357Descriptor?.dealerGameId]);
 
   // Terminal descriptor cleanup — Slice 1 correction #4.
   // Clear the descriptor ONLY when the active dealerGameId rotates to a
@@ -16400,7 +16428,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!is357WinAnimationActive && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
+            {(!is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -16623,7 +16651,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                now sufficient to keep this sibling branch from coexisting
                with the canonical slot. `!_treatAsCanonicalRoute` remains
                as the primary route-stable gate. */
-            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && !_isPokerShellPersistent && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && !_isPokerShellPersistent && (game.status === 'game_over' || game.status === 'session_ended' || (is357TerminalPresentationCurrent && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'} sessionEndedPhase={_sessionEndedTableActive}
                     instanceLabel="game-over-or-win-anim-ungated"
@@ -16653,7 +16681,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chuckyCardsRevealed={chuckyCardsRevealedForPresentation}
                     chuckyActive={chuckyActiveForPresentation}
                     gameType={game.game_type}
-                    gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
+                    gameStatus={(is357TerminalPresentationCurrent && game.game_type !== 'holm-game') ? 'game_over' : game.status}
                     roundStatus={holmView?.roundStatus}
                     isGameOver={game.status === 'game_over' || game.status === 'session_ended' || !!game.game_over_at}
                     isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
@@ -16901,7 +16929,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   // setup continuation. A connected player can still occupy
                   // the prior dealer seat when the session closes.
                   (game.status === 'game_over' && !(game as any).config_complete)) &&
-                  !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                  !is357TerminalPresentationCurrent && !horsesWinPotTriggerId &&
                   !sessionDealerDrawPresentationPending &&
                   hasLiveConfigDeadline &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
@@ -17095,7 +17123,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // `session_ended` render — before the trigger effect commits —
             // so the surface never blanks under the celebration.
             _terminalPresentationHold ||
-            (is357WinAnimationActive && game.game_type !== 'holm-game') ||
+            (is357TerminalPresentationCurrent && game.game_type !== 'holm-game') ||
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;

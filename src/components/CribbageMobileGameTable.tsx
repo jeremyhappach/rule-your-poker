@@ -5,6 +5,10 @@ import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import { DISCARD_COUNT, CARDS_PER_PLAYER } from '@/lib/cribbageTypes';
 import {
+  buildCribbageAutoGoIdentity,
+  getCurrentPeggingBoundaryEventId,
+} from '@/lib/cribbage/peggingLiveness';
+import {
   playPeggingCard,
 } from '@/lib/cribbageGameLogic';
 import { settleCribbageGame } from '@/lib/cribbageSettleGame';
@@ -2517,6 +2521,11 @@ export const CribbageMobileGameTable = ({
   // null only at the hand-identity reset.
   const [lastReleasedBoundaryEventId, setLastReleasedBoundaryEventId] =
     useState<string | null>(null);
+  const currentPeggingBoundaryEventId = getCurrentPeggingBoundaryEventId({
+    phase: cribbageState?.phase,
+    eventSequence: cribbageState?.pegging.eventSequence,
+    lastEvent: cribbageState?.lastEvent,
+  });
 
   // Turn 2 — synchronous writer idempotency lock. Claimed once per
   // handlePlayCard invocation, immediately before the first await, and
@@ -2599,7 +2608,8 @@ export const CribbageMobileGameTable = ({
       (lastEvent as { count?: number }).count === 31;
     const isGoOrLast = lastEvent.type === 'go_point';
     if (!is31 && !isGoOrLast) return;
-    const eventKey = lastEvent.id;
+    const eventKey = currentPeggingBoundaryEventId;
+    if (!eventKey) return;
     if (thirtyOneDelayRef.current === eventKey || thirtyOneDelayActive || heldSequenceSnapshot) return;
     thirtyOneDelayRef.current = eventKey;
     clearBoundaryHoldTimers();
@@ -2661,6 +2671,9 @@ export const CribbageMobileGameTable = ({
     cribbageState?.lastEvent?.id,
     cribbageState?.lastEvent?.type,
     cribbageState?.lastEvent?.count,
+    cribbageState?.phase,
+    cribbageState?.pegging.eventSequence,
+    currentPeggingBoundaryEventId,
     canPresentPeggingEvent,
     thirtyOneDelayActive,
     heldSequenceSnapshot,
@@ -2748,17 +2761,7 @@ export const CribbageMobileGameTable = ({
   // projection over authoritative state + the two hold latches
   // (`thirtyOneDelayActive`, `heldSequenceSnapshot`) + the release
   // identity (`lastReleasedBoundaryEventId`). No timers, no DOM reads.
-  const boundaryEventId =
-    cribbageState?.lastEvent &&
-    (
-      cribbageState.lastEvent.type === 'go_point' ||
-      (
-        cribbageState.lastEvent.type === 'pegging_points' &&
-        (cribbageState.lastEvent as { count?: number }).count === 31
-      )
-    )
-      ? cribbageState.lastEvent.id
-      : null;
+  const boundaryEventId = currentPeggingBoundaryEventId;
   const boundaryEventReleased =
     boundaryEventId !== null &&
     lastReleasedBoundaryEventId === boundaryEventId;
@@ -6454,6 +6457,24 @@ export const CribbageMobileGameTable = ({
   }, [handleGo]);
 
   // Auto-go: Automatically call Go when player can't play any cards
+  // Uses a primitive identity that includes the authoritative hand and action
+  // sequence. A catch-up snapshot can change legal cards without changing the
+  // count or actor; omitting that identity can leave a human turn with no legal
+  // client writer.
+  const autoGoIdentity = buildCribbageAutoGoIdentity({
+    roundId: currentRoundId,
+    handNumber: currentHandNumber,
+    phase: cribbageState?.phase,
+    eventSequence: cribbageState?.pegging.eventSequence,
+    currentTurnPlayerId: cribbageState?.pegging.currentTurnPlayerId,
+    viewerPlayerId: currentPlayerId,
+    currentCount: cribbageState?.pegging.currentCount,
+    goCalledBy: cribbageState?.pegging.goCalledBy,
+    hand: currentPlayerId
+      ? cribbageState?.playerStates[currentPlayerId]?.hand
+      : undefined,
+  });
+
   // Uses ref to avoid stale closure issues - ensures eventCtx is always current
   useEffect(() => {
     if (!cribbageState || !currentPlayerId) return;
@@ -6497,7 +6518,7 @@ export const CribbageMobileGameTable = ({
         ...baseDeps, hand: myState.hand,
       });
     }
-  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
+  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, autoGoIdentity, isProcessing]);
 
   // ── Persist counting progress to DB (fire-and-forget) ────────────
   // Called by CribbageCountingPhase whenever target/combo advances.

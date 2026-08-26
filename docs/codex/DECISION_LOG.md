@@ -1383,3 +1383,18 @@ a session.
 This is harness safety, not gameplay authority. It does not create test users,
 change a product row, relax fake-money-only cleanup, or convert an
 inconclusive concurrent artifact into evidence about the application.
+
+## D-097 - Client-independent liveness is exact-identity authority work
+
+Every persisted gameplay deadline must have a database/service recovery path
+for every timed actor class, including humans. Recovery reuses the existing
+authoritative action owner, locks the exact round, and requires the persisted
+deadline plus action sequence to match before it acts. A service-only timeout
+action may not broaden the ordinary authenticated action surface.
+
+Presentation latches may retain an outgoing table only while they belong to the
+current authoritative terminal frame. Once authority enters setup or rotates
+dealer-game identity, a missed presentation callback is stale local state and
+cannot block the next legal surface. Likewise, optional defaults or preference
+reads may improve setup values but may never gate an already-persisted setup
+deadline or hide the action surface behind an unbounded request.

@@ -295,65 +295,74 @@ const DealerGameSetupInner = ({
 
   // Fetch defaults for both game types on mount
   useEffect(() => {
-    const fetchAllDefaults = async () => {
-      const [holmResult, threeFiveSevenResult] = await Promise.all([
-        supabase.from('game_defaults').select('*').eq('game_type', 'holm').single(),
-        supabase.from('game_defaults').select('*').eq('game_type', '3-5-7').single(),
-      ]);
+    // Session-owned config is already authoritative input. Apply it before
+    // any optional defaults request so a stalled network read cannot withhold
+    // either the setup form or the correct prior values.
+    if (previousGameConfig) {
+      console.log('[DEALER SETUP] Using previous game config:', previousGameConfig);
+      setAnteAmount(String(previousGameConfig.ante_amount));
+      setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
+      setLegValue(String(previousGameConfig.leg_value));
+      setLegsToWin(String(previousGameConfig.legs_to_win));
+      setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
+      setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
+      setPotMaxEnabled(previousGameConfig.pot_max_enabled);
+      setPotMaxValue(String(previousGameConfig.pot_max_value));
+      setChuckyCards(String(previousGameConfig.chucky_cards));
+      setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
+      setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
+      if (previousGameConfig.cribbage_game_mode) {
+        setCribbageGameMode(previousGameConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
+      }
+      if (previousGameConfig.skunk_enabled !== undefined) {
+        setSkunksEnabled(previousGameConfig.skunk_enabled);
+      }
+      if (previousGameConfig.custom_points_to_win !== undefined) {
+        setCustomPointsToWin(String(previousGameConfig.custom_points_to_win));
+      }
+      setLoadingDefaults(false);
+      return;
+    }
 
-      if (!holmResult.error && holmResult.data) {
-        setHolmDefaults(holmResult.data);
-      }
-      if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
-        setThreeFiveSevenDefaults(threeFiveSevenResult.data);
-      }
-      
-      // PRIORITY 1: Use previous game config if available (for config persistence between games)
-      if (previousGameConfig) {
-        console.log('[DEALER SETUP] Using previous game config:', previousGameConfig);
-        setAnteAmount(String(previousGameConfig.ante_amount));
-        setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
-        setLegValue(String(previousGameConfig.leg_value));
-        setLegsToWin(String(previousGameConfig.legs_to_win));
-        setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
-        setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
-        setPotMaxEnabled(previousGameConfig.pot_max_enabled);
-        setPotMaxValue(String(previousGameConfig.pot_max_value));
-        setChuckyCards(String(previousGameConfig.chucky_cards));
-        setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
-        setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
-        
-        // Apply cribbage-specific settings if present
-        if (previousGameConfig.cribbage_game_mode) {
-          setCribbageGameMode(previousGameConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
-        }
-        if (previousGameConfig.skunk_enabled !== undefined) {
-          setSkunksEnabled(previousGameConfig.skunk_enabled);
-        }
-        if (previousGameConfig.custom_points_to_win !== undefined) {
-          setCustomPointsToWin(String(previousGameConfig.custom_points_to_win));
-        }
-        
-        setLoadingDefaults(false);
-        return;
-      }
-      
-      // PRIORITY 2: Apply defaults based on previousGameType or default to holm
-      const initialGameType = previousGameType || 'holm-game';
-      if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
-        if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
-          applyDefaults(threeFiveSevenResult.data);
-        }
-      } else {
+    let cancelled = false;
+    setLoadingDefaults(true);
+    const fetchAllDefaults = async () => {
+      try {
+        const [holmResult, threeFiveSevenResult] = await Promise.all([
+          supabase.from('game_defaults').select('*').eq('game_type', 'holm').single(),
+          supabase.from('game_defaults').select('*').eq('game_type', '3-5-7').single(),
+        ]);
+        if (cancelled) return;
+
         if (!holmResult.error && holmResult.data) {
+          setHolmDefaults(holmResult.data);
+        }
+        if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
+          setThreeFiveSevenDefaults(threeFiveSevenResult.data);
+        }
+
+        // Apply defaults based on previousGameType or default to holm.
+        const initialGameType = previousGameType || 'holm-game';
+        if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
+          if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
+            applyDefaults(threeFiveSevenResult.data);
+          }
+        } else if (!holmResult.error && holmResult.data) {
           applyDefaults(holmResult.data);
         }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('[DEALER SETUP] Failed to load optional game defaults:', error);
+        }
+      } finally {
+        if (!cancelled) setLoadingDefaults(false);
       }
-      
-      setLoadingDefaults(false);
     };
 
-    fetchAllDefaults();
+    void fetchAllDefaults();
+    return () => {
+      cancelled = true;
+    };
   }, [previousGameType, previousGameConfig]);
 
   // Apply defaults when game type changes
@@ -650,9 +659,23 @@ const DealerGameSetupInner = ({
     }, delay + 50);
   }, []);
 
+  // The deadline already arrived on the authoritative game snapshot. Arm it
+  // directly; the focus/visibility fetch below is only a resync and can never
+  // gate the timer or the form on optional defaults/network reads.
+  useEffect(() => {
+    if (isBot || !configDeadline) return;
+    const deadlineMs = new Date(configDeadline).getTime();
+    if (!Number.isFinite(deadlineMs)) return;
+    const remaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+    setTimeLeft(remaining);
+    scheduleConfigTimeout(deadlineMs);
+    if (remaining <= 0 && !hasSubmittedRef.current) {
+      handleDealerTimeoutRef.current();
+    }
+  }, [configDeadline, isBot, scheduleConfigTimeout]);
+
   const syncWithServerDeadline = useCallback(async () => {
-    // Don't sync until defaults are loaded
-    if (isBot || loadingDefaults) return;
+    if (isBot) return;
 
     const { data: gameData, error } = await supabase
       .from('games')
@@ -686,7 +709,7 @@ const DealerGameSetupInner = ({
     // not publish.
     console.error('[DEALER SETUP] Authoritative config deadline is missing');
     setTimeLeft(null);
-  }, [gameId, isBot, loadingDefaults, scheduleConfigTimeout, gameSetupTimerSeconds]);
+  }, [gameId, isBot, scheduleConfigTimeout]);
 
   // Initial sync + resync when app returns to foreground (mobile browsers can pause timers)
   useEffect(() => {
@@ -694,7 +717,7 @@ const DealerGameSetupInner = ({
   }, [syncWithServerDeadline]);
 
   useEffect(() => {
-    if (isBot || loadingDefaults) return;
+    if (isBot) return;
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -713,7 +736,7 @@ const DealerGameSetupInner = ({
         configTimeoutRef.current = null;
       }
     };
-  }, [isBot, loadingDefaults, syncWithServerDeadline]);
+  }, [isBot, syncWithServerDeadline]);
 
   // PRIMARY enforcement: the visible countdown reaching zero immediately fires
   // the timeout action on the active client. The setTimeout in scheduleConfigTimeout
@@ -721,7 +744,7 @@ const DealerGameSetupInner = ({
   // edge/cron enforcement is TERTIARY. An active client visibly seeing the deadline
   // expire must never depend on background polling.
   useEffect(() => {
-    if (isBot || loadingDefaults) return;
+    if (isBot) return;
     if (timeLeft === null) return; // Wait for initial sync
 
     const timer = setInterval(() => {
@@ -740,7 +763,7 @@ const DealerGameSetupInner = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isBot, loadingDefaults, timeLeft !== null]);
+  }, [isBot, timeLeft !== null]);
 
 
   // Bot dealers use the same exact-identity authority path as human dealers.
@@ -941,21 +964,6 @@ const DealerGameSetupInner = ({
   // If component unmounts within 50ms, user never sees any modal
   if (!mountReady) {
     return null;
-  }
-
-  if (loadingDefaults) {
-    return (
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
-        style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
-      >
-        <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-8 pb-8 text-center">
-            <p className="text-amber-100">Loading game defaults...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   const isHolmGame = selectedGameType === 'holm-game';
