@@ -842,6 +842,7 @@ export function Use357SelfHand<T>({
   dealerGameId = null,
   handNumber = null,
   roundId = null,
+  authoritativeFallbackReady = false,
   render,
 }: {
   currentPlayerId: string;
@@ -850,6 +851,7 @@ export function Use357SelfHand<T>({
   dealerGameId?: string | null;
   handNumber?: number | null;
   roundId?: string | null;
+  authoritativeFallbackReady?: boolean;
   render: (effectiveCards: T[], dealPhase: string, boundary: {
     claimedCardIds: string[];
     rawClaimedCardIds: string[];
@@ -921,7 +923,10 @@ export function Use357SelfHand<T>({
   // permanently traps the self hand at 0 cards, hiding authoritative
   // playable cards behind the claim-only gate.
   const noWaveEverDispatchedSelf = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
-  const isClaimOnlyRender = !!deal && !noWaveEverDispatchedSelf && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
+  const isClaimOnlyRender = !!deal &&
+    !authoritativeFallbackReady &&
+    !noWaveEverDispatchedSelf &&
+    (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
   const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];

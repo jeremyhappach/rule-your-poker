@@ -4,6 +4,7 @@ export interface ThreeFiveSevenDealReadinessToken {
   roundId: string;
   roundNumber: number;
   allowed: boolean;
+  source?: 'transport' | 'authoritative-fallback' | 'blocked';
 }
 
 export function isThreeFiveSevenDealPresentationReady(
@@ -33,6 +34,36 @@ export function isThreeFiveSevenRuntimeWaveReady(args: {
 }): boolean {
   if (!args.runtimeAllowed) return false;
   return args.runtimeExpectedCount === args.expectedCumulativeCount;
+}
+
+/**
+ * A live, identity-matched private hand is authoritative evidence that the
+ * player may act. It is allowed to recover a missing local transport receipt,
+ * but never historical, incomplete, or non-betting state.
+ */
+export function isThreeFiveSevenAuthoritativeFallbackReady(args: {
+  historicalEntry: boolean;
+  gameStatus: string | null | undefined;
+  roundStatus: string | null | undefined;
+  handContextId: string | null | undefined;
+  waveContextId: string | null | undefined;
+  roundId: string | null | undefined;
+  roundNumber: number | null | undefined;
+  authoritativeSelfCardCount: number;
+  expectedSelfCardCount: number;
+}): boolean {
+  return (
+    !args.historicalEntry &&
+    args.gameStatus === 'in_progress' &&
+    args.roundStatus === 'betting' &&
+    !!args.handContextId &&
+    !!args.waveContextId &&
+    !!args.roundId &&
+    typeof args.roundNumber === 'number' &&
+    args.roundNumber >= 1 &&
+    args.expectedSelfCardCount > 0 &&
+    args.authoritativeSelfCardCount >= args.expectedSelfCardCount
+  );
 }
 
 export function resolveThreeFiveSevenDealerGameScope(

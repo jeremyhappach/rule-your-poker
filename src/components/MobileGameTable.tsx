@@ -3,6 +3,7 @@ import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/th
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
   canAdmitThreeFiveSevenTerminalPresentation,
+  isThreeFiveSevenAuthoritativeFallbackReady as isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand,
   isThreeFiveSevenDealPresentationReady,
   isThreeFiveSevenLegStackRetired,
   isThreeFiveSevenRuntimeWaveReady,
@@ -631,6 +632,7 @@ function ThreeFiveSevenTimerGateReporter({
   roundNumber,
   expectedCumulativeCount,
   historicalEntry,
+  authoritativeFallbackReady,
   onAllowedChange,
 }: {
   waveContextId: string | null;
@@ -638,23 +640,30 @@ function ThreeFiveSevenTimerGateReporter({
   roundNumber: number | null;
   expectedCumulativeCount: number;
   historicalEntry: boolean;
+  authoritativeFallbackReady: boolean;
   onAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
 }) {
   const deal = useDealRuntime();
   const handContextId = deal?.handContextId ?? null;
-  const allowed = isThreeFiveSevenRuntimeWaveReady({
+  const transportAllowed = isThreeFiveSevenRuntimeWaveReady({
     runtimeAllowed: deal?.timerAllowed ?? false,
     runtimeExpectedCount: deal?.expectedCount ?? 0,
     expectedCumulativeCount,
     historicalEntry,
   });
+  const allowed = transportAllowed || authoritativeFallbackReady;
+  const source: NonNullable<ThreeFiveSevenDealReadinessToken['source']> = transportAllowed
+    ? 'transport'
+    : authoritativeFallbackReady
+      ? 'authoritative-fallback'
+      : 'blocked';
   useLayoutEffect(() => {
     onAllowedChange?.(
       handContextId && waveContextId && roundId && roundNumber
-        ? { handContextId, waveContextId, roundId, roundNumber, allowed }
+        ? { handContextId, waveContextId, roundId, roundNumber, allowed, source }
         : null,
     );
-  }, [allowed, handContextId, onAllowedChange, roundId, roundNumber, waveContextId]);
+  }, [allowed, handContextId, onAllowedChange, roundId, roundNumber, source, waveContextId]);
   // BREAK THE TIMER DEADLOCK:
   // The canonical rail (DealAwareShellTimerRail) is the historical
   // driver of enterGameplay(), but it is only mounted when `hasTimer`
@@ -4184,6 +4193,18 @@ export const MobileGameTable = ({
       },
       reportedThreeFiveSevenDealReadiness,
     );
+  const threeFiveSevenAuthoritativeFallbackReady = __is357GameType(gameType) &&
+    isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand({
+      historicalEntry: three57EntryMode === 'historical-entry',
+      gameStatus,
+      roundStatus,
+      handContextId: threeFiveSevenHandContextId,
+      waveContextId: threeFiveSevenWaveContextId,
+      roundId: threeFiveSevenViewRoundId,
+      roundNumber: threeFiveSevenViewRoundNumber,
+      authoritativeSelfCardCount: currentPlayerCards.length,
+      expectedSelfCardCount: totalAfterWaveFor357(currentRound ?? 0),
+    });
   const handleThreeFiveSevenDealReadinessChange = useCallback((
     token: ThreeFiveSevenDealReadinessToken | null,
   ) => {
@@ -4193,6 +4214,7 @@ export const MobileGameTable = ({
         && current?.roundId === token?.roundId
         && current?.roundNumber === token?.roundNumber
         && current?.allowed === token?.allowed
+        && current?.source === token?.source
         ? current
         : token,
     );
@@ -12350,6 +12372,7 @@ export const MobileGameTable = ({
         threeFiveSevenActiveSeats.length * totalAfterWaveFor357(currentRound ?? 0)
       }
       historicalEntry={three57EntryMode === 'historical-entry'}
+      authoritativeFallbackReady={threeFiveSevenAuthoritativeFallbackReady}
       onAllowedChange={handleThreeFiveSevenDealReadinessChange}
     />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
@@ -15564,6 +15587,10 @@ export const MobileGameTable = ({
                                     dealerGameId={threeFiveSevenDealerGameScope ?? null}
                                     handNumber={typeof horsesHandNumber === 'number' ? horsesHandNumber : null}
                                     roundId={horsesRoundId ?? null}
+                                    authoritativeFallbackReady={
+                                      reportedThreeFiveSevenDealReadiness?.source === 'authoritative-fallback' &&
+                                      threeFiveSevenDealPresentationReady
+                                    }
                                     render={renderActiveSelfHand}
                                   />
 

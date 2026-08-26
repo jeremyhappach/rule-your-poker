@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   canAdmitThreeFiveSevenTerminalPresentation,
+  isThreeFiveSevenAuthoritativeFallbackReady,
   isThreeFiveSevenDealPresentationReady,
   isThreeFiveSevenRuntimeWaveReady,
   isThreeFiveSevenLegStackRetired,
@@ -64,6 +65,47 @@ describe('3-5-7 deal presentation readiness', () => {
       roundNumber: expectedR2.roundNumber!,
       allowed: true,
     })).toBe(true);
+  });
+
+  it('recovers a live exact hand when only the local transport receipt is missing', () => {
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      historicalEntry: false,
+      gameStatus: 'in_progress',
+      roundStatus: 'betting',
+      handContextId: 'dealer-game-1#h1',
+      waveContextId: 'dealer-game-1#h1#r1',
+      roundId: 'round-1',
+      roundNumber: 1,
+      authoritativeSelfCardCount: 3,
+      expectedSelfCardCount: 3,
+    })).toBe(true);
+  });
+
+  it('keeps historical, incomplete, and non-betting state blocked from fallback recovery', () => {
+    const exactLiveHand = {
+      historicalEntry: false,
+      gameStatus: 'in_progress',
+      roundStatus: 'betting',
+      handContextId: 'dealer-game-1#h1',
+      waveContextId: 'dealer-game-1#h1#r1',
+      roundId: 'round-1',
+      roundNumber: 1,
+      authoritativeSelfCardCount: 3,
+      expectedSelfCardCount: 3,
+    };
+
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      historicalEntry: true,
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      authoritativeSelfCardCount: 2,
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      roundStatus: 'complete',
+    })).toBe(false);
   });
 
   it('requires historical-entry reconstruction to publish its settled baseline', () => {
