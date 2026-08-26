@@ -2,6 +2,13 @@
 
 ## Platform
 
+- Waiting-table Start Game passed published two-human production smoke on
+  2026-08-26 at commit `a88af23c953a3156adaf071056e9d2d3c9ee9e12`.
+  `public.begin_session_dealer_selection` atomically owns the eligible roster,
+  two-player normalization, lifecycle reset, and `waiting → dealer_selection`
+  transition; the canonical timer trigger owns the dealer draw. Preserve the
+  authenticated RPC boundary and replay outcomes rather than restoring client
+  `players`/`games` writes or anonymous `games` privileges.
 - The 3-5-7 Run Back cross-country readiness recovery passed against immutable
   production commit `544372002b42df143a6e56956c755cb2b79a9b36` on 2026-08-26.
   Two live fake-money clients survived the targeted offline burst and both

@@ -1,6 +1,26 @@
 # Current release and cutover state
 
-Date: 2026-08-25
+Date: 2026-08-26
+
+## Server-owned session start
+
+- Production commit `a88af23c9` replaces the waiting-table Start Game
+  sequence of independent client writes with authenticated
+  `public.begin_session_dealer_selection`. The RPC locks the session, verifies
+  the canonical session host and opted-in seated cohort, normalizes an exact
+  two-player topology atomically, clears only the next-dealer-game scaffolding,
+  and transitions to `dealer_selection`; the existing canonical timer trigger
+  owns preparation and completion of the high-card draw.
+- The correction closes the production failure in which the browser completed
+  player/seat writes but its direct `games` update reached PostgREST as `anon`
+  and was rejected by the deliberate `games` RLS privilege boundary. Duplicate
+  starts return `already_started`; unauthorized, late, and terminal starts do
+  not mutate lifecycle state.
+- A rollback-only production proof covered start, duplicate replay, timer
+  identity, authorization, high-card winner/tie continuation, late replay, and
+  terminal-state rejection. The published production build then passed the
+  two-human Cross-Country session-draw smoke in 24.8 seconds with guarded
+  fake-money cleanup.
 
 ## 3-5-7 live authoritative-readiness recovery
 

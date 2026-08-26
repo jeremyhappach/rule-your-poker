@@ -1418,3 +1418,12 @@ be the owned production project. Local Vite and a caller-supplied alternate
 backend fail before any table is created. This prevents a write-locked retired
 cutover source from being misclassified as a current gameplay or liveness
 failure while retaining fake-money-only creation and database-guarded cleanup.
+
+## D-100 - Session start is an atomic database transition
+
+Start Game is not a browser choreography. `public.begin_session_dealer_selection`
+is the sole authoritative owner of the waiting-session roster admission,
+two-player topology normalization, lifecycle reset, and status flip. The
+existing canonical timer trigger then owns high-card preparation/completion.
+Duplicate requests are replay-safe; authenticated-host authorization and
+non-waiting rejection are decided under the same game-row lock.
