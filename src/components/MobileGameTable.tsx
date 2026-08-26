@@ -4193,18 +4193,6 @@ export const MobileGameTable = ({
       },
       reportedThreeFiveSevenDealReadiness,
     );
-  const threeFiveSevenAuthoritativeFallbackReady = __is357GameType(gameType) &&
-    isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand({
-      historicalEntry: three57EntryMode === 'historical-entry',
-      gameStatus,
-      roundStatus,
-      handContextId: threeFiveSevenHandContextId,
-      waveContextId: threeFiveSevenWaveContextId,
-      roundId: threeFiveSevenViewRoundId,
-      roundNumber: threeFiveSevenViewRoundNumber,
-      authoritativeSelfCardCount: currentPlayerCards.length,
-      expectedSelfCardCount: totalAfterWaveFor357(currentRound ?? 0),
-    });
   const handleThreeFiveSevenDealReadinessChange = useCallback((
     token: ThreeFiveSevenDealReadinessToken | null,
   ) => {
@@ -6521,6 +6509,19 @@ export const MobileGameTable = ({
     }
     return chosen.cards;
   }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id, horsesHandNumber, horsesRoundId, threeFiveSevenDealerGameScope, currentRound]);
+
+  const threeFiveSevenAuthoritativeFallbackReady = __is357GameType(gameType) &&
+    isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand({
+      historicalEntry: three57EntryMode === 'historical-entry',
+      gameStatus,
+      roundStatus,
+      handContextId: threeFiveSevenHandContextId,
+      waveContextId: threeFiveSevenWaveContextId,
+      roundId: threeFiveSevenViewRoundId,
+      roundNumber: threeFiveSevenViewRoundNumber,
+      authoritativeSelfCardCount: currentPlayerCards.length,
+      expectedSelfCardCount: totalAfterWaveFor357(currentRound ?? 0),
+    });
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
