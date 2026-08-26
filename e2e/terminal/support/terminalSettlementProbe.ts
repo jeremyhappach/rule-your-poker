@@ -223,6 +223,45 @@ export class TerminalSettlementProbe {
     };
   }
 
+  async readDiceProgress(
+    gameId: string,
+    dealerGameId: string,
+  ): Promise<{
+    roundId: string | null;
+    handNumber: number | null;
+    phase: string | null;
+    currentTurnPlayerId: string | null;
+    stateSignature: string;
+  }> {
+    const data = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('rounds')
+          .select('id,hand_number,horses_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read dice progress: ${error.message}`);
+        return data;
+      },
+      'Dice progress query',
+    );
+    const state = data?.horses_state as {
+      gamePhase?: string;
+      currentTurnPlayerId?: string | null;
+    } | null;
+    return {
+      roundId: data?.id ?? null,
+      handNumber: data?.hand_number ?? null,
+      phase: state?.gamePhase ?? null,
+      currentTurnPlayerId: state?.currentTurnPlayerId ?? null,
+      stateSignature: JSON.stringify(state ?? null),
+    };
+  }
+
   async assertTerminalProof(
     gameId: string,
     dealerGameId: string,

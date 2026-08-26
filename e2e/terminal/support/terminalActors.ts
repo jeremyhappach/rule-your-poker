@@ -426,21 +426,63 @@ async function playDice(
   expected: TerminalExpectation,
 ): Promise<void> {
   const pages = [session.hostPage, session.peerPage];
+  let lastProgress = await probe.readDiceProgress(session.gameId, dealerGameId);
+  let lastProgressAt = Date.now();
+
+  const waitForCommittedAction = async (previousSignature: string) => {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const progress = await probe.readDiceProgress(session.gameId, dealerGameId);
+      if (progress.stateSignature !== previousSignature) return progress;
+      if (await isTerminal(session, probe, dealerGameId, expected)) return progress;
+      await pause(200);
+    }
+    throw new Error(`Dice browser action did not commit from ${previousSignature}`);
+  };
+
   for (let step = 0; step < 240; step += 1) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
     let acted = false;
     for (const page of pages) {
       const surface = page.locator('[data-authoritative-action-surface="horses-scc-turn"]:visible');
       if (!(await surface.count())) continue;
-      const lock = surface.getByRole('button', { name: 'Lock In', exact: true });
       const roll = surface.getByRole('button', { name: /^Roll \d+$/ });
-      if (await lock.count()) await lock.first().click();
-      else if (await roll.count()) await roll.click();
-      else continue;
+      if (!(await roll.count())) continue;
+      const beforeAction = lastProgress.stateSignature;
+      // Rolling through the available rolls is legal for both games. It avoids
+      // guessing whether SCC has qualified for an early lock, and every click
+      // must be followed by a server-observed state change before the actor
+      // can touch the next control.
+      await roll.click();
+      lastProgress = await waitForCommittedAction(beforeAction);
+      lastProgressAt = Date.now();
       acted = true;
       break;
     }
-    await pause(acted ? 350 : 500);
+    if (acted) continue;
+
+    await pause(500);
+    const progress = await probe.readDiceProgress(session.gameId, dealerGameId);
+    if (progress.stateSignature !== lastProgress.stateSignature) {
+      lastProgress = progress;
+      lastProgressAt = Date.now();
+      continue;
+    }
+    if (Date.now() - lastProgressAt >= 30_000) {
+      const surfaces = await Promise.all(pages.map(async (page) => ({
+        rolls: await page.locator(
+          '[data-authoritative-action-surface="horses-scc-turn"]:visible >> role=button[name=/^Roll \\d+$/]',
+        ).count(),
+        locks: await page.locator(
+          '[data-authoritative-action-surface="horses-scc-turn"]:visible >> role=button[name="Lock In"]',
+        ).count(),
+      })));
+      throw new Error(
+        `Dice authoritative progress stalled in hand ${progress.handNumber ?? 'unknown'} `
+        + `(${progress.phase ?? 'unknown'}/${progress.currentTurnPlayerId ?? 'none'}): `
+        + JSON.stringify(surfaces),
+      );
+    }
   }
   throw new Error(`${expected.gameType} did not reach terminal settlement within 240 actions`);
 }

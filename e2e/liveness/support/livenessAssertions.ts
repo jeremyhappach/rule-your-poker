@@ -77,6 +77,17 @@ export async function waitForEitherClientAction(
   return latest;
 }
 
+export async function waitForBothClientsAction(
+  hostPage: Page,
+  peerPage: Page,
+  actionSurface: string = ACTION_SURFACE,
+): Promise<void> {
+  await Promise.all([
+    expect(hostPage.locator(actionSurface).first()).toBeVisible({ timeout: 60_000 }),
+    expect(peerPage.locator(actionSurface).first()).toBeVisible({ timeout: 60_000 }),
+  ]);
+}
+
 export async function expectCanonicalContinuity(page: Page): Promise<void> {
   await waitForLoadedTable(page);
   await expect(page.locator('[data-canonical-bootstrap]')).toHaveCount(0);

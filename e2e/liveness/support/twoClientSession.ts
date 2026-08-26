@@ -231,6 +231,22 @@ export async function configureDealerGameUnderChaos(
   await options.configure?.(configSurface, setupPage);
   await configSurface.locator(`[data-dealer-game-start="${gameType}"]`).click();
 
+  if (options.submitNonDealerAnte === false) return;
+  await submitOutstandingAnteUnderChaos(session);
+}
+
+/**
+ * Resolves the one human ante still outstanding after either a fresh config or
+ * Run Back. The response-loss fault is intentional: the write must commit once
+ * and both browsers must reconcile from authoritative state.
+ */
+export async function submitOutstandingAnteUnderChaos(session: TwoClientSession): Promise<void> {
+  const {
+    hostPage,
+    peerPage,
+    hostNetwork,
+    peerNetwork,
+  } = session;
   const hostAnte = hostPage.locator('[data-authoritative-action-surface="ante-decision"]');
   const peerAnte = peerPage.locator('[data-authoritative-action-surface="ante-decision"]');
   await expect.poll(async () => Number(await hostAnte.isVisible()) + Number(await peerAnte.isVisible()), {
@@ -241,8 +257,6 @@ export async function configureDealerGameUnderChaos(
   const hostMustDecide = await hostAnte.isVisible();
   const decisionSurface = hostMustDecide ? hostAnte : peerAnte;
   const decisionNetwork = hostMustDecide ? hostNetwork : peerNetwork;
-
-  if (options.submitNonDealerAnte === false) return;
 
   // Dealer configuration already commits the dealer's ante. The other human's
   // authoritative decision is committed, but that browser loses the exact RPC

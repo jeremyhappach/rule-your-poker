@@ -9,10 +9,16 @@ import {
   blastFakeMoneySession,
   closeTwoClientSession,
   enterDealerGameUnderChaos,
+  submitOutstandingAnteUnderChaos,
   type DealerGameType,
   waitForDealerGameSetupOwner,
 } from '../liveness/support/twoClientSession';
-import { expectAuthoritativeGameType, expectCanonicalContinuity } from '../liveness/support/livenessAssertions';
+import {
+  expectCanonicalContinuity,
+  waitForBothClientsAction,
+  waitForBothClientsInLiveGame,
+  waitForEitherClientAction,
+} from '../liveness/support/livenessAssertions';
 import {
   authoritativeDealerGameId,
   configureShortestTerminal,
@@ -64,6 +70,7 @@ async function startSuccessor(
   if (scenario.variant === 'unchanged') {
     const owner = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
     await owner.getByRole('button', { name: /Run Back/ }).click();
+    await submitOutstandingAnteUnderChaos(session);
     return;
   }
   const target = scenario.target;
@@ -80,10 +87,10 @@ async function waitForBothClientsAtDealerGame(
   session: Awaited<ReturnType<typeof createTwoClientSession>>,
   gameType: DealerGameType,
 ): Promise<string> {
-  await Promise.all([
-    expectAuthoritativeGameType(session.hostPage, gameType),
-    expectAuthoritativeGameType(session.peerPage, gameType),
-  ]);
+  // A dealer-game id is allocated at ante. Transition coverage must not treat
+  // that allocation as permission to request LAST HAND or drive gameplay: the
+  // successor has to be authoritatively live on both browsers first.
+  await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
   let dealerGameId = '';
   await expect.poll(async () => {
     const [host, peer] = await Promise.all([
@@ -94,6 +101,24 @@ async function waitForBothClientsAtDealerGame(
     return host === peer && host.length > 0;
   }, { timeout: 60_000, intervals: [250, 500, 1_000] }).toBe(true);
   return dealerGameId;
+}
+
+async function waitForPlayableTransitionAction(
+  session: Awaited<ReturnType<typeof createTwoClientSession>>,
+  gameType: DealerGameType,
+): Promise<void> {
+  // 3-5-7 deals cards to both players before either decision. Requiring both
+  // decision surfaces here prevents a dealer-host presentation deadlock from
+  // being hidden by the peer's healthy controls.
+  if (gameType === '3-5-7') {
+    await waitForBothClientsAction(
+      session.hostPage,
+      session.peerPage,
+      '[data-authoritative-action-surface="holm-357-decision"]',
+    );
+    return;
+  }
+  await waitForEitherClientAction(session.hostPage, session.peerPage);
 }
 
 test.describe('two-human cross-country dealer-game transition campaign', () => {
@@ -115,6 +140,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       });
       const sourceDealerGameId = await waitForBothClientsAtDealerGame(session, source);
       evidence.sourceDealerGameId = sourceDealerGameId;
+      await waitForPlayableTransitionAction(session, source);
       await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
 
       await startSuccessor(scenario, session);
@@ -126,6 +152,8 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         expectCanonicalContinuity(session.hostPage),
         expectCanonicalContinuity(session.peerPage),
       ]);
+      await waitForBothClientsAtDealerGame(session, target);
+      await waitForPlayableTransitionAction(session, target);
 
       await requestLastHand(session, probe);
       const successorResult = await playDealerGameToTerminal(

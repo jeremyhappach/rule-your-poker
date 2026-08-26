@@ -321,7 +321,6 @@ export function ThreeFiveSevenDealOrchestrator({
     if (cardsThisWave <= 0) { emitDecision('defer', 'cards_this_wave_zero'); return; }
     if (!activeSeats.length) { emitDecision('defer', 'no_active_seats'); return; }
     if (typeof dealerPosition !== 'number' || dealerPosition <= 0) { emitDecision('defer', 'invalid_dealer_position'); return; }
-    if (dealerIsSelf && !selfDealerFeltIsSurface) { emitDecision('defer', 'self_dealer_felt_not_surface'); return; }
     // Required deal prerequisite (Option 1 contract): if the local
     // viewer is an active recipient this wave, the identity-matched
     // authoritative self hand must already contain the cumulative
@@ -607,6 +606,7 @@ export function ThreeFiveSevenDealOrchestrator({
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
+    selfHand,
     committedCardRect, fallbackUsed, transportAnchorRenderKey, dispatchAllowed,
   ]);
 
