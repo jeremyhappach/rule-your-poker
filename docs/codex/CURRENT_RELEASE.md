@@ -2,6 +2,26 @@
 
 Date: 2026-08-25
 
+## 3-5-7 live authoritative-readiness recovery
+
+- A two-browser production replay of the `3-5-7-run-it-back-unchanged`
+  cross-country scenario found that one client could hold a complete current
+  private hand while its local card-transport receipt never released. That
+  presentation-only receipt suppressed both the legal action controls and the
+  timer despite the authoritative round remaining live and actionable.
+- Published commits `2315fbad6`, `54bac2637`, and `544372002` remove the
+  dealer-host fallback-frame dispatch block, then allow only an exact,
+  live, in-progress betting hand with the expected current-round card count
+  to recover a missing local receipt. Historical entries, incomplete hands,
+  terminal state, and mismatched hand/wave/round identity remain blocked.
+  The recovery displays the same identity-matched authoritative hand rather
+  than treating local animation state as gameplay authority.
+- The final immutable production deployment for `544372002` passed the same
+  two-human Run Back scenario with long-haul transport disorder and an
+  injected offline burst: both clients reached the required 3-5-7 decision
+  surface and guarded fake-money cleanup verified. This is targeted
+  transition evidence, not a substitute for the wider full-game matrix.
+
 ## Parallel browser-campaign isolation gate
 
 - The first parallel per-game pilot did not produce product evidence for every

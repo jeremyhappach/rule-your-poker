@@ -2,6 +2,14 @@
 
 ## Platform
 
+- The 3-5-7 Run Back cross-country readiness recovery passed against immutable
+  production commit `544372002b42df143a6e56956c755cb2b79a9b36` on 2026-08-26.
+  Two live fake-money clients survived the targeted offline burst and both
+  exposed the current-round decision surface after the successor dealer game
+  began. Preserve the exact hand/wave/round identity match, live
+  `in_progress`/`betting` status, expected self-card threshold, and exclusion
+  of historical entry; a local transport receipt may enhance presentation but
+  must not indefinitely suppress an already-authoritative legal action.
 - The full two-human terminal-settlement matrix passed production on
   2026-08-25 against published runtime commit
   `4023c6c1ac891f4402e2ace59b132a3776cb0c92`: Holm, 3-5-7, Cribbage, Gin
