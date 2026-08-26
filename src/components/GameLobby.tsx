@@ -20,7 +20,6 @@ import { Settings, Info, Wrench } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
-import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
@@ -83,13 +82,14 @@ interface Game {
 
 interface GameLobbyProps {
   userId: string;
+  isMaintenanceMode: boolean;
 }
 
 // A lobby query is presentation data only, but it must not hold the lobby
 // surface forever when a browser transport wedges during a publish/reconnect.
 const LOBBY_FETCH_TIMEOUT_MS = 12_000;
 
-export const GameLobby = ({ userId }: GameLobbyProps) => {
+export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
   // Prevent screen from dimming in the lobby
   useWakeLock(true);
   
@@ -106,7 +106,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const { isAdmin: isSuperuser } = useIsAdmin(userId);
   const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
   const [creatingGame, setCreatingGame] = useState(false);
-  const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
   const { isTablet } = useDeviceSize();
   const navigate = useNavigate();
   const { toast } = useToast();

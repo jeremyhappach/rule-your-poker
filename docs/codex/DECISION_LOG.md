@@ -1398,3 +1398,13 @@ dealer-game identity, a missed presentation callback is stale local state and
 cannot block the next legal surface. Likewise, optional defaults or preference
 reads may improve setup values but may never gate an already-persisted setup
 deadline or hide the action surface behind an unbounded request.
+
+## D-098 - A named realtime channel has one mounted owner per route tree
+
+Realtime channel names are client-wide identities. Two independently mounted
+hooks using the same name can cause the later hook to add a callback to the
+already-subscribed channel, which Supabase rejects at runtime. Route-level
+state that is shared by a parent and child therefore has one subscription
+owner; descendants receive the resolved primitive state as props. This removes
+duplicate callbacks, duplicate reads, and a post-login blank-route failure
+without giving presentation a second authoritative owner.

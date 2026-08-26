@@ -515,7 +515,7 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        <GameLobby userId={user.id} />
+        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} />
       </div>
 
         <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>

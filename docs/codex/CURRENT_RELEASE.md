@@ -3062,6 +3062,11 @@ that consent defect is isolated in Backlog item 3H and is not accepted.
 
 ## 2026-08-26 — Freeze-liveness hardening release candidate
 
+- The post-login lobby no longer mounts the same maintenance-mode realtime
+  channel twice. `Index` is the sole subscription owner and passes its
+  read-only maintenance state to `GameLobby`; the previous duplicate channel
+  name caused Supabase to throw during the second mount and left the lobby
+  route blank.
 - Deployed `yahtzee_human_deadline_recovery`: an expired human Yahtzee turn is
   now recovered by the service scheduler through an exact deadline/action
   sequence identity. The new `deadline_auto` path is rejected for ordinary
@@ -3086,4 +3091,8 @@ liveness tests, and the production build passed. The broad liveness suite was
 239/240, with the sole failure an unrelated pre-existing Windows line-ending
 source assertion in the session tie-harness test. Two browser attempts stopped
 before table creation at the existing post-login `Game Lobby` assertion, so no
-two-client runtime acceptance is claimed for this candidate yet.
+two-client runtime acceptance is claimed for this candidate yet. After the
+lobby correction, both configured live-browser identities reached Game Lobby
+and exposed Create New Game. The first full chaos scenario then reached its
+next hard gate but did not navigate after Create Game; it is recorded as a
+blocking gauntlet failure pending a separate RCA, not as passing coverage.
