@@ -1427,3 +1427,31 @@ two-player topology normalization, lifecycle reset, and status flip. The
 existing canonical timer trigger then owns high-card preparation/completion.
 Duplicate requests are replay-safe; authenticated-host authorization and
 non-waiting rejection are decided under the same game-row lock.
+
+## D-101 - Prepared-hand readiness is level-triggered from authoritative identity
+
+A prepared Holm successor acknowledgement is bound to the database-authored
+dealer game, predecessor round, successor round, and hand number. The visual
+completion callback and the authoritative fetch may arrive in either order;
+installing a new exact prepared identity must wake the idempotent
+acknowledgement drain so a callback/ref race cannot lose the next actor's
+readiness receipt. The database remains the activation owner and retains its
+missing-client recovery lease.
+
+## D-102 - A vanished dealer-game identity is a hard presentation boundary
+
+When an authoritative fetch clears or rotates the current dealer-game identity,
+a game-specific sync projection from the outgoing dealer game cannot remain an
+active gameplay surface. The route clears that projection and its lifted
+gameplay caches while preserving the single canonical table, HUD, waiting/setup
+surface, and any terminal presentation that has not yet reached the
+authoritative postgame transition.
+
+## D-103 - Hidden-card optimism cannot admit a reveal surface
+
+An optimistic Gin action may improve the initiating player's responsiveness,
+but a caller-specific projection with masked opponent cards cannot be used to
+construct or paint an opponent reveal. Knock presentation waits until every
+opponent face required by the display is known in the authoritative post-action
+projection. Redaction remains server-owned, and the client neither infers nor
+stores hidden card truth.

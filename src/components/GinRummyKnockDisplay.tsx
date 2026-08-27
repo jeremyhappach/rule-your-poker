@@ -7,6 +7,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { cn } from '@/lib/utils';
 import { canLayOff } from '@/lib/ginRummyScoring';
 import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
+import { isGinOpponentRevealReady } from '@/lib/ginRummy/revealReadiness';
 
 interface GinRummyKnockDisplayProps {
   ginState: GinRummyState;
@@ -174,6 +175,10 @@ export const GinRummyKnockDisplay = ({
 
   // If opponent has no cards to show yet, skip — but still allow laying-off message
   const hasOtherCards = otherState.melds.length > 0 || otherState.deadwood.length > 0 || otherState.hand.length > 0;
+  // A local knock is computed from the caller projection, where the opponent's
+  // cards are deliberately masked. Never paint those placeholders. The exact
+  // server-returned post-knock projection is the first state allowed to reveal.
+  const opponentRevealReady = isGinOpponentRevealReady(ginState, currentPlayerId);
 
   // Lay-off is interactive when the OTHER player is the knocker and I'm laying off onto their melds
   const isLayingOffOntoOther = isOtherTheKnocker && (ginState.phase === 'knocking' || ginState.phase === 'laying_off');
@@ -203,7 +208,7 @@ export const GinRummyKnockDisplay = ({
       }}
     >
       {/* Opponent's cards — the only cards shown on the felt */}
-      {showOtherMelds && hasOtherCards && (
+      {showOtherMelds && hasOtherCards && opponentRevealReady && (
         <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
           <OpponentHandDisplay
             melds={otherState.melds}

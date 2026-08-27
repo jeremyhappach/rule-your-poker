@@ -12,6 +12,39 @@ export type HolmClientPresentationRoundSelection<T extends HolmPreparedPresentat
   predecessorRound: T;
 };
 
+export interface HolmPreparedAcknowledgementIdentity {
+  dealerGameId: string;
+  predecessorRoundId: string;
+  successorRoundId: string;
+  handNumber: number;
+  handContextId: string;
+}
+
+export function getHolmPreparedAcknowledgementIdentity<
+  T extends HolmPreparedPresentationRoundLike,
+>(
+  selection: HolmClientPresentationRoundSelection<T> | null,
+  dealerGameId: string | null | undefined,
+): HolmPreparedAcknowledgementIdentity | null {
+  if (!dealerGameId || selection?.mode !== 'prepared-successor') return null;
+  const predecessorRoundId = selection.round.holm_predecessor_round_id;
+  const handNumber = selection.round.hand_number ?? null;
+  if (
+    !predecessorRoundId
+    || predecessorRoundId !== selection.predecessorRound.id
+    || handNumber === null
+    || handNumber < 1
+  ) return null;
+
+  return {
+    dealerGameId,
+    predecessorRoundId,
+    successorRoundId: selection.round.id,
+    handNumber,
+    handContextId: `${selection.round.id}:h${handNumber}`,
+  };
+}
+
 /**
  * Select the exact round one browser may present.
  *

@@ -1,6 +1,42 @@
 # Current release and cutover state
 
-Date: 2026-08-26
+Date: 2026-08-27
+
+## Aug 26 real-money Cross-Country liveness corrections — pending smoke
+
+- Production session `799b8a4d-a21b-4a75-acb9-767021fe4883` settled every
+  Cribbage, Gin, Holm, and 3-5-7 result exactly once, but exposed three
+  independent presentation/liveness boundaries. Holm prepared hands could
+  lose their next-actor deal acknowledgement when visual completion preceded
+  installation of a client ref; one canonical timeout was consumed by a
+  transaction-stable `now()`/wall-clock disagreement; and the completed Holm
+  projection survived after PostgreSQL cleared the dealer-game identity.
+- The Holm client now derives its acknowledgement tuple from the authoritative
+  prepared predecessor/successor rows and wakes a level-triggered drain when
+  that exact identity arrives. The route hard-resets Holm gameplay projection
+  and caches when authority clears or rotates the dealer game, while retaining
+  the canonical table/HUD and the existing terminal presentation contract.
+- Migration `20260827081000_holm_deadline_clock_and_reschedule.sql` uses the
+  wall clock consistently for Holm deadline expiry. A defensive early call
+  returns its exact deadline, and the canonical timer worker reschedules that
+  outcome instead of completing the timer. Pre- and post-migration rollback
+  proofs cover authorization, winner/terminal settlement, auto-fold
+  continuation, duplicate/replay, late replay, the former cross-deadline race,
+  and deployed function shape.
+- Gin's knock display no longer paints locally derived opponent cards while
+  their caller projection is masked; it waits for known faces from the exact
+  post-knock projection. Actor RPC duration, authoritative fetch duration, and
+  Realtime-to-peer-application duration are now attached to the existing Gin
+  debug events for future production latency attribution.
+- 3-5-7 now evaluates action eligibility, active tab, lifecycle, player,
+  auto-fold, and setup gates as one decision-surface envelope. The DOM probe
+  uses that same envelope and correctly cancels both animation frames, so a
+  hidden tab/setup frame is no longer reported as a missing legal action.
+- Thirty-four focused assertions, TypeScript, the 39-test build prerequisite,
+  and the production build pass. The wider liveness contract remains 247/248
+  solely because of the unchanged dealer-draw harness source-string whitespace
+  assertion against untouched files. Production client smoke is still
+  required before this becomes a stable checkpoint.
 
 ## Server-owned session start
 

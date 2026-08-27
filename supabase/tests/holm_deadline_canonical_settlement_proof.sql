@@ -119,7 +119,8 @@ BEGIN
   SELECT public.holm_apply_deadline_decision(
     v_game_id, v_round_id, v_stayer_id, 'stay', false
   ) INTO v_replay;
-  IF coalesce((v_replay->>'round_not_betting')::boolean, false) IS NOT TRUE
+  IF (coalesce((v_replay->>'round_not_betting')::boolean, false) IS NOT TRUE
+      AND coalesce((v_replay->>'stale_round')::boolean, false) IS NOT TRUE)
      OR (SELECT count(*) FROM public.game_results WHERE game_id = v_game_id) <> v_result_count THEN
     RAISE EXCEPTION 'holm_deadline_proof:replay_mutated_settlement:%', v_replay;
   END IF;
@@ -152,12 +153,15 @@ BEGIN
   SELECT id INTO v_fold_round_id FROM public.rounds WHERE game_id = v_fold_game_id;
   UPDATE public.rounds
      SET current_turn_position = 1,
-         decision_deadline = now() - interval '1 second'
+         -- Begin this transaction before the deadline, then cross it using the
+         -- wall clock. A transaction-stable now() comparison fails this proof.
+         decision_deadline = clock_timestamp() + interval '100 milliseconds'
    WHERE id = v_fold_round_id;
   UPDATE public.players
      SET current_decision = 'fold', decision_locked = true
    WHERE id = v_fold_other_id;
 
+  PERFORM pg_sleep(0.2);
   SELECT public.holm_apply_deadline_decision(
     v_fold_game_id, v_fold_round_id, v_fold_target_id, 'fold', true
   ) INTO v_result;

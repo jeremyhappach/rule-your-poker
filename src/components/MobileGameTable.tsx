@@ -1,6 +1,7 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
+import { isThreeFiveSevenDecisionSurfaceEnvelopeOpen } from "@/lib/threeFiveSeven/decisionSurfaceEnvelope";
 import {
   canAdmitThreeFiveSevenTerminalPresentation,
   isThreeFiveSevenAuthoritativeFallbackReady as isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand,
@@ -7054,6 +7055,23 @@ export const MobileGameTable = ({
     ? threeFiveSevenDealPresentationReady
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen && threeFiveSevenDecisionPresentationGate;
+  const decisionSurfaceEnvelopeOpen = __is357GameType(gameType)
+    ? isThreeFiveSevenDecisionSurfaceEnvelopeOpen({
+        canDecide: !!canDecide,
+        activeTab,
+        isWaitingPhase,
+        sessionEndedPhase,
+        isDealerConfigPhase,
+        hasCurrentPlayer: !!currentPlayer,
+        autoFold: !!currentPlayer?.auto_fold,
+      })
+    : !!canDecide
+      && activeTab === 'cards'
+      && !isWaitingPhase
+      && !sessionEndedPhase
+      && !isDealerConfigPhase
+      && !!currentPlayer
+      && !currentPlayer.auto_fold;
   type LowerZoneRenderedOwner =
     | 'stay_fold_buttons'
     | 'stayed_badge'
@@ -7067,10 +7085,7 @@ export const MobileGameTable = ({
   const lowerZoneTraceViewRoundId = threeFiveSevenViewRoundId ?? null;
   const lowerZoneTraceViewRoundNumber = threeFiveSevenViewRoundNumber ?? (__is357GameType(gameType) ? currentRound : null);
   useAuthoritativeActionSurfaceGuard({
-    expected: !!canDecide
-      && activeTab === 'cards'
-      && !isWaitingPhase
-      && !isDealerConfigPhase,
+    expected: decisionSurfaceEnvelopeOpen,
     gameId,
     gameType: gameType ?? 'unknown',
     identityKey: authoritativeDecisionIdentityKey
@@ -7308,16 +7323,17 @@ export const MobileGameTable = ({
     if (!__is357GameType(gameType)) return;
     if (!gameId) return;
     if (__buttonDomProbeSeqRef.current >= 20) return;
-    const enabled = !!canDecide && !!currentPlayer && !currentPlayer.auto_fold;
-    const key = `${enabled}:${canDecide ? '1' : '0'}:${currentPlayer?.auto_fold ? '1' : '0'}:${authoritativeDecisionIdentityKey ?? 'none'}`;
+    const enabled = decisionSurfaceEnvelopeOpen;
+    const key = `${enabled}:${authoritativeDecisionIdentityKey ?? 'none'}`;
     if (__buttonDomProbeLastKeyRef.current === key) return;
     __buttonDomProbeLastKeyRef.current = key;
     if (!enabled) return;
 
     const seq = ++__buttonDomProbeSeqRef.current;
     // Defer two frames so React commit + layout has flushed.
+    let raf2: number | null = null;
     const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
         try {
           const btn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
           const wrapper = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
@@ -7403,10 +7419,18 @@ export const MobileGameTable = ({
           }).catch(() => {});
         } catch { /* noop */ }
       });
-      return () => cancelAnimationFrame(raf2);
     });
-    return () => cancelAnimationFrame(raf1);
-  });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== null) cancelAnimationFrame(raf2);
+    };
+  }, [
+    authoritativeDecisionIdentityKey,
+    currentPlayer?.auto_fold,
+    decisionSurfaceEnvelopeOpen,
+    gameId,
+    gameType,
+  ]);
 
   // (357 pane-geometry paired diagnostic snapshot removed.)
 
@@ -15686,7 +15710,7 @@ export const MobileGameTable = ({
                           isTablet ? "text-lg" : "text-sm"
                         )}>Auto-fold (will sit out next hand)</span>
                       </label>
-                    ) : canDecide && !currentPlayer.auto_fold ? (
+                    ) : decisionSurfaceEnvelopeOpen ? (
                       <div
                         data-authoritative-action-surface="holm-357-decision"
                         className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}

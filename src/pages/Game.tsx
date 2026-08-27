@@ -353,9 +353,11 @@ import {
   endHolmRound,
 } from "@/lib/holmGameLogic";
 import {
+  getHolmPreparedAcknowledgementIdentity,
   selectHolmClientPresentationRound,
   type HolmClientPresentationRoundSelection,
 } from "@/lib/holmPreparedPresentation";
+import { shouldResetHolmProjection } from "@/lib/holmProjectionLifecycle";
 import {
   getHolmResolutionRecoveryKey,
 } from "@/lib/holmResolutionRecovery";
@@ -1864,6 +1866,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handNumber: number;
     handContextId: string;
   } | null>(null);
+  // A ref alone cannot wake the acknowledgement drain when deal completion
+  // wins the race against an async authoritative fetch. Increment this token
+  // whenever a new exact prepared identity is installed.
+  const [holmPreparedAcknowledgementTick, setHolmPreparedAcknowledgementTick] = useState(0);
   const holmPreparedAckInFlightRef = useRef<string | null>(null);
   const holmPreparedAckCompletedRef = useRef(new Set<string>());
 
@@ -9001,7 +9007,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const prepared = holmLocallyPreparedSuccessorRef.current;
     if (!prepared || !isHolmHandReady(prepared.handContextId)) return;
     handleHolmDealPresentationComplete(prepared.handContextId);
-  }, [game?.current_game_uuid, handContextKey, handleHolmDealPresentationComplete, holmReadyTick]);
+  }, [
+    game?.current_game_uuid,
+    handContextKey,
+    handleHolmDealPresentationComplete,
+    holmPreparedAcknowledgementTick,
+    holmReadyTick,
+  ]);
 
   // Clear timer when results are shown
   useEffect(() => {
@@ -10141,13 +10153,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         : (playersData || []) as Player[];
 
       if (isLocallyPreparedPresentation && holmRound && gameData.current_game_uuid) {
-        holmLocallyPreparedSuccessorRef.current = {
-          dealerGameId: gameData.current_game_uuid,
-          predecessorRoundId: holmClientRoundSelection!.predecessorRound.id,
-          successorRoundId: holmRound.id,
-          handNumber: holmRound.hand_number ?? 1,
-          handContextId: `${holmRound.id}:h${holmRound.hand_number ?? 1}`,
-        };
+        const preparedIdentity = getHolmPreparedAcknowledgementIdentity(
+          holmClientRoundSelection,
+          gameData.current_game_uuid,
+        );
+        if (preparedIdentity) {
+          const previousIdentity = holmLocallyPreparedSuccessorRef.current;
+          holmLocallyPreparedSuccessorRef.current = preparedIdentity;
+          if (previousIdentity?.handContextId !== preparedIdentity.handContextId) {
+            setHolmPreparedAcknowledgementTick((tick) => tick + 1);
+          }
+        }
       }
 
       if (holmRound && !isLocallyPreparedPresentation && isHolmTraceArmed()) {
@@ -10304,6 +10320,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         holmSyncLastRoundIdRef.current = snapshot.roundId;
         }
+      } else if (shouldResetHolmProjection({
+        snapshotAvailable: false,
+        presentedDealerGameId: holmSync.presentationState?.dealerGameId,
+        currentDealerGameId: gameData.current_game_uuid,
+        gameStatus: gameData.status,
+      })) {
+        // Authoritative dealer-game teardown is a hard identity boundary. Keep
+        // the canonical shell/HUD mounted, but do not let the completed Holm
+        // hand survive into waiting/setup as an apparently frozen game.
+        holmSync.reset(null);
+        holmSyncLastRoundIdRef.current = null;
+        holmPresentationDealerGameRef.current = null;
+        holmPresentationBarrierRef.current = null;
+        holmPresentationCompletionEvidenceRef.current.clear();
+        holmLiveRoundIdsObservedRef.current.clear();
+        holmReleasedPresentationHandsRef.current.clear();
+        holmLocallyPreparedSuccessorRef.current = null;
+        holmPreparedAckInFlightRef.current = null;
+        holmPreparedAckCompletedRef.current.clear();
+        communityCardsCacheRef.current = { cards: null, round: null, show: false };
+        showdownCardsCacheRef.current = new Map();
+        showdownRoundNumberRef.current = null;
+        maxRevealedRef.current = 0;
+        cardIdentityRef.current = '';
+        setHolmTerminalRevealPresentationKey(null);
+        setHolmTerminalRevealCompleteKey(null);
+        setCommunityCacheEpoch((epoch) => epoch + 1);
       }
     }
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { selectHolmClientPresentationRound } from './holmPreparedPresentation';
+import {
+  getHolmPreparedAcknowledgementIdentity,
+  selectHolmClientPresentationRound,
+} from './holmPreparedPresentation';
 
 const predecessor = {
   id: 'h1', dealer_game_id: 'dg', hand_number: 1, status: 'completed', holm_predecessor_round_id: null,
@@ -67,5 +70,39 @@ describe('Holm client prepared-hand presentation selection', () => {
       predecessorReleased: false,
       awaitingNextRound: true,
     })).toMatchObject({ mode: 'published', round: { id: 'h1' } });
+  });
+
+  it('derives the exact durable acknowledgement identity from the prepared row', () => {
+    const selection = selectHolmClientPresentationRound({
+      rounds: [predecessor, successor],
+      dealerGameId: 'dg',
+      publishedRound: predecessor,
+      barrierRoundId: null,
+      predecessorObservedLive: false,
+      predecessorReleased: false,
+      awaitingNextRound: true,
+    });
+
+    expect(getHolmPreparedAcknowledgementIdentity(selection, 'dg')).toEqual({
+      dealerGameId: 'dg',
+      predecessorRoundId: 'h1',
+      successorRoundId: 'h2',
+      handNumber: 2,
+      handContextId: 'h2:h2',
+    });
+  });
+
+  it('does not manufacture an acknowledgement for a published round', () => {
+    const selection = selectHolmClientPresentationRound({
+      rounds: [predecessor],
+      dealerGameId: 'dg',
+      publishedRound: predecessor,
+      barrierRoundId: null,
+      predecessorObservedLive: true,
+      predecessorReleased: false,
+      awaitingNextRound: false,
+    });
+
+    expect(getHolmPreparedAcknowledgementIdentity(selection, 'dg')).toBeNull();
   });
 });

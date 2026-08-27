@@ -1666,7 +1666,38 @@ export const GinRummyGameTable = ({
     };
 
     const exactStateLoader = createLatestAuthoritativeLoader({
-      load: async () => fetchGinRummyState(roundId),
+      load: async (source) => {
+        const startedAt = performance.now();
+        try {
+          const state = await fetchGinRummyState(roundId);
+          logDebugEvent({
+            gameId,
+            roundId,
+            userId: currentUserId,
+            clientRole: 'peer',
+            eventType: 'gin:authoritative_fetch_success',
+            payload: ginStateSummary(state, {
+              source,
+              durationMs: Math.round(performance.now() - startedAt),
+            }),
+          });
+          return state;
+        } catch (error) {
+          logDebugEvent({
+            gameId,
+            roundId,
+            userId: currentUserId,
+            clientRole: 'peer',
+            eventType: 'gin:authoritative_fetch_failure',
+            payload: {
+              source,
+              durationMs: Math.round(performance.now() - startedAt),
+              error: String(error),
+            },
+          });
+          throw error;
+        }
+      },
       apply: (state, source) => applyState(state, source),
       onError: (error, source) => {
         console.error('[GIN-RUMMY] Authoritative state fetch failed:', { source, error });
@@ -1688,6 +1719,8 @@ export const GinRummyGameTable = ({
           filter: `id=eq.${roundId}`,
         },
         () => {
+          const catchUpStartedAt = performance.now();
+          const catchUpTraceId = newTraceId();
           recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable rounds callback fired / payload received', {
             file: 'src/components/GinRummyGameTable.tsx',
             function: 'round-specific realtime callback',
@@ -1697,7 +1730,20 @@ export const GinRummyGameTable = ({
             oldValue: null,
             newValue: { roundId, source: 'authoritative-refetch' },
           });
-          void exactStateLoader.refresh('realtime-refetch');
+          void exactStateLoader.refresh('realtime-refetch').then((applied) => {
+            logDebugEvent({
+              gameId,
+              roundId,
+              userId: currentUserId,
+              clientRole: 'peer',
+              eventType: 'gin:peer_catchup_complete',
+              traceId: catchUpTraceId,
+              payload: {
+                applied,
+                durationMs: Math.round(performance.now() - catchUpStartedAt),
+              },
+            });
+          });
         }
       )
       .subscribe((status, err) => {
@@ -2235,6 +2281,7 @@ export const GinRummyGameTable = ({
     },
     traceId?: string,
   ): Promise<GinRummyState | null> => {
+    const actionStartedAt = performance.now();
     // Writer-audit gate: refuse to write if the framework says we cannot interact
     // (frozen / visual contract active / identity stale). Prevents stale local
     // action paths from clobbering the new round after a peer advanced the hand.
@@ -2300,7 +2347,10 @@ export const GinRummyGameTable = ({
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_success', traceId,
-        payload: ginStateSummary(committedState, { outcome: result.outcome }),
+        payload: ginStateSummary(committedState, {
+          outcome: result.outcome,
+          durationMs: Math.round(performance.now() - actionStartedAt),
+        }),
       });
       // The returned caller projection is the initiating client's bootstrap/action
       // result. Realtime is only responsible for synchronizing peers.
@@ -2320,7 +2370,10 @@ export const GinRummyGameTable = ({
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_failure', traceId,
-        payload: ginStateSummary(newState, { error: String(err) }),
+        payload: ginStateSummary(newState, {
+          error: String(err),
+          durationMs: Math.round(performance.now() - actionStartedAt),
+        }),
       });
       console.error('[GIN-RUMMY] Error updating state:', err);
       // Clear presentation optimism and restore the caller-specific committed
