@@ -7,6 +7,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `PROJECT_CONTEXT.md` | First session, product overview, stack, operating constraints |
 | `ARCHITECTURE.md` | State ownership, canonical shell, lifecycle, sync, geometry, terminal flow |
 | `GAME_RULES.md` | Any change touching legal actions, scoring, settlement, dealer/hand flow, bots |
+| `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `STABLE_CHECKPOINTS.md` | Before touching previously stable behavior |

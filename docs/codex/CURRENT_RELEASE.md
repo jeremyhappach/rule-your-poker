@@ -2,6 +2,23 @@
 
 Date: 2026-08-27
 
+## Full human-to-human seam campaign — plan locked, execution held
+
+- `FULL_SEAM_GAUNTLET_PLAN.md` now defines the closed coverage ledger,
+  game-by-game rule branches, deterministic fault schedules, continuous
+  assertions, latency/freeze budgets, parallel identity isolation, failure
+  handling, invalidation reruns, and final completion gates for the next
+  browser campaign.
+- The plan keeps the existing 79 lifecycle rows distinct from the incomplete
+  rule-branch inventory. It records that only 78 lifecycle rows are currently
+  executable because the account-scoped Cribbage forced-tie dealer fixture is
+  missing, and it makes that fixture plus deterministic rare-outcome fixtures
+  a Wave 0 prerequisite.
+- Execution is intentionally held. No browser, database, fixture, gauntlet,
+  production canary, or deployment action was run while this plan was built.
+  A separate go-ahead outside the scheduled real-money game window is required
+  before Wave 0 or any scenario begins.
+
 ## Continuous human-chaos observation upgrade — campaign not started
 
 - Human-chaos contexts now install a presentation observer before either
