@@ -15,6 +15,7 @@ const reportDir = runNamespace ? path.join('playwright-report', runNamespace) : 
 
 process.env.PTOWN_E2E_BASE_URL = target.baseUrl;
 process.env.PTOWN_E2E_EXPECTED_SUPABASE_PROJECT_REF = target.supabaseProjectRef;
+process.env.PTOWN_E2E_CONTINUOUS_OBSERVER = '1';
 
 export default defineConfig({
   testDir: './e2e/humanChaos',

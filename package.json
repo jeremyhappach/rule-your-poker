@@ -17,6 +17,7 @@
     "test:human-chaos-transition": "playwright test -c playwright.human-chaos.config.ts transitions.humanChaos.spec.ts",
     "test:human-chaos-deadline": "playwright test -c playwright.human-chaos.config.ts deadlines.humanChaos.spec.ts",
     "test:human-chaos-draw": "playwright test -c playwright.human-chaos.config.ts dealerDraws.humanChaos.spec.ts",
+    "test:human-chaos-contract": "vitest run e2e/humanChaos/manifest.test.ts e2e/humanChaos/target.test.ts e2e/humanChaos/support/continuousObserver.test.ts && playwright test -c playwright.human-chaos.config.ts support/continuousObserver.browser.spec.ts",
     "build": "npm run test:cribbage-rejoin && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

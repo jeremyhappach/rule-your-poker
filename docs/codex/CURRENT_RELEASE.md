@@ -2,6 +2,30 @@
 
 Date: 2026-08-27
 
+## Continuous human-chaos observation upgrade — campaign not started
+
+- Human-chaos contexts now install a presentation observer before either
+  browser logs in, so its evidence survives the intentional peer route remount.
+  It continuously records canonical lifecycle identity, action surfaces,
+  timers, visible face cards, announcements, setup/celebration layering, card
+  transport, and session/round transitions on both clients.
+- The browser campaign now fails closed on a visible masked card face,
+  duplicate or persistently absent canonical shell/felt, timed legal controls
+  without a timer, Dealer Setup or Sweep below the tab rail, and browser page
+  errors/crashes. This converts the transient Gin `??`, 3-5-7 control/timer,
+  and overlay seams from eventual-state blind spots into retained evidence.
+- Every tracked action is correlated with its Supabase RPC and the first
+  changed actor/peer presentation signature. Evidence reports RPC, local, and
+  peer latency distributions. `PTOWN_E2E_MAX_ACTION_TO_PEER_MS` can make an
+  agreed campaign latency budget fail closed; no threshold has been guessed or
+  enabled before the execution plan is approved.
+- Draw, deadline/rejoin, and transition specs attach the independent continuous
+  observer artifact before guarded cleanup. The seven-test harness contract
+  and its two-context Chrome injection contract pass, as do focused lint and
+  TypeScript. No human-chaos scenario has been executed with this observer yet;
+  campaign scope, ordering, repetition, and latency budgets remain the next
+  planning step.
+
 ## Aug 26 real-money Cross-Country liveness corrections — pending smoke
 
 - Production session `799b8a4d-a21b-4a75-acb9-767021fe4883` settled every

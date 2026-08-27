@@ -5,6 +5,7 @@ import { CrossCountryNetwork, runOfflineBurst } from './crossCountryNetwork';
 import { e2eEnvironment, type PlayerCredentials } from './env';
 import { acquireIdentityLease, type IdentityLease } from './runIsolation';
 import { assertHumanChaosRuntimeTarget } from '../../humanChaos/target';
+import { HumanChaosContinuousObserver } from '../../humanChaos/support/continuousObserver';
 
 export type DealerGameType =
   | 'holm-game'
@@ -32,6 +33,7 @@ export type TwoClientSession = {
   cleanupClient: SupabaseClient<Database>;
   gameId: string;
   identityLease: IdentityLease | null;
+  chaosObserver: HumanChaosContinuousObserver | null;
 };
 
 async function login(page: Page, credentials: Credentials): Promise<void> {
@@ -87,6 +89,15 @@ export async function createTwoClientSession(
   });
   const hostNetwork = new CrossCountryNetwork();
   const peerNetwork = new CrossCountryNetwork();
+  const chaosObserver = process.env.PTOWN_E2E_CONTINUOUS_OBSERVER === '1'
+    ? new HumanChaosContinuousObserver()
+    : null;
+  if (chaosObserver) {
+    await Promise.all([
+      chaosObserver.attachContext(hostContext, 'host'),
+      chaosObserver.attachContext(peerContext, 'peer'),
+    ]);
+  }
   await Promise.all([
     hostNetwork.attach(hostContext),
     peerNetwork.attach(peerContext),
@@ -135,6 +146,7 @@ export async function createTwoClientSession(
       cleanupClient,
       gameId,
       identityLease,
+      chaosObserver,
     };
 
     console.log(

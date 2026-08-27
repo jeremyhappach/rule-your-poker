@@ -11,6 +11,7 @@ import {
   waitForDealerGameSetupOwner,
 } from '../liveness/support/twoClientSession';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
+import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 
 const DRAW_CARD = '[data-wartime-high-card="card"]';
 
@@ -57,6 +58,7 @@ test.describe('two-human cross-country dealer draw campaign', () => {
     const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
     const evidence: Record<string, unknown> = { scenario: scenario.id, status: 'started' };
     let primaryError: unknown = null;
+    let teardownFailure: AggregateError | null = null;
 
     try {
       await Promise.all([installDrawReceipt(session.hostPage), installDrawReceipt(session.peerPage)]);
@@ -97,6 +99,13 @@ test.describe('two-human cross-country dealer draw campaign', () => {
     } finally {
       const teardownErrors: unknown[] = [];
       try {
+        const observation = await finalizeScenarioObserver(session, info);
+        evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
+        if (!primaryError && observation.failure) primaryError = observation.failure;
+      } catch (error) {
+        teardownErrors.push(error);
+      }
+      try {
         await info.attach('human-chaos-draw-evidence.json', {
           body: JSON.stringify(evidence, null, 2),
           contentType: 'application/json',
@@ -112,12 +121,13 @@ test.describe('two-human cross-country dealer draw campaign', () => {
         await closeTwoClientSession(session);
       }
       if (teardownErrors.length) {
-        throw new AggregateError(
+        teardownFailure = new AggregateError(
           primaryError ? [primaryError, ...teardownErrors] : teardownErrors,
           primaryError ? `${scenario.id} failed and teardown also failed` : `${scenario.id} teardown failed`,
         );
       }
     }
+    if (teardownFailure) throw teardownFailure;
     if (primaryError) throw primaryError;
   });
 });

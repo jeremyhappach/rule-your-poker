@@ -43,6 +43,26 @@ the observed Supabase project is not `xvhmbuppghwmwpwrkzao`. They never fall
 back to local Vite, because the retired source project is intentionally
 write-locked.
 
+Every human-chaos browser context also installs a continuous observer before
+login. The observer survives full peer-page remounts and retains state changes
+instead of checking only the final stable DOM. A scenario fails closed if it
+observes a visible masked card face, a duplicate or persistently missing
+canonical shell/felt, a timed legal-action surface without a visible timer, a
+Dealer Setup or Sweep overlay below the tab rail, or a browser page error or
+crash. Each run attaches `human-chaos-continuous-observer.json` with both
+clients' dealer-game/round transitions, Supabase REST durations, and action to
+actor/peer observed-progress receipts.
+
+Latency is measured by default but is not assigned an arbitrary pass/fail
+budget. A campaign may set `PTOWN_E2E_MAX_ACTION_TO_PEER_MS` to a positive
+millisecond value to make peer-observation overruns fail closed. Validate the
+manifest, target lock, evidence reducer, and latency correlation without
+creating a table via:
+
+```text
+npm run test:human-chaos-contract
+```
+
 Player 1 must be an existing admin because every test uses the database-guarded,
 fake-money-only **Blast This Game** action in `finally`; the suite fails if it
 cannot remove the session. Ordinary browser suites may set

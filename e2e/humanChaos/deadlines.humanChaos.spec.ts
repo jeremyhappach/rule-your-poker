@@ -15,6 +15,7 @@ import {
 import { waitForBothClientsInLiveGame } from '../liveness/support/livenessAssertions';
 import { configureShortestTerminal } from '../terminal/support/terminalActors';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
+import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 
 function selectedDeadline(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
@@ -148,6 +149,7 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
     const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
     const evidence: Record<string, unknown> = { scenario: scenario.id, status: 'started' };
     let primaryError: unknown = null;
+    let teardownFailure: AggregateError | null = null;
 
     try {
       await startSessionUnderChaos(session);
@@ -183,6 +185,13 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
     } finally {
       const teardownErrors: unknown[] = [];
       try {
+        const observation = await finalizeScenarioObserver(session, info);
+        evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
+        if (!primaryError && observation.failure) primaryError = observation.failure;
+      } catch (error) {
+        teardownErrors.push(error);
+      }
+      try {
         await info.attach('human-chaos-deadline-evidence.json', {
           body: JSON.stringify(evidence, null, 2),
           contentType: 'application/json',
@@ -198,12 +207,13 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
         await closeTwoClientSession(session);
       }
       if (teardownErrors.length) {
-        throw new AggregateError(
+        teardownFailure = new AggregateError(
           primaryError ? [primaryError, ...teardownErrors] : teardownErrors,
           primaryError ? `${scenario.id} failed and teardown also failed` : `${scenario.id} teardown failed`,
         );
       }
     }
+    if (teardownFailure) throw teardownFailure;
     if (primaryError) throw primaryError;
   });
 });

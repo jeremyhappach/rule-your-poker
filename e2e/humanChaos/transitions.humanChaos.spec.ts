@@ -28,6 +28,7 @@ import {
 } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
+import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 
 function selectedTransition(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
@@ -133,6 +134,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     const target = scenario.target!;
     const evidence: Record<string, unknown> = { scenario: scenario.id, status: 'started' };
     let primaryError: unknown = null;
+    let teardownFailure: AggregateError | null = null;
 
     try {
       await enterDealerGameUnderChaos(session, source, {
@@ -177,6 +179,13 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     } finally {
       const teardownErrors: unknown[] = [];
       try {
+        const observation = await finalizeScenarioObserver(session, info);
+        evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
+        if (!primaryError && observation.failure) primaryError = observation.failure;
+      } catch (error) {
+        teardownErrors.push(error);
+      }
+      try {
         await info.attach('human-chaos-transition-evidence.json', {
           body: JSON.stringify(evidence, null, 2),
           contentType: 'application/json',
@@ -192,12 +201,13 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         await closeTwoClientSession(session);
       }
       if (teardownErrors.length) {
-        throw new AggregateError(
+        teardownFailure = new AggregateError(
           primaryError ? [primaryError, ...teardownErrors] : teardownErrors,
           primaryError ? `${scenario.id} failed and teardown also failed` : `${scenario.id} teardown failed`,
         );
       }
     }
+    if (teardownFailure) throw teardownFailure;
     if (primaryError) throw primaryError;
   });
 });
