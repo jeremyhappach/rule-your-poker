@@ -2218,6 +2218,9 @@ export const CribbageMobileGameTable = ({
     handKey: cutRevealHandKey,
     phase: cribbageState?.phase,
     observedPrePeggingHandKey: observedPrePeggingCutHandKeyRef.current,
+    authoritativeCribCount: cribbageState?.crib?.length ?? 0,
+    locallySettledCribCount: discardsSettledInHand,
+    hasDiscardIntent: discardIntent !== null,
   });
   const authoritativeCutPresentation = deriveCribbageCutPresentation({
     entryMode: authoritativeCutEntryMode,
@@ -7833,6 +7836,9 @@ export const CribbageMobileGameTable = ({
     handKey: cutRevealHandKey,
     phase: gameplayRenderState?.phase,
     observedPrePeggingHandKey: observedPrePeggingCutHandKeyRef.current,
+    authoritativeCribCount: gameplayRenderState?.crib?.length ?? 0,
+    locallySettledCribCount: discardsSettledInHand,
+    hasDiscardIntent: discardIntent !== null,
   });
   const renderedCutPresentation = deriveCribbageCutPresentation({
     entryMode: renderedCutEntryMode,

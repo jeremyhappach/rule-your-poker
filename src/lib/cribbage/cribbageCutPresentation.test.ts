@@ -15,6 +15,16 @@ const liveCut = {
   handKey: 'round-a:7',
 };
 
+const liveEntry = {
+  entryMode: 'live-transition' as const,
+  handKey: 'round-a:7',
+  phase: 'pegging',
+  observedPrePeggingHandKey: 'round-a:7',
+  authoritativeCribCount: 4,
+  locallySettledCribCount: 4,
+  hasDiscardIntent: false,
+};
+
 describe('deriveCribbageCutPresentation', () => {
   it('holds a live cut until its local reveal completes', () => {
     expect(deriveCribbageCutPresentation(liveCut)).toMatchObject({
@@ -66,9 +76,8 @@ describe('deriveCribbageCutPresentation', () => {
 
   it('recovers a delayed live peer that first receives a later hand in pegging', () => {
     const entryMode = resolveCribbageCutPresentationEntryMode({
-      entryMode: 'live-transition',
+      ...liveEntry,
       handKey: 'round-b:8',
-      phase: 'pegging',
       observedPrePeggingHandKey: 'round-a:7',
     });
 
@@ -83,10 +92,25 @@ describe('deriveCribbageCutPresentation', () => {
 
   it('keeps the normal cut reveal for a live peer that observed this hand pre-pegging', () => {
     expect(resolveCribbageCutPresentationEntryMode({
-      entryMode: 'live-transition',
+      ...liveEntry,
       handKey: 'round-b:8',
-      phase: 'pegging',
       observedPrePeggingHandKey: 'round-b:8',
+    })).toBe('live-transition');
+  });
+
+  it('recovers a live peer that saw setup but lost the final discard transport before pegging', () => {
+    expect(resolveCribbageCutPresentationEntryMode({
+      ...liveEntry,
+      locallySettledCribCount: 2,
+      hasDiscardIntent: false,
+    })).toBe('historical-entry');
+  });
+
+  it('keeps the cut gate while a locally-owned discard transport is still active', () => {
+    expect(resolveCribbageCutPresentationEntryMode({
+      ...liveEntry,
+      locallySettledCribCount: 2,
+      hasDiscardIntent: true,
     })).toBe('live-transition');
   });
 });

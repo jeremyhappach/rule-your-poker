@@ -30,22 +30,34 @@ export interface CribbageCutPresentationEntryModeArgs {
   phase: string | null | undefined;
   /** Hand whose pre-pegging lifecycle this mounted client actually observed. */
   observedPrePeggingHandKey: string | null;
+  /** Persisted crib cards known for the current authoritative snapshot. */
+  authoritativeCribCount: number;
+  /** Cards whose local discard transport has reached its terminal visual state. */
+  locallySettledCribCount: number;
+  /** True only while this client still owns a discard-to-crib transport. */
+  hasDiscardIntent: boolean;
 }
 
 /**
  * A route can be live while a later hand is not: a delayed peer may receive
  * that hand's first usable state directly in pegging, after another client
- * already completed discard and cut. Do not make that peer wait for a local
- * reveal it has no animation owner for. A peer that observed any pre-pegging
- * phase of this exact hand keeps the normal live discard/cut presentation.
+ * already completed discard and cut. Seeing an early hand frame alone is not
+ * enough to prove that the client still owns the cut: a reconnect can lose
+ * the last discard transport, leaving no local callback capable of releasing
+ * the gate. Only an active transport or a fully settled local crib keeps the
+ * normal live cut presentation. Otherwise the exposed cut is historical.
  */
 export function resolveCribbageCutPresentationEntryMode(
   args: CribbageCutPresentationEntryModeArgs,
 ): CribbageEntryMode {
   if (args.entryMode === 'historical-entry') return 'historical-entry';
-  if (args.observedPrePeggingHandKey === args.handKey) return 'live-transition';
-  if (args.phase === 'pegging') return 'historical-entry';
-  return 'live-transition';
+  if (args.phase !== 'pegging') return 'live-transition';
+  if (args.observedPrePeggingHandKey !== args.handKey) return 'historical-entry';
+  if (args.hasDiscardIntent) return 'live-transition';
+  if (args.locallySettledCribCount >= args.authoritativeCribCount) {
+    return 'live-transition';
+  }
+  return 'historical-entry';
 }
 
 export interface CribbageHistoricalCribHydrationArgs {
