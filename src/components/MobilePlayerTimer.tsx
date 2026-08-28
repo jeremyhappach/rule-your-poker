@@ -43,7 +43,11 @@ export const MobilePlayerTimer = ({
   children 
 }: MobilePlayerTimerProps) => {
   const strokeWidth = 4;
-  const radius = (size - strokeWidth) / 2;
+  // `size` is the chip-frame diameter. CanonicalSeatCluster intentionally
+  // injects 40px here for its 40px chip cell, so the timer must project its
+  // stroke outside that disc rather than occupying the same covered pixels.
+  const ringOuter = size + 8;
+  const radius = (ringOuter - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   // Hook must be called unconditionally; short-circuit happens below all hooks.
   const noTimers = useNoTimersEnabled();
@@ -482,13 +486,13 @@ export const MobilePlayerTimer = ({
       {/* SVG timer track + single colored progress arc. */}
       <svg
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none"
-        width={size}
-        height={size}
+        width={ringOuter}
+        height={ringOuter}
       >
         <circle
           data-mobile-player-timer-track=""
-          cx={size / 2}
-          cy={size / 2}
+          cx={ringOuter / 2}
+          cy={ringOuter / 2}
           r={radius}
           fill="none"
           stroke="hsl(var(--muted) / 0.3)"
@@ -497,8 +501,8 @@ export const MobilePlayerTimer = ({
         {effectiveIsActive && (
           <circle
             data-mobile-player-timer-progress=""
-            cx={size / 2}
-            cy={size / 2}
+            cx={ringOuter / 2}
+            cy={ringOuter / 2}
             r={radius}
             fill="none"
             stroke={getStrokeColor()}

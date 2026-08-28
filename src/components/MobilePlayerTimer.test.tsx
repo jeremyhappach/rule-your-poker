@@ -25,10 +25,10 @@ describe('MobilePlayerTimer countdown segment', () => {
     vi.useRealTimers();
   });
 
-  const renderTimer = (timeLeft: number) => {
+  const renderTimer = (timeLeft: number, size = 48) => {
     act(() => {
       root.render(
-        <MobilePlayerTimer timeLeft={timeLeft} maxTime={10} isActive>
+        <MobilePlayerTimer timeLeft={timeLeft} maxTime={10} isActive size={size}>
           <span>chip</span>
         </MobilePlayerTimer>,
       );
@@ -42,13 +42,21 @@ describe('MobilePlayerTimer countdown segment', () => {
   };
 
   it('renders one colored foreground arc without a masking full-circle overlay', () => {
-    renderTimer(10);
+    // CanonicalSeatCluster injects a 40px chip-frame size in production.
+    renderTimer(10, 40);
 
     const timer = container.querySelector('[data-mobile-player-timer]');
+    const svg = timer?.querySelector('svg');
+    const progress = timer?.querySelector('[data-mobile-player-timer-progress]');
     expect(timer).not.toBeNull();
     expect(timer!.children).toHaveLength(2);
     expect(timer!.querySelectorAll('[data-mobile-player-timer-progress]')).toHaveLength(1);
     expect(timer!.querySelectorAll('[data-mobile-player-timer-track]')).toHaveLength(1);
+    expect(svg?.getAttribute('width')).toBe('48');
+    expect(svg?.getAttribute('height')).toBe('48');
+    expect(progress?.getAttribute('cx')).toBe('24');
+    expect(progress?.getAttribute('cy')).toBe('24');
+    expect(progress?.getAttribute('r')).toBe('22');
   });
 
   it('keeps one immutable segment while incoming time-left props tick', () => {

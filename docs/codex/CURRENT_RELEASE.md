@@ -48,6 +48,11 @@ Date: 2026-08-28
   is removed; its glow and pulse now belong to the shrinking arc itself, with
   one muted track behind it. A regression test enforces that single foreground
   owner for every canonical seat-timer consumer.
+- The first single-arc build exposed a geometry seam: the canonical seat
+  cluster injects its 40px chip diameter into the HUD, leaving a same-size SVG
+  entirely behind the chip. The SVG now projects to a 48px outer diameter, so
+  its 4px stroke sits outside the chip without covering the value. The DOM
+  proof exercises that exact production 40→48 geometry.
 - Focused timer/announcement tests, TypeScript, and the production Vite build
   pass. A two-client fake- and real-money Yahtzee smoke remains required.
 
