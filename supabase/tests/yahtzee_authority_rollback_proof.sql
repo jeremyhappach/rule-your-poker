@@ -558,9 +558,23 @@ BEGIN
      OR NOT (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id) THEN
     RAISE EXCEPTION 'real_money_timeout_pause_was_not_replay_safe';
   END IF;
+  -- Exercise the browser's real resume identity. The earlier proof retained
+  -- service_role and the trusted fixture flag, which bypassed the Yahtzee
+  -- round guard and could not detect a failed authenticated host resume.
+  PERFORM set_config('app.yahtzee_authoritative_write','',true);
+  PERFORM set_config('request.jwt.claim.sub',v_user_one::text,true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object(
+    'role','authenticated','sub',v_user_one
+  )::text,true);
   v_result:=public.set_game_paused(v_real_timeout_game_id,false);
   IF v_result->>'outcome'<>'resumed'
+     OR (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id)
      OR (SELECT decision_deadline FROM public.rounds WHERE id=v_real_timeout_round_id)<=clock_timestamp()
+     OR (SELECT decision_deadline FROM public.rounds WHERE id=v_real_timeout_round_id)
+        IS DISTINCT FROM (
+          SELECT nullif(yahtzee_state->>'turnDeadline','')::timestamptz
+          FROM public.rounds WHERE id=v_real_timeout_round_id
+        )
      OR coalesce((SELECT (yahtzee_state->>'actionSequence')::integer FROM public.rounds WHERE id=v_real_timeout_round_id),-1)<>0 THEN
     RAISE EXCEPTION 'real_money_timeout_resume_did_not_preserve_fresh_turn:%',v_result;
   END IF;

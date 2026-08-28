@@ -2,6 +2,22 @@
 
 Date: 2026-08-28
 
+## Yahtzee authenticated resume authority — deployed, pending production smoke
+
+- Production smoke exposed that canonical resume shifted Yahtzee's protected
+  JSON turn deadline without opening the Yahtzee authoritative-write boundary.
+  Authenticated host/admin resume therefore failed while the game correctly
+  remained paused.
+- Migration `20260828174500_yahtzee_resume_authority.sql` gives only the exact
+  canonical Yahtzee resume mutation the same transaction-local authority used
+  by other Yahtzee RPCs. Existing host/admin authorization, pause ownership,
+  deadline shifting, and every non-Yahtzee path remain unchanged.
+- The rollback proof now clears fixture authority and resumes as the actual
+  authenticated host. It requires the game to unpause, both deadline copies to
+  stay identical and future-dated, and action sequence zero to remain intact.
+  The complete proof passed in a rollback transaction before deployment and
+  again against the deployed definition. Production smoke is still required.
+
 ## Yahtzee timeout presentation corrections — release candidate, pending two-client smoke
 
 - Yahtzee now reads its own `game_defaults.decision_timer_seconds` row for
