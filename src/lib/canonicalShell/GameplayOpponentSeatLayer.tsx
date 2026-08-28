@@ -36,11 +36,13 @@
  * viewerPosition === position).
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactElement } from 'react';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
+import { ActivePlayerHUD } from './ActivePlayerHUD';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
+import { AutoRollIndicator } from '@/components/AutoRollIndicator';
 import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 import type { CanonicalSeatStatusRing } from './participantStatus';
 import {
@@ -93,6 +95,14 @@ export interface GameplayOpponentSeatPresentation {
   hideChipBubble?: (p: GameplayOpponentSeatParticipant) => boolean;
   scoreLine?: (p: GameplayOpponentSeatParticipant) => string | undefined;
   cardBacks?: (p: GameplayOpponentSeatParticipant) => CardBacksPresentation | null;
+  /** Presentation-only marker for a fake-money human currently auto-rolling. */
+  autoRoll?: (p: GameplayOpponentSeatParticipant) => boolean;
+  /** Shared authoritative-deadline presentation for the active opponent. */
+  activeTimer?: (p: GameplayOpponentSeatParticipant) => {
+    timeLeft: number;
+    maxTime: number;
+    activePlayerId?: string | null;
+  } | null;
 }
 
 export interface GameplayOpponentSeatLayerProps {
@@ -283,6 +293,22 @@ export function GameplayOpponentSeatLayer({
         const hideChipBubble = presentation?.hideChipBubble?.(p) ?? false;
         const scoreLine = presentation?.scoreLine?.(p);
         const cardBacks = presentation?.cardBacks?.(p) ?? null;
+        const autoRoll = presentation?.autoRoll?.(p) ?? false;
+        const activeTimer = presentation?.activeTimer?.(p) ?? null;
+        const chipHUD: ReactElement | undefined = activeTimer ? (
+          <ActivePlayerHUD
+            timeLeft={activeTimer.timeLeft}
+            maxTime={activeTimer.maxTime}
+            isActive
+            size={52}
+            seatPosition={p.position}
+            gameType={family}
+            activePlayerId={activeTimer.activePlayerId ?? p.id}
+          />
+        ) : undefined;
+        const chipDiscChildren = autoRoll ? (
+          <AutoRollIndicator isRightSide={slot !== null && slot >= 3} />
+        ) : null;
         const renderCardBacks =
           !!cardBacks && cardBacks.visible && cardBacks.count > 0;
 
@@ -297,6 +323,8 @@ export function GameplayOpponentSeatLayer({
             chipAmount={p.chips}
             hideChipBubble={hideChipBubble}
             statusRing={statusRing}
+            chipHUD={chipHUD}
+            chipDiscChildren={chipDiscChildren}
             scoreLine={scoreLine ?? null}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}

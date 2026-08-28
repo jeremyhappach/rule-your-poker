@@ -207,16 +207,18 @@ export const MobilePlayerTimer = ({
   
   const strokeDashoffset = circumference * (1 - progress);
   
-  // Determine urgency levels
-  const isUrgent = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft <= 3;
-  const isWarning = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft <= 5 && effectiveTimeLeft > 3;
-  const isNormal = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 5;
+  // Urgency is proportional to the configured turn duration. Fixed 5/3s
+  // thresholds made a long configured Yahtzee turn appear green until its
+  // final moments and disagreed with the ring's own progress color.
+  const isUrgent = effectiveIsActive && progress <= 0.10;
+  const isWarning = effectiveIsActive && progress <= 0.25 && progress > 0.10;
+  const isNormal = effectiveIsActive && progress > 0.25;
   
   // Color based on time remaining
   const getStrokeColor = () => {
     if (!effectiveIsActive || effectiveTimeLeft === null) return 'hsl(var(--muted))';
-    if (progress > 0.5) return 'hsl(142, 76%, 36%)'; // Green
-    if (progress > 0.25) return 'hsl(45, 93%, 47%)'; // Yellow/Gold
+    if (progress > 0.25) return 'hsl(142, 76%, 36%)'; // Green
+    if (progress > 0.10) return 'hsl(45, 93%, 47%)'; // Yellow/Gold
     return 'hsl(0, 84%, 60%)'; // Red
   };
   

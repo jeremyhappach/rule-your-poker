@@ -1,6 +1,24 @@
 # Current release and cutover state
 
-Date: 2026-08-27
+Date: 2026-08-28
+
+## Yahtzee timeout presentation corrections — release candidate, pending two-client smoke
+
+- Yahtzee now reads its own `game_defaults.decision_timer_seconds` row for
+  timer presentation; the former hard-coded 60-second denominator is removed.
+  Warning states are proportional to the configured turn: yellow at 25% and
+  red at 10% remaining.
+- Every viewer now derives the active human's countdown from the same
+  authoritative Yahtzee deadline. The acting player retains the shell timer
+  rail, while opponents see the canonical countdown ring around that active
+  seat's chip stack. Fake-money auto-rolling humans receive the existing
+  Horses/SCC bot indicator without changing their human identity.
+- The authoritative game pause flag is now threaded into Yahtzee timer and
+  tab presentation, so a real-money timeout freezes the local display. The
+  `game_paused` ambient also preempts lingering gameplay announcements, making
+  “Game is paused — only the host can resume” immediately visible to everyone.
+- Focused timer/announcement tests, TypeScript, and the production Vite build
+  pass. A two-client fake- and real-money Yahtzee smoke remains required.
 
 ## Yahtzee whole-turn timeout ownership — deployed, pending fake-money smoke
 

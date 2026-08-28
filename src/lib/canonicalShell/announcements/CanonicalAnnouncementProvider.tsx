@@ -807,8 +807,10 @@ export function CanonicalAnnouncementProvider({
     });
   }, []);
 
-  // Active = transient if present, else ambient.
-  const active = transient ?? ambient;
+  // A paused table is an authoritative safety state. Its ambient must outrank
+  // any leftover score/roll transient so every viewer immediately sees that
+  // only the host may resume play.
+  const active = ambient?.type === 'game_paused' ? ambient : (transient ?? ambient);
 
   const prevActiveRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
   const prevAmbientRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });

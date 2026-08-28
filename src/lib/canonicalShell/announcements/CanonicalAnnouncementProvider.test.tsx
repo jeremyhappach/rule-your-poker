@@ -193,4 +193,21 @@ describe('CanonicalAnnouncementProvider transient scope handoff', () => {
     expect(container.querySelector('[data-testid="active-announcement"]')?.textContent)
       .toBe('cribbage-target-2-combo-1');
   });
+
+  it('makes the authoritative paused ambient immediately outrank a live gameplay transient', () => {
+    act(() => {
+      emitTax();
+      api!.emit({
+        id: 'game-1:session-paused:host-1',
+        type: 'game_paused',
+        scope: { dealerGameId: 'game-1', roundId: null },
+        behavior: 'ambient',
+        payload: { hostName: 'Host' },
+      });
+    });
+
+    expect(container.querySelector('[data-testid="active-announcement"]')?.textContent)
+      .toBe('game-1:session-paused:host-1');
+    expect(container.textContent).toContain('Game is paused');
+  });
 });

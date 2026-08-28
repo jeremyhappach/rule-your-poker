@@ -3994,8 +3994,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchGameDefaults = async () => {
       if (!game?.game_type) return;
       
-      // Map game_type to defaults table format (holm-game -> holm, 3-5-7-game -> 3-5-7)
-      const defaultsGameType = game.game_type === 'holm-game' ? 'holm' : '3-5-7';
+      // Map runtime aliases to their persisted defaults rows. Yahtzee must
+      // read its own configured turn duration; it must never inherit the
+      // 3-5-7 default or a presentation-only hard-coded duration.
+      const defaultsGameType = game.game_type === 'holm-game'
+        ? 'holm'
+        : game.game_type === '3-5-7-game'
+          ? '3-5-7'
+          : game.game_type === 'yahtzee'
+            ? 'yahtzee'
+            : '3-5-7';
       
       // Check memory cache first
       if (gameDefaultsCacheRef.current[defaultsGameType]) {
@@ -17801,6 +17809,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 handNumber={(isInProgress || isYahtzeeGameOver) ? (currentRound?.hand_number ?? null) : null}
                 yahtzeeState={yahtzeeState}
                 isRealMoney={game.real_money === true}
+                isPaused={game.is_paused === true}
+                decisionTimerSeconds={decisionTimerSeconds}
                 onRefetch={fetchGameData}
                 onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                 onTerminalPresentationComplete={handleYahtzeeTerminalPresentationComplete}

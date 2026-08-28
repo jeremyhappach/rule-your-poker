@@ -148,6 +148,8 @@ interface YahtzeeGameTableProps {
   handNumber: number | null;
   yahtzeeState: YahtzeeState | null;
   isRealMoney: boolean;
+  isPaused: boolean;
+  decisionTimerSeconds: number;
   onRefetch: () => void;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
@@ -238,7 +240,8 @@ function holdMasksEqual(left: readonly boolean[], right: readonly boolean[]): bo
 
 export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
-  currentRoundId, dealerGameId, handNumber, yahtzeeState, isRealMoney, onRefetch,
+  currentRoundId, dealerGameId, handNumber, yahtzeeState, isRealMoney, isPaused,
+  decisionTimerSeconds, onRefetch,
   isHost = false, onPlayerClick, onAutoFoldChange, onTerminalPresentationActiveChange,
   onTerminalPresentationComplete,
 }: YahtzeeGameTableProps) {
@@ -786,24 +789,29 @@ export function YahtzeeGameTable({
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
   const yahtzeeDeadline = viewState?.turnDeadline ?? null;
   const [timerNow, setTimerNow] = useState(() => Date.now());
-  const yahtzeeTimerOwnedByThisClient = isMyTurn
+  // The deadline is authoritative and shared by every viewer. Only the
+  // acting human owns the bottom-rail timer; the active opponent gets the
+  // same presentation-only countdown ring at their canonical seat.
+  const yahtzeeHumanTimedTurn = gamePhase === 'playing'
     && !!stableTurnPlayerId
     && !!yahtzeeDeadline
     && !currentPlayer?.is_bot
-    && !isMyAutoRollTurn;
+    && currentPlayer?.auto_fold !== true
+    && !isPaused;
+  const yahtzeeTimerOwnedByThisClient = yahtzeeHumanTimedTurn && isMyTurn;
   useEffect(() => {
-    if (!yahtzeeTimerOwnedByThisClient || !yahtzeeDeadline) return;
+    if (!yahtzeeHumanTimedTurn || !yahtzeeDeadline) return;
     setTimerNow(Date.now());
     const interval = window.setInterval(() => setTimerNow(Date.now()), 250);
     return () => window.clearInterval(interval);
-  }, [yahtzeeDeadline, yahtzeeTimerOwnedByThisClient]);
+  }, [yahtzeeDeadline, yahtzeeHumanTimedTurn]);
   const yahtzeeSecondsRemaining = yahtzeeDeadline
     ? Math.max(0, Math.ceil((new Date(yahtzeeDeadline).getTime() - timerNow) / 1_000))
     : 0;
   const yahtzeeShellTimerState = yahtzeeTimerOwnedByThisClient && yahtzeeSecondsRemaining > 0
     ? {
         secondsRemaining: yahtzeeSecondsRemaining,
-        totalSeconds: 60,
+        totalSeconds: decisionTimerSeconds,
         actorLabel: getPlayerUsername(currentPlayer),
         activePlayerId: stableTurnPlayerId,
         identityKey: `yahtzee-${currentRoundId ?? 'round'}-${stableTurnPlayerId}-${yahtzeeDeadline}`,
@@ -841,6 +849,7 @@ export function YahtzeeGameTable({
     cardsFlashing: yahtzeeCardsFlash,
     chatFlashing: chatAttentionTabProps.chatFlashing,
     chatIndicator: chatAttentionTabProps.chatIndicator,
+    isPaused,
   });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
@@ -2637,6 +2646,22 @@ export function YahtzeeGameTable({
                 // Dice families have no dealer concept.
                 dealerPip: () => false,
                 chipValue: (p) => formatChipBalance(p.chips),
+                statusRing: (p) => (
+                  p.id === stableTurnPlayerId && yahtzeeHumanTimedTurn ? 'turn' : undefined
+                ),
+                autoRoll: (p) => {
+                  const player = players.find(candidate => candidate.id === p.id);
+                  return !isRealMoney && player?.auto_fold === true && !player.is_bot;
+                },
+                activeTimer: (p) => (
+                  p.id === stableTurnPlayerId && yahtzeeHumanTimedTurn
+                    ? {
+                        timeLeft: yahtzeeSecondsRemaining,
+                        maxTime: decisionTimerSeconds,
+                        activePlayerId: stableTurnPlayerId,
+                      }
+                    : null
+                ),
                 scoreLine: (p) => {
                   const ps = viewState?.playerStates?.[p.id];
                   const total = ps ? getTotalScore(ps.scorecard) : 0;

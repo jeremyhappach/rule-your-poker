@@ -270,11 +270,12 @@ export function ShellTimerRail() {
   const effectivePaused = paused || !eligibility.running;
   const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
 
+  const remainingRatio = total > 0 ? seconds / total : 0;
   const fillClass = effectivePaused
     ? 'bg-muted-foreground/40'
-    : seconds <= 3
+    : remainingRatio <= 0.10
       ? 'bg-red-500'
-      : seconds <= 5
+      : remainingRatio <= 0.25
         ? 'bg-yellow-500'
         : 'bg-green-500';
 
