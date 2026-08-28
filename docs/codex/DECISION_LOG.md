@@ -1455,3 +1455,13 @@ construct or paint an opponent reveal. Knock presentation waits until every
 opponent face required by the display is known in the authoritative post-action
 projection. Redaction remains server-owned, and the client neither infers nor
 stores hidden card truth.
+
+## D-104 - Real-money Yahtzee expiry pauses; fake-money expiry may auto-play
+
+An expired Yahtzee turn in a real-money session is an interruption, never a
+bot decision. The service-only due-turn owner locks the exact round, player,
+deadline, and action sequence; resets one full server-owned turn window; then
+uses the canonical game pause owner. No roll, hold, score, turn advance, or
+settlement occurs. Fake-money Yahtzee retains deterministic automatic recovery
+for harnesses and casual sessions. On real-money resume, canonical pause
+bookkeeping shifts the fresh deadline by the paused duration.

@@ -2,6 +2,22 @@
 
 Date: 2026-08-27
 
+## Yahtzee real-money timeout safety — deployed, pending live smoke
+
+- Migration `20260827140000_yahtzee_real_money_timeout_pause.sql` changes
+  only the authoritative due-turn owner. An expired real-money Yahtzee turn
+  now pauses the exact game without rolling, holding, scoring, advancing, or
+  settling any state. Fake-money Yahtzee retains deterministic timeout auto-play.
+- Before the real-money pause is committed, the owner writes one fresh
+  server-owned turn deadline for the timed-out player. Canonical resume shifts
+  that fresh deadline by the paused duration, so resuming cannot immediately
+  re-timeout the game.
+- The complete rollback-only Yahtzee authority proof passed against the
+  deployed project before and after the migration, including authorization,
+  duplicate/late replay, tie/winner/terminal continuation, fake-money auto
+  recovery, and the real-money pause/resume path. A real-money client smoke is
+  still required before this becomes a stable checkpoint.
+
 ## Full human-to-human seam campaign — plan locked, execution held
 
 - `FULL_SEAM_GAUNTLET_PLAN.md` now defines the closed coverage ledger,

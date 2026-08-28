@@ -11,6 +11,8 @@ DECLARE
   v_bot_dealer_game_id uuid:=gen_random_uuid();
   v_human_timeout_game_id uuid:=gen_random_uuid();
   v_human_timeout_dealer_game_id uuid:=gen_random_uuid();
+  v_real_timeout_game_id uuid:=gen_random_uuid();
+  v_real_timeout_dealer_game_id uuid:=gen_random_uuid();
   v_user_one uuid;
   v_user_two uuid;
   v_outsider uuid:=gen_random_uuid();
@@ -24,11 +26,15 @@ DECLARE
   v_human_timeout_player_two uuid:=gen_random_uuid();
   v_human_timeout_actor uuid;
   v_human_timeout_actor_user uuid;
+  v_real_timeout_player_one uuid:=gen_random_uuid();
+  v_real_timeout_player_two uuid:=gen_random_uuid();
+  v_real_timeout_actor uuid;
   v_round_id uuid;
   v_tie_round_id uuid;
   v_terminal_round_id uuid;
   v_bot_round_id uuid;
   v_human_timeout_round_id uuid;
+  v_real_timeout_round_id uuid;
   v_result jsonb;
   v_replay jsonb;
   v_state jsonb;
@@ -39,6 +45,7 @@ DECLARE
   v_scores_tie jsonb:='{"ones":3,"twos":6,"threes":9,"fours":12,"fives":15,"sixes":18,"three_of_a_kind":18,"four_of_a_kind":0,"full_house":25,"small_straight":30,"large_straight":40,"yahtzee":0,"chance":20}'::jsonb;
   v_advanced integer;
   v_expired_at timestamptz;
+  v_reset_deadline timestamptz;
 BEGIN
   SELECT profile_ids[1],profile_ids[2] INTO v_user_one,v_user_two
     FROM (
@@ -409,6 +416,57 @@ BEGIN
   SELECT yahtzee_state INTO v_after FROM public.rounds WHERE id=v_human_timeout_round_id;
   IF coalesce((v_after->>'actionSequence')::integer,0)<>1 THEN
     RAISE EXCEPTION 'human_deadline_recovery_replayed:%',v_after;
+  END IF;
+
+  -- A real-money timeout pauses without rolling or scoring. It first installs
+  -- a full fresh turn window, so canonical resume cannot immediately timeout.
+  INSERT INTO public.games(
+    id,name,game_type,status,ante_amount,buy_in,pot,current_round,total_hands,
+    dealer_position,is_first_hand,current_host,real_money
+  ) VALUES(
+    v_real_timeout_game_id,'Yahtzee real-money timeout rollback proof','yahtzee',
+    'ante_decision',10,100,0,NULL,0,1,true,v_user_one,true
+  );
+  INSERT INTO public.dealer_games(id,dealer_user_id,game_type,session_id,config)
+  VALUES(v_real_timeout_dealer_game_id,v_user_one,'yahtzee',v_real_timeout_game_id,jsonb_build_object('ante_amount',10));
+  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+  UPDATE public.games SET current_game_uuid=v_real_timeout_dealer_game_id WHERE id=v_real_timeout_game_id;
+  INSERT INTO public.players(id,user_id,game_id,position,chips,is_bot,status,ante_decision)
+  VALUES
+    (v_real_timeout_player_one,v_user_one,v_real_timeout_game_id,1,100,false,'active','ante_up'),
+    (v_real_timeout_player_two,v_user_two,v_real_timeout_game_id,2,100,false,'active','ante_up');
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_result:=public.start_yahtzee_round(v_real_timeout_game_id,NULL);
+  v_real_timeout_round_id:=(v_result->>'round_id')::uuid;
+  SELECT nullif(yahtzee_state->>'currentTurnPlayerId','')::uuid
+    INTO v_real_timeout_actor FROM public.rounds WHERE id=v_real_timeout_round_id;
+  v_expired_at:=clock_timestamp()-interval '1 second';
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_real_timeout_round_id;
+  v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(v_expired_at),true);
+  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+  UPDATE public.rounds SET yahtzee_state=v_state,decision_deadline=v_expired_at
+   WHERE id=v_real_timeout_round_id;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_advanced:=private.advance_due_yahtzee_state();
+  SELECT yahtzee_state,decision_deadline INTO v_state,v_reset_deadline
+    FROM public.rounds WHERE id=v_real_timeout_round_id;
+  IF NOT (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id)
+     OR coalesce((v_state->>'actionSequence')::integer,0)<>0
+     OR (v_state->'playerStates'->v_real_timeout_actor::text->>'rollsRemaining')::integer<>3
+     OR v_reset_deadline<=clock_timestamp()
+     OR (v_state->>'turnDeadline')::timestamptz IS DISTINCT FROM v_reset_deadline THEN
+    RAISE EXCEPTION 'real_money_timeout_did_not_pause_without_action:%:%',v_advanced,v_state;
+  END IF;
+  PERFORM private.advance_due_yahtzee_state();
+  IF coalesce((SELECT (yahtzee_state->>'actionSequence')::integer FROM public.rounds WHERE id=v_real_timeout_round_id),-1)<>0
+     OR NOT (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id) THEN
+    RAISE EXCEPTION 'real_money_timeout_pause_was_not_replay_safe';
+  END IF;
+  v_result:=public.set_game_paused(v_real_timeout_game_id,false);
+  IF v_result->>'outcome'<>'resumed'
+     OR (SELECT decision_deadline FROM public.rounds WHERE id=v_real_timeout_round_id)<=clock_timestamp()
+     OR coalesce((SELECT (yahtzee_state->>'actionSequence')::integer FROM public.rounds WHERE id=v_real_timeout_round_id),-1)<>0 THEN
+    RAISE EXCEPTION 'real_money_timeout_resume_did_not_preserve_fresh_turn:%',v_result;
   END IF;
 END;
 $proof$;
