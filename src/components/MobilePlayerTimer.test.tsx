@@ -36,10 +36,20 @@ describe('MobilePlayerTimer countdown segment', () => {
   };
 
   const dashOffset = () => {
-    const timerCircle = container.querySelector('circle[stroke-dasharray]');
+    const timerCircle = container.querySelector('[data-mobile-player-timer-progress]');
     expect(timerCircle).not.toBeNull();
     return Number(timerCircle!.getAttribute('stroke-dashoffset'));
   };
+
+  it('renders one colored foreground arc without a masking full-circle overlay', () => {
+    renderTimer(10);
+
+    const timer = container.querySelector('[data-mobile-player-timer]');
+    expect(timer).not.toBeNull();
+    expect(timer!.children).toHaveLength(2);
+    expect(timer!.querySelectorAll('[data-mobile-player-timer-progress]')).toHaveLength(1);
+    expect(timer!.querySelectorAll('[data-mobile-player-timer-track]')).toHaveLength(1);
+  });
 
   it('keeps one immutable segment while incoming time-left props tick', () => {
     renderTimer(10);

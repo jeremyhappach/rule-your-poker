@@ -229,29 +229,6 @@ export const MobilePlayerTimer = ({
     return 'hsl(0, 84%, 60%)'; // Red
   };
   
-  // Get glow color for the outer ring
-  const getGlowStyle = () => {
-    if (isUrgent) {
-      return {
-        borderColor: 'hsl(0, 84%, 60%)',
-        boxShadow: '0 0 16px hsl(0, 84%, 60%), 0 0 32px hsl(0, 84%, 50% / 0.5), inset 0 0 8px hsl(0, 84%, 60% / 0.3)'
-      };
-    }
-    if (isWarning) {
-      return {
-        borderColor: 'hsl(45, 93%, 47%)',
-        boxShadow: '0 0 12px hsl(45, 93%, 47%), 0 0 24px hsl(45, 93%, 47% / 0.4)'
-      };
-    }
-    if (isNormal) {
-      return {
-        borderColor: 'hsl(142, 76%, 36%)',
-        boxShadow: '0 0 10px hsl(142, 76%, 36%), 0 0 20px hsl(142, 76%, 36% / 0.4)'
-      };
-    }
-    return {};
-  };
-
   const timerOwnerId = `MobilePlayerTimer:${instanceIdRef.current}`;
   useEffect(() => {
     recordThreeFiveSevenTimerOwner(timerOwnerId, {
@@ -472,14 +449,11 @@ export const MobilePlayerTimer = ({
     return <>{children}</>;
   }
 
-  // Ring is mounted as an absolute overlay concentric with the
+  // The SVG ring is mounted as an absolute overlay concentric with the
   // children box. The children (chip disc) define the cell's natural
-  // size — the ring's center inherits the children's geometric center
-  // exactly via left-1/2 / top-1/2 / -translate-1/2. The ring may
-  // extend beyond the disc via its explicit `ringOuter` dimension; its
-  // center is mathematically identical to the disc center at every
-  // responsive size.
-  const ringOuter = size + 8;
+  // size, and the ring inherits that exact center via left-1/2 / top-1/2 /
+  // -translate-1/2. The shrinking SVG arc is the only colored foreground
+  // circumference; a second full border would visually mask its progress.
 
   // No-Timers global harness: render bare children. No countdown surface
   // is mounted. Deadlines continue to be written server-side so flipping
@@ -505,27 +479,14 @@ export const MobilePlayerTimer = ({
         {children}
       </div>
 
-      {/* Flashing glow ring — concentric overlay. */}
-      {effectiveIsActive && effectiveTimeLeft !== null && (
-        <div
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-3 pointer-events-none ${isUrgent ? 'animate-pulse' : isWarning ? 'animate-pulse' : ''}`}
-          style={{
-            width: ringOuter,
-            height: ringOuter,
-            ...getGlowStyle(),
-            borderWidth: isUrgent ? '4px' : '3px',
-            animation: isNormal ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined,
-          }}
-        />
-      )}
-
-      {/* SVG Timer Ring — concentric overlay. */}
+      {/* SVG timer track + single colored progress arc. */}
       <svg
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none"
         width={size}
         height={size}
       >
         <circle
+          data-mobile-player-timer-track=""
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -535,6 +496,7 @@ export const MobilePlayerTimer = ({
         />
         {effectiveIsActive && (
           <circle
+            data-mobile-player-timer-progress=""
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -544,7 +506,10 @@ export const MobilePlayerTimer = ({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={suppressTransition ? "" : "transition-[stroke-dashoffset] duration-1000 ease-linear"}
+            className={[
+              suppressTransition ? null : "transition-[stroke-dashoffset] duration-1000 ease-linear",
+              isUrgent || isWarning ? "animate-pulse" : null,
+            ].filter(Boolean).join(' ')}
             style={{
               filter: isUrgent
                 ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))'
@@ -553,6 +518,9 @@ export const MobilePlayerTimer = ({
                   : isNormal
                     ? 'drop-shadow(0 0 4px hsl(142, 76%, 36%))'
                     : undefined,
+              animation: isNormal
+                ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                : undefined,
             }}
           />
         )}

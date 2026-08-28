@@ -43,6 +43,11 @@ Date: 2026-08-28
   descending across incoming display ticks. Yahtzee no longer paints the
   static yellow turn ring beneath that countdown, leaving one proportional
   green/yellow/red ring owner around the active opponent chip.
+- Final smoke showed the shared timer's separate full-circle glow could still
+  visually mask the correctly descending SVG arc. The full foreground border
+  is removed; its glow and pulse now belong to the shrinking arc itself, with
+  one muted track behind it. A regression test enforces that single foreground
+  owner for every canonical seat-timer consumer.
 - Focused timer/announcement tests, TypeScript, and the production Vite build
   pass. A two-client fake- and real-money Yahtzee smoke remains required.
 
