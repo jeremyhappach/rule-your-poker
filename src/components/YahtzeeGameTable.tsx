@@ -75,6 +75,7 @@ import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/S
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useAuthoritativeActionSurfaceGuard } from "@/lib/actionSurfaceRecovery";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
+import { ShellTimerRail, useShellTimer } from "@/lib/canonicalShell/ShellTimerRail";
 import { useAnnouncementContext, useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
@@ -777,6 +778,33 @@ export function YahtzeeGameTable({
   const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const yahtzeeDeadline = viewState?.turnDeadline ?? null;
+  const [timerNow, setTimerNow] = useState(() => Date.now());
+  const yahtzeeTimerOwnedByThisClient = isMyTurn
+    && !!stableTurnPlayerId
+    && !!yahtzeeDeadline
+    && !currentPlayer?.is_bot;
+  useEffect(() => {
+    if (!yahtzeeTimerOwnedByThisClient || !yahtzeeDeadline) return;
+    setTimerNow(Date.now());
+    const interval = window.setInterval(() => setTimerNow(Date.now()), 250);
+    return () => window.clearInterval(interval);
+  }, [yahtzeeDeadline, yahtzeeTimerOwnedByThisClient]);
+  const yahtzeeSecondsRemaining = yahtzeeDeadline
+    ? Math.max(0, Math.ceil((new Date(yahtzeeDeadline).getTime() - timerNow) / 1_000))
+    : 0;
+  const yahtzeeShellTimerState = yahtzeeTimerOwnedByThisClient && yahtzeeSecondsRemaining > 0
+    ? {
+        secondsRemaining: yahtzeeSecondsRemaining,
+        totalSeconds: 60,
+        actorLabel: getPlayerUsername(currentPlayer),
+        activePlayerId: stableTurnPlayerId,
+        identityKey: `yahtzee-${currentRoundId ?? 'round'}-${stableTurnPlayerId}-${yahtzeeDeadline}`,
+      }
+    : null;
+  // The server-owned deadline is the only timer source. This hook publishes
+  // semantic state; the shell owns the rail's rendering and geometry.
+  useShellTimer(yahtzeeShellTimerState);
 
   const chatAttention = useChatAttention();
   useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
@@ -2629,7 +2657,7 @@ export function YahtzeeGameTable({
       />
       <ShellHudGrid
         timer={
-          <div
+          yahtzeeShellTimerState ? <ShellTimerRail /> : <div
             data-shell-operational-hud=""
             className="w-full h-full flex min-w-0 items-center justify-center px-3 overflow-hidden whitespace-nowrap"
           >

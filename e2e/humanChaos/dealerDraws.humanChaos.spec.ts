@@ -12,6 +12,7 @@ import {
 } from '../liveness/support/twoClientSession';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
+import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 
 const DRAW_CARD = '[data-wartime-high-card="card"]';
 
@@ -106,15 +107,20 @@ test.describe('two-human cross-country dealer draw campaign', () => {
         teardownErrors.push(error);
       }
       try {
-        await info.attach('human-chaos-draw-evidence.json', {
-          body: JSON.stringify(evidence, null, 2),
-          contentType: 'application/json',
-        });
+        if (primaryError) await capturePreCleanupScreenshots(info, [
+          { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
+        ]);
       } catch (error) {
         teardownErrors.push(error);
       }
       try {
-        await blastFakeMoneySession(session);
+        evidence.cleanup = await blastFakeMoneySession(session);
+      } catch (error) {
+        evidence.cleanup = { verified: false, error: error instanceof Error ? error.message : String(error) };
+        teardownErrors.push(error);
+      }
+      try {
+        await persistScenarioEvidence(info, 'human-chaos-draw-evidence.json', evidence);
       } catch (error) {
         teardownErrors.push(error);
       } finally {

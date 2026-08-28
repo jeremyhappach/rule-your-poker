@@ -1,6 +1,7 @@
 import type { TestInfo } from '@playwright/test';
 
 import type { TwoClientSession } from '../../liveness/support/twoClientSession';
+import { persistScenarioEvidence } from '../../liveness/support/scenarioArtifacts';
 import {
   continuousObserverFailure,
   type ContinuousObserverEvidence,
@@ -13,10 +14,7 @@ export async function finalizeScenarioObserver(
   const evidence = session.chaosObserver?.finish() ?? null;
   if (!evidence) return { evidence: null, failure: null };
 
-  await info.attach('human-chaos-continuous-observer.json', {
-    body: JSON.stringify(evidence, null, 2),
-    contentType: 'application/json',
-  });
+  await persistScenarioEvidence(info, 'human-chaos-continuous-observer.json', evidence);
   return { evidence, failure: continuousObserverFailure(evidence) };
 }
 

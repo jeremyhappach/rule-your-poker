@@ -291,7 +291,13 @@ export async function closeTwoClientSession(session: TwoClientSession): Promise<
   }
 }
 
-export async function blastFakeMoneySession(session: TwoClientSession): Promise<void> {
+export type FakeMoneyCleanupReceipt = {
+  gameId: string;
+  outcome: 'deleted' | 'already-deleted';
+  verified: true;
+};
+
+export async function blastFakeMoneySession(session: TwoClientSession): Promise<FakeMoneyCleanupReceipt> {
   session.hostNetwork.useHealthyProfile();
   session.peerNetwork.useHealthyProfile();
   await Promise.all([
@@ -353,4 +359,5 @@ export async function blastFakeMoneySession(session: TwoClientSession): Promise<
     `[two-client] namespace=${e2eEnvironment.isolation.runNamespace ?? 'default'} `
     + `game_id=${session.gameId} cleanup=verified`,
   );
+  return { gameId: session.gameId, outcome: result.outcome, verified: true };
 }

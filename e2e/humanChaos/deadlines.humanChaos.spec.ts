@@ -16,6 +16,7 @@ import { waitForBothClientsInLiveGame } from '../liveness/support/livenessAssert
 import { configureShortestTerminal } from '../terminal/support/terminalActors';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
+import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 
 function selectedDeadline(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
@@ -170,6 +171,12 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
           await waitForAuthoritativeChange(session, 'ante_decision');
         } else {
           await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
+          if (gameType === 'yahtzee') {
+            await expect.poll(async () => (
+              await session.hostPage.locator('[data-canonical-shell-timer-rail][data-shell-timer-running="1"]').count()
+              + await session.peerPage.locator('[data-canonical-shell-timer-rail][data-shell-timer-running="1"]').count()
+            ), { timeout: 15_000 }).toBe(1);
+          }
           const beforeTimeout = await readGameplaySnapshot(session);
           evidence.beforeTimeout = beforeTimeout;
           await runOfflineBurst(session.peerContext, 1_250);
@@ -192,15 +199,20 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
         teardownErrors.push(error);
       }
       try {
-        await info.attach('human-chaos-deadline-evidence.json', {
-          body: JSON.stringify(evidence, null, 2),
-          contentType: 'application/json',
-        });
+        if (primaryError) await capturePreCleanupScreenshots(info, [
+          { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
+        ]);
       } catch (error) {
         teardownErrors.push(error);
       }
       try {
-        await blastFakeMoneySession(session);
+        evidence.cleanup = await blastFakeMoneySession(session);
+      } catch (error) {
+        evidence.cleanup = { verified: false, error: error instanceof Error ? error.message : String(error) };
+        teardownErrors.push(error);
+      }
+      try {
+        await persistScenarioEvidence(info, 'human-chaos-deadline-evidence.json', evidence);
       } catch (error) {
         teardownErrors.push(error);
       } finally {

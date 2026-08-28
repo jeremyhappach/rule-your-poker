@@ -10,6 +10,7 @@ import {
 
 const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const LIVE_ROOT = '[data-lifecycle-branch="loaded-inner"]';
+const clickAction = (locator: Locator, timeout?: number) => locator.click({ timeout, noWaitAfter: true });
 
 export const TERMINAL_EXPECTATIONS: Record<DealerGameType, TerminalExpectation> = {
   'holm-game': { gameType: 'holm-game', eventKind: 'chucky_final_award' },
@@ -185,7 +186,7 @@ async function playCribbage(
     const card = cards.first();
     if (!(await card.isEnabled({ timeout: 2_000 }).catch(() => false))) return false;
     try {
-      await card.click({ timeout: 2_000 });
+      await clickAction(card, 2_000);
       return true;
     } catch {
       // Realtime can replace or disable the formerly playable card between
@@ -241,7 +242,6 @@ async function playCribbage(
     const identityAdvanced = progress.roundId !== lastProgress.roundId
       || progress.handNumber !== lastProgress.handNumber;
     if (
-      acted ||
       identityAdvanced ||
       progress.phase !== lastProgress.phase ||
       progress.eventSequence > lastProgress.eventSequence
@@ -303,7 +303,7 @@ async function chooseBestGinDiscard(page: Page): Promise<void> {
   ));
   await page
     .locator(`[data-gin-card-index="${ranked[0].candidate.index}"]:not(:disabled):visible`)
-    .click();
+    .click({ noWaitAfter: true });
 }
 
 async function playGin(
@@ -343,7 +343,7 @@ async function playGin(
       if (await firstDraw.count()) {
         const pass = firstDraw.getByRole('button', { name: 'Pass', exact: true });
         if (await pass.isEnabled()) {
-          await pass.click();
+          await clickAction(pass);
           acted = true;
           expectsCommittedAction = true;
           actedSurface = firstDraw;
@@ -351,7 +351,7 @@ async function playGin(
       } else if (await layOff.count()) {
         const done = layOff.getByRole('button', { name: 'Done Laying Off', exact: true });
         if (await done.isEnabled()) {
-          await done.click();
+          await clickAction(done);
           acted = true;
           expectsCommittedAction = true;
           actedSurface = layOff;
@@ -367,14 +367,14 @@ async function playGin(
         }
         const gin = discard.getByRole('button', { name: /GIN!/ });
         const knock = discard.getByRole('button', { name: /Knock!/ });
-        if (await gin.count()) await gin.click();
-        else if (await knock.count()) await knock.click();
-        else await discard.getByRole('button', { name: 'Discard', exact: true }).click();
+        if (await gin.count()) await clickAction(gin);
+        else if (await knock.count()) await clickAction(knock);
+        else await clickAction(discard.getByRole('button', { name: 'Discard', exact: true }));
         acted = true;
         expectsCommittedAction = true;
         actedSurface = discard;
       } else if (await draw.count()) {
-        await page.locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]').click();
+        await clickAction(page.locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]'));
         acted = true;
         expectsCommittedAction = true;
         actedSurface = draw;
@@ -453,7 +453,7 @@ async function playDice(
       // guessing whether SCC has qualified for an early lock, and every click
       // must be followed by a server-observed state change before the actor
       // can touch the next control.
-      await roll.click();
+      await clickAction(roll);
       lastProgress = await waitForCommittedAction(beforeAction);
       lastProgressAt = Date.now();
       acted = true;
@@ -494,15 +494,26 @@ async function playYahtzee(
   expected: TerminalExpectation,
 ): Promise<void> {
   const pages = [session.hostPage, session.peerPage];
+  let lastProgress = await probe.readYahtzeeProgress(session.gameId, dealerGameId);
+  const waitForCommittedAction = async (previousSignature: string) => {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const progress = await probe.readYahtzeeProgress(session.gameId, dealerGameId);
+      if (progress.stateSignature !== previousSignature) return progress;
+      if (await isTerminal(session, probe, dealerGameId, expected)) return progress;
+      await pause(200);
+    }
+    throw new Error('Yahtzee browser action did not commit');
+  };
   for (let step = 0; step < 500; step += 1) {
     if (await isTerminal(session, probe, dealerGameId, expected)) return;
     let acted = false;
     for (const page of pages) {
       const category = page.locator('[data-yahtzee-category-available="1"]:visible');
       if (await category.count()) {
-        await category.first().click();
+        await clickAction(category.first());
         const confirmZero = page.getByRole('button', { name: 'Yes, take 0', exact: true });
-        if (await confirmZero.isVisible()) await confirmZero.click();
+        if (await confirmZero.isVisible()) await clickAction(confirmZero);
         acted = true;
         break;
       }
@@ -510,12 +521,16 @@ async function playYahtzee(
         .locator('[data-authoritative-action-surface="yahtzee-turn"]:visible')
         .getByRole('button', { name: /^Roll \d+$/ });
       if (await roll.count()) {
-        await roll.click();
+        await clickAction(roll);
         acted = true;
         break;
       }
     }
-    await pause(acted ? 300 : 500);
+    if (acted) {
+      lastProgress = await waitForCommittedAction(lastProgress.stateSignature);
+    } else {
+      await pause(500);
+    }
   }
   throw new Error('Yahtzee did not reach terminal settlement within 500 actions');
 }

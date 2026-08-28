@@ -262,6 +262,29 @@ export class TerminalSettlementProbe {
     };
   }
 
+  async readYahtzeeProgress(
+    gameId: string,
+    dealerGameId: string,
+  ): Promise<{ stateSignature: string }> {
+    const data = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('rounds')
+          .select('yahtzee_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read Yahtzee progress: ${error.message}`);
+        return data;
+      },
+      'Yahtzee progress query',
+    );
+    return { stateSignature: JSON.stringify(data?.yahtzee_state ?? null) };
+  }
+
   async assertTerminalProof(
     gameId: string,
     dealerGameId: string,

@@ -7,6 +7,7 @@ import { blastFakeMoneySession, closeTwoClientSession, createTwoClientSession, e
 import { authoritativeDealerGameId, playDealerGameToTerminal, requestLastHand, TERMINAL_EXPECTATIONS } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
 import { BRANCH_SMOKE_MANIFEST, type Scenario, validateManifest } from './manifest';
+import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 
 validateManifest();
 const surface = '[data-authoritative-action-surface="holm-357-decision"]';
@@ -81,15 +82,20 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       } finally {
         const teardownErrors: unknown[] = [];
         try {
-          await info.attach('branch-smoke-evidence.json', {
-            body: JSON.stringify(evidence, null, 2),
-            contentType: 'application/json',
-          });
+          if (primaryError) await capturePreCleanupScreenshots(info, [
+            { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
+          ]);
         } catch (error) {
           teardownErrors.push(error);
         }
         try {
-          await blastFakeMoneySession(session);
+          evidence.cleanup = await blastFakeMoneySession(session);
+        } catch (error) {
+          evidence.cleanup = { verified: false, error: error instanceof Error ? error.message : String(error) };
+          teardownErrors.push(error);
+        }
+        try {
+          await persistScenarioEvidence(info, 'branch-smoke-evidence.json', evidence);
         } catch (error) {
           teardownErrors.push(error);
         } finally {
