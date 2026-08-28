@@ -2,7 +2,7 @@
 
 Date: 2026-08-28
 
-## Yahtzee authenticated resume authority — deployed, pending production smoke
+## Yahtzee authenticated resume authority — production smoke accepted
 
 - Production smoke exposed that canonical resume shifted Yahtzee's protected
   JSON turn deadline without opening the Yahtzee authoritative-write boundary.
@@ -16,9 +16,11 @@ Date: 2026-08-28
   authenticated host. It requires the game to unpause, both deadline copies to
   stay identical and future-dated, and action sequence zero to remain intact.
   The complete proof passed in a rollback transaction before deployment and
-  again against the deployed definition. Production smoke is still required.
+  again against the deployed definition. Published two-client smoke on
+  2026-08-28 confirmed that the authenticated host can resume the paused game
+  and the timed-out player receives a fresh configured turn timer.
 
-## Yahtzee timeout presentation corrections — release candidate, pending two-client smoke
+## Yahtzee timeout presentation corrections — production smoke accepted
 
 - Yahtzee now reads its own `game_defaults.decision_timer_seconds` row for
   timer presentation; the former hard-coded 60-second denominator is removed.
@@ -54,9 +56,12 @@ Date: 2026-08-28
   its 4px stroke sits outside the chip without covering the value. The DOM
   proof exercises that exact production 40→48 geometry.
 - Focused timer/announcement tests, TypeScript, and the production Vite build
-  pass. A two-client fake- and real-money Yahtzee smoke remains required.
+  pass. Published two-client fake- and real-money smoke on 2026-08-28 at commit
+  `b3051358abebea3cc7681a27074c0b499e2617bd` confirmed the configured
+  60-second timer, proportional warning colors, pause presentation, and one
+  visible decrementing opponent ring around the canonical chip stack.
 
-## Yahtzee whole-turn timeout ownership — deployed, pending fake-money smoke
+## Yahtzee whole-turn timeout ownership — production smoke accepted
 
 - Migration `20260828110000_yahtzee_whole_turn_timeout.sql` makes the
   server-owned deadline cover a complete Yahtzee turn, rather than renewing it
@@ -75,10 +80,12 @@ Date: 2026-08-28
   the player automation flags nor rolls/scores, and resume retains a fresh
   full-turn deadline. The pre- and post-migration rollback proof passed,
   including deadline preservation, late action rejection, whole-turn fake
-  recovery/replay, settlement/continuation, and real-money pause/resume. A
-  two-human fake-money production smoke is still required.
+  recovery/replay, settlement/continuation, and real-money pause/resume.
+  Published two-human fake-money smoke on 2026-08-28 confirmed immediate paced
+  auto-play across the full turn, peer-visible rolls, the bot indicator, and
+  rejoin through the visible Auto-roll checkbox.
 
-## Yahtzee real-money timeout safety — deployed, pending live smoke
+## Yahtzee real-money timeout safety — production smoke accepted
 
 - Migration `20260827140000_yahtzee_real_money_timeout_pause.sql` changes
   only the authoritative due-turn owner. An expired real-money Yahtzee turn
@@ -91,8 +98,10 @@ Date: 2026-08-28
 - The complete rollback-only Yahtzee authority proof passed against the
   deployed project before and after the migration, including authorization,
   duplicate/late replay, tie/winner/terminal continuation, fake-money auto
-  recovery, and the real-money pause/resume path. A real-money client smoke is
-  still required before this becomes a stable checkpoint.
+  recovery, and the real-money pause/resume path. Published real-money client
+  smoke on 2026-08-28 confirmed the pause announcement, inert action controls,
+  no bot/sit-out inheritance, authenticated host resume, and a fresh turn
+  timer after resume.
 
 ## Full human-to-human seam campaign — plan locked, execution held
 

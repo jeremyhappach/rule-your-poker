@@ -156,6 +156,16 @@
 
 ## Yahtzee
 
+- The scoped Yahtzee timeout, timer, and pause/resume matrix passed published
+  two-client production smoke on 2026-08-28 at commit
+  `b3051358abebea3cc7681a27074c0b499e2617bd`. Preserve fake-money-only
+  whole-turn auto-play, `sit_out_next_hand`, immediate paced peer-visible
+  rolls, the bot indicator, and checkbox rejoin. Preserve real-money expiry as
+  pause-only with no bot/sit-out inheritance or action, the pause announcement,
+  inert controls, authenticated host resume, and a fresh configured timer.
+  Preserve the single proportional decrementing opponent arc outside the
+  canonical 40px chip stack. This checkpoint does not claim broader Yahtzee
+  game or lifecycle coverage.
 - Yahtzee score presentation and rail handoff passed published two-client
   production smoke on 2026-08-17 at commit
   `987f9a31be249bae3d2c26ddeaa6dfa13840e9a3`. Preserve the scorer-bound,
