@@ -17805,6 +17805,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onTerminalPresentationComplete={handleYahtzeeTerminalPresentationComplete}
                 isHost={isCreator}
                 onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
+                onAutoFoldChange={handleAutoFoldChange}
               />
             );
           }

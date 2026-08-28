@@ -152,6 +152,14 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(timerState).toBeGreaterThan(helper);
   });
 
+  it('exposes the fake-money auto-roll rejoin control without granting table-state writes', () => {
+    const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
+
+    expect(table).toContain('data-yahtzee-auto-roll=""');
+    expect(table).toContain('Auto-roll enabled (uncheck to rejoin)');
+    expect(table).toContain('onAutoFoldChange?.(myPlayer.id, false)');
+  });
+
   it('coalesces optimistic die taps into the authoritative full-mask RPC', () => {
     const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
     const toggleStart = table.indexOf('const handleToggleHold');

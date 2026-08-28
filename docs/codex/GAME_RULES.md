@@ -296,9 +296,18 @@ contradictions.
   `loserCount * anteAmount`. The payout is fixed stake, not score-difference
   based.
 - Every roll, hold, and category action is authenticated, participant/turn
-  scoped, and compare-and-set against `actionSequence`. Category scoring and
-  the next-turn or terminal transition are one write; the local two-second
-  highlight is presentation only.
+  scoped, and compare-and-set against `actionSequence`. One server-owned
+  deadline begins with the player turn and remains unchanged through all three
+  rolls and any holds; category scoring assigns the next eligible player a new
+  deadline. Category scoring and the next-turn or terminal transition are one
+  write; the local two-second highlight is presentation only.
+- An expired fake-money human turn becomes Auto-roll for the rest of that turn:
+  the service-only owner records `auto_fold=true` and
+  `sit_out_next_hand=true`, completes the remaining bot decisions and score
+  atomically, and keeps the player a human account. The visible Auto-roll
+  control can clear both flags to rejoin the next hand. An expired real-money
+  turn instead pauses immediately with no roll, score, automated-player flag,
+  or sit-out mutation; resume begins with a fresh full-turn deadline.
 - For a unique winner, the RPC atomically claims one `yahtzee_terminal`
   result, transfers the fixed configured stake, completes the round, replaces
   final snapshots with post-payout balances, and publishes `game_over` or

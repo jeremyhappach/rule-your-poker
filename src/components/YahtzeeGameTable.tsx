@@ -131,6 +131,7 @@ interface Player {
   position: number;
   chips: number;
   is_bot: boolean;
+  auto_fold?: boolean;
   sitting_out: boolean;
   profiles?: { username: string };
 }
@@ -149,6 +150,7 @@ interface YahtzeeGameTableProps {
   onRefetch: () => void;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
+  onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   onTerminalPresentationActiveChange?: (active: boolean) => void;
   onTerminalPresentationComplete?: (terminalIdentity: string) => void;
 }
@@ -236,7 +238,7 @@ function holdMasksEqual(left: readonly boolean[], right: readonly boolean[]): bo
 export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
   currentRoundId, dealerGameId, handNumber, yahtzeeState, onRefetch,
-  isHost = false, onPlayerClick, onTerminalPresentationActiveChange,
+  isHost = false, onPlayerClick, onAutoFoldChange, onTerminalPresentationActiveChange,
   onTerminalPresentationComplete,
 }: YahtzeeGameTableProps) {
   // SHELL LC: mount marker for comparative branch-swap evidence.
@@ -2761,6 +2763,23 @@ export function YahtzeeGameTable({
                       <ActionStripBadge tone="info">Pick a category</ActionStripBadge>
                     )}
                   </ActionStripSlot>
+                )}
+
+                {gamePhase === 'playing' && myPlayer?.auto_fold && !myPlayer.sitting_out && (
+                  <label
+                    data-yahtzee-auto-roll=""
+                    className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-500 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={(event) => {
+                        if (!event.target.checked) onAutoFoldChange?.(myPlayer.id, false);
+                      }}
+                      className="h-4 w-4 rounded border-2 border-border accent-primary"
+                    />
+                    <span>Auto-roll enabled (uncheck to rejoin)</span>
+                  </label>
                 )}
 
                 {/* Opponent scorecard when it's not my turn */}

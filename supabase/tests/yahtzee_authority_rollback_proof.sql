@@ -46,6 +46,9 @@ DECLARE
   v_advanced integer;
   v_expired_at timestamptz;
   v_reset_deadline timestamptz;
+  v_turn_deadline timestamptz;
+  v_bot_timeout_actor uuid;
+  v_bot_timeout_actor_is_bot boolean;
 BEGIN
   SELECT profile_ids[1],profile_ids[2] INTO v_user_one,v_user_two
     FROM (
@@ -128,13 +131,16 @@ BEGIN
     IF SQLERRM='direct_round_write_was_allowed' THEN RAISE; END IF;
   END;
 
+  SELECT decision_deadline INTO v_turn_deadline FROM public.rounds WHERE id=v_round_id;
   v_result:=public.yahtzee_apply_action(v_round_id,v_player_one,'roll',NULL,NULL,NULL,0);
   IF v_result->>'outcome'<>'applied' OR (v_result->>'action_sequence')::integer<>1
      OR jsonb_array_length(v_result->'state'->'playerStates'->v_player_one::text->'dice')<>5
      OR EXISTS(
        SELECT 1 FROM jsonb_array_elements(v_result->'state'->'playerStates'->v_player_one::text->'dice') die
         WHERE (die->>'value')::integer NOT BETWEEN 1 AND 6
-     ) THEN
+     )
+     OR (v_result->'state'->>'turnDeadline')::timestamptz IS DISTINCT FROM v_turn_deadline
+     OR (SELECT decision_deadline FROM public.rounds WHERE id=v_round_id) IS DISTINCT FROM v_turn_deadline THEN
     RAISE EXCEPTION 'authoritative_roll_failed:%',v_result;
   END IF;
   v_before:=v_result->'state';
@@ -310,7 +316,8 @@ BEGIN
     RAISE EXCEPTION 'terminal_settlement_replay_failed:%',v_replay;
   END IF;
 
-  -- The complete recovery owner also advances an expired bot turn without a browser.
+  -- The complete recovery owner resolves an expired fake-money turn without a
+  -- browser. A human is marked for auto-roll/sit-out-next-hand; a bot is not.
   INSERT INTO public.games(id,name,game_type,status,ante_amount,buy_in,pot,current_round,total_hands,dealer_position,is_first_hand,current_host)
   VALUES(v_bot_game_id,'Yahtzee bot recovery proof','yahtzee','ante_decision',10,100,0,NULL,0,1,true,v_user_one);
   INSERT INTO public.dealer_games(id,dealer_user_id,game_type,session_id,config)
@@ -328,12 +335,24 @@ BEGIN
   v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(v_expired_at),true);
   PERFORM set_config('app.yahtzee_authoritative_write','on',true);
   UPDATE public.rounds SET yahtzee_state=v_state,decision_deadline=v_expired_at WHERE id=v_bot_round_id;
+  SELECT nullif(yahtzee_state->>'currentTurnPlayerId','')::uuid
+    INTO v_bot_timeout_actor FROM public.rounds WHERE id=v_bot_round_id;
+  SELECT is_bot INTO v_bot_timeout_actor_is_bot FROM public.players WHERE id=v_bot_timeout_actor;
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   v_advanced:=private.advance_due_yahtzee_state();
   SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_bot_round_id;
-  IF v_advanced<1 OR coalesce((v_state->>'actionSequence')::integer,0)<1
-     OR (v_state->'playerStates'->v_bot_player::text->>'rollsRemaining')::integer<>2 THEN
-    RAISE EXCEPTION 'complete_scheduled_bot_recovery_failed:%:%',v_advanced,v_state;
+  IF v_advanced<1
+     OR nullif(v_state->>'currentTurnPlayerId','')::uuid IS NOT DISTINCT FROM v_bot_timeout_actor
+     OR coalesce((v_state->>'actionSequence')::integer,0)<2
+     OR (NOT v_bot_timeout_actor_is_bot AND NOT EXISTS(
+       SELECT 1 FROM public.players WHERE id=v_bot_timeout_actor
+         AND auto_fold=true AND sit_out_next_hand=true
+     ))
+     OR (v_bot_timeout_actor_is_bot AND EXISTS(
+       SELECT 1 FROM public.players WHERE id=v_bot_timeout_actor
+         AND (auto_fold=true OR sit_out_next_hand=true)
+     )) THEN
+    RAISE EXCEPTION 'complete_scheduled_fake_money_turn_recovery_failed:%:%',v_advanced,v_state;
   END IF;
 
   -- A human deadline is executable only by service_role, only after the exact
@@ -390,6 +409,18 @@ BEGIN
   UPDATE public.rounds
      SET yahtzee_state=v_state,decision_deadline=v_expired_at
    WHERE id=v_human_timeout_round_id;
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_human_timeout_actor_user,'role','authenticated')::text,
+    true
+  );
+  v_result:=public.yahtzee_apply_action(
+    v_human_timeout_round_id,v_human_timeout_actor,'roll',NULL,NULL,NULL,0
+  );
+  IF v_result->>'outcome'<>'rejected' OR v_result->>'reason'<>'turn_deadline_expired' THEN
+    RAISE EXCEPTION 'expired_human_turn_still_accepted_actions:%',v_result;
+  END IF;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   UPDATE public.games SET is_paused=true WHERE id=v_human_timeout_game_id;
   PERFORM private.advance_due_yahtzee_state();
   SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
@@ -400,21 +431,28 @@ BEGIN
   UPDATE public.games SET is_paused=false WHERE id=v_human_timeout_game_id;
   v_advanced:=private.advance_due_yahtzee_state();
   SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
-  IF v_advanced<1 OR coalesce((v_state->>'actionSequence')::integer,0)<>1
-     OR (v_state->'playerStates'->v_human_timeout_actor::text->>'rollsRemaining')::integer<>2 THEN
+  IF v_advanced<1
+     OR nullif(v_state->>'currentTurnPlayerId','')::uuid IS NOT DISTINCT FROM v_human_timeout_actor
+     OR coalesce((v_state->>'actionSequence')::integer,0)<2
+     OR NOT EXISTS(
+       SELECT 1 FROM public.players WHERE id=v_human_timeout_actor
+         AND auto_fold=true AND sit_out_next_hand=true
+     ) THEN
     RAISE EXCEPTION 'complete_scheduled_human_recovery_failed:%:%',v_advanced,v_state;
   END IF;
+  v_before:=v_state;
 
   v_replay:=public.yahtzee_apply_action(
     v_human_timeout_round_id,v_human_timeout_actor,'deadline_auto',NULL,NULL,NULL,0
   );
   IF v_replay->>'outcome'<>'stale_action'
-     OR coalesce((v_replay->>'action_sequence')::integer,-1)<>1 THEN
+     OR (v_replay->>'action_sequence')::integer
+        IS DISTINCT FROM (v_state->>'actionSequence')::integer THEN
     RAISE EXCEPTION 'human_deadline_replay_not_deduped:%',v_replay;
   END IF;
   PERFORM private.advance_due_yahtzee_state();
   SELECT yahtzee_state INTO v_after FROM public.rounds WHERE id=v_human_timeout_round_id;
-  IF coalesce((v_after->>'actionSequence')::integer,0)<>1 THEN
+  IF v_after IS DISTINCT FROM v_before THEN
     RAISE EXCEPTION 'human_deadline_recovery_replayed:%',v_after;
   END IF;
 
@@ -453,6 +491,10 @@ BEGIN
   IF NOT (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id)
      OR coalesce((v_state->>'actionSequence')::integer,0)<>0
      OR (v_state->'playerStates'->v_real_timeout_actor::text->>'rollsRemaining')::integer<>3
+     OR EXISTS(
+       SELECT 1 FROM public.players WHERE id=v_real_timeout_actor
+         AND (auto_fold=true OR sit_out_next_hand=true)
+     )
      OR v_reset_deadline<=clock_timestamp()
      OR (v_state->>'turnDeadline')::timestamptz IS DISTINCT FROM v_reset_deadline THEN
     RAISE EXCEPTION 'real_money_timeout_did_not_pause_without_action:%:%',v_advanced,v_state;

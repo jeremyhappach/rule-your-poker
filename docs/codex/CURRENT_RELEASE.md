@@ -2,6 +2,24 @@
 
 Date: 2026-08-27
 
+## Yahtzee whole-turn timeout ownership — deployed, pending fake-money smoke
+
+- Migration `20260828110000_yahtzee_whole_turn_timeout.sql` makes the
+  server-owned deadline cover a complete Yahtzee turn, rather than renewing it
+  after each roll or hold. An expired ordinary human action is rejected rather
+  than racing the due-turn owner.
+- In fake-money play only, the exact due-turn owner marks the timed-out human
+  `auto_fold=true` and `sit_out_next_hand=true`, then completes the remaining
+  bot decisions and score in the same database transaction. The player keeps
+  their human identity. Yahtzee now exposes the matching visible Auto-roll
+  rejoin checkbox, which clears both flags for the next hand.
+- Real-money expiry remains the existing pause-only path: it neither changes
+  the player automation flags nor rolls/scores, and resume retains a fresh
+  full-turn deadline. The pre- and post-migration rollback proof passed,
+  including deadline preservation, late action rejection, whole-turn fake
+  recovery/replay, settlement/continuation, and real-money pause/resume. A
+  two-human fake-money production smoke is still required.
+
 ## Yahtzee real-money timeout safety — deployed, pending live smoke
 
 - Migration `20260827140000_yahtzee_real_money_timeout_pause.sql` changes

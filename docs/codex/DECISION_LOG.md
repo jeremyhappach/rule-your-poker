@@ -1465,3 +1465,18 @@ uses the canonical game pause owner. No roll, hold, score, turn advance, or
 settlement occurs. Fake-money Yahtzee retains deterministic automatic recovery
 for harnesses and casual sessions. On real-money resume, canonical pause
 bookkeeping shifts the fresh deadline by the paused duration.
+
+## D-105 - Yahtzee timing is turn-scoped, not roll-scoped
+
+One Yahtzee deadline belongs to the complete player turn: up to three rolls,
+holds, and one category score. Rolls and holds must preserve its exact
+authoritative identity; only a successful score assigns a new deadline to the
+next eligible player. A late human action is rejected so it cannot race the
+due-turn owner.
+
+For fake money, timeout recovery marks the timed-out human auto-roll and
+sit-out-next-hand, then completes the remaining turn atomically through the
+existing authoritative action reducer. This is an automation preference, not
+a change of human identity. The same player can explicitly clear both flags
+from the visible Auto-roll rejoin control. Real-money expiry remains pause-only
+and never writes either automation flag.
