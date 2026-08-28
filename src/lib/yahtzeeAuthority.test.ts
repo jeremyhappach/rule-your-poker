@@ -143,6 +143,15 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(bootstrap).not.toMatch(/\.from\(["']rounds["']\)[\s\S]{0,200}\.insert\(/);
   });
 
+  it('initializes the timer display-name helper before timer state can use it', () => {
+    const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
+    const helper = table.indexOf('const getPlayerUsername = (player: Player) =>');
+    const timerState = table.indexOf('const yahtzeeShellTimerState =');
+
+    expect(helper).toBeGreaterThan(-1);
+    expect(timerState).toBeGreaterThan(helper);
+  });
+
   it('coalesces optimistic die taps into the authoritative full-mask RPC', () => {
     const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
     const toggleStart = table.indexOf('const handleToggleHold');

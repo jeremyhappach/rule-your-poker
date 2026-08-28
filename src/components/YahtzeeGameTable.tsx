@@ -778,6 +778,8 @@ export function YahtzeeGameTable({
   const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const getPlayerUsername = (player: Player) =>
+    player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
   const yahtzeeDeadline = viewState?.turnDeadline ?? null;
   const [timerNow, setTimerNow] = useState(() => Date.now());
   const yahtzeeTimerOwnedByThisClient = isMyTurn
@@ -861,12 +863,6 @@ export function YahtzeeGameTable({
     ?? (!isMyTurn ? currentTurnPlayerId ?? null : null);
 
   // Reorder harness no longer gates on eligibility — manual-run only.
-
-
-
-
-  const getPlayerUsername = (player: Player) =>
-    player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
 
   // ── Phase 5: Canonical match_win emit ────────────────────────────────
   // Emit moved into the completion presentation effect below (co-fired
