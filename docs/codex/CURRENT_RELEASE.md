@@ -17,6 +17,16 @@ Date: 2026-08-28
   tab presentation, so a real-money timeout freezes the local display. The
   `game_paused` ambient also preempts lingering gameplay announcements, making
   “Game is paused — only the host can resume” immediately visible to everyone.
+- Follow-up production smoke proved two presentation races. The Yahtzee turn
+  publisher could replace the pause ambient in the same render, and its action
+  surface remained mounted even though the authoritative RPC correctly
+  rejected paused actions. The client now suppresses turn announcements and
+  every Roll/hold/score affordance while paused. The database timeout owner is
+  unchanged.
+- The opponent countdown now captures one immutable active segment and keeps
+  descending across incoming display ticks. Yahtzee no longer paints the
+  static yellow turn ring beneath that countdown, leaving one proportional
+  green/yellow/red ring owner around the active opponent chip.
 - Focused timer/announcement tests, TypeScript, and the production Vite build
   pass. A two-client fake- and real-money Yahtzee smoke remains required.
 

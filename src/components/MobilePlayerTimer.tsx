@@ -97,7 +97,8 @@ export const MobilePlayerTimer = ({
   // immutable segment deadline ONCE here.
   const isHolmRender = deal?.gameType === 'holm-game';
   const activeSegmentIdRef = useRef<string | null>(null);
-  if (effectiveIsActive && !wasActiveRef.current) {
+  const justActivated = effectiveIsActive && !wasActiveRef.current;
+  if (justActivated) {
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const durationMs = Math.max(1, (maxTime || 0) * 1000);
     const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
@@ -109,6 +110,10 @@ export const MobilePlayerTimer = ({
     segmentDurationMsRef.current = durationMs;
     segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
     activationSeqRef.current += 1;
+    // Commit the activation latch during the same render as the immutable
+    // segment capture. Incoming second-by-second props must not look like a
+    // new activation and rebase the ring back to full.
+    wasActiveRef.current = true;
     const newSegId = `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
     activeSegmentIdRef.current = newSegId;
     if (isHolmRender) {
@@ -127,6 +132,7 @@ export const MobilePlayerTimer = ({
       recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:112', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
     }
     activeSegmentIdRef.current = null;
+    wasActiveRef.current = false;
   }
 
   // Record every prop change while a segment is active. These are the
@@ -150,7 +156,7 @@ export const MobilePlayerTimer = ({
 
 
   useEffect(() => {
-    if (effectiveIsActive && !wasActiveRef.current) {
+    if (effectiveIsActive) {
       const segId = activeSegmentIdRef.current;
       // Suppress any CSS transition through two rAFs so the compositor
       // paints the FULL ring before we re-enable the stroke transition.
@@ -158,14 +164,14 @@ export const MobilePlayerTimer = ({
         recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:133', reason: 'pre-paint suppression on activation', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
       }
       setSuppressTransition(true);
+      let r2: number | null = null;
       const r1 = requestAnimationFrame(() => {
-        const r2 = requestAnimationFrame(() => {
+        r2 = requestAnimationFrame(() => {
           if (isHolmRender) {
             recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:135', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
           }
           setSuppressTransition(false);
         });
-        (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
       });
       recordLifecycleEvent('timer.activate', {
         component: 'MobilePlayerTimer',
@@ -177,10 +183,13 @@ export const MobilePlayerTimer = ({
         segment_deadline_ms: segmentDeadlineMsRef.current,
         segment_duration_ms: segmentDurationMsRef.current,
       });
-      return () => cancelAnimationFrame(r1);
+      return () => {
+        cancelAnimationFrame(r1);
+        if (r2 !== null) cancelAnimationFrame(r2);
+      };
     }
-    wasActiveRef.current = effectiveIsActive;
-  }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
+    setSuppressTransition(true);
+  }, [effectiveIsActive, activationSeqRef.current]);
 
   // Drive descent purely from clock vs fixed deadline. 100ms tick — no
   // dependency on incoming prop ticks, so deadline can never rebase.
@@ -197,8 +206,6 @@ export const MobilePlayerTimer = ({
     const deadline = segmentDeadlineMsRef.current;
     const duration = segmentDurationMsRef.current;
     if (deadline == null || duration == null || duration <= 0) return 1;
-    // Activation edge: ref not yet committed → force full.
-    if (!wasActiveRef.current) return 1;
     const remaining = deadline - nowTickMs;
     return Math.max(0, Math.min(1, remaining / duration));
     // eslint-disable-next-line react-hooks/exhaustive-deps

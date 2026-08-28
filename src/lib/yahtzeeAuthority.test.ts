@@ -187,6 +187,32 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(table).toContain('applyYahtzeeAutoRollAction');
   });
 
+  it('makes an authoritative pause suppress Yahtzee announcements and action surfaces', () => {
+    const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
+    const turnAnnouncementStart = table.indexOf("if (remotePresentationHydratedRoundId !== currentRoundId) return;");
+    const turnAnnouncementEnd = table.indexOf('/* ---- Clear opponent scoring highlight', turnAnnouncementStart);
+    const turnAnnouncement = table.slice(turnAnnouncementStart, turnAnnouncementEnd);
+    const rollHandlerStart = table.indexOf('const handleRoll = useCallback');
+    const rollHandlerEnd = table.indexOf('/* ---- Hold toggle ---- */', rollHandlerStart);
+    const rollHandler = table.slice(rollHandlerStart, rollHandlerEnd);
+
+    expect(turnAnnouncement).toContain('if (isPaused) return;');
+    expect(rollHandler).toContain('if (isPaused || !isMyTurn');
+    expect(table).toContain("gamePhase === 'playing' && isMyTurn && !isPaused && !remoteScorePresentation.active");
+    expect(table).toContain('isInteractive && isMyTurn && !isPaused');
+    expect(table).toContain('canToggle={!isPaused');
+  });
+
+  it('uses the countdown as the sole active-turn ring on opponent chips', () => {
+    const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
+    const presentationStart = table.indexOf('presentation={{');
+    const presentationEnd = table.indexOf('scoreLine:', presentationStart);
+    const opponentPresentation = table.slice(presentationStart, presentationEnd);
+
+    expect(opponentPresentation).toContain('activeTimer: (p) =>');
+    expect(opponentPresentation).not.toContain('statusRing:');
+  });
+
   it('coalesces optimistic die taps into the authoritative full-mask RPC', () => {
     const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
     const toggleStart = table.indexOf('const handleToggleHold');
