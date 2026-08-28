@@ -35,7 +35,7 @@ import {
 import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
-import { applyYahtzeeAction, setYahtzeeHolds } from "@/lib/yahtzeeAuthority";
+import { applyYahtzeeAction, applyYahtzeeAutoRollAction, setYahtzeeHolds } from "@/lib/yahtzeeAuthority";
 import {
   buildDieTuples,
   isYahtzeeHeldTraceEnabled,
@@ -147,6 +147,7 @@ interface YahtzeeGameTableProps {
   dealerGameId: string | null;
   handNumber: number | null;
   yahtzeeState: YahtzeeState | null;
+  isRealMoney: boolean;
   onRefetch: () => void;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
@@ -237,7 +238,7 @@ function holdMasksEqual(left: readonly boolean[], right: readonly boolean[]): bo
 
 export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
-  currentRoundId, dealerGameId, handNumber, yahtzeeState, onRefetch,
+  currentRoundId, dealerGameId, handNumber, yahtzeeState, isRealMoney, onRefetch,
   isHost = false, onPlayerClick, onAutoFoldChange, onTerminalPresentationActiveChange,
   onTerminalPresentationComplete,
 }: YahtzeeGameTableProps) {
@@ -780,6 +781,7 @@ export function YahtzeeGameTable({
   const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const isMyAutoRollTurn = isMyTurn && !isRealMoney && currentPlayer?.auto_fold === true;
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
   const yahtzeeDeadline = viewState?.turnDeadline ?? null;
@@ -787,7 +789,8 @@ export function YahtzeeGameTable({
   const yahtzeeTimerOwnedByThisClient = isMyTurn
     && !!stableTurnPlayerId
     && !!yahtzeeDeadline
-    && !currentPlayer?.is_bot;
+    && !currentPlayer?.is_bot
+    && !isMyAutoRollTurn;
   useEffect(() => {
     if (!yahtzeeTimerOwnedByThisClient || !yahtzeeDeadline) return;
     setTimerNow(Date.now());
@@ -912,12 +915,14 @@ export function YahtzeeGameTable({
   const rolling = uiRolling;
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn
+    && !isMyAutoRollTurn
     && !remoteScorePresentation.active
     && gamePhase === "playing"
     && localRollsRemaining < 3;
   useAuthoritativeActionSurfaceGuard({
     expected: gamePhase === 'playing'
       && isMyTurn
+      && !isMyAutoRollTurn
       && activeTab === 'cards'
       && !remoteScorePresentation.active,
     gameId,
@@ -1004,6 +1009,7 @@ export function YahtzeeGameTable({
     if (scorecardUnmountTimerRef.current) clearTimeout(scorecardUnmountTimerRef.current);
   }, []);
   const showInteractiveScorecard = !remoteScorePresentation.active
+    && !isMyAutoRollTurn
     && (isMyTurn || stickyScorecardMounted);
 
 
@@ -1313,7 +1319,7 @@ export function YahtzeeGameTable({
   }, [acceptCommittedState, onRefetch]);
 
   const handleRoll = useCallback(async () => {
-    if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
+    if (!isMyTurn || myPlayer?.auto_fold || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
@@ -1378,7 +1384,7 @@ export function YahtzeeGameTable({
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback((dieIndex: number) => {
-    if (!isMyTurn || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
+    if (!isMyTurn || myPlayer?.auto_fold || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       return;
     }
     const rawState = latestActionStateRef.current;
@@ -1450,7 +1456,7 @@ export function YahtzeeGameTable({
   }, [isMyTurn, currentRoundId, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!currentRoundId || !myPlayer || actionInFlightRef.current) return;
+    if (!currentRoundId || !myPlayer || myPlayer.auto_fold || actionInFlightRef.current) return;
     actionInFlightRef.current = true;
     setActionPending(true);
     let presentationFrozen = false;
@@ -1727,10 +1733,15 @@ export function YahtzeeGameTable({
   const authTurnPlayerId = authoritativeYahtzeeState?.currentTurnPlayerId;
   const authGamePhase = authoritativeYahtzeeState?.gamePhase;
   const authTurnPlayer = players.find(p => p.id === authTurnPlayerId);
+  const isOwnedAutoRollTurn = !isRealMoney
+    && !authTurnPlayer?.is_bot
+    && authTurnPlayer?.auto_fold === true
+    && authTurnPlayer?.user_id === currentUserId;
+  const isAutomatedTurn = authTurnPlayer?.is_bot === true || isOwnedAutoRollTurn;
 
   // Safety: reset botProcessingRef when authoritative turn changes away from a bot
   useEffect(() => {
-    if (!authTurnPlayer?.is_bot) {
+    if (!isAutomatedTurn) {
       console.log('[BOT SAFETY RESET]', {
         roundId: currentRoundId,
         authTurnPlayerId,
@@ -1740,13 +1751,14 @@ export function YahtzeeGameTable({
       });
       botProcessingRef.current = false;
     }
-  }, [authTurnPlayerId]);
+  }, [authTurnPlayerId, isAutomatedTurn]);
 
   useEffect(() => {
     console.warn('[BOT EFFECT MOUNT] BUILD=2026-04-06T17:40Z INSTRUMENTED', {
       roundId: currentRoundId,
       authTurnPlayerId,
       isBotTurn: authTurnPlayer?.is_bot,
+      isOwnedAutoRollTurn,
       authGamePhase,
       currentUserId,
       botProcessingRef: botProcessingRef.current,
@@ -1758,6 +1770,7 @@ export function YahtzeeGameTable({
       roundId: currentRoundId,
       authTurnPlayerId,
       isBotTurn: authTurnPlayer?.is_bot,
+      isOwnedAutoRollTurn,
       authGamePhase,
       botProcessingRef: botProcessingRef.current,
       hasAuthState: !!authoritativeYahtzeeState,
@@ -1769,8 +1782,8 @@ export function YahtzeeGameTable({
       console.log('[BOT TURN EXIT]', { reason: 'precondition-fail', roundId: currentRoundId, authGamePhase, hasAuthState: !!authoritativeYahtzeeState });
       return;
     }
-    if (!authTurnPlayerId || !authTurnPlayer?.is_bot) {
-      console.log('[BOT TURN EXIT]', { reason: 'not-bot-turn', authTurnPlayerId, isBot: authTurnPlayer?.is_bot });
+    if (!authTurnPlayerId || !isAutomatedTurn) {
+      console.log('[BOT TURN EXIT]', { reason: 'not-automated-turn', authTurnPlayerId, isBot: authTurnPlayer?.is_bot, isOwnedAutoRollTurn });
       return;
     }
     if (botProcessingRef.current) {
@@ -1778,7 +1791,7 @@ export function YahtzeeGameTable({
       return;
     }
     const controllerUserId = authoritativeYahtzeeState.botControllerUserId;
-    if (controllerUserId && controllerUserId !== currentUserId) {
+    if (!isOwnedAutoRollTurn && controllerUserId && controllerUserId !== currentUserId) {
       console.log('[BOT TURN EXIT]', { reason: 'not-controller', controllerUserId, currentUserId });
       return;
     }
@@ -2009,7 +2022,7 @@ export function YahtzeeGameTable({
             turnIdentity,
           });
 
-          const rollResult = await applyYahtzeeAction({
+          const rollResult = await (isOwnedAutoRollTurn ? applyYahtzeeAutoRollAction : applyYahtzeeAction)({
             roundId: currentRoundId,
             playerId: botPlayerId,
             action: 'bot_roll',
@@ -2078,7 +2091,7 @@ export function YahtzeeGameTable({
         setLastScoredCategory(category);
         setScoringInProgress(true);
 
-        const scoreResult = await applyYahtzeeAction({
+        const scoreResult = await (isOwnedAutoRollTurn ? applyYahtzeeAutoRollAction : applyYahtzeeAction)({
           roundId: currentRoundId,
           playerId: botPlayerId,
           action: 'bot_score',
@@ -2179,7 +2192,7 @@ export function YahtzeeGameTable({
     // The bot snapshots state at fire-time and runs to completion. Including it
     // would cause the effect to re-fire on every DB write, cancelling the bot mid-turn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRoundId, authTurnPlayerId, authTurnPlayer?.is_bot, authGamePhase, currentUserId]);
+  }, [currentRoundId, authTurnPlayerId, authTurnPlayer?.is_bot, authTurnPlayer?.auto_fold, authTurnPlayer?.user_id, authGamePhase, currentUserId, isAutomatedTurn, isOwnedAutoRollTurn, isRealMoney]);
 
   /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
@@ -2719,7 +2732,7 @@ export function YahtzeeGameTable({
                           value={die.value}
                           isHeld={showHeldStyling}
                           isRolling={shouldAnimate}
-                          canToggle={!rolling && !actionPending && localRollsRemaining > 0 && localRollsRemaining < 3}
+                          canToggle={!myPlayer?.auto_fold && !rolling && !actionPending && localRollsRemaining > 0 && localRollsRemaining < 3}
                           onToggle={() => handleToggleHold(idx)}
                           size={resolvedDieSize}
                           sizePx={fluidDiePx ?? undefined}
@@ -2742,7 +2755,11 @@ export function YahtzeeGameTable({
                     className="mt-1 mb-1"
                     density="compact"
                   >
-                    {scoringInProgress ? (
+                    {isMyAutoRollTurn ? (
+                      <ActionStripStatusPill emphasis="muted">
+                        Auto-rolling…
+                      </ActionStripStatusPill>
+                    ) : scoringInProgress ? (
                       <ActionStripStatusPill emphasis="muted">
                         Scoring…
                       </ActionStripStatusPill>

@@ -17800,6 +17800,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerGameId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.dealer_game_id || null) : null}
                 handNumber={(isInProgress || isYahtzeeGameOver) ? (currentRound?.hand_number ?? null) : null}
                 yahtzeeState={yahtzeeState}
+                isRealMoney={game.real_money === true}
                 onRefetch={fetchGameData}
                 onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                 onTerminalPresentationComplete={handleYahtzeeTerminalPresentationComplete}

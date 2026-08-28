@@ -7,7 +7,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: { rpc },
 }));
 
-import { advanceYahtzeePostgame, applyYahtzeeAction, setYahtzeeHolds } from './yahtzeeAuthority';
+import { advanceYahtzeePostgame, applyYahtzeeAction, applyYahtzeeAutoRollAction, setYahtzeeHolds } from './yahtzeeAuthority';
 import { startYahtzeeRound } from './yahtzeeRoundLogic';
 import type { YahtzeeState } from './yahtzeeTypes';
 
@@ -57,6 +57,30 @@ describe('Yahtzee authority RPC clients', () => {
       dieIndex: 0,
       expectedActionSequence: 9,
     })).rejects.toBe(error);
+  });
+
+  it('uses the owner-only Auto-roll adapter for a paced fake-money bot action', async () => {
+    rpc.mockResolvedValue({
+      data: { outcome: 'applied', action: 'roll', action_sequence: 10, state },
+      error: null,
+    });
+
+    await expect(applyYahtzeeAutoRollAction({
+      roundId: '11111111-1111-4111-8111-111111111111',
+      playerId: '22222222-2222-4222-8222-222222222222',
+      action: 'bot_roll',
+      holdMask: [false, true, false, false, true],
+      expectedActionSequence: 9,
+    })).resolves.toMatchObject({ outcome: 'applied', actionSequence: 10, state });
+
+    expect(rpc).toHaveBeenCalledWith('yahtzee_apply_auto_roll_action', {
+      _round_id: '11111111-1111-4111-8111-111111111111',
+      _player_id: '22222222-2222-4222-8222-222222222222',
+      _action: 'bot_roll',
+      _category: null,
+      _hold_mask: [false, true, false, false, true],
+      _expected_action_sequence: 9,
+    });
   });
 
   it('commits a complete hold mask under the exact action sequence', async () => {
@@ -158,6 +182,9 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(table).toContain('data-yahtzee-auto-roll=""');
     expect(table).toContain('Auto-roll enabled (uncheck to rejoin)');
     expect(table).toContain('onAutoFoldChange?.(myPlayer.id, false)');
+    expect(table).toContain('const isMyAutoRollTurn = isMyTurn && !isRealMoney');
+    expect(table).toContain('Auto-rolling…');
+    expect(table).toContain('applyYahtzeeAutoRollAction');
   });
 
   it('coalesces optimistic die taps into the authoritative full-mask RPC', () => {

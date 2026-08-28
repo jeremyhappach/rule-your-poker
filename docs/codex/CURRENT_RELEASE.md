@@ -9,10 +9,14 @@ Date: 2026-08-27
   after each roll or hold. An expired ordinary human action is rejected rather
   than racing the due-turn owner.
 - In fake-money play only, the exact due-turn owner marks the timed-out human
-  `auto_fold=true` and `sit_out_next_hand=true`, then completes the remaining
-  bot decisions and score in the same database transaction. The player keeps
-  their human identity. Yahtzee now exposes the matching visible Auto-roll
-  rejoin checkbox, which clears both flags for the next hand.
+  `auto_fold=true` and `sit_out_next_hand=true`, then arms a new server-only
+  recovery window. The timed-out human’s authenticated browser uses the normal
+  paced bot sequence, so each roll is an authoritative Realtime update visible
+  to both players; its timer and manual controls are suppressed while Auto-roll
+  is active. If no browser completes that armed turn, the next due event is the
+  replay-safe server fallback. The player keeps their human identity. Yahtzee
+  exposes the matching visible Auto-roll rejoin checkbox, which clears both
+  flags for the next hand.
 - Real-money expiry remains the existing pause-only path: it neither changes
   the player automation flags nor rolls/scores, and resume retains a fresh
   full-turn deadline. The pre- and post-migration rollback proof passed,

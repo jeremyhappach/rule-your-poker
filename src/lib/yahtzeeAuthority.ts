@@ -52,6 +52,26 @@ export async function applyYahtzeeAction(args: {
   return parseYahtzeeActionResult(data);
 }
 
+export async function applyYahtzeeAutoRollAction(args: {
+  roundId: string;
+  playerId: string;
+  action: 'bot_roll' | 'bot_score';
+  category?: YahtzeeCategory | null;
+  holdMask?: boolean[] | null;
+  expectedActionSequence?: number | null;
+}): Promise<YahtzeeActionResult> {
+  const { data, error } = await (supabase as any).rpc('yahtzee_apply_auto_roll_action', {
+    _round_id: args.roundId,
+    _player_id: args.playerId,
+    _action: args.action,
+    _category: args.category ?? null,
+    _hold_mask: args.holdMask ?? null,
+    _expected_action_sequence: args.expectedActionSequence ?? null,
+  });
+  if (error) throw error;
+  return parseYahtzeeActionResult(data);
+}
+
 export async function setYahtzeeHolds(args: {
   roundId: string;
   playerId: string;

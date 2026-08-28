@@ -26,6 +26,7 @@ DECLARE
   v_human_timeout_player_two uuid:=gen_random_uuid();
   v_human_timeout_actor uuid;
   v_human_timeout_actor_user uuid;
+  v_other_user uuid;
   v_real_timeout_player_one uuid:=gen_random_uuid();
   v_real_timeout_player_two uuid:=gen_random_uuid();
   v_real_timeout_actor uuid;
@@ -376,6 +377,7 @@ BEGIN
    WHERE round_row.id=v_human_timeout_round_id;
   SELECT player.user_id INTO v_human_timeout_actor_user
     FROM public.players player WHERE player.id=v_human_timeout_actor;
+  v_other_user:=CASE WHEN v_human_timeout_actor_user=v_user_one THEN v_user_two ELSE v_user_one END;
 
   PERFORM set_config(
     'request.jwt.claims',
@@ -430,18 +432,70 @@ BEGIN
 
   UPDATE public.games SET is_paused=false WHERE id=v_human_timeout_game_id;
   v_advanced:=private.advance_due_yahtzee_state();
-  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  SELECT yahtzee_state,decision_deadline INTO v_state,v_reset_deadline
+    FROM public.rounds WHERE id=v_human_timeout_round_id;
   IF v_advanced<1
-     OR nullif(v_state->>'currentTurnPlayerId','')::uuid IS NOT DISTINCT FROM v_human_timeout_actor
-     OR coalesce((v_state->>'actionSequence')::integer,0)<2
+     OR nullif(v_state->>'currentTurnPlayerId','')::uuid IS DISTINCT FROM v_human_timeout_actor
+     OR coalesce((v_state->>'actionSequence')::integer,0)<>0
      OR NOT EXISTS(
        SELECT 1 FROM public.players WHERE id=v_human_timeout_actor
          AND auto_fold=true AND sit_out_next_hand=true
-     ) THEN
-    RAISE EXCEPTION 'complete_scheduled_human_recovery_failed:%:%',v_advanced,v_state;
+     )
+     OR v_reset_deadline<=clock_timestamp()
+     OR (v_state->>'turnDeadline')::timestamptz IS DISTINCT FROM v_reset_deadline THEN
+    RAISE EXCEPTION 'human_timeout_did_not_arm_auto_roll:%:%',v_advanced,v_state;
+  END IF;
+
+  -- The timed-out human, and only that human, can pace bot decisions while
+  -- Auto-roll is armed. Normal player actions remain deadline-guarded.
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_other_user,'role','authenticated')::text,
+    true
+  );
+  BEGIN
+    PERFORM public.yahtzee_apply_auto_roll_action(
+      v_human_timeout_round_id,v_human_timeout_actor,'bot_roll',NULL,NULL,0
+    );
+    RAISE EXCEPTION 'auto_roll_adapter_allowed_non_owner';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='auto_roll_adapter_allowed_non_owner'
+       OR SQLERRM NOT LIKE '%not_auto_roll_owner%' THEN
+      RAISE;
+    END IF;
+  END;
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub',v_human_timeout_actor_user,'role','authenticated')::text,
+    true
+  );
+  v_result:=public.yahtzee_apply_auto_roll_action(
+    v_human_timeout_round_id,v_human_timeout_actor,'bot_roll',NULL,NULL,0
+  );
+  IF v_result->>'outcome'<>'applied'
+     OR v_result->>'action'<>'roll'
+     OR (v_result->>'action_sequence')::integer<>1 THEN
+    RAISE EXCEPTION 'armed_auto_roll_owner_action_failed:%',v_result;
+  END IF;
+
+  -- With no further client action, the next due event remains the exact
+  -- server fallback and completes the outstanding turn once.
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  v_expired_at:=clock_timestamp()-interval '1 second';
+  v_state:=jsonb_set(v_state,'{turnDeadline}',to_jsonb(v_expired_at),true);
+  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+  UPDATE public.rounds
+     SET yahtzee_state=v_state,decision_deadline=v_expired_at
+   WHERE id=v_human_timeout_round_id;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  v_advanced:=private.advance_due_yahtzee_state();
+  SELECT yahtzee_state INTO v_state FROM public.rounds WHERE id=v_human_timeout_round_id;
+  IF v_advanced<1
+     OR nullif(v_state->>'currentTurnPlayerId','')::uuid IS NOT DISTINCT FROM v_human_timeout_actor
+     OR coalesce((v_state->>'actionSequence')::integer,0)<3 THEN
+    RAISE EXCEPTION 'auto_roll_server_fallback_failed:%:%',v_advanced,v_state;
   END IF;
   v_before:=v_state;
-
   v_replay:=public.yahtzee_apply_action(
     v_human_timeout_round_id,v_human_timeout_actor,'deadline_auto',NULL,NULL,NULL,0
   );
