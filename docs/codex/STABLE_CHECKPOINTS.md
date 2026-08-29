@@ -2,6 +2,14 @@
 
 ## Platform
 
+- Cribbage request-owned pegging liveness passed published production smoke on
+  2026-08-29 at commit `8cc8275fe5646a26ed4183e222702923067ed0d6`.
+  Two concurrent isolated fake-money clients at 393x662 and 342x576 each
+  reached terminal hand 5 through repeated pegging, counting, and successor
+  transitions with zero observer violations and no 6000 ms peer-progress
+  breach. Preserve the direct immutable event-sequence action, RPC-lifecycle
+  writer gate, replay-safe bounded retry, and single-flight counting cursor;
+  presentation animation must never reopen an unresolved writer.
 - Waiting-table Start Game passed published two-human production smoke on
   2026-08-26 at commit `a88af23c953a3156adaf071056e9d2d3c9ee9e12`.
   `public.begin_session_dealer_selection` atomically owns the eligible roster,

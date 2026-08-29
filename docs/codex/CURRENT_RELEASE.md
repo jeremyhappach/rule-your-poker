@@ -2,7 +2,7 @@
 
 Date: 2026-08-28
 
-## Cribbage action-liveness correction — source candidate
+## Cribbage action-liveness correction — production smoke accepted
 
 - Production fake-money gauntlet evidence isolated a Cribbage client request
   ownership defect. A card play performed an unbounded state-read preflight,
@@ -29,8 +29,15 @@ Validation: 52 focused Cribbage request, counting, synchronization, and
 liveness tests passed; TypeScript passed; the production build and its 39
 Cribbage render/rejoin tests passed. The broad liveness suite retained its one
 documented unrelated Windows line-ending failure in the session dealer-draw
-tie-harness source assertion. Published fake-money multi-hand smoke remains
-acceptance truth for this candidate.
+tie-harness source assertion.
+
+Published production commit `8cc8275fe5646a26ed4183e222702923067ed0d6`
+then passed two concurrent, isolated fake-money mobile interaction smokes at
+393x662 and the formerly failing 342x576 viewport. Both reached terminal hand
+5 through repeated pegging/counting/next-hand transitions, recorded zero
+continuous-observer violations, stayed under the 6000 ms peer-progress budget
+(maxima 3325 ms and 3437 ms), and verified guarded cleanup. No real-money
+session was touched.
 
 ## Yahtzee authenticated resume authority — production smoke accepted
 
