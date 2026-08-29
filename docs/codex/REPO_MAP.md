@@ -342,6 +342,14 @@ reconciliation.
   persist without the exact debug channel.
 - Game-specific detailed traces, including `yahtzeeHeldDieTrace.ts` and 3-5-7
   wartime capture, are fail-closed and require their explicit channel.
+- Cribbage visual-report forensics are local and submit-driven:
+  `src/lib/cribbage/forensicTrace.ts` owns a 200-entry, payload-bounded,
+  `(game_id, dealer_game_id)`-scoped in-memory ring, while
+  `src/lib/cribbage/activeHandSnapshotStore.ts` captures the current or most
+  recently unmounted Cards subtree, action-gate state, active-hand DOM counts,
+  and discard-control hit-test stack. `VisualBugReportButton.tsx` attaches that
+  evidence only when a visual report is submitted; the trace performs no
+  continuous network writes and gameplay never reads it.
 
 ### 3-5-7
 

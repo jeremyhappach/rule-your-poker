@@ -26,22 +26,22 @@ import {
   resolveCribbageCutPresentationEntryMode,
 } from '@/lib/cribbage/cribbageCutPresentation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
-// Wartime + peg-transport instrumentation removed post-cleanup. Local
-// no-op stubs preserve existing call-site shape without any diagnostic
-// side effects. UI pills (CribbageWartimeTruthPill,
-// CribbageWartimeDealRuntimeBridge) were deleted; their JSX mounts
-// below were removed.
-const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
-const setCribbageWartimeIdentity: (..._args: unknown[]) => void = () => {};
+import {
+  recordCribbageActiveHand,
+  recordCribbageActiveHandContradiction,
+  recordCribbageForensicEvent as recordCribbageWartime,
+  setCribbageDealIdentityAmbient,
+  setCribbageForensicIdentity as setCribbageWartimeIdentity,
+} from '@/lib/cribbage/forensicTrace';
+// The retired UI pills and network wartime sink remain removed. Presentation,
+// boundary, and parent-gate producers now write only to a bounded in-memory
+// trace that is attached on demand to a submitted visual bug report.
 const recordPegTransportAttempt: (..._args: unknown[]) => void = () => {};
 const updatePegTransportEntry: (..._args: unknown[]) => void = () => {};
 const getPegTransportEntries: () => Array<{ attemptId: string; animationSettled: boolean; cleanupReason: unknown }> = () => [];
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
-const recordCribbageActiveHand: (..._args: unknown[]) => void = () => {};
-const recordCribbageActiveHandContradiction: (..._args: unknown[]) => void = () => {};
-const setCribbageDealIdentityAmbient: (..._args: unknown[]) => void = () => {};
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
@@ -2361,6 +2361,8 @@ export const CribbageMobileGameTable = ({
   // wartime ledger entry. Instrumentation only.
   useEffect(() => {
     setCribbageWartimeIdentity({
+      gameId,
+      dealerGameId: dealerGameId ?? null,
       playerId: currentPlayerId ?? null,
       roundId: currentRoundId ?? null,
       handNumber: currentHandNumber ?? null,
@@ -2373,7 +2375,7 @@ export const CribbageMobileGameTable = ({
     });
   }, [
     currentPlayerId, currentRoundId, currentHandNumber,
-    currentHandKey, renderHandKey,
+    currentHandKey, renderHandKey, gameId, dealerGameId,
     cribbageState?.phase, cribbageState?.pegging?.sequenceStartIndex,
   ]);
 
@@ -8628,6 +8630,7 @@ export const CribbageMobileGameTable = ({
                     viewer + at least one seated player. */}
                 {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
+                    gameId={gameId}
                     handContextId={currentHandKey || durableHandKey}
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}

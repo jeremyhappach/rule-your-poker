@@ -15,7 +15,7 @@ import { buildMetaPayload, BUILD_META } from "@/lib/buildMeta";
 import { getClientId, getClientTimestamp, getShortGameId } from "@/lib/clientContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-const captureCribbageActiveHandSnapshot: () => null = () => null;
+import { captureCribbageActiveHandSnapshot } from "@/lib/cribbage/activeHandSnapshotStore";
 
 
 interface VisualBugReportButtonProps {
@@ -176,12 +176,14 @@ export const VisualBugReportButton = ({
         return;
       }
 
-      // Mounted-game discriminator: the Cribbage snapshot store is
-      // populated only while CribbageMobileCardsTab is mounted. A
-      // non-null capture therefore reflects the currently mounted
-      // client surface, independent of persisted games.game_type
-      // (which can lag or mismatch — tracked separately).
-      const cribbageActiveHandSnapshot = captureCribbageActiveHandSnapshot();
+      // Exact game/dealer-game scoping prevents a retained Cribbage snapshot
+      // from attaching after the session rotates to another dealer game. The
+      // store deliberately retains an unmounted Cards-subtree snapshot so a
+      // disappearance defect remains reportable.
+      const cribbageActiveHandSnapshot = captureCribbageActiveHandSnapshot(
+        gameId,
+        dealerGameId,
+      );
 
       const payload = {
         reporter_user_id: user.id,

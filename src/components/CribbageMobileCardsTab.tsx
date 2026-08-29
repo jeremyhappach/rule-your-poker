@@ -27,25 +27,18 @@ import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvar
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
 import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 import { useAuthoritativeActionSurfaceGuard } from '@/lib/actionSurfaceRecovery';
+import {
+  recordCribbageForensicEvent,
+  setCribbageForensicIdentity,
+} from '@/lib/cribbage/forensicTrace';
+import {
+  clearCribbageActiveHandSnapshot,
+  isUnexpectedCribbageRenderSourceMismatch,
+  publishCribbageActiveHandSnapshot,
+} from '@/lib/cribbage/activeHandSnapshotStore';
 // cardHighlight tokens retired — highlight is now a first-class
 // PlayingCard prop that renders inside the card face itself.
-
-/** No-op — temporary Cribbage active-hand wartime instrumentation removed. */
-function recordCribbageWartime(
-  _group: string,
-  _tag: string,
-  _payload: Record<string, unknown>,
-  _opts: {
-    producerComponent: string;
-    producerFunction: string;
-    dedupeKey?: string;
-    contradictions?: string[];
-  },
-): void {
-  // no-op
-}
-const publishCribbageActiveHandSnapshot: (_snapshot: unknown) => void = () => {};
-const clearCribbageActiveHandSnapshot: () => void = () => {};
+const recordCribbageWartime = recordCribbageForensicEvent;
 
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
@@ -183,6 +176,31 @@ export const CribbageMobileCardsTab = ({
   );
   const parentSuppressed = !!renderTrace && renderTrace.interactionsAllowed === false;
   const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch || parentSuppressed);
+  useEffect(() => {
+    setCribbageForensicIdentity({
+      gameId,
+      dealerGameId: renderTrace?.dealerGameId ?? null,
+      playerId: currentPlayerId,
+      roundId: expectedRoundId,
+      handNumber: renderTrace?.handNumber ?? null,
+      handContextId: renderTrace?.currentHandKey ?? null,
+      currentHandKey: renderTrace?.currentHandKey ?? null,
+      renderHandContextId: renderTrace?.renderHandKey ?? null,
+      authoritativeHandContextId: renderTrace?.currentHandKey ?? null,
+      phase: cribbageState.phase ?? null,
+      peggingSequenceIndex: cribbageState.pegging.sequenceStartIndex ?? null,
+    });
+  }, [
+    gameId,
+    currentPlayerId,
+    expectedRoundId,
+    renderTrace?.dealerGameId,
+    renderTrace?.handNumber,
+    renderTrace?.currentHandKey,
+    renderTrace?.renderHandKey,
+    cribbageState.phase,
+    cribbageState.pegging.sequenceStartIndex,
+  ]);
   // Canonical two-phase reveal:
   //   DEALING → transport-settled card identities drive reveal count
   //             (per-recipient settled cardId list, in transport order).
@@ -507,13 +525,16 @@ export const CribbageMobileCardsTab = ({
       }
     }
 
-    if (
-      authIds &&
-      !activeHandBlocked &&
-      (cribbageState.phase === 'discarding' || cribbageState.phase === 'pegging') &&
-      renderTrace.renderHandKey === renderTrace.currentHandKey
-    ) {
-      const authFingerprint = [...authIds].sort().join(',');
+    if (isUnexpectedCribbageRenderSourceMismatch({
+      authoritativeCardIds: authIds,
+      renderedCardIds,
+      activeHandBlocked,
+      dealPhase: deal?.phase ?? null,
+      cribbagePhase: cribbageState.phase,
+      renderHandKey: renderTrace.renderHandKey,
+      currentHandKey: renderTrace.currentHandKey,
+    })) {
+      const authFingerprint = [...(authIds ?? [])].sort().join(',');
       const renderedSorted = [...renderedCardIds].sort().join(',');
       if (authFingerprint !== renderedSorted) {
         persistSyncDebugEvent({
@@ -531,6 +552,7 @@ export const CribbageMobileCardsTab = ({
             currentHandKey: renderTrace.currentHandKey?.slice(0, 30),
             renderSource: renderTrace.renderSource,
             phase: cribbageState.phase,
+            dealPhase: deal?.phase ?? null,
             isFrozen: renderTrace.isFrozen,
           },
         });
@@ -541,6 +563,7 @@ export const CribbageMobileCardsTab = ({
     activeHandSourceName,
     clientId,
     cribbageState.phase,
+    deal?.phase,
     expectedRoundId,
     gameId,
     myPlayerState,
@@ -1026,11 +1049,13 @@ export const CribbageMobileCardsTab = ({
   // Instrumentation only — publish current active-hand presentation
   // state to the snapshot store so VisualBugReportButton can attach it
   // to `extra_context.cribbage_active_hand_snapshot` at submit time.
-  // Reuses the existing bounded Cribbage Active-Hand Visibility Ledger
-  // for the trailing trace tail. No gameplay, transport, lifecycle, or
-  // rendering behavior depends on this call.
+  // The attached trace is bounded, in-memory, and scoped to the exact game
+  // and dealer game. No gameplay, transport, lifecycle, or rendering behavior
+  // depends on this call.
   useEffect(() => {
     publishCribbageActiveHandSnapshot({
+      gameId,
+      dealerGameId: renderTrace?.dealerGameId ?? null,
       viewerPlayerId: currentPlayerId,
       roundId: expectedRoundId,
       handNumber: renderTrace?.handNumber ?? null,
@@ -1055,11 +1080,27 @@ export const CribbageMobileCardsTab = ({
       handIdentityMismatch,
       emptyStageEarlyReturnActive,
       dealingPartialRevealActive: dealingPartialReveal,
+      interactionsAllowed: renderTrace?.interactionsAllowed !== false,
+      isProcessing,
+      selectedCardCount: selectedCards.length,
+      expectedDiscardCount: expectedDiscard,
+      discardButtonDisabled:
+        isProcessing ||
+        selectedCards.length !== expectedDiscard ||
+        renderTrace?.interactionsAllowed === false,
+      haveDiscarded,
+      isMyTurn,
+      canPlayAnyCard: Boolean(canPlayAnyCard),
+      currentCount: cribbageState.pegging.currentCount,
+      currentTurnPlayerId: cribbageState.pegging.currentTurnPlayerId ?? null,
+      peggingBoundaryBlocked,
+      selfPlayUnresolved,
     });
   });
   useEffect(() => {
-    return () => { clearCribbageActiveHandSnapshot(); };
-  }, []);
+    const dealerGameId = renderTrace?.dealerGameId ?? null;
+    return () => { clearCribbageActiveHandSnapshot(gameId, dealerGameId); };
+  }, [gameId, renderTrace?.dealerGameId]);
 
   if (emptyStageEarlyReturnActive) {
 

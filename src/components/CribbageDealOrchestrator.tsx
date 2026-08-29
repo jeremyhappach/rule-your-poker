@@ -30,22 +30,12 @@ import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
+import {
+  recordCribbageForensicEvent as recordCribbageWartime,
+  setCribbageForensicIdentity,
+} from '@/lib/cribbage/forensicTrace';
 const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
 const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
-
-function recordCribbageWartime(
-  _group: string,
-  _tag: string,
-  _payload: Record<string, unknown>,
-  _opts: {
-    producerComponent: string;
-    producerFunction: string;
-    dedupeKey?: string;
-    eventReason?: string;
-  },
-): void {
-  // no-op — temporary Cribbage wartime instrumentation removed.
-}
 
 
 
@@ -56,6 +46,7 @@ interface SeatEntry {
 }
 
 export interface CribbageDealOrchestratorProps {
+  gameId: string;
   handContextId: string;
   dealerPlayerId: string;
   selfPlayerId: string;
@@ -73,6 +64,7 @@ export interface CribbageDealOrchestratorProps {
 }
 
 export function CribbageDealOrchestrator({
+  gameId,
   handContextId,
   dealerPlayerId,
   selfPlayerId,
@@ -94,6 +86,15 @@ export function CribbageDealOrchestrator({
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
+    setCribbageForensicIdentity({
+      gameId,
+      dealerGameId: dealerGameId ?? null,
+      playerId: selfPlayerId,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+      handContextId,
+      currentHandKey: handContextId,
+    });
     registerCribbageHandContext(handContextId);
     onLifecycle?.('mounted');
     recordCribbageWartime('deal', 'orchestrator_mount', {
@@ -112,7 +113,7 @@ export function CribbageDealOrchestrator({
         dedupeKey: `unmount:${handContextId}`,
       });
     };
-  }, [onLifecycle, handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer, seats.length, dealerGameId, roundId, handNumber]);
+  }, [gameId, onLifecycle, handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer, seats.length, dealerGameId, roundId, handNumber]);
 
 
 

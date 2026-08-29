@@ -3320,3 +3320,30 @@ lobby correction, both configured live-browser identities reached Game Lobby
 and exposed Create New Game. The first full chaos scenario then reached its
 next hard gate but did not navigate after Create Game; it is recorded as a
 blocking gauntlet failure pending a separate RCA, not as passing coverage.
+
+## 2026-08-29 — Cribbage visual-report forensics candidate
+
+- Read-only production evaluation of the completed real-money `Aug 28 -
+  Bouncing` session found no authority, settlement, or lifecycle corruption:
+  all 130 recorded play-card writes applied once. The three visual reports
+  instead described recoverable client-presentation symptoms, but their exact
+  local latches were absent because the promised Cribbage active-hand snapshot
+  and wartime producers had been replaced with no-ops.
+- The source candidate restores diagnostic evidence without changing gameplay.
+  Cribbage deal, active-hand, parent-gate, pegging-boundary, and interaction
+  producers write to a 200-entry, per-payload-bounded in-memory ring scoped by
+  exact session and dealer-game identity. A visual report attaches that tail,
+  live action-gate state, DOM card counts, and discard-button center-point
+  hit-testing only at submit time. A Cards-subtree disappearance retains the
+  same-scope last snapshot while stale cleanup and later dealer games are
+  rejected.
+- `CRIBBAGE_RENDER_SOURCE_MISMATCH` now excludes `PRE_DEAL` and `DEALING`,
+  where transport intentionally renders only the settled prefix of the six
+  authoritative cards. Post-deal mismatches remain always-on invariants.
+
+Validation: 41 focused Cribbage/render/diagnostic tests passed after the final
+snapshot/trace scope hardening, TypeScript 5.8
+`tsc --noEmit` passed (the repository's preferred `bunx tsgo` runtime is not
+installed on this host), and the production Vite build passed with only the
+existing chunking warnings. Published runtime smoke remains acceptance truth;
+this candidate does not claim that the underlying visual symptoms are fixed.
