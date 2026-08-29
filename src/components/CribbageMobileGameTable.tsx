@@ -121,6 +121,8 @@ import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
 import { applyCribbagePeggingAction, fetchCribbageState } from '@/lib/cribbageAuthority';
+import { executeReplaySafeCribbageAction } from '@/lib/cribbageActionRecovery';
+import { createCribbageCountingProgressQueue } from '@/lib/cribbage/countingProgressQueue';
 import { shouldPresentPeggingEventAfterHydration } from '@/lib/cribbage/countingResume';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import {
@@ -2541,6 +2543,9 @@ export const CribbageMobileGameTable = ({
     handKey: string;
     playedCount: number;
   } | null>(null);
+  const [playWriterPending, setPlayWriterPending] = useState(false);
+  const goWriterLockRef = useRef(false);
+  const [goWriterPending, setGoWriterPending] = useState(false);
   const releasePlayWriterLock = useCallback((
     expected: { intentId: string; cardId: string; handKey: string; playedCount: number } | null,
     reason: string,
@@ -2554,6 +2559,7 @@ export const CribbageMobileGameTable = ({
       current.playedCount !== expected.playedCount
     )) return;
     playWriterLockRef.current = null;
+    setPlayWriterPending(false);
     recordCribbageWartime('boundary', 'play_writer_lock_released', {
       intentId: current.intentId,
       cardId: current.cardId,
@@ -2754,6 +2760,8 @@ export const CribbageMobileGameTable = ({
       }
       // Turn 2 — phase-exit release of any stuck writer lock.
       releasePlayWriterLock(null, 'phase-exit');
+      goWriterLockRef.current = false;
+      setGoWriterPending(false);
     }
   }, [cribbageState?.phase, releasePlayWriterLock, clearBoundaryHoldTimers]);
 
@@ -2777,7 +2785,7 @@ export const CribbageMobileGameTable = ({
       thirtyOneDelayActive ||
       heldSequenceSnapshot !== null
     );
-  const selfPlayUnresolved = playCardIntent !== null;
+  const selfPlayUnresolved = playCardIntent !== null || playWriterPending || goWriterPending;
 
 
   // ── Direct-producer wartime event: row_clear_requested ──────────────
@@ -5455,12 +5463,16 @@ export const CribbageMobileGameTable = ({
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
         try {
-          const result = await applyCribbagePeggingAction({
+          const immutableIntent = {
             roundId,
             playerId: currentTurnId,
-            action: 'auto',
+            action: 'auto' as const,
             expectedEventSequence: cribbageState.pegging.eventSequence ?? 0,
-          });
+          };
+          const result = await executeReplaySafeCribbageAction(
+            (signal) => applyCribbagePeggingAction({ ...immutableIntent, signal }),
+            { label: 'Cribbage bot play' },
+          );
           if (result.state) {
             syncHandle.receiveAuthoritativeUpdate(result.state);
             setCribbageState(result.state);
@@ -5716,6 +5728,8 @@ export const CribbageMobileGameTable = ({
       // any stuck writer lock so a new hand starts from a clean baseline.
       setLastReleasedBoundaryEventId(null);
       releasePlayWriterLock(null, 'hand-identity-reset');
+      goWriterLockRef.current = false;
+      setGoWriterPending(false);
       if (playCardSafetyTimerRef.current) {
         clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = null;
@@ -5811,6 +5825,7 @@ export const CribbageMobileGameTable = ({
       if (playWriterLockRef.current !== null) {
         playWriterLockRef.current = null;
       }
+      goWriterLockRef.current = false;
     };
   }, []);
 
@@ -6071,10 +6086,11 @@ export const CribbageMobileGameTable = ({
     // ── Turn 2 gates ────────────────────────────────────────────────
     // Reject BEFORE any synchronous validation so that a stuck lock
     // never bypasses the boundary/self-intent gates below.
-    if (playWriterLockRef.current !== null) {
+    const currentPlayLock = playWriterLockRef.current;
+    if (currentPlayLock !== null || goWriterLockRef.current) {
       recordCribbageWartime('boundary', 'play_rejected_writer_lock', {
         cardIndex,
-        currentLock: playWriterLockRef.current,
+        currentLock: currentPlayLock ?? 'go-request',
         boundaryEventId,
         lastReleasedBoundaryEventId,
         thirtyOneDelayActive,
@@ -6083,7 +6099,9 @@ export const CribbageMobileGameTable = ({
       }, {
         producerComponent: 'CribbageMobileGameTable',
         producerFunction: 'handlePlayCard',
-        dedupeKey: `play_reject_lock:${playWriterLockRef.current.cardId}:${playWriterLockRef.current.handKey}:${playWriterLockRef.current.playedCount}:${cardIndex}`,
+        dedupeKey: currentPlayLock
+          ? `play_reject_lock:${currentPlayLock.cardId}:${currentPlayLock.handKey}:${currentPlayLock.playedCount}:${cardIndex}`
+          : `play_reject_lock:go-request:${cardIndex}`,
         eventReason: 'writer lock held',
       });
       return;
@@ -6145,10 +6163,10 @@ export const CribbageMobileGameTable = ({
     // subscription-state hand + hand-key + playedCards length; that is
     // sufficient to detect same-tick double invocation because the
     // first call claims the ref before yielding to the microtask queue.
-    const preFetchHand = cribbageState.playerStates?.[currentPlayerId]?.hand ?? [];
-    const preFetchCard = preFetchHand[cardIndex] ?? null;
-    const lockCardId = preFetchCard
-      ? `${preFetchCard.rank}${preFetchCard.suit[0]}`
+    const actionHand = cribbageState.playerStates?.[currentPlayerId]?.hand ?? [];
+    const actionCard = actionHand[cardIndex] ?? null;
+    const lockCardId = actionCard
+      ? `${actionCard.rank}${actionCard.suit[0]}`
       : `idx-${cardIndex}`;
     const lockHandKey =
       renderHandKey || `${currentRoundId}-${currentHandNumber}`;
@@ -6161,6 +6179,7 @@ export const CribbageMobileGameTable = ({
       playedCount: lockPlayedCount,
     };
     playWriterLockRef.current = lockClaim;
+    setPlayWriterPending(true);
     recordCribbageWartime('boundary', 'play_writer_lock_claimed', {
       ...lockClaim,
       cardIndex,
@@ -6173,46 +6192,31 @@ export const CribbageMobileGameTable = ({
       eventReason: 'writer lock claimed',
     });
 
+    let lockReleaseReason = 'request-settled';
     try {
-      let freshState: CribbageState;
-      try {
-        freshState = await fetchCribbageState(currentRoundId);
-      } catch (fetchError) {
-        console.error('[CRIBBAGE] Failed to fetch fresh state before play:', fetchError);
-        toast.error('Failed to sync game state. Try again.');
-        releasePlayWriterLock(lockClaim, 'fetch-failed');
+      // The subscription projection plus expected event sequence is the
+      // immutable action intent. PostgreSQL validates it atomically and
+      // returns the caller-specific current projection on a stale replay.
+      const actionState = cribbageState;
+      const actionPlayerState = actionState.playerStates[currentPlayerId];
+      if (
+        actionState.pegging.currentTurnPlayerId !== currentPlayerId ||
+        !actionPlayerState ||
+        cardIndex < 0 ||
+        cardIndex >= actionPlayerState.hand.length
+      ) {
+        lockReleaseReason = 'local-intent-invalid';
         return;
       }
-      
-      // Verify it's still our turn with fresh state
-      if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
-        console.warn('[CRIBBAGE] Stale state detected - not our turn in fresh state');
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        toast.error('Wait for your turn');
-        releasePlayWriterLock(lockClaim, 'stale-turn-after-fetch');
-        return;
-      }
-      
-      // Verify the card is still playable with fresh state
-      const freshPlayerState = freshState.playerStates[currentPlayerId];
-      if (!freshPlayerState || cardIndex >= freshPlayerState.hand.length) {
-        console.warn('[CRIBBAGE] Card index invalid in fresh state');
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        toast.error('Card no longer available');
-        releasePlayWriterLock(lockClaim, 'card-index-invalid-after-fetch');
-        return;
-      }
-      
-      const cardPlayed = freshPlayerState.hand[cardIndex];
+
+      const cardPlayed = actionPlayerState.hand[cardIndex];
       const humanTraceCtx = { gameId, roundId: currentRoundId, handNumber: currentHandNumber, actorPlayerId: currentPlayerId };
       traceGoRace(humanTraceCtx, 'human:playCard:before-write', {
         cardIndex, cardPlayed,
         subscriptionSnapshot: peggingSnapshot(cribbageState),
-        freshSnapshot: peggingSnapshot(freshState),
+        actionSnapshot: peggingSnapshot(actionState),
       });
-      const newState = playPeggingCard(freshState, currentPlayerId, cardIndex);
+      const newState = playPeggingCard(actionState, currentPlayerId, cardIndex);
       traceGoRace(humanTraceCtx, 'human:playCard:computed', {
         wroteSnapshot: peggingSnapshot(newState),
       });
@@ -6237,8 +6241,8 @@ export const CribbageMobileGameTable = ({
             sourceRect: sourceRect ?? null,
             destRectStatus: dest ? 'measured' : 'missing',
             destRect: dest ?? null,
-            playedCardsLenBefore: freshState.pegging?.playedCards?.length ?? null,
-            currentCountBefore: freshState.pegging?.currentCount ?? null,
+            playedCardsLenBefore: actionState.pegging?.playedCards?.length ?? null,
+            currentCountBefore: actionState.pegging?.currentCount ?? null,
           }, {
             producerComponent: 'CribbageMobileGameTable',
             producerFunction: 'handlePlayCard.computeDest',
@@ -6249,18 +6253,18 @@ export const CribbageMobileGameTable = ({
           // Instrumentation — self play attempt.
           try {
             const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
-            const handBefore = freshPlayerState.hand.length;
+            const handBefore = actionPlayerState.hand.length;
             const handAfter =
               newState.playerStates?.[currentPlayerId]?.hand?.length ?? handBefore - 1;
             recordPegTransportAttempt({
               attemptId: intentId,
-              handContextId: (freshState as unknown as { handContextId?: string })?.handContextId ?? null,
+              handContextId: (actionState as unknown as { handContextId?: string })?.handContextId ?? null,
               roundId: currentRoundId,
               handNumber: currentHandNumber ?? null,
               mode: 'self',
               playedCardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
               playedCardIndex: cardIndex,
-              phaseBefore: freshState.phase ?? null,
+              phaseBefore: actionState.phase ?? null,
               cardsRemainingBefore: handBefore,
               isFinalCardOfPegging: handAfter === 0,
               sourceRectStatus:
@@ -6316,9 +6320,8 @@ export const CribbageMobileGameTable = ({
             setPlayCardIntent((prev) => {
               if (prev && prev.id === intentId) {
                 updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
-                // Turn 2 — safety timeout clears intent; unmounting the
-                // animation fires onCancelled(id), which releases the
-                // matching writer lock via identity check.
+                // Presentation cleanup is independent from the authoritative
+                // request lock, which remains held until the RPC settles.
                 return null;
               }
               return prev;
@@ -6330,34 +6333,40 @@ export const CribbageMobileGameTable = ({
 
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
-        logPeggingPlay(eventCtx, freshState, newState, currentPlayerId, cardPlayed);
+        logPeggingPlay(eventCtx, actionState, newState, currentPlayerId, cardPlayed);
       }
       // Check for his_heels on phase transition
       if (newState.lastEvent?.type === 'his_heels') {
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      const result = await applyCribbagePeggingAction({
+      const immutableIntent = {
         roundId: currentRoundId,
         playerId: currentPlayerId,
-        action: 'play',
+        action: 'play' as const,
         cardIndex,
-        expectedEventSequence: freshState.pegging.eventSequence ?? 0,
-      });
+        expectedEventSequence: actionState.pegging.eventSequence ?? 0,
+      };
+      const result = await executeReplaySafeCribbageAction(
+        (signal) => applyCribbagePeggingAction({ ...immutableIntent, signal }),
+        { label: 'Cribbage card play' },
+      );
       if (result.state) {
         syncHandle.receiveAuthoritativeUpdate(result.state);
         setCribbageState(result.state);
       }
-      if (result.outcome !== 'applied') {
-        releasePlayWriterLock(lockClaim, 'server-rejected-stale-action');
-      }
+      lockReleaseReason = result.outcome === 'applied'
+        ? 'request-applied'
+        : `request-${result.outcome}`;
       traceGoRace(humanTraceCtx, 'human:playCard:after-write', {
         outcome: result.outcome,
         wroteSnapshot: result.state ? peggingSnapshot(result.state) : null,
       });
     } catch (err) {
       toast.error((err as Error).message);
-      releasePlayWriterLock(lockClaim, 'exception-thrown');
+      lockReleaseReason = 'request-failed';
+    } finally {
+      releasePlayWriterLock(lockClaim, lockReleaseReason);
     }
   }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity, peggingBoundaryBlocked, playCardIntent, boundaryEventId, lastReleasedBoundaryEventId, thirtyOneDelayActive, heldSequenceSnapshot, renderHandKey, currentHandNumber, releasePlayWriterLock]);
 
@@ -6366,6 +6375,7 @@ export const CribbageMobileGameTable = ({
     if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
     }
+    if (playWriterLockRef.current !== null || goWriterLockRef.current) return;
 
     {
       const verdict = evaluateWriterIdentity('go');
@@ -6391,58 +6401,34 @@ export const CribbageMobileGameTable = ({
       subscriptionSnapshot: peggingSnapshot(cribbageState),
     });
 
+    const actionState = cribbageState;
+    const actionPlayerState = actionState.playerStates[currentPlayerId];
+    if (
+      actionState.pegging.currentTurnPlayerId !== currentPlayerId ||
+      !actionPlayerState ||
+      hasPlayableCard(actionPlayerState.hand, actionState.pegging.currentCount)
+    ) {
+      return;
+    }
+
+    goWriterLockRef.current = true;
+    setGoWriterPending(true);
     try {
-      const freshState = await fetchCribbageState(currentRoundId);
-      traceGoRace(goTraceCtx, 'human:handleGo:fresh-fetched', {
-        freshSnapshot: peggingSnapshot(freshState),
-      });
-      
-      // Verify it's still our turn with fresh state
-      if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
-        console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
-        traceGoRace(goTraceCtx, 'human:handleGo:bail', {
-          reason: 'not-our-turn-in-fresh',
-          freshTurn: freshState.pegging.currentTurnPlayerId?.slice(0, 8) ?? null,
-        });
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        return;
-      }
-      
-      // Verify we still can't play with fresh state
-      const freshPlayerState = freshState.playerStates[currentPlayerId];
-      if (!freshPlayerState) {
-        console.warn('[CRIBBAGE] Player state not found in fresh state for Go');
-        traceGoRace(goTraceCtx, 'human:handleGo:bail', { reason: 'no-player-state-in-fresh' });
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        return;
-      }
-      
-      // If fresh state shows we CAN play, don't call Go - update local state instead
-      if (hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
-        console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
-        traceGoRace(goTraceCtx, 'human:handleGo:bail', {
-          reason: 'fresh-state-has-playable-card',
-          freshCount: freshState.pegging.currentCount,
-          freshHand: freshPlayerState.hand,
-        });
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        return;
-      }
-      
       traceGoRace(goTraceCtx, 'human:callGo:before-write', {
-        freshSnapshot: peggingSnapshot(freshState),
+        actionSnapshot: peggingSnapshot(actionState),
       });
-      const result = await applyCribbagePeggingAction({
+      const immutableIntent = {
         roundId: currentRoundId,
         playerId: currentPlayerId,
-        action: 'go',
-        expectedEventSequence: freshState.pegging.eventSequence ?? 0,
-      });
+        action: 'go' as const,
+        expectedEventSequence: actionState.pegging.eventSequence ?? 0,
+      };
+      const result = await executeReplaySafeCribbageAction(
+        (signal) => applyCribbagePeggingAction({ ...immutableIntent, signal }),
+        { label: 'Cribbage Go' },
+      );
       if (result.state) {
-        logGoPointEvent(eventCtx, freshState, result.state);
+        logGoPointEvent(eventCtx, actionState, result.state);
         syncHandle.receiveAuthoritativeUpdate(result.state);
         setCribbageState(result.state);
       }
@@ -6453,6 +6439,9 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
       traceGoRace(goTraceCtx, 'human:handleGo:error', { message: (err as Error).message });
+    } finally {
+      goWriterLockRef.current = false;
+      setGoWriterPending(false);
     }
   }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
@@ -6525,21 +6514,41 @@ export const CribbageMobileGameTable = ({
     }
   }, [authoritativeCutPresentation.isPeggingPresentationBlocked, autoGoIdentity, isProcessing]);
 
-  // ── Persist counting progress to DB (fire-and-forget) ────────────
+  const countingProgressQueueRef = useRef<ReturnType<
+    typeof createCribbageCountingProgressQueue
+  > | null>(null);
+  if (!countingProgressQueueRef.current) {
+    countingProgressQueueRef.current = createCribbageCountingProgressQueue({
+      write: async ({ roundId: progressRoundId, targetIndex, beatIndex }) => {
+        const { error } = await supabase.rpc('cribbage_record_counting_progress' as any, {
+          _round_id: progressRoundId,
+          _target_index: targetIndex,
+          _beat_index: beatIndex,
+        });
+        if (error) throw error;
+      },
+      onError: (error) => {
+        const message = error instanceof Error
+          ? error.message
+          : String((error as { message?: unknown } | null)?.message ?? error);
+        console.warn('[CRIBBAGE] Failed to persist counting progress:', message);
+      },
+    });
+  }
+
+  // ── Persist counting progress to DB through one coalesced flight ──
   // Called by CribbageCountingPhase whenever target/combo advances.
   const handleCountingProgressUpdate = useCallback((targetIndex: number, beatIndex: number) => {
     if (!currentRoundId) return;
     const roundId = currentRoundId;
 
     // PostgreSQL owns the monotonic cursor. Never replace the full persisted
-    // state from a browser snapshot: that could regress a peer's cursor or
-    // erase the durable counting-resolution / presentation lease.
-    void supabase.rpc('cribbage_record_counting_progress' as any, {
-      _round_id: roundId,
-      _target_index: targetIndex,
-      _beat_index: beatIndex,
-    }).then(({ error }) => {
-      if (error) console.warn('[CRIBBAGE] Failed to persist counting progress:', error.message);
+    // state from a browser snapshot. One in-flight request retains only the
+    // newest queued cursor, so a slow response cannot congest hand release.
+    countingProgressQueueRef.current?.enqueue({
+      roundId,
+      targetIndex,
+      beatIndex,
     });
 
     logCribbageDebug(debugCtx, 'counting_progress_write', {
@@ -8897,21 +8906,11 @@ export const CribbageMobileGameTable = ({
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
-              // Turn 2 — release only when the current lock's intentId matches.
-              const currentLock = playWriterLockRef.current;
-              if (currentLock?.intentId === id) {
-                releasePlayWriterLock(currentLock, 'intent-settled');
-              }
             }}
             onCancelled={(id) => {
-              // Turn 2 — animation effect unmounted before natural settle
-              // (e.g. safety-timeout cleared playCardIntent). Release the
-              // writer lock iff its intentId matches; stale cancels from
-              // superseded effects are no-ops.
-              const currentLock = playWriterLockRef.current;
-              if (currentLock?.intentId === id) {
-                releasePlayWriterLock(currentLock, 'intent-cancelled');
-              }
+              // Animation lifecycle is presentation-only. The authoritative
+              // writer lock is released exclusively by the RPC lifecycle.
+              updatePegTransportEntry(id, { cleanupReason: 'cancelled' });
             }}
           />
 

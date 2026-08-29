@@ -1480,3 +1480,16 @@ existing authoritative action reducer. This is an automation preference, not
 a change of human identity. The same player can explicitly clear both flags
 from the visible Auto-roll rejoin control. Real-money expiry remains pause-only
 and never writes either automation flag.
+
+## D-106 - Gameplay request locks follow authority, not animation
+
+An action's local single-writer gate remains closed until its authoritative RPC
+settles or exact hand/phase identity makes the request obsolete. Presentation
+animation may finish, skip, or cancel independently and may not reopen gameplay
+admission.
+
+Where an action RPC already validates an immutable expected sequence and returns
+the caller-specific current projection, the client submits that intent directly
+instead of inserting a separate state-read preflight. Bounded retries reuse the
+same immutable identity. Presentation-only progress writes are single-flight and
+coalesced so they cannot congest authoritative lifecycle actions.

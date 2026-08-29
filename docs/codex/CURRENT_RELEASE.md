@@ -2,6 +2,36 @@
 
 Date: 2026-08-28
 
+## Cribbage action-liveness correction — source candidate
+
+- Production fake-money gauntlet evidence isolated a Cribbage client request
+  ownership defect. A card play performed an unbounded state-read preflight,
+  while its local writer lock was released by card-animation settlement before
+  the authoritative action RPC finished. Under observed Supabase latency this
+  admitted duplicate immutable writes, then left the next playable card behind
+  a pending read with no visible request gate.
+- Cribbage now submits the current exact round/player/card/event-sequence intent
+  directly to the replay-safe PostgreSQL action owner. Every play, Go, and bot
+  action has a bounded two-attempt transport path; ambiguous response loss and
+  PostgreSQL statement timeout replay the same immutable intent, so the server
+  resolves it as the original commit or a stale authoritative projection.
+- The local pegging writer lock now follows the RPC lifecycle, independently of
+  card animation. Cards remain visibly disabled while authority is unresolved;
+  animation settlement cannot admit a second writer. Exact hand/phase identity
+  changes still clear obsolete locks.
+- Counting presentation still persists only a monotonic cursor, but each client
+  now permits one cursor RPC in flight and retains only its newest pending beat.
+  Slow progress writes can no longer pile up ahead of counting completion.
+  Scoring, rules, settlement, release leases, and database functions are
+  unchanged.
+
+Validation: 52 focused Cribbage request, counting, synchronization, and
+liveness tests passed; TypeScript passed; the production build and its 39
+Cribbage render/rejoin tests passed. The broad liveness suite retained its one
+documented unrelated Windows line-ending failure in the session dealer-draw
+tie-harness source assertion. Published fake-money multi-hand smoke remains
+acceptance truth for this candidate.
+
 ## Yahtzee authenticated resume authority — production smoke accepted
 
 - Production smoke exposed that canonical resume shifted Yahtzee's protected
