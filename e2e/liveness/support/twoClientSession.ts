@@ -83,7 +83,7 @@ export async function createTwoClientSession(
   );
   const hostContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const peerContext = await browser.newContext({
-    viewport: { width: 390, height: 844 },
+    viewport: e2eEnvironment.mobileViewport,
     isMobile: true,
     hasTouch: true,
   });
@@ -151,7 +151,8 @@ export async function createTwoClientSession(
 
     console.log(
       `[two-client] namespace=${e2eEnvironment.isolation.runNamespace ?? 'default'} `
-      + `identity_slot=${e2eEnvironment.isolation.identitySlot ?? 'default'} game_id=${gameId}`,
+      + `identity_slot=${e2eEnvironment.isolation.identitySlot ?? 'default'} game_id=${gameId} `
+      + `mobile_viewport=${e2eEnvironment.mobileViewport.width}x${e2eEnvironment.mobileViewport.height}`,
     );
 
     await peerPage.goto(`/game/${gameId}`);

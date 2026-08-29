@@ -4,6 +4,7 @@ export type Program = 'holm-fold-fold' | 'holm-stay-fold' | 'holm-stay-stay' | '
 export type Scenario = {
   id: string; gameType: DealerGameType; program: Program; coverage: string[];
   legs?: number; cribbageTarget?: number; minHand?: number;
+  exerciseCribbageInteractionSeam?: boolean;
 };
 
 /** The one authoritative inventory for the browser branch-smoke matrix. */
@@ -15,6 +16,7 @@ export const BRANCH_SMOKE_MANIFEST: readonly Scenario[] = [
   { id: '357-both-stay', gameType: '3-5-7', program: '357-stay-stay', legs: 1, coverage: ['both-stay', 'opponent-exposure', 'terminal-leg'] },
   { id: '357-regular-and-terminal-leg', gameType: '3-5-7', program: 'terminal', legs: 2, coverage: ['regular-leg', 'leg-continuation', 'terminal-leg'] },
   { id: 'cribbage-multi-hand', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, minHand: 2, coverage: ['discard', 'cut', 'pegging', 'counting', 'next-hand', 'terminal'] },
+  { id: 'cribbage-mobile-interaction', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, exerciseCribbageInteractionSeam: true, coverage: ['exact-mobile-viewport', 'deal-arrival-budget', 'discard-hit-test', 'discard-rejoin', 'pegging-rejoin', 'terminal'] },
   { id: 'gin-multi-hand', gameType: 'gin-rummy', program: 'terminal', minHand: 2, coverage: ['first-draw', 'draw-discard', 'knock-or-gin', 'next-hand', 'terminal'] },
   { id: 'horses-round-flow', gameType: 'horses', program: 'terminal', coverage: ['roll', 'lock-in', 'resolution', 'terminal'] },
   { id: 'scc-round-flow', gameType: 'ship-captain-crew', program: 'terminal', coverage: ['roll', 'qualification', 'lock-in', 'resolution', 'terminal'] },

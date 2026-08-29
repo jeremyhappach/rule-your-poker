@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveE2eEnvironment } from './env';
+import { resolveE2eEnvironment, resolveE2eMobileViewport } from './env';
 
 const baseEnvironment = {
   PTOWN_E2E_PLAYER1_EMAIL: 'one@example.test',
@@ -37,5 +37,19 @@ describe('resolveE2eEnvironment', () => {
   it('fails closed when a parallel run omits its slot or namespace', () => {
     expect(() => resolveE2eEnvironment({ ...baseEnvironment, PTOWN_E2E_REQUIRE_ISOLATION: '1' }))
       .toThrow(/IDENTITY_SLOT.*RUN_NAMESPACE/);
+  });
+
+  it('selects an exact mobile visual viewport for device-boundary seams', () => {
+    expect(resolveE2eMobileViewport({ PTOWN_E2E_MOBILE_VIEWPORT: '393x662' }))
+      .toEqual({ width: 393, height: 662 });
+    expect(resolveE2eMobileViewport({ PTOWN_E2E_MOBILE_VIEWPORT: '342x576' }))
+      .toEqual({ width: 342, height: 576 });
+  });
+
+  it('fails closed on malformed or non-mobile viewport values', () => {
+    expect(() => resolveE2eMobileViewport({ PTOWN_E2E_MOBILE_VIEWPORT: '393,662' }))
+      .toThrow(/WIDTHxHEIGHT/);
+    expect(() => resolveE2eMobileViewport({ PTOWN_E2E_MOBILE_VIEWPORT: '200x200' }))
+      .toThrow(/supported mobile bounds/);
   });
 });

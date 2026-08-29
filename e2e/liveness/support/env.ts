@@ -8,6 +8,30 @@ export type PlayerCredentials = {
   password: string;
 };
 
+export type E2eMobileViewport = {
+  width: number;
+  height: number;
+};
+
+const DEFAULT_MOBILE_VIEWPORT: E2eMobileViewport = { width: 390, height: 844 };
+
+export function resolveE2eMobileViewport(
+  environment: NodeJS.ProcessEnv = process.env,
+): E2eMobileViewport {
+  const raw = environment.PTOWN_E2E_MOBILE_VIEWPORT?.trim();
+  if (!raw) return DEFAULT_MOBILE_VIEWPORT;
+  const match = /^(\d{2,4})x(\d{2,4})$/i.exec(raw);
+  if (!match) {
+    throw new Error('PTOWN_E2E_MOBILE_VIEWPORT must use WIDTHxHEIGHT, for example 393x662.');
+  }
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width < 240 || width > 1200 || height < 320 || height > 1600) {
+    throw new Error('PTOWN_E2E_MOBILE_VIEWPORT is outside the supported mobile bounds.');
+  }
+  return { width, height };
+}
+
 function loadEnvFile(fileName: string): void {
   const filePath = path.resolve(process.cwd(), fileName);
   if (!fs.existsSync(filePath)) return;
@@ -55,6 +79,7 @@ export function resolveE2eEnvironment(environment: NodeJS.ProcessEnv = process.e
     player2: readPlayer('PTOWN_E2E_PLAYER2', environment, isolation.identitySlot),
     player1CanBlast: environment[scopedPrefix('PTOWN_E2E_PLAYER1_CAN_BLAST')] === '1',
     allowFakeMoneyWrites: environment.PTOWN_E2E_ALLOW_FAKE_MONEY_WRITES === '1',
+    mobileViewport: resolveE2eMobileViewport(environment),
     isolation,
   };
 }

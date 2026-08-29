@@ -8,6 +8,7 @@ import { authoritativeDealerGameId, playDealerGameToTerminal, requestLastHand, T
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
 import { BRANCH_SMOKE_MANIFEST, type Scenario, validateManifest } from './manifest';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
+import { finalizeScenarioObserver, observerEvidenceSummary } from '../humanChaos/support/scenarioObserver';
 
 validateManifest();
 const surface = '[data-authoritative-action-surface="holm-357-decision"]';
@@ -41,6 +42,116 @@ async function branch(s: Scenario, host: Page, peer: Page) {
   if (actions) await Promise.all([decision(host, actions[0]), decision(peer, actions[1])]);
 }
 
+type DiscardHitReceipt = {
+  rect: { x: number; y: number; width: number; height: number };
+  viewport: { width: number; height: number };
+  centerInsideViewport: boolean;
+  disabled: boolean;
+  coveredAtCenter: boolean;
+  topElement: string | null;
+};
+
+async function waitForSixCribbageCards(page: Page): Promise<{ firstToCompleteMs: number }> {
+  const cards = page.locator('[data-cribbage-hand-card-key]:visible');
+  let firstCardAt = 0;
+  await expect.poll(async () => {
+    const count = await cards.count();
+    if (count > 0 && firstCardAt === 0) firstCardAt = Date.now();
+    return count;
+  }, { timeout: 60_000, intervals: [100, 200, 500] }).toBeGreaterThan(0);
+  await expect.poll(() => cards.count(), {
+    timeout: 6_000,
+    intervals: [100, 200, 500],
+  }).toBe(6);
+  return { firstToCompleteMs: Date.now() - firstCardAt };
+}
+
+async function selectTwoAndReadDiscardHit(page: Page): Promise<DiscardHitReceipt> {
+  const cards = page.locator('[data-cribbage-hand-card-key]:visible');
+  const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
+  await cards.nth(0).click();
+  await cards.nth(1).click();
+  await expect(page.locator('[data-cribbage-card-selected="1"]:visible')).toHaveCount(2);
+  await expect(surface).toHaveAccessibleName(/Send to Crib \(2\/2\)/);
+  await expect(surface).toBeEnabled();
+  return surface.evaluate((control): DiscardHitReceipt => {
+    const element = control as HTMLButtonElement;
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const centerInsideViewport = rect.width > 0 && rect.height > 0
+      && centerX >= 0 && centerY >= 0
+      && centerX <= window.innerWidth && centerY <= window.innerHeight;
+    const top = centerInsideViewport ? document.elementFromPoint(centerX, centerY) : null;
+    return {
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      centerInsideViewport,
+      disabled: element.disabled,
+      coveredAtCenter: centerInsideViewport
+        ? !(top === element || (top !== null && element.contains(top)))
+        : true,
+      topElement: top
+        ? `${top.tagName.toLowerCase()}${top.getAttribute('data-authoritative-action-surface') ? `[${top.getAttribute('data-authoritative-action-surface')}]` : ''}`
+        : null,
+    };
+  });
+}
+
+async function discardSelectedCards(page: Page): Promise<void> {
+  const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
+  await surface.click({ timeout: 15_000 });
+  await expect(surface).toBeHidden({ timeout: 6_000 });
+}
+
+async function exerciseCribbageInteractionSeam(
+  session: Awaited<ReturnType<typeof createTwoClientSession>>,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown>> {
+  const { hostPage, peerPage } = session;
+  const initialArrival = await waitForSixCribbageCards(peerPage);
+  await expect(peerPage.locator('[data-card-transport-flying="true"]:visible')).toHaveCount(0, { timeout: 15_000 });
+
+  await peerPage.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await waitForBothClientsInLiveGame(hostPage, peerPage, 'cribbage');
+  await expectCanonicalContinuity(peerPage);
+  await expect(peerPage.locator('[data-card-transport-flying="true"]:visible')).toHaveCount(0, { timeout: 15_000 });
+  await expect(peerPage.locator('[data-cribbage-hand-card-key]:visible')).toHaveCount(6, { timeout: 15_000 });
+
+  const hit = await selectTwoAndReadDiscardHit(peerPage);
+  if (!hit.centerInsideViewport || hit.disabled || hit.coveredAtCenter) {
+    throw new Error(`Cribbage discard hit-test failed: ${JSON.stringify(hit)}`);
+  }
+  await discardSelectedCards(peerPage);
+
+  await waitForSixCribbageCards(hostPage);
+  await selectTwoAndReadDiscardHit(hostPage);
+  await discardSelectedCards(hostPage);
+
+  await expect.poll(
+    async () => (await probe.readCribbageProgress(session.gameId, dealerGameId)).phase,
+    { timeout: 60_000, intervals: [250, 500, 1_000] },
+  ).toBe('pegging');
+
+  await peerPage.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await waitForBothClientsInLiveGame(hostPage, peerPage, 'cribbage');
+  await expectCanonicalContinuity(peerPage);
+  await expect(peerPage.locator('[data-card-transport-flying="true"]:visible')).toHaveCount(0, { timeout: 15_000 });
+  await expect(peerPage.locator('[data-cribbage-hand-card-key]:visible')).toHaveCount(4, { timeout: 15_000 });
+  await expect.poll(async () => {
+    const selector = '[data-cribbage-card-playable="1"]:not(:disabled):visible';
+    return (await hostPage.locator(selector).count()) + (await peerPage.locator(selector).count());
+  }, { timeout: 30_000, intervals: [100, 250, 500] }).toBeGreaterThan(0);
+
+  return {
+    initialArrival,
+    discardHit: hit,
+    discardRejoinCardCount: 6,
+    peggingRejoinCardCount: 4,
+  };
+}
+
 test.describe('two-human cross-country branch-smoke matrix', () => {
   for (const scenario of BRANCH_SMOKE_MANIFEST) {
     test(`${scenario.id}`, async ({ browser }, info) => {
@@ -51,11 +162,15 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       const probe = await TerminalSettlementProbe.create(runtime.url, runtime.publishableKey, credentials.player1);
       const evidence: Record<string, unknown> = { scenario: scenario.id, coverage: scenario.coverage, status: 'started' };
       let primaryError: unknown = null;
+      let teardownFailure: AggregateError | null = null;
       try {
         await enterDealerGameUnderChaos(session, scenario.gameType, { configure: (c) => configure(scenario, c) });
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
         const dealerGameId = await authoritativeDealerGameId(session);
         evidence.dealerGameId = dealerGameId;
+        if (scenario.exerciseCribbageInteractionSeam) {
+          evidence.interactionSeam = await exerciseCribbageInteractionSeam(session, probe, dealerGameId);
+        }
         await requestLastHand(session, probe);
         await runOfflineBurst(session.peerContext, 1_250);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
@@ -82,6 +197,17 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       } finally {
         const teardownErrors: unknown[] = [];
         try {
+          const observation = await finalizeScenarioObserver(session, info);
+          evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
+          if (!primaryError && observation.failure) {
+            primaryError = observation.failure;
+            evidence.status = 'failed';
+            evidence.error = observation.failure.message;
+          }
+        } catch (error) {
+          teardownErrors.push(error);
+        }
+        try {
           if (primaryError) await capturePreCleanupScreenshots(info, [
             { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
           ]);
@@ -102,7 +228,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           await closeTwoClientSession(session);
         }
         if (teardownErrors.length) {
-          throw new AggregateError(
+          teardownFailure = new AggregateError(
             primaryError ? [primaryError, ...teardownErrors] : teardownErrors,
             primaryError
               ? `${scenario.id} failed and teardown also failed`
@@ -110,6 +236,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           );
         }
       }
+      if (teardownFailure) throw teardownFailure;
       if (primaryError) throw primaryError;
     });
   }
