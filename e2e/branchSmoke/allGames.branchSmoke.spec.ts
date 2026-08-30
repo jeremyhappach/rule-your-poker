@@ -280,11 +280,23 @@ async function exerciseGinBranchSeam(
     dealerGameId,
     secondActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
   );
-  let actor = await waitForGinActor(session, 'draw');
+  // The second first-draw pass atomically draws one stock card for the
+  // nondealer and advances directly to discard; there is no intermediate
+  // draw surface for that rule branch.
+  let actor = await waitForGinActor(session, 'select');
+  await selectFirstLegalGinDiscard(actor);
+  const automaticStockDiscardActionCount = await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    actor.locator(ginSurface('discard')).getByRole('button', { name: 'Discard', exact: true }),
+  );
+
+  actor = await waitForGinActor(session, 'draw');
   const stockActionCount = await clickGinPile(session, probe, dealerGameId, actor, 'stock');
   actor = await waitForGinActor(session, 'select');
   await selectFirstLegalGinDiscard(actor);
-  const firstDiscardActionCount = await commitGinAction(
+  const explicitStockDiscardActionCount = await commitGinAction(
     session,
     probe,
     dealerGameId,
@@ -314,8 +326,9 @@ async function exerciseGinBranchSeam(
     actorAfterReload: ginActorLabel(session, actor),
     firstPassActionCount,
     secondPassActionCount,
+    automaticStockDiscardActionCount,
     stockActionCount,
-    firstDiscardActionCount,
+    explicitStockDiscardActionCount,
     discardPileActionCount,
     lockedTakenDiscardCount,
     secondDiscardActionCount,
