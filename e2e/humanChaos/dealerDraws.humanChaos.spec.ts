@@ -8,6 +8,7 @@ import {
   configureDealerGameUnderChaos,
   createTwoClientSession,
   startSessionUnderChaos,
+  type TwoClientSession,
   waitForDealerGameSetupOwner,
 } from '../liveness/support/twoClientSession';
 import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
@@ -44,6 +45,43 @@ async function readDrawReceipt(page: Page): Promise<{ maxCards: number; addition
   return page.evaluate(() => (window as typeof window & {
     __ptownDrawReceipt?: { maxCards: number; additions: number };
   }).__ptownDrawReceipt ?? { maxCards: 0, additions: 0 });
+}
+
+type CribbageDealerDrawTieStatus = {
+  armed?: boolean;
+  cancelledAt?: string | null;
+  consumedAt?: string | null;
+  gameId?: string;
+  outcome?: string;
+};
+
+async function waitForCribbageDealerDrawTieConsumption(
+  session: Pick<TwoClientSession, 'cleanupClient' | 'gameId'>,
+): Promise<CribbageDealerDrawTieStatus> {
+  let latest: CribbageDealerDrawTieStatus | null = null;
+  let latestError: string | null = null;
+
+  await expect.poll(async () => {
+    const { data, error } = await session.cleanupClient.rpc(
+      'get_cribbage_dealer_draw_tie_harness' as never,
+      { p_game_id: session.gameId } as never,
+    );
+    latest = data as CribbageDealerDrawTieStatus | null;
+    latestError = error?.message ?? null;
+    return {
+      armed: latest?.armed ?? null,
+      consumed: !!latest?.consumedAt,
+      error: latestError,
+    };
+  }, {
+    timeout: 30_000,
+    intervals: [100, 250, 500, 1_000],
+  }).toEqual({ armed: false, consumed: true, error: null });
+
+  if (!latest) throw new Error('Cribbage dealer-draw tie fixture returned no status');
+  expect(latest.gameId).toBe(session.gameId);
+  expect(latest.cancelledAt ?? null).toBeNull();
+  return latest;
 }
 
 test.describe('two-human cross-country dealer draw campaign', () => {
@@ -88,18 +126,7 @@ test.describe('two-human cross-country dealer draw campaign', () => {
       }
 
       if (cribbageFixtureArmed) {
-        const { data, error } = await session.cleanupClient.rpc(
-          'get_cribbage_dealer_draw_tie_harness' as never,
-          { p_game_id: session.gameId } as never,
-        );
-        const status = data as { armed?: boolean; consumedAt?: string | null } | null;
-        if (error || status?.armed !== false || !status?.consumedAt) {
-          throw new Error(
-            `Cribbage dealer-draw tie fixture was not consumed exactly once: `
-            + `${error?.message ?? JSON.stringify(status)}`,
-          );
-        }
-        evidence.fixtureStatus = status;
+        evidence.fixtureStatus = await waitForCribbageDealerDrawTieConsumption(session);
       }
 
       const [hostReceipt, peerReceipt] = await Promise.all([

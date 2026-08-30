@@ -3,13 +3,17 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(resolve(
+const normalizeSource = (source: string) => source.replace(/\r\n/g, '\n');
+
+const migration = normalizeSource(readFileSync(resolve(
   'supabase/migrations/20260830193000_cribbage_dealer_draw_tie_harness.sql',
-), 'utf8');
-const proof = readFileSync(resolve(
+), 'utf8'));
+const proof = normalizeSource(readFileSync(resolve(
   'supabase/tests/cribbage_dealer_draw_tie_harness_proof.sql',
-), 'utf8');
-const driver = readFileSync(resolve('e2e/humanChaos/dealerDraws.humanChaos.spec.ts'), 'utf8');
+), 'utf8'));
+const driver = normalizeSource(
+  readFileSync(resolve('e2e/humanChaos/dealerDraws.humanChaos.spec.ts'), 'utf8'),
+);
 
 describe('Cribbage dealer-draw tie harness contract', () => {
   it('is exact-game, admin/member-scoped, expiring, one-shot, and fake-money only', () => {
@@ -57,5 +61,14 @@ describe('Cribbage dealer-draw tie harness contract', () => {
     expect(driver).toContain("'get_cribbage_dealer_draw_tie_harness'");
     expect(driver).toContain("'cancel_cribbage_dealer_draw_tie_harness'");
     expect(driver).toContain('{ p_game_id: session.gameId, p_ttl_seconds: 600 }');
+  });
+
+  it('waits for durable fixture consumption after the intentionally unawaited ante response', () => {
+    expect(driver).toContain('waitForCribbageDealerDrawTieConsumption');
+    expect(driver).toContain('await expect.poll(async () => {');
+    expect(driver).toContain('timeout: 30_000');
+    expect(driver).toContain(".toEqual({ armed: false, consumed: true, error: null })");
+    expect(driver.indexOf("await configureDealerGameUnderChaos(session, 'cribbage')"))
+      .toBeLessThan(driver.indexOf('await waitForCribbageDealerDrawTieConsumption(session)'));
   });
 });
