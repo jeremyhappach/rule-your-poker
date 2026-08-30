@@ -363,10 +363,12 @@ Current Wave 0 evidence (2026-08-30): `e2e/fullSeam/manifest.ts` inventories
 and locks all 79 rule requirements with explicit driver/disposition fields.
 The Cribbage forced-tie fixture plus the exact-game near-double-skunk,
 max-pegging-fan, and His Heels fixtures have complete contract/rollback proof.
-Observer-enabled production runs passed the near-double-skunk,
-max-pegging/counting, and terminal His Heels rows. Nonterminal His Heels reached
-terminal but failed one unmarked 6565 ms peer-progress receipt against the
-6000 ms budget, so it remains retained failure evidence rather than a pass.
+Exact-build observer-enabled production evidence passed terminal His Heels.
+Near double-skunk, max pegging/counting, and nonterminal His Heels all reached
+terminal with verified cleanup but failed one, two, and two unmarked peer-
+progress receipts respectively; their maxima were 7730, 8373, and 7803 ms
+against the 6000 ms budget. They remain retained failure evidence rather than
+passes.
 Missing rule drivers and remaining fault-schedule, topology, and real-money
 proof rows remain visible in the ledger, so the browser hold remains active.
 

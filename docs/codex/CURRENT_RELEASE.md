@@ -2,7 +2,7 @@
 
 Date: 2026-08-30
 
-## Full-seam Wave 0 Cribbage rule fixtures — three production rows pass, one latency failure retained
+## Full-seam Wave 0 Cribbage rule fixtures — terminal cut passes; three latency failures retained
 
 - `e2e/fullSeam/manifest.ts` is now the versioned campaign ledger. It inventories
   all 19 branch-smoke rows, seven terminal rows, and 79 lifecycle rows, and
@@ -34,23 +34,34 @@ Date: 2026-08-30
   deterministic continuation, terminal-from-cut, real-money/terminal/profile
   rejection, private-marker redaction, and preservation of both global harness
   owners.
-- Observer-enabled production fake-money rows passed for near double-skunk in
-  1.6 minutes (seven action receipts, peer p95/max 3767 ms), max pegging/counting
-  fan in 3.1 minutes (22 receipts, peer p95 3516 ms/max 4250 ms), and terminal
-  His Heels in 1.2 minutes (five receipts, peer p95/max 3243 ms). Each fixture
-  was consumed once and cancelled, each game settled, Session Ended/lobby
-  admission passed, and guarded deletion was verified.
-- The nonterminal His Heels row reached terminal and cleaned up, but it remains
-  a failed row: one pegging action (`peer-1788122678747-3`) took 4577 ms in the
-  action RPC and 6565 ms to peer progress, exceeding the unmarked 6000 ms hard
-  budget. Its 13-receipt peer p50 was 1976 ms. The trace and continuous-observer
-  evidence are retained under
-  `artifacts/cribbage-wave0/playwright/crib-rule-obs-b-heels-20260830`; no RCA
-  or product correction was attempted in this fixture slice.
+- The exact published target was commit
+  `49499c482612654f7c3b86edeb1e1c9b5b957bd2`, Vercel deployment
+  `dpl_H2CYp8StobiNukmuwFa76P7AurQm`, and production bundle
+  `assets/index-D3-r3HKT.js`. Vercel reported READY, `holm357.com` and its build
+  manifest returned HTTP 200, and the post-deploy runtime-error scan was clean.
+- Exact-build observer-enabled production fake-money evidence passed only the
+  terminal His Heels row: 49.2 seconds, 89 events, five action receipts, zero
+  structural presentation violations, peer p50 2484 ms and p95/max 3551 ms.
+  Its exact fixture was consumed/cancelled once, terminal settlement and both
+  admission dispositions passed, and guarded deletion was verified.
+- Three rows completed gameplay and cleanup but failed the unmarked 6000 ms
+  peer budget, so they are failures: near double-skunk had one breach (121.9
+  seconds, 13 receipts, peer p50 2691 ms, p95/max 7730 ms); nonterminal His
+  Heels had two (120.0 seconds, 13 receipts, peer p50 1856 ms, p95/max 7803
+  ms); max pegging/counting had two (226.5 seconds, 27 receipts, peer p50 1993
+  ms, p95 6310 ms/max 8373 ms). All three reached terminal, had zero structural
+  presentation violations, and verified deletion, but those facts do not
+  override five hard-budget breaches.
+- Exact-build traces and continuous-observer evidence are retained under the
+  commit-tagged `artifacts/cribbage-wave0/playwright/crib-rule-final-*` paths.
+  Earlier pre-publication passes are calibration only and do not supersede the
+  final target failures. No RCA or product correction was attempted in this
+  fixture slice.
 
-This makes `cribbage.cut-and-his-heels` executable and proves its terminal
-variant, but does not accept the nonterminal latency seam, Wave 0 as a whole,
-or full Cribbage coverage. Topology/crib, complete pegging branches, counting
+This makes `cribbage.cut-and-his-heels` executable and accepts only its terminal
+variant. Near double-skunk, max pegging/counting, and nonterminal His Heels now
+have frozen latency failures needing later RCA. Wave 0 and full Cribbage
+coverage remain unaccepted. Topology/crib, complete pegging branches, counting
 order/categories, all terminal-entry phases, targets/skunks, and phase rejoins
 remain explicit missing drivers. No real-money browser session was touched.
 
