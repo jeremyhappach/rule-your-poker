@@ -1,6 +1,6 @@
 # Full human-to-human seam gauntlet plan
 
-Status: **plan locked; execution not started**  
+Status: **plan locked; Wave 0 in progress; browser matrix held**
 Plan date: 2026-08-27  
 Scope: human-to-human gameplay for Holm, 3-5-7, Cribbage, Gin Rummy,
 Horses, Ship Captain Crew, and Yahtzee.
@@ -252,10 +252,12 @@ The existing human-chaos manifest declares 79 lifecycle scenarios:
 | Ordered cross-game | 42 | Every source-to-different-target pair |
 | **Total** | **79** | Existing declared lifecycle inventory |
 
-Only 78 are currently executable. `cribbage-dealer-draw-forced-tie-rejoin`
-correctly fails closed because no account-scoped fixture exists. That fixture
-is a campaign prerequisite. The 79 lifecycle rows do not replace the rule-
-branch rows above.
+All 79 lifecycle rows now have executable drivers. The formerly blocked
+`cribbage-dealer-draw-forced-tie-rejoin` row uses the exact-game, one-shot,
+fake-money-only fixture installed by
+`20260830193000_cribbage_dealer_draw_tie_harness.sql`. It has passed its full
+rollback proof but has not yet earned browser coverage. The 79 lifecycle rows
+do not replace the rule-branch rows above.
 
 ## Deterministic fault schedules
 
@@ -343,7 +345,7 @@ campaign, never retroactively after a failure.
 
 1. Convert every requirement in this document into the single executable
    ledger and validate uniqueness/completeness.
-2. Deduplicate the existing 11 branch-smoke, seven terminal, and 79 lifecycle
+2. Deduplicate the existing 15 branch-smoke, seven terminal, and 79 lifecycle
    entries by exact scenario identity, not by label.
 3. Build account-scoped, one-shot fake-money fixtures for rare rule outcomes,
    beginning with the missing Cribbage forced tie.
@@ -355,6 +357,13 @@ campaign, never retroactively after a failure.
    committed real-money browser session.
 
 No browser matrix starts while any Wave 0 row is missing or inconclusive.
+
+Current Wave 0 evidence (2026-08-30): `e2e/fullSeam/manifest.ts` inventories
+101 declared executable scenarios (15 branch, seven terminal, 79 lifecycle)
+and locks all 79 rule requirements with explicit driver/disposition fields.
+The Cribbage forced-tie fixture and its contract/rollback proofs are complete.
+Missing rule drivers and remaining fault-schedule, topology, and real-money
+proof rows remain visible in the ledger, so the browser hold remains active.
 
 ### Wave 1 — healthy rule baseline
 

@@ -2,6 +2,29 @@
 
 Date: 2026-08-30
 
+## Full-seam Wave 0 ledger and Cribbage forced-tie fixture — database gate accepted
+
+- `e2e/fullSeam/manifest.ts` is now the versioned campaign ledger. It inventories
+  all 15 branch-smoke rows, seven terminal rows, and 79 lifecycle rows, and
+  separately locks all 79 rule requirements from the gauntlet plan. Missing
+  rule drivers stay explicit; they are not counted as coverage.
+- The formerly blocked `cribbage-dealer-draw-forced-tie-rejoin` row now uses an
+  exact-game, admin-and-participant-scoped, fake-money-only fixture. The request
+  expires within 15 minutes, is atomically consumed once by the existing
+  Cribbage dealer-selection authority, and can be inspected and cancelled by
+  its owner. It never changes the global harness mode or the normal random draw
+  path, and it refuses real-money and terminal sessions.
+- The rollback proof passed before installation and again against the deployed
+  functions. It covers authorization, real-money and terminal rejection,
+  exact-game isolation, forced tie and winner, duplicate/replay, continuation
+  into the first hand, late replay, expiry, cancellation, and preservation of
+  the global harness gate. Contract tests and TypeScript also pass.
+
+This closes the missing Cribbage lifecycle fixture, not Wave 0 as a whole and
+not browser coverage. The production browser matrix remains held until every
+required rule driver, deterministic fault schedule, identity topology, and
+real-money rollback-proof row is present and conclusive.
+
 ## Gin Rummy discard-pile rejoin lock — production smoke accepted
 
 - The server already rejected discarding the card just taken from the discard

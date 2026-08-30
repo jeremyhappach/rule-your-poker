@@ -23,11 +23,6 @@ function selectedDraw(): ChaosScenario {
   if (!scenario || scenario.family !== 'dealer-draw') {
     throw new Error(`Unknown human-chaos dealer-draw scenario: ${id}`);
   }
-  if (scenario.source === 'cribbage' && scenario.variant === 'forced-tie') {
-    throw new Error(
-      'Cribbage dealer-draw forced-tie has no account-scoped fixture. It must not be faked with a global production default.',
-    );
-  }
   return scenario;
 }
 
@@ -60,17 +55,29 @@ test.describe('two-human cross-country dealer draw campaign', () => {
     const evidence: Record<string, unknown> = { scenario: scenario.id, status: 'started' };
     let primaryError: unknown = null;
     let teardownFailure: AggregateError | null = null;
+    let cribbageFixtureArmed = false;
 
     try {
       await Promise.all([installDrawReceipt(session.hostPage), installDrawReceipt(session.peerPage)]);
       if (scenario.variant === 'forced-tie') {
-        const { data, error } = await session.cleanupClient.rpc(
-          'arm_session_dealer_draw_tie_harness' as never,
-          { p_ttl_seconds: 600 } as never,
-        );
+        const isCribbage = scenario.source === 'cribbage';
+        const { data, error } = isCribbage
+          ? await session.cleanupClient.rpc(
+            'arm_cribbage_dealer_draw_tie_harness' as never,
+            { p_game_id: session.gameId, p_ttl_seconds: 600 } as never,
+          )
+          : await session.cleanupClient.rpc(
+            'arm_session_dealer_draw_tie_harness' as never,
+            { p_ttl_seconds: 600 } as never,
+          );
         if (error || (data as { outcome?: string } | null)?.outcome !== 'armed') {
-          throw new Error(`Could not arm session dealer-draw tie fixture: ${error?.message ?? 'unexpected outcome'}`);
+          throw new Error(
+            `Could not arm ${isCribbage ? 'Cribbage' : 'session'} dealer-draw tie fixture: `
+            + `${error?.message ?? 'unexpected outcome'}`,
+          );
         }
+        cribbageFixtureArmed = isCribbage;
+        evidence.fixtureArm = data;
       }
 
       await startSessionUnderChaos(session);
@@ -78,6 +85,21 @@ test.describe('two-human cross-country dealer draw campaign', () => {
         await configureDealerGameUnderChaos(session, 'cribbage');
       } else {
         await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
+      }
+
+      if (cribbageFixtureArmed) {
+        const { data, error } = await session.cleanupClient.rpc(
+          'get_cribbage_dealer_draw_tie_harness' as never,
+          { p_game_id: session.gameId } as never,
+        );
+        const status = data as { armed?: boolean; consumedAt?: string | null } | null;
+        if (error || status?.armed !== false || !status?.consumedAt) {
+          throw new Error(
+            `Cribbage dealer-draw tie fixture was not consumed exactly once: `
+            + `${error?.message ?? JSON.stringify(status)}`,
+          );
+        }
+        evidence.fixtureStatus = status;
       }
 
       const [hostReceipt, peerReceipt] = await Promise.all([
@@ -112,6 +134,23 @@ test.describe('two-human cross-country dealer draw campaign', () => {
         ]);
       } catch (error) {
         teardownErrors.push(error);
+      }
+      if (cribbageFixtureArmed) {
+        try {
+          const { data, error } = await session.cleanupClient.rpc(
+            'cancel_cribbage_dealer_draw_tie_harness' as never,
+            { p_game_id: session.gameId } as never,
+          );
+          if (error || (data as { outcome?: string } | null)?.outcome !== 'cancelled') {
+            throw new Error(
+              `Could not close Cribbage dealer-draw tie fixture: `
+              + `${error?.message ?? JSON.stringify(data)}`,
+            );
+          }
+          evidence.fixtureCleanup = data;
+        } catch (error) {
+          teardownErrors.push(error);
+        }
       }
       try {
         evidence.cleanup = await blastFakeMoneySession(session);
