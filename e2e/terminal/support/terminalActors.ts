@@ -393,6 +393,10 @@ async function playGin(
             requestCountBefore: network.requestCount(ginActionPath),
             label: 'request timeout',
           };
+          await page.evaluate(() => {
+            (window as unknown as Record<string, unknown>)
+              .__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ = 'gin-action-request-timeout-retry';
+          });
           network.delayNextRequest(/\/rest\/v1\/rpc\/gin_rummy_apply_action$/, 10_500);
           forcedTimeoutStockDraw = true;
         }

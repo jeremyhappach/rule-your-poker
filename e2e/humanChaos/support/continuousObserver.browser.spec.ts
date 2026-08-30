@@ -44,6 +44,10 @@ test('continuous observer survives two contexts and retains transient defects', 
     await Promise.all([hostPage.goto(url), peerPage.goto(url)]);
     await hostPage.waitForTimeout(150);
 
+    await hostPage.evaluate(() => {
+      (window as unknown as Record<string, unknown>)
+        .__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ = 'synthetic-request-timeout';
+    });
     await hostPage.getByRole('button', { name: 'Stay' }).click();
     await hostPage.evaluate(() => {
       const announcement = document.querySelector('[data-canonical-announcement-content]');
@@ -86,6 +90,7 @@ test('continuous observer survives two contexts and retains transient defects', 
       actor: 'host',
       actionSurface: 'holm-357-decision',
       buttonText: 'Stay',
+      expectedPeerDelayReason: 'synthetic-request-timeout',
     }));
     expect(action.actorProgressMs).not.toBeNull();
     expect(action.peerProgressMs).not.toBeNull();

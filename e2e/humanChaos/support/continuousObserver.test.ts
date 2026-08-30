@@ -61,6 +61,7 @@ describe('continuous human-chaos observer evidence', () => {
       actionId: 'host-action-1',
       actionSurface: 'gin-human-turn:discard',
       buttonText: 'Knock!',
+      expectedPeerDelayReason: null,
       baselineProgressSignature: 'host-before',
       gameId: 'game-1',
       dealerGameId: 'dealer-1',
@@ -74,6 +75,16 @@ describe('continuous human-chaos observer evidence', () => {
       snapshot('peer', 1_900, 'peer-after'),
     ];
     const requests: ChaosNetworkReceipt[] = [{
+      requestId: 'host-preflight-1',
+      client: 'host',
+      method: 'POST',
+      endpoint: '/rest/v1/rpc/gin_rummy_get_state',
+      startedAt: 1_010,
+      finishedAt: 1_090,
+      durationMs: 80,
+      outcome: 'finished',
+      failure: null,
+    }, {
       requestId: 'host-request-1',
       client: 'host',
       method: 'POST',
@@ -125,6 +136,7 @@ describe('continuous human-chaos observer evidence', () => {
       actionId: 'slow-action',
       actionSurface: 'holm-357-decision',
       buttonText: 'Stay',
+      expectedPeerDelayReason: null,
       baselineProgressSignature: 'host-before',
       gameId: 'game-1',
       dealerGameId: 'dealer-1',
@@ -143,6 +155,39 @@ describe('continuous human-chaos observer evidence', () => {
     expect(evidence.latency.peerBudgetBreaches).toEqual(['slow-action']);
     expect(continuousObserverFailure(evidence)?.message).toContain('masked-visible-card-face');
     expect(continuousObserverFailure(evidence)?.message).toContain('peer-latency:slow-action');
+  });
+
+  it('records a deliberate request-timeout delay without treating it as organic peer latency', () => {
+    const action: ChaosActionClick = {
+      kind: 'action-click',
+      client: 'host',
+      wallTime: 1_000,
+      performanceTime: 100,
+      url: 'https://holm357.com/game/example',
+      actionId: 'expected-timeout-action',
+      actionSurface: 'gin-pile',
+      buttonText: '',
+      expectedPeerDelayReason: 'gin-action-request-timeout-retry',
+      baselineProgressSignature: 'host-before',
+      gameId: 'game-1',
+      dealerGameId: 'dealer-1',
+      roundId: 'round-1',
+    };
+    const evidence = buildContinuousObserverEvidence([
+      snapshot('host', 900, 'host-before'),
+      snapshot('peer', 900, 'peer-before'),
+      action,
+      snapshot('host', 1_100, 'host-after'),
+      snapshot('peer', 12_500, 'peer-after'),
+    ], [], { peerBudgetMs: 6_000 });
+
+    expect(evidence.actionReceipts[0]).toEqual(expect.objectContaining({
+      expectedPeerDelayReason: 'gin-action-request-timeout-retry',
+      peerProgressMs: 11_500,
+    }));
+    expect(evidence.latency.expectedPeerDelayActionIds).toEqual(['expected-timeout-action']);
+    expect(evidence.latency.peerBudgetBreaches).toEqual([]);
+    expect(continuousObserverFailure(evidence)).toBeNull();
   });
 
   it('records dealer-game and round identity transitions independently per client', () => {

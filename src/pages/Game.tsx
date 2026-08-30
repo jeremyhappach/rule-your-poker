@@ -370,6 +370,10 @@ import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
 import {
+  buildGinGamesRealtimeRoutingSnapshot,
+  isRoutineGinGamesRealtimeUpdate,
+} from "@/lib/ginRummyRealtimePolicy";
+import {
   StartupFlightRecorderOverlay,
   recordStartupFlight,
   recordStartupValue,
@@ -1466,6 +1470,10 @@ const Game = () => {
   gameStatusRef.current = game?.status ?? null;
   const gameTypeLiveRef = useRef<string | null>(null);
   gameTypeLiveRef.current = game?.game_type ?? null;
+  const gameRealtimeRoutingRef = useRef(buildGinGamesRealtimeRoutingSnapshot(null));
+  gameRealtimeRoutingRef.current = buildGinGamesRealtimeRoutingSnapshot(
+    game as unknown as Record<string, unknown> | null,
+  );
   // Live refs so the realtime subscription effect (which closes over
   // [gameId] only) can read the latest values when evaluating the
   // high-card clear guard. Without these, the closure reads the initial
@@ -3312,9 +3320,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     };
 
+    // Realtime DELETE owns live removal. Cold mount and foreground recovery
+    // retain an explicit confirmation without continuously polling a healthy
+    // subscribed table.
     checkGameExists();
-    // Poll every 3 seconds to check if game still exists
-    const interval = window.setInterval(checkGameExists, 3000);
     const checkOnFocus = () => { void checkGameExists(); };
     const checkOnVisibility = () => {
       if (document.visibilityState === 'visible') void checkGameExists();
@@ -3324,7 +3333,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
       window.removeEventListener('focus', checkOnFocus);
       document.removeEventListener('visibilitychange', checkOnVisibility);
     };
@@ -4188,6 +4196,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
            handler: (payload: any) => {
            const newData = payload.new as any;
            const oldData = payload.old as any;
+           const previousGinRouting = gameRealtimeRoutingRef.current;
            const dealerDrawReceipt = deriveSessionDealerDrawPresentationReceipt({
              previousStatus: oldData?.status ?? gameStatusRef.current,
              nextStatus: newData?.status ?? null,
@@ -4240,6 +4249,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             current_round: newData?.current_round ?? null,
             total_hands: newData?.total_hands ?? null,
           });
+          if (isRoutineGinGamesRealtimeUpdate(newData, previousGinRouting)) {
+            ginTrace('realtime.games metadata-only receipt applied without parent fetch', {
+              current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
+              total_hands: newData?.total_hands ?? null,
+            });
+            return;
+          }
           
           console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
@@ -5385,36 +5401,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.is_paused]);
 
-  // Fallback polling for pause state - ensures observers get pause updates even if realtime fails
-  useEffect(() => {
-    if (!gameId) return;
-
-    if (safetyPollsDisabled) return;
-    
-    const pollPauseState = async () => {
-      const { data } = await supabase
-        .from('games')
-        .select('is_paused, paused_time_remaining')
-        .eq('id', gameId)
-        .single();
-      
-      if (data && data.is_paused !== isPausedRef.current) {
-        console.log('[PAUSE POLL] Pause state mismatch detected! DB:', data.is_paused, 'Local:', isPausedRef.current);
-        isPausedRef.current = data.is_paused;
-        if (data.is_paused && timerIntervalRef.current) {
-          console.log('[PAUSE POLL] Clearing timer interval');
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        // Update game state
-        setGame(prev => prev ? { ...prev, is_paused: data.is_paused, paused_time_remaining: data.paused_time_remaining } : prev);
-      }
-    };
-    
-    // Poll every 2 seconds as fallback
-    const pollInterval = setInterval(pollPauseState, 2000);
-    return () => clearInterval(pollInterval);
-  }, [gameId]);
+  // Pause state is installed from the games UPDATE subscription. Foreground,
+  // reconnect, and channel-error recovery already take bounded authoritative
+  // snapshots; a healthy subscribed table does not need a second polling owner.
 
   // Simple state tracking refs - no aggressive polling
   const lastSyncedRoundRef = useRef<string | null>(null);
@@ -9296,9 +9285,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
         // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
-        // post-write replica race. Defer to the polling checkGameExists effect, which
-        // requires repeated strikes + a fresh confirm before navigating.
-        console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
+        // post-write replica race. Realtime DELETE owns live removal; the existing
+        // cold-mount and foreground checks confirm absence after recovery.
+        console.log('[FETCH] missing-game-fetch-deferred (awaiting authoritative removal or foreground confirm)');
         if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
         finishFetchTrace('returned_game_error', 'game_query_missing_deferred');
         return false;

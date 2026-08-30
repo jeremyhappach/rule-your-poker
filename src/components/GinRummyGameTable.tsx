@@ -2436,12 +2436,6 @@ export const GinRummyGameTable = ({
     }
   };
 
-  // Fetch the caller-specific authoritative projection to avoid stale closures.
-  const fetchFreshState = async (): Promise<GinRummyState | null> => {
-    if (!roundId) return null;
-    return fetchGinRummyState(roundId);
-  };
-
   // Action handlers
   // Shared pre-hold path for every self-draw action (stock, discard, and
   // take_first_draw upcard). Registers the pending-withheld intent before
@@ -2650,19 +2644,21 @@ export const GinRummyGameTable = ({
       return;
     }
     try {
-      // Fetch fresh state from DB to prevent stale closure issues in multiplayer
-      const fresh = await fetchFreshState();
-      if (!fresh) {
+      // The visible action surface is derived from the latest accepted private
+      // projection. The immutable RPC validates expectedActionCount, so a
+      // separate serialized read cannot make this intent safer.
+      const current = viewState;
+      if (!current) {
         return;
       }
-      if (fresh.phase !== 'first_draw') {
+      if (current.phase !== 'first_draw') {
         return;
       }
-      if (fresh.firstDrawOfferedTo !== currentPlayerId) {
+      if (current.firstDrawOfferedTo !== currentPlayerId) {
         return;
       }
-      const topDiscard = fresh.discardPile?.[fresh.discardPile.length - 1] ?? null;
-      const newState = takeFirstDrawCard(fresh, currentPlayerId);
+      const topDiscard = current.discardPile?.[current.discardPile.length - 1] ?? null;
+      const newState = takeFirstDrawCard(current, currentPlayerId);
       // Route take_first_draw through the same shared pre-hold path as
       // normal stock/discard so the upcard is synchronously withheld
       // before the optimistic commit and released only after its matching
@@ -2670,7 +2666,7 @@ export const GinRummyGameTable = ({
       beginSelfDrawPresentation({
         source: 'discard',
         selectedCard: topDiscard,
-        preState: fresh,
+        preState: current,
         newState,
       });
       await updateState(newState, { action: 'take_first_draw' }, tid);
@@ -2682,10 +2678,9 @@ export const GinRummyGameTable = ({
   const handlePassFirstDraw = async () => {
     if (!currentPlayerId || isProcessing) return;
     try {
-      // Fetch fresh state from DB to prevent stale closure issues in multiplayer
-      const fresh = await fetchFreshState();
-      if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
-      const newState = passFirstDraw(fresh, currentPlayerId);
+      const current = viewState;
+      if (!current || current.phase !== 'first_draw' || current.firstDrawOfferedTo !== currentPlayerId) return;
+      const newState = passFirstDraw(current, currentPlayerId);
       // Longer optimistic guard — bot needs 1-2s to decide after our pass
       // Optimistic guard handled by updateState → ginSync.applyOptimistic
       await updateState(newState, { action: 'pass_first_draw' });

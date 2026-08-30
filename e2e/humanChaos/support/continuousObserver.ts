@@ -43,6 +43,7 @@ export type ChaosActionClick = {
   actionId: string;
   actionSurface: string;
   buttonText: string;
+  expectedPeerDelayReason: string | null;
   baselineProgressSignature: string | null;
   gameId: string | null;
   dealerGameId: string | null;
@@ -93,6 +94,7 @@ export type ChaosActionReceipt = {
   actor: ChaosClient;
   actionSurface: string;
   buttonText: string;
+  expectedPeerDelayReason: string | null;
   clickedAt: number;
   gameId: string | null;
   dealerGameId: string | null;
@@ -141,6 +143,7 @@ export type ContinuousObserverEvidence = {
     actorProgress: DurationSummary;
     peerProgress: DurationSummary;
     peerBudgetMs: number | null;
+    expectedPeerDelayActionIds: string[];
     peerBudgetBreaches: string[];
   };
   finalSnapshots: Partial<Record<ChaosClient, ChaosDomSnapshot>>;
@@ -256,16 +259,21 @@ export function buildContinuousObserverEvidence(
       action.wallTime,
       peerBaseline?.progressSignature ?? null,
     );
-    const rpc = networkRequests.find((request) => request.client === action.client
+    const rpcCandidates = networkRequests.filter((request) => request.client === action.client
       && request.method === 'POST'
       && request.endpoint.includes('/rest/v1/rpc/')
       && request.startedAt >= action.wallTime - 50
-      && request.startedAt <= action.wallTime + 4_000) ?? null;
+      && request.startedAt <= action.wallTime + 4_000);
+    const ginMutation = action.actionSurface.startsWith('gin-')
+      ? rpcCandidates.find((request) => request.endpoint.endsWith('/gin_rummy_apply_action'))
+      : null;
+    const rpc = ginMutation ?? rpcCandidates[0] ?? null;
     return {
       actionId: action.actionId,
       actor: action.client,
       actionSurface: action.actionSurface,
       buttonText: action.buttonText,
+      expectedPeerDelayReason: action.expectedPeerDelayReason,
       clickedAt: action.wallTime,
       gameId: action.gameId,
       dealerGameId: action.dealerGameId,
@@ -283,10 +291,15 @@ export function buildContinuousObserverEvidence(
   });
 
   const peerBudgetMs = Number.isFinite(options.peerBudgetMs) ? options.peerBudgetMs! : null;
+  const expectedPeerDelayActionIds = actionReceipts
+    .filter((receipt) => Boolean(receipt.expectedPeerDelayReason))
+    .map((receipt) => receipt.actionId);
   const peerBudgetBreaches = peerBudgetMs == null
     ? []
     : actionReceipts
-      .filter((receipt) => receipt.peerProgressMs != null && receipt.peerProgressMs > peerBudgetMs)
+      .filter((receipt) => !receipt.expectedPeerDelayReason
+        && receipt.peerProgressMs != null
+        && receipt.peerProgressMs > peerBudgetMs)
       .map((receipt) => receipt.actionId);
   const finalSnapshots: Partial<Record<ChaosClient, ChaosDomSnapshot>> = {};
   for (const snapshot of snapshots) finalSnapshots[snapshot.client] = snapshot;
@@ -306,6 +319,7 @@ export function buildContinuousObserverEvidence(
       actorProgress: summarizeDurations(actionReceipts.map((receipt) => receipt.actorProgressMs)),
       peerProgress: summarizeDurations(actionReceipts.map((receipt) => receipt.peerProgressMs)),
       peerBudgetMs,
+      expectedPeerDelayActionIds,
       peerBudgetBreaches,
     },
     finalSnapshots,
@@ -649,6 +663,11 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       if (!surface && !trackedStandalone && !cribbagePeggingCard) return;
       sample();
       const rootNode = document.querySelector<HTMLElement>('[data-lifecycle-branch="loaded-inner"]');
+      const windowRecord = window as unknown as Record<string, unknown>;
+      const expectedPeerDelayOnce = windowRecord.__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__;
+      if (typeof expectedPeerDelayOnce === 'string') {
+        delete windowRecord.__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__;
+      }
       actionSequence += 1;
       emit({
         kind: 'action-click',
@@ -660,6 +679,11 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
           ?? (cribbagePeggingCard ? 'cribbage-pegging-card' : null)
           ?? 'run-back',
         buttonText: text,
+        expectedPeerDelayReason: typeof expectedPeerDelayOnce === 'string'
+          ? expectedPeerDelayOnce
+          : interactive
+            .closest<HTMLElement>('[data-chaos-expected-peer-delay]')
+            ?.getAttribute('data-chaos-expected-peer-delay') ?? null,
         baselineProgressSignature: lastSnapshot?.progressSignature ?? null,
         gameId: rootNode?.getAttribute('data-authoritative-game-id') ?? null,
         dealerGameId: rootNode?.getAttribute('data-authoritative-dealer-game-id') ?? null,

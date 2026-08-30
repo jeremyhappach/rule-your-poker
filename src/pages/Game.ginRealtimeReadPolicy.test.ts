@@ -30,4 +30,16 @@ describe('Game Gin Realtime read policy', () => {
     expect(source).toContain('allowBotDealersLoadedRef.current');
     expect(source).toContain('data: { allow_bot_dealers: allowBotDealersRef.current }');
   });
+
+  it('does not poll a healthy games subscription for existence or pause state', () => {
+    expect(source).not.toContain('window.setInterval(checkGameExists, 3000)');
+    expect(source).not.toContain('setInterval(pollPauseState, 2000)');
+  });
+
+  it('short-circuits metadata-only Gin games receipts before generic status handling', () => {
+    const guard = source.indexOf('isRoutineGinGamesRealtimeUpdate(newData, previousGinRouting)');
+    const genericStatusHandler = source.indexOf("if (newData && 'status' in newData)", guard);
+    expect(guard).toBeGreaterThan(0);
+    expect(guard).toBeLessThan(genericStatusHandler);
+  });
 });
