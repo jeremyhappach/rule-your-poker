@@ -2,6 +2,18 @@
 
 ## Platform
 
+- Gin Rummy live-action latency and applicable deadline seams passed published
+  production fake-money coverage on 2026-08-30 at commit
+  `f11c8ec552d949d3c66bed00b0dd75951046c6a6`. The changed-parameter
+  transition settled two 50-point games with 390 correlated actions, zero
+  observer violations, and no unmarked 6000 ms peer breach (peer p95 2726 ms).
+  Dealer-setup and ante timeout/rejoin then passed concurrently with zero
+  violations, zero page crashes, no peer-budget breach, and verified cleanup.
+  Preserve Realtime-owned live existence/pause state, the metadata-only Gin
+  receipt short circuit, direct immutable first-draw intent, and explicit
+  expected-delay evidence. Do not restore recurring games-table polling or a
+  serialized first-draw state read. Human Gin gameplay remains intentionally
+  untimed; this checkpoint is not complete rule-branch coverage.
 - Gin Rummy Run It Back exact-config ownership passed published production
   fake-money smoke on 2026-08-30 at commit
   `9b7b70c13726e836d63afcac83930bb47f9bdc86`. Source and successor preserved

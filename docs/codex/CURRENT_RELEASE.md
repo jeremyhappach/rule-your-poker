@@ -2,6 +2,51 @@
 
 Date: 2026-08-30
 
+## Gin Rummy live-action latency correction — production campaign accepted
+
+- Production transition evidence isolated three competing read owners around
+  ordinary Gin actions: every client polled `games` for existence and pause
+  state, metadata-only `games` UPDATE receipts scheduled full parent snapshots,
+  and first-draw Take/Pass serialized a private-state read ahead of the
+  immutable action RPC. Under long-haul Supabase latency, those reads contended
+  with the action and delayed peer projection installation beyond 6 seconds.
+- Healthy live tables now rely on their existing `games` DELETE/UPDATE
+  subscriptions, with cold-mount, foreground, reconnect, and channel-error
+  snapshots retained. Metadata-only Gin game receipts install directly without
+  a parent refetch; every lifecycle/routing-field change still fails closed to
+  the existing transition handler. Other game families retain their prior
+  receipt handling.
+- First-draw Take/Pass now submit from the latest accepted caller-specific
+  projection. `gin_rummy_apply_action` still validates immutable action count,
+  authorization, phase, and replay identity. No database function, rule,
+  settlement path, or financial behavior changed.
+- The continuous observer now correlates Gin clicks to the mutation RPC rather
+  than an adjacent read and explicitly labels the harness's one deliberate
+  request-timeout/lost-response recovery. Only labeled delays are excluded from
+  the ordinary 6000 ms peer budget.
+
+Validation: 27 focused ownership, action-recovery, observer, and network tests
+passed; the two-context browser observer contract passed; TypeScript passed;
+and the production build plus its 39 Cribbage preflight assertions passed.
+Published commit `f11c8ec552d949d3c66bed00b0dd75951046c6a6` served as
+bundle `assets/index-Bp9afrkd.js` and passed the isolated production fake-money
+`gin-rummy-same-game-changed-parameters` transition in 15.6 minutes. Both
+50-point games settled, only `per_point_value` changed from 0 to 1, cleanup was
+verified, and all 390 actions recorded correlated evidence. RPC p95 was 868 ms,
+actor p95 93 ms, and peer p95 2726 ms, with zero presentation violations and
+zero unmarked 6000 ms peer breaches. The two deliberate recovery delays were
+recorded separately.
+
+The applicable Gin deadline seams then passed concurrently: dealer-setup
+timeout/rejoin in 1.5 minutes and ante timeout/rejoin in 39.9 seconds, both with
+zero violations, zero page crashes, zero peer-budget breaches, and verified
+guarded cleanup. Human Gin gameplay is intentionally untimed, so no gameplay
+timeout scenario was invented. Evidence is under
+`artifacts/gin-acceptance-f11c8ec55` and
+`artifacts/gin-deadlines-f11c8ec55`. This is targeted lifecycle/liveness
+coverage, not a claim of complete Gin rule-branch coverage. No real-money
+session was touched.
+
 ## Gin Rummy transition configuration and campaign oracle — Run Back smoke accepted
 
 - Gin Rummy Run It Back now submits the prior dealer game's immutable
