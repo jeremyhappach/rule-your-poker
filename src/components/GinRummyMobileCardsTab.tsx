@@ -15,6 +15,7 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 import { isGinMaskedCard, withholdGinDrawnCards } from '@/lib/ginRummy/presentationIdentity';
+import { getGinForbiddenRediscardCard, isGinForbiddenRediscard } from '@/lib/ginRummy/discardSelectionPolicy';
 import { useAuthoritativeActionSurfaceGuard } from '@/lib/actionSurfaceRecovery';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
@@ -359,6 +360,7 @@ export const GinRummyMobileCardsTab = ({
     : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(discardCardId);
 
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
+  const forbiddenRediscardCard = getGinForbiddenRediscardCard(ginState, currentPlayerId);
 
   useEffect(() => {
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
@@ -504,6 +506,9 @@ export const GinRummyMobileCardsTab = ({
   const handleCardClick = (index: number) => {
     if (!myState) return;
     const canSelect = (ginState.turnPhase === 'discard' && isMyTurn && ginState.phase === 'playing') || isLayingOff;
+    if (!isLayingOff && isGinForbiddenRediscard(ginState, currentPlayerId, myState.hand[index])) {
+      return;
+    }
     if (canSelect) {
       const newIndex = selectedCardIndex === index ? null : index;
       setSelectedCardIndex(newIndex);
@@ -515,6 +520,7 @@ export const GinRummyMobileCardsTab = ({
 
   const handleDiscard = () => {
     if (selectedCardIndex === null) return;
+    if (isGinForbiddenRediscard(ginState, currentPlayerId, myState?.hand[selectedCardIndex])) return;
     // Capture the selected card's rendered rect synchronously BEFORE
     // authoritative state mutates, so the discard transport overlay
     // can start from the actual raised card position.
@@ -707,7 +713,9 @@ export const GinRummyMobileCardsTab = ({
               const { card, originalIndex, meldGroup } = item;
               const isSelected = selectedCardIndex === originalIndex;
               const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-              const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+              const isForbiddenRediscard = isGinForbiddenRediscard(ginState, currentPlayerId, card);
+              const highlightedDrawnCard = drawnCard ?? forbiddenRediscardCard;
+              const isNewlyDrawn = highlightedDrawnCard && card.rank === highlightedDrawnCard.rank && card.suit === highlightedDrawnCard.suit;
               void meldGroup;
               return (
                 <button
@@ -718,11 +726,11 @@ export const GinRummyMobileCardsTab = ({
                   data-gin-card-value={card.value}
                   onClick={() => handleCardClick(originalIndex)}
                   onPointerUp={(e) => e.currentTarget.blur()}
-                  disabled={isProcessing || !canSelect}
+                  disabled={isProcessing || !canSelect || isForbiddenRediscard}
                   className={cn(
                     "transition-all duration-200 rounded relative pointer-events-auto",
                     isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                    canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                    canSelect && !isForbiddenRediscard && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
                     isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
                   )}
                   style={{ zIndex: isSelected ? 20 : index }}
