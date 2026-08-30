@@ -36,6 +36,41 @@ function wait(milliseconds: number): Promise<void> {
 }
 
 /**
+ * WebSocket/TCP preserves message order. Each frame receives its own latency
+ * target, but a later low-jitter frame may never overtake an earlier
+ * high-jitter frame. Waiting until each frame's original ready time avoids
+ * turning the queue into cumulative per-frame latency.
+ */
+export class OrderedDeliveryQueue {
+  private tail: Promise<void> = Promise.resolve();
+
+  constructor(
+    private readonly onPendingChange: (delta: 1 | -1) => void = () => undefined,
+  ) {}
+
+  enqueue(delayMs: number, deliver: () => void): void {
+    const readyAt = Date.now() + Math.max(0, delayMs);
+    this.onPendingChange(1);
+    this.tail = this.tail
+      .catch(() => undefined)
+      .then(async () => {
+        await wait(Math.max(0, readyAt - Date.now()));
+        try {
+          deliver();
+        } catch {
+          // A test may intentionally close/remount a socket while a delayed
+          // frame is queued. The replacement connection owns recovery.
+        }
+      })
+      .finally(() => this.onPendingChange(-1));
+  }
+
+  async drain(): Promise<void> {
+    await this.tail;
+  }
+}
+
+/**
  * Browser-level impairment, intentionally outside application code. It delays
  * actual Supabase HTTP/WebSocket traffic and can discard one HTTP response
  * after the server has processed it, reproducing an ambiguous commit.
@@ -44,8 +79,10 @@ export class CrossCountryNetwork {
   private profile: NetworkProfile = HEALTHY;
   private sequence = 0;
   private loseResponseFor: RegExp | null = null;
+  private delayNextRequestFor: { pathPattern: RegExp; delayMs: number } | null = null;
   private pendingDeliveries = 0;
   private runtimeConfig: { url: string; publishableKey: string } | null = null;
+  private readonly requestCounts = new Map<string, number>();
 
   async attach(context: BrowserContext): Promise<void> {
     await context.route('**/*', async (route) => this.handleHttp(route));
@@ -65,6 +102,14 @@ export class CrossCountryNetwork {
 
   loseNextResponse(pathPattern: RegExp): void {
     this.loseResponseFor = pathPattern;
+  }
+
+  delayNextRequest(pathPattern: RegExp, delayMs: number): void {
+    this.delayNextRequestFor = { pathPattern, delayMs };
+  }
+
+  requestCount(pathname: string): number {
+    return this.requestCounts.get(pathname) ?? 0;
   }
 
   async waitForDelayedDeliveries(timeoutMs = 10_000): Promise<void> {
@@ -97,6 +142,8 @@ export class CrossCountryNetwork {
       await route.continue();
       return;
     }
+    const pathname = new URL(url).pathname;
+    this.requestCounts.set(pathname, (this.requestCounts.get(pathname) ?? 0) + 1);
 
     const publishableKey = request.headers().apikey;
     if (!this.runtimeConfig && publishableKey) {
@@ -109,47 +156,50 @@ export class CrossCountryNetwork {
     const delayMs = this.profile.httpBaseMs + this.deterministicJitter(this.profile.httpJitterMs);
     await wait(delayMs);
 
-    if (this.loseResponseFor?.test(new URL(url).pathname)) {
+    let wasDeliberatelyDelayed = false;
+    if (this.delayNextRequestFor?.pathPattern.test(pathname)) {
+      const delayedRequest = this.delayNextRequestFor;
+      this.delayNextRequestFor = null;
+      wasDeliberatelyDelayed = true;
+      await wait(delayedRequest.delayMs);
+    }
+
+    if (this.loseResponseFor?.test(pathname)) {
       this.loseResponseFor = null;
       await route.fetch({ timeout: 30_000 });
       await route.abort('failed');
       return;
     }
 
-    await route.continue();
+    try {
+      await route.continue();
+    } catch (error) {
+      // A deliberately delayed request may be aborted by the application
+      // deadline before the harness releases it. The replay request owns the
+      // next attempt; the abandoned route must not fail the test callback.
+      if (!wasDeliberatelyDelayed) throw error;
+    }
   }
 
   private handleWebSocket(client: WebSocketRoute): void {
     const server = client.connectToServer();
+    const trackPending = (delta: 1 | -1) => {
+      this.pendingDeliveries += delta;
+    };
+    const clientToServer = new OrderedDeliveryQueue(trackPending);
+    const serverToClient = new OrderedDeliveryQueue(trackPending);
 
     client.onMessage((message) => {
-      this.delayDelivery(() => server.send(message));
+      clientToServer.enqueue(this.websocketDelayMs(), () => server.send(message));
     });
     server.onMessage((message) => {
-      this.delayDelivery(() => client.send(message));
+      serverToClient.enqueue(this.websocketDelayMs(), () => client.send(message));
     });
   }
 
-  private delayDelivery(deliver: () => void): void {
-    const delayMs = this.profile.websocketBaseMs
+  private websocketDelayMs(): number {
+    return this.profile.websocketBaseMs
       + this.deterministicJitter(this.profile.websocketJitterMs);
-    if (delayMs <= 0) {
-      deliver();
-      return;
-    }
-
-    this.pendingDeliveries += 1;
-    setTimeout(() => {
-      try {
-        deliver();
-      } catch {
-        // The test may intentionally close/remount a socket while a delayed
-        // frame is queued. The browser recovery path, not a stale test timer,
-        // owns the replacement connection.
-      } finally {
-        this.pendingDeliveries -= 1;
-      }
-    }, delayMs);
   }
 }
 

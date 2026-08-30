@@ -1464,6 +1464,8 @@ const Game = () => {
   const sessionDealerDrawPreviousStatusRef = useRef<string | null>(null);
   const gameStatusRef = useRef<string | null>(null);
   gameStatusRef.current = game?.status ?? null;
+  const gameTypeLiveRef = useRef<string | null>(null);
+  gameTypeLiveRef.current = game?.game_type ?? null;
   // Live refs so the realtime subscription effect (which closes over
   // [gameId] only) can read the latest values when evaluating the
   // high-card clear guard. Without these, the closure reads the initial
@@ -1855,6 +1857,8 @@ const Game = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
   const [allowBotDealers, setAllowBotDealers] = useState(false); // Fetched from game_defaults
+  const allowBotDealersRef = useRef(false);
+  const allowBotDealersLoadedRef = useRef(false);
 const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
   const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   const [preAnteChips, setPreAnteChips] = useState<Record<string, number> | null>(null); // Capture chips BEFORE ante deduction to prevent race conditions
@@ -4804,6 +4808,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                'yahtzee_state' in (payload.new as any) ||
                'gin_rummy_state' in (payload.new as any))) {
             applyRoundRealtimePatch(payload.new);
+            // Gin's UPDATE payload is a complete round row (rounds uses
+            // REPLICA IDENTITY FULL). The parent can apply it directly while
+            // GinRummyGameTable fetches the caller-specific private
+            // projection. A full games+rounds/players/defaults snapshot here
+            // multiplied every Gin action into eight reads across two clients.
+            // Related games/players lifecycle changes retain their own
+            // subscriptions, and reconnect still takes a full snapshot.
+            if (
+              gameTypeLiveRef.current === 'gin-rummy'
+              && (payload.new as any)?.gin_rummy_state
+            ) {
+              ginTrace('rounds.update applied without redundant parent fetch', {
+                roundId: (payload.new as any)?.id?.slice(0, 8) ?? null,
+                actionCount: (payload.new as any)?.gin_rummy_state?.actionCount ?? null,
+              });
+              return;
+            }
             // Still refetch (debounced) to keep the rest of the game state consistent.
             debouncedFetch();
             return;
@@ -9199,14 +9220,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
-    // PARALLEL FETCH: Get game, players, and defaults all at once for speed
+    // PARALLEL FETCH: Get game and players together. The global bot-dealer
+    // switch is refreshed on lifecycle/recovery snapshots, but a routine
+    // Realtime row update reuses the last successful value instead of reading
+    // the Holm defaults row on every game action.
+    const shouldFetchBotDealerDefault = fetchTrigger !== 'realtime_update'
+      || !allowBotDealersLoadedRef.current;
     const [gameResult, playersResult, defaultsResult] = await Promise.all([
       timedQuery('games.select+rounds', 'games', () =>
         supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
       timedQuery('players.select+profiles', 'players', () =>
         supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
-      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
-        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single()),
+      shouldFetchBotDealerDefault
+        ? timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
+          supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single())
+        : Promise.resolve({
+          data: { allow_bot_dealers: allowBotDealersRef.current },
+          error: null,
+        }),
     ]);
 
     let gameData = gameResult.data as unknown as GameData | null;
@@ -9388,7 +9419,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (!isStale()) {
-      setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
+      if (!defaultsResult.error && gameDefaults) {
+        const nextAllowBotDealers = (gameDefaults as any).allow_bot_dealers === true;
+        allowBotDealersRef.current = nextAllowBotDealers;
+        allowBotDealersLoadedRef.current = true;
+        setAllowBotDealers(nextAllowBotDealers);
+      }
     }
     
     // CRITICAL: Update refs for detecting changes via local state comparison

@@ -58,7 +58,10 @@ import {
   fetchGinRummyState,
   type GinRummyAuthorityAction,
 } from '@/lib/ginRummyRoundLogic';
-import { executeReplaySafeGinAction } from '@/lib/ginRummyActionRecovery';
+import {
+  executeReplaySafeGinAction,
+  shouldFetchGinProjectionForRealtimeUpdate,
+} from '@/lib/ginRummyActionRecovery';
 import { settleGinRummyGame } from '@/lib/ginRummySettleGame';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
@@ -713,6 +716,7 @@ export const GinRummyGameTable = ({
     setAcceptedPresentation({ identity: sourceIdentity, state });
   }, [renderCommittedIdentity]);
   const lastAuthoritativeSignatureRef = useRef<string | null>(null);
+  const latestAuthoritativeActionCountRef = useRef<number | null>(null);
   const localOptimisticSignatureRef = useRef<string | null>(null);
   const firstAcceptedCurrentRoundSnapshotRef = useRef(false);
   const signatureForGinRunback = useCallback((state: GinRummyState | null | undefined) => {
@@ -1468,6 +1472,7 @@ export const GinRummyGameTable = ({
   // Load state from DB
   useEffect(() => {
     if (!roundId) return;
+    latestAuthoritativeActionCountRef.current = null;
     const load = async () => {
       const startedAt = performance.now();
       console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:start', {
@@ -1501,6 +1506,7 @@ export const GinRummyGameTable = ({
         });
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
+          latestAuthoritativeActionCountRef.current = state.actionCount ?? null;
           installAcceptedPresentation(fetchProvenance!, state);
           if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
             firstAcceptedCurrentRoundSnapshotRef.current = true;
@@ -1639,6 +1645,7 @@ export const GinRummyGameTable = ({
       });
       if (result.accepted) {
         lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
+        latestAuthoritativeActionCountRef.current = state.actionCount ?? null;
         installAcceptedPresentation(rtProvenance!, state);
         if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
           firstAcceptedCurrentRoundSnapshotRef.current = true;
@@ -1718,7 +1725,26 @@ export const GinRummyGameTable = ({
           table: 'rounds',
           filter: `id=eq.${roundId}`,
         },
-        () => {
+        (payload) => {
+          const publicState = (payload.new as { gin_rummy_state?: unknown } | null)
+            ?.gin_rummy_state;
+          if (!shouldFetchGinProjectionForRealtimeUpdate(
+            publicState,
+            latestAuthoritativeActionCountRef.current,
+          )) {
+            logDebugEvent({
+              gameId,
+              roundId,
+              userId: currentUserId,
+              clientRole: 'actor',
+              eventType: 'gin:authoritative_fetch_skipped_actor_echo',
+              payload: {
+                publicActionCount: (publicState as { actionCount?: number } | null)?.actionCount ?? null,
+                installedActionCount: latestAuthoritativeActionCountRef.current,
+              },
+            });
+            return;
+          }
           const catchUpStartedAt = performance.now();
           const catchUpTraceId = newTraceId();
           recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable rounds callback fired / payload received', {
@@ -2357,6 +2383,7 @@ export const GinRummyGameTable = ({
       ginSync.receiveAuthoritativeUpdate(committedState);
       setGinState(committedState);
       lastAuthoritativeSignatureRef.current = signatureForGinRunback(committedState);
+      latestAuthoritativeActionCountRef.current = committedState.actionCount ?? null;
       recordGinPhaseTrace({
         kind: 'state-replacement',
         summary: 'Gin server action confirmed local state',
@@ -2389,6 +2416,8 @@ export const GinRummyGameTable = ({
           );
           ginSync.receiveAuthoritativeUpdate(authoritativeState);
           setGinState(authoritativeState);
+          lastAuthoritativeSignatureRef.current = signatureForGinRunback(authoritativeState);
+          latestAuthoritativeActionCountRef.current = authoritativeState.actionCount ?? null;
           if (failedIntentId) {
             setSelfDrawIntents(prev => {
               if (!prev[failedIntentId]) return prev;
@@ -2583,6 +2612,8 @@ export const GinRummyGameTable = ({
           );
           ginSync.receiveAuthoritativeUpdate(finalized.state);
           setGinState(finalized.state);
+          lastAuthoritativeSignatureRef.current = signatureForGinRunback(finalized.state);
+          latestAuthoritativeActionCountRef.current = finalized.state.actionCount ?? null;
         }
       } else if (newState.phase === 'knocking') {
         // Knock! Show the presentation immediately, but commit only the intent RPC.

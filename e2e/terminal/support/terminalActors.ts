@@ -313,7 +313,14 @@ async function playGin(
   expected: TerminalExpectation,
 ): Promise<void> {
   const pages = [session.hostPage, session.peerPage];
+  const ginActionPath = '/rest/v1/rpc/gin_rummy_apply_action';
   let forcedAmbiguousDiscard = false;
+  let forcedTimeoutStockDraw = false;
+  let pendingReplayProof: {
+    network: TwoClientSession['hostNetwork'];
+    requestCountBefore: number;
+    label: string;
+  } | null = null;
   let lastProgress = await probe.readGinProgress(session.gameId, dealerGameId);
   let lastProgressAt = Date.now();
 
@@ -362,6 +369,11 @@ async function playGin(
       } else if (await discard.count()) {
         if (!forcedAmbiguousDiscard) {
           const network = page === session.hostPage ? session.hostNetwork : session.peerNetwork;
+          pendingReplayProof = {
+            network,
+            requestCountBefore: network.requestCount(ginActionPath),
+            label: 'lost response',
+          };
           network.loseNextResponse(/\/rest\/v1\/rpc\/gin_rummy_apply_action$/);
           forcedAmbiguousDiscard = true;
         }
@@ -374,6 +386,16 @@ async function playGin(
         expectsCommittedAction = true;
         actedSurface = discard;
       } else if (await draw.count()) {
+        if (!forcedTimeoutStockDraw) {
+          const network = page === session.hostPage ? session.hostNetwork : session.peerNetwork;
+          pendingReplayProof = {
+            network,
+            requestCountBefore: network.requestCount(ginActionPath),
+            label: 'request timeout',
+          };
+          network.delayNextRequest(/\/rest\/v1\/rpc\/gin_rummy_apply_action$/, 10_500);
+          forcedTimeoutStockDraw = true;
+        }
         await clickAction(page.locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]'));
         acted = true;
         expectsCommittedAction = true;
@@ -388,6 +410,18 @@ async function playGin(
       lastProgressAt = Date.now();
       if (actedSurface) {
         await expect(actedSurface).toBeHidden({ timeout: 15_000 });
+      }
+      if (pendingReplayProof) {
+        const replayProof = pendingReplayProof;
+        pendingReplayProof = null;
+        await expect.poll(
+          () => replayProof.network.requestCount(ginActionPath),
+          {
+            timeout: 20_000,
+            intervals: [100, 250, 500],
+            message: `Gin ${replayProof.label} action must replay the same immutable browser request`,
+          },
+        ).toBeGreaterThanOrEqual(replayProof.requestCountBefore + 2);
       }
       continue;
     }

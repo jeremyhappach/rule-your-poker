@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   executeReplaySafeGinAction,
   isRetryableGinTransportError,
+  shouldFetchGinProjectionForRealtimeUpdate,
 } from './ginRummyActionRecovery';
 
 describe('Gin action transport recovery', () => {
@@ -63,5 +64,13 @@ describe('Gin action transport recovery', () => {
     expect(isRetryableGinTransportError(new DOMException('Aborted', 'AbortError'))).toBe(true);
     expect(isRetryableGinTransportError(new Error('simulated response loss after send'))).toBe(true);
     expect(isRetryableGinTransportError(new Error('rule violation'))).toBe(false);
+  });
+
+  it('skips an actor Realtime echo only after the same authoritative action is installed', () => {
+    expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 8 }, 8)).toBe(false);
+    expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 7 }, 8)).toBe(false);
+    expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 8 }, 7)).toBe(true);
+    expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 8 }, null)).toBe(true);
+    expect(shouldFetchGinProjectionForRealtimeUpdate({}, 8)).toBe(true);
   });
 });

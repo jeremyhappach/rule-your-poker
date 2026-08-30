@@ -41,6 +41,24 @@ export function isRetryableGinTransportError(error: unknown): boolean {
 }
 
 /**
+ * Realtime publishes the public Gin projection. The action actor already owns
+ * the caller-specific projection returned by the immutable action RPC, so an
+ * equal or older public action count is only an echo. A peer (or an actor
+ * whose response is still unresolved) remains behind and must fetch its own
+ * private projection.
+ */
+export function shouldFetchGinProjectionForRealtimeUpdate(
+  publicState: unknown,
+  latestInstalledActionCount: number | null,
+): boolean {
+  if (!publicState || typeof publicState !== 'object') return true;
+  const rawActionCount = (publicState as { actionCount?: unknown }).actionCount;
+  if (typeof rawActionCount !== 'number' || !Number.isFinite(rawActionCount)) return true;
+  if (latestInstalledActionCount === null) return true;
+  return rawActionCount > latestInstalledActionCount;
+}
+
+/**
  * Runs one immutable Gin intent with a deadline. A retry must use the same
  * expectedActionCount so an ambiguous first commit can only resolve as either
  * the original commit or the server's replay-safe stale_action projection.
