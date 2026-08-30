@@ -13,7 +13,7 @@
  * Gated by:
  *   - URL ?cribbage_go_trace=1
  *   - localStorage ptp_cribbage_go_trace = "1"
- *   - debug channel ?ptp_debug=cribbage-go
+ *   - debug channel ?ptp_debug=cribbage-go (or the existing cribbage channel)
  *
  * Fire-and-forget. Never blocks UI. Never throws.
  */
@@ -21,16 +21,34 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { CribbageState } from './cribbageTypes';
 
-// ── Default-ON validation window ──────────────────────────────
-//
-// Per active bug hunt: Cribbage Go race tracing is ON by default for
-// every session, with no URL / localStorage / console activation required.
-//
-// To disable when the bug is closed, flip ENABLED_DEFAULT to false (or
-// delete this module and its call sites).
-const ENABLED_DEFAULT = true;
+// The directed Go-race investigation is closed. Keep the probe available for
+// an explicitly enabled forensic session, but never fan out non-deduped
+// Supabase writes during ordinary production play.
+const ENABLED_DEFAULT = false;
+
+function isEnabledFlag(value: string | null): boolean {
+  return value === '' || value === '1' || value?.toLowerCase() === 'true';
+}
+
+function hasDebugChannel(value: string | null): boolean {
+  if (!value) return false;
+  const channels = value.split(',').map((channel) => channel.trim().toLowerCase());
+  return channels.includes('*') || channels.includes('cribbage') || channels.includes('cribbage-go');
+}
 
 export function isGoRaceTraceEnabled(): boolean {
+  if (typeof window === 'undefined') return ENABLED_DEFAULT;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const direct = params.get('cribbage_go_trace');
+    if (direct === '0' || direct?.toLowerCase() === 'false') return false;
+    if (isEnabledFlag(direct) || hasDebugChannel(params.get('ptp_debug'))) return true;
+  } catch { /* diagnostic activation must never affect gameplay */ }
+  try {
+    const direct = window.localStorage.getItem('ptp_cribbage_go_trace');
+    if (direct === '0' || direct?.toLowerCase() === 'false') return false;
+    if (isEnabledFlag(direct) || hasDebugChannel(window.localStorage.getItem('ptp_debug'))) return true;
+  } catch { /* diagnostic activation must never affect gameplay */ }
   return ENABLED_DEFAULT;
 }
 

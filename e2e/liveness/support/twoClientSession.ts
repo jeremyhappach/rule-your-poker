@@ -197,6 +197,10 @@ export async function enterDealerGameUnderChaos(
 export async function startSessionUnderChaos(session: TwoClientSession): Promise<void> {
   const { hostPage, peerContext, peerNetwork } = session;
   peerNetwork.useLongHaulProfile();
+  await hostPage.evaluate(() => {
+    (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
+      'session-start peer is deliberately offline for recovery proof';
+  });
   await hostPage.locator('[data-start-game-btn]').click();
   await runOfflineBurst(peerContext, 1_750);
 }

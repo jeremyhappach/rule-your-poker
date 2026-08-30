@@ -6330,16 +6330,6 @@ export const CribbageMobileGameTable = ({
         }
       } catch { /* animation is best-effort */ }
 
-
-      // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-      if (cardPlayed) {
-        logPeggingPlay(eventCtx, actionState, newState, currentPlayerId, cardPlayed);
-      }
-      // Check for his_heels on phase transition
-      if (newState.lastEvent?.type === 'his_heels') {
-        logHisHeelsEvent(eventCtx, newState);
-      }
-      
       const immutableIntent = {
         roundId: currentRoundId,
         playerId: currentPlayerId,
@@ -6352,6 +6342,15 @@ export const CribbageMobileGameTable = ({
         { label: 'Cribbage card play' },
       );
       if (result.state) {
+        // Durable history is downstream of authority. Starting this FK-backed
+        // write before the RPC can contend with the round row locked by
+        // cribbage_apply_pegging_action and can also record a rejected replay.
+        if (result.outcome === 'applied' && cardPlayed) {
+          logPeggingPlay(eventCtx, actionState, result.state, currentPlayerId, cardPlayed);
+          if (result.state.lastEvent?.type === 'his_heels') {
+            logHisHeelsEvent(eventCtx, result.state);
+          }
+        }
         syncHandle.receiveAuthoritativeUpdate(result.state);
         setCribbageState(result.state);
       }

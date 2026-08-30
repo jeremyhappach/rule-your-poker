@@ -32,6 +32,18 @@ describe('Cribbage request ownership wiring', () => {
     );
   });
 
+  it('starts durable pegging history only after the authoritative receipt', () => {
+    const play = between('const handlePlayCard = useCallback', 'const handleGo = useCallback');
+    const authority = play.indexOf('const result = await executeReplaySafeCribbageAction(');
+    const history = play.indexOf('logPeggingPlay(');
+
+    expect(authority).toBeGreaterThan(-1);
+    expect(history).toBeGreaterThan(authority);
+    expect(play.slice(0, authority)).not.toContain('logPeggingPlay(');
+    expect(play).toContain("result.outcome === 'applied'");
+    expect(play).toContain('logPeggingPlay(eventCtx, actionState, result.state');
+  });
+
   it('routes counting cursor updates through the single-flight queue', () => {
     const counting = between(
       'const countingProgressQueueRef',
