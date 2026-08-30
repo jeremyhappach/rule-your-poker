@@ -2,7 +2,7 @@
 
 Date: 2026-08-30
 
-## Full-seam Wave 0 Cribbage rule fixtures — terminal cut passes; three latency failures retained
+## Full-seam Wave 0 Cribbage rule fixtures — latency RCA corrected; exact fixture cut passes
 
 - `e2e/fullSeam/manifest.ts` is now the versioned campaign ledger. It inventories
   all 19 branch-smoke rows, seven terminal rows, and 79 lifecycle rows, and
@@ -34,36 +34,45 @@ Date: 2026-08-30
   deterministic continuation, terminal-from-cut, real-money/terminal/profile
   rejection, private-marker redaction, and preservation of both global harness
   owners.
-- The exact published target was commit
-  `49499c482612654f7c3b86edeb1e1c9b5b957bd2`, Vercel deployment
-  `dpl_H2CYp8StobiNukmuwFa76P7AurQm`, and production bundle
-  `assets/index-D3-r3HKT.js`. Vercel reported READY, `holm357.com` and its build
-  manifest returned HTTP 200, and the post-deploy runtime-error scan was clean.
-- Exact-build observer-enabled production fake-money evidence passed only the
-  terminal His Heels row: 49.2 seconds, 89 events, five action receipts, zero
-  structural presentation violations, peer p50 2484 ms and p95/max 3551 ms.
-  Its exact fixture was consumed/cancelled once, terminal settlement and both
-  admission dispositions passed, and guarded deletion was verified.
-- Three rows completed gameplay and cleanup but failed the unmarked 6000 ms
-  peer budget, so they are failures: near double-skunk had one breach (121.9
-  seconds, 13 receipts, peer p50 2691 ms, p95/max 7730 ms); nonterminal His
-  Heels had two (120.0 seconds, 13 receipts, peer p50 1856 ms, p95/max 7803
-  ms); max pegging/counting had two (226.5 seconds, 27 receipts, peer p50 1993
-  ms, p95 6310 ms/max 8373 ms). All three reached terminal, had zero structural
-  presentation violations, and verified deletion, but those facts do not
-  override five hard-budget breaches.
-- Exact-build traces and continuous-observer evidence are retained under the
-  commit-tagged `artifacts/cribbage-wave0/playwright/crib-rule-final-*` paths.
-  Earlier pre-publication passes are calibration only and do not supersede the
-  final target failures. No RCA or product correction was attempted in this
-  fixture slice.
+- The retained latency traces showed two independent sources of false or
+  avoidable contention: production Go-race tracing was default-on and issued
+  non-deduplicated writes from both clients, and pegging history writes could
+  start before the authoritative action RPC returned. Go-race tracing is now
+  explicit opt-in, and successful applied-action history is derived from the
+  returned authoritative state after the RPC receipt. The deliberate
+  session-start peer-offline burst is labeled before its tracked click, so it
+  remains observable without becoming an unmarked budget failure.
+- Validation passed 12 focused ownership/activation/observer tests, local
+  TypeScript, the production build, and all 39 Cribbage preflight assertions.
+  The repository-prescribed `bunx tsgo --noEmit` path was unavailable on this
+  host, so the installed local `tsc --noEmit` executable supplied the clean
+  TypeScript result; no dependency was installed.
+- The exact published target is commit
+  `e8bf659772556bc3914895ba4bd0caa227bcb220` and production bundle
+  `assets/index-B0pV1cEW.js`. GitHub/Vercel reported the deployment completed
+  successfully at 2026-08-30 21:29 UTC; `holm357.com` and the public manifest
+  returned HTTP 200 and identified that exact commit.
+- Three isolated observer-enabled production fake-money rows then passed
+  concurrently with an unchanged 6000 ms unexpected-peer budget. Near
+  double-skunk completed in 71.0 seconds with 13 receipts, peer p50 1379 ms and
+  p95/max 5290 ms. Nonterminal His Heels completed in 59.9 seconds with 13
+  receipts, peer p50 830 ms and p95/max 6079 ms; its sole over-6000 sample was
+  the explicitly labeled session-start outage. Max pegging/counting completed
+  in 126.3 seconds through hand 2 with 18 receipts, peer p50 1395 ms, p95/max
+  5128 ms, eight first-hand pegging cards, and three counting targets.
+- All three rows recorded zero observer violations and zero unexpected
+  peer-budget breaches, consumed and cancelled their exact fixtures, reached
+  terminal settlement/admission, and verified guarded fake-money deletion.
+  Evidence is retained under
+  `artifacts/cribbage-latency-e8bf65977/playwright/crib-lat-e8bf-*`.
 
-This makes `cribbage.cut-and-his-heels` executable and accepts only its terminal
-variant. Near double-skunk, max pegging/counting, and nonterminal His Heels now
-have frozen latency failures needing later RCA. Wave 0 and full Cribbage
-coverage remain unaccepted. Topology/crib, complete pegging branches, counting
-order/categories, all terminal-entry phases, targets/skunks, and phase rejoins
-remain explicit missing drivers. No real-money browser session was touched.
+This accepts the near double-skunk, max pegging/counting, and nonterminal His
+Heels rows on the corrected exact production build, alongside the previously
+accepted terminal His Heels row. It is a targeted rule-fixture and latency
+checkpoint, not full Cribbage coverage: topology/crib, complete pegging
+branches, counting order/categories, all terminal-entry phases, targets/skunks,
+and phase rejoins remain explicit missing drivers. No real-money browser
+session was touched.
 
 ## Gin Rummy discard-pile rejoin lock — production smoke accepted
 

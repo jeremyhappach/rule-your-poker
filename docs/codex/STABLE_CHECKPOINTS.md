@@ -2,15 +2,19 @@
 
 ## Platform
 
-- Cribbage exact-game rule fixtures passed pre-install and deployed rollback
-  proof on 2026-08-30. Preserve fake-money/two-human/admin-participant scope,
-  private marker redaction, exact one-shot consumption, and ordinary successor
-  hands. On exact published commit `49499c482`, only terminal His Heels earned
-  the production browser checkpoint: terminal settlement, both admission
-  dispositions, five observer receipts, peer max 3551 ms, and verified cleanup.
-  Near double-skunk, max pegging/counting, and nonterminal His Heels are excluded
-  because otherwise-completing runs recorded one, two, and two hard peer-budget
-  breaches respectively; those rows still need RCA.
+- Cribbage exact-game rule fixtures and their latency RCA passed published
+  production fake-money smoke on 2026-08-30 at commit
+  `e8bf659772556bc3914895ba4bd0caa227bcb220`. Near double-skunk,
+  nonterminal His Heels, and max pegging/counting ran concurrently, reached
+  terminal, and verified fixture cancellation plus guarded session deletion.
+  Across 44 correlated actions they recorded zero observer violations and zero
+  unexpected 6000 ms peer-budget breaches; peer maxima were 5290, 6079, and
+  5128 ms respectively, with the sole over-budget sample explicitly belonging
+  to the deliberate session-start offline proof. Preserve fake-money/two-human/
+  admin-participant fixture scope, private marker redaction, exact one-shot
+  consumption, ordinary successor hands, default-off Go-race tracing,
+  post-authority history writes, and explicit expected-delay ownership. This is
+  targeted rule-fixture and latency coverage, not full Cribbage branch coverage.
 - Gin Rummy's discard-pile rejoin lock passed published production fake-money
   smoke on 2026-08-30 at commit
   `ad4ab01e078b16c2a5b671fc6575219048aafcf9`. After a route reload in the
