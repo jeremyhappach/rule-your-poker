@@ -3,7 +3,13 @@ import { test } from '../../playwright-fixture';
 import { runOfflineBurst } from '../liveness/support/crossCountryNetwork';
 import { requireTwoPlayerEnvironment } from '../liveness/support/env';
 import { expectCanonicalContinuity, waitForBothClientsInLiveGame } from '../liveness/support/livenessAssertions';
-import { blastFakeMoneySession, closeTwoClientSession, createTwoClientSession, enterDealerGameUnderChaos } from '../liveness/support/twoClientSession';
+import {
+  blastFakeMoneySession,
+  closeTwoClientSession,
+  createTwoClientSession,
+  enterDealerGameUnderChaos,
+  type TwoClientSession,
+} from '../liveness/support/twoClientSession';
 import { authoritativeDealerGameId, playDealerGameToTerminal, requestLastHand, TERMINAL_EXPECTATIONS } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
 import { BRANCH_SMOKE_MANIFEST, type Scenario, validateManifest } from './manifest';
@@ -152,6 +158,170 @@ async function exerciseCribbageInteractionSeam(
   };
 }
 
+const ginSurface = (phase: 'first-draw' | 'draw' | 'select' | 'discard') =>
+  `[data-authoritative-action-surface="gin-human-turn:${phase}"]:visible`;
+
+function ginActorLabel(session: TwoClientSession, page: Page): 'host' | 'peer' {
+  return page === session.hostPage ? 'host' : 'peer';
+}
+
+async function waitForGinActor(
+  session: TwoClientSession,
+  phase: 'first-draw' | 'draw' | 'select' | 'discard',
+): Promise<Page> {
+  const selector = ginSurface(phase);
+  await expect.poll(async () => (
+    await session.hostPage.locator(selector).count()
+    + await session.peerPage.locator(selector).count()
+  ), { timeout: 60_000, intervals: [100, 250, 500] }).toBe(1);
+  return await session.hostPage.locator(selector).count()
+    ? session.hostPage
+    : session.peerPage;
+}
+
+async function commitGinAction(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+  action: Locator,
+): Promise<number> {
+  const before = await probe.readGinProgress(session.gameId, dealerGameId);
+  await expect(action).toBeEnabled({ timeout: 30_000 });
+  await action.click({ noWaitAfter: true });
+  let actionCount = before.actionCount;
+  await expect.poll(async () => {
+    actionCount = (await probe.readGinProgress(session.gameId, dealerGameId)).actionCount;
+    return actionCount;
+  }, { timeout: 30_000, intervals: [100, 250, 500] }).toBeGreaterThan(before.actionCount);
+  return actionCount;
+}
+
+async function reloadGinActor(session: TwoClientSession, page: Page): Promise<void> {
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, 'gin-rummy');
+  await expectCanonicalContinuity(page);
+}
+
+async function clickGinPile(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+  page: Page,
+  pile: 'stock' | 'discard',
+): Promise<number> {
+  const control = page.locator(`[data-gin-pile="${pile}"][data-gin-pile-layer="button"]`);
+  await expect(control).toHaveAttribute('aria-disabled', 'false', { timeout: 30_000 });
+  return commitGinAction(session, probe, dealerGameId, control);
+}
+
+async function selectFirstLegalGinDiscard(page: Page): Promise<void> {
+  const card = page.locator('[data-gin-hand-card-key]:not(:disabled):visible').first();
+  await expect(card).toBeEnabled({ timeout: 30_000 });
+  await card.click({ noWaitAfter: true });
+  await expect(page.locator(ginSurface('discard'))).toBeVisible({ timeout: 30_000 });
+}
+
+async function exerciseGinBranchSeam(
+  scenario: Scenario,
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown> | null> {
+  if (!scenario.program.startsWith('gin-')) return null;
+
+  if (scenario.program === 'gin-nondealer-take-rejoin') {
+    let actor = await waitForGinActor(session, 'first-draw');
+    const actorBeforeReload = ginActorLabel(session, actor);
+    await reloadGinActor(session, actor);
+    actor = await waitForGinActor(session, 'first-draw');
+    const actionCount = await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      actor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Take', exact: true }),
+    );
+    return { actorBeforeReload, actorAfterReload: ginActorLabel(session, actor), actionCount };
+  }
+
+  if (scenario.program === 'gin-dealer-take-after-pass') {
+    const nonDealer = await waitForGinActor(session, 'first-draw');
+    const passActionCount = await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      nonDealer.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+    );
+    const dealer = await waitForGinActor(session, 'first-draw');
+    const takeActionCount = await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      dealer.locator(ginSurface('first-draw')).getByRole('button', { name: 'Take', exact: true }),
+    );
+    return {
+      nonDealer: ginActorLabel(session, nonDealer),
+      dealer: ginActorLabel(session, dealer),
+      passActionCount,
+      takeActionCount,
+    };
+  }
+
+  const firstActor = await waitForGinActor(session, 'first-draw');
+  const firstPassActionCount = await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    firstActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+  );
+  const secondActor = await waitForGinActor(session, 'first-draw');
+  const secondPassActionCount = await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    secondActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+  );
+  let actor = await waitForGinActor(session, 'draw');
+  const stockActionCount = await clickGinPile(session, probe, dealerGameId, actor, 'stock');
+  actor = await waitForGinActor(session, 'select');
+  await selectFirstLegalGinDiscard(actor);
+  const firstDiscardActionCount = await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    actor.locator(ginSurface('discard')).getByRole('button', { name: 'Discard', exact: true }),
+  );
+
+  actor = await waitForGinActor(session, 'draw');
+  const actorBeforeReload = ginActorLabel(session, actor);
+  await reloadGinActor(session, actor);
+  actor = await waitForGinActor(session, 'draw');
+  const discardPileActionCount = await clickGinPile(session, probe, dealerGameId, actor, 'discard');
+  actor = await waitForGinActor(session, 'select');
+  const lockedTakenDiscardCount = await actor.locator('[data-gin-hand-card-key]:disabled:visible').count();
+  expect(lockedTakenDiscardCount).toBeGreaterThanOrEqual(1);
+  await selectFirstLegalGinDiscard(actor);
+  const secondDiscardActionCount = await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    actor.locator(ginSurface('discard')).getByRole('button', { name: 'Discard', exact: true }),
+  );
+
+  return {
+    firstActor: ginActorLabel(session, firstActor),
+    secondActor: ginActorLabel(session, secondActor),
+    actorBeforeReload,
+    actorAfterReload: ginActorLabel(session, actor),
+    firstPassActionCount,
+    secondPassActionCount,
+    stockActionCount,
+    firstDiscardActionCount,
+    discardPileActionCount,
+    lockedTakenDiscardCount,
+    secondDiscardActionCount,
+  };
+}
+
 test.describe('two-human cross-country branch-smoke matrix', () => {
   for (const scenario of BRANCH_SMOKE_MANIFEST) {
     test(`${scenario.id}`, async ({ browser }, info) => {
@@ -171,6 +341,8 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         if (scenario.exerciseCribbageInteractionSeam) {
           evidence.interactionSeam = await exerciseCribbageInteractionSeam(session, probe, dealerGameId);
         }
+        const ginBranchEvidence = await exerciseGinBranchSeam(scenario, session, probe, dealerGameId);
+        if (ginBranchEvidence) evidence.ginBranch = ginBranchEvidence;
         await requestLastHand(session, probe);
         await runOfflineBurst(session.peerContext, 1_250);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);

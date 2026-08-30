@@ -1,6 +1,15 @@
 import type { DealerGameType } from '../liveness/support/twoClientSession';
 
-export type Program = 'holm-fold-fold' | 'holm-stay-fold' | 'holm-stay-stay' | '357-drop-drop' | '357-stay-stay' | 'terminal';
+export type Program =
+  | 'holm-fold-fold'
+  | 'holm-stay-fold'
+  | 'holm-stay-stay'
+  | '357-drop-drop'
+  | '357-stay-stay'
+  | 'gin-nondealer-take-rejoin'
+  | 'gin-dealer-take-after-pass'
+  | 'gin-discard-pile-rejoin'
+  | 'terminal';
 export type Scenario = {
   id: string; gameType: DealerGameType; program: Program; coverage: string[];
   legs?: number; cribbageTarget?: number; minHand?: number;
@@ -17,6 +26,9 @@ export const BRANCH_SMOKE_MANIFEST: readonly Scenario[] = [
   { id: '357-regular-and-terminal-leg', gameType: '3-5-7', program: 'terminal', legs: 2, coverage: ['regular-leg', 'leg-continuation', 'terminal-leg'] },
   { id: 'cribbage-multi-hand', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, minHand: 2, coverage: ['discard', 'cut', 'pegging', 'counting', 'next-hand', 'terminal'] },
   { id: 'cribbage-mobile-interaction', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, exerciseCribbageInteractionSeam: true, coverage: ['exact-mobile-viewport', 'deal-arrival-budget', 'discard-hit-test', 'discard-rejoin', 'pegging-rejoin', 'terminal'] },
+  { id: 'gin-first-upcard-take-rejoin', gameType: 'gin-rummy', program: 'gin-nondealer-take-rejoin', coverage: ['nondealer-takes-first-upcard', 'first-draw-rejoin', 'draw-discard', 'terminal'] },
+  { id: 'gin-dealer-upcard-after-pass', gameType: 'gin-rummy', program: 'gin-dealer-take-after-pass', coverage: ['nondealer-pass', 'dealer-takes-first-upcard', 'draw-discard', 'terminal'] },
+  { id: 'gin-discard-pile-rejoin', gameType: 'gin-rummy', program: 'gin-discard-pile-rejoin', coverage: ['both-pass', 'stock-draw', 'ordinary-discard', 'ordinary-play-rejoin', 'discard-pile-draw', 'taken-discard-lockout', 'terminal'] },
   { id: 'gin-multi-hand', gameType: 'gin-rummy', program: 'terminal', minHand: 2, coverage: ['first-draw', 'draw-discard', 'knock-or-gin', 'next-hand', 'terminal'] },
   { id: 'horses-round-flow', gameType: 'horses', program: 'terminal', coverage: ['roll', 'lock-in', 'resolution', 'terminal'] },
   { id: 'scc-round-flow', gameType: 'ship-captain-crew', program: 'terminal', coverage: ['roll', 'qualification', 'lock-in', 'resolution', 'terminal'] },
