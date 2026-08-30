@@ -16,6 +16,7 @@ const HEALTHY_TIMED_TABLE = `
       <div data-canonical-shell-timer-rail style="width:10px;height:10px"></div>
       <div data-authoritative-action-surface="holm-357-decision"><button>Stay</button></div>
       <div data-canonical-announcement-content style="width:10px;height:10px">Before</div>
+      <div data-card-anchor="opp-stack-2"><div data-canonical-card-back></div></div>
       <div data-playing-card-face data-card-id="A-spades" style="width:40px;height:60px"></div>
       <div data-playing-card-face data-card-id="K-hearts" style="width:40px;height:60px"></div>
     </div>
@@ -44,10 +45,17 @@ test('continuous observer survives two contexts and retains transient defects', 
     await hostPage.waitForTimeout(150);
 
     await hostPage.getByRole('button', { name: 'Stay' }).click();
-    await Promise.all([hostPage, peerPage].map((page) => page.evaluate(() => {
+    await hostPage.evaluate(() => {
       const announcement = document.querySelector('[data-canonical-announcement-content]');
       if (announcement) announcement.textContent = 'After';
-    })));
+    });
+    await peerPage.evaluate(() => {
+      const opponentStack = document.querySelector('[data-card-anchor="opp-stack-2"]');
+      const dealtCardBack = document.createElement('div');
+      dealtCardBack.setAttribute('data-canonical-card-back', '');
+      opponentStack?.append(dealtCardBack);
+    });
+    await peerPage.waitForTimeout(250);
     await peerPage.evaluate(() => {
       document.querySelector('[data-canonical-shell-timer-rail]')?.remove();
       document.querySelector('[data-lifecycle-branch="loaded-inner"]')
@@ -81,6 +89,7 @@ test('continuous observer survives two contexts and retains transient defects', 
     }));
     expect(action.actorProgressMs).not.toBeNull();
     expect(action.peerProgressMs).not.toBeNull();
+    expect(evidence.finalSnapshots.peer?.opponentCardBackCounts).toContain('opp-stack-2:2');
     expect(violationCodes).toContain('masked-visible-card-face');
     expect(violationCodes).toContain('timed-action-without-visible-timer');
     expect(violationCodes).toContain('dealer-setup-below-tab-rail');

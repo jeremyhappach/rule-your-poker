@@ -1,6 +1,30 @@
 # Current release and cutover state
 
-Date: 2026-08-28
+Date: 2026-08-30
+
+## Gin Rummy transition configuration and campaign oracle — production smoke pending
+
+- Gin Rummy Run It Back now submits the prior dealer game's immutable
+  committed configuration directly. It preserves ante, points target,
+  per-point value, Gin bonus, and undercut bonus, and fails closed if any field
+  is unavailable instead of substituting setup-form defaults.
+- The session client captures those Gin fields from the authoritative
+  `dealer_games.config` row while the completed configuration is live. Other
+  game setup and Run It Back paths are unchanged.
+- The transition campaign now reads both committed dealer-game configs before
+  driving successor play. Unchanged scenarios require exact equality; the Gin
+  changed-parameter lane stays at 50 points and changes only per-point value
+  from 0 to 1, so configuration defects fail immediately rather than surfacing
+  as a 45-minute gameplay timeout.
+- The continuous observer now treats opponent card-back count changes as peer
+  progress. Hidden Gin stock draws are timed when the peer receives the card,
+  rather than being misattributed to the later visible discard.
+
+Validation: 10 focused Run Back and observer unit assertions passed; the
+two-context browser observer contract passed; full TypeScript passed; and the
+production build plus its 39 Cribbage render/rejoin preflight assertions
+passed. Production fake-money Run It Back and changed-parameter smokes remain
+the acceptance gate. No real-money session is in scope.
 
 ## Cribbage action-liveness correction — production smoke accepted
 

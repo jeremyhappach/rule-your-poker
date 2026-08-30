@@ -78,6 +78,24 @@ export class TerminalSettlementProbe {
     return probe;
   }
 
+  async readDealerGameConfig(
+    dealerGameId: string,
+  ): Promise<Database['public']['Tables']['dealer_games']['Row']['config']> {
+    return withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('dealer_games')
+          .select('config')
+          .eq('id', dealerGameId)
+          .single()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read dealer-game config: ${error.message}`);
+        return data.config;
+      },
+      'Dealer-game config query',
+    );
+  }
+
   async findTerminalResult(
     gameId: string,
     dealerGameId: string,

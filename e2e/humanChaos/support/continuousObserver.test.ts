@@ -34,6 +34,7 @@ function snapshot(
     actionSurfaces: [],
     visibleTimerCount: 0,
     visibleFaceCardIds: [],
+    opponentCardBackCounts: [],
     maskedVisibleFaceCardIds: [],
     staleArtifactKeys: [],
     announcement: null,

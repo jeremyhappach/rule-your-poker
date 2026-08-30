@@ -30,6 +30,7 @@ import {
   type DealerGameSetupCommitResult,
   type DealerGameType,
 } from "@/lib/dealerGameSetupAuthority";
+import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
 
 /**
  * Every game id that can appear in dealer setup. Harness state for each id is
@@ -814,13 +815,11 @@ const DealerGameSetupInner = ({
               game_mode: previousGameConfig.cribbage_game_mode ?? 'full',
             };
           } else if (gameType === 'gin-rummy') {
-            config = {
-              ante_amount: previousGameConfig.ante_amount,
-              points_to_win: previousGameConfig.points_to_win ?? ginRummyPointsToWin,
-              per_point_value: previousGameConfig.per_point_value ?? ginRummyPerPointValue,
-              gin_bonus: previousGameConfig.gin_bonus ?? ginRummyGinBonus,
-              undercut_bonus: previousGameConfig.undercut_bonus ?? ginRummyUndercutBonus,
-            };
+            const exactGinConfig = resolveExactGinRummyRunBackConfig(previousGameConfig);
+            if (!exactGinConfig) {
+              throw new Error('The previous Gin Rummy configuration is incomplete');
+            }
+            config = exactGinConfig;
           } else {
             config = { ante_amount: previousGameConfig.ante_amount || 2 };
           }
@@ -1159,9 +1158,50 @@ const DealerGameSetupInner = ({
     }
   };
 
-  const handleRunBack = () => {
+  const handleRunBack = async () => {
     if (previousGameType && previousGameConfig) {
       if (previousGameType === 'gin-rummy') {
+        if (isSubmitting || hasSubmittedRef.current) return;
+        const exactGinConfig = resolveExactGinRummyRunBackConfig(previousGameConfig);
+        if (!exactGinConfig) {
+          toast.error('Previous Gin Rummy settings are unavailable. Choose the game and settings again.');
+          return;
+        }
+
+        resetStartupFlight('Gin Run It Back submit start');
+        recordStartupFlight('PHASE TIMELINE', 'Gin Run It Back exact config submit start', {
+          file: 'src/components/DealerGameSetup.tsx',
+          function: 'handleRunBack',
+          caller: 'Run Back button',
+          gameId,
+          gameType: previousGameType,
+          dealerPlayerId,
+        });
+        setIsSubmitting(true);
+        hasSubmittedRef.current = true;
+        try {
+          const result = await commitSetup(
+            'gin-rummy',
+            exactGinConfig,
+            'manual-authoritative-run-back',
+          );
+          recordStartupFlight('STATUS TIMELINE', 'Gin Run It Back exact config committed', {
+            file: 'src/components/DealerGameSetup.tsx',
+            function: 'handleRunBack',
+            caller: 'configure_dealer_game result',
+            gameId,
+            gameType: previousGameType,
+            dealerGameId: result.dealer_game.id,
+            status: result.game.status,
+          });
+          console.log('[DEALER SETUP] ✅ Gin Run It Back atomic config complete:', result.dealer_game.id);
+        } catch (error) {
+          console.error('[DEALER SETUP] Gin Run It Back atomic setup failed:', error);
+          hasSubmittedRef.current = false;
+          setIsSubmitting(false);
+          toast.error(dealerSetupFailureMessage(error));
+        }
+        return;
       }
 
       // Use previous config and submit immediately

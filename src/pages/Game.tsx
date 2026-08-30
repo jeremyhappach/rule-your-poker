@@ -367,6 +367,7 @@ import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { beginCribbageDealerSelection } from "@/lib/cribbageAuthority";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
+import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
 import {
   StartupFlightRecorderOverlay,
@@ -1691,6 +1692,8 @@ const Game = () => {
     if (!game.config_complete) return;
     const gameType = game.game_type ?? null;
     if (!gameType) return;
+    const dealerGameId = game.current_game_uuid ?? null;
+    let cancelled = false;
 
     const cfg: PreviousGameConfig = {
       game_type: gameType,
@@ -1726,15 +1729,59 @@ const Game = () => {
       }
     }
 
-    const key = `${game.id}:${gameType}:${JSON.stringify(cfg)}`;
-    if (lastCapturedConfigKeyRef.current === key) return;
-    lastCapturedConfigKeyRef.current = key;
+    const captureConfig = (exactConfig: PreviousGameConfig) => {
+      if (cancelled) return;
+      const key = `${game.id}:${dealerGameId ?? 'no-dealer-game'}:${gameType}:${JSON.stringify(exactConfig)}`;
+      if (lastCapturedConfigKeyRef.current === key) return;
+      lastCapturedConfigKeyRef.current = key;
 
-    setPreviousGameConfig(cfg);
-    setPreviousGameConfigGameId(game.id);
-    setSessionGameConfigs((prev) => ({ ...prev, [gameType]: cfg }));
+      setPreviousGameConfig(exactConfig);
+      setPreviousGameConfigGameId(game.id);
+      setSessionGameConfigs((prev) => ({ ...prev, [gameType]: exactConfig }));
+    };
+
+    if (gameType === 'gin-rummy') {
+      if (!dealerGameId) {
+        console.error('[RUN BACK] Cannot capture Gin config without an authoritative dealer-game id');
+        return;
+      }
+
+      const captureExactGinConfig = async () => {
+        const { data, error } = await supabase
+          .from('dealer_games')
+          .select('id, config')
+          .eq('id', dealerGameId)
+          .eq('session_id', game.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error || !data) {
+          console.error('[RUN BACK] Failed to read the committed Gin dealer-game config:', error);
+          return;
+        }
+
+        const exactGinConfig = resolveExactGinRummyRunBackConfig(data.config);
+        if (!exactGinConfig) {
+          console.error('[RUN BACK] Committed Gin dealer-game config is incomplete:', {
+            dealerGameId,
+          });
+          return;
+        }
+        captureConfig({ ...cfg, ...exactGinConfig });
+      };
+
+      void captureExactGinConfig();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    captureConfig(cfg);
+    return () => {
+      cancelled = true;
+    };
   }, [
     game?.id,
+    game?.current_game_uuid,
     game?.config_complete,
     game?.game_type,
     game?.ante_amount,

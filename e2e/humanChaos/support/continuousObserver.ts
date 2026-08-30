@@ -20,6 +20,7 @@ export type ChaosDomSnapshot = {
   actionSurfaces: string[];
   visibleTimerCount: number;
   visibleFaceCardIds: string[];
+  opponentCardBackCounts: string[];
   maskedVisibleFaceCardIds: string[];
   staleArtifactKeys: string[];
   announcement: string | null;
@@ -425,6 +426,21 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
     const visibleFaceCardIds = visibleFaces
       .map((node) => node.getAttribute('data-card-id') ?? node.textContent?.trim() ?? '<unknown-face>')
       .sort();
+    const opponentCardBackCountByAnchor = new Map<string, number>();
+    for (const anchor of Array.from(
+      document.querySelectorAll<HTMLElement>('[data-card-anchor^="opp-stack-"]'),
+    )) {
+      const key = anchor.getAttribute('data-card-anchor');
+      if (!key) continue;
+      const count = anchor.querySelectorAll('[data-canonical-card-back]').length;
+      opponentCardBackCountByAnchor.set(
+        key,
+        (opponentCardBackCountByAnchor.get(key) ?? 0) + count,
+      );
+    }
+    const opponentCardBackCounts = Array.from(opponentCardBackCountByAnchor.entries())
+      .map(([key, count]) => `${key}:${count}`)
+      .sort();
     const maskedVisibleFaceCardIds = visibleFaceCardIds.filter((cardId) => cardId.includes('?'));
     const announcementNode = visibleNodes('[data-canonical-announcement-content]')[0] ?? null;
     const announcement = announcementNode?.textContent?.trim() || null;
@@ -478,6 +494,7 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       roundStatus,
       actionSurfaces,
       visibleFaceCardIds,
+      opponentCardBackCounts,
       announcement,
       setupStep,
       flyingCardCount,
@@ -513,6 +530,7 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       actionSurfaces,
       visibleTimerCount,
       visibleFaceCardIds,
+      opponentCardBackCounts,
       maskedVisibleFaceCardIds,
       staleArtifactKeys,
       announcement,

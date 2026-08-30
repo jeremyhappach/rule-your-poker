@@ -55,13 +55,50 @@ async function configureChangedParameters(gameType: DealerGameType, surface: Loc
       await surface.locator('input[type="number"]').fill('2');
       return;
     case 'gin-rummy':
-      await surface.getByRole('button', { name: /Standard.*100 pts/ }).click();
+      await surface.getByRole('button', { name: /Short.*50 pts/ }).click();
+      await surface
+        .getByText('Per-Point Value ($)', { exact: true })
+        .locator('..')
+        .locator('input')
+        .fill('1');
       return;
     case 'horses':
     case 'ship-captain-crew':
     case 'yahtzee':
       await surface.locator('#ante-simple').fill('2');
       return;
+  }
+}
+
+function configRecord(config: unknown): Record<string, unknown> {
+  expect(config).not.toBeNull();
+  expect(Array.isArray(config)).toBe(false);
+  expect(typeof config).toBe('object');
+  return config as Record<string, unknown>;
+}
+
+function expectCommittedSuccessorConfig(
+  scenario: ChaosScenario,
+  sourceConfig: unknown,
+  successorConfig: unknown,
+): void {
+  if (scenario.variant === 'unchanged') {
+    expect(successorConfig).toEqual(sourceConfig);
+    return;
+  }
+  if (scenario.variant !== 'changed') return;
+
+  expect(successorConfig).not.toEqual(sourceConfig);
+  if (scenario.target === 'gin-rummy') {
+    const sourceGinConfig = configRecord(sourceConfig);
+    expect(sourceGinConfig).toMatchObject({
+      points_to_win: 50,
+      per_point_value: 0,
+    });
+    expect(configRecord(successorConfig)).toEqual({
+      ...sourceGinConfig,
+      per_point_value: 1,
+    });
   }
 }
 
@@ -143,6 +180,8 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       });
       const sourceDealerGameId = await waitForBothClientsAtDealerGame(session, source);
       evidence.sourceDealerGameId = sourceDealerGameId;
+      const sourceConfig = await probe.readDealerGameConfig(sourceDealerGameId);
+      evidence.sourceConfig = sourceConfig;
       await waitForPlayableTransitionAction(session, source);
       await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
 
@@ -150,6 +189,9 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       const successorDealerGameId = await waitForBothClientsAtDealerGame(session, target);
       evidence.successorDealerGameId = successorDealerGameId;
       expect(successorDealerGameId).not.toBe(sourceDealerGameId);
+      const successorConfig = await probe.readDealerGameConfig(successorDealerGameId);
+      evidence.successorConfig = successorConfig;
+      expectCommittedSuccessorConfig(scenario, sourceConfig, successorConfig);
       await runOfflineBurst(session.peerContext, 1_250);
       await Promise.all([
         expectCanonicalContinuity(session.hostPage),
