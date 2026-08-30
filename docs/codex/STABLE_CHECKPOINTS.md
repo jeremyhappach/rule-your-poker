@@ -2,6 +2,18 @@
 
 ## Platform
 
+- Gin Rummy's discard-pile rejoin lock passed published production fake-money
+  smoke on 2026-08-30 at commit
+  `ad4ab01e078b16c2a5b671fc6575219048aafcf9`. After a route reload in the
+  exact discard phase, the card just taken from the discard pile remained the
+  one disabled card; ordinary play continued to terminal hand 3. All 119
+  actions had observer receipts, with zero presentation violations and no
+  unmarked 6000 ms peer-budget breach (peer p95 3007 ms), and cleanup was
+  verified. Preserve the authority-derived `drawSource` plus exact-player
+  `lastAction` policy at selection, disabled-control, and submit boundaries;
+  do not restore a local presentation latch as the rule owner. Stock draws and
+  layoff remain unaffected. This is targeted rule/rejoin coverage, not full Gin
+  branch coverage.
 - Gin Rummy live-action latency and applicable deadline seams passed published
   production fake-money coverage on 2026-08-30 at commit
   `f11c8ec552d949d3c66bed00b0dd75951046c6a6`. The changed-parameter

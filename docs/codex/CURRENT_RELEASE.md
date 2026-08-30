@@ -2,6 +2,41 @@
 
 Date: 2026-08-30
 
+## Gin Rummy discard-pile rejoin lock — production smoke accepted
+
+- The server already rejected discarding the card just taken from the discard
+  pile, but the hand UI derived its disabled card only from a local
+  draw-transition presentation latch. A reload mounted directly in the discard
+  phase, so that latch was absent and the illegal card appeared selectable.
+- The client now derives the one forbidden rediscard from the authoritative
+  private Gin projection: playing/discard phase, exact current player,
+  `drawSource = discard`, and that player's unmasked `draw_discard` last action.
+  The same policy guards card selection, the disabled control, and discard
+  submission. The local drawn-card latch remains presentation-only; stock draws
+  remain legal to discard, and layoff, server rules, settlement, and financial
+  behavior are unchanged.
+- The branch-smoke matrix now has explicit first-upcard-take, dealer-upcard-
+  after-pass, discard-pile-rejoin, and multi-hand Gin rows. Earlier production
+  runs passed the first-upcard, dealer-upcard, and multi-hand branches; the
+  discard-pile row supplied the frozen repro for this correction.
+
+Validation: 33 focused discard-policy, presentation-identity, and Gin gameplay
+assertions passed; the exact Playwright row was discovered; TypeScript passed;
+and the production build plus its 39 Cribbage preflight assertions passed.
+Published commit `ad4ab01e078b16c2a5b671fc6575219048aafcf9` served as
+bundle `assets/index-BmWl12Ik.js` and passed the isolated production fake-money
+`gin-discard-pile-rejoin` row in 5.1 minutes. The scenario proved both opening
+passes, an automatic stock draw, ordinary stock draw/discard, route reload,
+discard-pile draw, exactly one disabled taken card, continued play, and terminal
+settlement at hand 3. All 119 observed actions had correlated evidence; RPC p95
+was 987 ms, actor p95 94 ms, and peer p95 3007 ms. There were zero presentation
+violations and zero unmarked 6000 ms peer-budget breaches; the one deliberate
+request-timeout recovery was labeled separately. Guarded cleanup of fake-money
+game `1edef64c-e8b5-4107-8fea-2102811e61d0` was verified. Evidence is under
+`artifacts/gin-discard-lock-ad4ab01e0/gin_discard_rejoin_ad4ab01e0_1`.
+No real-money session was touched. This accepts the targeted rule/rejoin seam,
+not complete Gin rule-branch coverage.
+
 ## Gin Rummy live-action latency correction — production campaign accepted
 
 - Production transition evidence isolated three competing read owners around
