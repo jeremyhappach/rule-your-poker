@@ -14,6 +14,8 @@ export type Scenario = {
   id: string; gameType: DealerGameType; program: Program; coverage: string[];
   legs?: number; cribbageTarget?: number; minHand?: number;
   exerciseCribbageInteractionSeam?: boolean;
+  cribbageFixtureProfile?: 'near_double_skunk' | 'max_pegging_fan' | 'perpetual_heels';
+  cribbageOpeningPhase?: 'pegging' | 'complete';
 };
 
 /** The one authoritative inventory for the browser branch-smoke matrix. */
@@ -26,6 +28,10 @@ export const BRANCH_SMOKE_MANIFEST: readonly Scenario[] = [
   { id: '357-regular-and-terminal-leg', gameType: '3-5-7', program: 'terminal', legs: 2, coverage: ['regular-leg', 'leg-continuation', 'terminal-leg'] },
   { id: 'cribbage-multi-hand', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, minHand: 2, coverage: ['discard', 'cut', 'pegging', 'counting', 'next-hand', 'terminal'] },
   { id: 'cribbage-mobile-interaction', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, exerciseCribbageInteractionSeam: true, coverage: ['exact-mobile-viewport', 'deal-arrival-budget', 'discard-hit-test', 'discard-rejoin', 'pegging-rejoin', 'terminal'] },
+  { id: 'cribbage-near-double-skunk', gameType: 'cribbage', program: 'terminal', cribbageFixtureProfile: 'near_double_skunk', cribbageOpeningPhase: 'pegging', coverage: ['exact-game-fixture', 'near-target-opening', 'double-skunk-settlement', 'terminal'] },
+  { id: 'cribbage-max-pegging-fan', gameType: 'cribbage', program: 'terminal', cribbageTarget: 61, cribbageFixtureProfile: 'max_pegging_fan', cribbageOpeningPhase: 'pegging', coverage: ['exact-game-fixture', 'deterministic-first-hand', 'pair-triple-quad-pegging-fan', 'counting-plan', 'terminal'] },
+  { id: 'cribbage-his-heels-nonterminal', gameType: 'cribbage', program: 'terminal', cribbageTarget: 31, cribbageFixtureProfile: 'perpetual_heels', cribbageOpeningPhase: 'pegging', coverage: ['exact-game-fixture', 'his-heels', 'nonterminal-cut', 'continued-pegging', 'terminal'] },
+  { id: 'cribbage-his-heels-terminal', gameType: 'cribbage', program: 'terminal', cribbageTarget: 2, cribbageFixtureProfile: 'perpetual_heels', cribbageOpeningPhase: 'complete', coverage: ['exact-game-fixture', 'his-heels', 'terminal-from-cut', 'settlement'] },
   { id: 'gin-first-upcard-take-rejoin', gameType: 'gin-rummy', program: 'gin-nondealer-take-rejoin', coverage: ['nondealer-takes-first-upcard', 'first-draw-rejoin', 'draw-discard', 'terminal'] },
   { id: 'gin-dealer-upcard-after-pass', gameType: 'gin-rummy', program: 'gin-dealer-take-after-pass', coverage: ['nondealer-pass', 'dealer-takes-first-upcard', 'draw-discard', 'terminal'] },
   { id: 'gin-discard-pile-rejoin', gameType: 'gin-rummy', program: 'gin-discard-pile-rejoin', coverage: ['both-pass', 'stock-draw', 'ordinary-discard', 'ordinary-play-rejoin', 'discard-pile-draw', 'taken-discard-lockout', 'terminal'] },

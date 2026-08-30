@@ -2,10 +2,10 @@
 
 Date: 2026-08-30
 
-## Full-seam Wave 0 ledger and Cribbage forced-tie fixture — database gate accepted
+## Full-seam Wave 0 Cribbage rule fixtures — three production rows pass, one latency failure retained
 
 - `e2e/fullSeam/manifest.ts` is now the versioned campaign ledger. It inventories
-  all 15 branch-smoke rows, seven terminal rows, and 79 lifecycle rows, and
+  all 19 branch-smoke rows, seven terminal rows, and 79 lifecycle rows, and
   separately locks all 79 rule requirements from the gauntlet plan. Missing
   rule drivers stay explicit; they are not counted as coverage.
 - The formerly blocked `cribbage-dealer-draw-forced-tie-rejoin` row now uses an
@@ -19,11 +19,40 @@ Date: 2026-08-30
   exact-game isolation, forced tie and winner, duplicate/replay, continuation
   into the first hand, late replay, expiry, cancellation, and preservation of
   the global harness gate. Contract tests and TypeScript also pass.
+- Migration `20260830213000_cribbage_rule_branch_harness.sql` is installed on
+  the owned production project. It exposes the three existing authoritative
+  profiles (`near_double_skunk`, `max_pegging_fan`, and `perpetual_heels`) only
+  through expiring, exact-game, fake-money, two-active-human requests. The
+  authenticated admin participant owns arm/get/cancel; the private first-hand
+  consumer atomically disarms the request. The campaign marker is removed from
+  every public/projected state, successor hands are ordinary, global
+  `harnesses_mode` and `game_defaults.debug_harness` are unchanged, and all
+  real-money requests fail closed.
+- The new rollback proof passed before installation and again against the
+  deployed definitions. It covers winner, dealer-draw tie compatibility,
+  duplicate/replay, late replay, authorization, exact-game isolation,
+  deterministic continuation, terminal-from-cut, real-money/terminal/profile
+  rejection, private-marker redaction, and preservation of both global harness
+  owners.
+- Observer-enabled production fake-money rows passed for near double-skunk in
+  1.6 minutes (seven action receipts, peer p95/max 3767 ms), max pegging/counting
+  fan in 3.1 minutes (22 receipts, peer p95 3516 ms/max 4250 ms), and terminal
+  His Heels in 1.2 minutes (five receipts, peer p95/max 3243 ms). Each fixture
+  was consumed once and cancelled, each game settled, Session Ended/lobby
+  admission passed, and guarded deletion was verified.
+- The nonterminal His Heels row reached terminal and cleaned up, but it remains
+  a failed row: one pegging action (`peer-1788122678747-3`) took 4577 ms in the
+  action RPC and 6565 ms to peer progress, exceeding the unmarked 6000 ms hard
+  budget. Its 13-receipt peer p50 was 1976 ms. The trace and continuous-observer
+  evidence are retained under
+  `artifacts/cribbage-wave0/playwright/crib-rule-obs-b-heels-20260830`; no RCA
+  or product correction was attempted in this fixture slice.
 
-This closes the missing Cribbage lifecycle fixture, not Wave 0 as a whole and
-not browser coverage. The production browser matrix remains held until every
-required rule driver, deterministic fault schedule, identity topology, and
-real-money rollback-proof row is present and conclusive.
+This makes `cribbage.cut-and-his-heels` executable and proves its terminal
+variant, but does not accept the nonterminal latency seam, Wave 0 as a whole,
+or full Cribbage coverage. Topology/crib, complete pegging branches, counting
+order/categories, all terminal-entry phases, targets/skunks, and phase rejoins
+remain explicit missing drivers. No real-money browser session was touched.
 
 ## Gin Rummy discard-pile rejoin lock — production smoke accepted
 

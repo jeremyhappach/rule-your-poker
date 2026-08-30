@@ -1493,3 +1493,18 @@ the caller-specific current projection, the client submits that intent directly
 instead of inserting a separate state-read preflight. Bounded retries reuse the
 same immutable identity. Presentation-only progress writes are single-flight and
 coalesced so they cannot congest authoritative lifecycle actions.
+
+## D-107 - Rare-rule fixtures are exact-game private authority inputs
+
+A production fake-money rule fixture may select an existing authoritative rule
+profile only when its request is keyed to one session UUID, armed by an admin
+who is an active participant, bounded to the required human topology, expiring,
+and atomically consumed once by the existing database state owner. Real-money,
+terminal, stale, malformed, and cross-game requests fail closed.
+
+The consumed profile may live in private state only for the hand that needs it.
+Public/projected state strips the campaign marker, ordinary successor hands do
+not inherit it, and neither the global harness gate nor configured global
+profile is changed. Browser evidence must prove consumption and explicit
+cancellation/cleanup; deterministic gameplay completion cannot override an
+unmarked observer-budget breach.

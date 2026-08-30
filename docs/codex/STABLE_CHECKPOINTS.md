@@ -2,6 +2,15 @@
 
 ## Platform
 
+- Cribbage exact-game rule fixtures passed pre-install and deployed rollback
+  proof on 2026-08-30. Observer-enabled production fake-money rows passed near
+  double-skunk, max pegging/counting fan, and terminal His Heels with zero
+  presentation violations, no unmarked 6000 ms peer breach, exact one-shot
+  consumption/cancellation, terminal settlement, and verified cleanup. Preserve
+  fake-money/two-human/admin-participant scope, private marker redaction, and
+  ordinary successor hands. Nonterminal His Heels is deliberately excluded
+  from this checkpoint because one otherwise-completing run recorded 6565 ms
+  peer progress; that row still needs RCA.
 - Gin Rummy's discard-pile rejoin lock passed published production fake-money
   smoke on 2026-08-30 at commit
   `ad4ab01e078b16c2a5b671fc6575219048aafcf9`. After a route reload in the

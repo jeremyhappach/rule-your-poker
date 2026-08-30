@@ -3,7 +3,7 @@ import { HUMAN_CHAOS_MANIFEST } from '../humanChaos/manifest';
 import type { DealerGameType } from '../liveness/support/twoClientSession';
 import { ALL_REAL_MONEY_GAME_TYPES } from '../../src/lib/realMoneyLivenessContract';
 
-export const FULL_SEAM_MANIFEST_VERSION = 1 as const;
+export const FULL_SEAM_MANIFEST_VERSION = 2 as const;
 
 export type FullSeamGame = 'shared' | DealerGameType;
 export type FullSeamScenarioSource = 'branch-smoke' | 'terminal' | 'human-chaos';
@@ -136,7 +136,10 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
     'lifecycle/cribbage-dealer-draw-forced-tie-rejoin',
   ], { fixture: 'cribbage-dealer-draw-tie-once' }),
   req('cribbage.topologies-and-crib', 'cribbage', 1, 'Two-, three-, and four-human discard and crib construction are exact.', [], { topology: 'variable-human' }),
-  req('cribbage.cut-and-his-heels', 'cribbage', 1, 'Cut and His Heels presentation pass in nonterminal and terminal hands.'),
+  req('cribbage.cut-and-his-heels', 'cribbage', 1, 'Cut and His Heels presentation pass in nonterminal and terminal hands.', [
+    'branch/cribbage-his-heels-nonterminal',
+    'branch/cribbage-his-heels-terminal',
+  ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.pegging-branches', 'cribbage', 1, 'Pegging covers 15, 31, pair through quadruple, runs, Go, last card, blocked player, and reset without double-scoring 31.'),
   req('cribbage.counting-order', 'cribbage', 1, 'Counting order is nondealer, dealer, then crib.'),
   req('cribbage.counting-categories', 'cribbage', 1, 'Counting covers fifteens, pairs, run multiplicity, flush boundaries, and nobs.'),

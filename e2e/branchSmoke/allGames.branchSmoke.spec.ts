@@ -76,7 +76,10 @@ async function selectTwoAndReadDiscardHit(page: Page): Promise<DiscardHitReceipt
   const cards = page.locator('[data-cribbage-hand-card-key]:visible');
   const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
   await cards.nth(0).click();
-  await cards.nth(1).click();
+  await expect(page.locator('[data-cribbage-card-selected="1"]:visible')).toHaveCount(1);
+  await page.locator(
+    '[data-cribbage-hand-card-key]:not([data-cribbage-card-selected="1"]):visible',
+  ).first().click();
   await expect(page.locator('[data-cribbage-card-selected="1"]:visible')).toHaveCount(2);
   await expect(surface).toHaveAccessibleName(/Send to Crib \(2\/2\)/);
   await expect(surface).toBeEnabled();
@@ -108,6 +111,63 @@ async function discardSelectedCards(page: Page): Promise<void> {
   const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
   await surface.click({ timeout: 15_000 });
   await expect(surface).toBeHidden({ timeout: 6_000 });
+}
+
+type CribbageBranchState = {
+  phase?: string;
+  cutCard?: { rank?: string; suit?: string } | null;
+  lastEvent?: { type?: string } | null;
+  playerStates?: Record<string, { pegScore?: number }>;
+  pegging?: { playedCards?: unknown[] };
+  countingPlan?: { targets?: unknown[] };
+};
+
+async function exerciseCribbageRuleFixtureOpening(
+  scenario: Scenario,
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown> | null> {
+  const profile = scenario.cribbageFixtureProfile;
+  if (!profile) return null;
+
+  for (const page of [session.hostPage, session.peerPage]) {
+    await waitForSixCribbageCards(page);
+    await selectTwoAndReadDiscardHit(page);
+    const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
+    await surface.click({ timeout: 15_000 });
+    await expect(page.locator('[data-cribbage-hand-card-key]:visible')).toHaveCount(4, {
+      timeout: 30_000,
+    });
+  }
+  let state: CribbageBranchState | null = null;
+  await expect.poll(async () => {
+    state = await probe.readCribbageRoundState(session.gameId, dealerGameId, 1) as CribbageBranchState | null;
+    return state?.phase ?? null;
+  }, { timeout: 60_000, intervals: [100, 250, 500] }).toBe(scenario.cribbageOpeningPhase);
+  if (!state) throw new Error(`Missing first-hand evidence for ${scenario.id}`);
+  expect(Object.prototype.hasOwnProperty.call(state, 'campaignHarnessProfile')).toBe(false);
+
+  const scores = Object.values(state.playerStates ?? {})
+    .map((player) => Number(player.pegScore ?? 0))
+    .sort((left, right) => left - right);
+  if (profile === 'near_double_skunk') expect(scores).toEqual([10, 119]);
+  if (profile === 'max_pegging_fan') {
+    expect(state.cutCard).toEqual({ rank: '4', suit: 'spades', value: 4 });
+  }
+  if (profile === 'perpetual_heels') {
+    expect(state.cutCard?.rank).toBe('J');
+    expect(state.lastEvent?.type).toBe('his_heels');
+  }
+
+  return {
+    profile,
+    phase: state.phase,
+    cutCard: state.cutCard,
+    lastEvent: state.lastEvent,
+    scores,
+    privateMarkerExposed: false,
+  };
 }
 
 async function exerciseCribbageInteractionSeam(
@@ -346,11 +406,48 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       const evidence: Record<string, unknown> = { scenario: scenario.id, coverage: scenario.coverage, status: 'started' };
       let primaryError: unknown = null;
       let teardownFailure: AggregateError | null = null;
+      let cribbageFixtureArmed = false;
       try {
+        if (scenario.cribbageFixtureProfile) {
+          const { data, error } = await session.cleanupClient.rpc(
+            'arm_cribbage_rule_branch_harness' as never,
+            {
+              p_game_id: session.gameId,
+              p_profile: scenario.cribbageFixtureProfile,
+              p_ttl_seconds: 600,
+            } as never,
+          );
+          if (error || (data as { outcome?: string } | null)?.outcome !== 'armed') {
+            throw new Error(
+              `Could not arm Cribbage rule fixture: ${error?.message ?? JSON.stringify(data)}`,
+            );
+          }
+          cribbageFixtureArmed = true;
+          evidence.fixtureArm = data;
+        }
         await enterDealerGameUnderChaos(session, scenario.gameType, { configure: (c) => configure(scenario, c) });
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
         const dealerGameId = await authoritativeDealerGameId(session);
         evidence.dealerGameId = dealerGameId;
+        if (cribbageFixtureArmed) {
+          const { data, error } = await session.cleanupClient.rpc(
+            'get_cribbage_rule_branch_harness' as never,
+            { p_game_id: session.gameId } as never,
+          );
+          const status = data as { armed?: boolean; consumedAt?: string | null; profile?: string } | null;
+          if (
+            error
+            || status?.armed !== false
+            || !status?.consumedAt
+            || status.profile !== scenario.cribbageFixtureProfile
+          ) {
+            throw new Error(
+              `Cribbage rule fixture was not consumed exactly once: `
+              + `${error?.message ?? JSON.stringify(status)}`,
+            );
+          }
+          evidence.fixtureStatus = status;
+        }
         if (scenario.exerciseCribbageInteractionSeam) {
           evidence.interactionSeam = await exerciseCribbageInteractionSeam(session, probe, dealerGameId);
         }
@@ -360,9 +457,32 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         await runOfflineBurst(session.peerContext, 1_250);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
         await branch(scenario, session.hostPage, session.peerPage);
+        const cribbageFixtureOpening = await exerciseCribbageRuleFixtureOpening(
+          scenario,
+          session,
+          probe,
+          dealerGameId,
+        );
+        if (cribbageFixtureOpening) evidence.cribbageFixtureOpening = cribbageFixtureOpening;
         const result = await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId);
         evidence.resultId = result.id;
         evidence.handNumber = result.hand_number;
+        if (scenario.cribbageFixtureProfile === 'near_double_skunk') {
+          expect(result.winning_hand_description).toContain('Double-Skunk!');
+        }
+        if (scenario.cribbageFixtureProfile === 'max_pegging_fan') {
+          const finalFirstHand = await probe.readCribbageRoundState(
+            session.gameId,
+            dealerGameId,
+            1,
+          ) as CribbageBranchState | null;
+          expect(finalFirstHand?.pegging?.playedCards).toHaveLength(8);
+          expect(finalFirstHand?.countingPlan?.targets?.length ?? 0).toBeGreaterThanOrEqual(3);
+          evidence.firstHandFinal = {
+            playedCardCount: finalFirstHand?.pegging?.playedCards?.length ?? 0,
+            countingTargetCount: finalFirstHand?.countingPlan?.targets?.length ?? 0,
+          };
+        }
         if (scenario.minHand) expect(result.hand_number).toBeGreaterThanOrEqual(scenario.minHand);
         await session.peerPage.close();
         session.peerPage = await session.peerContext.newPage();
@@ -398,6 +518,22 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           ]);
         } catch (error) {
           teardownErrors.push(error);
+        }
+        if (cribbageFixtureArmed) {
+          try {
+            const { data, error } = await session.cleanupClient.rpc(
+              'cancel_cribbage_rule_branch_harness' as never,
+              { p_game_id: session.gameId } as never,
+            );
+            if (error || (data as { outcome?: string } | null)?.outcome !== 'cancelled') {
+              throw new Error(
+                `Could not close Cribbage rule fixture: ${error?.message ?? JSON.stringify(data)}`,
+              );
+            }
+            evidence.fixtureCleanup = data;
+          } catch (error) {
+            teardownErrors.push(error);
+          }
         }
         try {
           evidence.cleanup = await blastFakeMoneySession(session);

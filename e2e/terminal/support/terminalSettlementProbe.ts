@@ -209,6 +209,31 @@ export class TerminalSettlementProbe {
     };
   }
 
+  async readCribbageRoundState(
+    gameId: string,
+    dealerGameId: string,
+    handNumber: number,
+  ): Promise<Record<string, unknown> | null> {
+    return withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('rounds')
+          .select('cribbage_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .eq('hand_number', handNumber)
+          .maybeSingle()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read Cribbage round state: ${error.message}`);
+        const state = data?.cribbage_state;
+        return state && typeof state === 'object' && !Array.isArray(state)
+          ? state as Record<string, unknown>
+          : null;
+      },
+      'Cribbage round-state query',
+    );
+  }
+
   async readGinProgress(
     gameId: string,
     dealerGameId: string,

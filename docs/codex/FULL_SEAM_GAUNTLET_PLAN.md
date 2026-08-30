@@ -345,7 +345,7 @@ campaign, never retroactively after a failure.
 
 1. Convert every requirement in this document into the single executable
    ledger and validate uniqueness/completeness.
-2. Deduplicate the existing 15 branch-smoke, seven terminal, and 79 lifecycle
+2. Deduplicate the current 19 branch-smoke, seven terminal, and 79 lifecycle
    entries by exact scenario identity, not by label.
 3. Build account-scoped, one-shot fake-money fixtures for rare rule outcomes,
    beginning with the missing Cribbage forced tie.
@@ -359,9 +359,14 @@ campaign, never retroactively after a failure.
 No browser matrix starts while any Wave 0 row is missing or inconclusive.
 
 Current Wave 0 evidence (2026-08-30): `e2e/fullSeam/manifest.ts` inventories
-101 declared executable scenarios (15 branch, seven terminal, 79 lifecycle)
+105 declared executable scenarios (19 branch, seven terminal, 79 lifecycle)
 and locks all 79 rule requirements with explicit driver/disposition fields.
-The Cribbage forced-tie fixture and its contract/rollback proofs are complete.
+The Cribbage forced-tie fixture plus the exact-game near-double-skunk,
+max-pegging-fan, and His Heels fixtures have complete contract/rollback proof.
+Observer-enabled production runs passed the near-double-skunk,
+max-pegging/counting, and terminal His Heels rows. Nonterminal His Heels reached
+terminal but failed one unmarked 6565 ms peer-progress receipt against the
+6000 ms budget, so it remains retained failure evidence rather than a pass.
 Missing rule drivers and remaining fault-schedule, topology, and real-money
 proof rows remain visible in the ledger, so the browser hold remains active.
 
