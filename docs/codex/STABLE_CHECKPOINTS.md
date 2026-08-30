@@ -2,6 +2,14 @@
 
 ## Platform
 
+- Gin Rummy Run It Back exact-config ownership passed published production
+  fake-money smoke on 2026-08-30 at commit
+  `9b7b70c13726e836d63afcac83930bb47f9bdc86`. Source and successor preserved
+  the identical 50-point configuration through terminal settlement; all 486
+  actions had complete RPC/actor/peer receipts, with zero observer violations
+  and no 6000 ms breach. Preserve the immutable `dealer_games.config` capture,
+  exact five-field Run Back commit, and fail-closed missing-config behavior;
+  setup-form defaults must never substitute for completed Gin configuration.
 - Cribbage request-owned pegging liveness passed published production smoke on
   2026-08-29 at commit `8cc8275fe5646a26ed4183e222702923067ed0d6`.
   Two concurrent isolated fake-money clients at 393x662 and 342x576 each

@@ -2,7 +2,7 @@
 
 Date: 2026-08-30
 
-## Gin Rummy transition configuration and campaign oracle — production smoke pending
+## Gin Rummy transition configuration and campaign oracle — Run Back smoke accepted
 
 - Gin Rummy Run It Back now submits the prior dealer game's immutable
   committed configuration directly. It preserves ante, points target,
@@ -23,8 +23,24 @@ Date: 2026-08-30
 Validation: 10 focused Run Back and observer unit assertions passed; the
 two-context browser observer contract passed; full TypeScript passed; and the
 production build plus its 39 Cribbage render/rejoin preflight assertions
-passed. Production fake-money Run It Back and changed-parameter smokes remain
-the acceptance gate. No real-money session is in scope.
+passed.
+
+Published production commit `9b7b70c13726e836d63afcac83930bb47f9bdc86`
+then passed the isolated `gin-rummy-run-it-back-unchanged` fake-money smoke.
+The source and successor committed the exact same 50-point Gin configuration,
+the successor reached terminal settlement, all 486 actions recorded RPC,
+actor, and peer progress, the observer found zero violations and zero 6000 ms
+breaches (peer p95 2497 ms, max 3282 ms), and cleanup was verified. An earlier
+attempt failed in the source game before Run Back when one stock-draw RPC
+failed after 9953 ms; it was cleaned up and remains separate liveness evidence
+for later RCA.
+
+The parallel changed-parameter smoke also completed both games and proved that
+only `per_point_value` changed from 0 to 1 while the 50-point target, ante, and
+bonuses stayed identical. It is not accepted as a full observer pass: 2 of 438
+actions exceeded the peer budget (6943 ms and 11610 ms), both on peer discards
+whose RPCs took more than 4.3 seconds. It had zero presentation violations,
+settled successfully, and cleaned up safely. No real-money session was touched.
 
 ## Cribbage action-liveness correction — production smoke accepted
 
