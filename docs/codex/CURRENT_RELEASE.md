@@ -14,17 +14,23 @@ Date: 2026-08-31
   earliest participating human when `games.current_host` is temporarily null
   or unresolvable. The complete rollback proof passes both before and after
   production application.
-- Production browser rows for Gin, undercut, and stock-two void passed with
-  continuous observation, a 6000 ms peer-progress ceiling, exact
-  authoritative outcome assertions, and verified fake-game deletion.
-  Evidence is retained under `artifacts/gin-outcome-harness/playwright/`.
-- Normal knock deterministically completed the first two legal layoffs, then
-  reproduced a product control defect on the third (`9♣`): selection remains
-  keyed to the prior hand index after a same-phase layoff, so the newly shifted
-  card is deselected on first tap and no meld target enables. The harness does
-  not work around that defect; product code remains unchanged in this delivery.
+- The initial normal-knock run deterministically completed two legal layoffs,
+  then exposed stale presentation selection on the third (`9♣`): a same-phase
+  felt-target layoff cleared the layoff target but not the lifted hand-card
+  selection after the hand index shifted. Commit
+  `8f4617725dab3eb37f14f3eb9b404bd0d8d3a4d8` clears both lifted selections on
+  that successful path, matching the existing Cards-tab layoff behavior.
+- All four production browser rows—normal knock with repeated layoffs, Gin,
+  undercut with hand-two continuation, and stock-two void—then passed against
+  that published commit with continuous observation, a 6000 ms peer-progress
+  ceiling, exact authoritative outcome assertions, and verified fake-game
+  deletion. Vercel reported no runtime errors in the campaign window. Evidence
+  is retained under `artifacts/gin-outcome-fix/`.
+- The focused nine-test selection contract, TypeScript `tsc --noEmit`, and the
+  production build passed. The build included all 39 Cribbage preflight tests
+  and only the existing Vite chunking warnings.
 
-This is targeted Gin branch infrastructure and evidence, not full Gin
+This is targeted Gin outcome and repeated-layoff coverage, not full Gin
 coverage. No real-money browser session was created or touched.
 
 ## Supabase diagnostic quota retention — production checkpoint

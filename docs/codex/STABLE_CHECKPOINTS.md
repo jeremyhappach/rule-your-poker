@@ -2,6 +2,19 @@
 
 ## Platform
 
+- Gin's exact normal-knock/repeated-layoff, Gin, undercut/hand-two, and
+  stock-two-void rows passed concurrent published production fake-money smoke
+  on 2026-08-31 at commit
+  `8f4617725dab3eb37f14f3eb9b404bd0d8d3a4d8`. The normal-knock row confirmed
+  that each successful felt-target layoff clears both lifted selection owners,
+  allowing the shifted third card to expose its legal meld target and complete
+  settlement. All four rows ran with continuous observation and a 6000 ms
+  peer-progress ceiling; each exact authoritative outcome passed, every fake
+  session was deleted, and Vercel reported no runtime errors in the campaign
+  window. Preserve the paired layoff/card selection reset and the fixture's
+  fake-money, exact-game, one-shot fail-closed boundaries. This is targeted Gin
+  outcome and repeated-layoff coverage, not full Gin coverage; no real-money
+  session was created or touched.
 - Cribbage's deterministic pegging 15/31/run/Go/reset and counting
   fifteens/flush/nobs rows passed concurrent published production fake-money
   smoke on 2026-08-31 at commit
