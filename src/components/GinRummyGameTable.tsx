@@ -3119,6 +3119,7 @@ export const GinRummyGameTable = ({
                   if (layOffSelectedCardIndex !== null) {
                     handleLayOff(layOffSelectedCardIndex, meldIndex);
                     setLayOffSelectedCardIndex(null);
+                    setSelectedCardIndex(null);
                   }
                 }}
                 isProcessing={isProcessing}

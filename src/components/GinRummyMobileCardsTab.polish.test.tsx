@@ -10,6 +10,10 @@ const src = readFileSync(
   join(__dirname, 'GinRummyMobileCardsTab.tsx'),
   'utf-8'
 );
+const gameTableSrc = readFileSync(
+  join(__dirname, 'GinRummyGameTable.tsx'),
+  'utf-8'
+);
 const chatSrc = readFileSync(
   join(__dirname, 'MobileChatPanel.tsx'),
   'utf-8'
@@ -46,6 +50,12 @@ describe('Gin cards-tab visual selection ownership (polish)', () => {
     expect(src).toMatch(/onKnock\(selectedCardIndex\);\s*setSelectedCardIndex\(null\)/);
     // handleLayOff clears
     expect(src).toMatch(/onLayOff\(selectedCardIndex,[^)]+\);\s*onLayOffCardSelected\?\.\(null\);\s*setSelectedCardIndex\(null\)/);
+  });
+
+  it('felt-target layoffs clear both lifted layoff and hand-card selection', () => {
+    expect(gameTableSrc).toMatch(
+      /onLayOffToMeld=\{\(meldIndex\)\s*=>\s*\{[\s\S]*?handleLayOff\(layOffSelectedCardIndex,\s*meldIndex\);\s*setLayOffSelectedCardIndex\(null\);\s*setSelectedCardIndex\(null\)/
+    );
   });
 });
 
