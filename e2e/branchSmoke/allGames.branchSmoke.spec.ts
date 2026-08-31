@@ -208,6 +208,59 @@ async function exerciseCribbageRuleFixtureOpening(
   };
 }
 
+async function exerciseCribbageFifteenRunGoSequence(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown>> {
+  const expectedRanks = ['5', '10', '6', '10', '9', '8', '7', 'J'] as const;
+
+  for (const [index, rank] of expectedRanks.entries()) {
+    const selector =
+      `[data-cribbage-card-playable="1"]`
+      + `[data-cribbage-hand-card-key^="${rank}"]`
+      + ':not(:disabled):visible';
+    const hostCards = session.hostPage.locator(selector);
+    const peerCards = session.peerPage.locator(selector);
+
+    await expect.poll(async () => {
+      const [hostCount, peerCount] = await Promise.all([
+        hostCards.count(),
+        peerCards.count(),
+      ]);
+      return Number(hostCount > 0) + Number(peerCount > 0);
+    }, { timeout: 30_000, intervals: [100, 250, 500] }).toBe(1);
+
+    const actorCards = await hostCards.count() > 0 ? hostCards : peerCards;
+    await actorCards.first().click({ timeout: 15_000, noWaitAfter: true });
+
+    await expect.poll(async () => {
+      const state = await probe.readCribbageRoundState(
+        session.gameId,
+        dealerGameId,
+        1,
+      ) as CribbageBranchState | null;
+      return state?.pegging?.playedCards?.[index]?.card?.rank ?? null;
+    }, { timeout: 30_000, intervals: [100, 250, 500] }).toBe(rank);
+  }
+
+  const state = await probe.readCribbageRoundState(
+    session.gameId,
+    dealerGameId,
+    1,
+  ) as CribbageBranchState | null;
+  const playedRanks = state?.pegging?.playedCards?.map((play) => play.card?.rank) ?? [];
+  expect(playedRanks).toEqual(expectedRanks);
+  expect(state?.phase).toBe('counting');
+
+  return {
+    playedRanks,
+    phase: state?.phase ?? null,
+    lastEvent: state?.lastEvent ?? null,
+    countingBaselineScores: state?.countingPlan?.baselineScores ?? null,
+  };
+}
+
 async function exerciseCribbageInteractionSeam(
   session: Awaited<ReturnType<typeof createTwoClientSession>>,
   probe: TerminalSettlementProbe,
@@ -588,6 +641,13 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             dealerGameId,
           );
         if (cribbageFixtureOpening) evidence.cribbageFixtureOpening = cribbageFixtureOpening;
+        if (scenario.cribbageFixtureProfile === 'fifteen_run_go_counting') {
+          evidence.cribbageFixturePegging = await exerciseCribbageFifteenRunGoSequence(
+            session,
+            probe,
+            dealerGameId,
+          );
+        }
         const result = phaseRejoinController
           ? await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId, {
             onCribbageProgress: phaseRejoinController.onProgress,

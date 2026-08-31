@@ -66,6 +66,10 @@ describe('Cribbage exact-game rule-branch harness contract', () => {
       'nonqualifying_crib_flush_wrong',
       'new_profile_not_consumed_once',
     ]) expect(expansionProof).toContain(marker);
+    expect(driver).toContain('exerciseCribbageFifteenRunGoSequence');
+    expect(driver).toContain("['5', '10', '6', '10', '9', '8', '7', 'J'] as const");
+    expect(driver).toContain('[data-cribbage-card-playable="1"]');
+    expect(driver).toContain("expect(state?.phase).toBe('counting')");
     expect(driver).toContain("'5', '10', '6', '10', '9', '8', '7', 'J'");
     expect(driver).toContain('[2, 2, 4, 4]');
   });
