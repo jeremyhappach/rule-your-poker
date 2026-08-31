@@ -2,6 +2,44 @@
 
 Date: 2026-08-31
 
+## Cribbage deterministic pegging and counting branches — production checkpoint accepted
+
+- The two retained card-order failures were harness oracle defects, not product
+  rule failures. The authoritative fixture defines the first-hand sequence by
+  source index, while the browser intentionally presents the same hand in rank
+  order; the generic terminal actor clicked the first displayed playable card
+  and therefore exercised a different legal sequence. The branch driver now
+  selects the intended visible card through the real UI and confirms each play
+  against authoritative round state. No product rule, RPC, migration, or
+  real-money behavior changed.
+- Six focused harness contracts, installed TypeScript, the production build,
+  all 39 Cribbage preflight assertions, and scoped ESLint passed. Commit
+  `9b72339db4c853423d48671bb8b2eda4bfa3988c` published successfully as
+  production bundle `assets/index-DUrPnM_Z.js`; Vercel and the public manifest
+  identified that exact commit.
+- The exact build ran the pegging 15/31/run/Go/reset and counting
+  fifteens/flush/nobs rows concurrently as two isolated fake-money pairs. Both
+  drove the intended `5,10,6,10,9,8,7,J` first-hand order, entered counting,
+  reached terminal hand 4, passed in 5m40s and 5m26s respectively, cancelled
+  their fixtures, and verified session deletion. First-hand authority recorded
+  the expected 12-point player hand (fifteens, run, and flush), three-point
+  dealer hand (pair and nobs), and 12-point crib pair score.
+- Continuous observation recorded zero presentation violations and zero
+  unexpected 6000 ms peer-progress breaches. The pegging row correlated all 43
+  actions with peer p95 3442 ms and max 5939 ms; the counting row correlated
+  all 42 actions with peer p95 3733 ms and max 5779 ms. Evidence is retained
+  under `artifacts/cribbage-exact-sequence-9b72339db/playwright/`.
+- Supabase completed 262 cron runs during the parallel window, but one
+  `advance-due-game-state-1s` run ended with `job startup timeout` at
+  05:55:43 UTC. It did not produce an observer violation, a peer-budget breach,
+  or a failed game assertion, so it does not invalidate the deterministic rule
+  results; it remains separate platform-health evidence requiring RCA before a
+  stronger service-wide no-stall claim.
+
+This accepts the two deterministic Cribbage rule branches on the exact
+production build. It is targeted branch coverage, not full Cribbage coverage,
+and no real-money browser session was created or touched.
+
 ## Browser presence heartbeat admission liveness — production checkpoint accepted
 
 - The frozen Cribbage incident was not an authoritative game freeze. During a

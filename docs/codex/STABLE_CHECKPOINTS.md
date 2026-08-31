@@ -2,6 +2,20 @@
 
 ## Platform
 
+- Cribbage's deterministic pegging 15/31/run/Go/reset and counting
+  fifteens/flush/nobs rows passed concurrent published production fake-money
+  smoke on 2026-08-31 at commit
+  `9b72339db4c853423d48671bb8b2eda4bfa3988c`. Both exact fixtures drove the
+  intended `5,10,6,10,9,8,7,J` order through the visible UI, entered counting,
+  reached terminal hand 4, and verified fixture cancellation plus session
+  deletion. All 85 correlated actions completed with zero observer violations
+  and zero unexpected 6000 ms peer-progress breaches; peer maxima were 5939
+  and 5779 ms. Preserve visible-card selection mapped back to authoritative
+  rank progression; display order must not stand in for source order in an
+  exact branch oracle. This is targeted branch coverage, not full Cribbage
+  coverage. One independent `advance-due-game-state-1s` cron startup timeout
+  occurred in the window without affecting either observed game and remains
+  separate platform-health evidence for RCA.
 - Browser presence heartbeat admission liveness passed the targeted published
   production checkpoint on 2026-08-31 at commit
   `859de6047f8d254918ee95a93104ea312ab3f456`. Under three concurrent isolated
