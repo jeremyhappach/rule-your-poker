@@ -345,6 +345,12 @@ reconciliation.
   persist without the exact debug channel.
 - Game-specific detailed traces, including `yahtzeeHeldDieTrace.ts` and 3-5-7
   wartime capture, are fail-closed and require their explicit channel.
+- Production retention is owned by
+  `supabase/migrations/20260831194950_repair_quota_retention.sql`:
+  `private.purge_quota_diagnostics` independently keeps the two high-volume
+  debug tables and successful cron history to one day while preserving failed
+  cron evidence for seven days; the broader diagnostic purge uses the same
+  one-day floor and excludes audit/session history.
 - Cribbage visual-report forensics are local and submit-driven:
   `src/lib/cribbage/forensicTrace.ts` owns a 200-entry, payload-bounded,
   `(game_id, dealer_game_id)`-scoped in-memory ring, while

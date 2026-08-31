@@ -82,9 +82,12 @@ membership. Persisted debug, incident, trace, voice, and operation telemetry is
 not migration authority and is excluded from the core copy.
 
 Normal production runs keep high-volume dice snapshots and persistent lifecycle
-events off by default. When diagnostics are explicitly enabled, a target cron
-purges the bounded diagnostic set after seven days. Gameplay, financial, audit,
-and session-history tables are never part of that retention purge.
+events off by default. Production diagnostics retain one day. A separate
+quota-critical owner independently bounds `debug_events`, `debug_sync_events`,
+successful pg_cron history to one day, and failed pg_cron history to seven
+days, so an unrelated diagnostic schema mismatch cannot suspend storage
+control. Gameplay, financial, audit, and session-history tables are never part
+of either retention purge.
 
 ## D-016 — Rehearsal never silently cuts production over
 

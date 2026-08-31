@@ -2,6 +2,29 @@
 
 Date: 2026-08-31
 
+## Supabase diagnostic quota retention — production checkpoint
+
+- The owned production database reached 595 MB because the daily diagnostic
+  purge failed before reaching its high-volume tables. The exact failure was a
+  comparison between text `chat_messages.chat_operation_id` and UUID
+  `chat_send_operations.id`; 398 MB of `debug_events` and 109 MB of
+  `debug_sync_events` consequently remained unbounded.
+- Migration `20260831194950_repair_quota_retention.sql` corrects that identity
+  comparison, reduces broad diagnostic retention to one day, and installs an
+  independent private quota owner. The quota owner retains `debug_events` and
+  `debug_sync_events` for one day, successful pg_cron history for one day, and
+  failed pg_cron history for seven days. It cannot be blocked by a future
+  mismatch in an unrelated diagnostic family.
+- The production reclaim preserved the newest 24 hours of both debug tables,
+  removed 100,713 expired successful cron records, and then completed the
+  repaired broad purge with 3,153 additional expired diagnostic rows removed.
+  Database size fell from 595 MB to 92 MB. Gameplay, players, balances,
+  results, audit history, session history, and real-money sessions were not
+  touched.
+- The one-second game-recovery dispatcher is unchanged. Storage is bounded by
+  retention without making heartbeat presence an unsafe prerequisite for
+  disconnect, timeout, pause, settlement, or fake-money recovery.
+
 ## Cribbage deterministic pegging and counting branches — production checkpoint accepted
 
 - The two retained card-order failures were harness oracle defects, not product
