@@ -4,6 +4,7 @@ import type { GinRummyCard } from '../../../src/lib/ginRummyTypes';
 import type { DealerGameType, TwoClientSession } from '../../liveness/support/twoClientSession';
 import {
   TerminalSettlementProbe,
+  type CribbageProgress,
   type TerminalExpectation,
   type TerminalResult,
 } from './terminalSettlementProbe';
@@ -11,6 +12,10 @@ import {
 const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const LIVE_ROOT = '[data-lifecycle-branch="loaded-inner"]';
 const clickAction = (locator: Locator, timeout?: number) => locator.click({ timeout, noWaitAfter: true });
+
+export type TerminalActorOptions = {
+  onCribbageProgress?: (progress: CribbageProgress) => Promise<void>;
+};
 
 export const TERMINAL_EXPECTATIONS: Record<DealerGameType, TerminalExpectation> = {
   'holm-game': { gameType: 'holm-game', eventKind: 'chucky_final_award' },
@@ -67,6 +72,7 @@ export async function playDealerGameToTerminal(
   gameType: DealerGameType,
   probe: TerminalSettlementProbe,
   dealerGameId: string,
+  options: TerminalActorOptions = {},
 ): Promise<TerminalResult> {
   const expected = TERMINAL_EXPECTATIONS[gameType];
   switch (gameType) {
@@ -77,7 +83,7 @@ export async function playDealerGameToTerminal(
       await playThreeFiveSeven(session, probe, dealerGameId, expected);
       break;
     case 'cribbage':
-      await playCribbage(session, probe, dealerGameId, expected);
+      await playCribbage(session, probe, dealerGameId, expected, options.onCribbageProgress);
       break;
     case 'gin-rummy':
       await playGin(session, probe, dealerGameId, expected);
@@ -180,6 +186,7 @@ async function playCribbage(
   probe: TerminalSettlementProbe,
   dealerGameId: string,
   expected: TerminalExpectation,
+  onProgress?: (progress: CribbageProgress) => Promise<void>,
 ): Promise<void> {
   const tryPlay = async (cards: Locator): Promise<boolean> => {
     if (!(await cards.count())) return false;
@@ -205,6 +212,7 @@ async function playCribbage(
       selfPlay: card.getAttribute('data-cribbage-block-self-play'),
     }))[0] ?? null);
   let lastProgress = await probe.readCribbageProgress(session.gameId, dealerGameId);
+  await onProgress?.(lastProgress);
   let lastProgressAt = Date.now();
   const completedDiscards = new Set<string>();
   const deadline = Date.now() + 15 * 60_000;
@@ -248,6 +256,7 @@ async function playCribbage(
     ) {
       lastProgress = progress;
       lastProgressAt = Date.now();
+      await onProgress?.(progress);
       continue;
     }
 

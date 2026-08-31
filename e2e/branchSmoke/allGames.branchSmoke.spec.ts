@@ -11,7 +11,10 @@ import {
   type TwoClientSession,
 } from '../liveness/support/twoClientSession';
 import { authoritativeDealerGameId, playDealerGameToTerminal, requestLastHand, TERMINAL_EXPECTATIONS } from '../terminal/support/terminalActors';
-import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
+import {
+  TerminalSettlementProbe,
+  type CribbageProgress,
+} from '../terminal/support/terminalSettlementProbe';
 import { BRANCH_SMOKE_MANIFEST, type Scenario, validateManifest } from './manifest';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 import { finalizeScenarioObserver, observerEvidenceSummary } from '../humanChaos/support/scenarioObserver';
@@ -115,11 +118,25 @@ async function discardSelectedCards(page: Page): Promise<void> {
 
 type CribbageBranchState = {
   phase?: string;
+  dealerPlayerId?: string;
   cutCard?: { rank?: string; suit?: string } | null;
   lastEvent?: { type?: string } | null;
   playerStates?: Record<string, { pegScore?: number }>;
-  pegging?: { playedCards?: unknown[] };
-  countingPlan?: { targets?: unknown[] };
+  pegging?: {
+    playedCards?: Array<{
+      playerId?: string;
+      card?: { rank?: string; suit?: string; value?: number };
+    }>;
+  };
+  countingPlan?: {
+    baselineScores?: Record<string, number>;
+    targets?: Array<{
+      playerId?: string;
+      type?: 'hand' | 'crib';
+      comboPoints?: number[];
+      totalPoints?: number;
+    }>;
+  };
 };
 
 async function exerciseCribbageRuleFixtureOpening(
@@ -215,6 +232,86 @@ async function exerciseCribbageInteractionSeam(
     discardHit: hit,
     discardRejoinCardCount: 6,
     peggingRejoinCardCount: 4,
+  };
+}
+
+type CribbagePhaseRejoinLabel = 'discard' | 'cut-to-pegging' | 'counting' | 'successor-hand';
+
+function createCribbagePhaseRejoinController(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+) {
+  const completed = new Set<CribbagePhaseRejoinLabel>();
+  const observations: Array<Record<string, unknown>> = [];
+
+  const reloadPeerAt = async (
+    label: CribbagePhaseRejoinLabel,
+    progress: CribbageProgress,
+  ): Promise<void> => {
+    completed.add(label);
+    await session.peerPage.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, 'cribbage');
+    await expectCanonicalContinuity(session.peerPage);
+    await expect(session.peerPage).toHaveURL(new RegExp(`/game/${session.gameId}$`));
+
+    const visibleCards = session.peerPage.locator('[data-cribbage-hand-card-key]:visible');
+    if (label === 'discard' || label === 'successor-hand') {
+      await waitForSixCribbageCards(session.peerPage);
+    } else if (label === 'cut-to-pegging') {
+      await expect(visibleCards).toHaveCount(4, { timeout: 30_000 });
+      await expect.poll(async () => {
+        const selector = '[data-cribbage-card-playable="1"]:not(:disabled):visible';
+        return (await session.hostPage.locator(selector).count())
+          + (await session.peerPage.locator(selector).count());
+      }, { timeout: 30_000, intervals: [100, 250, 500] }).toBeGreaterThan(0);
+    } else {
+      await expect(session.peerPage.locator(
+        '[data-authoritative-action-surface="cribbage-discard"]:visible',
+      )).toHaveCount(0);
+      await expect(session.peerPage.locator(
+        '[data-cribbage-card-playable="1"]:not(:disabled):visible',
+      )).toHaveCount(0);
+      await expect.poll(
+        async () => (await probe.readCribbageProgress(session.gameId, dealerGameId)).phase,
+        { timeout: 15_000, intervals: [100, 250, 500] },
+      ).toBe('counting');
+    }
+
+    const after = await probe.readCribbageProgress(session.gameId, dealerGameId);
+    observations.push({
+      label,
+      before: progress,
+      after,
+      visibleCardCount: await visibleCards.count(),
+      discardSurfaceCount: await session.peerPage.locator(
+        '[data-authoritative-action-surface="cribbage-discard"]:visible',
+      ).count(),
+      playableCardCount: await session.peerPage.locator(
+        '[data-cribbage-card-playable="1"]:not(:disabled):visible',
+      ).count(),
+    });
+  };
+
+  return {
+    onProgress: async (progress: CribbageProgress): Promise<void> => {
+      let label: CribbagePhaseRejoinLabel | null = null;
+      if (progress.handNumber === 1 && progress.phase === 'discarding') label = 'discard';
+      else if (progress.handNumber === 1 && progress.phase === 'pegging') label = 'cut-to-pegging';
+      else if (progress.phase === 'counting') label = 'counting';
+      else if ((progress.handNumber ?? 0) >= 2 && progress.phase === 'discarding') label = 'successor-hand';
+      if (label && !completed.has(label)) await reloadPeerAt(label, progress);
+    },
+    assertComplete: (): void => {
+      expect([...completed].sort()).toEqual(
+        ['counting', 'cut-to-pegging', 'discard', 'successor-hand'],
+      );
+    },
+    evidence: (terminalRejoin?: Record<string, unknown>) => ({
+      observations,
+      completed: [...completed].sort(),
+      terminalRejoin: terminalRejoin ?? null,
+    }),
   };
 }
 
@@ -407,6 +504,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       let primaryError: unknown = null;
       let teardownFailure: AggregateError | null = null;
       let cribbageFixtureArmed = false;
+      let phaseRejoinController: ReturnType<typeof createCribbagePhaseRejoinController> | null = null;
       try {
         if (scenario.cribbageFixtureProfile) {
           const { data, error } = await session.cleanupClient.rpc(
@@ -429,6 +527,9 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
         const dealerGameId = await authoritativeDealerGameId(session);
         evidence.dealerGameId = dealerGameId;
+        if (scenario.exerciseCribbagePhaseRejoinMatrix) {
+          phaseRejoinController = createCribbagePhaseRejoinController(session, probe, dealerGameId);
+        }
         if (cribbageFixtureArmed) {
           const { data, error } = await session.cleanupClient.rpc(
             'get_cribbage_rule_branch_harness' as never,
@@ -457,14 +558,20 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         await runOfflineBurst(session.peerContext, 1_250);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
         await branch(scenario, session.hostPage, session.peerPage);
-        const cribbageFixtureOpening = await exerciseCribbageRuleFixtureOpening(
-          scenario,
-          session,
-          probe,
-          dealerGameId,
-        );
+        const cribbageFixtureOpening = scenario.exerciseCribbagePhaseRejoinMatrix
+          ? null
+          : await exerciseCribbageRuleFixtureOpening(
+            scenario,
+            session,
+            probe,
+            dealerGameId,
+          );
         if (cribbageFixtureOpening) evidence.cribbageFixtureOpening = cribbageFixtureOpening;
-        const result = await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId);
+        const result = phaseRejoinController
+          ? await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId, {
+            onCribbageProgress: phaseRejoinController.onProgress,
+          })
+          : await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId);
         evidence.resultId = result.id;
         evidence.handNumber = result.hand_number;
         if (scenario.cribbageFixtureProfile === 'near_double_skunk') {
@@ -476,14 +583,31 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             dealerGameId,
             1,
           ) as CribbageBranchState | null;
-          expect(finalFirstHand?.pegging?.playedCards).toHaveLength(8);
-          expect(finalFirstHand?.countingPlan?.targets?.length ?? 0).toBeGreaterThanOrEqual(3);
+          const playedCards = finalFirstHand?.pegging?.playedCards ?? [];
+          const targets = finalFirstHand?.countingPlan?.targets ?? [];
+          expect(playedCards).toHaveLength(8);
+          expect(playedCards.map((play) => play.card?.rank)).toEqual([
+            '2', '2', '2', '2', '3', '3', '3', '3',
+          ]);
+          expect(targets.map((target) => target.type)).toEqual(['hand', 'hand', 'crib']);
+          expect(targets[0]?.playerId).not.toBe(finalFirstHand?.dealerPlayerId);
+          expect(targets[1]?.playerId).toBe(finalFirstHand?.dealerPlayerId);
+          expect(targets[2]?.playerId).toBe(finalFirstHand?.dealerPlayerId);
+          expect(targets.map((target) => target.comboPoints)).toEqual([
+            [2, 2, 3, 3, 3, 3],
+            [2, 2, 3, 3, 3, 3],
+            [12],
+          ]);
+          expect(targets.map((target) => target.totalPoints)).toEqual([16, 16, 12]);
           evidence.firstHandFinal = {
-            playedCardCount: finalFirstHand?.pegging?.playedCards?.length ?? 0,
-            countingTargetCount: finalFirstHand?.countingPlan?.targets?.length ?? 0,
+            playedCards,
+            countingTargets: targets,
+            countingBaselineScores: finalFirstHand?.countingPlan?.baselineScores ?? null,
           };
         }
         if (scenario.minHand) expect(result.hand_number).toBeGreaterThanOrEqual(scenario.minHand);
+        phaseRejoinController?.assertComplete();
+        if (phaseRejoinController) evidence.phaseRejoin = phaseRejoinController.evidence();
         await session.peerPage.close();
         session.peerPage = await session.peerContext.newPage();
         await session.peerPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -492,6 +616,12 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           expect(session.peerPage).toHaveURL(/\/$/, { timeout: 120_000 }),
           probe.assertTerminalProof(session.gameId, dealerGameId, TERMINAL_EXPECTATIONS[scenario.gameType], result),
         ]);
+        if (phaseRejoinController) {
+          evidence.phaseRejoin = phaseRejoinController.evidence({
+            connectedHostPanelVisible: true,
+            freshPeerRedirectedToLobby: true,
+          });
+        }
         evidence.status = 'passed';
         console.log(`[branch-smoke] ${scenario.id} passed`);
       } catch (error) {

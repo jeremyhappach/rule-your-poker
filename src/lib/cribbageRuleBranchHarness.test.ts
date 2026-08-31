@@ -3,14 +3,16 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(resolve(
+const normalizeLineEndings = (source: string) => source.replace(/\r\n/g, '\n');
+
+const migration = normalizeLineEndings(readFileSync(resolve(
   'supabase/migrations/20260830213000_cribbage_rule_branch_harness.sql',
-), 'utf8');
-const proof = readFileSync(resolve(
+), 'utf8'));
+const proof = normalizeLineEndings(readFileSync(resolve(
   'supabase/tests/cribbage_rule_branch_harness_proof.sql',
-), 'utf8');
-const manifest = readFileSync(resolve('e2e/branchSmoke/manifest.ts'), 'utf8');
-const driver = readFileSync(resolve('e2e/branchSmoke/allGames.branchSmoke.spec.ts'), 'utf8');
+), 'utf8'));
+const manifest = normalizeLineEndings(readFileSync(resolve('e2e/branchSmoke/manifest.ts'), 'utf8'));
+const driver = normalizeLineEndings(readFileSync(resolve('e2e/branchSmoke/allGames.branchSmoke.spec.ts'), 'utf8'));
 
 describe('Cribbage exact-game rule-branch harness contract', () => {
   it('is admin/member-scoped, expiring, one-shot, two-human, and fake-money only', () => {
@@ -66,5 +68,14 @@ describe('Cribbage exact-game rule-branch harness contract', () => {
     expect(driver).toContain("'cancel_cribbage_rule_branch_harness'");
     expect(driver).toContain('readCribbageRoundState');
     expect(driver).toContain('campaignHarnessProfile');
+    for (const scenario of [
+      'cribbage-pegging-counting-branches',
+      'cribbage-terminal-target-skunk-branches',
+      'cribbage-phase-rejoin-matrix',
+    ]) {
+      expect(manifest).toContain(`id: '${scenario}'`);
+    }
+    expect(driver).toContain('createCribbagePhaseRejoinController');
+    expect(driver).toContain("['counting', 'cut-to-pegging', 'discard', 'successor-hand']");
   });
 });

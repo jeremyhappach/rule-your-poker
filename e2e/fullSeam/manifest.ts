@@ -3,7 +3,7 @@ import { HUMAN_CHAOS_MANIFEST } from '../humanChaos/manifest';
 import type { DealerGameType } from '../liveness/support/twoClientSession';
 import { ALL_REAL_MONEY_GAME_TYPES } from '../../src/lib/realMoneyLivenessContract';
 
-export const FULL_SEAM_MANIFEST_VERSION = 2 as const;
+export const FULL_SEAM_MANIFEST_VERSION = 3 as const;
 
 export type FullSeamGame = 'shared' | DealerGameType;
 export type FullSeamScenarioSource = 'branch-smoke' | 'terminal' | 'human-chaos';
@@ -141,12 +141,16 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
     'branch/cribbage-his-heels-terminal',
   ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.pegging-branches', 'cribbage', 1, 'Pegging covers 15, 31, pair through quadruple, runs, Go, last card, blocked player, and reset without double-scoring 31.'),
-  req('cribbage.counting-order', 'cribbage', 1, 'Counting order is nondealer, dealer, then crib.'),
+  req('cribbage.counting-order', 'cribbage', 1, 'Counting order is nondealer, dealer, then crib.', [
+    'branch/cribbage-pegging-counting-branches',
+  ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.counting-categories', 'cribbage', 1, 'Counting covers fifteens, pairs, run multiplicity, flush boundaries, and nobs.'),
   req('cribbage.terminal-entry-phases', 'cribbage', 1, 'Terminal entry during pegging, His Heels, each hand count, and crib count skips no presentation.'),
   req('cribbage.ordinary-rollover', 'cribbage', 1, 'Ordinary rollover rotates dealer and clears pegging/counting artifacts.', ['branch/cribbage-multi-hand']),
   req('cribbage.targets-and-skunk', 'cribbage', 1, 'All targets plus ordinary, skunk, and double-skunk settlement modes run.'),
-  req('cribbage.phase-rejoins', 'cribbage', 1, 'Rejoin works during discard, cut, pegging, counting, successor creation, and terminal presentation.'),
+  req('cribbage.phase-rejoins', 'cribbage', 1, 'Rejoin works during discard, cut, pegging, counting, successor creation, and terminal presentation.', [
+    'branch/cribbage-phase-rejoin-matrix',
+  ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.human-timeout-na', 'cribbage', 1, 'Human gameplay timeout remains intentionally absent; disconnect only restores authority.', [], {
     disposition: 'justified-n/a',
     justification: 'Cribbage human actions are intentionally untimed by the real-money liveness contract.',

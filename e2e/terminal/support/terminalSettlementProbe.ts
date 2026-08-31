@@ -11,6 +11,14 @@ export type TerminalExpectation = {
 export type TerminalResult = Database['public']['Tables']['game_results']['Row'];
 type SessionSnapshot = Database['public']['Tables']['session_player_snapshots']['Row'];
 
+export type CribbageProgress = {
+  roundId: string | null;
+  handNumber: number | null;
+  phase: string | null;
+  eventSequence: number;
+  countingReleaseAt: number | null;
+};
+
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function isAbortLike(error: unknown): boolean {
@@ -169,13 +177,7 @@ export class TerminalSettlementProbe {
   async readCribbageProgress(
     gameId: string,
     dealerGameId: string,
-  ): Promise<{
-    roundId: string | null;
-    handNumber: number | null;
-    phase: string | null;
-    eventSequence: number;
-    countingReleaseAt: number | null;
-  }> {
+  ): Promise<CribbageProgress> {
     const data = await withProbeDeadline(
       async (signal) => {
         const { data, error } = await this.client

@@ -12,12 +12,12 @@ import {
 
 describe('full human seam coverage ledger', () => {
   it('contains every declared executable branch, terminal, and lifecycle scenario once', () => {
-    expect(FULL_SEAM_MANIFEST_VERSION).toBe(2);
+    expect(FULL_SEAM_MANIFEST_VERSION).toBe(3);
     expect(() => validateFullSeamManifest()).not.toThrow();
     expect(FULL_SEAM_SCENARIOS).toHaveLength(
       BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
     );
-    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(19);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(22);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
   });
@@ -50,5 +50,24 @@ describe('full human seam coverage ledger', () => {
       'branch/cribbage-his-heels-nonterminal',
       'branch/cribbage-his-heels-terminal',
     ]);
+  });
+
+  it('binds the Wave 1 counting-order and phase-rejoin rows without hiding broader gaps', () => {
+    expect(FULL_SEAM_REQUIREMENTS.find((row) => row.id === 'cribbage.counting-order')).toMatchObject({
+      disposition: 'executable',
+      fixture: 'cribbage-rule-branch-once',
+      coveredBy: ['branch/cribbage-pegging-counting-branches'],
+    });
+    expect(FULL_SEAM_REQUIREMENTS.find((row) => row.id === 'cribbage.phase-rejoins')).toMatchObject({
+      disposition: 'executable',
+      fixture: 'cribbage-rule-branch-once',
+      coveredBy: ['branch/cribbage-phase-rejoin-matrix'],
+    });
+    expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).toEqual(expect.arrayContaining([
+      'cribbage.pegging-branches',
+      'cribbage.counting-categories',
+      'cribbage.terminal-entry-phases',
+      'cribbage.targets-and-skunk',
+    ]));
   });
 });
