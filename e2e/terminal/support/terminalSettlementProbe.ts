@@ -268,6 +268,34 @@ export class TerminalSettlementProbe {
     };
   }
 
+  async readGinRoundState(
+    gameId: string,
+    dealerGameId: string,
+    handNumber: number,
+  ): Promise<Record<string, unknown> | null> {
+    const data = await withProbeDeadline(
+      async (signal) => {
+        const { data, error } = await this.client
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
+          .eq('hand_number', handNumber)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(signal);
+        if (error) throw new Error(`Could not read Gin round state: ${error.message}`);
+        return data;
+      },
+      'Gin round-state query',
+    );
+    const state = data?.gin_rummy_state;
+    return state && typeof state === 'object' && !Array.isArray(state)
+      ? state as Record<string, unknown>
+      : null;
+  }
+
   async readDiceProgress(
     gameId: string,
     dealerGameId: string,

@@ -168,7 +168,12 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
   req('gin.first-upcard-dealer-takes', 'gin-rummy', 2, 'Nondealer passes and dealer takes the upcard.', ['branch/gin-dealer-upcard-after-pass']),
   req('gin.first-upcard-both-pass', 'gin-rummy', 2, 'Both pass and nondealer draws from stock.', ['branch/gin-discard-pile-rejoin']),
   req('gin.stock-discard-and-lockout', 'gin-rummy', 2, 'Stock/discard draws work and the just-taken discard remains locked.', ['branch/gin-discard-pile-rejoin']),
-  req('gin.knock-layoff-gin-undercut-void', 'gin-rummy', 2, 'Normal knock, legal layoff, Gin, undercut, and stock-two void all run deterministically.'),
+  req('gin.knock-layoff-gin-undercut-void', 'gin-rummy', 2, 'Normal knock, legal layoff, Gin, undercut, and stock-two void all run deterministically.', [
+    'branch/gin-normal-knock-layoff',
+    'branch/gin-gin-outcome',
+    'branch/gin-undercut-outcome',
+    'branch/gin-stock-two-void',
+  ], { fixture: 'gin-rule-branch-once' }),
   req('gin.nonterminal-scoring-and-rotation', 'gin-rummy', 2, 'Nonterminal scoring rotates dealer and deals the next hand exactly.', ['branch/gin-multi-hand']),
   req('gin.terminal-outcomes', 'gin-rummy', 2, 'Ordinary knock, Gin, and undercut each reach exact terminal settlement.'),
   req('gin.presets-custom-and-bonuses', 'gin-rummy', 2, 'Every preset plus representative Custom values and configured bonuses are proven.'),

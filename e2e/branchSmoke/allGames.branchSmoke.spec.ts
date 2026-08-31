@@ -566,6 +566,253 @@ async function exerciseGinBranchSeam(
   };
 }
 
+type GinFixtureKnockResult = {
+  knockerId?: string;
+  opponentId?: string;
+  knockerDeadwood?: number;
+  opponentDeadwood?: number;
+  isGin?: boolean;
+  isUndercut?: boolean;
+  pointsAwarded?: number;
+  winnerId?: string;
+};
+
+async function selectGinCard(page: Page, rank: string, suit: string): Promise<void> {
+  const card = page.getByRole('button', { name: `${rank} ${suit}`, exact: true });
+  await expect(card).toHaveCount(1, { timeout: 30_000 });
+  await expect(card).toBeEnabled({ timeout: 30_000 });
+  await card.click({ noWaitAfter: true });
+}
+
+async function selectGinDiscardCard(page: Page, rank: string, suit: string): Promise<void> {
+  await selectGinCard(page, rank, suit);
+  await expect(page.locator(ginSurface('discard'))).toBeVisible({ timeout: 30_000 });
+}
+
+async function layOffGinCard(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+  page: Page,
+  rank: string,
+  suit: string,
+): Promise<number> {
+  await selectGinCard(page, rank, suit);
+  const target = page.locator(
+    '[data-artifact-id="gin.knockDisplay"] button:enabled:visible',
+  ).first();
+  await expect(
+    target,
+    `Expected ${rank}${suit} to expose an enabled Gin lay-off meld target`,
+  ).toBeEnabled({ timeout: 30_000 });
+  return commitGinAction(session, probe, dealerGameId, target);
+}
+
+async function readCompletedGinFixtureState(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown>> {
+  let state: Record<string, unknown> | null = null;
+  await expect.poll(async () => {
+    state = await probe.readGinRoundState(session.gameId, dealerGameId, 1);
+    return state?.phase ?? null;
+  }, { timeout: 30_000, intervals: [100, 250, 500] }).toBe('complete');
+  if (!state) throw new Error('Gin fixture hand completed without a public state');
+  return state;
+}
+
+async function waitForGinFixtureContinuation(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown>> {
+  let state: Record<string, unknown> | null = null;
+  await expect.poll(async () => {
+    state = await probe.readGinRoundState(session.gameId, dealerGameId, 2);
+    return state?.handNumber ?? null;
+  }, { timeout: 30_000, intervals: [250, 500, 1_000] }).toBe(2);
+  if (!state) throw new Error('Gin fixture completed without creating hand 2');
+  expect(['first_draw', 'playing']).toContain(state.phase);
+  return {
+    handNumber: state.handNumber,
+    phase: state.phase,
+    actionCount: state.actionCount,
+  };
+}
+
+async function waitForGinFixtureTerminalSettlement(
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+  winnerPlayerId: string,
+): Promise<Record<string, unknown>> {
+  const result = await probe.waitForTerminalResult(
+    session.gameId,
+    dealerGameId,
+    TERMINAL_EXPECTATIONS['gin-rummy'],
+    120_000,
+  );
+  expect(result.winner_player_id).toBe(winnerPlayerId);
+  expect(result.hand_number).toBe(1);
+  return {
+    resultId: result.id,
+    handNumber: result.hand_number,
+    winnerPlayerId: result.winner_player_id,
+    settlementKey: result.settlement_key,
+  };
+}
+
+async function exerciseGinRuleFixtureOpening(
+  scenario: Scenario,
+  session: TwoClientSession,
+  probe: TerminalSettlementProbe,
+  dealerGameId: string,
+): Promise<Record<string, unknown> | null> {
+  const profile = scenario.ginFixtureProfile;
+  if (!profile) return null;
+
+  let firstActor = await waitForGinActor(session, 'first-draw');
+  const actionCounts: number[] = [];
+
+  if (profile === 'stock_two_void') {
+    actionCounts.push(await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      firstActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+    ));
+    const secondActor = await waitForGinActor(session, 'first-draw');
+    actionCounts.push(await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      secondActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+    ));
+    const discardActor = await waitForGinActor(session, 'select');
+    await selectFirstLegalGinDiscard(discardActor);
+    actionCounts.push(await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      discardActor.locator(ginSurface('discard')).getByRole('button', { name: 'Discard', exact: true }),
+    ));
+    const state = await readCompletedGinFixtureState(session, probe, dealerGameId);
+    expect(state.knockResult ?? null).toBeNull();
+    expect(state.winnerPlayerId ?? null).toBeNull();
+    expect((state.stockPile as unknown[] | undefined)?.length).toBe(2);
+    expect(Object.values(state.matchScores as Record<string, number>)).toEqual([0, 0]);
+    return { profile, actionCounts, phase: state.phase, stockCount: 2, knockResult: null };
+  }
+
+  if (profile === 'gin') {
+    const hostTargetCard = session.hostPage.getByRole('button', { name: 'K ♣', exact: true });
+    const peerTargetCard = session.peerPage.getByRole('button', { name: 'K ♣', exact: true });
+    await expect.poll(async () => (
+      await hostTargetCard.count() + await peerTargetCard.count()
+    ), { timeout: 30_000, intervals: [100, 250, 500] }).toBe(1);
+    const targetActor = await hostTargetCard.count() === 1
+      ? session.hostPage
+      : session.peerPage;
+    if (firstActor !== targetActor) {
+      actionCounts.push(await commitGinAction(
+        session,
+        probe,
+        dealerGameId,
+        firstActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Pass', exact: true }),
+      ));
+      firstActor = await waitForGinActor(session, 'first-draw');
+    }
+    expect(firstActor).toBe(targetActor);
+  }
+
+  actionCounts.push(await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    firstActor.locator(ginSurface('first-draw')).getByRole('button', { name: 'Take', exact: true }),
+  ));
+
+  const discard = profile === 'normal_knock_layoff'
+    ? { rank: 'K', suit: '♥', button: /Knock!/ }
+    : profile === 'undercut'
+      ? { rank: 'A', suit: '♠', button: /Knock!/ }
+      : { rank: 'K', suit: '♣', button: /GIN!/ };
+  const discardActor = await waitForGinActor(session, 'select');
+  await selectGinDiscardCard(discardActor, discard.rank, discard.suit);
+  actionCounts.push(await commitGinAction(
+    session,
+    probe,
+    dealerGameId,
+    discardActor.locator(ginSurface('discard')).getByRole('button', { name: discard.button }),
+  ));
+
+  if (profile !== 'gin') {
+    const layoffActor = session.hostPage === discardActor ? session.peerPage : session.hostPage;
+    await expect(layoffActor.locator(
+      '[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible',
+    )).toBeVisible({ timeout: 30_000 });
+    const layoffs = profile === 'normal_knock_layoff'
+      ? [{ rank: '2', suit: '♦' }, { rank: 'A', suit: '♣' }, { rank: '9', suit: '♣' }]
+      : [{ rank: '2', suit: '♦' }];
+    for (const card of layoffs) {
+      actionCounts.push(await layOffGinCard(
+        session, probe, dealerGameId, layoffActor, card.rank, card.suit,
+      ));
+    }
+    actionCounts.push(await commitGinAction(
+      session,
+      probe,
+      dealerGameId,
+      layoffActor.locator(
+        '[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible',
+      ).getByRole('button', { name: 'Done Laying Off', exact: true }),
+    ));
+  }
+
+  const state = await readCompletedGinFixtureState(session, probe, dealerGameId);
+  const result = state.knockResult as GinFixtureKnockResult | null;
+  expect(result).not.toBeNull();
+  if (!result) throw new Error('Gin fixture completed without a knock result');
+
+  if (profile === 'normal_knock_layoff') {
+    expect(result).toMatchObject({
+      knockerDeadwood: 1,
+      opponentDeadwood: 61,
+      isGin: false,
+      isUndercut: false,
+      pointsAwarded: 60,
+      winnerId: result.knockerId,
+    });
+  } else if (profile === 'undercut') {
+    expect(result).toMatchObject({
+      knockerDeadwood: 10,
+      opponentDeadwood: 0,
+      isGin: false,
+      isUndercut: true,
+      pointsAwarded: 35,
+      winnerId: result.opponentId,
+    });
+  } else {
+    expect(result).toMatchObject({
+      knockerDeadwood: 0,
+      opponentDeadwood: 71,
+      isGin: true,
+      isUndercut: false,
+      pointsAwarded: 96,
+      winnerId: result.knockerId,
+    });
+  }
+
+  return {
+    profile,
+    actionCounts,
+    phase: state.phase,
+    knockResult: result,
+    winnerPlayerId: state.winnerPlayerId ?? null,
+  };
+}
+
 test.describe('two-human cross-country branch-smoke matrix', () => {
   for (const scenario of BRANCH_SMOKE_MANIFEST) {
     test(`${scenario.id}`, async ({ browser }, info) => {
@@ -578,6 +825,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
       let primaryError: unknown = null;
       let teardownFailure: AggregateError | null = null;
       let cribbageFixtureArmed = false;
+      let ginFixtureArmed = false;
       let phaseRejoinController: ReturnType<typeof createCribbagePhaseRejoinController> | null = null;
       try {
         if (scenario.cribbageFixtureProfile) {
@@ -596,6 +844,23 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           }
           cribbageFixtureArmed = true;
           evidence.fixtureArm = data;
+        }
+        if (scenario.ginFixtureProfile) {
+          const { data, error } = await session.cleanupClient.rpc(
+            'arm_gin_rule_branch_harness' as never,
+            {
+              p_game_id: session.gameId,
+              p_profile: scenario.ginFixtureProfile,
+              p_ttl_seconds: 600,
+            } as never,
+          );
+          if (error || (data as { outcome?: string } | null)?.outcome !== 'armed') {
+            throw new Error(
+              `Could not arm Gin rule fixture: ${error?.message ?? JSON.stringify(data)}`,
+            );
+          }
+          ginFixtureArmed = true;
+          evidence.ginFixtureArm = data;
         }
         await enterDealerGameUnderChaos(session, scenario.gameType, { configure: (c) => configure(scenario, c) });
         await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
@@ -623,12 +888,59 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           }
           evidence.fixtureStatus = status;
         }
+        if (ginFixtureArmed) {
+          const { data, error } = await session.cleanupClient.rpc(
+            'get_gin_rule_branch_harness' as never,
+            { p_game_id: session.gameId } as never,
+          );
+          const status = data as { armed?: boolean; consumedAt?: string | null; profile?: string } | null;
+          if (
+            error
+            || status?.armed !== false
+            || !status?.consumedAt
+            || status.profile !== scenario.ginFixtureProfile
+          ) {
+            throw new Error(
+              `Gin rule fixture was not consumed exactly once: `
+              + `${error?.message ?? JSON.stringify(status)}`,
+            );
+          }
+          evidence.ginFixtureStatus = status;
+        }
         if (scenario.exerciseCribbageInteractionSeam) {
           evidence.interactionSeam = await exerciseCribbageInteractionSeam(session, probe, dealerGameId);
         }
         const ginBranchEvidence = await exerciseGinBranchSeam(scenario, session, probe, dealerGameId);
         if (ginBranchEvidence) evidence.ginBranch = ginBranchEvidence;
-        await requestLastHand(session, probe);
+        const ginFixtureOpening = await exerciseGinRuleFixtureOpening(
+          scenario,
+          session,
+          probe,
+          dealerGameId,
+        );
+        if (ginFixtureOpening) evidence.ginFixtureOpening = ginFixtureOpening;
+        const ginFixtureStopsAtContinuation = scenario.ginFixtureProfile === 'undercut'
+          || scenario.ginFixtureProfile === 'stock_two_void';
+        if (ginFixtureStopsAtContinuation) {
+          evidence.ginFixtureContinuation = await waitForGinFixtureContinuation(
+            session,
+            probe,
+            dealerGameId,
+          );
+          await runOfflineBurst(session.peerContext, 1_250);
+          await Promise.all([
+            expectCanonicalContinuity(session.hostPage),
+            expectCanonicalContinuity(session.peerPage),
+          ]);
+        } else if (scenario.ginFixtureProfile && ginFixtureOpening?.winnerPlayerId) {
+          evidence.ginFixtureTerminal = await waitForGinFixtureTerminalSettlement(
+            session,
+            probe,
+            dealerGameId,
+            String(ginFixtureOpening.winnerPlayerId),
+          );
+        } else {
+          await requestLastHand(session, probe);
         await runOfflineBurst(session.peerContext, 1_250);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
         await branch(scenario, session.hostPage, session.peerPage);
@@ -765,6 +1077,7 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             freshPeerRedirectedToLobby: true,
           });
         }
+        }
         evidence.status = 'passed';
         console.log(`[branch-smoke] ${scenario.id} passed`);
       } catch (error) {
@@ -804,6 +1117,22 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
               );
             }
             evidence.fixtureCleanup = data;
+          } catch (error) {
+            teardownErrors.push(error);
+          }
+        }
+        if (ginFixtureArmed) {
+          try {
+            const { data, error } = await session.cleanupClient.rpc(
+              'cancel_gin_rule_branch_harness' as never,
+              { p_game_id: session.gameId } as never,
+            );
+            if (error || (data as { outcome?: string } | null)?.outcome !== 'cancelled') {
+              throw new Error(
+                `Could not close Gin rule fixture: ${error?.message ?? JSON.stringify(data)}`,
+              );
+            }
+            evidence.ginFixtureCleanup = data;
           } catch (error) {
             teardownErrors.push(error);
           }

@@ -17,7 +17,7 @@ describe('full human seam coverage ledger', () => {
     expect(FULL_SEAM_SCENARIOS).toHaveLength(
       BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
     );
-    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(26);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(30);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
   });
@@ -49,6 +49,20 @@ describe('full human seam coverage ledger', () => {
     expect(requirement?.coveredBy).toEqual([
       'branch/cribbage-his-heels-nonterminal',
       'branch/cribbage-his-heels-terminal',
+    ]);
+  });
+
+  it('binds every deterministic Gin outcome to the exact-game one-shot fixture', () => {
+    const requirement = FULL_SEAM_REQUIREMENTS.find((row) => row.id === 'gin.knock-layoff-gin-undercut-void');
+    expect(requirement).toMatchObject({
+      fixture: 'gin-rule-branch-once',
+      disposition: 'executable',
+    });
+    expect(requirement?.coveredBy).toEqual([
+      'branch/gin-normal-knock-layoff',
+      'branch/gin-gin-outcome',
+      'branch/gin-undercut-outcome',
+      'branch/gin-stock-two-void',
     ]);
   });
 

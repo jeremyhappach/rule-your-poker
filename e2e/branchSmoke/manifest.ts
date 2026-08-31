@@ -23,6 +23,11 @@ export type Scenario = {
     | 'crib_flush_qualifying'
     | 'crib_flush_nonqualifying';
   cribbageOpeningPhase?: 'pegging' | 'complete';
+  ginFixtureProfile?:
+    | 'normal_knock_layoff'
+    | 'gin'
+    | 'undercut'
+    | 'stock_two_void';
 };
 
 /** The one authoritative inventory for the browser branch-smoke matrix. */
@@ -49,6 +54,10 @@ export const BRANCH_SMOKE_MANIFEST: readonly Scenario[] = [
   { id: 'gin-first-upcard-take-rejoin', gameType: 'gin-rummy', program: 'gin-nondealer-take-rejoin', coverage: ['nondealer-takes-first-upcard', 'first-draw-rejoin', 'draw-discard', 'terminal'] },
   { id: 'gin-dealer-upcard-after-pass', gameType: 'gin-rummy', program: 'gin-dealer-take-after-pass', coverage: ['nondealer-pass', 'dealer-takes-first-upcard', 'draw-discard', 'terminal'] },
   { id: 'gin-discard-pile-rejoin', gameType: 'gin-rummy', program: 'gin-discard-pile-rejoin', coverage: ['both-pass', 'stock-draw', 'ordinary-discard', 'ordinary-play-rejoin', 'discard-pile-draw', 'taken-discard-lockout', 'terminal'] },
+  { id: 'gin-normal-knock-layoff', gameType: 'gin-rummy', program: 'terminal', ginFixtureProfile: 'normal_knock_layoff', coverage: ['exact-game-fixture', 'normal-knock', 'three-legal-layoffs', 'authoritative-scoring', 'terminal'] },
+  { id: 'gin-gin-outcome', gameType: 'gin-rummy', program: 'terminal', ginFixtureProfile: 'gin', coverage: ['exact-game-fixture', 'gin', 'layoff-prohibited', 'authoritative-scoring', 'terminal'] },
+  { id: 'gin-undercut-outcome', gameType: 'gin-rummy', program: 'terminal', ginFixtureProfile: 'undercut', coverage: ['exact-game-fixture', 'ordinary-knock', 'legal-layoff', 'undercut', 'successor-hand'] },
+  { id: 'gin-stock-two-void', gameType: 'gin-rummy', program: 'terminal', ginFixtureProfile: 'stock_two_void', coverage: ['exact-game-fixture', 'stock-two', 'void-hand', 'zero-score', 'successor-hand'] },
   { id: 'gin-multi-hand', gameType: 'gin-rummy', program: 'terminal', minHand: 2, coverage: ['first-draw', 'draw-discard', 'knock-or-gin', 'next-hand', 'terminal'] },
   { id: 'horses-round-flow', gameType: 'horses', program: 'terminal', coverage: ['roll', 'lock-in', 'resolution', 'terminal'] },
   { id: 'scc-round-flow', gameType: 'ship-captain-crew', program: 'terminal', coverage: ['roll', 'qualification', 'lock-in', 'resolution', 'terminal'] },

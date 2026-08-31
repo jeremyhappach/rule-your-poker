@@ -2,6 +2,31 @@
 
 Date: 2026-08-31
 
+## Gin exact-outcome branch harness — production checkpoint
+
+- Migrations `20260831203958_gin_rule_branch_harness.sql` and
+  `20260831215500_gin_rule_branch_target_fallback.sql` add an admin-only,
+  exact-game, expiring, fake-money-only one-shot fixture for normal knock,
+  Gin, undercut, and stock-two void. Real-money, wrong-game, terminal,
+  unauthorized, duplicate, replay, and late-arm boundaries fail closed.
+- The fixture preserves the existing global debug-harness path. Near-Gin
+  targeting follows the canonical session-host rule and falls back to the
+  earliest participating human when `games.current_host` is temporarily null
+  or unresolvable. The complete rollback proof passes both before and after
+  production application.
+- Production browser rows for Gin, undercut, and stock-two void passed with
+  continuous observation, a 6000 ms peer-progress ceiling, exact
+  authoritative outcome assertions, and verified fake-game deletion.
+  Evidence is retained under `artifacts/gin-outcome-harness/playwright/`.
+- Normal knock deterministically completed the first two legal layoffs, then
+  reproduced a product control defect on the third (`9♣`): selection remains
+  keyed to the prior hand index after a same-phase layoff, so the newly shifted
+  card is deselected on first tap and no meld target enables. The harness does
+  not work around that defect; product code remains unchanged in this delivery.
+
+This is targeted Gin branch infrastructure and evidence, not full Gin
+coverage. No real-money browser session was created or touched.
+
 ## Supabase diagnostic quota retention — production checkpoint
 
 - The owned production database reached 595 MB because the daily diagnostic
