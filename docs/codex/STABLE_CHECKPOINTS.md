@@ -2,6 +2,20 @@
 
 ## Platform
 
+- Browser presence heartbeat admission liveness passed the targeted published
+  production checkpoint on 2026-08-31 at commit
+  `859de6047f8d254918ee95a93104ea312ab3f456`. Under three concurrent isolated
+  fake-money pairs, all eight browsers retained at most one in-flight
+  `voice_presence_heartbeats` request even when one write lasted 15.1 seconds;
+  later observations coalesced and drained the newest status. Four completed
+  Cribbage games reached terminal with zero observer violations, zero
+  non-exempt 6000 ms peer-budget breaches, verified fixture cancellation, and
+  verified session deletion. Supabase recorded zero job-startup timeouts in
+  the run window. Preserve the single per-tab request owner, newest-status
+  coalescing, existing authenticated payload/cadence, and best-effort failure
+  boundary. This accepts heartbeat/admission liveness only: two deterministic
+  rule rows still failed a post-terminal card-order oracle and do not receive
+  full branch-coverage credit.
 - Cribbage exact-game rule fixtures and their latency RCA passed published
   production fake-money smoke on 2026-08-30 at commit
   `e8bf659772556bc3914895ba4bd0caa227bcb220`. Near double-skunk,

@@ -1,6 +1,51 @@
 # Current release and cutover state
 
-Date: 2026-08-30
+Date: 2026-08-31
+
+## Browser presence heartbeat admission liveness — production checkpoint accepted
+
+- The frozen Cribbage incident was not an authoritative game freeze. During a
+  project-wide Supabase admission stall, each browser continued starting the
+  four-second `voice_presence_heartbeats` auth/upsert path without waiting for
+  the preceding request. Four clients accumulated 42 heartbeat writes while
+  ordinary requests in a separate game also waited 36--44 seconds. Cribbage
+  authority later reached terminal settlement correctly.
+- Browser presence publication now has one request owner per tab. A stalled
+  auth/upsert remains in flight while later route, context, visibility, and
+  interval observations coalesce to the newest status; that newest status is
+  drained before ownership is released. The four-second cadence, authenticated
+  user lookup, payload, table, and best-effort failure behavior are unchanged.
+  Cribbage scoring, counting, continuation, settlement, and terminal fallback
+  were not changed.
+- Focused tests prove burst coalescing, newest-status draining, and draining
+  after a failed best-effort write. Nine combined heartbeat, serialized-fetch,
+  and real-money-liveness tests passed, along with ESLint, installed local
+  TypeScript, the production build, and all 39 Cribbage preflight assertions.
+- Commit `859de6047f8d254918ee95a93104ea312ab3f456` published successfully as
+  production bundle `assets/index-BPT27ZQ5.js`. Vercel reported the exact
+  commit `READY`; `holm357.com` and its public manifest returned HTTP 200 and
+  identified the same commit.
+- The exact build then ran three isolated fake-money pairs concurrently with
+  continuous observation and a 6000 ms unexpected-peer ceiling. Qualifying
+  and nonqualifying crib-flush branches passed. The pegging 15/31/run/Go/reset
+  and counting fifteens/flush/nobs branches both reached terminal settlement
+  and verified cleanup, then failed the same post-terminal harness assertion:
+  authority contained the expected eight cards in a different legal play
+  order. That oracle discrepancy remains retained failure evidence and is not
+  counted as accepted rule-branch coverage.
+- Across the four completed games, every host and peer recorded a maximum of
+  one concurrent `voice_presence_heartbeats` request, including a heartbeat
+  delayed 15.1 seconds. All four observer exports recorded zero presentation
+  violations and zero non-exempt peer-budget breaches. Every exact fixture was
+  cancelled and every fake-money session deletion was verified. During the
+  three-way window, Supabase recorded 890 successful cron runs and zero
+  `job startup timeout` events. Evidence is retained under
+  `artifacts/cribbage-heartbeat-859de6047/playwright/crib-heartbeat-859d-v3-*`.
+
+This accepts the single-flight/coalesced presence-heartbeat admission boundary
+on the exact production build. It does not claim full Cribbage branch coverage:
+the two card-order oracle failures remain unresolved, and no real-money browser
+session was created or touched.
 
 ## Full-seam Wave 0 Cribbage rule fixtures — latency RCA corrected; exact fixture cut passes
 
