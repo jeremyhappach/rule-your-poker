@@ -433,6 +433,63 @@ async function reloadGinActor(session: TwoClientSession, page: Page): Promise<vo
   await expectCanonicalContinuity(page);
 }
 
+async function expectNoVisibleMaskedGinFaces(...pages: Page[]): Promise<void> {
+  await Promise.all(pages.map((page) => expect(page.locator(
+    '[data-playing-card-face][data-card-id*="?"]:visible',
+  )).toHaveCount(0)));
+}
+
+async function expectGinOpponentReveal(page: Page): Promise<number> {
+  const faces = page.locator(
+    '[data-artifact-id="gin.knockDisplay"] [data-playing-card-face]:visible',
+  );
+  await expect.poll(() => faces.count(), {
+    timeout: 30_000,
+    intervals: [100, 250, 500],
+  }).toBeGreaterThanOrEqual(10);
+  await expectNoVisibleMaskedGinFaces(page);
+  return faces.count();
+}
+
+async function reloadGinScoringBoundary(
+  session: TwoClientSession,
+  page: Page,
+): Promise<'game' | 'lobby'> {
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  let destination: 'game' | 'lobby' | 'pending' = 'pending';
+  await expect.poll(async () => {
+    const pathname = new URL(page.url()).pathname;
+    if (pathname === '/') destination = 'lobby';
+    else if (
+      pathname === `/game/${session.gameId}`
+      && await page.locator('[data-authoritative-game-id]').count() > 0
+    ) destination = 'game';
+    return destination;
+  }, { timeout: 30_000, intervals: [100, 250, 500] }).not.toBe('pending');
+  if (destination === 'game') {
+    await expectCanonicalContinuity(page);
+    await expectNoVisibleMaskedGinFaces(page);
+  }
+  return destination;
+}
+
+async function replaceGinPageWithFreshTerminalMount(
+  session: TwoClientSession,
+  page: Page,
+): Promise<void> {
+  if (page === session.hostPage) {
+    await session.hostPage.close();
+    session.hostPage = await session.hostContext.newPage();
+    await session.hostPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await expect(session.hostPage).toHaveURL(/\/$/, { timeout: 120_000 });
+  } else {
+    await session.peerPage.close();
+    session.peerPage = await session.peerContext.newPage();
+    await session.peerPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await expect(session.peerPage).toHaveURL(/\/$/, { timeout: 120_000 });
+  }
+}
+
 async function clickGinPile(
   session: TwoClientSession,
   probe: TerminalSettlementProbe,
@@ -674,6 +731,23 @@ async function exerciseGinRuleFixtureOpening(
 
   let firstActor = await waitForGinActor(session, 'first-draw');
   const actionCounts: number[] = [];
+  const rejoinEvidence: Record<string, unknown> = {};
+  const exercisesGinRejoin = scenario.exerciseGinKnockLayoffRejoin
+    || scenario.exerciseGinScoringTerminalRejoin
+    || scenario.exerciseGinSuccessorRejoin;
+  if (exercisesGinRejoin) {
+    await expectNoVisibleMaskedGinFaces(session.hostPage, session.peerPage);
+    const preRevealFaceCounts = {
+      host: await session.hostPage.locator(
+        '[data-artifact-id="gin.knockDisplay"] [data-playing-card-face]:visible',
+      ).count(),
+      peer: await session.peerPage.locator(
+        '[data-artifact-id="gin.knockDisplay"] [data-playing-card-face]:visible',
+      ).count(),
+    };
+    expect(preRevealFaceCounts).toEqual({ host: 0, peer: 0 });
+    rejoinEvidence.preRevealFaceCounts = preRevealFaceCounts;
+  }
 
   if (profile === 'stock_two_void') {
     actionCounts.push(await commitGinAction(
@@ -747,18 +821,55 @@ async function exerciseGinRuleFixtureOpening(
     discardActor.locator(ginSurface('discard')).getByRole('button', { name: discard.button }),
   ));
 
+  const knockOpponent = session.hostPage === discardActor ? session.peerPage : session.hostPage;
+  if (scenario.exerciseGinKnockLayoffRejoin) {
+    await reloadGinActor(session, knockOpponent);
+    await expect(knockOpponent.locator(
+      '[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible',
+    )).toBeVisible({ timeout: 30_000 });
+    rejoinEvidence.knockReveal = {
+      page: ginActorLabel(session, knockOpponent),
+      revealedFaceCount: await expectGinOpponentReveal(knockOpponent),
+    };
+  }
+  if (scenario.exerciseGinScoringTerminalRejoin) {
+    const beforeReload = await probe.readGinProgress(session.gameId, dealerGameId);
+    expect(beforeReload.phase).toBe('scoring');
+    const revealedFaceCount = await expectGinOpponentReveal(knockOpponent);
+    const destination = await reloadGinScoringBoundary(session, knockOpponent);
+    const afterReload = await probe.readGinProgress(session.gameId, dealerGameId);
+    rejoinEvidence.scoringBoundary = {
+      page: ginActorLabel(session, knockOpponent),
+      beforePhase: beforeReload.phase,
+      afterPhase: afterReload.phase,
+      destination,
+      revealedFaceCount,
+    };
+  }
+
   if (profile !== 'gin') {
-    const layoffActor = session.hostPage === discardActor ? session.peerPage : session.hostPage;
+    const layoffActor = knockOpponent;
     await expect(layoffActor.locator(
       '[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible',
     )).toBeVisible({ timeout: 30_000 });
     const layoffs = profile === 'normal_knock_layoff'
       ? [{ rank: '2', suit: '♦' }, { rank: 'A', suit: '♣' }, { rank: '9', suit: '♣' }]
       : [{ rank: '2', suit: '♦' }];
-    for (const card of layoffs) {
+    for (const [index, card] of layoffs.entries()) {
       actionCounts.push(await layOffGinCard(
         session, probe, dealerGameId, layoffActor, card.rank, card.suit,
       ));
+      if (scenario.exerciseGinKnockLayoffRejoin && index === 0) {
+        await reloadGinActor(session, layoffActor);
+        await expect(layoffActor.locator(
+          '[data-authoritative-action-surface="gin-human-turn:lay-off"]:visible',
+        )).toBeVisible({ timeout: 30_000 });
+        rejoinEvidence.layoff = {
+          page: ginActorLabel(session, layoffActor),
+          revealedFaceCount: await expectGinOpponentReveal(layoffActor),
+          completedLayoffsBeforeReload: 1,
+        };
+      }
     }
     actionCounts.push(await commitGinAction(
       session,
@@ -810,6 +921,7 @@ async function exerciseGinRuleFixtureOpening(
     phase: state.phase,
     knockResult: result,
     winnerPlayerId: state.winnerPlayerId ?? null,
+    rejoin: Object.keys(rejoinEvidence).length ? rejoinEvidence : null,
   };
 }
 
@@ -932,6 +1044,22 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             expectCanonicalContinuity(session.hostPage),
             expectCanonicalContinuity(session.peerPage),
           ]);
+          if (scenario.exerciseGinSuccessorRejoin) {
+            const beforeReload = await probe.readGinProgress(session.gameId, dealerGameId);
+            await reloadGinActor(session, session.peerPage);
+            const peerHand = session.peerPage.locator('[data-gin-hand-card-key]:visible');
+            await expect(peerHand).toHaveCount(10, { timeout: 30_000 });
+            await expect(session.peerPage.locator(
+              '[data-artifact-id="gin.knockDisplay"] [data-playing-card-face]:visible',
+            )).toHaveCount(0);
+            await expectNoVisibleMaskedGinFaces(session.hostPage, session.peerPage);
+            const afterReload = await probe.readGinProgress(session.gameId, dealerGameId);
+            evidence.ginSuccessorRejoin = {
+              before: beforeReload,
+              after: afterReload,
+              peerHandCardCount: await peerHand.count(),
+            };
+          }
         } else if (scenario.ginFixtureProfile && ginFixtureOpening?.winnerPlayerId) {
           evidence.ginFixtureTerminal = await waitForGinFixtureTerminalSettlement(
             session,
@@ -939,6 +1067,21 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             dealerGameId,
             String(ginFixtureOpening.winnerPlayerId),
           );
+          if (scenario.exerciseGinScoringTerminalRejoin) {
+            const hostPanel = session.hostPage.locator('[data-session-ended-panel]');
+            const peerPanel = session.peerPage.locator('[data-session-ended-panel]');
+            await expect.poll(async () => (
+              await hostPanel.count() + await peerPanel.count()
+            ), { timeout: 120_000, intervals: [250, 500, 1_000] }).toBeGreaterThan(0);
+            const connectedPage = await hostPanel.count() ? session.hostPage : session.peerPage;
+            const freshPage = connectedPage === session.hostPage ? session.peerPage : session.hostPage;
+            await expect(connectedPage.locator('[data-session-ended-panel]')).toBeVisible();
+            await replaceGinPageWithFreshTerminalMount(session, freshPage);
+            evidence.ginScoringTerminalRejoin = {
+              connectedPanelVisible: true,
+              freshMountRedirectedToLobby: true,
+            };
+          }
         } else {
           await requestLastHand(session, probe);
         await runOfflineBurst(session.peerContext, 1_250);

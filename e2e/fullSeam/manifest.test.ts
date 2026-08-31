@@ -17,7 +17,7 @@ describe('full human seam coverage ledger', () => {
     expect(FULL_SEAM_SCENARIOS).toHaveLength(
       BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
     );
-    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(30);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(33);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
   });
@@ -85,5 +85,18 @@ describe('full human seam coverage ledger', () => {
       'cribbage.pegging-branches',
       'cribbage.counting-categories',
     ]));
+  });
+
+  it('inventories focused Gin rejoin drivers without claiming the still-incomplete full phase matrix', () => {
+    expect(BRANCH_SMOKE_MANIFEST.filter((row) => row.id.startsWith('gin-') && (
+      row.exerciseGinKnockLayoffRejoin
+      || row.exerciseGinScoringTerminalRejoin
+      || row.exerciseGinSuccessorRejoin
+    )).map((row) => row.id)).toEqual([
+      'gin-knock-layoff-rejoin',
+      'gin-scoring-terminal-rejoin',
+      'gin-successor-hand-rejoin',
+    ]);
+    expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).toContain('gin.phase-rejoins');
   });
 });
