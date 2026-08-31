@@ -11,6 +11,12 @@ const migration = normalizeLineEndings(readFileSync(resolve(
 const proof = normalizeLineEndings(readFileSync(resolve(
   'supabase/tests/cribbage_rule_branch_harness_proof.sql',
 ), 'utf8'));
+const expansionMigration = normalizeLineEndings(readFileSync(resolve(
+  'supabase/migrations/20260830224500_cribbage_combo_and_crib_flush_fixtures.sql',
+), 'utf8'));
+const expansionProof = normalizeLineEndings(readFileSync(resolve(
+  'supabase/tests/cribbage_combo_and_crib_flush_fixtures_proof.sql',
+), 'utf8'));
 const manifest = normalizeLineEndings(readFileSync(resolve('e2e/branchSmoke/manifest.ts'), 'utf8'));
 const driver = normalizeLineEndings(readFileSync(resolve('e2e/branchSmoke/allGames.branchSmoke.spec.ts'), 'utf8'));
 
@@ -42,6 +48,26 @@ describe('Cribbage exact-game rule-branch harness contract', () => {
     }
     expect(proof).toContain('global_harness_gate_mutated');
     expect(proof).toContain('global_profile_mutated');
+  });
+
+  it('adds deterministic 15/31/run/Go/counting and both crib-flush boundaries', () => {
+    for (const profile of [
+      'fifteen_run_go_counting',
+      'crib_flush_qualifying',
+      'crib_flush_nonqualifying',
+    ]) {
+      expect(expansionMigration).toContain(profile);
+      expect(manifest).toContain(`cribbageFixtureProfile: '${profile}'`);
+    }
+    for (const marker of [
+      'pegging_15_31_run_go_reset_wrong',
+      'counting_fifteen_flush_nobs_wrong',
+      'qualifying_crib_flush_wrong',
+      'nonqualifying_crib_flush_wrong',
+      'new_profile_not_consumed_once',
+    ]) expect(expansionProof).toContain(marker);
+    expect(driver).toContain("'5', '10', '6', '10', '9', '8', '7', 'J'");
+    expect(driver).toContain('[2, 2, 4, 4]');
   });
 
   it('proves the required failure and lifecycle boundaries before deployment', () => {

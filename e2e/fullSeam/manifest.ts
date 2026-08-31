@@ -140,11 +140,19 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
     'branch/cribbage-his-heels-nonterminal',
     'branch/cribbage-his-heels-terminal',
   ], { fixture: 'cribbage-rule-branch-once' }),
-  req('cribbage.pegging-branches', 'cribbage', 1, 'Pegging covers 15, 31, pair through quadruple, runs, Go, last card, blocked player, and reset without double-scoring 31.'),
+  req('cribbage.pegging-branches', 'cribbage', 1, 'Pegging covers 15, 31, pair through quadruple, runs, Go, last card, blocked player, and reset without double-scoring 31.', [
+    'branch/cribbage-pegging-counting-branches',
+    'branch/cribbage-pegging-15-31-run-go-reset',
+  ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.counting-order', 'cribbage', 1, 'Counting order is nondealer, dealer, then crib.', [
     'branch/cribbage-pegging-counting-branches',
   ], { fixture: 'cribbage-rule-branch-once' }),
-  req('cribbage.counting-categories', 'cribbage', 1, 'Counting covers fifteens, pairs, run multiplicity, flush boundaries, and nobs.'),
+  req('cribbage.counting-categories', 'cribbage', 1, 'Counting covers fifteens, pairs, run multiplicity, flush boundaries, and nobs.', [
+    'branch/cribbage-pegging-counting-branches',
+    'branch/cribbage-counting-fifteen-flush-nobs',
+    'branch/cribbage-crib-flush-qualifying',
+    'branch/cribbage-crib-flush-nonqualifying',
+  ], { fixture: 'cribbage-rule-branch-once' }),
   req('cribbage.terminal-entry-phases', 'cribbage', 1, 'Terminal entry during pegging, His Heels, each hand count, and crib count skips no presentation.'),
   req('cribbage.ordinary-rollover', 'cribbage', 1, 'Ordinary rollover rotates dealer and clears pegging/counting artifacts.', ['branch/cribbage-multi-hand']),
   req('cribbage.targets-and-skunk', 'cribbage', 1, 'All targets plus ordinary, skunk, and double-skunk settlement modes run.'),

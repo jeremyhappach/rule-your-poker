@@ -119,8 +119,9 @@ async function discardSelectedCards(page: Page): Promise<void> {
 type CribbageBranchState = {
   phase?: string;
   dealerPlayerId?: string;
-  cutCard?: { rank?: string; suit?: string } | null;
-  lastEvent?: { type?: string } | null;
+  cutCard?: { rank?: string; suit?: string; value?: number } | null;
+  crib?: Array<{ rank?: string; suit?: string; value?: number }>;
+  lastEvent?: { type?: string; label?: string; points?: number; count?: number } | null;
   playerStates?: Record<string, { pegScore?: number }>;
   pegging?: {
     playedCards?: Array<{
@@ -136,6 +137,17 @@ type CribbageBranchState = {
       comboPoints?: number[];
       totalPoints?: number;
     }>;
+  };
+  lastHandCount?: {
+    playerHandScores?: Record<string, {
+      fifteens?: number; pairs?: number; runs?: number; flush?: number; nobs?: number; total?: number;
+    }>;
+    dealerHandScore?: {
+      fifteens?: number; pairs?: number; runs?: number; flush?: number; nobs?: number; total?: number;
+    };
+    cribScore?: {
+      fifteens?: number; pairs?: number; runs?: number; flush?: number; nobs?: number; total?: number;
+    };
   };
 };
 
@@ -175,6 +187,15 @@ async function exerciseCribbageRuleFixtureOpening(
   if (profile === 'perpetual_heels') {
     expect(state.cutCard?.rank).toBe('J');
     expect(state.lastEvent?.type).toBe('his_heels');
+  }
+  if (profile === 'fifteen_run_go_counting') {
+    expect(state.cutCard).toEqual({ rank: '4', suit: 'hearts', value: 4 });
+  }
+  if (profile === 'crib_flush_qualifying') {
+    expect(state.cutCard).toEqual({ rank: '5', suit: 'clubs', value: 5 });
+  }
+  if (profile === 'crib_flush_nonqualifying') {
+    expect(state.cutCard).toEqual({ rank: '5', suit: 'hearts', value: 5 });
   }
 
   return {
@@ -603,6 +624,68 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             playedCards,
             countingTargets: targets,
             countingBaselineScores: finalFirstHand?.countingPlan?.baselineScores ?? null,
+          };
+        }
+        if (scenario.cribbageFixtureProfile === 'fifteen_run_go_counting') {
+          const finalFirstHand = await probe.readCribbageRoundState(
+            session.gameId,
+            dealerGameId,
+            1,
+          ) as CribbageBranchState | null;
+          const playedCards = finalFirstHand?.pegging?.playedCards ?? [];
+          const targets = finalFirstHand?.countingPlan?.targets ?? [];
+          const nonDealerId = playedCards[0]?.playerId;
+          const dealerId = finalFirstHand?.dealerPlayerId;
+          expect(playedCards.map((play) => play.card?.rank)).toEqual([
+            '5', '10', '6', '10', '9', '8', '7', 'J',
+          ]);
+          expect(nonDealerId).toBeTruthy();
+          expect(dealerId).toBeTruthy();
+          expect(finalFirstHand?.countingPlan?.baselineScores?.[nonDealerId ?? '']).toBe(4);
+          expect(finalFirstHand?.countingPlan?.baselineScores?.[dealerId ?? '']).toBe(5);
+          expect(finalFirstHand?.lastEvent).toMatchObject({
+            type: 'pegging_points', label: 'Last Card', points: 1, count: 10,
+          });
+          expect(targets.map((target) => target.type)).toEqual(['hand', 'hand', 'crib']);
+          expect(targets.map((target) => target.comboPoints)).toEqual([
+            [2, 2, 4, 4],
+            [2, 1],
+            [12],
+          ]);
+          expect(targets.map((target) => target.totalPoints)).toEqual([12, 3, 12]);
+          expect(finalFirstHand?.lastHandCount?.playerHandScores?.[nonDealerId ?? '']).toMatchObject({
+            fifteens: 4, runs: 4, flush: 4, total: 12,
+          });
+          expect(finalFirstHand?.lastHandCount?.dealerHandScore).toMatchObject({
+            pairs: 2, nobs: 1, total: 3,
+          });
+          expect(finalFirstHand?.lastHandCount?.cribScore).toMatchObject({ pairs: 12, total: 12 });
+          evidence.firstHandFinal = {
+            playedCards,
+            countingTargets: targets,
+            countingBaselineScores: finalFirstHand?.countingPlan?.baselineScores ?? null,
+            lastHandCount: finalFirstHand?.lastHandCount ?? null,
+          };
+        }
+        if (
+          scenario.cribbageFixtureProfile === 'crib_flush_qualifying'
+          || scenario.cribbageFixtureProfile === 'crib_flush_nonqualifying'
+        ) {
+          const finalFirstHand = await probe.readCribbageRoundState(
+            session.gameId,
+            dealerGameId,
+            1,
+          ) as CribbageBranchState | null;
+          const expectedFlush = scenario.cribbageFixtureProfile === 'crib_flush_qualifying' ? 5 : 0;
+          expect(finalFirstHand?.crib).toHaveLength(4);
+          expect(finalFirstHand?.crib?.map((card) => card.suit)).toEqual([
+            'clubs', 'clubs', 'clubs', 'clubs',
+          ]);
+          expect(finalFirstHand?.lastHandCount?.cribScore?.flush).toBe(expectedFlush);
+          evidence.firstHandFinal = {
+            cutCard: finalFirstHand?.cutCard ?? null,
+            crib: finalFirstHand?.crib ?? null,
+            cribScore: finalFirstHand?.lastHandCount?.cribScore ?? null,
           };
         }
         if (scenario.minHand) expect(result.hand_number).toBeGreaterThanOrEqual(scenario.minHand);

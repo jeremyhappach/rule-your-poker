@@ -17,7 +17,7 @@ describe('full human seam coverage ledger', () => {
     expect(FULL_SEAM_SCENARIOS).toHaveLength(
       BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
     );
-    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(22);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(26);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
   });
@@ -64,10 +64,12 @@ describe('full human seam coverage ledger', () => {
       coveredBy: ['branch/cribbage-phase-rejoin-matrix'],
     });
     expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).toEqual(expect.arrayContaining([
-      'cribbage.pegging-branches',
-      'cribbage.counting-categories',
       'cribbage.terminal-entry-phases',
       'cribbage.targets-and-skunk',
+    ]));
+    expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).not.toEqual(expect.arrayContaining([
+      'cribbage.pegging-branches',
+      'cribbage.counting-categories',
     ]));
   });
 });
