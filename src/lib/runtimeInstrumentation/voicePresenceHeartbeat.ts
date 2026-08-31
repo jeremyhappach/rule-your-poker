@@ -17,11 +17,14 @@ import { getActiveVoiceOperationId } from "@/lib/runtimeInstrumentation/voiceOpe
 
 const TAB_ID_KEY = "voice-op:tab-id-v1";
 const HEARTBEAT_MS = 4000;
+type VoicePresenceStatus = "active" | "hidden" | "leaving";
 
 let started = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 let currentGameId: string | null = null;
 let currentSessionId: string | null = null;
+let heartbeatInFlight = false;
+let pendingHeartbeatStatus: VoicePresenceStatus | null = null;
 
 function getTabId(): string {
   if (typeof window === "undefined") return "server";
@@ -37,7 +40,7 @@ function getTabId(): string {
   }
 }
 
-async function beat(status: "active" | "hidden" | "leaving"): Promise<void> {
+async function writeHeartbeat(status: VoicePresenceStatus): Promise<void> {
   try {
     const { data } = await supabase.auth.getUser();
     const user_id = data.user?.id;
@@ -56,6 +59,26 @@ async function beat(status: "active" | "hidden" | "leaving"): Promise<void> {
       .from("voice_presence_heartbeats")
       .upsert([payload], { onConflict: "user_id,tab_id" });
   } catch { /* best-effort */ }
+}
+
+async function beat(status: VoicePresenceStatus): Promise<void> {
+  // Heartbeats are observational lease refreshes, not a request queue. If the
+  // Data API stalls, retain only the newest status/context and never admit a
+  // second auth + upsert flight from this tab. The current flight drains that
+  // newest observation before releasing ownership.
+  pendingHeartbeatStatus = status;
+  if (heartbeatInFlight) return;
+
+  heartbeatInFlight = true;
+  try {
+    while (pendingHeartbeatStatus !== null) {
+      const nextStatus = pendingHeartbeatStatus;
+      pendingHeartbeatStatus = null;
+      await writeHeartbeat(nextStatus);
+    }
+  } finally {
+    heartbeatInFlight = false;
+  }
 }
 
 export function startVoicePresenceHeartbeat(): void {
