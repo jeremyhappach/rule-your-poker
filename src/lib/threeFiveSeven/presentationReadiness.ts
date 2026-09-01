@@ -37,9 +37,11 @@ export function isThreeFiveSevenRuntimeWaveReady(args: {
 }
 
 /**
- * A live, identity-matched private hand is authoritative evidence that the
- * player may act. It is allowed to recover a missing local transport receipt,
- * but never historical, incomplete, or non-betting state.
+ * A live, identity-matched private hand may recover a missing local transport
+ * receipt only after this client observed the exact wave in flight and the
+ * transport owner has no active intents left. Authoritative cards alone are
+ * never a presentation receipt: ordinary PRE_DEAL and active flights remain
+ * transport-owned.
  */
 export function isThreeFiveSevenAuthoritativeFallbackReady(args: {
   historicalEntry: boolean;
@@ -51,6 +53,12 @@ export function isThreeFiveSevenAuthoritativeFallbackReady(args: {
   roundNumber: number | null | undefined;
   authoritativeSelfCardCount: number;
   expectedSelfCardCount: number;
+  runtimePhase: string | null | undefined;
+  runtimeExpectedCount: number;
+  expectedCumulativeCount: number;
+  runtimeSettledCount: number;
+  runtimeActiveIntentCount: number;
+  transportObservedForWave: boolean;
 }): boolean {
   return (
     !args.historicalEntry &&
@@ -62,7 +70,12 @@ export function isThreeFiveSevenAuthoritativeFallbackReady(args: {
     typeof args.roundNumber === 'number' &&
     args.roundNumber >= 1 &&
     args.expectedSelfCardCount > 0 &&
-    args.authoritativeSelfCardCount >= args.expectedSelfCardCount
+    args.authoritativeSelfCardCount >= args.expectedSelfCardCount &&
+    args.runtimePhase === 'DEALING' &&
+    args.runtimeExpectedCount === args.expectedCumulativeCount &&
+    args.runtimeSettledCount < args.runtimeExpectedCount &&
+    args.runtimeActiveIntentCount === 0 &&
+    args.transportObservedForWave
   );
 }
 

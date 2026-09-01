@@ -2,6 +2,25 @@
 
 Date: 2026-08-31
 
+## 3-5-7 live deal-wave presentation admission
+
+- In real-money session `015d269f-4651-4d45-abf8-6a170301d234`, both clients
+  painted all three Round 1 cards during `PRE_DEAL`, 1.844–1.982 seconds before
+  the canonical wave dispatch began. The authoritative-readiness recovery was
+  treating a complete private card row as a presentation receipt even though
+  the transport ledger still had zero settled cards and zero active intents.
+- A live authoritative hand may now recover a genuinely missing local
+  transport receipt only after the exact cumulative wave was registered, the
+  client observed that wave's intents in flight, every intent became inactive,
+  and the local settled ledger remained incomplete. Ordinary `PRE_DEAL`, an
+  active animation, a mismatched wave target, and a normally completed
+  transport cannot use the fallback. Historical/rejoin reconstruction and the
+  existing database/gameplay authority are unchanged.
+- Fifty-four focused 3-5-7, cross-country, action-surface, and liveness
+  assertions, the installed TypeScript compiler, all 39 build-required
+  Cribbage assertions, and the production build pass. Production smoke remains
+  the acceptance gate for visual deal order.
+
 ## Holm configured postgame recovery fallback — installed
 
 - Live real-money session `015d269f-4651-4d45-abf8-6a170301d234` completed

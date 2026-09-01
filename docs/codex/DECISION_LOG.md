@@ -1514,3 +1514,15 @@ not inherit it, and neither the global harness gate nor configured global
 profile is changed. Browser evidence must prove consumption and explicit
 cancellation/cleanup; deterministic gameplay completion cannot override an
 unmarked observer-budget breach.
+
+## D-108 - Authoritative cards are not a live deal-wave receipt
+
+For a live 3-5-7 transition, persisted private cards prove gameplay state but
+do not prove that their canonical card transport has started or completed.
+`PRE_DEAL` and active flights remain claim-only presentation phases. The
+authoritative fallback may open only after the exact cumulative wave was
+registered, that client observed its intents in flight, every intent became
+inactive, and the local settled ledger is still incomplete. This preserves
+lost-receipt liveness without allowing early card paint or replacing transport
+with a timer. Historical/rejoin reconstruction remains a separate explicit
+entry mode.

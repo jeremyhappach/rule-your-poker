@@ -67,7 +67,7 @@ describe('3-5-7 deal presentation readiness', () => {
     })).toBe(true);
   });
 
-  it('recovers a live exact hand when only the local transport receipt is missing', () => {
+  it('recovers a live exact hand only after the exact transport wave becomes inactive with a missing receipt', () => {
     expect(isThreeFiveSevenAuthoritativeFallbackReady({
       historicalEntry: false,
       gameStatus: 'in_progress',
@@ -78,7 +78,77 @@ describe('3-5-7 deal presentation readiness', () => {
       roundNumber: 1,
       authoritativeSelfCardCount: 3,
       expectedSelfCardCount: 3,
+      runtimePhase: 'DEALING',
+      runtimeExpectedCount: 6,
+      expectedCumulativeCount: 6,
+      runtimeSettledCount: 5,
+      runtimeActiveIntentCount: 0,
+      transportObservedForWave: true,
     })).toBe(true);
+  });
+
+  it('never treats an authoritative PRE_DEAL hand or active wave as a presentation receipt', () => {
+    const exactLiveHand = {
+      historicalEntry: false,
+      gameStatus: 'in_progress',
+      roundStatus: 'betting',
+      handContextId: 'dealer-game-1#h1',
+      waveContextId: 'dealer-game-1#h1#r1',
+      roundId: 'round-1',
+      roundNumber: 1,
+      authoritativeSelfCardCount: 3,
+      expectedSelfCardCount: 3,
+      runtimeExpectedCount: 6,
+      expectedCumulativeCount: 6,
+      runtimeSettledCount: 0,
+      runtimeActiveIntentCount: 0,
+      transportObservedForWave: false,
+    };
+
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      runtimePhase: 'PRE_DEAL',
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      runtimePhase: 'DEALING',
+      runtimeActiveIntentCount: 6,
+      transportObservedForWave: true,
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      runtimePhase: 'DEALING',
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      runtimePhase: 'DEALING',
+      runtimeExpectedCount: 0,
+      transportObservedForWave: true,
+    })).toBe(false);
+    expect(isThreeFiveSevenAuthoritativeFallbackReady({
+      ...exactLiveHand,
+      runtimePhase: 'DEALING',
+      runtimeSettledCount: 6,
+      transportObservedForWave: true,
+    })).toBe(false);
+  });
+
+  it('wires fallback admission through the exact wave transport lifecycle reporter', () => {
+    const source = readFileSync(
+      new URL('../../components/MobileGameTable.tsx', import.meta.url),
+      'utf8',
+    );
+    const reporter = source.slice(
+      source.indexOf('function ThreeFiveSevenTimerGateReporter({'),
+      source.indexOf('function resolveCanonicalFeltKind('),
+    );
+
+    expect(reporter).toContain('deal.activeIntentsForHand <= 0');
+    expect(reporter).toContain('runtimePhase: deal?.phase');
+    expect(reporter).toContain('runtimeSettledCount: deal?.settledCardIds.size ?? 0');
+    expect(reporter).toContain(
+      'transportObservedForWave: transportObservedWaveContextId === waveContextId',
+    );
   });
 
   it('keeps historical, incomplete, and non-betting state blocked from fallback recovery', () => {
@@ -92,6 +162,12 @@ describe('3-5-7 deal presentation readiness', () => {
       roundNumber: 1,
       authoritativeSelfCardCount: 3,
       expectedSelfCardCount: 3,
+      runtimePhase: 'DEALING',
+      runtimeExpectedCount: 6,
+      expectedCumulativeCount: 6,
+      runtimeSettledCount: 5,
+      runtimeActiveIntentCount: 0,
+      transportObservedForWave: true,
     };
 
     expect(isThreeFiveSevenAuthoritativeFallbackReady({

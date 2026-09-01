@@ -633,7 +633,10 @@ function ThreeFiveSevenTimerGateReporter({
   roundNumber,
   expectedCumulativeCount,
   historicalEntry,
-  authoritativeFallbackReady,
+  gameStatus,
+  roundStatus,
+  authoritativeSelfCardCount,
+  expectedSelfCardCount,
   onAllowedChange,
 }: {
   waveContextId: string | null;
@@ -641,16 +644,45 @@ function ThreeFiveSevenTimerGateReporter({
   roundNumber: number | null;
   expectedCumulativeCount: number;
   historicalEntry: boolean;
-  authoritativeFallbackReady: boolean;
+  gameStatus: string | null | undefined;
+  roundStatus: string | null | undefined;
+  authoritativeSelfCardCount: number;
+  expectedSelfCardCount: number;
   onAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
 }) {
   const deal = useDealRuntime();
   const handContextId = deal?.handContextId ?? null;
+  const [transportObservedWaveContextId, setTransportObservedWaveContextId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!waveContextId || !deal) return;
+    if (deal.expectedCount !== expectedCumulativeCount) return;
+    if (deal.activeIntentsForHand <= 0) return;
+    setTransportObservedWaveContextId((current) => (
+      current === waveContextId ? current : waveContextId
+    ));
+  }, [deal, deal?.activeIntentsForHand, deal?.expectedCount, expectedCumulativeCount, waveContextId]);
   const transportAllowed = isThreeFiveSevenRuntimeWaveReady({
     runtimeAllowed: deal?.timerAllowed ?? false,
     runtimeExpectedCount: deal?.expectedCount ?? 0,
     expectedCumulativeCount,
     historicalEntry,
+  });
+  const authoritativeFallbackReady = isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand({
+    historicalEntry,
+    gameStatus,
+    roundStatus,
+    handContextId,
+    waveContextId,
+    roundId,
+    roundNumber,
+    authoritativeSelfCardCount,
+    expectedSelfCardCount,
+    runtimePhase: deal?.phase,
+    runtimeExpectedCount: deal?.expectedCount ?? 0,
+    expectedCumulativeCount,
+    runtimeSettledCount: deal?.settledCardIds.size ?? 0,
+    runtimeActiveIntentCount: deal?.activeIntentsForHand ?? 0,
+    transportObservedForWave: transportObservedWaveContextId === waveContextId,
   });
   const allowed = transportAllowed || authoritativeFallbackReady;
   const source: NonNullable<ThreeFiveSevenDealReadinessToken['source']> = transportAllowed
@@ -6510,19 +6542,6 @@ export const MobileGameTable = ({
     }
     return chosen.cards;
   }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id, horsesHandNumber, horsesRoundId, threeFiveSevenDealerGameScope, currentRound]);
-
-  const threeFiveSevenAuthoritativeFallbackReady = __is357GameType(gameType) &&
-    isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand({
-      historicalEntry: three57EntryMode === 'historical-entry',
-      gameStatus,
-      roundStatus,
-      handContextId: threeFiveSevenHandContextId,
-      waveContextId: threeFiveSevenWaveContextId,
-      roundId: threeFiveSevenViewRoundId,
-      roundNumber: threeFiveSevenViewRoundNumber,
-      authoritativeSelfCardCount: currentPlayerCards.length,
-      expectedSelfCardCount: totalAfterWaveFor357(currentRound ?? 0),
-    });
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
@@ -12397,7 +12416,10 @@ export const MobileGameTable = ({
         threeFiveSevenActiveSeats.length * totalAfterWaveFor357(currentRound ?? 0)
       }
       historicalEntry={three57EntryMode === 'historical-entry'}
-      authoritativeFallbackReady={threeFiveSevenAuthoritativeFallbackReady}
+      gameStatus={gameStatus}
+      roundStatus={roundStatus}
+      authoritativeSelfCardCount={currentPlayerCards.length}
+      expectedSelfCardCount={totalAfterWaveFor357(currentRound ?? 0)}
       onAllowedChange={handleThreeFiveSevenDealReadinessChange}
     />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
