@@ -1295,29 +1295,6 @@ const Game = () => {
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [dealReadiness357, setDealReadiness357] =
     useState<ThreeFiveSevenDealReadinessToken | null>(null);
-  const expectedDealHandContext357 =
-    game?.current_game_uuid && typeof game.total_hands === 'number' && game.total_hands > 0
-      ? `${game.current_game_uuid}#h${game.total_hands}`
-      : null;
-  const expectedDealRoundNumber357 =
-    typeof game?.current_round === 'number' && game.current_round > 0
-      ? game.current_round
-      : null;
-  const expectedDealWaveContext357 =
-    expectedDealHandContext357 && expectedDealRoundNumber357
-      ? `${expectedDealHandContext357}#r${expectedDealRoundNumber357}`
-      : null;
-  const dealTimerAllowed357 = isThreeFiveSevenDealPresentationReady(
-    {
-      handContextId: expectedDealHandContext357,
-      waveContextId: expectedDealWaveContext357,
-      roundId: dealReadiness357?.roundNumber === expectedDealRoundNumber357
-        ? dealReadiness357.roundId
-        : null,
-      roundNumber: expectedDealRoundNumber357,
-    },
-    dealReadiness357,
-  );
   // Legacy denominator remains the presentation source for non-Holm games.
   const [decisionMaxTime, setDecisionMaxTime] = useState<number | null>(null);
   const decisionMaxTimeDeadlineRef = useRef<string | null>(null);
@@ -2627,6 +2604,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // 3-5-7 presentation players — overlay decisions from presentation state
   // Action handlers continue to use raw `players` for mutation correctness.
   const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
+  const expectedDealHandContext357 = threeFiveSevenView
+    ? `${threeFiveSevenView.dealerGameId}#h${threeFiveSevenView.handNumber}`
+    : null;
+  const expectedDealWaveContext357 = expectedDealHandContext357 && threeFiveSevenView
+    ? `${expectedDealHandContext357}#r${threeFiveSevenView.roundNumber}`
+    : null;
+  const dealTimerAllowed357 = isThreeFiveSevenDealPresentationReady(
+    {
+      handContextId: expectedDealHandContext357,
+      waveContextId: expectedDealWaveContext357,
+      roundId: threeFiveSevenView?.roundId ?? null,
+      roundNumber: threeFiveSevenView?.roundNumber ?? null,
+    },
+    dealReadiness357,
+  );
   if (threeFiveSevenPreHandLifecycleRef.current.gameId !== (gameId ?? null)) {
     threeFiveSevenPreHandLifecycleRef.current = {
       gameId: gameId ?? null,
@@ -18136,6 +18128,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               pendingAutoRollOff={pendingAutoRollOff}
+              dealReadiness357={dealReadiness357}
               on357TimerAllowedChange={setDealReadiness357}
             />
           );

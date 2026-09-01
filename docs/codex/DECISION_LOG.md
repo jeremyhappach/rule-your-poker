@@ -1541,3 +1541,17 @@ timeout, pause, settlement, abandonment, or replay-safe recovery. If an
 admission predicate cannot classify a legacy row, the dispatcher runs that
 owner through its established isolated failure boundary instead of allowing
 the optimization to suppress authority work.
+
+## D-110 - One exact 3-5-7 wave token opens both presentation and gameplay
+
+The route owns one identity-complete 3-5-7 deal-readiness token and supplies it
+to both the timer and decision/presentation surface. A table-local mirror is
+not a second readiness owner: separate commits can otherwise admit actions one
+render before the timer or keep the timer blocked after cards are actionable.
+
+Rounds two and three are cumulative gameplay hands but exact presentation
+waves. Their already-presented authoritative cards are the stable baseline;
+only card IDs belonging to the current dealer-game/hand/round wave may extend
+that baseline. Readiness still requires the exact transport lifecycle (or its
+strict inactive missing-receipt recovery), and neither cards nor a timer may be
+admitted from a prior or future wave.

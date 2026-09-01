@@ -1332,6 +1332,7 @@ interface MobileGameTableProps {
   // When true, auto-roll disable is deferred until end of current turn
   pendingAutoRollOff?: boolean;
   on357TimerAllowedChange?: (token: ThreeFiveSevenDealReadinessToken | null) => void;
+  dealReadiness357?: ThreeFiveSevenDealReadinessToken | null;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
@@ -1585,6 +1586,7 @@ export const MobileGameTable = ({
   onAutoFoldChange,
   pendingAutoRollOff = false,
   on357TimerAllowedChange,
+  dealReadiness357 = null,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
@@ -4213,8 +4215,6 @@ export const MobileGameTable = ({
     threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
       ? `${threeFiveSevenHandContextId}#r${currentRound}`
       : null;
-  const [reportedThreeFiveSevenDealReadiness, setReportedThreeFiveSevenDealReadiness] =
-    useState<ThreeFiveSevenDealReadinessToken | null>(null);
   const threeFiveSevenDealPresentationReady =
     !currentRoundNotReadyForPresentation &&
     isThreeFiveSevenDealPresentationReady(
@@ -4224,23 +4224,8 @@ export const MobileGameTable = ({
         roundId: threeFiveSevenViewRoundId,
         roundNumber: threeFiveSevenViewRoundNumber,
       },
-      reportedThreeFiveSevenDealReadiness,
+      dealReadiness357,
     );
-  const handleThreeFiveSevenDealReadinessChange = useCallback((
-    token: ThreeFiveSevenDealReadinessToken | null,
-  ) => {
-    setReportedThreeFiveSevenDealReadiness((current) =>
-      current?.handContextId === token?.handContextId
-        && current?.waveContextId === token?.waveContextId
-        && current?.roundId === token?.roundId
-        && current?.roundNumber === token?.roundNumber
-        && current?.allowed === token?.allowed
-        && current?.source === token?.source
-        ? current
-        : token,
-    );
-    on357TimerAllowedChange?.(token);
-  }, [on357TimerAllowedChange]);
   const threeFiveSevenSelfPlayerId =
     __is357GameType(gameType) && currentUserId
       ? (players.find(p => p.user_id === currentUserId)?.id ?? null)
@@ -7265,8 +7250,8 @@ export const MobileGameTable = ({
       selfHandHasActive357: !!selfHandHasActive357,
       threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
       threeFiveSevenDecisionPresentationGate: !!threeFiveSevenDecisionPresentationGate,
-      reportedDealReadinessHandContextId: reportedThreeFiveSevenDealReadiness?.handContextId ?? null,
-      reportedDealReadinessAllowed: reportedThreeFiveSevenDealReadiness?.allowed ?? false,
+      reportedDealReadinessHandContextId: dealReadiness357?.handContextId ?? null,
+      reportedDealReadinessAllowed: dealReadiness357?.allowed ?? false,
       dbDecisionAdmitted: !!dbDecisionAdmitted,
       admittedDbDecisionIdentity: admittedDbDecisionIdentity ?? null,
       authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
@@ -11917,6 +11902,7 @@ export const MobileGameTable = ({
         <Use357OppCount
           playerId={player.id}
           seat={player.position}
+          waveContextId={threeFiveSevenWaveContextId}
           baseline={prevWaveCountFor357(currentRound ?? 0)}
           defaultCount={cardCountToShow}
           expected={totalAfterWaveFor357(currentRound ?? 0) || cardCountToShow}
@@ -12420,7 +12406,7 @@ export const MobileGameTable = ({
       roundStatus={roundStatus}
       authoritativeSelfCardCount={currentPlayerCards.length}
       expectedSelfCardCount={totalAfterWaveFor357(currentRound ?? 0)}
-      onAllowedChange={handleThreeFiveSevenDealReadinessChange}
+      onAllowedChange={on357TimerAllowedChange}
     />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {!currentRoundNotReadyForPresentation && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
@@ -15631,11 +15617,13 @@ export const MobileGameTable = ({
                                     currentPlayerId={currentPlayer?.id ?? ''}
                                     cards={currentPlayerCards}
                                     baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                    waveContextId={threeFiveSevenWaveContextId}
+                                    roundNumber={currentRound ?? null}
                                     dealerGameId={threeFiveSevenDealerGameScope ?? null}
                                     handNumber={typeof horsesHandNumber === 'number' ? horsesHandNumber : null}
                                     roundId={horsesRoundId ?? null}
                                     authoritativeFallbackReady={
-                                      reportedThreeFiveSevenDealReadiness?.source === 'authoritative-fallback' &&
+                                      dealReadiness357?.source === 'authoritative-fallback' &&
                                       threeFiveSevenDealPresentationReady
                                     }
                                     render={renderActiveSelfHand}

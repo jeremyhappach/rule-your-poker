@@ -21,9 +21,31 @@ Date: 2026-09-01
   33 ms, and there were no active recovery failures or slow-task records. The
   pre-change 24-hour window had 18 failed starts and a 25.4-second maximum.
 
-This accepts the database scheduler shape and bounded initial health window.
-It does not replace the pending concurrent fake-money gameplay rerun and does
-not claim that every prior campaign failure is cleared.
+The first concurrent fake-money gameplay rerun used isolated Yahtzee, Holm,
+and 3-5-7 pairs with the continuous observer and exact cleanup. The scripted
+3-5-7 R1/R2/R3 path and Holm Run It Back path completed, but their observers
+recorded peer-progress outliers of 7,611 ms (ante) and 9,776 ms (Holm Fold)
+against the 6,000 ms campaign ceiling. Yahtzee stopped at the known timer-driver
+sampling assertion. All three fake games were deleted and no real-money game
+was opened. This accepts scheduler function and cleanup, not a clean latency or
+full-gameplay checkpoint.
+
+## 3-5-7 exact-wave baseline and readiness ownership — release candidate
+
+- `Game.tsx` is now the sole owner of the exact deal-readiness token. It
+  validates the token against the accepted atomic 3-5-7 dealer-game, hand,
+  round number, and round UUID, then feeds that same token to both the route
+  timer gate and `MobileGameTable` decision/presentation gates. The table no
+  longer mirrors readiness in a second local state commit.
+- Round 2 and Round 3 presentation retain the authoritative prior-round hand
+  as a three- or five-card baseline and add only transport receipts whose card
+  IDs belong to the exact current wave. A remounted runtime that lacks old
+  receipt history therefore cannot collapse a five-card hand to the two new
+  cards, while prior/future wave receipts still cannot reveal new cards early.
+  The same exact-wave rule feeds local faces, opponent backs, and the final
+  `PlayerHand` boundary guard.
+- TypeScript, 149 focused 3-5-7 tests, 39 build-required Cribbage tests, and the
+  production build pass. Production R1/R2/R3 smoke remains the acceptance gate.
 
 ## Gin action-path mirror-write reduction — installed, smoke pending
 

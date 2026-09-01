@@ -37,6 +37,29 @@ export function isThreeFiveSevenRuntimeWaveReady(args: {
 }
 
 /**
+ * Return only transport receipts owned by one exact 3-5-7 round wave.
+ *
+ * DealRuntime keeps a cumulative hand ledger during normal live play, but a
+ * remount may reconstruct only the currently-active wave. Consumers must not
+ * infer the current wave from the cumulative receipt count: rounds two and
+ * three already have an authoritative, previously-presented baseline of three
+ * or five cards. Exact card ids let presentation retain that baseline and add
+ * only the newly-settled cards without depending on historical receipt
+ * survival.
+ */
+export function selectThreeFiveSevenExactWaveReceipts<T extends { cardId: string }>(args: {
+  waveContextId: string | null | undefined;
+  receipts: readonly T[];
+  expectedWaveCount: number;
+}): T[] {
+  if (!args.waveContextId || args.expectedWaveCount <= 0) return [];
+  const prefix = `${args.waveContextId}#card-`;
+  return args.receipts
+    .filter((receipt) => receipt.cardId.startsWith(prefix))
+    .slice(0, args.expectedWaveCount);
+}
+
+/**
  * A live, identity-matched private hand may recover a missing local transport
  * receipt only after this client observed the exact wave in flight and the
  * transport owner has no active intents left. Authoritative cards alone are

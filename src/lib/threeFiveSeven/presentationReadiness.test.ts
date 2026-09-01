@@ -8,6 +8,7 @@ import {
   isThreeFiveSevenLegStackRetired,
   resolveThreeFiveSevenDealerGameScope,
   resolveThreeFiveSevenStaticLegCount,
+  selectThreeFiveSevenExactWaveReceipts,
   type ThreeFiveSevenDealReadinessToken,
 } from './presentationReadiness';
 
@@ -65,6 +66,58 @@ describe('3-5-7 deal presentation readiness', () => {
       roundNumber: expectedR2.roundNumber!,
       allowed: true,
     })).toBe(true);
+  });
+
+  it('rebuilds an R2 presentation from the authoritative baseline plus only exact-wave receipts', () => {
+    const receipts = selectThreeFiveSevenExactWaveReceipts({
+      waveContextId: 'dealer-game-1#h1#r2',
+      receipts: [
+        { cardId: 'dealer-game-1#h1#r1#card-0' },
+        { cardId: 'dealer-game-1#h1#r2#card-0' },
+        { cardId: 'dealer-game-1#h1#r2#card-2' },
+        { cardId: 'dealer-game-1#h1#r3#card-0' },
+      ],
+      expectedWaveCount: 2,
+    });
+
+    expect(receipts.map((receipt) => receipt.cardId)).toEqual([
+      'dealer-game-1#h1#r2#card-0',
+      'dealer-game-1#h1#r2#card-2',
+    ]);
+    expect(3 + receipts.length).toBe(5);
+  });
+
+  it('does not require prior-wave receipt survival to retain the R3 five-card baseline', () => {
+    const receipts = selectThreeFiveSevenExactWaveReceipts({
+      waveContextId: 'dealer-game-1#h1#r3',
+      receipts: [
+        { cardId: 'dealer-game-1#h1#r3#card-1' },
+        { cardId: 'dealer-game-1#h1#r3#card-3' },
+      ],
+      expectedWaveCount: 2,
+    });
+
+    expect(5 + receipts.length).toBe(7);
+  });
+
+  it('keeps the route as the single readiness-token owner for timer and actions', () => {
+    const routeSource = readFileSync(new URL('../../pages/Game.tsx', import.meta.url), 'utf8');
+    const tableSource = readFileSync(
+      new URL('../../components/MobileGameTable.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(routeSource).toContain('useState<ThreeFiveSevenDealReadinessToken | null>(null)');
+    expect(routeSource).toContain('dealReadiness357={dealReadiness357}');
+    expect(tableSource).not.toContain('reportedThreeFiveSevenDealReadiness');
+    expect(tableSource).toContain('onAllowedChange={on357TimerAllowedChange}');
+    expect(tableSource).toContain('dealReadiness357,');
+    expect(routeSource).toContain('dealReadiness357={dealReadiness357}');
+    const orchestratorSource = readFileSync(
+      new URL('../../components/ThreeFiveSevenDealOrchestrator.tsx', import.meta.url),
+      'utf8',
+    );
+    expect(orchestratorSource).toContain('length: Math.max(0, effectiveCards.length)');
   });
 
   it('recovers a live exact hand only after the exact transport wave becomes inactive with a missing receipt', () => {

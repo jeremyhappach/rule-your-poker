@@ -83,6 +83,7 @@ import {
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
 import { classifyThreeFiveSevenWaveAdmission } from '@/lib/threeFiveSeven/waveAdmission';
+import { selectThreeFiveSevenExactWaveReceipts } from '@/lib/threeFiveSeven/presentationReadiness';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 
 // Suit normalizer — accepts either the symbol form (Card) or the word
@@ -697,6 +698,7 @@ export function totalAfterWaveFor357(round: number): number {
 export function Use357OppCount({
   playerId,
   seat,
+  waveContextId,
   baseline,
   defaultCount,
   expected,
@@ -704,6 +706,7 @@ export function Use357OppCount({
 }: {
   playerId: string;
   seat?: number | null;
+  waveContextId: string | null;
   baseline: number;          // prevWaveCount (0/3/5)
   defaultCount: number;      // legacy cardCountToShow
   expected: number;          // total expected after this wave (3/5/7)
@@ -712,12 +715,17 @@ export function Use357OppCount({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(playerId) ?? 0;
-  // CONTRACT: during DEALING / PRE_DEAL / READY render ONLY transport-
-  // claimed cards (cumulative `settled`). Baseline / defaultCount must
-  // NEVER mount DOM during a staged deal — they're for math only. Only
-  // GAMEPLAY may fall through to authoritative. (READY is the transient
-  // gap between waves; admitting authoritative there leaks future cards
-  // instantly at r2/r3 start.)
+  const exactWaveSettled = selectThreeFiveSevenExactWaveReceipts({
+    waveContextId,
+    receipts: (deal?.getSettledCardIdsForPlayer(playerId) ?? []).map((cardId) => ({ cardId })),
+    expectedWaveCount: Math.max(0, expected - baseline),
+  });
+  // CONTRACT: during DEALING / PRE_DEAL / READY retain the authoritative
+  // prior-round baseline, then add ONLY card ids claimed by this exact wave.
+  // `defaultCount` must never admit unclaimed current-wave cards. Only
+  // GAMEPLAY may fall through to the complete authoritative count. (READY is
+  // the transient gap between waves; admitting the whole authoritative count
+  // there leaks future cards instantly at r2/r3 start.)
   // Contract A (refresh/rejoin) escape hatch: when DealRuntime was
   // initialized directly into GAMEPLAY and no wave has ever dispatched
   // on this runtime (expectedCount===0), transport is guaranteed idle
@@ -726,7 +734,7 @@ export function Use357OppCount({
   // counts at 0 forever — bypass claim-only and render authoritative.
   const noWaveEverDispatched = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
   const claimOnlyVisible = !!deal && !noWaveEverDispatched && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
-  const dealingVisible = Math.min(settled, expected);
+  const dealingVisible = Math.min(baseline + exactWaveSettled.length, expected);
   const visible = deal
     ? !claimOnlyVisible
       ? Math.max(defaultCount, dealingVisible)
@@ -839,6 +847,8 @@ export function Use357SelfHand<T>({
   currentPlayerId,
   cards,
   baseline,
+  waveContextId,
+  roundNumber,
   dealerGameId = null,
   handNumber = null,
   roundId = null,
@@ -848,6 +858,8 @@ export function Use357SelfHand<T>({
   currentPlayerId: string;
   cards: T[];
   baseline: number;          // prevWaveCount
+  waveContextId: string | null;
+  roundNumber: number | null;
   dealerGameId?: string | null;
   handNumber?: number | null;
   roundId?: string | null;
@@ -927,7 +939,16 @@ export function Use357SelfHand<T>({
     !authoritativeFallbackReady &&
     !noWaveEverDispatchedSelf &&
     (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
-  const allowed = isClaimOnlyRender ? settled : sourceCards.length;
+  const expectedCumulativeCount = totalAfterWaveFor357(roundNumber ?? 0);
+  const expectedWaveCount = Math.max(0, expectedCumulativeCount - baseline);
+  const exactWaveSettledCardIds = selectThreeFiveSevenExactWaveReceipts({
+    waveContextId,
+    receipts: settledCardIds.map((cardId) => ({ cardId })),
+    expectedWaveCount,
+  }).map((receipt) => receipt.cardId);
+  const allowed = isClaimOnlyRender
+    ? Math.min(expectedCumulativeCount, baseline + exactWaveSettledCardIds.length)
+    : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   // Canonical two-phase reveal: during DEALING (== claim-only render for
@@ -936,8 +957,11 @@ export function Use357SelfHand<T>({
   // from transport metadata alone — the DB fetch does not gate reveal,
   // so cards can never "burst" when authoritative arrives late.
   const settledPayloads = deal?.getSettledCardsForPlayer(currentPlayerId) ?? [];
-  const roundNumber = Number(deal?.handContextId?.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
-  const baselineSourceCount = roundNumber === 1 ? 0 : roundNumber === 2 ? 3 : roundNumber === 3 ? 5 : baseline;
+  const exactWaveSettledIdSet = new Set(exactWaveSettledCardIds);
+  const exactWaveSettledPayloads = settledPayloads.filter((payload) =>
+    exactWaveSettledIdSet.has(payload.cardId),
+  );
+  const baselineSourceCount = baseline;
   const stagedDisplayOrder = getActiveHandDisplayOrder(
     sourceCards as Array<{ rank: string; suit: string }>,
     'three-five-seven',
@@ -964,7 +988,10 @@ export function Use357SelfHand<T>({
         resolvedCards.push(card);
         continue;
       }
-      const face = settledPayloads[i]?.visibleFace;
+      const waveIndex = i - baselineSourceCount;
+      const face = waveIndex >= 0
+        ? exactWaveSettledPayloads[waveIndex]?.visibleFace
+        : null;
       if (face) {
         const symSuit = WORD_SUIT_TO_SYMBOL_357[face.suit];
         if (symSuit) {
@@ -976,8 +1003,8 @@ export function Use357SelfHand<T>({
         }
       }
       unresolvedSelfCards.push({
-        intentId: settledCardIds[i] ?? null,
-        cardId: settledCardIds[i] ?? null,
+        intentId: waveIndex >= 0 ? (exactWaveSettledCardIds[waveIndex] ?? null) : null,
+        cardId: waveIndex >= 0 ? (exactWaveSettledCardIds[waveIndex] ?? null) : null,
         claimedIndex: i,
       });
     }
@@ -1006,8 +1033,13 @@ export function Use357SelfHand<T>({
     ? visibleSourceIndices.slice(0, effectiveCards.length)
     : effectiveCards.map((_, index) => index);
   const boundaryCardIdPrefix = `${baseHandContextId}#self#${currentPlayerId || 'no-player'}`;
+  // PlayerHand applies a second canonical boundary guard. Publish the exact
+  // presentation-admitted slots (authoritative baseline + current-wave
+  // receipts), not the raw runtime receipt count: a reconstructed runtime may
+  // legitimately lack prior-wave receipts even though those baseline cards
+  // were already presented in the prior round.
   const boundaryClaimedCardIds = Array.from(
-    { length: Math.max(0, settled) },
+    { length: Math.max(0, effectiveCards.length) },
     (_, i) => `${boundaryCardIdPrefix}#idx-${i}`,
   );
   useEffect(() => {
@@ -1193,7 +1225,7 @@ export function Use357SelfHand<T>({
     const nodes = Array.from(region.querySelectorAll<HTMLElement>('[data-playing-card-root]'));
     const observers: ResizeObserver[] = [];
     nodes.forEach((node, index) => {
-      const cardId = settledCardIds[index] ?? boundaryClaimedCardIds[index] ?? null;
+      const cardId = boundaryClaimedCardIds[index] ?? settledCardIds[index] ?? null;
       if (!cardId) return;
       const renderKey = `Use357SelfHand.PlayerHand|${baseHandContextId}|p:${currentPlayerId}|idx:${index}|render:${renderCountRef.current}`;
       const rect = rectFromDomRect(node.getBoundingClientRect());

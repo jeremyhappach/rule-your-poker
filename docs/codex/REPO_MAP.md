@@ -376,7 +376,11 @@ reconciliation.
   cumulative R1/R2/R3 manifest per exact DealRuntime ledger.
   `cardTransport/DealRuntime.tsx` reconstructs the authoritative cumulative
   per-recipient settled baseline for refresh/rejoin; later waves remain
-  additive. `src/lib/crossCountryRouteGauntlet.test.ts` covers all 49 ordered
+  additive. `src/lib/threeFiveSeven/presentationReadiness.ts` filters exact
+  current-wave card receipts. `Game.tsx` owns the single identity-complete
+  readiness token used by both timer and action gates; `MobileGameTable.tsx`
+  and `ThreeFiveSevenDealOrchestrator.tsx` render the authoritative prior-wave
+  baseline plus only those exact new receipts. `src/lib/crossCountryRouteGauntlet.test.ts` covers all 49 ordered
   route pairs and lagging/cold-client variants; `dg1LiveEntryGauntlet.test.ts`
   protects the first-dealer-game boundary across all seven real-money games.
 - State/actions: `src/lib/gameLogic.ts:startRound`, `makeDecision`,
