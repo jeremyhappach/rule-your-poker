@@ -261,6 +261,18 @@
 
 ## Yahtzee
 
+- The remounted-actor deadline admission seam passed published two-client
+  production fake-money smoke on 2026-09-01 at commit
+  `effdf6c400535891eb39e645a53669bae067d3f0`. Preserve the shared fail-closed
+  manual-turn predicate across timer publication, Roll/Hold/Score controls,
+  authoritative action-surface marking, and all four manual mutation handlers.
+  Once the server-owned deadline is no longer future, the client must expose an
+  inert timeout-recovery status until database-owned fake-money Auto-roll or
+  real-money pause arrives; it must not create a client progression owner. The
+  continuous observer recorded zero violations and no 6000 ms peer breach
+  (p95/max 3079 ms), and guarded plus independent cleanup verification found no
+  retained game. This is focused deadline/remount admission coverage, not full
+  Yahtzee gameplay or lifecycle coverage.
 - The scoped Yahtzee timeout, timer, and pause/resume matrix passed published
   two-client production smoke on 2026-08-28 at commit
   `b3051358abebea3cc7681a27074c0b499e2617bd`. Preserve fake-money-only

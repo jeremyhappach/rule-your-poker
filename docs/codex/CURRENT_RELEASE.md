@@ -2,7 +2,7 @@
 
 Date: 2026-09-01
 
-## Recovery scheduler workload admission — installed, gameplay rerun pending
+## Recovery scheduler workload admission — installed; focused Yahtzee rerun accepted
 
 - Migration `20260901085259_admit_due_recovery_work.sql` keeps the sole
   one-second `private.advance_due_game_state()` heartbeat, but no longer calls
@@ -30,15 +30,29 @@ nonexistent `data-shell-timer-running` attribute instead of the canonical
 rail's `data-forensics-timer-running` contract. That harness-only oracle is now
 corrected and locked by a focused test.
 
-The corrected isolated Yahtzee gameplay-timeout/rejoin rerun reached the
-authoritative deadline change with zero peer-budget breach, but it is not an
-accepted pass. After the remounted peer became the still-current actor, the
-observer retained an enabled `Roll 1` action surface with no visible timer owner
-for at least one second. Exact guarded cleanup deleted fake game
-`ae5884e8-de9a-45fe-b3d2-d0bab880af83`. No real-money game was opened or
-touched. This accepts the scheduler function, cleanup, and corrected harness
-oracle only; the Yahtzee remount/timeout presentation failure remains retained
-for later RCA and no clean latency or full-gameplay checkpoint is claimed.
+The retained Yahtzee failure was a client admission gap, not a scheduler or
+database-authority failure: the table hid its timer at deadline zero while its
+manual Roll, Hold, and Score surfaces remained enabled until recovery arrived.
+The shared `isYahtzeeManualTurnOpen` predicate now fails those presentation and
+request paths closed unless the server-owned deadline is still in the future.
+At expiry the actor sees an inert timeout-recovery status; fake-money Auto-roll
+and real-money pause remain database-owned and unchanged. All four manual
+mutation handlers recheck the exact current time, so a stale render cannot
+submit a late action.
+
+TypeScript, 77 focused Yahtzee tests, 39 build-required Cribbage tests, and the
+production build passed. Published acceptance ran on commit
+`effdf6c400535891eb39e645a53669bae067d3f0`, Vercel deployment
+`dpl_AwvYtoYWXnLG7ePUT9B7upvRMdvS`, and bundle
+`assets/index-CdvlzMwH.js`. The exact isolated production fake-money
+`yahtzee-gameplay-timeout-rejoin` scenario passed in 1.6 minutes: 51 observer
+events, 37 snapshots, 427 requests, zero presentation violations, and no 6,000
+ms peer-budget breach (peer p95/max 3,079 ms). Guarded cleanup deleted game
+`1c98440f-40d9-425a-b8d2-1e3a95c8a9c7`, and an independent database query
+confirmed zero matching game rows. No real-money game was opened or touched.
+This is focused deadline/remount admission acceptance, not full Yahtzee gameplay
+or lifecycle coverage; the separate Holm and 3-5-7 latency outliers remain for
+their own RCA.
 
 ## 3-5-7 exact-wave baseline and readiness ownership — production checkpoint
 
