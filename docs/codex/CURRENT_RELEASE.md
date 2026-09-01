@@ -3794,3 +3794,23 @@ this candidate does not claim that the underlying visual symptoms are fixed.
 This is focused rejoin/terminal evidence, not a claim of complete Gin rule or
 server-authority coverage. The broader Gin authority migration remains a
 separate queued phase.
+
+## 2026-09-01 — Target rule gauntlet discovery checkpoint
+
+- Added an exact-game, fake-money-only deterministic rule harness and a
+  45-row browser matrix for Yahtzee, Holm, and 3-5-7. The fixture is guarded by
+  admin/participant identity, target game type, human topology, expiry, and
+  one exact dealer-game/hand/round consumption. It cannot arm for real money.
+- The final rollback proof covers authorization, real-money refusal, exact
+  consumption, replay, deterministic state, terminal Yahtzee settlement, and
+  explicit cleanup. The existing Yahtzee, Holm, and 3-5-7 authority rollback
+  proofs also pass against the deployed definitions.
+- Production fake-money discovery attempted 66 gameplay, deadline/rejoin, and
+  lifecycle rows with the continuous observer and a 6000 ms peer budget. The
+  strict result was 27 pass and 39 fail. Cleanup verification found zero of 76
+  exact campaign/canary games remaining and zero armed fixture requests.
+- Because timer, latency, setup, transition, and assertion failures remain,
+  this checkpoint does not claim freeze-free behavior or full coverage. Exact
+  outcomes and artifact roots are recorded in
+  `docs/codex/TARGET_GAUNTLET_20260901.md`; failures remain frozen for separate
+  RCA.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BRANCH_SMOKE_MANIFEST } from '../branchSmoke/manifest';
 import { HUMAN_CHAOS_MANIFEST } from '../humanChaos/manifest';
+import { TARGET_GAUNTLET_MANIFEST } from '../targetGauntlet/manifest';
 import { ALL_REAL_MONEY_GAME_TYPES } from '../../src/lib/realMoneyLivenessContract';
 import {
   FULL_SEAM_MANIFEST_VERSION,
@@ -12,14 +13,16 @@ import {
 
 describe('full human seam coverage ledger', () => {
   it('contains every declared executable branch, terminal, and lifecycle scenario once', () => {
-    expect(FULL_SEAM_MANIFEST_VERSION).toBe(3);
+    expect(FULL_SEAM_MANIFEST_VERSION).toBe(4);
     expect(() => validateFullSeamManifest()).not.toThrow();
     expect(FULL_SEAM_SCENARIOS).toHaveLength(
-      BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
+      BRANCH_SMOKE_MANIFEST.length + HUMAN_CHAOS_MANIFEST.length
+      + TARGET_GAUNTLET_MANIFEST.length + ALL_REAL_MONEY_GAME_TYPES.length,
     );
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(33);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'target-gauntlet')).toHaveLength(45);
   });
 
   it('locks all 79 rule requirements from the campaign plan without hiding missing drivers', () => {
@@ -84,6 +87,20 @@ describe('full human seam coverage ledger', () => {
     expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).not.toEqual(expect.arrayContaining([
       'cribbage.pegging-branches',
       'cribbage.counting-categories',
+    ]));
+  });
+
+  it('promotes the new deterministic target seams while preserving honest gaps', () => {
+    expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).toEqual(expect.arrayContaining([
+      'holm.partial-top-tie',
+      '357.setup-owner-decline',
+      'yahtzee.phase-rejoins',
+    ]));
+    expect(MISSING_FULL_SEAM_REQUIREMENT_IDS).not.toEqual(expect.arrayContaining([
+      'holm.option-boundaries',
+      '357.round-card-and-wild-progression',
+      'yahtzee.every-category-and-scratch',
+      'yahtzee.unique-and-tied-terminal',
     ]));
   });
 

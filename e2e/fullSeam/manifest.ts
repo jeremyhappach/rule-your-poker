@@ -1,12 +1,13 @@
 import { BRANCH_SMOKE_MANIFEST } from '../branchSmoke/manifest';
 import { HUMAN_CHAOS_MANIFEST } from '../humanChaos/manifest';
+import { TARGET_GAUNTLET_MANIFEST } from '../targetGauntlet/manifest';
 import type { DealerGameType } from '../liveness/support/twoClientSession';
 import { ALL_REAL_MONEY_GAME_TYPES } from '../../src/lib/realMoneyLivenessContract';
 
-export const FULL_SEAM_MANIFEST_VERSION = 3 as const;
+export const FULL_SEAM_MANIFEST_VERSION = 4 as const;
 
 export type FullSeamGame = 'shared' | DealerGameType;
-export type FullSeamScenarioSource = 'branch-smoke' | 'terminal' | 'human-chaos';
+export type FullSeamScenarioSource = 'branch-smoke' | 'terminal' | 'human-chaos' | 'target-gauntlet';
 export type FullSeamRequirementDisposition = 'executable' | 'missing-driver' | 'justified-n/a';
 
 export type FullSeamScenario = {
@@ -57,10 +58,19 @@ const lifecycleScenarios: FullSeamScenario[] = HUMAN_CHAOS_MANIFEST.map((scenari
       : 'e2e/humanChaos/transitions.humanChaos.spec.ts',
 }));
 
+const targetScenarios: FullSeamScenario[] = TARGET_GAUNTLET_MANIFEST.map((scenario) => ({
+  id: `target/${scenario.id}`,
+  source: 'target-gauntlet',
+  sourceId: scenario.id,
+  game: scenario.gameType,
+  spec: 'e2e/targetGauntlet/targetGames.targetGauntlet.spec.ts',
+}));
+
 export const FULL_SEAM_SCENARIOS: readonly FullSeamScenario[] = [
   ...branchScenarios,
   ...terminalScenarios,
   ...lifecycleScenarios,
+  ...targetScenarios,
 ];
 
 const req = (
@@ -105,31 +115,31 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
   req('shared.terminal-and-continuation', 'shared', 1, 'Connected terminal, ordinary continuation, LAST HAND Session Ended, and fresh-ended lobby admission all hold.'),
   req('shared.single-canonical-owners', 'shared', 1, 'One shell, felt, seat ring, HUD rail, and lifecycle owner survive every transition.', allLifecycleIds),
 
-  req('holm.all-fold-no-tax-no-rabbit', 'holm-game', 4, 'All fold with Pussy Tax and Rabbit Hunt off; carry into the next hand.', ['branch/holm-all-fold-carry']),
-  req('holm.all-fold-pussy-tax', 'holm-game', 4, 'All fold with Pussy Tax on; collect exact tax and carry the pot.'),
-  req('holm.rabbit-hunt-ordering', 'holm-game', 4, 'Rabbit Hunt reveals hidden community cards in order while tax and successor dwell preserve their owners.'),
-  req('holm.solo-beats-chucky', 'holm-game', 4, 'Solo stayer beats Chucky through cards, celebration, transfer, settlement, and postgame.', ['branch/holm-solo-chucky', 'terminal/holm-game']),
-  req('holm.solo-loses-or-ties-chucky', 'holm-game', 4, 'Solo stayer loses or ties Chucky with correct match, replacement pot, and continuation.'),
-  req('holm.multi-stayer-unique-winner', 'holm-game', 4, 'Multiple stayers produce one winner, loser match, and continuation.', ['branch/holm-multi-stay']),
+  req('holm.all-fold-no-tax-no-rabbit', 'holm-game', 4, 'All fold with Pussy Tax and Rabbit Hunt off; carry into the next hand.', ['branch/holm-all-fold-carry', 'target/holm-all-fold-tax-off']),
+  req('holm.all-fold-pussy-tax', 'holm-game', 4, 'All fold with Pussy Tax on; collect exact tax and carry the pot.', ['target/holm-all-fold-tax-on']),
+  req('holm.rabbit-hunt-ordering', 'holm-game', 4, 'Rabbit Hunt reveals hidden community cards in order while tax and successor dwell preserve their owners.', ['target/holm-rabbit-hunt-ordering']),
+  req('holm.solo-beats-chucky', 'holm-game', 4, 'Solo stayer beats Chucky through cards, celebration, transfer, settlement, and postgame.', ['branch/holm-solo-chucky', 'terminal/holm-game', 'target/holm-solo-beats-chucky']),
+  req('holm.solo-loses-or-ties-chucky', 'holm-game', 4, 'Solo stayer loses or ties Chucky with correct match, replacement pot, and continuation.', ['target/holm-solo-loses-chucky', 'target/holm-solo-ties-chucky']),
+  req('holm.multi-stayer-unique-winner', 'holm-game', 4, 'Multiple stayers produce one winner, loser match, and continuation.', ['branch/holm-multi-stay', 'target/holm-multi-unique']),
   req('holm.partial-top-tie', 'holm-game', 4, 'A partial top tie plus loser splits exactly and conserves value.', [], { topology: 'three-human' }),
-  req('holm.all-stayers-tie-beat-chucky', 'holm-game', 4, 'All stayers tie and beat Chucky for a split terminal award.'),
-  req('holm.all-stayers-tie-chucky-wins', 'holm-game', 4, 'All stayers tie while Chucky wins or ties; matches and continuation remain exact.'),
-  req('holm.option-boundaries', 'holm-game', 4, 'Pot cap, Pussy Tax, Rabbit Hunt, and Chucky-card boundaries receive pairwise option coverage.'),
+  req('holm.all-stayers-tie-beat-chucky', 'holm-game', 4, 'All stayers tie and beat Chucky for a split terminal award.', ['target/holm-all-tie-beat-chucky']),
+  req('holm.all-stayers-tie-chucky-wins', 'holm-game', 4, 'All stayers tie while Chucky wins or ties; matches and continuation remain exact.', ['target/holm-all-tie-chucky-wins', 'target/holm-all-tie-chucky-tie']),
+  req('holm.option-boundaries', 'holm-game', 4, 'Pot cap, Pussy Tax, Rabbit Hunt, and Chucky-card boundaries receive pairwise option coverage.', ['target/holm-options-000-low', 'target/holm-options-011-high', 'target/holm-options-101-high', 'target/holm-options-110-low']),
   req('holm.human-timeout-orderings', 'holm-game', 4, 'Human timeout is exercised before and after another committed decision.', lifecycleIds((id) => id === 'holm-game-gameplay-timeout-rejoin')),
-  req('holm.next-hand-identity', 'holm-game', 4, 'Buck rotation, no repeat ante, prepared-hand acknowledgement, and stale projection rejection hold.'),
+  req('holm.next-hand-identity', 'holm-game', 4, 'Buck rotation, no repeat ante, prepared-hand acknowledgement, and stale projection rejection hold.', ['target/holm-next-hand-identity']),
 
-  req('357.both-fold-tax-boundaries', '3-5-7', 5, 'Both fold with Pussy Tax off and on.', ['branch/357-both-fold']),
-  req('357.one-stayer-regular-leg', '3-5-7', 5, 'Exactly one stayer buys a regular leg.'),
-  req('357.multi-stayer-unique-winner', '3-5-7', 5, 'Multiple stayers produce a unique winner and exact player transfer.', ['branch/357-both-stay']),
-  req('357.multi-stayer-tie', '3-5-7', 5, 'Multiple stayers tie with no transfer and correct continuation.'),
-  req('357.round-card-and-wild-progression', '3-5-7', 5, 'Rounds 1/2/3 retain 3/5/7 cards and change wild rank.'),
-  req('357.rollover-once', '3-5-7', 5, 'Round 3 to new Round 1 collects rollover exactly once and not as opening ante.'),
+  req('357.both-fold-tax-boundaries', '3-5-7', 5, 'Both fold with Pussy Tax off and on.', ['branch/357-both-fold', 'target/357-both-fold-tax-off', 'target/357-both-fold-tax-on']),
+  req('357.one-stayer-regular-leg', '3-5-7', 5, 'Exactly one stayer buys a regular leg.', ['target/357-one-stayer-leg']),
+  req('357.multi-stayer-unique-winner', '3-5-7', 5, 'Multiple stayers produce a unique winner and exact player transfer.', ['branch/357-both-stay', 'target/357-multi-unique']),
+  req('357.multi-stayer-tie', '3-5-7', 5, 'Multiple stayers tie with no transfer and correct continuation.', ['target/357-multi-tie']),
+  req('357.round-card-and-wild-progression', '3-5-7', 5, 'Rounds 1/2/3 retain 3/5/7 cards and change wild rank.', ['target/357-round-progression']),
+  req('357.rollover-once', '3-5-7', 5, 'Round 3 to new Round 1 collects rollover exactly once and not as opening ante.', ['target/357-rollover-once']),
   req('357.regular-and-terminal-legs', '3-5-7', 5, 'Regular nonterminal leg, terminal leg, and pot/leg-reserve settlement are exact.', ['branch/357-regular-and-terminal-leg', 'terminal/3-5-7']),
-  req('357.round-one-instant-sweep', '3-5-7', 5, 'Round 1 instant sweep preserves reveal, overlay, leg/pot transfer, and terminal order.'),
-  req('357.option-boundaries', '3-5-7', 5, 'Reveal, legs-to-win, pot cap, leg, rollover, and Pussy Tax boundaries receive pairwise coverage.'),
+  req('357.round-one-instant-sweep', '3-5-7', 5, 'Round 1 instant sweep preserves reveal, overlay, leg/pot transfer, and terminal order.', ['target/357-instant-sweep']),
+  req('357.option-boundaries', '3-5-7', 5, 'Reveal, legs-to-win, pot cap, leg, rollover, and Pussy Tax boundaries receive pairwise coverage.', ['target/357-options-000-low', 'target/357-options-011-high', 'target/357-options-101-high', 'target/357-options-110-low']),
   req('357.timeout-one-and-all', '3-5-7', 5, 'One or all undecided humans time out once and both clients expose the successor.', lifecycleIds((id) => id === '3-5-7-gameplay-timeout-rejoin')),
   req('357.setup-owner-decline', '3-5-7', 5, 'Setup owner decline or sit-out leaves the remaining roster legal.'),
-  req('357.identity-boundary-retirement', '3-5-7', 5, 'Prior cards, timers, controls, overlays, leg cues, and transports retire at every identity boundary.'),
+  req('357.identity-boundary-retirement', '3-5-7', 5, 'Prior cards, timers, controls, overlays, leg cues, and transports retire at every identity boundary.', ['target/357-round-progression', 'target/357-rollover-once', 'target/357-instant-sweep']),
 
   req('cribbage.dealer-draw-normal-and-tie', 'cribbage', 1, 'Normal and tied/redraw Cribbage dealer selection completes on every client.', [
     'lifecycle/cribbage-dealer-draw-normal-rejoin',
@@ -208,11 +218,11 @@ export const FULL_SEAM_REQUIREMENTS: readonly FullSeamRequirement[] = [
   req('scc.phase-rejoins', 'ship-captain-crew', 6, 'Rejoin works during qualification, cargo, result, tie rollover, and terminal presentation.'),
 
   req('yahtzee.roll-hold-score-handoff', 'yahtzee', 3, 'Roll, hold/release, reroll, third-roll limit, category, and next-human handoff work.', ['branch/yahtzee-scorecard']),
-  req('yahtzee.every-category-and-scratch', 'yahtzee', 3, 'Every scorecard category plus a deliberate scratch is selected.'),
-  req('yahtzee.upper-bonus-boundaries', 'yahtzee', 3, 'Upper bonus immediately below and at threshold is exact.'),
-  req('yahtzee.repeat-bonus-and-joker', 'yahtzee', 3, 'Repeat Yahtzee bonus and Joker forced category work.'),
+  req('yahtzee.every-category-and-scratch', 'yahtzee', 3, 'Every scorecard category plus a deliberate scratch is selected.', TARGET_GAUNTLET_MANIFEST.filter((row) => row.id.startsWith('yahtzee-category-') || row.id === 'yahtzee-deliberate-scratch').map((row) => `target/${row.id}`)),
+  req('yahtzee.upper-bonus-boundaries', 'yahtzee', 3, 'Upper bonus immediately below and at threshold is exact.', ['target/yahtzee-upper-below', 'target/yahtzee-upper-threshold']),
+  req('yahtzee.repeat-bonus-and-joker', 'yahtzee', 3, 'Repeat Yahtzee bonus and Joker forced category work.', ['target/yahtzee-joker-forced']),
   req('yahtzee.complete-scorecards', 'yahtzee', 3, 'Both humans complete 13 categories with exact terminal scores.', ['branch/yahtzee-scorecard', 'terminal/yahtzee']),
-  req('yahtzee.unique-and-tied-terminal', 'yahtzee', 3, 'Unique fixed-stake settlement and tied-scorecard rollover both run.'),
+  req('yahtzee.unique-and-tied-terminal', 'yahtzee', 3, 'Unique fixed-stake settlement and tied-scorecard rollover both run.', ['target/yahtzee-category-chance', 'target/yahtzee-tied-scorecard-rollover']),
   req('yahtzee.timeout-boundaries', 'yahtzee', 3, 'Timeout before roll, after hold, and before scoring advances or pauses exactly once.', lifecycleIds((id) => id === 'yahtzee-gameplay-timeout-rejoin')),
   req('yahtzee.phase-rejoins', 'yahtzee', 3, 'Rejoin works during rolling, category handoff, terminal presentation, and tie rollover.'),
 ];
