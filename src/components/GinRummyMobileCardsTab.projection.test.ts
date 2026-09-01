@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
  * inside the component, so this test replicates it byte-for-byte and
  * asserts the invariant: a matching non-terminal DealRuntime forbids
  * full-authoritative projection; PRE_DEAL projects 0; DEALING projects
- * exactly the settled count for the current player; terminal runtime
- * permits full projection.
+ * exactly the settled count for the current player; terminal runtime and
+ * post-knock phases permit full projection.
  */
 
 const GIN_CARDS_PER_PLAYER = 10;
@@ -16,12 +16,15 @@ function deriveForceFullProjection(args: {
   dealBoundToThisHand: boolean;
   dealPhase: 'PRE_DEAL' | 'DEALING' | 'WAVE' | 'READY' | 'GAMEPLAY' | null;
   authHandLen: number;
+  ginPhase?: 'first_draw' | 'playing' | 'knocking' | 'laying_off' | 'scoring' | 'complete';
 }): boolean {
   const dealTerminal =
     args.dealBoundToThisHand && (args.dealPhase === 'READY' || args.dealPhase === 'GAMEPLAY');
+  const postKnock = ['knocking', 'laying_off', 'scoring', 'complete'].includes(args.ginPhase ?? 'first_draw');
   return (
     !args.dealBoundToThisHand ||
     dealTerminal ||
+    postKnock ||
     args.authHandLen > GIN_CARDS_PER_PLAYER
   );
 }
@@ -31,11 +34,13 @@ function deriveRenderedHandLen(args: {
   dealBoundToThisHand: boolean;
   dealPhase: 'PRE_DEAL' | 'DEALING' | 'WAVE' | 'READY' | 'GAMEPLAY' | null;
   settledForPlayer: number;
+  ginPhase?: 'first_draw' | 'playing' | 'knocking' | 'laying_off' | 'scoring' | 'complete';
 }): number {
   const force = deriveForceFullProjection({
     dealBoundToThisHand: args.dealBoundToThisHand,
     dealPhase: args.dealPhase,
     authHandLen: args.authHandLen,
+    ginPhase: args.ginPhase,
   });
   if (force) return args.authHandLen;
   if (!args.dealBoundToThisHand) return args.authHandLen;
@@ -70,6 +75,22 @@ describe('Gin opening-hand projection contract', () => {
 
   it('hand grew past opening capacity (self-draw 11) → full-authoritative projection allowed', () => {
     expect(deriveForceFullProjection({ dealBoundToThisHand: true, dealPhase: 'DEALING', authHandLen: 11 })).toBe(true);
+  });
+
+  it('post-knock PRE_DEAL rejoin with 9 cards → renders the full actionable hand', () => {
+    expect(deriveForceFullProjection({
+      dealBoundToThisHand: true,
+      dealPhase: 'PRE_DEAL',
+      authHandLen: 9,
+      ginPhase: 'laying_off',
+    })).toBe(true);
+    expect(deriveRenderedHandLen({
+      authHandLen: 9,
+      dealBoundToThisHand: true,
+      dealPhase: 'PRE_DEAL',
+      settledForPlayer: 0,
+      ginPhase: 'laying_off',
+    })).toBe(9);
   });
 
   it('invariant: no frame renders all 10 opening cards before matching transport has begun', () => {

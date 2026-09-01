@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  *     ≥3s promotes to full-authoritative;
  *   - latch resets on hand identity change;
  *   - terminal (READY/GAMEPLAY) short-circuits without latch;
+ *   - post-knock rejoin short-circuits without requiring 10 cards;
  *   - non-full auth hand never trips latch (opening reveal preserved).
  */
 
@@ -43,11 +44,14 @@ function computeForceFullProjection(args: {
   dealPhase: DealPhase;
   authHandLen: number;
   dealStalledSelfHeal: boolean;
+  ginPhase?: GinPhase;
 }) {
   const dealTerminal = args.dealBoundToThisHand && (args.dealPhase === 'READY' || args.dealPhase === 'GAMEPLAY');
+  const postKnock = ['knocking', 'laying_off', 'scoring', 'complete'].includes(args.ginPhase ?? 'first_draw');
   return (
     !args.dealBoundToThisHand ||
     dealTerminal ||
+    postKnock ||
     args.authHandLen > CARDS_PER_PLAYER ||
     args.dealStalledSelfHeal
   );
@@ -77,6 +81,18 @@ describe('Gin Rummy self-heal — bounded stall latch', () => {
         dealStalledSelfHeal: false,
       }),
     ).toBe(false);
+  });
+
+  it('forces a 9-card post-layoff rejoin to full projection without the stall latch', () => {
+    expect(
+      computeForceFullProjection({
+        dealBoundToThisHand: true,
+        dealPhase: 'PRE_DEAL',
+        authHandLen: 9,
+        dealStalledSelfHeal: false,
+        ginPhase: 'laying_off',
+      }),
+    ).toBe(true);
   });
 
   it('is eligible for stall heal when auth full but transport stuck DEALING in playable phase', () => {

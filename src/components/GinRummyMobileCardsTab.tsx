@@ -257,6 +257,7 @@ export const GinRummyMobileCardsTab = ({
   const forceFullProjection =
     !dealBoundToThisHand ||
     dealTerminal ||
+    isPostKnockPhase(ginState.phase) ||
     authHandLen > GIN_CARDS_PER_PLAYER ||
     dealStalledSelfHeal;
 
