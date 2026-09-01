@@ -129,7 +129,13 @@ export function ThreeFiveSevenDecisionReveal({
         const inwardX = (feltX - anchorX) / distance;
         const inwardY = (feltY - anchorY) / distance;
         const chipRadius = Math.max(rect.width, rect.height) / 2;
-        const stackOffset = chipRadius + Math.min(82, width * 0.88);
+        // HOME is already seated at the local rail endpoint. Its theatrical
+        // stack needs only enough inward travel to clear the chip, while
+        // remote seats retain the deeper felt placement.
+        const isLocalPlayer = player.user_id === currentUserId;
+        const stackOffset = chipRadius + (isLocalPlayer
+          ? Math.min(44, width * 0.48)
+          : Math.min(82, width * 0.88));
         next.push({
           playerId: player.id,
           position: player.position,
@@ -186,7 +192,7 @@ export function ThreeFiveSevenDecisionReveal({
   const frame = deriveThreeFiveSevenDecisionRevealFrame(clock, nowMs);
   if (!frame.active || placements.length === 0) return null;
   const stackDepth = revealStackDepthPx(cardCount);
-  const bubbleText = frame.beat === 'hold' ? null : frame.beat;
+  const bubbleText = frame.beat === 'hold' || frame.beat === 'locked' ? null : frame.beat;
 
   return createPortal(
     <div

@@ -11660,7 +11660,13 @@ export const MobileGameTable = ({
     const apparentIsActivePlayer =
       (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
 
-    const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
+    // A completed ritual owns the resolving round's concealed-card surface.
+    // Do not fall back to ordinary seat backs after its stacks clear; a new
+    // round identity resumes the existing deal-owned card-back path.
+    const isDecisionRevealRound =
+      threeFiveSevenDecisionRevealClock?.window.roundId === threeFiveSevenViewRoundId;
+    const showCardBacks =
+      apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !isDecisionRevealRound;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
     // ── H1R3 → H2R1 targeted trace: opponent card-back derivation.

@@ -1571,3 +1571,10 @@ resumes. The felt artifact is a dedicated theatrical stack: canonical card-back
 artwork with presentation-owned responsive sizing, one-pixel capped depth, no
 fan/rotation/spread, and one whole-stack DROP animation. Ordinary canonical
 card-stack geometry does not constrain this surface.
+
+The same projection includes a short sealed lead-in before the numeral cadence
+so a client receiving the final decision just after resolution still has a fair
+chance to see `3`. The local HOME stack is a rail-adjacent variation of the
+same artifact, not a different seat owner. Once the ritual owns a resolved
+round, ordinary seat cardbacks remain suppressed until the exact round identity
+changes and the normal deal path begins again.

@@ -2,7 +2,7 @@
 
 Date: 2026-09-01
 
-## 3-5-7 synchronized decision reveal — installed; frontend publication pending
+## 3-5-7 synchronized decision reveal — timing and local-stack polish installed; frontend publication pending
 
 - Migration `20260901093000_add_357_decision_reveal_projection.sql` projects a
   pause-aware server-time `3 → 2 → 1 → DROP` window from the existing exact
@@ -15,6 +15,13 @@ Date: 2026-09-01
   card (capped at six pixels), and has no fan, rotation, or spread. DROP animates
   the whole stack as one object. The dealer bubble supports both remote seat
   anchors and the existing local HOME chip endpoint.
+- Migration `20260901101000_polish_357_decision_reveal_timing.sql` keeps the
+  same pause-aware projection but adds a 400 ms sealed lead-in before a 700 ms
+  per-beat `3 → 2 → 1`. The existing authoritative continuation deadline is
+  unchanged. The local HOME stack now uses a shorter inward offset so it stays
+  near the player rail, while remote placement is unchanged. Ordinary
+  canonical cardbacks are suppressed for the resolved ritual round after its
+  stack clears and return through the existing next-deal path only.
 - Decision colors, badges, all-fold presentation, exposed cards, result
   narration, transfer dispatch, and continuation remain sealed through the
   countdown. All decisions open on the absolute DROP boundary; the existing

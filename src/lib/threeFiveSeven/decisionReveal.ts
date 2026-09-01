@@ -1,5 +1,6 @@
 export const THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING = {
-  countBeatMs: 650,
+  countLeadInMs: 400,
+  countBeatMs: 700,
   dropMs: 800,
   holdMs: 600,
   continuationDwellMs: 4000,
@@ -13,6 +14,7 @@ export interface ThreeFiveSevenDecisionRevealWindow {
   handNumber: number;
   roundNumber: number;
   startedAtMs: number;
+  countdownAtMs: number;
   dropAtMs: number;
   endsAtMs: number;
   continuationAtMs: number;
@@ -23,7 +25,7 @@ export interface ThreeFiveSevenDecisionRevealClock {
   serverOffsetMs: number;
 }
 
-export type ThreeFiveSevenDecisionRevealBeat = '3' | '2' | '1' | 'DROP' | 'hold' | 'expired';
+export type ThreeFiveSevenDecisionRevealBeat = 'locked' | '3' | '2' | '1' | 'DROP' | 'hold' | 'expired';
 
 export interface ThreeFiveSevenDecisionRevealFrame {
   beat: ThreeFiveSevenDecisionRevealBeat;
@@ -75,14 +77,15 @@ export function parseThreeFiveSevenDecisionRevealWindow(
   const handNumber = requiredInteger(raw.hand_number);
   const roundNumber = requiredInteger(raw.round_number);
   const startedAtMs = timestampMs(raw.started_at);
+  const countdownAtMs = timestampMs(raw.countdown_at) ?? startedAtMs;
   const dropAtMs = timestampMs(raw.drop_at);
   const endsAtMs = timestampMs(raw.ends_at);
   const continuationAtMs = timestampMs(raw.continuation_at);
 
   if (
     !id || !gameId || !dealerGameId || !roundId || handNumber == null || roundNumber == null
-    || startedAtMs == null || dropAtMs == null || endsAtMs == null || continuationAtMs == null
-    || !(startedAtMs < dropAtMs && dropAtMs < endsAtMs && endsAtMs < continuationAtMs)
+    || startedAtMs == null || countdownAtMs == null || dropAtMs == null || endsAtMs == null || continuationAtMs == null
+    || !(startedAtMs <= countdownAtMs && countdownAtMs < dropAtMs && dropAtMs < endsAtMs && endsAtMs < continuationAtMs)
   ) {
     throw new Error('three_five_seven_decision_reveal:malformed_window');
   }
@@ -95,6 +98,7 @@ export function parseThreeFiveSevenDecisionRevealWindow(
     handNumber,
     roundNumber,
     startedAtMs,
+    countdownAtMs,
     dropAtMs,
     endsAtMs,
     continuationAtMs,
@@ -138,12 +142,13 @@ export function deriveThreeFiveSevenDecisionRevealFrame(
 ): ThreeFiveSevenDecisionRevealFrame {
   const { window, serverOffsetMs } = clock;
   const authoritativeNowMs = localNowMs + serverOffsetMs;
-  const elapsed = Math.max(0, authoritativeNowMs - window.startedAtMs);
+  const elapsed = Math.max(0, authoritativeNowMs - window.countdownAtMs);
   const countBeatMs = THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs;
   let beat: ThreeFiveSevenDecisionRevealBeat;
   if (authoritativeNowMs >= window.endsAtMs) beat = 'expired';
   else if (authoritativeNowMs >= window.dropAtMs + THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.dropMs) beat = 'hold';
   else if (authoritativeNowMs >= window.dropAtMs) beat = 'DROP';
+  else if (authoritativeNowMs < window.countdownAtMs) beat = 'locked';
   else if (elapsed >= countBeatMs * 2) beat = '1';
   else if (elapsed >= countBeatMs) beat = '2';
   else beat = '3';
