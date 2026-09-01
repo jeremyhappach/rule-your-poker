@@ -30,7 +30,7 @@ sampling assertion. All three fake games were deleted and no real-money game
 was opened. This accepts scheduler function and cleanup, not a clean latency or
 full-gameplay checkpoint.
 
-## 3-5-7 exact-wave baseline and readiness ownership — release candidate
+## 3-5-7 exact-wave baseline and readiness ownership — production checkpoint
 
 - `Game.tsx` is now the sole owner of the exact deal-readiness token. It
   validates the token against the accepted atomic 3-5-7 dealer-game, hand,
@@ -45,7 +45,17 @@ full-gameplay checkpoint.
   The same exact-wave rule feeds local faces, opponent backs, and the final
   `PlayerHand` boundary guard.
 - TypeScript, 149 focused 3-5-7 tests, 39 build-required Cribbage tests, and the
-  production build pass. Production R1/R2/R3 smoke remains the acceptance gate.
+  production build pass. Commit
+  `c5ee6d0bf7451ae797da30a260e023ce9e0736e9` is published by Vercel deployment
+  `dpl_Aee4krFCH5CiyCLTiXTu6r5RiqQe` and serves bundle
+  `assets/index-B2LxinNU.js` from `holm357.com`.
+- The published two-client fake-money R1/R2/R3 progression passed in 53.5
+  seconds. Both clients finished on the same Round 3 UUID with seven visible
+  cards, one timer, enabled Drop/Stay controls, and no stale artifacts. The
+  continuous observer recorded zero violations and no 6,000 ms breach (peer
+  p95/max 3,412 ms); guarded cleanup deleted the exact session. Vercel reported
+  no runtime errors. This is focused transition/readiness acceptance, not full
+  3-5-7 rule or deadline coverage.
 
 ## Gin action-path mirror-write reduction — installed, smoke pending
 

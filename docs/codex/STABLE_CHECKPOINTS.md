@@ -2,6 +2,17 @@
 
 ## Platform
 
+- 3-5-7 exact-wave baseline and shared timer/action readiness passed published
+  production fake-money smoke on 2026-09-01 at commit
+  `c5ee6d0bf7451ae797da30a260e023ce9e0736e9`. Both clients completed the
+  deterministic R1/R2/R3 progression on one accepted round identity per wave
+  and finished Round 3 with seven visible cards, one timer, enabled Drop/Stay
+  controls, and zero stale artifacts. The continuous observer recorded zero
+  violations and no 6000 ms peer breach (p95/max 3412 ms); guarded cleanup
+  deleted the exact session and Vercel reported no runtime errors. Preserve the
+  route-owned identity-complete readiness token and the authoritative
+  prior-wave baseline plus exact-current-wave receipt rule. This is focused
+  deal-transition/readiness coverage, not full 3-5-7 gameplay or deadlines.
 - Gin's exact normal-knock/repeated-layoff, Gin, undercut/hand-two, and
   stock-two-void rows passed concurrent published production fake-money smoke
   on 2026-08-31 at commit
