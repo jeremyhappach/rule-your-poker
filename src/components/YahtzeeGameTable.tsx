@@ -36,6 +36,7 @@ import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import { applyYahtzeeAction, applyYahtzeeAutoRollAction, setYahtzeeHolds } from "@/lib/yahtzeeAuthority";
+import { isYahtzeeManualTurnOpen } from "@/lib/yahtzeeManualTurnAdmission";
 import {
   buildDieTuples,
   isYahtzeeHeldTraceEnabled,
@@ -798,7 +799,6 @@ export function YahtzeeGameTable({
     && !currentPlayer?.is_bot
     && currentPlayer?.auto_fold !== true
     && !isPaused;
-  const yahtzeeTimerOwnedByThisClient = yahtzeeHumanTimedTurn && isMyTurn;
   useEffect(() => {
     if (!yahtzeeHumanTimedTurn || !yahtzeeDeadline) return;
     setTimerNow(Date.now());
@@ -808,7 +808,24 @@ export function YahtzeeGameTable({
   const yahtzeeSecondsRemaining = yahtzeeDeadline
     ? Math.max(0, Math.ceil((new Date(yahtzeeDeadline).getTime() - timerNow) / 1_000))
     : 0;
-  const yahtzeeShellTimerState = yahtzeeTimerOwnedByThisClient && yahtzeeSecondsRemaining > 0
+  const isManualTurnOpenNow = useCallback(() => isYahtzeeManualTurnOpen({
+    gamePhase,
+    isMyTurn,
+    isPaused,
+    isAutomated: isMyAutoRollTurn,
+    deadline: yahtzeeDeadline,
+    nowMs: Date.now(),
+  }), [gamePhase, isMyTurn, isPaused, isMyAutoRollTurn, yahtzeeDeadline]);
+  const yahtzeeManualTurnOpen = isYahtzeeManualTurnOpen({
+    gamePhase,
+    isMyTurn,
+    isPaused,
+    isAutomated: isMyAutoRollTurn,
+    deadline: yahtzeeDeadline,
+    nowMs: timerNow,
+  });
+  const yahtzeeDeadlineExpired = !!yahtzeeDeadline && yahtzeeSecondsRemaining <= 0;
+  const yahtzeeShellTimerState = yahtzeeManualTurnOpen
     ? {
         secondsRemaining: yahtzeeSecondsRemaining,
         totalSeconds: decisionTimerSeconds,
@@ -820,6 +837,9 @@ export function YahtzeeGameTable({
   // The server-owned deadline is the only timer source. This hook publishes
   // semantic state; the shell owns the rail's rendering and geometry.
   useShellTimer(yahtzeeShellTimerState);
+  useEffect(() => {
+    if (!yahtzeeManualTurnOpen) setPendingZeroCategory(null);
+  }, [yahtzeeManualTurnOpen]);
 
   const chatAttention = useChatAttention();
   useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
@@ -929,10 +949,7 @@ export function YahtzeeGameTable({
     && gamePhase === "playing"
     && localRollsRemaining < 3;
   useAuthoritativeActionSurfaceGuard({
-    expected: gamePhase === 'playing'
-      && isMyTurn
-      && !isPaused
-      && !isMyAutoRollTurn
+    expected: yahtzeeManualTurnOpen
       && activeTab === 'cards'
       && !remoteScorePresentation.active,
     gameId,
@@ -1331,8 +1348,9 @@ export function YahtzeeGameTable({
   }, [acceptCommittedState, onRefetch]);
 
   const handleRoll = useCallback(async () => {
-    if (isPaused || !isMyTurn || myPlayer?.auto_fold || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
-      console.warn('[YAHTZEE] handleRoll blocked:', { isPaused, isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
+    const manualTurnOpen = isManualTurnOpenNow();
+    if (!manualTurnOpen || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
+      console.warn('[YAHTZEE] handleRoll blocked:', { manualTurnOpen, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
     actionInFlightRef.current = true;
@@ -1392,11 +1410,11 @@ export function YahtzeeGameTable({
       actionInFlightRef.current = false;
       setActionPending(false);
     }
-  }, [isPaused, isMyTurn, currentRoundId, currentTurnPlayerId, myPlayer, rolling, acceptCommittedState, ensureHoldMaskSynced, onRefetch]);
+  }, [isManualTurnOpenNow, currentRoundId, currentTurnPlayerId, myPlayer, rolling, acceptCommittedState, ensureHoldMaskSynced, onRefetch]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback((dieIndex: number) => {
-    if (isPaused || !isMyTurn || myPlayer?.auto_fold || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
+    if (!isManualTurnOpenNow() || !currentRoundId || !myPlayer || rolling || actionInFlightRef.current) {
       return;
     }
     const rawState = latestActionStateRef.current;
@@ -1434,11 +1452,11 @@ export function YahtzeeGameTable({
     // Attach a rejection handler for tap-only usage. Roll/score callers await
     // the same shared promise and therefore still observe a failed flush.
     void ensureHoldMaskSynced().catch(() => {});
-  }, [isPaused, isMyTurn, currentRoundId, myPlayer, rolling, ensureHoldMaskSynced]);
+  }, [isManualTurnOpenNow, currentRoundId, myPlayer, rolling, ensureHoldMaskSynced]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (isPaused || !isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) {
+    if (!isManualTurnOpenNow() || !currentRoundId || !myPlayer || scoringInProgress) {
       return;
     }
     const rawState = latestActionStateRef.current;
@@ -1465,10 +1483,10 @@ export function YahtzeeGameTable({
 
     await commitScoreCategory(category);
 
-  }, [isPaused, isMyTurn, currentRoundId, myPlayer, scoringInProgress]);
+  }, [isManualTurnOpenNow, currentRoundId, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (isPaused || !currentRoundId || !myPlayer || myPlayer.auto_fold || actionInFlightRef.current) return;
+    if (!isManualTurnOpenNow() || !currentRoundId || !myPlayer || actionInFlightRef.current) return;
     actionInFlightRef.current = true;
     setActionPending(true);
     let presentationFrozen = false;
@@ -1551,7 +1569,7 @@ export function YahtzeeGameTable({
       actionInFlightRef.current = false;
       setActionPending(false);
     }
-  }, [isPaused, currentRoundId, myPlayer, acceptCommittedState, ensureHoldMaskSynced, onRefetch, yahtzeeSync, clearActiveScorePresentation]);
+  }, [isManualTurnOpenNow, currentRoundId, myPlayer, acceptCommittedState, ensureHoldMaskSynced, onRefetch, yahtzeeSync, clearActiveScorePresentation]);
 
   /* ---- P9.3b: end-of-game presentation effect ----
    * Fires on EVERY client (active scorer, non-scoring active, observer) when
@@ -2271,7 +2289,7 @@ export function YahtzeeGameTable({
           const effectiveScored = getEffectiveScore(cat);
           const potential = potentials[cat];
           const jokerBlocked = jokerValid && !jokerValid.includes(cat);
-          const isAvailable = effectiveScored === undefined && isInteractive && isMyTurn && !isPaused && rollsUsed < 3 && !jokerBlocked;
+          const isAvailable = effectiveScored === undefined && isInteractive && yahtzeeManualTurnOpen && rollsUsed < 3 && !jokerBlocked;
           const justScored = lastScoredCategory === cat;
           // Show optimistic value when DB hasn't caught up
           const isOptimistic = optimisticScore?.playerId === playerId && optimisticScore?.category === cat && scored === undefined;
@@ -2757,7 +2775,7 @@ export function YahtzeeGameTable({
                           value={die.value}
                           isHeld={showHeldStyling}
                           isRolling={shouldAnimate}
-                          canToggle={!isPaused && !myPlayer?.auto_fold && !rolling && !actionPending && localRollsRemaining > 0 && localRollsRemaining < 3}
+                          canToggle={yahtzeeManualTurnOpen && !rolling && !actionPending && localRollsRemaining > 0 && localRollsRemaining < 3}
                           onToggle={() => handleToggleHold(idx)}
                           size={resolvedDieSize}
                           sizePx={fluidDiePx ?? undefined}
@@ -2776,13 +2794,17 @@ export function YahtzeeGameTable({
                     releases; opponent-turn UI uses the scorecard block below. */}
                 {gamePhase === 'playing' && isMyTurn && !isPaused && !remoteScorePresentation.active && (
                   <ActionStripSlot
-                    data-authoritative-action-surface="yahtzee-turn"
+                    data-authoritative-action-surface={yahtzeeManualTurnOpen ? 'yahtzee-turn' : undefined}
                     className="mt-1 mb-1"
                     density="compact"
                   >
                     {isMyAutoRollTurn ? (
                       <ActionStripStatusPill emphasis="muted">
                         Auto-rolling…
+                      </ActionStripStatusPill>
+                    ) : !yahtzeeManualTurnOpen ? (
+                      <ActionStripStatusPill emphasis="muted">
+                        {yahtzeeDeadlineExpired ? 'Waiting for timeout recovery…' : 'Waiting for turn timer…'}
                       </ActionStripStatusPill>
                     ) : scoringInProgress ? (
                       <ActionStripStatusPill emphasis="muted">

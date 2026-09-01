@@ -187,7 +187,7 @@ describe('Yahtzee browser ownership boundary', () => {
     expect(table).toContain('applyYahtzeeAutoRollAction');
   });
 
-  it('makes an authoritative pause suppress Yahtzee announcements and action surfaces', () => {
+  it('makes pause, automation, and deadline expiry suppress every manual action surface', () => {
     const table = readFileSync(new URL('../components/YahtzeeGameTable.tsx', import.meta.url), 'utf8');
     const turnAnnouncementStart = table.indexOf("if (remotePresentationHydratedRoundId !== currentRoundId) return;");
     const turnAnnouncementEnd = table.indexOf('/* ---- Clear opponent scoring highlight', turnAnnouncementStart);
@@ -195,12 +195,23 @@ describe('Yahtzee browser ownership boundary', () => {
     const rollHandlerStart = table.indexOf('const handleRoll = useCallback');
     const rollHandlerEnd = table.indexOf('/* ---- Hold toggle ---- */', rollHandlerStart);
     const rollHandler = table.slice(rollHandlerStart, rollHandlerEnd);
+    const holdHandlerStart = table.indexOf('const handleToggleHold = useCallback');
+    const holdHandlerEnd = table.indexOf('/* ---- Score category ---- */', holdHandlerStart);
+    const holdHandler = table.slice(holdHandlerStart, holdHandlerEnd);
+    const scoreHandlerStart = table.indexOf('const handleScoreCategory = useCallback');
+    const scoreHandlerEnd = table.indexOf('/* ---- P9.3b:', scoreHandlerStart);
+    const scoreHandlers = table.slice(scoreHandlerStart, scoreHandlerEnd);
 
     expect(turnAnnouncement).toContain('if (isPaused) return;');
-    expect(rollHandler).toContain('if (isPaused || !isMyTurn');
-    expect(table).toContain("gamePhase === 'playing' && isMyTurn && !isPaused && !remoteScorePresentation.active");
-    expect(table).toContain('isInteractive && isMyTurn && !isPaused');
-    expect(table).toContain('canToggle={!isPaused');
+    expect(table).toContain('const yahtzeeManualTurnOpen = isYahtzeeManualTurnOpen({');
+    expect(rollHandler).toContain('const manualTurnOpen = isManualTurnOpenNow();');
+    expect(rollHandler).toContain('if (!manualTurnOpen');
+    expect(holdHandler).toContain('if (!isManualTurnOpenNow()');
+    expect(scoreHandlers.match(/if \(!isManualTurnOpenNow\(\)/g)).toHaveLength(2);
+    expect(table).toContain("data-authoritative-action-surface={yahtzeeManualTurnOpen ? 'yahtzee-turn' : undefined}");
+    expect(table).toContain('isInteractive && yahtzeeManualTurnOpen');
+    expect(table).toContain('canToggle={yahtzeeManualTurnOpen');
+    expect(table).toContain('Waiting for timeout recovery…');
   });
 
   it('uses the countdown as the sole active-turn ring on opponent chips', () => {
