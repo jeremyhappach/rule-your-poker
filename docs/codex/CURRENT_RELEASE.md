@@ -2,6 +2,39 @@
 
 Date: 2026-09-01
 
+## 3-5-7 atomic-frame-first convergence — production checkpoint
+
+- The retained 7,611 ms ante peer-progress outlier was client hydration delay,
+  not slow ante authority. The frozen `submit_ante_decision` request began 274
+  ms after click and committed in 890 ms despite its response being lost under
+  chaos. One client accepted the exact active frame and then regressed to a
+  delayed `ante_decision` image; the peer waited for split game/player/default
+  discovery before requesting the 204 ms atomic frame.
+- Known 3-5-7 sessions now request `three_five_seven_current_frame` first and
+  publish its game, exact round, roster/profiles, and caller-visible private
+  cards without preceding split discovery. Cold/unknown sessions retain normal
+  family discovery, and an exact `not_357_game` result falls back safely when a
+  session switches families. A same/null dealer-game pregame image can no
+  longer overwrite an accepted active frame; a genuinely new dealer-game UUID
+  remains an admitted setup boundary. No database migration was required.
+- TypeScript, 30 focused state/handoff assertions, all 39 build-required
+  Cribbage assertions, and the production build passed. The broader liveness
+  pack passed 260/262; its two misses were the change-caused source-wiring
+  assertion (updated and then passing) and an unrelated pre-existing
+  whitespace-sensitive dealer-draw migration assertion.
+- Published acceptance ran on commit
+  `f6b82afcbd5ccf94b29e2d48c51174d9478fa4f2` and Vercel deployment
+  `dpl_BkRJ5YYsKHDiqo9T15TSNzmUS99S`. The exact isolated production fake-money
+  `357-round-progression` scenario passed in 44.6 seconds. R1/R2/R3 published
+  3/5/7 cards on their exact identities; 95 observer events, 80 snapshots, and
+  499 requests produced zero presentation violations and zero unexpected 6,000
+  ms peer-budget breaches. Ante peer progress was 1,994 ms versus 7,611 ms in
+  the frozen evidence; overall peer p95/max was 3,428 ms. The one-shot fixture
+  was consumed exactly once and cancelled, and guarded cleanup deleted fake
+  game `90fe19f4-414b-437b-9b33-9d5284b1a60e`. No real-money game was opened or
+  touched. This is focused ante/start and R1/R2/R3 convergence acceptance, not
+  full 3-5-7 gameplay, lifecycle, deadline, or repetition coverage.
+
 ## Holm direct decision authority — production checkpoint
 
 - The retained 9,776 ms Holm peer-progress outlier was browser-side read
@@ -32,7 +65,8 @@ Date: 2026-09-01
   `2c394868-d15c-4fbb-a09e-d98fa9f4fd7b`, and an independent database query
   confirmed zero matching game rows. No real-money game was opened or touched.
   This is focused decision-latency and unchanged-Run-It-Back acceptance, not
-  full Holm coverage; the separate 3-5-7 ante outlier remains for its own RCA.
+  full Holm coverage; the separate 3-5-7 ante outlier was subsequently closed
+  by the atomic-frame-first checkpoint above.
 
 ## Recovery scheduler workload admission — installed; focused Yahtzee rerun accepted
 
@@ -82,9 +116,9 @@ events, 37 snapshots, 427 requests, zero presentation violations, and no 6,000
 ms peer-budget breach (peer p95/max 3,079 ms). Guarded cleanup deleted game
 `1c98440f-40d9-425a-b8d2-1e3a95c8a9c7`, and an independent database query
 confirmed zero matching game rows. No real-money game was opened or touched.
-This is focused deadline/remount admission acceptance, not full Yahtzee gameplay
-or lifecycle coverage; the separate Holm and 3-5-7 latency outliers remain for
-their own RCA.
+  This is focused deadline/remount admission acceptance, not full Yahtzee gameplay
+  or lifecycle coverage; the separate Holm and 3-5-7 latency outliers were
+  subsequently closed by their focused checkpoints above.
 
 ## 3-5-7 exact-wave baseline and readiness ownership — production checkpoint
 

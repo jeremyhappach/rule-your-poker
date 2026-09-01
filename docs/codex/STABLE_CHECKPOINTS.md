@@ -2,6 +2,19 @@
 
 ## Platform
 
+- 3-5-7 ante/start atomic-frame convergence passed published production
+  fake-money smoke on 2026-09-01 at commit
+  `f6b82afcbd5ccf94b29e2d48c51174d9478fa4f2`. Under a deliberately lost ante
+  response, both clients admitted the exact R1 frame without active-to-ante
+  regression, then completed R1/R2/R3 with 3/5/7 cards. Ante peer progress was
+  1,994 ms versus the frozen 7,611 ms outlier; all seven actions had receipts,
+  peer p95/max was 3,428 ms, and the observer recorded zero violations and zero
+  unexpected 6,000 ms breaches. The fixture was consumed once and cancelled,
+  and guarded cleanup deleted the exact fake session. Preserve atomic-frame-
+  first routing for known 3-5-7 families, split reads only for unknown-family
+  discovery, and the explicit new dealer-game UUID admission boundary. No
+  real-money game was touched. This is focused convergence coverage, not full
+  3-5-7 gameplay, lifecycle, deadlines, or repetition.
 - 3-5-7 exact-wave baseline and shared timer/action readiness passed published
   production fake-money smoke on 2026-09-01 at commit
   `c5ee6d0bf7451ae797da30a260e023ce9e0736e9`. Both clients completed the
