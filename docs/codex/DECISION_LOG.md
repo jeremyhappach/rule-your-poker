@@ -1526,3 +1526,18 @@ inactive, and the local settled ledger is still incomplete. This preserves
 lost-receipt liveness without allowing early card paint or replacing transport
 with a timer. Historical/rejoin reconstruction remains a separate explicit
 entry mode.
+
+## D-109 - Recovery cadence admits work; heartbeat presence never owns safety
+
+The single one-second database scheduler remains the only recovery heartbeat,
+but an idle tick does not invoke every game owner. Exact due state admits its
+owner immediately, and one complete owner rotates through a slower safety lane
+on every tick. This prevents a slow game scan from being multiplied across all
+games while retaining bounded recovery for fake money, disconnected clients,
+stale heartbeats, legacy rows, and postgame continuation.
+
+A browser heartbeat may be useful evidence but is never the prerequisite for
+timeout, pause, settlement, abandonment, or replay-safe recovery. If an
+admission predicate cannot classify a legacy row, the dispatcher runs that
+owner through its established isolated failure boundary instead of allowing
+the optimization to suppress authority work.

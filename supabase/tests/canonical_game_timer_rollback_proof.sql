@@ -276,6 +276,7 @@ BEGIN
     SELECT 1 FROM private.game_timer_registry timer
     JOIN public.games game_row ON game_row.id=timer.game_id
      WHERE game_row.game_type IN ('gin-rummy','cribbage')
+       AND timer.state IN ('scheduled','processing')
        AND timer.timer_kind IN ('holm_decision','three_five_seven_decision',
                                 'horses_scc_turn','yahtzee_turn')
   ) THEN

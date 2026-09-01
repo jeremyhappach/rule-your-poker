@@ -1,6 +1,29 @@
 # Current release and cutover state
 
-Date: 2026-08-31
+Date: 2026-09-01
+
+## Recovery scheduler workload admission — installed, gameplay rerun pending
+
+- Migration `20260901085259_admit_due_recovery_work.sql` keeps the sole
+  one-second `private.advance_due_game_state()` heartbeat, but no longer calls
+  all eight recovery owners on every tick. Exact due work runs immediately and
+  one full-safety owner rotates per tick, so each task still receives bounded
+  fake-money, disconnected, stale-heartbeat, legacy, and postgame recovery.
+  Browser heartbeat presence is not an authority prerequisite.
+- The candidate and installed definitions passed isolated rollback proofs for
+  scheduler failure/replay, canonical timers, authorization, pause/resume,
+  fake- and real-money Yahtzee timeout behavior, session abandonment,
+  winner/tie/continuation/terminal paths, and Cribbage, Gin, Holm, 3-5-7, and
+  Horses/SCC authority. The canonical timer proof now correctly ignores
+  historical cancelled rows when checking for an active human clock.
+- In the first installed 45-second observation, all 43 cron runs succeeded,
+  p95 was 51.8 ms, max was 53 ms, the latest complete dispatcher heartbeat was
+  33 ms, and there were no active recovery failures or slow-task records. The
+  pre-change 24-hour window had 18 failed starts and a 25.4-second maximum.
+
+This accepts the database scheduler shape and bounded initial health window.
+It does not replace the pending concurrent fake-money gameplay rerun and does
+not claim that every prior campaign failure is cleared.
 
 ## Gin action-path mirror-write reduction — installed, smoke pending
 
