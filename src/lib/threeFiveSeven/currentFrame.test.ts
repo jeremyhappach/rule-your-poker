@@ -21,6 +21,8 @@ function rawFrame(overrides: Record<string, unknown> = {}) {
     game, round, players: [{ id: 'player-1' }],
     player_cards: [{ player_id: 'player-1', cards: [{}, {}, {}] }],
     viewer_player_id: 'player-1', viewer_cards_required: true, viewer_cards_present: true,
+    decision_reveal: null,
+    server_now: '2026-09-01T14:00:00.000Z',
     identity: {
       dealer_game_id: 'dg-1', hand_number: 2, round_number: 1,
       round_id: 'round-h2-r1', opening_transfer_required: true,

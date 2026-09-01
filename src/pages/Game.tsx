@@ -132,6 +132,14 @@ import {
   type ThreeFiveSevenCurrentFrame,
   type ThreeFiveSevenFrameCursor,
 } from "@/lib/threeFiveSeven/currentFrame";
+import {
+  deriveThreeFiveSevenDecisionRevealFrame,
+  parseThreeFiveSevenDecisionRevealReceipt,
+  reconcileThreeFiveSevenDecisionRevealClock,
+  remainingThreeFiveSevenContinuationDelayMs,
+  sampleThreeFiveSevenServerOffset,
+  type ThreeFiveSevenDecisionRevealClock,
+} from '@/lib/threeFiveSeven/decisionReveal';
 import { expectsSharedPlayerCards } from "@/lib/sharedPlayerCards";
 import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
@@ -2175,6 +2183,51 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
+  const [threeFiveSevenDecisionRevealClock, setThreeFiveSevenDecisionRevealClock] =
+    useState<ThreeFiveSevenDecisionRevealClock | null>(null);
+  const [threeFiveSevenDecisionRevealBoundary, setThreeFiveSevenDecisionRevealBoundary] = useState(0);
+  const threeFiveSevenDecisionRevealFrame = threeFiveSevenDecisionRevealClock
+    ? deriveThreeFiveSevenDecisionRevealFrame(threeFiveSevenDecisionRevealClock, Date.now())
+    : null;
+  const threeFiveSevenDecisionRevealBlocksResult = !!threeFiveSevenDecisionRevealFrame?.active;
+  const threeFiveSevenDecisionRevealSecrecyOpen = !!threeFiveSevenDecisionRevealFrame?.secrecyOpen;
+
+  useEffect(() => {
+    if (!threeFiveSevenDecisionRevealClock) return;
+    const authoritativeNow = Date.now() + threeFiveSevenDecisionRevealClock.serverOffsetMs;
+    const nextBoundary = authoritativeNow < threeFiveSevenDecisionRevealClock.window.dropAtMs
+      ? threeFiveSevenDecisionRevealClock.window.dropAtMs
+      : authoritativeNow < threeFiveSevenDecisionRevealClock.window.endsAtMs
+        ? threeFiveSevenDecisionRevealClock.window.endsAtMs
+        : null;
+    if (nextBoundary == null) return;
+    const timer = window.setTimeout(
+      () => setThreeFiveSevenDecisionRevealBoundary((value) => value + 1),
+      Math.max(0, nextBoundary - authoritativeNow + 10),
+    );
+    return () => window.clearTimeout(timer);
+  }, [threeFiveSevenDecisionRevealClock, threeFiveSevenDecisionRevealBoundary]);
+
+  const admitThreeFiveSevenDecisionRevealReceipt = useCallback((
+    receipt: unknown,
+    requestStartedAtMs: number,
+    responseReceivedAtMs: number,
+  ) => {
+    const parsed = parseThreeFiveSevenDecisionRevealReceipt(
+      receipt,
+      requestStartedAtMs,
+      responseReceivedAtMs,
+    );
+    if (!parsed) return;
+    setThreeFiveSevenDecisionRevealClock((current) => (
+      reconcileThreeFiveSevenDecisionRevealClock(
+        current,
+        parsed.window,
+        parsed.serverOffsetMs,
+        parsed.window.roundId,
+      )
+    ));
+  }, []);
   /**
    * Immutable identity-bound expectation for the terminal winner hand.
    * Captured at authoritative 3-5-7 terminal detection. `threeFiveSevenWinnerCards`
@@ -8257,6 +8310,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       setDecisionDeadline(null);
+
+      // The database has already resolved the round, but 3-5-7 result
+      // presentation must remain sealed until the shared authoritative ritual
+      // finishes. Progression remains server-safe and independent of this hold.
+      if (is357GameType && threeFiveSevenDecisionRevealBlocksResult) {
+        return;
+      }
       
       // Save the game state when we start the timer
       gameStateAtTimerStart.current = { awaiting: true, round: currentRoundNumber };
@@ -8568,11 +8628,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         return;
       }
 
-      // Wait 4 seconds to show every non-Holm result, then start next round.
+      const resultPresentationDelayMs = is357GameType && threeFiveSevenDecisionRevealClock
+        ? remainingThreeFiveSevenContinuationDelayMs(
+            threeFiveSevenDecisionRevealClock,
+            Date.now(),
+          )
+        : 4000;
+
+      // Preserve the existing four-second result dwell, but align it to the
+      // absolute authoritative reveal window rather than receipt time.
       awaitingTimerRef.current = __scheduleWartimeTimeout({
         sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
         ownerLabel: 'game.awaitingNextRound.autoProceedTimer',
-        delayMs: 4000,
+        delayMs: resultPresentationDelayMs,
         extra: {
           purpose: 'awaiting_next_round auto proceed delay',
           guard_currentAwaiting: currentAwaiting,
@@ -8874,7 +8942,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === '3-5-7') {
         persist357Investigation(gameId, game?.total_hands || 1, '357-auto-proceed-started', {
           roundNumber: game?.current_round,
-          delayMs: 4000,
+          delayMs: resultPresentationDelayMs,
           rawLastRoundResultPresent: !!game?.last_round_result,
           transitionType: tType357,
         });
@@ -8922,7 +8990,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, holmPlayers, holmPresentationIdentity, holmView?.lastRoundResult, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, holmPlayers, holmPresentationIdentity, holmView?.lastRoundResult, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity, is357GameType, threeFiveSevenDecisionRevealBlocksResult, threeFiveSevenDecisionRevealClock]);
 
   const reconcileHolmPresentationBarrier = useCallback((): boolean => {
     const barrier = holmPresentationBarrierRef.current;
@@ -9211,11 +9279,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     let exactThreeFiveSevenFrame: ThreeFiveSevenCurrentFrame | null = null;
     const requestThreeFiveSevenFrame = async () => {
+      const frameRequestStartedAtMs = Date.now();
       const { data: rawFrame, error: frameError } = await timedQuery(
         'rpc.three_five_seven_current_frame',
         'three_five_seven_current_frame',
         () => supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any),
       );
+      const frameResponseReceivedAtMs = Date.now();
       if (frameError) return { frame: null, error: frameError, rejected: false };
 
       const parsedFrame = parseThreeFiveSevenCurrentFrame(rawFrame);
@@ -9234,6 +9304,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       threeFiveSevenFrameCursorRef.current = incomingCursor;
+      setThreeFiveSevenDecisionRevealClock((current) => (
+        reconcileThreeFiveSevenDecisionRevealClock(
+          current,
+          parsedFrame.decisionReveal,
+          sampleThreeFiveSevenServerOffset(
+            parsedFrame.serverNow,
+            frameRequestStartedAtMs,
+            frameResponseReceivedAtMs,
+          ),
+          parsedFrame.identity.round_id,
+        )
+      ));
       return { frame: parsedFrame, error: null, rejected: false };
     };
 
@@ -15367,6 +15449,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Stay requires an active round');
       }
+      const decisionRequestStartedAtMs = Date.now();
       const decisionResult = game?.game_type === 'holm-game'
         ? await submitHolmDecision({
             gameId,
@@ -15381,6 +15464,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             is357GameType ? currentRound!.id : undefined,
           );
       if (is357GameType) {
+        admitThreeFiveSevenDecisionRevealReceipt(
+          decisionResult,
+          decisionRequestStartedAtMs,
+          Date.now(),
+        );
         setGame((previous) => applyThreeFiveSevenDecisionReceipt(
           previous,
           gameId,
@@ -15489,6 +15577,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Fold requires an active round');
       }
+      const decisionRequestStartedAtMs = Date.now();
       const decisionResult = game?.game_type === 'holm-game'
         ? await submitHolmDecision({
             gameId,
@@ -15503,6 +15592,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             is357GameType ? currentRound!.id : undefined,
           );
       if (is357GameType) {
+        admitThreeFiveSevenDecisionRevealReceipt(
+          decisionResult,
+          decisionRequestStartedAtMs,
+          Date.now(),
+        );
         setGame((previous) => applyThreeFiveSevenDecisionReceipt(
           previous,
           gameId,
@@ -18055,7 +18149,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 : null}
               lastRoundResult={renderRoundContext ? (game.game_type === 'holm-game' && holmView
                 ? holmView.lastRoundResult
-                : (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null))) : null}
+                : (is357GameType && threeFiveSevenDecisionRevealBlocksResult
+                  ? null
+                  : (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)))) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
@@ -18094,7 +18190,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenViewRoundNumber={is357GameType ? (threeFiveSevenView?.roundNumber ?? null) : null}
               threeFiveSevenViewTransferCursor={is357GameType ? (threeFiveSevenView?.chipTransferCursor ?? null) : null}
               threeFiveSevenRolloverPresentation={is357GameType ? threeFiveSevenRolloverPresentation : null}
-              threeFiveSevenAllFoldPresentation={is357GameType ? threeFiveSevenAllFoldPresentation : null}
+              threeFiveSevenAllFoldPresentation={is357GameType && !threeFiveSevenDecisionRevealBlocksResult
+                ? threeFiveSevenAllFoldPresentation
+                : null}
+              threeFiveSevenDecisionRevealClock={is357GameType ? threeFiveSevenDecisionRevealClock : null}
+              threeFiveSevenDecisionRevealSecrecyOpen={threeFiveSevenDecisionRevealSecrecyOpen}
+              threeFiveSevenDecisionRevealBlocksResult={threeFiveSevenDecisionRevealBlocksResult}
               onThreeFiveSevenAllFoldPresentationComplete={is357GameType
                 ? handleThreeFiveSevenAllFoldPresentationComplete
                 : undefined}

@@ -2,6 +2,32 @@
 
 Date: 2026-09-01
 
+## 3-5-7 synchronized decision reveal — installed; frontend publication pending
+
+- Migration `20260901093000_add_357_decision_reveal_projection.sql` projects a
+  pause-aware server-time `3 → 2 → 1 → DROP` window from the existing exact
+  round-resolution identity. It adds no gameplay, settlement, balance, or
+  progression owner. The atomic current frame and final decision receipt expose
+  the same immutable window; the existing recovery fallback remains independent.
+- The canonical felt now presents one dedicated theatrical hand stack at each
+  deciding player's canonical chip endpoint. It reuses canonical card-back
+  artwork at a responsive roughly 1.7× size, uses one pixel of depth per extra
+  card (capped at six pixels), and has no fan, rotation, or spread. DROP animates
+  the whole stack as one object. The dealer bubble supports both remote seat
+  anchors and the existing local HOME chip endpoint.
+- Decision colors, badges, all-fold presentation, exposed cards, result
+  narration, transfer dispatch, and continuation remain sealed through the
+  countdown. All decisions open on the absolute DROP boundary; the existing
+  result flow begins after the tableau hold and retains its four-second dwell.
+  Duplicate Realtime delivery cannot restart the ritual, late mounts enter the
+  current beat, and expired reconnects skip it.
+- The deployed migration and unchanged authority path passed the complete
+  rollback proof. The helper is private with no `anon` or `authenticated`
+  execute grant. TypeScript, 23 focused reveal/frame assertions, all 39
+  build-required Cribbage assertions, and the production build passed. Supabase
+  advisors reported no new task-specific finding; the two flagged public RPCs
+  are the existing intentional authenticated authority boundary.
+
 ## 3-5-7 atomic-frame-first convergence — production checkpoint
 
 - The retained 7,611 ms ante peer-progress outlier was client hydration delay,

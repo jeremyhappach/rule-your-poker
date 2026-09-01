@@ -21,6 +21,8 @@ export interface ThreeFiveSevenCurrentFrame<
   viewerCardsRequired: boolean;
   viewerCardsPresent: boolean;
   identity: ThreeFiveSevenFrameIdentity;
+  decisionReveal: ThreeFiveSevenDecisionRevealWindow | null;
+  serverNow: string;
 }
 
 export interface ThreeFiveSevenFrameCursor {
@@ -185,6 +187,23 @@ export function parseThreeFiveSevenCurrentFrame<
     }
   }
 
+  const decisionReveal = parseThreeFiveSevenDecisionRevealWindow(raw.decision_reveal);
+  if (typeof raw.server_now !== 'string' || !Number.isFinite(Date.parse(raw.server_now))) {
+    throw new Error('three_five_seven_current_frame:malformed_server_now');
+  }
+  if (
+    decisionReveal
+    && (
+      decisionReveal.gameId !== nullableString(game.id)
+      || decisionReveal.dealerGameId !== identity.dealer_game_id
+      || decisionReveal.roundId !== identity.round_id
+      || decisionReveal.handNumber !== identity.hand_number
+      || decisionReveal.roundNumber !== identity.round_number
+    )
+  ) {
+    throw new Error('three_five_seven_current_frame:decision_reveal_identity_mismatch');
+  }
+
   return {
     game,
     round,
@@ -194,6 +213,8 @@ export function parseThreeFiveSevenCurrentFrame<
     viewerCardsRequired,
     viewerCardsPresent,
     identity,
+    decisionReveal,
+    serverNow: raw.server_now,
   };
 }
 
@@ -285,3 +306,7 @@ export function selectExactThreeFiveSevenRound<TRound extends {
   );
   return matches.length === 1 ? matches[0] : null;
 }
+import {
+  parseThreeFiveSevenDecisionRevealWindow,
+  type ThreeFiveSevenDecisionRevealWindow,
+} from './decisionReveal';

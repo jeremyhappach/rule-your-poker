@@ -121,6 +121,8 @@ import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
+import { ThreeFiveSevenDecisionReveal } from './ThreeFiveSevenDecisionReveal';
+import type { ThreeFiveSevenDecisionRevealClock } from '@/lib/threeFiveSeven/decisionReveal';
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 // CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
 // is now the single stable instance across DEALING → READY → GAMEPLAY.
@@ -1152,6 +1154,12 @@ interface MobileGameTableProps {
   threeFiveSevenRolloverPresentation?: ThreeFiveSevenRolloverPresentation | null;
   /** Exact completed all-fold round and pussy-tax ledger batch. */
   threeFiveSevenAllFoldPresentation?: ThreeFiveSevenAllFoldPresentation | null;
+  /** Exact server-timed 3-5-7 decision reveal ritual. */
+  threeFiveSevenDecisionRevealClock?: ThreeFiveSevenDecisionRevealClock | null;
+  /** False through 3-2-1; true at the authoritative DROP boundary. */
+  threeFiveSevenDecisionRevealSecrecyOpen?: boolean;
+  /** Holds existing result/showdown presentation until the ritual tableau ends. */
+  threeFiveSevenDecisionRevealBlocksResult?: boolean;
   onThreeFiveSevenAllFoldPresentationComplete?: (
     presentation: ThreeFiveSevenAllFoldPresentation,
   ) => void;
@@ -1487,6 +1495,9 @@ export const MobileGameTable = ({
   threeFiveSevenViewTransferCursor,
   threeFiveSevenRolloverPresentation,
   threeFiveSevenAllFoldPresentation,
+  threeFiveSevenDecisionRevealClock = null,
+  threeFiveSevenDecisionRevealSecrecyOpen = true,
+  threeFiveSevenDecisionRevealBlocksResult = false,
   onThreeFiveSevenAllFoldPresentationComplete,
   pendingDecision,
   isPaused,
@@ -11631,8 +11642,13 @@ export const MobileGameTable = ({
   const render357CanonicalSeat = (player: Player, slot: CanonicalSlot) => {
     const isCurrentUser = player.user_id === currentUserId;
 
-    // 357 hides opponent decisions until allDecisionsIn flips.
-    const playerDecision = (isCurrentUser || allDecisionsIn)
+    // Once the synchronized ritual begins, every seat is visually sealed
+    // through 3-2-1. At DROP all decisions become visible on the same server
+    // beat; before the ritual, preserve the existing self-only admission.
+    const decisionCanRender = threeFiveSevenDecisionRevealBlocksResult
+      ? threeFiveSevenDecisionRevealSecrecyOpen
+      : (isCurrentUser || allDecisionsIn);
+    const playerDecision = decisionCanRender
       ? player.current_decision
       : null;
     const cards = getPlayerCards(player.id);
@@ -11697,7 +11713,8 @@ export const MobileGameTable = ({
     const isWinningLegReveal = !isInstant357TerminalActive && winningLegPlayerId === player.id && cards.length > 0;
     const isRound3MultiShowdown = is357Round3MultiPlayerShowdown && hasExposedCards;
     const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
-    const isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
+    const isShowdown = !threeFiveSevenDecisionRevealBlocksResult
+      && (isWinningLegReveal || isRound3MultiShowdown || isSecretReveal);
 
     // Win-animation / solo-vs-Chucky tabling suppression.
     const isWinAnimationWinner =
@@ -12409,6 +12426,16 @@ export const MobileGameTable = ({
       onAllowedChange={on357TimerAllowedChange}
     />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+      {__is357GameType(gameType) ? (
+        <ThreeFiveSevenDecisionReveal
+          clock={threeFiveSevenDecisionRevealClock}
+          players={players}
+          currentUserId={currentUserId}
+          pendingDecision={pendingDecision}
+          dealerPosition={dealerPosition}
+          cardCount={Math.min(7, Math.max(3, expectedCardCount))}
+        />
+      ) : null}
       {!currentRoundNotReadyForPresentation && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
           waveContextId={threeFiveSevenWaveContextId}
@@ -15752,6 +15779,17 @@ export const MobileGameTable = ({
                       <RejoinNextHandButton playerId={currentPlayer.id} />
                     ) : hasDecided ? (
                       (() => {
+                        if (
+                          __is357GameType(gameType)
+                          && threeFiveSevenDecisionRevealBlocksResult
+                          && !threeFiveSevenDecisionRevealSecrecyOpen
+                        ) {
+                          return (
+                            <Badge className="text-sm px-3 py-0.5 border-slate-400 bg-slate-700 text-white">
+                              ✓ LOCKED
+                            </Badge>
+                          );
+                        }
                         // EXPLICIT-OPT-IN CONTRACT: The Show Cards button
                         // occupies the STAYED-badge slot for the local
                         // 3-5-7 winner during the terminal animation

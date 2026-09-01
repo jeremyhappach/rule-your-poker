@@ -1555,3 +1555,19 @@ only card IDs belonging to the current dealer-game/hand/round wave may extend
 that baseline. Readiness still requires the exact transport lifecycle (or its
 strict inactive missing-receipt recovery), and neither cards nor a timer may be
 admitted from a prior or future wave.
+
+## D-111 - 3-5-7 decision reveals share one authoritative clock
+
+When every eligible 3-5-7 decision is committed, presentation derives one
+pause-aware reveal window from the exact durable round-resolution identity.
+The current frame and final decision receipt expose the same server timestamps;
+receipt-relative timers, duplicate-delivery restarts, and client acknowledgments
+may not own the ritual or progression. Late clients enter the current beat and
+expired clients skip it.
+
+Through `3 → 2 → 1`, all decision-bearing surfaces remain sealed. DROP opens
+every decision together, after which the existing result and continuation flow
+resumes. The felt artifact is a dedicated theatrical stack: canonical card-back
+artwork with presentation-owned responsive sizing, one-pixel capped depth, no
+fan/rotation/spread, and one whole-stack DROP animation. Ordinary canonical
+card-stack geometry does not constrain this surface.
