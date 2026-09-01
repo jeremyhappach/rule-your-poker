@@ -173,8 +173,8 @@ test.describe('two-human cross-country deadline and rejoin campaign', () => {
           await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, gameType);
           if (gameType === 'yahtzee') {
             await expect.poll(async () => (
-              await session.hostPage.locator('[data-canonical-shell-timer-rail][data-shell-timer-running="1"]').count()
-              + await session.peerPage.locator('[data-canonical-shell-timer-rail][data-shell-timer-running="1"]').count()
+              await session.hostPage.locator('[data-canonical-shell-timer-rail][data-forensics-timer-running="1"]').count()
+              + await session.peerPage.locator('[data-canonical-shell-timer-rail][data-forensics-timer-running="1"]').count()
             ), { timeout: 15_000 }).toBe(1);
           }
           const beforeTimeout = await readGameplaySnapshot(session);

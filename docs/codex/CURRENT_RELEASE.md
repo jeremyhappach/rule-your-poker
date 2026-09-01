@@ -25,10 +25,20 @@ The first concurrent fake-money gameplay rerun used isolated Yahtzee, Holm,
 and 3-5-7 pairs with the continuous observer and exact cleanup. The scripted
 3-5-7 R1/R2/R3 path and Holm Run It Back path completed, but their observers
 recorded peer-progress outliers of 7,611 ms (ante) and 9,776 ms (Holm Fold)
-against the 6,000 ms campaign ceiling. Yahtzee stopped at the known timer-driver
-sampling assertion. All three fake games were deleted and no real-money game
-was opened. This accepts scheduler function and cleanup, not a clean latency or
-full-gameplay checkpoint.
+against the 6,000 ms campaign ceiling. The Yahtzee driver had queried the
+nonexistent `data-shell-timer-running` attribute instead of the canonical
+rail's `data-forensics-timer-running` contract. That harness-only oracle is now
+corrected and locked by a focused test.
+
+The corrected isolated Yahtzee gameplay-timeout/rejoin rerun reached the
+authoritative deadline change with zero peer-budget breach, but it is not an
+accepted pass. After the remounted peer became the still-current actor, the
+observer retained an enabled `Roll 1` action surface with no visible timer owner
+for at least one second. Exact guarded cleanup deleted fake game
+`ae5884e8-de9a-45fe-b3d2-d0bab880af83`. No real-money game was opened or
+touched. This accepts the scheduler function, cleanup, and corrected harness
+oracle only; the Yahtzee remount/timeout presentation failure remains retained
+for later RCA and no clean latency or full-gameplay checkpoint is claimed.
 
 ## 3-5-7 exact-wave baseline and readiness ownership — production checkpoint
 
