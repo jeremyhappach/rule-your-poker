@@ -304,6 +304,16 @@
 
 ## Holm
 
+- Holm exact decision admission and unchanged Run It Back passed isolated
+  two-client production fake-money smoke on 2026-09-01 at commit
+  `f00079cc916763e192c3845d70ee8ee241433390`. Human Stay/Fold, armed
+  predecisions, and Holm bot decisions call `holm_submit_decision` before any
+  browser authority reads; preserve the exact game/round/player adapter and the
+  server's transactional revalidation. Direct decision click-to-RPC admission
+  was 54–128 ms, peer p95/max was 3,313 ms against the 6,000 ms ceiling, and
+  the continuous observer recorded zero violations. Guarded cleanup and an
+  independent database query confirmed the fake game was deleted. This is a
+  focused decision/Run It Back checkpoint, not full Holm gameplay coverage.
 - Holm Chucky canonical flip presentation passed production smoke on
   2026-08-21 at commit `fcce653ecd8906e967eb78a58e40daf7338c5f63`:
   every Chucky card retained the configured reveal cadence, flipped visibly in

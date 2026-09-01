@@ -2,6 +2,38 @@
 
 Date: 2026-09-01
 
+## Holm direct decision authority — production checkpoint
+
+- The retained 9,776 ms Holm peer-progress outlier was browser-side read
+  amplification, not a database freeze or Run It Back transition failure. A
+  human Fold spent 4,775 ms in three sequential legacy GET preflights before
+  calling the already-exact `holm_submit_decision` RPC; the deployed RPC itself
+  revalidates game, round, player, ownership, turn, pause, and replay identity
+  under its transaction locks.
+- Human Stay/Fold, their armed predecision paths, and Holm bot decisions now
+  submit exact game/round/player identity through one narrow adapter whose
+  first request is `holm_submit_decision`. The generic preflight path remains
+  unchanged for 3-5-7 and compatibility callers. Settlement, deadlines,
+  Realtime/refetch, replay semantics, and the existing completion fallback are
+  unchanged; no database migration was required.
+- TypeScript, 21 focused authority/lifecycle assertions, all 39 build-required
+  Cribbage assertions, and the production build passed. The broader Holm-named
+  suite passed 159/160; its sole miss is an independently reproducible existing
+  test-isolation defect in `HolmCanonicalCommunityRow.test.tsx`, not a runtime
+  failure in this change.
+- Published acceptance ran on commit
+  `f00079cc916763e192c3845d70ee8ee241433390` and Vercel deployment
+  `dpl_C3zQuYhMerTj2irogb6MZhpo2wLU`. The exact isolated production fake-money
+  `holm-game-run-it-back-unchanged` scenario passed in 2.5 minutes with 191
+  observer events, 172 snapshots, 764 requests, zero violations, and no 6,000
+  ms peer-budget breach (peer p95/max 3,313 ms). Observed direct decision
+  click-to-RPC admission was 54–128 ms, versus 4,775 ms in the frozen pre-fix
+  evidence. Guarded cleanup deleted game
+  `2c394868-d15c-4fbb-a09e-d98fa9f4fd7b`, and an independent database query
+  confirmed zero matching game rows. No real-money game was opened or touched.
+  This is focused decision-latency and unchanged-Run-It-Back acceptance, not
+  full Holm coverage; the separate 3-5-7 ante outlier remains for its own RCA.
+
 ## Recovery scheduler workload admission — installed; focused Yahtzee rerun accepted
 
 - Migration `20260901085259_admit_due_recovery_work.sql` keeps the sole
