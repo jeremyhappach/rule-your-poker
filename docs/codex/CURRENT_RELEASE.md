@@ -3713,3 +3713,22 @@ snapshot/trace scope hardening, TypeScript 5.8
 installed on this host), and the production Vite build passed with only the
 existing chunking warnings. Published runtime smoke remains acceptance truth;
 this candidate does not claim that the underlying visual symptoms are fixed.
+
+## 2026-08-31 — Gin post-knock rejoin correction
+
+- A mid-layoff reload no longer leaves the visible deadwood cards detached
+  from the actionable hand. Once Gin reaches `knocking`, `laying_off`,
+  `scoring`, or `complete`, the cards tab uses the admitted authoritative hand
+  instead of an opening-deal `PRE_DEAL` prefix. Ordinary opening-deal
+  transport, private-card redaction, self-draw withholding, and database
+  action authority are unchanged.
+- Commit `aeb2427f6f51a26ca7039f5f6a023bda2416098c` is published at
+  `holm357.com` as bundle `assets/index-CoK0hQ-a.js`.
+- Three isolated production fake-money rows passed concurrently with the
+  continuous observer and a 6000 ms peer budget: `gin-knock-layoff-rejoin`,
+  `gin-successor-hand-rejoin`, and `gin-scoring-terminal-rejoin`. Each session
+  was deleted and cleanup was verified.
+
+This is focused rejoin/terminal evidence, not a claim of complete Gin rule or
+server-authority coverage. The broader Gin authority migration remains a
+separate queued phase.

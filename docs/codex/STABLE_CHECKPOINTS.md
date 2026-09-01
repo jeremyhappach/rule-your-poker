@@ -462,3 +462,26 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
 - This checkpoint specifically covers the delayed later-hand cut and pegging
   presentation boundary; it is preview evidence, not a substitute for
   production smoke.
+
+## 2026-08-31 — Gin post-knock rejoin and terminal checkpoint
+
+- Production commit `aeb2427f6f51a26ca7039f5f6a023bda2416098c` passed three
+  concurrent, isolated fake-money rows with the continuous observer and a
+  6000 ms action-to-peer budget.
+- `gin-knock-layoff-rejoin` passed in game
+  `a388e8e8-cfcc-4ecf-b2c4-b1595bc2afc6`: after the first layoff and a full
+  route reload, the remaining two legal cards selected normally, exposed the
+  correct felt melds, and completed the exact knock outcome.
+- `gin-successor-hand-rejoin` passed in game
+  `c369743a-57fe-4a00-a56f-22afacb63fbb`: hand 2 reloaded with ten current-hand
+  cards, no stale knock display, and no visible masked faces.
+- `gin-scoring-terminal-rejoin` passed in game
+  `8d89ddfd-49dc-4645-8a1e-30939020fb3d`: the scoring reveal was authoritative,
+  the continuously connected client retained Session Ended, and the reloaded
+  client followed the fresh-mount lobby rule.
+- All three sessions were deleted with verified cleanup. Preserve the
+  post-knock full-authoritative presentation gate; do not weaken opening-deal
+  admission, redaction, self-draw withholding, or database action authority.
+
+This checkpoint does not claim complete Gin coverage or supersede the queued
+Gin server-authority migration.
