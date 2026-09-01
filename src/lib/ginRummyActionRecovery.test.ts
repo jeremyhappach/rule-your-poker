@@ -84,6 +84,27 @@ describe('Gin action transport recovery', () => {
     expect(seenIdentities).toEqual([requestIdentity, requestIdentity]);
   });
 
+  it('replays the exact request after PostgreSQL cancels a statement timeout', async () => {
+    const requestIdentity = { expectedActionCount: 21, action: 'draw_stock' } as const;
+    const seenIdentities: unknown[] = [];
+    const operation = vi.fn(async () => {
+      seenIdentities.push(requestIdentity);
+      if (seenIdentities.length === 1) {
+        throw Object.assign(new Error('canceling statement due to statement timeout'), {
+          code: '57014',
+        });
+      }
+      return { outcome: 'applied', actionCount: 22 };
+    });
+
+    await expect(executeReplaySafeGinAction(operation, {
+      timeoutMs: 100,
+      retryDelayMs: 0,
+    })).resolves.toEqual({ outcome: 'applied', actionCount: 22 });
+    expect(operation).toHaveBeenCalledTimes(2);
+    expect(seenIdentities).toEqual([requestIdentity, requestIdentity]);
+  });
+
   it('does not replay an authoritative rule error', async () => {
     const operation = vi.fn(async () => {
       throw new Error('Gin action targeted a stale hand identity');
@@ -115,6 +136,8 @@ describe('Gin action transport recovery', () => {
   it('recognizes the browser and chaos-harness transport failures', () => {
     expect(isRetryableGinTransportError(new DOMException('Aborted', 'AbortError'))).toBe(true);
     expect(isRetryableGinTransportError(new Error('simulated response loss after send'))).toBe(true);
+    expect(isRetryableGinTransportError({ code: '57014', message: 'statement canceled' })).toBe(true);
+    expect(isRetryableGinTransportError(new Error('canceling statement due to statement timeout'))).toBe(true);
     expect(isRetryableGinTransportError(new Error('rule violation'))).toBe(false);
   });
 

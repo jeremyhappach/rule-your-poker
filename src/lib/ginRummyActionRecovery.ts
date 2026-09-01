@@ -45,6 +45,11 @@ export function isRetryableGinTransportError(error: unknown): boolean {
       : '';
   if (name === 'AbortError' || name === 'TimeoutError') return true;
 
+  const code = typeof error === 'object' && error && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+  if (code === '57014') return true;
+
   const message = errorMessage(error).toLowerCase();
   return [
     'aborted',
@@ -54,6 +59,7 @@ export function isRetryableGinTransportError(error: unknown): boolean {
     'network error',
     'response loss after send',
     'load failed',
+    'statement timeout',
   ].some((fragment) => message.includes(fragment));
 }
 
