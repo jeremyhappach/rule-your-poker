@@ -6,6 +6,7 @@ import {
   type EligiblePlayer,
 } from "./threeFiveSeven/advanceRound";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
+import { submitHolmDecision } from './holmDecisionAuthority';
 // detectAndSettleInstantWin357 was retired from the R1 seam path — the
 // instant-357 sweep is now settled inside the `advance_357_round` RPC
 // transaction. The helper remains available for the legacy bootstrap
@@ -1513,56 +1514,12 @@ export async function makeDecision(
       throw new Error('Holm decision rejected: stale round identity');
     }
 
-    const { data, error } = await supabase.rpc('holm_submit_decision', {
-      p_game_id: gameId,
-      p_round_id: expectedRoundId,
-      p_player_id: playerId,
-      p_decision: decision,
+    return submitHolmDecision({
+      gameId,
+      roundId: expectedRoundId,
+      playerId,
+      decision,
     });
-
-    if (error) {
-      console.error('[MAKE_DECISION] Holm server decision failed:', error);
-      throw new Error(`Holm decision failed: ${error.message}`);
-    }
-
-    const result = (data ?? {}) as {
-      already_locked?: boolean;
-      already_terminal?: boolean;
-      round_not_betting?: boolean;
-      stale_round?: boolean;
-      not_current_turn?: boolean;
-      game_paused?: boolean;
-      all_decisions_in?: boolean;
-      server_resolved?: boolean;
-      terminal_disposition?: 'game_over' | 'session_ended' | null;
-    };
-
-    console.log('[MAKE_DECISION] Holm server decision result:', result);
-
-    if (
-      result.already_locked
-      || result.already_terminal
-      || result.round_not_betting
-      || result.stale_round
-      || result.not_current_turn
-      || result.game_paused
-    ) {
-      return;
-    }
-
-    // The server resolves all-fold and solo-vs-Chucky hands, including their
-    // final-session disposition. Multi-player showdown presentation retains
-    // its existing owner for now; it can safely claim the already-persisted
-    // all-decisions state below.
-    if (result.server_resolved) {
-      return;
-    }
-
-    if (result.all_decisions_in) {
-      const { checkHolmRoundComplete } = await import('./holmGameLogic');
-      await checkHolmRoundComplete(gameId);
-    }
-    return;
   }
 
   // Prevent double-clicking - if player has already locked in a decision, don't allow changes

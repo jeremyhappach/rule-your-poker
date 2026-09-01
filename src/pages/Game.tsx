@@ -347,6 +347,7 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
+import { submitHolmDecision } from '@/lib/holmDecisionAuthority';
 import {
   acknowledgePreparedHolmHandDealt,
   startHolmInitialHand,
@@ -15319,7 +15320,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Stay requires an active round');
       }
-      const decisionResult = await makeDecision(gameId, currentPlayer.id, 'stay', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      const decisionResult = game?.game_type === 'holm-game'
+        ? await submitHolmDecision({
+            gameId,
+            roundId: currentRound!.id,
+            playerId: currentPlayer.id,
+            decision: 'stay',
+          })
+        : await makeDecision(
+            gameId,
+            currentPlayer.id,
+            'stay',
+            is357GameType ? currentRound!.id : undefined,
+          );
       if (is357GameType) {
         setGame((previous) => applyThreeFiveSevenDecisionReceipt(
           previous,
@@ -15429,7 +15442,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (game?.game_type === 'holm-game' && !currentRound?.id) {
         throw new Error('Holm Fold requires an active round');
       }
-      const decisionResult = await makeDecision(gameId, currentPlayer.id, 'fold', (game?.game_type === 'holm-game' || is357GameType) ? currentRound!.id : undefined);
+      const decisionResult = game?.game_type === 'holm-game'
+        ? await submitHolmDecision({
+            gameId,
+            roundId: currentRound!.id,
+            playerId: currentPlayer.id,
+            decision: 'fold',
+          })
+        : await makeDecision(
+            gameId,
+            currentPlayer.id,
+            'fold',
+            is357GameType ? currentRound!.id : undefined,
+          );
       if (is357GameType) {
         setGame((previous) => applyThreeFiveSevenDecisionReceipt(
           previous,

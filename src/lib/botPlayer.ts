@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
+import { submitHolmDecision } from './holmDecisionAuthority';
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
@@ -382,8 +383,13 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     setTimeout(async () => {
       try {
-        await makeDecision(gameId, bot.id, decision, currentRound.id);
-        // NOTE: makeDecision already calls checkHolmRoundComplete internally for Holm games
+        await submitHolmDecision({
+          gameId,
+          roundId: currentRound.id,
+          playerId: bot.id,
+          decision,
+        });
+        // The Holm authority adapter retains the existing round-completion fallback.
       } catch (err) {
         console.error('[BOT DECISIONS] Error in delayed bot decision:', err);
       }
