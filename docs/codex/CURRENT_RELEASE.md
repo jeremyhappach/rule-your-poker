@@ -2,7 +2,7 @@
 
 Date: 2026-09-01
 
-## 3-5-7 synchronized decision reveal — timing and local-stack polish installed; frontend publication pending
+## 3-5-7 synchronized decision reveal — timing and local-stack polish published; smoke pending
 
 - Migration `20260901093000_add_357_decision_reveal_projection.sql` projects a
   pause-aware server-time `3 → 2 → 1 → DROP` window from the existing exact
