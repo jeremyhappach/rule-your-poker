@@ -1,7 +1,7 @@
 export const THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING = {
-  countLeadInMs: 400,
-  countBeatMs: 700,
-  dropMs: 800,
+  countLeadInMs: 1000,
+  countBeatMs: 900,
+  dropMs: 1000,
   holdMs: 600,
   continuationDwellMs: 4000,
 } as const;

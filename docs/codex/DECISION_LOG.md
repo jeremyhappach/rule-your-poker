@@ -1578,3 +1578,10 @@ chance to see `3`. The local HOME stack is a rail-adjacent variation of the
 same artifact, not a different seat owner. Once the ritual owns a resolved
 round, ordinary seat cardbacks remain suppressed until the exact round identity
 changes and the normal deal path begins again.
+
+The nonterminal recovery envelope must outlast the entire ritual plus its
+result dwell. The current cadence is a one-second sealed lead-in, three 900 ms
+numerals, a one-second DROP impact, and a 600 ms tableau hold, followed by the
+existing four-second result dwell. The local stack center is the canonical
+player-to-player transfer destination itself; presentation may decorate that
+endpoint but must not shift it inward toward the pot.

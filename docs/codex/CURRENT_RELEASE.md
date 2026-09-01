@@ -15,13 +15,17 @@ Date: 2026-09-01
   card (capped at six pixels), and has no fan, rotation, or spread. DROP animates
   the whole stack as one object. The dealer bubble supports both remote seat
   anchors and the existing local HOME chip endpoint.
-- Migration `20260901101000_polish_357_decision_reveal_timing.sql` keeps the
-  same pause-aware projection but adds a 400 ms sealed lead-in before a 700 ms
-  per-beat `3 → 2 → 1`. The existing authoritative continuation deadline is
-  unchanged. The local HOME stack now uses a shorter inward offset so it stays
-  near the player rail, while remote placement is unchanged. Ordinary
-  canonical cardbacks are suppressed for the resolved ritual round after its
-  stack clears and return through the existing next-deal path only.
+- Migrations `20260901101000_polish_357_decision_reveal_timing.sql` and
+  `20260901113000_emphasize_357_decision_reveal_drop.sql` retain the same
+  pause-aware projection but now give a one-second sealed lead-in and 900 ms
+  per-beat `3 → 2 → 1`. The nonterminal presentation fallback is ten seconds,
+  allowing the one-second DROP impact, tableau hold, and existing four-second
+  result dwell to finish safely before recovery may advance. The local HOME
+  stack is centered exactly on the canonical player-to-player transfer
+  destination; remote placement is unchanged. DROP is a large pulsing stamp
+  with one whole-stack impact animation. Ordinary canonical cardbacks remain
+  suppressed for the resolved ritual round and return through the next-deal
+  path only.
 - Decision colors, badges, all-fold presentation, exposed cards, result
   narration, transfer dispatch, and continuation remain sealed through the
   countdown. All decisions open on the absolute DROP boundary; the existing

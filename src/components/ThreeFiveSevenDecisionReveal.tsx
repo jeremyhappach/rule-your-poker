@@ -129,13 +129,13 @@ export function ThreeFiveSevenDecisionReveal({
         const inwardX = (feltX - anchorX) / distance;
         const inwardY = (feltY - anchorY) / distance;
         const chipRadius = Math.max(rect.width, rect.height) / 2;
-        // HOME is already seated at the local rail endpoint. Its theatrical
-        // stack needs only enough inward travel to clear the chip, while
-        // remote seats retain the deeper felt placement.
+        // HOME is the exact destination for player-to-player chip transfers.
+        // The local stack is centered on that destination; remote seats retain
+        // the deeper theatrical felt placement.
         const isLocalPlayer = player.user_id === currentUserId;
-        const stackOffset = chipRadius + (isLocalPlayer
-          ? Math.min(44, width * 0.48)
-          : Math.min(82, width * 0.88));
+        const stackOffset = isLocalPlayer
+          ? 0
+          : chipRadius + Math.min(82, width * 0.88);
         next.push({
           playerId: player.id,
           position: player.position,
@@ -218,15 +218,17 @@ export function ThreeFiveSevenDecisionReveal({
           style={{
             left: bubble.x,
             top: bubble.y,
-            transform: 'translate(-50%, -50%)',
-            width: 62,
-            height: 38,
-            borderRadius: 13,
+            transform: `translate(-50%, -50%) scale(${bubbleText === 'DROP' ? 1 + Math.sin(frame.dropProgress * Math.PI) * 0.16 : 1})`,
+            width: bubbleText === 'DROP' ? 112 : 62,
+            height: bubbleText === 'DROP' ? 60 : 38,
+            borderRadius: bubbleText === 'DROP' ? 18 : 13,
             color: '#000',
-            background: BUBBLE_FILL,
-            border: `2px solid ${BUBBLE_BORDER}`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.28)',
-            fontSize: bubbleText === 'DROP' ? 13 : 18,
+            background: bubbleText === 'DROP' ? '#fbbf24' : BUBBLE_FILL,
+            border: `3px solid ${bubbleText === 'DROP' ? '#92400e' : BUBBLE_BORDER}`,
+            boxShadow: bubbleText === 'DROP'
+              ? '0 0 0 6px rgba(251,191,36,0.24), 0 5px 16px rgba(0,0,0,0.4)'
+              : '0 2px 8px rgba(0,0,0,0.28)',
+            fontSize: bubbleText === 'DROP' ? 28 : 18,
           }}
         >
           <svg
@@ -237,7 +239,7 @@ export function ThreeFiveSevenDecisionReveal({
               width: 16,
               height: 14,
               overflow: 'visible',
-              transform: `translate(-50%, -50%) rotate(${bubble.tailAngleDeg}deg) translate(36px, 0)`,
+              transform: `translate(-50%, -50%) rotate(${bubble.tailAngleDeg}deg) translate(${bubbleText === 'DROP' ? 61 : 36}px, 0)`,
               transformOrigin: 'center',
               zIndex: -1,
             }}
@@ -251,7 +253,7 @@ export function ThreeFiveSevenDecisionReveal({
               vectorEffect="non-scaling-stroke"
             />
           </svg>
-          {bubbleText}
+          {bubbleText === 'DROP' ? 'DROP!' : bubbleText}
         </div>
       ) : null}
     </div>,
@@ -271,8 +273,11 @@ function RevealStack({
   frame: ThreeFiveSevenDecisionRevealFrame;
 }) {
   const drops = frame.secrecyOpen && placement.decision === 'fold';
-  const travel = drops ? frame.dropProgress * 20 : 0;
-  const scale = drops ? 1 - frame.dropProgress * 0.12 : 1;
+  const impact = frame.beat === 'DROP' ? Math.sin(frame.dropProgress * Math.PI) : 0;
+  const travel = drops ? frame.dropProgress * 48 : 0;
+  const scale = drops
+    ? 1 + impact * 0.08 - frame.dropProgress * 0.15
+    : 1 + impact * 0.09;
   const opacity = drops ? 1 - frame.dropProgress : 1;
 
   return (
