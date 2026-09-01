@@ -454,8 +454,13 @@ async function expectGinOpponentReveal(page: Page): Promise<number> {
 async function reloadGinScoringBoundary(
   session: TwoClientSession,
   page: Page,
+  expectTerminalLobby = false,
 ): Promise<'game' | 'lobby'> {
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  if (expectTerminalLobby) {
+    await expect(page).toHaveURL(/\/$/, { timeout: 120_000 });
+    return 'lobby';
+  }
   let destination: 'game' | 'lobby' | 'pending' = 'pending';
   await expect.poll(async () => {
     const pathname = new URL(page.url()).pathname;
@@ -634,11 +639,12 @@ type GinFixtureKnockResult = {
   winnerId?: string;
 };
 
-async function selectGinCard(page: Page, rank: string, suit: string): Promise<void> {
+async function selectGinCard(page: Page, rank: string, suit: string): Promise<Locator> {
   const card = page.getByRole('button', { name: `${rank} ${suit}`, exact: true });
   await expect(card).toHaveCount(1, { timeout: 30_000 });
   await expect(card).toBeEnabled({ timeout: 30_000 });
   await card.click({ noWaitAfter: true });
+  return card;
 }
 
 async function selectGinDiscardCard(page: Page, rank: string, suit: string): Promise<void> {
@@ -654,14 +660,32 @@ async function layOffGinCard(
   rank: string,
   suit: string,
 ): Promise<number> {
-  await selectGinCard(page, rank, suit);
+  const selectedCard = await selectGinCard(page, rank, suit);
   const target = page.locator(
     '[data-artifact-id="gin.knockDisplay"] button:enabled:visible',
   ).first();
-  await expect(
-    target,
-    `Expected ${rank}${suit} to expose an enabled Gin lay-off meld target`,
-  ).toBeEnabled({ timeout: 30_000 });
+  try {
+    await expect(
+      target,
+      `Expected ${rank}${suit} to expose an enabled Gin lay-off meld target`,
+    ).toBeEnabled({ timeout: 30_000 });
+  } catch (error) {
+    const selection = await selectedCard.evaluate((element) => ({
+      className: element.className,
+      disabled: (element as HTMLButtonElement).disabled,
+      pressed: element.getAttribute('aria-pressed'),
+    }));
+    const meldTargets = await page.locator(
+      '[data-artifact-id="gin.knockDisplay"] button:visible',
+    ).evaluateAll((elements) => elements.map((element) => ({
+      disabled: (element as HTMLButtonElement).disabled,
+      text: element.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+    })));
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)}\n`
+      + `Gin lay-off selection diagnostics: ${JSON.stringify({ selection, meldTargets })}`,
+    );
+  }
   return commitGinAction(session, probe, dealerGameId, target);
 }
 
@@ -836,7 +860,11 @@ async function exerciseGinRuleFixtureOpening(
     const beforeReload = await probe.readGinProgress(session.gameId, dealerGameId);
     expect(beforeReload.phase).toBe('scoring');
     const revealedFaceCount = await expectGinOpponentReveal(knockOpponent);
-    const destination = await reloadGinScoringBoundary(session, knockOpponent);
+    const destination = await reloadGinScoringBoundary(
+      session,
+      knockOpponent,
+      scenario.exerciseGinScoringTerminalRejoin,
+    );
     const afterReload = await probe.readGinProgress(session.gameId, dealerGameId);
     rejoinEvidence.scoringBoundary = {
       page: ginActorLabel(session, knockOpponent),
@@ -1022,6 +1050,10 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         if (scenario.exerciseCribbageInteractionSeam) {
           evidence.interactionSeam = await exerciseCribbageInteractionSeam(session, probe, dealerGameId);
         }
+        if (scenario.exerciseGinScoringTerminalRejoin) {
+          await requestLastHand(session, probe);
+          evidence.ginScoringTerminalLastHandRequested = true;
+        }
         const ginBranchEvidence = await exerciseGinBranchSeam(scenario, session, probe, dealerGameId);
         if (ginBranchEvidence) evidence.ginBranch = ginBranchEvidence;
         const ginFixtureOpening = await exerciseGinRuleFixtureOpening(
@@ -1076,7 +1108,11 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
             const connectedPage = await hostPanel.count() ? session.hostPage : session.peerPage;
             const freshPage = connectedPage === session.hostPage ? session.peerPage : session.hostPage;
             await expect(connectedPage.locator('[data-session-ended-panel]')).toBeVisible();
-            await replaceGinPageWithFreshTerminalMount(session, freshPage);
+            if (new URL(freshPage.url()).pathname === '/') {
+              await expect(freshPage).toHaveURL(/\/$/);
+            } else {
+              await replaceGinPageWithFreshTerminalMount(session, freshPage);
+            }
             evidence.ginScoringTerminalRejoin = {
               connectedPanelVisible: true,
               freshMountRedirectedToLobby: true,
