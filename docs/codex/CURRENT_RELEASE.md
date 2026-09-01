@@ -2,6 +2,26 @@
 
 Date: 2026-08-31
 
+## Gin action-path mirror-write reduction — installed, smoke pending
+
+- Migration `20260901034516_reduce_gin_player_card_mirror_writes.sql` keeps the
+  private Gin state and redacted `rounds.gin_rummy_state` Realtime receipt on
+  every accepted publication, but no longer updates a `player_cards` row when
+  that player's exact hand is unchanged. A changed hand still updates and
+  advances `source_version` once.
+- This removes avoidable trigger, index, and WAL work from ordinary Gin actions
+  without changing card authority, redaction, action replay, rules, scheduler,
+  settlement, or lifecycle ownership. The existing authority proof now invokes
+  the serialized recovery-task owner rather than the retired per-game cron job.
+- The complete pre-change proof passed under rollback. The candidate migration
+  plus proofs then passed under rollback, and the installed definition passed
+  the same authority, mirror-version, normal/Gin/undercut/void/tie,
+  authorization, duplicate/replay, continuation, scheduler, terminal
+  settlement, and late-postgame suite under rollback.
+
+Production two-human Gin smoke remains the acceptance gate; this database
+optimization does not by itself establish a user-visible latency bound.
+
 ## 3-5-7 live deal-wave presentation admission
 
 - In real-money session `015d269f-4651-4d45-abf8-6a170301d234`, both clients

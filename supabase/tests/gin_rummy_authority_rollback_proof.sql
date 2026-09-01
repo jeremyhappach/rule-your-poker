@@ -21,16 +21,20 @@ DECLARE
   v_after jsonb;
   v_actor uuid;
   v_knocker uuid;
+  v_other_player uuid;
   v_layoff_actor uuid;
   v_card jsonb;
   v_meld_index integer;
   v_count bigint;
-  v_command text;
-  v_advanced integer;
+  v_scheduler_result jsonb;
   v_dealer_positions integer[];
   v_dealer_index integer;
   v_expected_dealer integer;
   v_stock_card jsonb;
+  v_actor_version_before bigint;
+  v_actor_version_after bigint;
+  v_other_version_before bigint;
+  v_other_version_after bigint;
 BEGIN
   SELECT ids[1],ids[2] INTO v_user_one,v_user_two FROM (
     SELECT array_agg(id ORDER BY id::text) ids FROM (
@@ -138,9 +142,31 @@ BEGIN
   -- H1: a legal normal knock, invalid layoff rejection, valid layoffs, and score.
   SELECT state INTO v_state FROM private.gin_rummy_round_states WHERE round_id=v_round_one;
   v_knocker:=(v_state->>'nonDealerPlayerId')::uuid;
+  v_other_player:=CASE WHEN v_knocker=v_player_one THEN v_player_two ELSE v_player_one END;
   v_count:=(v_state->>'actionCount')::bigint;
+  SELECT source_version INTO v_actor_version_before
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_knocker;
+  SELECT source_version INTO v_other_version_before
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_other_player;
+  PERFORM private.gin_publish_state(v_round_one,v_state);
+  SELECT source_version INTO v_actor_version_after
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_knocker;
+  SELECT source_version INTO v_other_version_after
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_other_player;
+  IF v_actor_version_after IS DISTINCT FROM v_actor_version_before
+     OR v_other_version_after IS DISTINCT FROM v_other_version_before THEN
+    RAISE EXCEPTION 'unchanged_hand_mirror_rewritten:%/%',v_actor_version_after,v_other_version_after;
+  END IF;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',CASE WHEN v_knocker=v_player_one THEN v_user_one ELSE v_user_two END,'role','authenticated')::text,true);
   v_result:=public.gin_rummy_apply_action(v_round_one,v_knocker,'take_first_draw',NULL,NULL,v_count);
+  SELECT source_version INTO v_actor_version_after
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_knocker;
+  SELECT source_version INTO v_other_version_after
+    FROM public.player_cards WHERE round_id=v_round_one AND player_id=v_other_player;
+  IF v_actor_version_after<=v_actor_version_before
+     OR v_other_version_after IS DISTINCT FROM v_other_version_before THEN
+    RAISE EXCEPTION 'changed_hand_mirror_version_wrong:%/%',v_actor_version_after,v_other_version_after;
+  END IF;
   SELECT state INTO v_state FROM private.gin_rummy_round_states WHERE round_id=v_round_one;
   SELECT value INTO v_card FROM jsonb_array_elements(v_state->'playerStates'->v_knocker::text->'hand') card(value)
    WHERE value->>'rank'='K' AND value->>'suit'=chr(9829) LIMIT 1;
@@ -207,13 +233,12 @@ BEGIN
   v_state:=jsonb_set(v_state,'{completeDueAt}',to_jsonb(to_char(clock_timestamp()-interval '1 second','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),true);
   PERFORM set_config('app.gin_rummy_authoritative_write','on',true);
   PERFORM private.gin_publish_state(v_round_two,v_state);
-  SELECT command INTO v_command FROM cron.job WHERE jobname='advance-due-gin-rummy-state-1s' AND active;
-  IF v_command IS NULL THEN RAISE EXCEPTION 'gin_cron_statement_missing'; END IF;
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
-  EXECUTE v_command INTO v_advanced;
+  v_scheduler_result:=private.run_due_game_recovery_task('gin_rummy');
   SELECT id INTO v_round_three FROM public.rounds WHERE dealer_game_id=v_dealer_game_id AND hand_number=3 AND round_number=1;
-  IF v_advanced<1 OR v_round_three IS NULL OR (SELECT total_hands FROM public.games WHERE id=v_game_id)<>3 THEN
-    RAISE EXCEPTION 'complete_cron_continuation_failed:%/%',v_advanced,v_round_three;
+  IF v_scheduler_result->>'outcome'<>'completed' OR v_round_three IS NULL
+     OR (SELECT total_hands FROM public.games WHERE id=v_game_id)<>3 THEN
+    RAISE EXCEPTION 'complete_scheduler_continuation_failed:%/%',v_scheduler_result,v_round_three;
   END IF;
 
   -- H3: near-gin scores the configured 37-point bonus, then cron settles exactly once.
@@ -237,14 +262,15 @@ BEGIN
   PERFORM set_config('app.gin_rummy_authoritative_write','on',true);
   PERFORM private.gin_publish_state(v_round_three,v_state);
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
-  EXECUTE v_command INTO v_advanced;
+  v_scheduler_result:=private.run_due_game_recovery_task('gin_rummy');
   SELECT state INTO v_state FROM private.gin_rummy_round_states WHERE round_id=v_round_three;
-  IF v_advanced<1 OR v_state->>'phase'<>'complete' OR (v_state->'knockResult'->>'pointsAwarded')::integer<>53
+  IF v_scheduler_result->>'outcome'<>'completed' OR v_state->>'phase'<>'complete'
+     OR (v_state->'knockResult'->>'pointsAwarded')::integer<>53
      OR (v_state->>'winnerPlayerId')::uuid<>v_player_one
      OR (SELECT status FROM public.games WHERE id=v_game_id)<>'game_over'
      OR (SELECT count(*) FROM public.game_results WHERE dealer_game_id=v_dealer_game_id AND hand_number=3 AND settlement_key='gin_rummy_terminal')<>1
      OR (SELECT pot_won FROM public.game_results WHERE dealer_game_id=v_dealer_game_id AND hand_number=3 AND settlement_key='gin_rummy_hand_history')<>0 THEN
-    RAISE EXCEPTION 'terminal_cron_settlement_failed:%/%',v_advanced,v_state;
+    RAISE EXCEPTION 'terminal_scheduler_settlement_failed:%/%',v_scheduler_result,v_state;
   END IF;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_one,'role','authenticated')::text,true);
   v_replay:=public.gin_rummy_settle_game(v_game_id,v_round_three,v_dealer_game_id,3);
