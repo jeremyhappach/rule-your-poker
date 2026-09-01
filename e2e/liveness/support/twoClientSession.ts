@@ -246,7 +246,27 @@ export async function configureDealerGameUnderChaos(
   );
   await expect(configSurface).toBeVisible();
   await options.configure?.(configSurface, setupPage);
+  const configureResponse = setupPage.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/rest/v1/rpc/configure_dealer_game')
+  ), { timeout: 120_000 });
   await configSurface.locator(`[data-dealer-game-start="${gameType}"]`).click();
+  const response = await configureResponse;
+  if (!response.ok()) {
+    let result: Record<string, unknown> = {};
+    try {
+      result = await response.json() as Record<string, unknown>;
+    } catch {
+      // The status remains authoritative when a proxy returns a non-JSON body.
+    }
+    throw new Error(`Dealer configuration RPC failed: ${JSON.stringify({
+      status: response.status(),
+      code: result.code,
+      message: result.message,
+      details: result.details,
+      hint: result.hint,
+    })}`);
+  }
 
   if (options.submitNonDealerAnte === false) return;
   await submitOutstandingAnteUnderChaos(session);

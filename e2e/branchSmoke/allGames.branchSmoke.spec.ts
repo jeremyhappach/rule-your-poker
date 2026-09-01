@@ -863,7 +863,6 @@ async function exerciseGinRuleFixtureOpening(
     const destination = await reloadGinScoringBoundary(
       session,
       knockOpponent,
-      scenario.exerciseGinScoringTerminalRejoin,
     );
     const afterReload = await probe.readGinProgress(session.gameId, dealerGameId);
     rejoinEvidence.scoringBoundary = {

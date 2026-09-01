@@ -1,6 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { test } from '../../playwright-fixture';
+import { getTotalScore, getUpperSubtotal, hasUpperBonus } from '../../src/lib/yahtzeeScoring';
+import type { YahtzeeScorecard } from '../../src/lib/yahtzeeTypes';
 import { finalizeScenarioObserver, observerEvidenceSummary } from '../humanChaos/support/scenarioObserver';
 import { requireTwoPlayerEnvironment } from '../liveness/support/env';
 import { expectCanonicalContinuity, waitForBothClientsInLiveGame } from '../liveness/support/livenessAssertions';
@@ -136,7 +138,7 @@ async function submitPair(
 function yahtzeeState(round: RoundSnapshot): {
   currentTurnPlayerId?: string;
   gamePhase?: string;
-  playerStates?: Record<string, { scorecard?: { scores?: Record<string, number>; upperBonus?: number; yahtzeeBonuses?: number } }>;
+  playerStates?: Record<string, { scorecard?: YahtzeeScorecard }>;
 } {
   return (round.yahtzee_state ?? {}) as ReturnType<typeof yahtzeeState>;
 }
@@ -199,7 +201,21 @@ async function scorePreparedYahtzeeTurn(
     throw new Error(`Unexpected zero confirmation for ${category}`);
   }
   const response = await actionResponse;
-  const result = await response.json() as JsonObject;
+  let result: JsonObject;
+  try {
+    result = await response.json() as JsonObject;
+  } catch {
+    result = {};
+  }
+  if (!response.ok()) {
+    throw new Error(`Yahtzee ${category} action RPC failed: ${JSON.stringify({
+      status: response.status(),
+      code: result.code,
+      message: result.message,
+      details: result.details,
+      hint: result.hint,
+    })}`);
+  }
   const state = result.state as ReturnType<typeof yahtzeeState> | undefined;
   const score = state?.playerStates?.[playerId]?.scorecard?.scores?.[category];
   if (result.outcome !== 'applied' || result.action !== 'score' || result.category !== category || score === undefined) {
@@ -234,13 +250,27 @@ async function exerciseYahtzee(
   if (scenario.id === 'yahtzee-upper-below') {
     for (const receipt of receipts) {
       const state = receipt.state as ReturnType<typeof yahtzeeState>;
-      expect(state.playerStates?.[String(receipt.playerId)]?.scorecard?.upperBonus ?? 0).toBe(0);
+      const scorecard = state.playerStates?.[String(receipt.playerId)]?.scorecard;
+      expect(scorecard).toBeDefined();
+      if (!scorecard) throw new Error('Yahtzee upper-below receipt omitted its scorecard');
+      const rawTotal = Object.values(scorecard.scores).reduce((total, score) => total + (score ?? 0), 0)
+        + scorecard.yahtzeeBonuses * 100;
+      expect(getUpperSubtotal(scorecard)).toBe(62);
+      expect(hasUpperBonus(scorecard)).toBe(false);
+      expect(getTotalScore(scorecard)).toBe(rawTotal);
     }
   }
   if (scenario.id === 'yahtzee-upper-threshold') {
     for (const receipt of receipts) {
       const state = receipt.state as ReturnType<typeof yahtzeeState>;
-      expect(state.playerStates?.[String(receipt.playerId)]?.scorecard?.upperBonus).toBe(35);
+      const scorecard = state.playerStates?.[String(receipt.playerId)]?.scorecard;
+      expect(scorecard).toBeDefined();
+      if (!scorecard) throw new Error('Yahtzee upper-threshold receipt omitted its scorecard');
+      const rawTotal = Object.values(scorecard.scores).reduce((total, score) => total + (score ?? 0), 0)
+        + scorecard.yahtzeeBonuses * 100;
+      expect(getUpperSubtotal(scorecard)).toBe(63);
+      expect(hasUpperBonus(scorecard)).toBe(true);
+      expect(getTotalScore(scorecard)).toBe(rawTotal + 35);
     }
   }
   if (scenario.expectYahtzeeTie) {

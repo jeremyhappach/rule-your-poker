@@ -284,24 +284,12 @@ async function playCribbage(
   throw new Error('Cribbage did not reach terminal settlement within 15 minutes');
 }
 
-type GinDomCard = GinRummyCard & { index: number };
+export type GinDomCard = GinRummyCard & { index: number; disabled: boolean };
 
-async function chooseBestGinDiscard(page: Page): Promise<void> {
-  const selectableCards = page.locator('[data-gin-hand-card-key]:not(:disabled):visible');
-  await expect.poll(
-    () => selectableCards.count(),
-    { timeout: 15_000, intervals: [100, 200, 500] },
-  ).toBe(11);
-  const cards = await selectableCards
-    .evaluateAll((nodes) => nodes.map((node) => ({
-      index: Number(node.getAttribute('data-gin-card-index')),
-      rank: node.getAttribute('data-gin-card-rank') ?? '',
-      suit: node.getAttribute('data-gin-card-suit') ?? '',
-      value: Number(node.getAttribute('data-gin-card-value')),
-    })));
-  if (cards.length !== 11) throw new Error(`Expected 11 selectable Gin cards, found ${cards.length}`);
-
-  const ranked = cards.map((candidate) => {
+export function rankLegalGinDiscardCandidates(cards: GinDomCard[]) {
+  const legalCards = cards.filter((card) => !card.disabled);
+  if (!legalCards.length) throw new Error('Gin discard selection exposed no legal card');
+  return legalCards.map((candidate) => {
     const remainder = cards.filter((card) => card.index !== candidate.index) as GinRummyCard[];
     return {
       candidate,
@@ -310,6 +298,25 @@ async function chooseBestGinDiscard(page: Page): Promise<void> {
   }).sort((left, right) => (
     left.deadwood - right.deadwood || right.candidate.value - left.candidate.value
   ));
+}
+
+async function chooseBestGinDiscard(page: Page): Promise<void> {
+  const visibleCards = page.locator('[data-gin-hand-card-key]:visible');
+  await expect.poll(
+    () => visibleCards.count(),
+    { timeout: 15_000, intervals: [100, 200, 500] },
+  ).toBe(11);
+  const cards = await visibleCards
+    .evaluateAll((nodes) => nodes.map((node) => ({
+      index: Number(node.getAttribute('data-gin-card-index')),
+      rank: node.getAttribute('data-gin-card-rank') ?? '',
+      suit: node.getAttribute('data-gin-card-suit') ?? '',
+      value: Number(node.getAttribute('data-gin-card-value')),
+      disabled: (node as HTMLButtonElement).disabled,
+    }))) as GinDomCard[];
+  if (cards.length !== 11) throw new Error(`Expected 11 visible Gin cards, found ${cards.length}`);
+
+  const ranked = rankLegalGinDiscardCandidates(cards);
   await page
     .locator(`[data-gin-card-index="${ranked[0].candidate.index}"]:not(:disabled):visible`)
     .click({ noWaitAfter: true });

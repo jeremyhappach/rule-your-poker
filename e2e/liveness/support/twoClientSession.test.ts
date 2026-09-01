@@ -17,4 +17,22 @@ describe('two-client session chaos ownership', () => {
     expect(click).toBeGreaterThan(marker);
     expect(outage).toBeGreaterThan(click);
   });
+
+  it('observes dealer configuration success before waiting for an ante surface', () => {
+    const configure = source.slice(
+      source.indexOf('export async function configureDealerGameUnderChaos'),
+      source.indexOf('export async function submitOutstandingAnteUnderChaos'),
+    );
+    const responseWait = configure.indexOf("pathname.endsWith('/rest/v1/rpc/configure_dealer_game')");
+    const click = configure.indexOf('data-dealer-game-start');
+    const responseRead = configure.indexOf('const response = await configureResponse');
+    const statusCheck = configure.indexOf('if (!response.ok())');
+    const ante = configure.indexOf('await submitOutstandingAnteUnderChaos(session)');
+
+    expect(responseWait).toBeGreaterThan(-1);
+    expect(click).toBeGreaterThan(responseWait);
+    expect(responseRead).toBeGreaterThan(click);
+    expect(statusCheck).toBeGreaterThan(responseRead);
+    expect(ante).toBeGreaterThan(statusCheck);
+  });
 });
