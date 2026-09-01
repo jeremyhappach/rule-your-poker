@@ -277,7 +277,8 @@ async function exerciseYahtzee(
     const successor = await waitForRound(
       session,
       dealerGameId,
-      (round) => round.hand_number === 2 && round.round_number === 1 && round.status === 'betting',
+      // Yahtzee uses one round per hand, so its round number mirrors the hand number.
+      (round) => round.hand_number === 2 && round.round_number === 2 && round.status === 'betting',
       'Yahtzee tied-scorecard successor',
     );
     const successorState = yahtzeeState(successor);
