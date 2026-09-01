@@ -45,10 +45,11 @@ full-gameplay checkpoint.
   The same exact-wave rule feeds local faces, opponent backs, and the final
   `PlayerHand` boundary guard.
 - TypeScript, 149 focused 3-5-7 tests, 39 build-required Cribbage tests, and the
-  production build pass. Commit
-  `c5ee6d0bf7451ae797da30a260e023ce9e0736e9` is published by Vercel deployment
-  `dpl_Aee4krFCH5CiyCLTiXTu6r5RiqQe` and serves bundle
-  `assets/index-B2LxinNU.js` from `holm357.com`.
+  production build pass. Production acceptance ran against commit
+  `c5ee6d0bf7451ae797da30a260e023ce9e0736e9`, Vercel deployment
+  `dpl_Aee4krFCH5CiyCLTiXTu6r5RiqQe`, and bundle
+  `assets/index-B2LxinNU.js`; later documentation-only deployments do not
+  change that accepted runtime source.
 - The published two-client fake-money R1/R2/R3 progression passed in 53.5
   seconds. Both clients finished on the same Round 3 UUID with seven visible
   cards, one timer, enabled Drop/Stay controls, and no stale artifacts. The
