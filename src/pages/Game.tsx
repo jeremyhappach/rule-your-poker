@@ -4209,7 +4209,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
            // Active 3-5-7 is the exception: its exact current-frame RPC owns
            // game + round + roster + private cards atomically, so a bare row is
            // only a refetch signal and must not invalidate an in-flight frame.
-           const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData);
+            const acceptedThreeFiveSevenFrame = threeFiveSevenFrameCursorRef.current;
+            const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData, {
+              game_type: gameTypeLiveRef.current,
+              status: acceptedThreeFiveSevenFrame?.status ?? gameStatusRef.current,
+              current_game_uuid: acceptedThreeFiveSevenFrame?.dealerGameId
+                ?? (game as any)?.current_game_uuid
+                ?? null,
+            });
            if (publishGamesRowDirectly) {
              fetchSeqRef.current += 1;
              setGame((previous) => mergeAuthoritativeGameState(previous, newData));
@@ -9202,32 +9209,92 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
-    // PARALLEL FETCH: Get game and players together. The global bot-dealer
-    // switch is refreshed on lifecycle/recovery snapshots, but a routine
-    // Realtime row update reuses the last successful value instead of reading
-    // the Holm defaults row on every game action.
-    const shouldFetchBotDealerDefault = fetchTrigger !== 'realtime_update'
-      || !allowBotDealersLoadedRef.current;
-    const [gameResult, playersResult, defaultsResult] = await Promise.all([
-      timedQuery('games.select+rounds', 'games', () =>
-        supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
-      timedQuery('players.select+profiles', 'players', () =>
-        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
-      shouldFetchBotDealerDefault
-        ? timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
-          supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single())
-        : Promise.resolve({
-          data: { allow_bot_dealers: allowBotDealersRef.current },
-          error: null,
-        }),
-    ]);
-
-    let gameData = gameResult.data as unknown as GameData | null;
-    const gameError = gameResult.error;
-    let playersData = playersResult.data as unknown as Player[] | null;
-    const playersError = playersResult.error;
-    const { data: gameDefaults } = defaultsResult;
     let exactThreeFiveSevenFrame: ThreeFiveSevenCurrentFrame | null = null;
+    const requestThreeFiveSevenFrame = async () => {
+      const { data: rawFrame, error: frameError } = await timedQuery(
+        'rpc.three_five_seven_current_frame',
+        'three_five_seven_current_frame',
+        () => supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any),
+      );
+      if (frameError) return { frame: null, error: frameError, rejected: false };
+
+      const parsedFrame = parseThreeFiveSevenCurrentFrame(rawFrame);
+      const incomingCursor = buildThreeFiveSevenFrameCursor(parsedFrame, fetchSeq);
+      const acceptance = acceptThreeFiveSevenFrame(threeFiveSevenFrameCursorRef.current, incomingCursor);
+      if (isStale() || !acceptance.accepted) {
+        console.warn('[357 FRAME] Rejected non-current atomic frame', {
+          fetchSeq,
+          latestFetchSeq: fetchSeqRef.current,
+          reason: isStale() ? 'older_request' : acceptance.reason,
+          incoming: incomingCursor,
+          accepted: threeFiveSevenFrameCursorRef.current,
+        });
+        finishFetchTrace('superseded_after_357_frame', '357_frame:rejected');
+        return { frame: null, error: null, rejected: true };
+      }
+
+      threeFiveSevenFrameCursorRef.current = incomingCursor;
+      return { frame: parsedFrame, error: null, rejected: false };
+    };
+
+    let gameResult: { data: unknown; error: any };
+    let playersResult: { data: unknown; error: any };
+    let defaultsResult: { data: unknown; error: any } = {
+      data: { allow_bot_dealers: allowBotDealersRef.current },
+      error: null,
+    };
+
+    // A locally accepted 3-5-7 family identity is enough to route recovery
+    // directly to its complete MVCC frame. Cold/unknown mounts retain ordinary
+    // discovery. A real switch to another family is identified by the RPC's
+    // exact not_357_game response and falls back to discovery in this request.
+    if (isThreeFiveSevenFrameGameType(gameTypeLiveRef.current)) {
+      const frameResult = await requestThreeFiveSevenFrame();
+      if (frameResult.rejected) return;
+      if (frameResult.error) {
+        const frameMessage = String(frameResult.error.message ?? frameResult.error);
+        if (!frameMessage.includes('three_five_seven_current_frame:not_357_game')) {
+          throw new Error(`three_five_seven_current_frame failed: ${frameMessage}`);
+        }
+      } else if (frameResult.frame) {
+        exactThreeFiveSevenFrame = frameResult.frame;
+        gameResult = {
+          data: {
+            ...(frameResult.frame.game as unknown as GameData),
+            rounds: frameResult.frame.round ? [frameResult.frame.round as unknown as Round] : [],
+          },
+          error: null,
+        };
+        playersResult = { data: frameResult.frame.players, error: null };
+      }
+    }
+
+    if (!exactThreeFiveSevenFrame) {
+      // Unknown families use the shared discovery projection. The global
+      // bot-dealer switch is refreshed on lifecycle/recovery snapshots, while
+      // routine Realtime updates reuse the last successful value.
+      const shouldFetchBotDealerDefault = fetchTrigger !== 'realtime_update'
+        || !allowBotDealersLoadedRef.current;
+      [gameResult, playersResult, defaultsResult] = await Promise.all([
+        timedQuery('games.select+rounds', 'games', () =>
+          supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
+        timedQuery('players.select+profiles', 'players', () =>
+          supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
+        shouldFetchBotDealerDefault
+          ? timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
+            supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single())
+          : Promise.resolve({
+            data: { allow_bot_dealers: allowBotDealersRef.current },
+            error: null,
+          }),
+      ]);
+    }
+
+    let gameData = gameResult!.data as unknown as GameData | null;
+    const gameError = gameResult!.error;
+    let playersData = playersResult!.data as unknown as Player[] | null;
+    const playersError = playersResult!.error;
+    const { data: gameDefaults } = defaultsResult;
     patchFetchTraceState({
       gameDataStatus: (gameData as any)?.status ?? null,
       gameDataGameType: (gameData as any)?.game_type ?? null,
@@ -9242,7 +9309,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       playersErrorMessage: playersError?.message ?? null,
       playersDataPresent: !!playersData,
     });
-    recordStartupFlight('FETCH TIMELINE', 'fetchGameData parallel queries complete', {
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData authority queries complete', {
       file: 'src/pages/Game.tsx',
       function: 'fetchGameData',
       fetchSeq,
@@ -9298,44 +9365,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return false;
     }
 
-    // 3-5-7 STATE OWNERSHIP: replace the split games -> rounds -> players ->
-    // player_cards waterfall with one MVCC frame. The ordinary parallel reads
-    // above only discover the game family; none of their 3-5-7 gameplay state
-    // is published. Realtime may request this RPC but may never advance the
-    // browser directly from an INSERT/UPDATE payload.
-    if (isThreeFiveSevenFrameGameType(gameData.game_type)) {
-      const { data: rawFrame, error: frameError } = await timedQuery(
-        'rpc.three_five_seven_current_frame',
-        'three_five_seven_current_frame',
-        () => supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any),
-      );
-      if (frameError) {
-        throw new Error(`three_five_seven_current_frame failed: ${frameError.message ?? String(frameError)}`);
+    // Cold/unknown discovery may identify 3-5-7. Its split projection remains
+    // discovery-only and is replaced by the same exact frame before any state
+    // publication. Realtime never advances gameplay from a bare games row.
+    if (!exactThreeFiveSevenFrame && isThreeFiveSevenFrameGameType(gameData.game_type)) {
+      const frameResult = await requestThreeFiveSevenFrame();
+      if (frameResult.rejected) return;
+      if (frameResult.error) {
+        throw new Error(`three_five_seven_current_frame failed: ${frameResult.error.message ?? String(frameResult.error)}`);
       }
-      const parsedFrame = parseThreeFiveSevenCurrentFrame(rawFrame);
-      const incomingCursor = buildThreeFiveSevenFrameCursor(parsedFrame, fetchSeq);
-      const acceptance = acceptThreeFiveSevenFrame(threeFiveSevenFrameCursorRef.current, incomingCursor);
-      if (isStale() || !acceptance.accepted) {
-        console.warn('[357 FRAME] Rejected non-current atomic frame', {
-          fetchSeq,
-          latestFetchSeq: fetchSeqRef.current,
-          reason: isStale() ? 'older_request' : acceptance.reason,
-          incoming: incomingCursor,
-          accepted: threeFiveSevenFrameCursorRef.current,
-        });
-        finishFetchTrace('superseded_after_357_frame', '357_frame:rejected');
-        return;
-      }
-
-      threeFiveSevenFrameCursorRef.current = incomingCursor;
-      exactThreeFiveSevenFrame = parsedFrame;
+      if (!frameResult.frame) throw new Error('three_five_seven_current_frame failed: empty frame');
+      exactThreeFiveSevenFrame = frameResult.frame;
       gameData = {
-        ...(parsedFrame.game as unknown as GameData),
+        ...(frameResult.frame.game as unknown as GameData),
         // Only the exact round named by the game pointer is presentation input.
         // Historical/prepared rows remain in PostgreSQL, never in this frame.
-        rounds: parsedFrame.round ? [parsedFrame.round as unknown as Round] : [],
+        rounds: frameResult.frame.round ? [frameResult.frame.round as unknown as Round] : [],
       };
-      playersData = parsedFrame.players as unknown as Player[];
+      playersData = frameResult.frame.players as unknown as Player[];
     }
 
     // ── HARD DEALER-GAME ADMISSION BOUNDARY ─────────────────────────────

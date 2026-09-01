@@ -170,6 +170,32 @@ describe('3-5-7 atomic current frame', () => {
     };
     expect(acceptThreeFiveSevenFrame(current, latePrior)).toEqual({ accepted: false, reason: 'older_request' });
   });
+
+  it('rejects a newer request that regresses the active dealer game to ante decision', () => {
+    const current = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 12);
+    const delayedPregame = {
+      requestSequence: 13, status: 'ante_decision', dealerGameId: 'dg-1',
+      handNumber: 0, roundNumber: null, roundId: null,
+    };
+
+    expect(acceptThreeFiveSevenFrame(current, delayedPregame)).toEqual({
+      accepted: false,
+      reason: 'regressive_active_lifecycle',
+    });
+  });
+
+  it('admits a newer ante frame when it names a newly minted dealer game', () => {
+    const current = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 12);
+    const nextDealerGame = {
+      requestSequence: 13, status: 'ante_decision', dealerGameId: 'dg-2',
+      handNumber: 0, roundNumber: null, roundId: null,
+    };
+
+    expect(acceptThreeFiveSevenFrame(current, nextDealerGame)).toEqual({
+      accepted: true,
+      reason: 'newer_request',
+    });
+  });
 });
 
 describe('selectExactThreeFiveSevenRound', () => {

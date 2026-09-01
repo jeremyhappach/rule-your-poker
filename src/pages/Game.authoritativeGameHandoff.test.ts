@@ -9,7 +9,7 @@ describe('Game authoritative games-row handoffs', () => {
   it('applies the family publication policy before status-specific routing', () => {
     const callbackStart = source.indexOf('handler: (payload: any) => {');
     const policyIndex = source.indexOf(
-      'const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData);',
+      'const publishGamesRowDirectly = shouldPublishGamesRealtimeRowDirectly(newData, {',
       callbackStart,
     );
     const mergeIndex = source.indexOf(
@@ -43,6 +43,28 @@ describe('Game authoritative games-row handoffs', () => {
     expect(source).toContain('incomingIsAtomicThreeFiveSevenFrame');
     expect(source).toMatch(
       /if \(incomingIsAtomicThreeFiveSevenFrame\) \{\s*fetchGameData\('realtime_update'\);\s*return;/,
+    );
+  });
+
+  it('requests the exact 3-5-7 frame before shared discovery when the family is already known', () => {
+    const fetchStart = source.indexOf('const performFetchGameData = async (');
+    const frameFirstGuard = source.indexOf(
+      'if (isThreeFiveSevenFrameGameType(gameTypeLiveRef.current)) {',
+      fetchStart,
+    );
+    const discoveryRead = source.indexOf(
+      "timedQuery('games.select+rounds', 'games'",
+      frameFirstGuard,
+    );
+
+    expect(fetchStart).toBeGreaterThan(-1);
+    expect(frameFirstGuard).toBeGreaterThan(fetchStart);
+    expect(discoveryRead).toBeGreaterThan(frameFirstGuard);
+    expect(source.slice(frameFirstGuard, discoveryRead)).toContain(
+      'const frameResult = await requestThreeFiveSevenFrame();',
+    );
+    expect(source.slice(frameFirstGuard, discoveryRead)).toContain(
+      "three_five_seven_current_frame:not_357_game",
     );
   });
 

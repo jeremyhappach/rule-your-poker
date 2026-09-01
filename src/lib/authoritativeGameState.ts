@@ -2,6 +2,7 @@ type AuthoritativeGameState = {
   id?: string;
   status?: string | null;
   game_type?: string | null;
+  current_game_uuid?: string | null;
   updated_at?: string | null;
   rounds?: unknown;
 };
@@ -11,6 +12,14 @@ const THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES = new Set([
   'in_progress',
   'game_over',
   'session_ended',
+]);
+const THREE_FIVE_SEVEN_PREGAME_STATUSES = new Set([
+  'waiting',
+  'dealer_selection',
+  'dealer_announcement',
+  'game_selection',
+  'configuring',
+  'ante_decision',
 ]);
 
 function timestampValue(value: unknown): number | null {
@@ -54,13 +63,33 @@ export function mergeAuthoritativeGameState<T extends AuthoritativeGameState>(
  * projection exists yet. Every other game family retains complete-row merge.
  */
 export function shouldPublishGamesRealtimeRowDirectly(
-  incoming: Pick<AuthoritativeGameState, 'game_type' | 'status'> | null | undefined,
+  incoming: Pick<AuthoritativeGameState, 'game_type' | 'status' | 'current_game_uuid'> | null | undefined,
+  current?: Pick<AuthoritativeGameState, 'game_type' | 'status' | 'current_game_uuid'> | null,
 ): boolean {
   if (!incoming) return false;
-  return !(
-    !!incoming.game_type
-    && THREE_FIVE_SEVEN_GAME_TYPES.has(incoming.game_type)
-    && !!incoming.status
-    && THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES.has(incoming.status)
-  );
+  const incomingIsThreeFiveSeven = !!incoming.game_type
+    && THREE_FIVE_SEVEN_GAME_TYPES.has(incoming.game_type);
+  if (!incomingIsThreeFiveSeven) return true;
+
+  if (incoming.status && THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES.has(incoming.status)) {
+    return false;
+  }
+
+  const currentIsActiveThreeFiveSeven = !!current?.game_type
+    && THREE_FIVE_SEVEN_GAME_TYPES.has(current.game_type)
+    && !!current.status
+    && THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES.has(current.status)
+    && !!current.current_game_uuid;
+  const incomingIsPregame = !!incoming.status
+    && THREE_FIVE_SEVEN_PREGAME_STATUSES.has(incoming.status);
+  if (currentIsActiveThreeFiveSeven && incomingIsPregame) {
+    // A same/null dealer-game identity is a delayed image from the dealer game
+    // already published by the exact frame. The atomic setup handoff mints a
+    // new UUID before entering ante_decision, so only that explicit boundary
+    // may return an active client to a pregame phase.
+    return !!incoming.current_game_uuid
+      && incoming.current_game_uuid !== current.current_game_uuid;
+  }
+
+  return true;
 }

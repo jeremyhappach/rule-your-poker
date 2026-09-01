@@ -34,7 +34,7 @@ export interface ThreeFiveSevenFrameCursor {
 
 export type ThreeFiveSevenFrameAcceptance =
   | { accepted: true; reason: 'first_frame' | 'newer_request' | 'forward_active_identity' | 'same_active_identity' }
-  | { accepted: false; reason: 'older_request' | 'regressive_active_identity' | 'conflicting_active_round_id' };
+  | { accepted: false; reason: 'older_request' | 'regressive_active_identity' | 'conflicting_active_round_id' | 'regressive_active_lifecycle' };
 
 export function isThreeFiveSevenGameType(gameType: unknown): boolean {
   return gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357';
@@ -232,6 +232,19 @@ export function acceptThreeFiveSevenFrame(
     || incoming.status === 'game_over'
     || (incoming.status === 'session_ended' && !!incoming.dealerGameId);
   const sameDealerGame = !!incoming.dealerGameId && incoming.dealerGameId === current.dealerGameId;
+  const incomingPregame = incoming.status === 'waiting'
+    || incoming.status === 'dealer_selection'
+    || incoming.status === 'dealer_announcement'
+    || incoming.status === 'game_selection'
+    || incoming.status === 'configuring'
+    || incoming.status === 'ante_decision';
+  if (
+    currentActive
+    && incomingPregame
+    && (!incoming.dealerGameId || incoming.dealerGameId === current.dealerGameId)
+  ) {
+    return { accepted: false, reason: 'regressive_active_lifecycle' };
+  }
   if (currentActive && incomingActive && sameDealerGame) {
     const currentHand = current.handNumber ?? -1;
     const incomingHand = incoming.handNumber ?? -1;

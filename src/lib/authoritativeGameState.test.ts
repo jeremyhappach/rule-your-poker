@@ -101,4 +101,35 @@ describe('games-row Realtime publication ownership', () => {
       }), gameType).toBe(true);
     }
   });
+
+  it('does not let a delayed same-game pre-ante row regress an accepted active 3-5-7 frame', () => {
+    const active = {
+      game_type: '3-5-7',
+      status: 'in_progress',
+      current_game_uuid: 'dealer-game-1',
+    };
+
+    expect(shouldPublishGamesRealtimeRowDirectly({
+      game_type: '3-5-7',
+      status: 'ante_decision',
+      current_game_uuid: 'dealer-game-1',
+    }, active)).toBe(false);
+    expect(shouldPublishGamesRealtimeRowDirectly({
+      game_type: '3-5-7',
+      status: 'ante_decision',
+      current_game_uuid: null,
+    }, active)).toBe(false);
+  });
+
+  it('admits a real 3-5-7 setup boundary carrying its newly minted dealer-game UUID', () => {
+    expect(shouldPublishGamesRealtimeRowDirectly({
+      game_type: '3-5-7',
+      status: 'ante_decision',
+      current_game_uuid: 'dealer-game-2',
+    }, {
+      game_type: '3-5-7',
+      status: 'in_progress',
+      current_game_uuid: 'dealer-game-1',
+    })).toBe(true);
+  });
 });
