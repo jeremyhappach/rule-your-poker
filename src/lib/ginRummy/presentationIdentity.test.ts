@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   advanceGinSelfDrawReleaseGate,
   canReleaseGinSelfDraw,
+  createGinPendingDrawPlaceholders,
   ginPresentationActionKey,
   isGinMaskedCard,
   withholdGinDrawnCards,
@@ -81,6 +82,13 @@ describe('Gin presentation action identity', () => {
 
     const landed = advanceGinSelfDrawReleaseGate(committed, 'animation-settled');
     expect(canReleaseGinSelfDraw(landed)).toBe(true);
+  });
+
+  it('fills a landed draw slot with a presentation-only masked placeholder', () => {
+    expect(createGinPendingDrawPlaceholders(1)).toEqual([
+      { rank: '?', suit: '?', value: 0, masked: true },
+    ]);
+    expect(createGinPendingDrawPlaceholders(0)).toEqual([]);
   });
 
   it('withholds a masked stock placeholder after the hand grows to eleven cards', () => {

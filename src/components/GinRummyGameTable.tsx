@@ -59,6 +59,7 @@ import {
   type GinRummyAuthorityAction,
 } from '@/lib/ginRummyRoundLogic';
 import {
+  buildGinPublicPeerProjection,
   executeReplaySafeGinAction,
   shouldFetchGinProjectionForRealtimeUpdate,
 } from '@/lib/ginRummyActionRecovery';
@@ -595,6 +596,7 @@ export const GinRummyGameTable = ({
   acceptedPresentationRef.current = renderAcceptedPresentation;
 
   const installAcceptedPresentation = useCallback((identity: GinPresentationIdentity, state: GinRummyState) => {
+    acceptedPresentationRef.current = { identity, state };
     setAcceptedPresentation({ identity, state });
   }, []);
 
@@ -1073,6 +1075,8 @@ export const GinRummyGameTable = ({
     : eligibleSeatPlayers;
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
+  const currentPlayerIdRef = useRef<string | undefined>(currentPlayerId);
+  currentPlayerIdRef.current = currentPlayerId;
   const isObserver = !currentPlayerId;
 
   const reconcileCommittedSelfDraw = useCallback((committedState: GinRummyState): void => {
@@ -1541,8 +1545,9 @@ export const GinRummyGameTable = ({
     load();
   }, [roundId]);
 
-  // Realtime is only a synchronization prompt. The caller-specific RPC projection
-  // is the sole source of cards and authoritative Gin state.
+  // Realtime owns public forward progress. Before reveal, its masked document may
+  // carry forward only the caller's already-authoritative private hand; an exact
+  // caller projection still reconciles every accepted public step in background.
   // Use a ref for onGameComplete to avoid rebuilding the subscription on every parent re-render
   const onGameCompleteRef = useRef(onGameComplete);
   useEffect(() => { onGameCompleteRef.current = onGameComplete; }, [onGameComplete]);
@@ -1756,6 +1761,22 @@ export const GinRummyGameTable = ({
             oldValue: null,
             newValue: { roundId, source: 'authoritative-refetch' },
           });
+          const publicPeerProjection = buildGinPublicPeerProjection(
+            publicState,
+            acceptedPresentationRef.current?.state ?? null,
+            currentPlayerIdRef.current ?? null,
+          );
+          if (publicPeerProjection) {
+            applyState(publicPeerProjection, 'realtime-public-peer-fast-path');
+            logDebugEvent({
+              gameId,
+              roundId,
+              userId: currentUserId,
+              clientRole: 'peer',
+              eventType: 'gin:public_peer_progress_applied',
+              payload: ginStateSummary(publicPeerProjection),
+            });
+          }
           void exactStateLoader.refresh('realtime-refetch').then((applied) => {
             logDebugEvent({
               gameId,
@@ -3303,6 +3324,9 @@ export const GinRummyGameTable = ({
                   .map(i => i.card)
                   .filter((c): c is GinRummyCard => !!c)
                   .map(c => ({ rank: c.rank, suit: c.suit }))}
+                pendingDrawPlaceholderCount={Object.values(selfDrawIntents)
+                  .filter(intent => intent.animationSettled && !intent.authoritativeCardReady)
+                  .length}
               />
             )}
 

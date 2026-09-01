@@ -57,6 +57,16 @@ describe('Gin cards-tab visual selection ownership (polish)', () => {
       /onLayOffToMeld=\{\(meldIndex\)\s*=>\s*\{[\s\S]*?handleLayOff\(layOffSelectedCardIndex,\s*meldIndex\);\s*setLayOffSelectedCardIndex\(null\);\s*setSelectedCardIndex\(null\)/
     );
   });
+
+  it('renders a landed unresolved draw as a disabled canonical card back', () => {
+    expect(src).toMatch(/pendingDrawPlaceholderCount/);
+    expect(src).toMatch(/data-gin-pending-draw-authority/);
+    expect(src).toMatch(/disabled=\{isPendingAuthority \|\| isProcessing/);
+    expect(src).toMatch(/<CanonicalCardBack[\s\S]*?data-gin-pending-draw-card/);
+    expect(gameTableSrc).toMatch(
+      /pendingDrawPlaceholderCount=\{Object\.values\(selfDrawIntents\)[\s\S]*?animationSettled && !intent\.authoritativeCardReady/,
+    );
+  });
 });
 
 describe('Chat input helper/status text (polish)', () => {

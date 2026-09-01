@@ -78,6 +78,25 @@ export const advanceGinSelfDrawReleaseGate = (
 export const canReleaseGinSelfDraw = (gate: GinSelfDrawReleaseGate): boolean =>
   gate.animationSettled && gate.authoritativeCardReady;
 
+export type GinPendingDrawPlaceholder = {
+  rank: '?';
+  suit: '?';
+  value: 0;
+  masked: true;
+};
+
+/**
+ * A transport that has landed before its caller projection resolves still
+ * owns one visible hand slot. Fill only that presentation slot with the
+ * canonical hidden-card identity; never synthesize a playable Gin card.
+ */
+export const createGinPendingDrawPlaceholders = (
+  count: number,
+): GinPendingDrawPlaceholder[] => Array.from(
+  { length: Math.max(0, Math.floor(count)) },
+  () => ({ rank: '?', suit: '?', value: 0, masked: true }),
+);
+
 /**
  * Keep an in-flight self draw out of the active hand until its release gate
  * removes the withholding claim. This projection runs independently of

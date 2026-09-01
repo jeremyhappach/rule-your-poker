@@ -1,9 +1,61 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  buildGinPublicPeerProjection,
   executeReplaySafeGinAction,
   isRetryableGinTransportError,
   shouldFetchGinProjectionForRealtimeUpdate,
 } from './ginRummyActionRecovery';
+import type { GinRummyCard, GinRummyPlayerState, GinRummyState } from './ginRummyTypes';
+
+const card = (rank: string, suit: GinRummyCard['suit'] = '♠'): GinRummyCard => ({
+  rank,
+  suit,
+  value: Number(rank) || 10,
+});
+
+const playerState = (playerId: string, hand: GinRummyCard[]): GinRummyPlayerState => ({
+  playerId,
+  hand,
+  melds: [],
+  deadwood: [],
+  deadwoodValue: 0,
+  hasKnocked: false,
+  hasGin: false,
+  laidOffCards: [],
+});
+
+const state = (overrides: Partial<GinRummyState> = {}): GinRummyState => ({
+  phase: 'playing',
+  dealerPlayerId: 'player-1',
+  nonDealerPlayerId: 'player-2',
+  playerStates: {
+    'player-1': playerState('player-1', Array.from({ length: 10 }, (_, index) => card(String(index + 1)))),
+    'player-2': playerState('player-2', Array.from({ length: 10 }, (_, index) => card(String(index + 1), '♥'))),
+  },
+  turnOrder: ['player-2', 'player-1'],
+  stockPile: [],
+  discardPile: [card('K', '♦')],
+  currentTurnPlayerId: 'player-2',
+  turnPhase: 'draw',
+  drawSource: null,
+  firstDrawOfferedTo: null,
+  firstDrawPassed: [],
+  anteAmount: 0,
+  pot: 0,
+  pointsToWin: 100,
+  matchScores: { 'player-1': 0, 'player-2': 0 },
+  knockResult: null,
+  actionCount: 7,
+  handNumber: 3,
+  lastAction: null,
+  winnerPlayerId: null,
+  ...overrides,
+});
+
+const maskedHand = (length: number): GinRummyCard[] => Array.from(
+  { length },
+  () => ({ rank: '?', suit: '?' as GinRummyCard['suit'], value: 0 }),
+);
 
 describe('Gin action transport recovery', () => {
   it('returns the first successful authoritative response without replaying', async () => {
@@ -72,5 +124,68 @@ describe('Gin action transport recovery', () => {
     expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 8 }, 7)).toBe(true);
     expect(shouldFetchGinProjectionForRealtimeUpdate({ actionCount: 8 }, null)).toBe(true);
     expect(shouldFetchGinProjectionForRealtimeUpdate({}, 8)).toBe(true);
+  });
+
+  it('admits the next opponent public action while preserving the caller exact hand', () => {
+    const current = state();
+    const publicUpdate = state({
+      actionCount: 8,
+      currentTurnPlayerId: 'player-1',
+      playerStates: {
+        'player-1': playerState('player-1', maskedHand(10)),
+        'player-2': playerState('player-2', maskedHand(10)),
+      },
+      lastAction: {
+        type: 'discard',
+        playerId: 'player-2',
+        card: card('Q', '♥'),
+        timestamp: 'server-time',
+      },
+    });
+
+    const projected = buildGinPublicPeerProjection(publicUpdate, current, 'player-1');
+
+    expect(projected?.actionCount).toBe(8);
+    expect(projected?.currentTurnPlayerId).toBe('player-1');
+    expect(projected?.playerStates['player-1'].hand).toEqual(current.playerStates['player-1'].hand);
+    expect(projected?.playerStates['player-2'].hand).toEqual(maskedHand(10));
+    expect(publicUpdate.playerStates['player-1'].hand).toEqual(maskedHand(10));
+  });
+
+  it('refuses public fast-path admission when the local private hand might have changed', () => {
+    const current = state();
+    const selfDraw = state({
+      actionCount: 8,
+      playerStates: {
+        'player-1': playerState('player-1', maskedHand(11)),
+        'player-2': playerState('player-2', maskedHand(10)),
+      },
+      lastAction: {
+        type: 'draw_stock',
+        playerId: 'player-1',
+        card: maskedHand(1)[0],
+        timestamp: 'server-time',
+      },
+    });
+
+    expect(buildGinPublicPeerProjection(selfDraw, current, 'player-1')).toBeNull();
+    expect(buildGinPublicPeerProjection({ ...selfDraw, handNumber: 4 }, current, 'player-1')).toBeNull();
+    expect(buildGinPublicPeerProjection({ ...selfDraw, actionCount: 9 }, current, 'player-1')).toBeNull();
+  });
+
+  it('admits an authoritative public reveal without carrying a stale private hand', () => {
+    const current = state();
+    const reveal = state({
+      phase: 'knocking',
+      actionCount: 8,
+      lastAction: {
+        type: 'knock',
+        playerId: 'player-1',
+        card: card('K'),
+        timestamp: 'server-time',
+      },
+    });
+
+    expect(buildGinPublicPeerProjection(reveal, current, 'player-1')).toBe(reveal);
   });
 });

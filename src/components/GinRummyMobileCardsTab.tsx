@@ -14,9 +14,14 @@ import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
-import { isGinMaskedCard, withholdGinDrawnCards } from '@/lib/ginRummy/presentationIdentity';
+import {
+  createGinPendingDrawPlaceholders,
+  isGinMaskedCard,
+  withholdGinDrawnCards,
+} from '@/lib/ginRummy/presentationIdentity';
 import { getGinForbiddenRediscardCard, isGinForbiddenRediscard } from '@/lib/ginRummy/discardSelectionPolicy';
 import { useAuthoritativeActionSurfaceGuard } from '@/lib/actionSurfaceRecovery';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -57,6 +62,8 @@ interface GinRummyMobileCardsTabProps {
    *  transport animations are in flight. Each entry is keyed by its
    *  own intent and released independently on its own settle. */
   withheldDrawnCards?: Array<{ rank: string; suit: string }>;
+  /** Landed self-draw slots whose exact caller card has not resolved yet. */
+  pendingDrawPlaceholderCount?: number;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
@@ -127,6 +134,7 @@ export const GinRummyMobileCardsTab = ({
   drawnCard,
   onDrawnCardChange,
   withheldDrawnCards,
+  pendingDrawPlaceholderCount = 0,
 }: GinRummyMobileCardsTabProps) => {
   const setSelectedCardIndex = onSelectedCardIndexChange;
   const setDrawnCard = onDrawnCardChange;
@@ -591,12 +599,19 @@ export const GinRummyMobileCardsTab = ({
   );
 
   const inPostKnock = isPostKnockPhase(ginState.phase);
-  const flatSortedHand = openingDealDisplayItems ?? [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
+  const resolvedDisplayHand = openingDealDisplayItems ?? [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
     .sort((a, b) => {
       const rankDiff = (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0);
       if (rankDiff !== 0) return rankDiff;
       return (SUIT_ORDER[a.card.suit] || 0) - (SUIT_ORDER[b.card.suit] || 0);
     });
+  const pendingDrawDisplayItems = createGinPendingDrawPlaceholders(pendingDrawPlaceholderCount)
+    .map((card, index) => ({
+      card: card as unknown as GinRummyCard,
+      originalIndex: -(index + 1),
+      meldGroup: -1,
+    }));
+  const flatSortedHand = [...resolvedDisplayHand, ...pendingDrawDisplayItems];
 
   // Static margins — match the prior `-space-x-4` (16px) overlap on lg
   // (48px) cards; md (40px) scaled proportionally. Adaptive fan behavior
@@ -708,35 +723,47 @@ export const GinRummyMobileCardsTab = ({
             portalTargetSelector="[data-gin-active-pane-content]"
             phaseLockKey={`gin|id:${localHandIdentityKey}`}
             applyFan
-            renderCard={({ index, card_node }) => {
+            renderCard={({ index, card_node, cardWidthPx, cardHeightPx }) => {
               const item = flatSortedHand[index];
               if (!item) return null;
               const { card, originalIndex, meldGroup } = item;
+              const isPendingAuthority = originalIndex < 0 && isGinMaskedCard(card);
               const isSelected = selectedCardIndex === originalIndex;
               const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-              const isForbiddenRediscard = isGinForbiddenRediscard(ginState, currentPlayerId, card);
+              const isForbiddenRediscard = !isPendingAuthority && isGinForbiddenRediscard(ginState, currentPlayerId, card);
               const highlightedDrawnCard = drawnCard ?? forbiddenRediscardCard;
               const isNewlyDrawn = highlightedDrawnCard && card.rank === highlightedDrawnCard.rank && card.suit === highlightedDrawnCard.suit;
               void meldGroup;
               return (
                 <button
                   data-gin-hand-card-key={`idx-${originalIndex}`}
+                  data-gin-pending-draw-authority={isPendingAuthority ? '' : undefined}
                   data-gin-card-index={originalIndex}
                   data-gin-card-rank={card.rank}
                   data-gin-card-suit={card.suit}
                   data-gin-card-value={card.value}
-                  onClick={() => handleCardClick(originalIndex)}
+                  aria-label={isPendingAuthority ? 'Drawn card resolving' : undefined}
+                  onClick={() => {
+                    if (!isPendingAuthority) handleCardClick(originalIndex);
+                  }}
                   onPointerUp={(e) => e.currentTarget.blur()}
-                  disabled={isProcessing || !canSelect || isForbiddenRediscard}
+                  disabled={isPendingAuthority || isProcessing || !canSelect || isForbiddenRediscard}
                   className={cn(
                     "transition-all duration-200 rounded relative pointer-events-auto",
                     isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                    canSelect && !isForbiddenRediscard && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                    canSelect && !isPendingAuthority && !isForbiddenRediscard && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
                     isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
                   )}
                   style={{ zIndex: isSelected ? 20 : index }}
                 >
-                  {card_node}
+                  {isPendingAuthority ? (
+                    <CanonicalCardBack
+                      widthPx={cardWidthPx}
+                      heightPx={cardHeightPx}
+                      variant="raised"
+                      dataAttrs={{ 'data-gin-pending-draw-card': '' }}
+                    />
+                  ) : card_node}
                 </button>
               );
             }}
