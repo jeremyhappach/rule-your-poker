@@ -320,6 +320,24 @@ BEGIN
     RAISE EXCEPTION 'holm_postgame_proof:tie_settlement_failed:%', v_result;
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+      FROM private.game_timer_registry timer
+      JOIN public.games game_row ON game_row.id = timer.game_id
+      JOIN public.game_defaults defaults ON defaults.game_type = 'holm'
+     WHERE timer.game_id = v_tie_game
+       AND timer.timer_kind = 'standard_postgame'
+       AND timer.state = 'scheduled'
+       AND timer.due_at = game_row.game_over_at
+         + make_interval(
+             secs => defaults.holm_presentation_ack_fallback_seconds
+           )
+       AND (timer.metadata->>'fallback_seconds')::integer
+         = defaults.holm_presentation_ack_fallback_seconds
+  ) THEN
+    RAISE EXCEPTION 'holm_postgame_proof:fallback_default_not_registered';
+  END IF;
+
   UPDATE private.game_timer_registry
      SET due_at = '2000-01-01 00:00:00+00'::timestamptz
    WHERE game_id = v_tie_game

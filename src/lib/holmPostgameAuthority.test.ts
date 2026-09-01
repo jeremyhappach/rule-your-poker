@@ -97,4 +97,25 @@ describe('Holm postgame ownership wiring', () => {
     expect(migration).toContain('FOR UPDATE;');
     expect(proof).toContain('private.advance_due_canonical_game_timers(1)');
   });
+
+  it('registers Holm postgame recovery from the configured presentation fallback', () => {
+    const migration = readFileSync(
+      new URL(
+        '../../supabase/migrations/20260901021531_align_holm_postgame_fallback_default.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    const proof = readFileSync(
+      new URL('../../supabase/tests/holm_postgame_authority_rollback_proof.sql', import.meta.url),
+      'utf8',
+    );
+
+    expect(migration).toContain('holm_presentation_ack_fallback_seconds');
+    expect(migration).toContain(
+      'NEW.game_over_at + make_interval(secs => v_standard_postgame_delay_seconds)',
+    );
+    expect(migration).toContain('v_standard_postgame_delay_seconds := 15;');
+    expect(proof).toContain('holm_postgame_proof:fallback_default_not_registered');
+  });
 });

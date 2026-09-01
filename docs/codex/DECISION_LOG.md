@@ -1174,9 +1174,12 @@ identity, then delegates to the same private, replay-safe standard-postgame
 owner used by the canonical timer. That owner requires the completed Holm
 round and its single `chucky_final_award` settlement before mutation. The
 existing durable claim dedupes connected clients, timer recovery, and late
-replays. Presentation still decides when to submit while connected; the
-15-second database timer remains the disconnect fallback and never depends on
-a surviving browser.
+replays. Presentation still decides when to submit while connected; Holm's
+database recovery deadline is derived from the non-null
+`game_defaults.holm_presentation_ack_fallback_seconds` value so normal result
+and chip presentation is not raced by a shorter shared literal. Horses and
+Ship/Captain/Crew retain their 15-second recovery deadline. Recovery never
+depends on a surviving browser.
 
 ## D-083 - Dice completed-round progression is one exact database decision
 

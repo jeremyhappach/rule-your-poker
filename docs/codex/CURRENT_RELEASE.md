@@ -2,6 +2,27 @@
 
 Date: 2026-08-31
 
+## Holm configured postgame recovery fallback — installed
+
+- Live real-money session `015d269f-4651-4d45-abf8-6a170301d234` completed
+  its final Holm settlement correctly, but connected presentation did not
+  submit postgame completion before the shared 15-second canonical recovery
+  deadline. The browser advanced 1.373 seconds after that deadline while the
+  one-second scheduler happened to be between passes, exposing a race between
+  normal presentation and disconnected-client recovery rather than a
+  settlement failure.
+- Migration `20260901021531_align_holm_postgame_fallback_default.sql` keeps the
+  existing canonical timer and replay-safe postgame owner, but registers Holm
+  from `game_defaults.holm_presentation_ack_fallback_seconds` (currently 30)
+  instead of the shared 15-second literal. Horses and Ship/Captain/Crew remain
+  at 15 seconds.
+- The complete rollback proof passed before and after installation for winner,
+  chopped/tie, authorization, continuation, duplicate/replay/late replay,
+  timer-only recovery, unsettled admission, and already-terminal state. It now
+  also requires the registered Holm deadline and timer metadata to match the
+  configured default. No historical session or gameplay/financial state was
+  changed.
+
 ## Gin exact-outcome branch harness — production checkpoint
 
 - Migrations `20260831203958_gin_rule_branch_harness.sql` and
@@ -960,8 +981,10 @@ session was touched.
   dealer-game, round, and hand identity to `public.holm_advance_postgame`
   before that legacy boundary; the existing durable standard-postgame claim
   admits one transition and makes concurrent or late callers read-only.
-- The existing 15-second canonical timer remains the disconnected-client
-  fallback and now uses the same hardened private owner as connected clients.
+- The canonical timer remains the disconnected-client fallback and uses the
+  same hardened private owner as connected clients. Holm reads its configured
+  presentation fallback (currently 30 seconds); Horses and Ship/Captain/Crew
+  retain the shared 15-second deadline.
   Holm admission requires one completed exact round and one matching
   `chucky_final_award` settlement, so `game_over` alone cannot clear an
   outgoing dealer game.
