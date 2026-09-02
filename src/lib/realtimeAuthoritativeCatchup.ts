@@ -58,38 +58,88 @@ export function createLatestAuthoritativeLoader<T>(
   let invalidatedThroughGeneration = 0;
   let disposed = false;
 
-  return {
-    async refresh(source: string): Promise<boolean> {
-      const requestGeneration = ++generation;
-      try {
-        const value = await options.load(source);
-        // A request is obsolete only when a newer snapshot actually applied,
-        // or an authoritative Realtime payload explicitly invalidated it.
-        // Merely starting a newer request must not erase an older successful
-        // snapshot when the newer request fails.
-        if (
-          disposed
-          || requestGeneration <= invalidatedThroughGeneration
-          || requestGeneration < latestAppliedGeneration
-        ) return false;
-        latestAppliedGeneration = requestGeneration;
-        options.apply(value, source);
-        return true;
-      } catch (error) {
-        if (!disposed && requestGeneration === generation) {
-          options.onError?.(error, source);
-        }
-        return false;
+  // A reconnect, a parent recovery notification, and a Postgres UPDATE can
+  // legitimately arrive together. They describe one exact identity, so do not
+  // fan them out into concurrent projection reads. Keep one read in flight and
+  // retain only the latest trigger for one immediately-following read. That
+  // follow-up is important: it cannot be replaced with a cache because a write
+  // may have committed while the first read was running.
+  let inFlightRefresh: Promise<boolean> | null = null;
+  let queuedRefresh: { source: string; resolvers: Array<(result: boolean) => void> } | null = null;
+
+  const runRefresh = async (source: string): Promise<boolean> => {
+    const requestGeneration = ++generation;
+    try {
+      const value = await options.load(source);
+      // A request is obsolete only when a newer snapshot actually applied,
+      // or an authoritative Realtime payload explicitly invalidated it.
+      // Merely starting a newer request must not erase an older successful
+      // snapshot when the newer request fails.
+      if (
+        disposed
+        || requestGeneration <= invalidatedThroughGeneration
+        || requestGeneration < latestAppliedGeneration
+      ) return false;
+      latestAppliedGeneration = requestGeneration;
+      options.apply(value, source);
+      return true;
+    } catch (error) {
+      if (!disposed && requestGeneration === generation) {
+        options.onError?.(error, source);
       }
+      return false;
+    }
+  };
+
+  const startRefresh = (source: string): Promise<boolean> => {
+    const request = runRefresh(source);
+    inFlightRefresh = request;
+    void request.then((result) => {
+      if (inFlightRefresh !== request) return;
+      inFlightRefresh = null;
+      const queued = queuedRefresh;
+      queuedRefresh = null;
+      if (!queued) return;
+      if (disposed) {
+        queued.resolvers.forEach((resolve) => resolve(false));
+        return;
+      }
+      void startRefresh(queued.source).then((nextResult) => {
+        queued.resolvers.forEach((resolve) => resolve(nextResult));
+      });
+    });
+    return request;
+  };
+
+  return {
+    refresh(source: string): Promise<boolean> {
+      if (disposed) return Promise.resolve(false);
+      if (inFlightRefresh) {
+        return new Promise<boolean>((resolve) => {
+          if (queuedRefresh) {
+            queuedRefresh.source = source;
+            queuedRefresh.resolvers.push(resolve);
+            return;
+          }
+          queuedRefresh = { source, resolvers: [resolve] };
+        });
+      }
+      return startRefresh(source);
     },
     invalidate(): void {
       invalidatedThroughGeneration = generation;
       generation += 1;
+      const queued = queuedRefresh;
+      queuedRefresh = null;
+      queued?.resolvers.forEach((resolve) => resolve(false));
     },
     dispose(): void {
       disposed = true;
       invalidatedThroughGeneration = generation;
       generation += 1;
+      const queued = queuedRefresh;
+      queuedRefresh = null;
+      queued?.resolvers.forEach((resolve) => resolve(false));
     },
   };
 }

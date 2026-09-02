@@ -30,26 +30,35 @@ describe('authoritative Realtime catch-up', () => {
     expect(isAuthoritativeRealtimeUnavailable('SUBSCRIBED')).toBe(false);
   });
 
-  it('allows only the newest authoritative request to apply', async () => {
+  it('coalesces concurrent refresh triggers into one follow-up read', async () => {
     let resolveFirst!: (value: string) => void;
     let resolveSecond!: (value: string) => void;
     const first = new Promise<string>((resolve) => { resolveFirst = resolve; });
     const second = new Promise<string>((resolve) => { resolveSecond = resolve; });
     const loads = [first, second];
     const applied: string[] = [];
+    const sources: string[] = [];
     const loader = createLatestAuthoritativeLoader({
-      load: async () => loads.shift()!,
+      load: async (source) => {
+        sources.push(source);
+        return loads.shift()!;
+      },
       apply: (value) => applied.push(value),
     });
 
     const firstRefresh = loader.refresh('initial');
     const secondRefresh = loader.refresh('reconnect');
-    resolveSecond('newest');
-    await secondRefresh;
-    resolveFirst('stale');
-    await firstRefresh;
+    const thirdRefresh = loader.refresh('realtime-refetch');
+    expect(sources).toEqual(['initial']);
 
-    expect(applied).toEqual(['newest']);
+    resolveFirst('initial');
+    await firstRefresh;
+    await Promise.resolve();
+    expect(sources).toEqual(['initial', 'realtime-refetch']);
+    resolveSecond('latest');
+    await expect(Promise.all([secondRefresh, thirdRefresh])).resolves.toEqual([true, true]);
+
+    expect(applied).toEqual(['initial', 'latest']);
   });
 
   it('keeps an older successful snapshot when the newer request fails', async () => {
@@ -66,10 +75,11 @@ describe('authoritative Realtime catch-up', () => {
 
     const firstRefresh = loader.refresh('cold-mount');
     const secondRefresh = loader.refresh('reconnect');
-    rejectSecond(new Error('transient reconnect failure'));
-    expect(await secondRefresh).toBe(false);
     resolveFirst('valid-cold-snapshot');
     expect(await firstRefresh).toBe(true);
+    await Promise.resolve();
+    rejectSecond(new Error('transient reconnect failure'));
+    expect(await secondRefresh).toBe(false);
 
     expect(applied).toEqual(['valid-cold-snapshot']);
   });
@@ -85,6 +95,20 @@ describe('authoritative Realtime catch-up', () => {
     resolveLoad('older-than-realtime');
     expect(await refresh).toBe(false);
     expect(apply).not.toHaveBeenCalled();
+  });
+
+  it('settles a queued refresh when an authoritative Realtime payload supersedes it', async () => {
+    let resolveLoad!: (value: string) => void;
+    const pending = new Promise<string>((resolve) => { resolveLoad = resolve; });
+    const loader = createLatestAuthoritativeLoader({ load: async () => pending, apply: vi.fn() });
+
+    const active = loader.refresh('reconnect');
+    const queued = loader.refresh('parent-focus');
+    loader.invalidate();
+
+    await expect(queued).resolves.toBe(false);
+    resolveLoad('superseded');
+    await expect(active).resolves.toBe(false);
   });
 
   it('fans a successful parent recovery snapshot out to supplemental owners', () => {
