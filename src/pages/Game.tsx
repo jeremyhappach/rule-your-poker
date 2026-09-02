@@ -13626,6 +13626,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (!isLegWinMessage && !isGameWinMessage && !isSweepMessage) return;
 
+    // The raw authoritative result is available as soon as resolution
+    // commits, but a 3-5-7 terminal prelude (including the final-leg
+    // award) is still result presentation. Keep this independent owner
+    // behind the same server-time ritual boundary as the table result,
+    // then admit it once the DROP tableau hold has expired.
+    if (is357GameType && threeFiveSevenDecisionRevealBlocksResult) return;
+
     // A new dealer game can surface before its inherited session-level
     // `last_round_result` row has cleared. Let the descriptor-rotation effect
     // retire that older generation first; it will rerun this detector for a
@@ -14082,7 +14089,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setTerminal357Descriptor(descriptor);
     })();
     // Win-presentation instrumentation was removed.
-  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId, terminal357Descriptor?.dealerGameId, terminal357Descriptor?.terminalResultIdentity]);
+  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId, terminal357Descriptor?.dealerGameId, terminal357Descriptor?.terminalResultIdentity, is357GameType, threeFiveSevenDecisionRevealBlocksResult]);
   
   // Identity-bound winner-hand resolver.
   //

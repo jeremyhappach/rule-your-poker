@@ -36,8 +36,14 @@ describe('3-5-7 authoritative decision reveal', () => {
     expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 1900).beat).toBe('2');
     expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 2800).beat).toBe('1');
     expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 3700).beat).toBe('DROP');
-    expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 4700).beat).toBe('hold');
-    expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 5300).beat).toBe('expired');
+    expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 4700)).toMatchObject({
+      beat: 'hold',
+      active: true,
+    });
+    expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base + 5300)).toMatchObject({
+      beat: 'expired',
+      active: false,
+    });
   });
 
   it('keeps decisions secret before DROP and reveals all on the same boundary', () => {

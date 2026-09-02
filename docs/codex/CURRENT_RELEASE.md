@@ -30,6 +30,8 @@ Date: 2026-09-01
   narration, transfer dispatch, and continuation remain sealed through the
   countdown. All decisions open on the absolute DROP boundary; the existing
   result flow begins after the tableau hold and retains its four-second dwell.
+  The final-leg award uses that same gate, so a terminal single-Stay result
+  cannot begin its leg animation before the ritual has fully expired.
   Duplicate Realtime delivery cannot restart the ritual, late mounts enter the
   current beat, and expired reconnects skip it.
 - The deployed migration and unchanged authority path passed the complete
