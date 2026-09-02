@@ -1586,7 +1586,7 @@ existing four-second result dwell. The local stack center is the canonical
 player-to-player transfer destination itself; presentation may decorate that
 endpoint but must not shift it inward toward the pot.
 
-Every result-presentation owner, including the normal terminal final-leg
-award, must use this same gate. Raw settled result text may be observed for
-authority and recovery while the ritual is active, but it may not create a
-terminal presentation trigger until the tableau has expired.
+Every result-presentation owner, including ordinary and terminal leg awards,
+must use this same gate. Raw settled result text and player-leg deltas may be
+observed for authority and recovery while the ritual is active, but neither
+may create or consume an award presentation until the tableau has expired.

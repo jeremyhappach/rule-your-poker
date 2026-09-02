@@ -9710,6 +9710,15 @@ export const MobileGameTable = ({
       return;
     }
 
+    // A settled player-leg count arrives with the same round-resolution
+    // frame as the decision ritual. It is evidence for the eventual award,
+    // not permission to present it yet. Do not advance the baseline or the
+    // dedupe latch here: once the ritual's tableau expires, this unchanged
+    // delta must still produce the one ordinary leg animation.
+    if (__is357GameType(gameType) && threeFiveSevenDecisionRevealBlocksResult) {
+      return;
+    }
+
     // Slice 3 correction — instant-357 exclusion.
     // For any descriptor.source === 'instant-357' (or the '357_SWEEP:' sentinel
     // seen synchronously in lastRoundResult), the ThreeFiveSevenTerminalController
@@ -9827,7 +9836,7 @@ export const MobileGameTable = ({
 
       playerLegsRef.current[player.id] = currentLegs;
     });
-  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId, threeFiveSevenDealerGameScope, threeFiveSevenHandIdentity]);
+  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId, threeFiveSevenDealerGameScope, threeFiveSevenHandIdentity, threeFiveSevenDecisionRevealBlocksResult]);
 
   // Clear winning leg player when game status changes (next game starting)
   useEffect(() => {
@@ -9872,6 +9881,9 @@ export const MobileGameTable = ({
     if (!legsTrackerInitializedRef.current) return false;
     if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') return false;
     const prev = playerLegsRef.current[playerId];
+    // The detector deliberately retains this baseline while the ritual is
+    // active, so this same claim keeps the incoming leg off the static stack
+    // until its deferred animation can begin.
     return prev !== undefined && currentLegs > prev;
   };
 
