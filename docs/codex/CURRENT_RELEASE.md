@@ -2,6 +2,28 @@
 
 Date: 2026-09-02
 
+## Cribbage authoritative catch-up coalescing — production checkpoint
+
+- The shared latest-authoritative loader now permits one exact catch-up fetch at
+  a time. Overlapping triggers retain one newest follow-up after the active
+  fetch settles, rather than creating competing hydration reads. This is not a
+  cache: callers still receive a fresh authoritative catch-up after a write
+  that landed during the active read. Realtime payloads still supersede queued
+  stale work, and the established generation, invalidation, and disposal guards
+  remain intact.
+- The change protects the Cribbage and Gin callers of that shared loader. It
+  does not change any RPC, schema, rules, settlement, timer, or ownership path.
+  The retained Cribbage pegging outlier showed three overlapping rejoin reads;
+  the action itself completed normally, but the peer did not request its next
+  authoritative state until 3.177 seconds later.
+- Focused loader/Cribbage tests (15 assertions), TypeScript, the 39 required
+  Cribbage checks, and the production build passed. Published fake-money
+  acceptance on commit `3fe209369` passed the exact four-phase Cribbage rejoin
+  matrix plus terminal rejoin with 271 observer events, zero violations, and
+  no 6,000 ms peer-budget breach (peer p95/max 1,865/3,244 ms). Guarded cleanup
+  deleted and verified game `b7fb5320-8b4e-454f-8d9d-8f449729af3d`. This is a
+  focused verification, not the previously planned ten-run repetition pack.
+
 ## Cribbage successor-hand discard isolation — published
 
 - A delayed discard response is now scoped to the hand that issued it. Once a
