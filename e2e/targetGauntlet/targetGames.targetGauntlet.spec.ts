@@ -435,11 +435,22 @@ test.describe('production fake-money target rule gauntlet', () => {
         await enterDealerGameUnderChaos(session, scenario.gameType, {
           configure: (config) => configureScenario(scenario, config),
         });
-        await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
+        // The instant-sweep fixture resolves directly to the authoritative
+        // terminal state as the opening hand is created. Requiring an
+        // intermediate in-progress render here turns that successful terminal
+        // transition into a false harness failure.
+        if (scenario.program !== '357-instant-sweep') {
+          await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, scenario.gameType);
+        }
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
         const dealerGameId = await authoritativeDealerGameId(session);
         evidence.dealerGameId = dealerGameId;
 
+        evidence.exercise = scenario.gameType === 'yahtzee'
+          ? await exerciseYahtzee(scenario, session, probe, dealerGameId)
+          : scenario.gameType === 'holm-game'
+            ? await exerciseHolm(scenario, session, dealerGameId)
+            : await exercise357(scenario, session, probe, dealerGameId);
         if (fixtureArmed) {
           const { data, error } = await session.cleanupClient.rpc(
             'get_target_rule_branch_harness' as never,
@@ -451,12 +462,6 @@ test.describe('production fake-money target rule gauntlet', () => {
           }
           evidence.fixtureStatus = status;
         }
-
-        evidence.exercise = scenario.gameType === 'yahtzee'
-          ? await exerciseYahtzee(scenario, session, probe, dealerGameId)
-          : scenario.gameType === 'holm-game'
-            ? await exerciseHolm(scenario, session, dealerGameId)
-            : await exercise357(scenario, session, probe, dealerGameId);
         await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
         evidence.status = 'passed';
         console.log(`[target-gauntlet] ${scenario.id} passed`);
