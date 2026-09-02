@@ -12,6 +12,10 @@ const ordinaryLegDetector = tableSource.slice(
   tableSource.indexOf('// Detect when a player earns a leg (3-5-7 games only)'),
   tableSource.indexOf('// Clear winning leg player when game status changes'),
 );
+const awaitingNextRoundController = source.slice(
+  source.indexOf('// All-fold has no generic result dwell.'),
+  source.indexOf('// DEBUG: Manual proceed to next round'),
+);
 
 describe('Game 3-5-7 decision reveal terminal admission', () => {
   it('does not admit the final-leg award until the reveal tableau has expired', () => {
@@ -37,8 +41,21 @@ describe('Game 3-5-7 decision reveal terminal admission', () => {
 
     expect(ritualGate).toBeGreaterThan(-1);
     expect(awardLoop).toBeGreaterThan(ritualGate);
-    expect(ordinaryLegDetector).toContain(
-      'threeFiveSevenDecisionRevealBlocksResult]);',
+    expect(ordinaryLegDetector).toContain('threeFiveSevenDecisionRevealBlocksResult');
+  });
+
+  it('advances an ordinary leg only from its completed presentation receipt', () => {
+    expect(awaitingNextRoundController).toContain(
+      'Waiting for exact 3-5-7 leg-award presentation acknowledgement',
+    );
+    expect(awaitingNextRoundController).toContain(
+      'handleThreeFiveSevenLegAwardPresentationComplete',
+    );
+    expect(awaitingNextRoundController).toContain(
+      'getThreeFiveSevenLegAwardPresentationKey(presentation)',
+    );
+    expect(tableSource).toContain(
+      'onThreeFiveSevenLegAwardPresentationComplete?.(completedAward);',
     );
   });
 });

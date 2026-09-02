@@ -16,6 +16,7 @@ import {
   getThreeFiveSevenAllFoldPresentationKey,
   type ThreeFiveSevenAllFoldPresentation,
 } from "@/lib/threeFiveSeven/allFoldPresentation";
+import type { ThreeFiveSevenLegAwardPresentation } from "@/lib/threeFiveSeven/legAwardPresentation";
 import {
   isThreeFiveSevenDedicatedResultAnnouncement,
 } from "@/lib/threeFiveSeven/announcementPresentation";
@@ -1163,6 +1164,10 @@ interface MobileGameTableProps {
   onThreeFiveSevenAllFoldPresentationComplete?: (
     presentation: ThreeFiveSevenAllFoldPresentation,
   ) => void;
+  /** Exact ordinary-leg award that has visibly completed on the felt. */
+  onThreeFiveSevenLegAwardPresentationComplete?: (
+    presentation: ThreeFiveSevenLegAwardPresentation,
+  ) => void;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -1499,6 +1504,7 @@ export const MobileGameTable = ({
   threeFiveSevenDecisionRevealSecrecyOpen = true,
   threeFiveSevenDecisionRevealBlocksResult = false,
   onThreeFiveSevenAllFoldPresentationComplete,
+  onThreeFiveSevenLegAwardPresentationComplete,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -2798,6 +2804,7 @@ export const MobileGameTable = ({
   const [isWinningLegAnimation, setIsWinningLegAnimation] = useState(false);
   const [winningLegPlayerId, setWinningLegPlayerId] = useState<string | null>(null); // Track player who won final leg for card exposure
   const playerLegsRef = useRef<Record<string, number>>({});
+  const ordinaryLegAwardPresentationRef = useRef<ThreeFiveSevenLegAwardPresentation | null>(null);
   // REF-BASED GUARD: Prevents double-trigger of leg animation due to async state batching
   // When set to true, the fallback path in 357 win trigger will skip forcing the animation
   const legAnimationActiveRef = useRef(false);
@@ -9801,6 +9808,34 @@ export const MobileGameTable = ({
           // Mark ref SYNCHRONOUSLY to prevent race with 357 trigger fallback path
           legAnimationActiveRef.current = true;
 
+          if (__is357GameType(gameType) && !isWinningLeg) {
+            const dealerGameId = horsesDealerGameId ?? null;
+            const roundId = threeFiveSevenAuthoritativeRoundId ?? null;
+            const handNumber = horsesHandNumber ?? null;
+            const roundNumber = threeFiveSevenAuthoritativeRoundNumber ?? null;
+            ordinaryLegAwardPresentationRef.current = (
+              gameId
+              && dealerGameId
+              && roundId
+              && Number.isInteger(handNumber)
+              && handNumber > 0
+              && Number.isInteger(roundNumber)
+              && roundNumber > 0
+            )
+              ? {
+                  gameId,
+                  dealerGameId,
+                  roundId,
+                  handNumber,
+                  roundNumber,
+                  playerId: player.id,
+                  legNumber: currentLegs,
+                }
+              : null;
+          } else {
+            ordinaryLegAwardPresentationRef.current = null;
+          }
+
           // Ordinary (non-terminal) leg-award announcement into the
           // canonical rail (HudStack row 1). Terminal / match-winning
           // legs are owned by the Terminal357Descriptor announcement
@@ -9836,7 +9871,7 @@ export const MobileGameTable = ({
 
       playerLegsRef.current[player.id] = currentLegs;
     });
-  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId, threeFiveSevenDealerGameScope, threeFiveSevenHandIdentity, threeFiveSevenDecisionRevealBlocksResult]);
+  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId, threeFiveSevenDealerGameScope, threeFiveSevenHandIdentity, threeFiveSevenDecisionRevealBlocksResult, horsesDealerGameId, horsesHandNumber, threeFiveSevenAuthoritativeRoundId, threeFiveSevenAuthoritativeRoundNumber]);
 
   // Clear winning leg player when game status changes (next game starting)
   useEffect(() => {
@@ -13165,6 +13200,18 @@ export const MobileGameTable = ({
           onComplete={() => {
             setShowLegEarned(false);
             legAnimationActiveRef.current = false; // Reset ref so next leg can trigger
+            // A nonterminal 3-5-7 leg award is the exact visible handoff
+            // between the sealed decision ritual and the next round. Give
+            // Game.tsx its immutable round receipt rather than adding another
+            // fixed dwell after this animation.
+            if (__is357GameType(gameType) && !isWinningLegAnimation) {
+              const completedAward = ordinaryLegAwardPresentationRef.current;
+              ordinaryLegAwardPresentationRef.current = null;
+              if (completedAward) {
+                onThreeFiveSevenLegAwardPresentationComplete?.(completedAward);
+              }
+              return;
+            }
             // For 3-5-7: the normal terminal descriptor is the sole owner of
             // the prelude. Its final-leg award completion is the only event
             // permitted to advance from waiting -> legs-to-player.

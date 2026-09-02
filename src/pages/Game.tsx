@@ -120,6 +120,11 @@ import {
   type ThreeFiveSevenAllFoldPresentation,
 } from "@/lib/threeFiveSeven/allFoldPresentation";
 import {
+  getThreeFiveSevenLegAwardPresentationKey,
+  isThreeFiveSevenOrdinaryLegAwardResult,
+  type ThreeFiveSevenLegAwardPresentation,
+} from "@/lib/threeFiveSeven/legAwardPresentation";
+import {
   isThreeFiveSevenDealPresentationReady,
   type ThreeFiveSevenDealReadinessToken,
 } from "@/lib/threeFiveSeven/presentationReadiness";
@@ -2634,6 +2639,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [directThreeFiveSevenAllFoldPresentation, setDirectThreeFiveSevenAllFoldPresentation] =
     useState<ThreeFiveSevenAllFoldPresentation | null>(null);
   const advancingThreeFiveSevenAllFoldRef = useRef(new Set<string>());
+  const advancingThreeFiveSevenLegAwardRef = useRef(new Set<string>());
   const threeFiveSevenAcceptedIdentityRef = useRef<{
     dealerGameId: string;
     handNumber: number;
@@ -8625,6 +8631,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // The service recovery lease remains the disconnected-client fallback.
       if (is357GameType && lastResult === 'All players folded') {
         console.log('[AWAITING_NEXT_ROUND] Waiting for exact 3-5-7 pussy-tax presentation acknowledgement');
+        return;
+      }
+
+      // The nonterminal leg award owns its connected-client handoff. Its
+      // animation completion carries the exact resolved round identity, so
+      // do not leave the felt on a second fixed result dwell after DROP.
+      // The server-side recovery lease still advances abandoned clients.
+      if (is357GameType && isThreeFiveSevenOrdinaryLegAwardResult(lastResult)) {
+        console.log('[AWAITING_NEXT_ROUND] Waiting for exact 3-5-7 leg-award presentation acknowledgement');
         return;
       }
 
@@ -15679,6 +15694,50 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  const handleThreeFiveSevenLegAwardPresentationComplete = async (
+    presentation: ThreeFiveSevenLegAwardPresentation,
+  ) => {
+    if (!gameId || presentation.gameId !== gameId) return;
+    if (!is357GameType || !game?.awaiting_next_round) return;
+    if (!isThreeFiveSevenOrdinaryLegAwardResult(game.last_round_result)) return;
+    if (
+      game.current_game_uuid !== presentation.dealerGameId
+      || currentRound?.id !== presentation.roundId
+      || currentRound.hand_number !== presentation.handNumber
+      || currentRound.round_number !== presentation.roundNumber
+    ) {
+      return;
+    }
+
+    const key = getThreeFiveSevenLegAwardPresentationKey(presentation);
+    if (advancingThreeFiveSevenLegAwardRef.current.has(key)) return;
+    advancingThreeFiveSevenLegAwardRef.current.add(key);
+    try {
+      const advanceResult = await proceedToNextRound(gameId, {
+        dealerGameId: presentation.dealerGameId,
+        roundId: presentation.roundId,
+        handNumber: presentation.handNumber,
+        roundNumber: presentation.roundNumber,
+      });
+      if (presentation.roundNumber === 3) {
+        const rollover = parseThreeFiveSevenRolloverAdvanceResult(gameId, advanceResult);
+        if (!rollover) {
+          throw new Error('3-5-7 leg-award rollover returned no exact committed transfer identity');
+        }
+        setDirectThreeFiveSevenRolloverPresentation(rollover);
+      }
+      await fetchGameData('manual');
+    } catch (error: any) {
+      advancingThreeFiveSevenLegAwardRef.current.delete(key);
+      console.error('[357 LEG AWARD] Exact presentation handoff failed', error);
+      toast({
+        title: 'Could not start the next round',
+        description: error?.message ?? 'The server rejected the 3-5-7 leg-award handoff.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // DEBUG: Manual proceed to next round (when debugHolmPaused is true)
   const handleDebugProceed = async () => {
     if (!gameId) return;
@@ -18205,6 +18264,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenDecisionRevealBlocksResult={threeFiveSevenDecisionRevealBlocksResult}
               onThreeFiveSevenAllFoldPresentationComplete={is357GameType
                 ? handleThreeFiveSevenAllFoldPresentationComplete
+                : undefined}
+              onThreeFiveSevenLegAwardPresentationComplete={is357GameType
+                ? handleThreeFiveSevenLegAwardPresentationComplete
                 : undefined}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={sessionDealerDrawPresentationCards}

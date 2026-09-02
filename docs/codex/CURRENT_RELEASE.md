@@ -4,6 +4,14 @@ Date: 2026-09-01
 
 ## 3-5-7 synchronized decision reveal — timing and local-stack polish published; smoke pending
 
+- Ordinary nonterminal leg awards now use the visible `LegEarnedAnimation`
+  completion as their exact connected-client continuation receipt. The receipt
+  is keyed to the resolved game/dealer-game/round/hand/player/leg identity and
+  is revalidated before the existing replay-safe advance RPC. This removes the
+  residual four-second post-award dwell that made a completed leg appear
+  frozen; terminal settlement and the ten-second disconnected-client recovery
+  lease are unchanged. Focused leg/reveal tests, TypeScript, and the production
+  build passed locally; production smoke is pending.
 - Migration `20260901093000_add_357_decision_reveal_projection.sql` projects a
   pause-aware server-time `3 → 2 → 1 → DROP` window from the existing exact
   round-resolution identity. It adds no gameplay, settlement, balance, or
@@ -28,10 +36,11 @@ Date: 2026-09-01
   path only.
 - Decision colors, badges, all-fold presentation, exposed cards, result
   narration, transfer dispatch, and continuation remain sealed through the
-  countdown. All decisions open on the absolute DROP boundary; the existing
-  result flow begins after the tableau hold and retains its four-second dwell.
-  Every leg award uses that same gate, so neither an ordinary nor a terminal
-  result can begin its leg animation before the ritual has fully expired.
+  countdown. All decisions open on the absolute DROP boundary. Ordinary leg
+  awards advance on their completed visible receipt; other result paths retain
+  their existing dwell/receipt owners. Every leg award uses the same gate, so
+  neither an ordinary nor a terminal result can begin its leg animation before
+  the ritual has fully expired.
   Duplicate Realtime delivery cannot restart the ritual, late mounts enter the
   current beat, and expired reconnects skip it.
 - The deployed migration and unchanged authority path passed the complete
