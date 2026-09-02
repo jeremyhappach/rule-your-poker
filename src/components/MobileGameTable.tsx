@@ -7080,6 +7080,7 @@ export const MobileGameTable = ({
   const decisionSurfaceEnvelopeOpen = __is357GameType(gameType)
     ? isThreeFiveSevenDecisionSurfaceEnvelopeOpen({
         canDecide: !!canDecide,
+        gameStatus,
         activeTab,
         isWaitingPhase,
         sessionEndedPhase,
