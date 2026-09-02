@@ -18,6 +18,8 @@ import {
   TERMINAL_EXPECTATIONS,
 } from './support/terminalActors';
 import { TerminalSettlementProbe } from './support/terminalSettlementProbe';
+import { finalizeScenarioObserver, observerEvidenceSummary } from '../humanChaos/support/scenarioObserver';
+import { persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 
 const GAME_TYPES: DealerGameType[] = [
   'holm-game',
@@ -31,7 +33,7 @@ const GAME_TYPES: DealerGameType[] = [
 
 test.describe('two-human cross-country terminal settlement gauntlet', () => {
   for (const gameType of GAME_TYPES) {
-    test(`${gameType}: plays through exact settlement and ended-session reconnect`, async ({ browser }) => {
+    test(`${gameType}: plays through exact settlement and ended-session reconnect`, async ({ browser }, info) => {
       test.setTimeout(20 * 60_000);
       const credentials = requireTwoPlayerEnvironment();
       const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
@@ -42,6 +44,7 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
         credentials.player1,
       );
 
+      const evidence: Record<string, unknown> = { gameType, status: 'started' };
       let primaryError: unknown = null;
       try {
         await enterDealerGameUnderChaos(session, gameType, {
@@ -85,17 +88,38 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
         ]);
         await expect(session.peerPage.getByText('Game Lobby', { exact: true }).first()).toBeVisible();
         console.log(`[terminal] ${gameType} client and database proof complete`);
+        evidence.status = 'passed';
       } catch (error) {
         primaryError = error;
+        evidence.status = 'failed';
+        evidence.error = error instanceof Error ? error.message : String(error);
       } finally {
+        try {
+          const observation = await finalizeScenarioObserver(session, info);
+          evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
+          if (!primaryError && observation.failure) {
+            primaryError = observation.failure;
+            evidence.status = 'failed';
+            evidence.error = observation.failure.message;
+          }
+        } catch (error) {
+          if (!primaryError) {
+            primaryError = error;
+            evidence.status = 'failed';
+            evidence.error = error instanceof Error ? error.message : String(error);
+          }
+        }
         let cleanupError: unknown = null;
         try {
           console.log(`[terminal] ${gameType} cleanup starting`);
-          await blastFakeMoneySession(session);
+          evidence.cleanup = await blastFakeMoneySession(session);
           console.log(`[terminal] ${gameType} cleanup complete`);
         } catch (error) {
           cleanupError = error;
+          evidence.cleanup = { verified: false, error: error instanceof Error ? error.message : String(error) };
         } finally {
+          try { await persistScenarioEvidence(info, 'terminal-evidence.json', evidence); }
+          catch (error) { if (!cleanupError) cleanupError = error; }
           await closeTwoClientSession(session);
         }
         if (cleanupError) {
