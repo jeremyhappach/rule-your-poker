@@ -47,7 +47,10 @@ if (requestedGame && !['yahtzee', 'holm-game', '3-5-7'].includes(requestedGame))
 const scenarios = TARGET_GAUNTLET_MANIFEST.filter((row) => !requestedGame || row.gameType === requestedGame);
 
 async function setSwitch(config: Locator, label: string, desired: boolean): Promise<void> {
-  const row = config.getByText(label, { exact: true }).locator('..');
+  // Dealer setup renders the Label and Switch as siblings within this row.
+  // Scope through their shared row rather than looking for a switch beneath
+  // the label itself.
+  const row = config.getByText(label, { exact: true }).locator('..').locator('..');
   const control = row.getByRole('switch');
   await expect(control).toBeVisible();
   const current = await control.getAttribute('aria-checked') === 'true';
