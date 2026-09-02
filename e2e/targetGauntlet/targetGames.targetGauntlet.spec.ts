@@ -285,6 +285,17 @@ async function exerciseYahtzee(
     for (const player of Object.values(successorState.playerStates ?? {})) {
       expect(Object.keys(player.scorecard?.scores ?? {})).toHaveLength(0);
     }
+    // The score fixture already proves the authoritative tie rollover. Remount
+    // one peer only after that successor exists, so the check covers hydration
+    // of the new identity rather than relying on the prior browser's state.
+    await session.peerPage.close();
+    session.peerPage = await session.peerContext.newPage();
+    await session.peerPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await waitForBothClientsInLiveGame(session.hostPage, session.peerPage, 'yahtzee');
+    await Promise.all([expectCanonicalContinuity(session.hostPage), expectCanonicalContinuity(session.peerPage)]);
+    await expect(session.peerPage.locator('[data-yahtzee-scorecard]').first()).toBeVisible();
+    const remountedSuccessor = await readLatestRound(session, dealerGameId);
+    expect(remountedSuccessor?.id).toBe(successor.id);
     return { receipts, successor };
   }
   const result = await probe.waitForTerminalResult(session.gameId, dealerGameId, TERMINAL_EXPECTATIONS.yahtzee, 90_000);
