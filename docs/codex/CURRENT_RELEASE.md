@@ -24,6 +24,15 @@ Date: 2026-09-02
   breaches; peer maxima were 3,447, 3,183, and 4,125 ms respectively. Guarded
   cleanup deleted and verified each exact session. This closes the terminal
   decision-surface seam, not the remaining broader 3-5-7 gauntlet scope.
+- The same envelope now also requires a live authoritative timer before it
+  renders Drop/Stay. This closes the separate pre-timer fail-open observed in
+  a parallel rule batch: a betting round could render controls while its timer
+  had not yet hydrated. Published commit `3d72fcb53` passed isolated
+  production fake-money reruns of the multi-stayer tie and tax-off both-fold
+  rows with zero observer violations, zero peer-budget breaches, peer maxima
+  of 3,240 ms and below, and verified cleanup. The earlier 10–17 second
+  outliers occurred only under the three-lane load run and remain capacity
+  evidence rather than a single-session action-surface failure.
 
 ## Cribbage authoritative catch-up coalescing — production checkpoint
 

@@ -11,6 +11,11 @@
   verified exact-session cleanup; peer maxima were 3,447, 3,183, and 4,125 ms.
   Preserve the authoritative terminal-status envelope guard. This is focused
   terminal control retirement coverage, not full 3-5-7 gameplay coverage.
+- The same envelope's live-timer admission passed isolated production
+  fake-money multi-stayer-tie and tax-off both-fold reruns at commit
+  `3d72fcb53`; controls do not appear before their matching authoritative
+  timer, both rows had zero observer violations and peer-budget breaches, and
+  guarded cleanup was verified. Preserve timer-and-control atomic admission.
 
 - 3-5-7 ordinary-leg continuation passed Jeremy's published Mini Tacos smoke
   on 2026-09-01 at commit `c2f63ef42f18221b3b4c2c09a010ea52e8bb9f4a`.
