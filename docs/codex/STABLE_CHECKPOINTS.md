@@ -2,6 +2,16 @@
 
 ## Platform
 
+- 3-5-7 terminal decision-surface retirement passed published production
+  fake-money smoke on 2026-09-02 at commit `8b61aefe5`. The authoritative
+  `session_ended` transition now retires Drop/Stay before the later canonical
+  Session Ended-table admission, while preserving terminal presentation. The
+  both-fold, both-stay, and regular-to-terminal-leg rows passed with zero
+  observer violations, zero unexpected 6,000 ms peer-budget breaches, and
+  verified exact-session cleanup; peer maxima were 3,447, 3,183, and 4,125 ms.
+  Preserve the authoritative terminal-status envelope guard. This is focused
+  terminal control retirement coverage, not full 3-5-7 gameplay coverage.
+
 - 3-5-7 ordinary-leg continuation passed Jeremy's published Mini Tacos smoke
   on 2026-09-01 at commit `c2f63ef42f18221b3b4c2c09a010ea52e8bb9f4a`.
   The synchronized reveal stayed sealed through its full 3-2-1-DROP ritual,

@@ -2,6 +2,29 @@
 
 Date: 2026-09-02
 
+## 3-5-7 terminal decision-surface retirement — production checkpoint
+
+- The authoritative `session_ended` status now closes the 3-5-7 decision
+  envelope immediately, including during the short terminal-presentation
+  interval before the canonical Session Ended table phase is admitted. The
+  existing terminal presentation remains mounted; only the now-illegal
+  Drop/Stay controls retire. No game rule, settlement, timer, database, or
+  real-money behavior changed.
+- Frozen production evidence had shown a completed terminal round where the
+  shell timer correctly retired but a peer still saw enabled Drop/Stay controls
+  for more than a second. A click could only fetch the current frame, yet it
+  left a misleading dead action surface and created a false 9–10 second peer
+  progress receipt. The render envelope had guarded `game_over` and local
+  Session Ended admission, but not the earlier authoritative `session_ended`
+  transition.
+- Focused envelope/action-surface/liveness tests and TypeScript passed. On
+  published commit `8b61aefe5`, all three isolated production fake-money
+  terminal branches passed: both-fold, both-stay, and regular-to-terminal-leg.
+  Their observer records had zero violations and zero 6,000 ms peer-budget
+  breaches; peer maxima were 3,447, 3,183, and 4,125 ms respectively. Guarded
+  cleanup deleted and verified each exact session. This closes the terminal
+  decision-surface seam, not the remaining broader 3-5-7 gauntlet scope.
+
 ## Cribbage authoritative catch-up coalescing — production checkpoint
 
 - The shared latest-authoritative loader now permits one exact catch-up fetch at
