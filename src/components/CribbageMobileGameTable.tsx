@@ -837,8 +837,13 @@ export const CribbageMobileGameTable = ({
   const [cribbageDiscardSelection, setCribbageDiscardSelection] = useState<number[]>([]);
   const prevCribbageDiscardRoundIdRef = useRef<string | null | undefined>(null);
   useEffect(() => {
-    if (roundId && prevCribbageDiscardRoundIdRef.current !== roundId) {
-      prevCribbageDiscardRoundIdRef.current = roundId;
+    if (!roundId) return;
+    const previousRoundId = prevCribbageDiscardRoundIdRef.current;
+    prevCribbageDiscardRoundIdRef.current = roundId;
+    // The cards can become interactive before the parent finishes hydrating
+    // its first round id. That initial identity adoption is not a hand
+    // boundary, so it must not erase a valid local discard choice.
+    if (previousRoundId && previousRoundId !== roundId) {
       setCribbageDiscardSelection([]);
     }
   }, [roundId]);
@@ -4915,6 +4920,47 @@ export const CribbageMobileGameTable = ({
     setTerminalPath('pegging');
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence, heelsTerminalHoldActive]);
+
+  // A terminal counting state can arrive from the authoritative handoff
+  // while this client is still deliberately rendering its frozen count.
+  // The ordinary pegging-winner effect above correctly ignores that case;
+  // without this exact identity handoff, however, a rejoined peer can leave
+  // the connected client permanently on "Scoring hands…" after settlement.
+  // This consumes only the terminal state for the SAME counted hand. It does
+  // not advance scoring, write a successor, or use a wall-clock escape hatch.
+  useEffect(() => {
+    const terminalState = cribbageState;
+    const countedIdentity = countingIdentityRef.current;
+    if (
+      !terminalState?.winnerPlayerId ||
+      terminalState.phase !== 'complete' ||
+      !terminalState.lastHandCount ||
+      !countingStateSnapshot ||
+      !countingAnimationActiveRef.current ||
+      !countedIdentity ||
+      countedIdentity.roundId !== currentRoundId ||
+      countedIdentity.handNumber !== currentHandNumber
+    ) return;
+
+    const winKey = winKeyFor(terminalState.winnerPlayerId);
+    if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
+
+    winSequenceScheduledRef.current = winKey;
+    setCountingWinFrozen(true);
+    const targetIndex = countingStateSnapshot.countingTargetIndex ?? null;
+    setTerminalPath(
+      targetIndex === terminalState.turnOrder.length ? 'crib-counting' : 'hand-counting',
+    );
+    requestCribbageSettlement('authoritative-counting-terminal-handoff');
+    triggerWinSequence(terminalState);
+  }, [
+    cribbageState,
+    countingStateSnapshot,
+    currentRoundId,
+    currentHandNumber,
+    requestCribbageSettlement,
+    triggerWinSequence,
+  ]);
 
   // CRITICAL: When currentRoundId changes, reset the sync framework baseline
   // so new-hand snapshots are accepted.

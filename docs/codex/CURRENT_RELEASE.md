@@ -2,6 +2,21 @@
 
 Date: 2026-09-01
 
+## Cribbage rejoin terminal and discard-hydration recovery — published
+
+- A valid Cribbage discard selection now survives first round-identity hydration.
+  Selection still clears on a genuine round transition, so no choice can cross
+  a hand boundary.
+- A connected client that receives the exact authoritative terminal counting
+  state while its matching count presentation is frozen now hands off to the
+  existing canonical win sequence. The handoff is identity-scoped to the
+  counted round and hand; it does not create a successor, advance scoring, or
+  add a timer.
+- Focused source-wiring tests, TypeScript, and the production build passed.
+  Production fake-money validation passed both the four-phase Cribbage rejoin
+  matrix and qualifying crib-flush branch with zero observer violations, no
+  6,000 ms peer-budget breach, and guarded cleanup verified for each session.
+
 ## 3-5-7 synchronized decision reveal — timing and local-stack polish published; leg-award smoke passed
 
 - Ordinary nonterminal leg awards now use the visible `LegEarnedAnimation`
