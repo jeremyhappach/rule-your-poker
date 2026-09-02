@@ -244,7 +244,7 @@ confirmed zero matching game rows. No real-money game was opened or touched.
   no runtime errors. This is focused transition/readiness acceptance, not full
   3-5-7 rule or deadline coverage.
 
-## Gin action-path mirror-write reduction — installed, smoke pending
+## Gin action-path mirror-write reduction — production checkpoint
 
 - Migration `20260901034516_reduce_gin_player_card_mirror_writes.sql` keeps the
   private Gin state and redacted `rounds.gin_rummy_state` Realtime receipt on
@@ -261,8 +261,18 @@ confirmed zero matching game rows. No real-money game was opened or touched.
   authorization, duplicate/replay, continuation, scheduler, terminal
   settlement, and late-postgame suite under rollback.
 
-Production two-human Gin smoke remains the acceptance gate; this database
-optimization does not by itself establish a user-visible latency bound.
+Published two-human Gin acceptance now passes the core multi-hand action path,
+successor-hand rejoin/redaction, knock → layoff → rejoin, and
+scoring/terminal rejoin on isolated production fake-money sessions. Across the
+four rows, every scenario had zero observer violations and no unexpected
+6,000 ms action-to-peer breach. The largest measured peer completion in the
+rejoin rows was 3,571 ms. The normal-knock row kept faces hidden before reveal,
+painted all ten entitled faces at reveal, completed a layoff before rejoin, and
+settled once; terminal rejoin retained the connected terminal hold while a
+fresh mount entered the lobby. Each fixture was consumed/cancelled and each
+fake game was guardedly deleted and verified. This establishes the focused
+action/rejoin/terminal latency checkpoint for commit `27b52d436`; it is not
+full Gin rule, preset, or timeout coverage.
 
 ## 3-5-7 live deal-wave presentation admission
 
