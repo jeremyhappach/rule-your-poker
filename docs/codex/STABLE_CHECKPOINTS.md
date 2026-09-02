@@ -2,6 +2,14 @@
 
 ## Platform
 
+- 3-5-7 ordinary-leg continuation passed Jeremy's published Mini Tacos smoke
+  on 2026-09-01 at commit `c2f63ef42f18221b3b4c2c09a010ea52e8bb9f4a`.
+  The synchronized reveal stayed sealed through its full 3-2-1-DROP ritual,
+  then the visible nonterminal Leg Earned animation released the exact
+  replay-safe next-round handoff without the prior apparent freeze. Preserve
+  the completed-leg presentation receipt as the connected-client cue; final
+  settlement, all-fold presentation, and the ten-second disconnected-client
+  recovery lease are separate owners.
 - 3-5-7 ante/start atomic-frame convergence passed published production
   fake-money smoke on 2026-09-01 at commit
   `f6b82afcbd5ccf94b29e2d48c51174d9478fa4f2`. Under a deliberately lost ante

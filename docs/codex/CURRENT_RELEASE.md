@@ -2,7 +2,7 @@
 
 Date: 2026-09-01
 
-## 3-5-7 synchronized decision reveal — timing and local-stack polish published; smoke pending
+## 3-5-7 synchronized decision reveal — timing and local-stack polish published; leg-award smoke passed
 
 - Ordinary nonterminal leg awards now use the visible `LegEarnedAnimation`
   completion as their exact connected-client continuation receipt. The receipt
@@ -11,7 +11,8 @@ Date: 2026-09-01
   residual four-second post-award dwell that made a completed leg appear
   frozen; terminal settlement and the ten-second disconnected-client recovery
   lease are unchanged. Focused leg/reveal tests, TypeScript, and the production
-  build passed locally; production smoke is pending.
+  build passed locally. Jeremy's production Mini Tacos smoke confirmed the
+  nonterminal leg handoff now advances naturally after the award.
 - Migration `20260901093000_add_357_decision_reveal_projection.sql` projects a
   pause-aware server-time `3 → 2 → 1 → DROP` window from the existing exact
   round-resolution identity. It adds no gameplay, settlement, balance, or
