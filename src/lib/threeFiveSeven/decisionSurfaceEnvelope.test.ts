@@ -4,6 +4,7 @@ import { isThreeFiveSevenDecisionSurfaceEnvelopeOpen } from './decisionSurfaceEn
 const playable = {
   canDecide: true,
   gameStatus: 'in_progress',
+  hasAuthoritativeTimer: true,
   activeTab: 'cards',
   isWaitingPhase: false,
   sessionEndedPhase: false,
@@ -21,6 +22,7 @@ describe('3-5-7 decision surface envelope', () => {
     ['chat tab', { activeTab: 'chat' }],
     ['game over', { gameStatus: 'game_over' }],
     ['authoritative session ended before the presentation handoff', { gameStatus: 'session_ended' }],
+    ['authoritative timer has not yet hydrated', { hasAuthoritativeTimer: false }],
     ['waiting', { isWaitingPhase: true }],
     ['session ended', { sessionEndedPhase: true }],
     ['dealer setup', { isDealerConfigPhase: true }],

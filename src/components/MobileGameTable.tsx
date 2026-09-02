@@ -7076,11 +7076,23 @@ export const MobileGameTable = ({
   const threeFiveSevenDecisionPresentationGate = __is357GameType(gameType)
     ? threeFiveSevenDealPresentationReady
     : true;
+  // The decision rail and controls form one authoritative envelope. A 3-5-7
+  // hand can arrive before its same-frame deadline/timer presentation has
+  // committed; it is not actionable until that timer is visible and live.
+  const threeFiveSevenAuthoritativeTimerOpen = !__is357GameType(gameType)
+    || (
+      roundStatus === 'betting'
+      && timeLeft !== null
+      && timeLeft > 0
+      && !!maxTime
+      && !!timerEpoch
+    );
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen && threeFiveSevenDecisionPresentationGate;
   const decisionSurfaceEnvelopeOpen = __is357GameType(gameType)
     ? isThreeFiveSevenDecisionSurfaceEnvelopeOpen({
         canDecide: !!canDecide,
         gameStatus,
+        hasAuthoritativeTimer: threeFiveSevenAuthoritativeTimerOpen,
         activeTab,
         isWaitingPhase,
         sessionEndedPhase,

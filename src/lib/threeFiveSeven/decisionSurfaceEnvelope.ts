@@ -1,6 +1,7 @@
 export function isThreeFiveSevenDecisionSurfaceEnvelopeOpen(args: {
   canDecide: boolean;
   gameStatus: string | null | undefined;
+  hasAuthoritativeTimer: boolean;
   activeTab: string | null | undefined;
   isWaitingPhase: boolean;
   sessionEndedPhase: boolean;
@@ -15,6 +16,7 @@ export function isThreeFiveSevenDecisionSurfaceEnvelopeOpen(args: {
     // waiting for that later presentation handoff.
     && args.gameStatus !== 'game_over'
     && args.gameStatus !== 'session_ended'
+    && args.hasAuthoritativeTimer
     && args.activeTab === 'cards'
     && !args.isWaitingPhase
     && !args.sessionEndedPhase
