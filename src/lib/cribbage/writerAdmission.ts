@@ -37,6 +37,19 @@ export interface CribbageWriterAdmissionResult {
 }
 
 /**
+ * A response belongs to the hand that issued it only while that exact round
+ * remains the live local boundary. A delayed response from a prior hand may
+ * already be durable on the server, but must never replace the successor
+ * hand's local authoritative/presentation mirrors.
+ */
+export function isCribbageActionResponseCurrent(
+  actionRoundId: string | null | undefined,
+  liveRoundId: string | null | undefined,
+): boolean {
+  return !!actionRoundId && actionRoundId === liveRoundId;
+}
+
+/**
  * Single Cribbage writer-admission owner shared by render enablement and
  * mutation handlers. The framework's synchronous predicate deliberately
  * outranks its rendered boolean so a React effect/render edge cannot enable

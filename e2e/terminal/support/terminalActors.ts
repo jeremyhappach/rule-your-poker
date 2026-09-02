@@ -180,12 +180,16 @@ async function discardToCrib(page: Page): Promise<void> {
   try {
     await expect(surface).toBeEnabled({ timeout: 15_000 });
   } catch (error) {
-    const gate = await cards.evaluateAll((nodes) => nodes.slice(0, 2).map((node) => ({
-      processing: node.getAttribute('data-cribbage-block-processing'),
-      interactions: node.getAttribute('data-cribbage-block-interactions'),
-      boundary: node.getAttribute('data-cribbage-block-boundary'),
-      selfPlay: node.getAttribute('data-cribbage-block-self-play'),
-    })));
+    const gate = await page.locator('[data-cribbage-hand-card-key]:visible').evaluateAll((nodes) => (
+      nodes.slice(0, 6).map((node) => ({
+        disabled: (node as HTMLButtonElement).disabled,
+        selected: node.getAttribute('data-cribbage-card-selected'),
+        processing: node.getAttribute('data-cribbage-block-processing'),
+        interactions: node.getAttribute('data-cribbage-block-interactions'),
+        boundary: node.getAttribute('data-cribbage-block-boundary'),
+        selfPlay: node.getAttribute('data-cribbage-block-self-play'),
+      }))
+    ));
     throw new Error(`Cribbage discard remained disabled at 2/2: ${JSON.stringify(gate)}`, {
       cause: error,
     });

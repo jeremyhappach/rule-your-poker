@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
-import { evaluateCribbageWriterAdmission } from './writerAdmission';
+import {
+  evaluateCribbageWriterAdmission,
+  isCribbageActionResponseCurrent,
+} from './writerAdmission';
 
 const identity: AuthoritativeIdentity = {
   dealerGameId: 'dealer-game-1',
@@ -67,5 +70,13 @@ describe('Cribbage writer admission', () => {
       ok: false,
       reason: 'local-identity-misaligned',
     });
+  });
+});
+
+describe('Cribbage action response boundary', () => {
+  it('admits a response only while its issuing round remains current', () => {
+    expect(isCribbageActionResponseCurrent('round-1', 'round-1')).toBe(true);
+    expect(isCribbageActionResponseCurrent('round-1', 'round-2')).toBe(false);
+    expect(isCribbageActionResponseCurrent('round-1', null)).toBe(false);
   });
 });

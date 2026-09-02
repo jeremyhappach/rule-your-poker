@@ -94,7 +94,10 @@ import {
   logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
 import { useGameStateSync } from '@/lib/gameStateSync';
-import { evaluateCribbageWriterAdmission } from '@/lib/cribbage/writerAdmission';
+import {
+  evaluateCribbageWriterAdmission,
+  isCribbageActionResponseCurrent,
+} from '@/lib/cribbage/writerAdmission';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
@@ -855,7 +858,10 @@ export const CribbageMobileGameTable = ({
     playerStates: Record<string, import('@/lib/cribbageTypes').CribbagePlayerState>;
     winningScore: number;
   } | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // A discard request is scoped to its issuing hand. Network responses may
+  // arrive after the authoritative successor hand is already active; that old
+  // request must neither disable the successor's controls nor overwrite it.
+  const [processingHandKey, setProcessingHandKey] = useState<string | null>(null);
 
   // ── Phase 2: framework-owned authoritative identity ─────────────
   // Subscribes to `rounds` filtered by `dealer_game_id`, so the client observes
@@ -1511,6 +1517,13 @@ export const CribbageMobileGameTable = ({
     () => getCribbageHandIdentity(currentRoundId, currentHandNumber),
     [currentRoundId, currentHandNumber],
   );
+  const isProcessing = !!currentHandKey && processingHandKey === currentHandKey;
+
+  useEffect(() => {
+    if (processingHandKey && processingHandKey !== currentHandKey) {
+      setProcessingHandKey(null);
+    }
+  }, [currentHandKey, processingHandKey]);
   // A final pegging event remains in authoritative state when counting starts.
   // Only a client that saw this hand while it was actually pegging may present
   // that event after the phase transition; a counting rejoin must treat it as
@@ -5640,6 +5653,8 @@ export const CribbageMobileGameTable = ({
       }
     }
 
+    const actionRoundId = currentRoundId;
+    const actionHandKey = currentHandKey;
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
 
@@ -5666,7 +5681,7 @@ export const CribbageMobileGameTable = ({
       /* animation is best-effort; never block gameplay */
     }
 
-    setIsProcessing(true);
+    setProcessingHandKey(actionHandKey);
     try {
       // Atomic server-side merge: prevents lost-update races between two players
       // discarding simultaneously. Server locks the round row, validates phase
@@ -5689,6 +5704,13 @@ export const CribbageMobileGameTable = ({
       const merged = mergedRaw as unknown as CribbageState;
       if (!merged) return;
 
+      if (!isCribbageActionResponseCurrent(actionRoundId, roundIdLatchRef.current)) {
+        // The server may have committed this discard before the hand advanced,
+        // but its late response is historical locally. The exact-round loader
+        // for the successor owns hydration from here.
+        return;
+      }
+
       // Promote authoritative state immediately
       syncHandle.receiveAuthoritativeUpdate(merged);
       setCribbageState(merged);
@@ -5697,9 +5719,11 @@ export const CribbageMobileGameTable = ({
       console.error('[CRIBBAGE] handleDiscard error:', err);
       toast.error((err as Error).message);
     } finally {
-      setIsProcessing(false);
+      setProcessingHandKey((activeHandKey) => (
+        activeHandKey === actionHandKey ? null : activeHandKey
+      ));
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx, enqueueDiscardIntent, evaluateWriterIdentity]);
+  }, [cribbageState, currentPlayerId, currentRoundId, currentHandKey, debugCtx, enqueueDiscardIntent, evaluateWriterIdentity]);
 
   // Task C1 — detect opponent discardedToCrib growth and fire an
   // opponent-mode overlay flight from their seat stack → crib center.

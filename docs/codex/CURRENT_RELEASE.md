@@ -1,6 +1,16 @@
 # Current release and cutover state
 
-Date: 2026-09-01
+Date: 2026-09-02
+
+## Cribbage successor-hand discard isolation — published
+
+- A delayed discard response is now scoped to the hand that issued it. Once a
+  successor round is current, that old request cannot leave its processing
+  latch on the new hand or replace the new hand's authoritative/presentation
+  state.
+- The production failure trace showed the stale processing latch, not a rules,
+  settlement, or writer-identity failure. Existing stale-action admission
+  protections remain fail-closed.
 
 ## Cribbage rejoin terminal and discard-hydration recovery — published
 
