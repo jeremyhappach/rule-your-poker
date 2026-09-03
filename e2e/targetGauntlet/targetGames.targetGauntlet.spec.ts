@@ -13,6 +13,7 @@ import {
   createTwoClientSession,
   enterDealerGameUnderChaos,
   type TwoClientSession,
+  waitForDealerGameSetupOwner,
 } from '../liveness/support/twoClientSession';
 import { authoritativeDealerGameId, requestLastHand, TERMINAL_EXPECTATIONS } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
@@ -402,6 +403,35 @@ async function exercise357(
   return { first, completed, openingCards };
 }
 
+async function assertThreeFiveSevenPostgameHandoff(session: TwoClientSession): Promise<JsonObject> {
+  const { data: committedConfig, error } = await session.cleanupClient
+    .from('games')
+    .select('ante_amount,leg_value,legs_to_win,rollover_amount')
+    .eq('id', session.gameId)
+    .single();
+  if (error || !committedConfig) {
+    throw new Error(`Could not read the committed 3-5-7 config: ${error?.message ?? 'missing game'}`);
+  }
+
+  const setupOwner = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
+  const peer = setupOwner === session.hostPage ? session.peerPage : session.hostPage;
+  await expect(peer.getByText(/configuring next game/i)).toBeVisible();
+  await expect(peer.locator(decisionSurface)).toHaveCount(0);
+
+  await setupOwner.locator('[data-dealer-game-option="3-5-7"]').click();
+  const config = setupOwner.locator('[data-dealer-game-setup-step="config"]');
+  await expect(config).toBeVisible();
+  await expect(config.locator('#ante-357')).toHaveValue(String(committedConfig.ante_amount));
+  await expect(config.locator('#leg-value')).toHaveValue(String(committedConfig.leg_value));
+  await expect(config.locator('#legs-to-win')).toHaveValue(String(committedConfig.legs_to_win));
+  await expect(config.locator('#rollover-357')).toHaveValue(String(committedConfig.rollover_amount));
+
+  return {
+    setupOwner: setupOwner === session.hostPage ? 'host' : 'peer',
+    config: committedConfig,
+  };
+}
+
 test.describe('production fake-money target rule gauntlet', () => {
   for (const scenario of scenarios) {
     test(scenario.id, async ({ browser }, info) => {
@@ -451,6 +481,9 @@ test.describe('production fake-money target rule gauntlet', () => {
           : scenario.gameType === 'holm-game'
             ? await exerciseHolm(scenario, session, dealerGameId)
             : await exercise357(scenario, session, probe, dealerGameId);
+        if (scenario.id === '357-terminal-postgame-handoff') {
+          evidence.postgameHandoff = await assertThreeFiveSevenPostgameHandoff(session);
+        }
         if (fixtureArmed) {
           const { data, error } = await session.cleanupClient.rpc(
             'get_target_rule_branch_harness' as never,
