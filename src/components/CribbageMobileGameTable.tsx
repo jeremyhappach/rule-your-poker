@@ -104,6 +104,7 @@ import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { recordCribbageLivenessTrace } from '@/lib/cribbage/livenessTrace';
 import { getMsSinceVisibilityResume, getRealtimeStatus } from '@/lib/resumeSignals';
 import {
   createLatestAuthoritativeLoader,
@@ -4511,17 +4512,40 @@ export const CribbageMobileGameTable = ({
     let cancelled = false;
 
     const dealerSelectionLoader = createLatestAuthoritativeLoader<DealerSelectionState | null>({
-      load: async () => {
-        const { data, error } = await supabase
-          .from('games')
-          .select('dealer_selection_state')
-          .eq('id', gameId)
-          .maybeSingle();
-        if (error) throw error;
-        return (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+      load: async (source) => {
+        const startedAt = Date.now();
+        recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.started', { source });
+        try {
+          const { data, error } = await supabase
+            .from('games')
+            .select('dealer_selection_state')
+            .eq('id', gameId)
+            .maybeSingle();
+          if (error) throw error;
+          const state = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+          recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.finished', {
+            source,
+            durationMs: Date.now() - startedAt,
+            hasState: !!state,
+            isComplete: state?.isComplete ?? null,
+          });
+          return state;
+        } catch (error) {
+          recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.failed', {
+            source,
+            durationMs: Date.now() - startedAt,
+            message: error instanceof Error ? error.message.slice(0, 180) : 'non-error',
+          });
+          throw error;
+        }
       },
       apply: (raw, source) => {
         if (cancelled) return;
+        recordCribbageLivenessTrace('cribbage.dealer_selection_snapshot.applied', {
+          source,
+          hasState: !!raw,
+          isComplete: raw?.isComplete ?? null,
+        });
         // TRACE-2: log DB load (observation only)
         logDebugEvent({
           gameId,
@@ -4578,6 +4602,11 @@ export const CribbageMobileGameTable = ({
         }
       )
       .subscribe((status, err) => {
+        recordCribbageLivenessTrace('cribbage.dealer_selection_realtime.status', {
+          status,
+          hasError: !!err,
+          message: err instanceof Error ? err.message.slice(0, 180) : err ? String((err as any)?.message ?? 'non-error').slice(0, 180) : null,
+        });
         handleAuthoritativeRealtimeStatus(status, err, {
           source: `cribbage-dealer-selection-${gameId}`,
           catchUp: dealerSelectionLoader.refresh,
@@ -5354,8 +5383,34 @@ export const CribbageMobileGameTable = ({
     };
 
     const exactStateLoader = createLatestAuthoritativeLoader({
-      load: async () => fetchCribbageState(currentRoundId),
-      apply: (newState, source) => handleStateUpdate(newState, source),
+      load: async (source) => {
+        const startedAt = Date.now();
+        recordCribbageLivenessTrace('cribbage.private_state_fetch.started', { source });
+        try {
+          const state = await fetchCribbageState(currentRoundId);
+          recordCribbageLivenessTrace('cribbage.private_state_fetch.finished', {
+            source,
+            durationMs: Date.now() - startedAt,
+            phase: state?.phase ?? null,
+          });
+          return state;
+        } catch (error) {
+          recordCribbageLivenessTrace('cribbage.private_state_fetch.failed', {
+            source,
+            durationMs: Date.now() - startedAt,
+            message: error instanceof Error ? error.message.slice(0, 180) : 'non-error',
+          });
+          throw error;
+        }
+      },
+      apply: (newState, source) => {
+        recordCribbageLivenessTrace('cribbage.private_state_snapshot.applied', {
+          source,
+          phase: newState?.phase ?? null,
+          hasCurrentTurn: !!newState?.pegging?.currentTurnPlayerId,
+        });
+        handleStateUpdate(newState, source);
+      },
       onError: (error, source) => {
         console.warn('[CRIBBAGE_REALTIME] Private-state fetch failed:', { source, error });
       },
@@ -5375,10 +5430,18 @@ export const CribbageMobileGameTable = ({
           filter: `id=eq.${currentRoundId}`,
         },
         () => {
+          recordCribbageLivenessTrace('cribbage.private_state_realtime.payload', {
+            roundId: currentRoundId,
+          });
           void exactStateLoader.refresh('realtime-refetch');
         }
       )
       .subscribe((status, err) => {
+        recordCribbageLivenessTrace('cribbage.private_state_realtime.status', {
+          status,
+          hasError: !!err,
+          message: err instanceof Error ? err.message.slice(0, 180) : err ? String((err as any)?.message ?? 'non-error').slice(0, 180) : null,
+        });
         handleAuthoritativeRealtimeStatus(status, err, {
           source: `cribbage-private-${currentRoundId}`,
           catchUp: exactStateLoader.refresh,

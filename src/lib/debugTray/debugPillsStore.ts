@@ -43,7 +43,8 @@ export type DebugPillKey =
   | 'holmDealDbg'
   | 'bucksOverlay'
   | 'communityExport'
-  | 'r1Snapback';
+  | 'r1Snapback'
+  | 'cribbageLiveness';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -82,22 +83,28 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
   { key: 'communityExport', abbreviation: 'COMM EXPORT', fullName: 'Community Export', description: 'Holm community-card landing export pill (one-tap download of the retained wartime buffer slice).' },
   { key: 'r1Snapback', abbreviation: 'R1 SNAPBACK', fullName: 'R1 Snapback Recording', description: 'Manual 3-5-7 R1 opponent showdown snapback recorder. Pill only appears while a marked R1 3-card row is mounted. ARM begins an 8-second bounded recording (MutationObserver + ResizeObserver + rAF) on the marked row and three card hosts; EXPORT downloads the captured stream as 357-r1-snapback-recording-<ts>.txt.' },
+  { key: 'cribbageLiveness', abbreviation: 'CRIB TRACE', fullName: 'Cribbage Liveness Trace', description: 'Player-operated, refresh-safe Cribbage connection recorder. Start/Stop stays local; Send uploads one bounded debug_events incident capsule.' },
 
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
 
 type Enabled = Partial<Record<DebugPillKey, boolean>>;
+// The liveness recorder must be reachable from a phone during an incident;
+// unlike visual-development panels, it is intentionally available by default
+// only while a Cribbage route supplies an identity. Disable All or its normal
+// Admin toggle still hides it for a device.
+const DEFAULT_ENABLED: Enabled = { cribbageLiveness: true };
 
 function readLS(): Enabled {
-  if (typeof window === 'undefined') return {};
+  if (typeof window === 'undefined') return DEFAULT_ENABLED;
   try {
     const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return {};
+    if (!raw) return DEFAULT_ENABLED;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') return parsed as Enabled;
+    if (parsed && typeof parsed === 'object') return { ...DEFAULT_ENABLED, ...(parsed as Enabled) };
   } catch { /* noop */ }
-  return {};
+  return DEFAULT_ENABLED;
 }
 
 function writeLS(state: Enabled): void {

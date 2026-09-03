@@ -451,6 +451,12 @@ import { BUILD_IDENTITY } from "@/lib/buildIdentity";
 
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
+import {
+  clearCribbageLivenessTraceIdentity,
+  isCribbageLivenessTraceForGame,
+  recordCribbageLivenessTrace,
+  setCribbageLivenessTraceIdentity,
+} from "@/lib/cribbage/livenessTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { useDebugHarness } from "@/lib/debugHarness/useDebugHarness";
 
@@ -3113,7 +3119,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       activeGameComponent: game?.status === 'in_progress' ? 'Game' : null,
       waitingTableComponent: game?.status !== 'in_progress' ? 'Game.waiting-shell' : null,
     });
-  }, [gameId, normalShellSessionId, user?.id, mobileActiveTab, game?.status, game?.game_type, (game as any)?.current_game_uuid]);
+    if (game?.game_type === 'cribbage') {
+      setCribbageLivenessTraceIdentity({
+        gameId: gameId ?? null,
+        dealerGameId: (game as any)?.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+        handNumber: game.total_hands ?? null,
+        phase: currentRound?.status ?? game.status ?? null,
+        gameStatus: game.status ?? null,
+        viewerUserId: user?.id ?? null,
+      });
+    } else if (game) {
+      clearCribbageLivenessTraceIdentity();
+    }
+  }, [gameId, normalShellSessionId, user?.id, mobileActiveTab, game?.status, game?.game_type, game?.total_hands, (game as any)?.current_game_uuid, currentRound?.id, currentRound?.status]);
 
   useEffect(() => {
     recordConsumerSubscription({
@@ -9179,6 +9198,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const fetchStartedAt = Date.now();
+    const traceCribbageFetch = isCribbageLivenessTraceForGame(gameId);
+    let cribbageFetchOutcome = 'completed';
+    if (traceCribbageFetch) {
+      recordCribbageLivenessTrace('game.authoritative_fetch.started', {
+        source: fetchTrigger,
+        fetchSequence: fetchSeq,
+        statusBefore: game?.status ?? null,
+        roundBefore: currentRound?.id ?? null,
+      });
+    }
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
 
@@ -9268,6 +9297,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
     if (!gameId) {
+      cribbageFetchOutcome = 'no_game_id';
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
         file: 'src/pages/Game.tsx',
         function: 'fetchGameData',
@@ -9433,6 +9463,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
+      cribbageFetchOutcome = 'superseded';
       console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
       finishFetchTrace('superseded_after_parallel_fetch', 'stale_after_parallel_fetch');
       return;
@@ -9446,6 +9477,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // cold-mount and foreground checks confirm absence after recovery.
         console.log('[FETCH] missing-game-fetch-deferred (awaiting authoritative removal or foreground confirm)');
         if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
+        cribbageFetchOutcome = 'game_query_missing_deferred';
         finishFetchTrace('returned_game_error', 'game_query_missing_deferred');
         return false;
       }
@@ -9458,6 +9490,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
       if (!hasHydratedRef.current) setBootstrapRecoveryPending(true);
+      cribbageFetchOutcome = 'no_game_data';
       finishFetchTrace('returned_no_game_data', 'game_query_no_data');
       return false;
     }
@@ -10313,6 +10346,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setGame((previous) => previous
       ? mergeAuthoritativeGameState(previous, gameDataToApply)
       : gameDataToApply);
+    if (traceCribbageFetch && gameData.game_type === 'cribbage') {
+      recordCribbageLivenessTrace('game.authoritative_snapshot.applied', {
+        source: fetchTrigger,
+        fetchSequence: fetchSeq,
+        gameStatus: gameData.status ?? null,
+        dealerGameId: (gameData as any)?.current_game_uuid ?? null,
+        totalHands: gameData.total_hands ?? null,
+        roundIds: Array.isArray((gameData as any)?.rounds)
+          ? (gameData as any).rounds.map((round: any) => round?.id ?? null).filter(Boolean).slice(0, 3)
+          : [],
+        queryTimings: queryTimings.map(({ name, elapsedMs, error }) => ({ name, elapsedMs, error })),
+      });
+    }
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
       fetchSeq,
       offsetMs: Date.now() - fetchStartedAt,
@@ -10961,6 +11007,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     );
     return true;
     } catch (error) {
+      cribbageFetchOutcome = 'exception';
       finishFetchTrace('threw_exception', 'catch:fetchGameData_exception', {
         gameErrorMessage: error instanceof Error ? error.message : String(error),
       });
@@ -10968,6 +11015,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.warn('[FETCH] Authoritative snapshot failed; recovery remains armed', error);
       return false;
     } finally {
+      if (traceCribbageFetch) {
+        recordCribbageLivenessTrace('game.authoritative_fetch.finished', {
+          source: fetchTrigger,
+          fetchSequence: fetchSeq,
+          durationMs: Date.now() - fetchStartedAt,
+          outcome: cribbageFetchOutcome,
+        });
+      }
       if (!fetchTraceFinished) {
         finishFetchTrace('completed_other', 'finally:missing_terminal_outcome');
       }
