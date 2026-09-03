@@ -2,7 +2,7 @@
 
 Date: 2026-09-03
 
-## 3-5-7 current-round decision admission — candidate
+## 3-5-7 current-round decision admission — published
 
 - The Drop/Stay rail could reopen during an R1→R2 or R2→R3 transition while
   the table still rendered cached cards from the prior round. The stale cache
@@ -15,7 +15,12 @@ Date: 2026-09-03
   decision surface from visibly reappearing over stale cards.
 
 Validation: focused decision-envelope regression suite, TypeScript, and
-development production build passed. Published smoke remains required.
+development production build passed. Published fake-money two-client
+progression smoke then passed at commit `a6433fcec`: R1/R2/R3 each admitted
+their exact 3/5/7-card hand and both clients completed the matching decision
+surface before the successor. Fixture consumption and cleanup of exact session
+`93758a66-b8ca-44eb-b801-8c2c03b89200` were verified. This validates the
+current-round action seam only, not full 3-5-7 coverage.
 
 ## Game-route trace identity initialization — published
 
