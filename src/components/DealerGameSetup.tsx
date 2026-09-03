@@ -31,6 +31,10 @@ import {
   type DealerGameType,
 } from "@/lib/dealerGameSetupAuthority";
 import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
+import {
+  resolveSelectedCardGameConfig,
+  type CardGameDefaults,
+} from "@/lib/dealerGameSetup/cardGameSelection";
 
 /**
  * Every game id that can appear in dealer setup. Harness state for each id is
@@ -142,19 +146,7 @@ interface DealerGameSetupProps {
   onSitOut?: () => void; // Callback when dealer chooses to sit out
 }
 
-interface GameDefaults {
-  ante_amount: number;
-  rollover_amount: number;
-  leg_value: number;
-  legs_to_win: number;
-  pussy_tax_enabled: boolean;
-  pussy_tax_value: number;
-  pot_max_enabled: boolean;
-  pot_max_value: number;
-  chucky_cards: number;
-  rabbit_hunt: boolean;
-  reveal_at_showdown: boolean;
-}
+type GameDefaults = CardGameDefaults;
 
 const dealerSetupFailureMessage = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
@@ -294,37 +286,11 @@ const DealerGameSetupInner = ({
 
 
 
-  // Fetch defaults for both game types on mount
+  // Fetch defaults for both card games on mount. A prior dealer-game config is
+  // a Run It Back snapshot, not input for a different game's editable form.
+  // In particular, Cribbage/Yahtzee legitimately persist zero-valued leg
+  // fields that must never briefly become a new 3-5-7 configuration.
   useEffect(() => {
-    // Session-owned config is already authoritative input. Apply it before
-    // any optional defaults request so a stalled network read cannot withhold
-    // either the setup form or the correct prior values.
-    if (previousGameConfig) {
-      console.log('[DEALER SETUP] Using previous game config:', previousGameConfig);
-      setAnteAmount(String(previousGameConfig.ante_amount));
-      setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
-      setLegValue(String(previousGameConfig.leg_value));
-      setLegsToWin(String(previousGameConfig.legs_to_win));
-      setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
-      setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
-      setPotMaxEnabled(previousGameConfig.pot_max_enabled);
-      setPotMaxValue(String(previousGameConfig.pot_max_value));
-      setChuckyCards(String(previousGameConfig.chucky_cards));
-      setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
-      setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
-      if (previousGameConfig.cribbage_game_mode) {
-        setCribbageGameMode(previousGameConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
-      }
-      if (previousGameConfig.skunk_enabled !== undefined) {
-        setSkunksEnabled(previousGameConfig.skunk_enabled);
-      }
-      if (previousGameConfig.custom_points_to_win !== undefined) {
-        setCustomPointsToWin(String(previousGameConfig.custom_points_to_win));
-      }
-      setLoadingDefaults(false);
-      return;
-    }
-
     let cancelled = false;
     setLoadingDefaults(true);
     const fetchAllDefaults = async () => {
@@ -342,7 +308,8 @@ const DealerGameSetupInner = ({
           setThreeFiveSevenDefaults(threeFiveSevenResult.data);
         }
 
-        // Apply defaults based on previousGameType or default to holm.
+        // Preload a neutral card-game form only. The selected game's exact
+        // config is applied by handleGameSelect below, after it has resolved.
         const initialGameType = previousGameType || 'holm-game';
         if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
           if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
@@ -364,7 +331,7 @@ const DealerGameSetupInner = ({
     return () => {
       cancelled = true;
     };
-  }, [previousGameType, previousGameConfig]);
+  }, [previousGameType]);
 
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {
@@ -379,55 +346,6 @@ const DealerGameSetupInner = ({
     setChuckyCards(String(defaults.chucky_cards));
     setRabbitHunt(defaults.rabbit_hunt ?? false);
     setRevealAtShowdown(defaults.reveal_at_showdown ?? false);
-  };
-
-  // Update config when a card game is selected - PRIORITY: session config > global defaults
-  // Applies to card games (holm-game, 3-5-7, cribbage) - dice games don't have persistent configs
-  const handleGameTypeChange = (gameType: string) => {
-    setSelectedGameType(gameType);
-    
-    // Card games with session config persistence
-    if (gameType === 'holm-game' || gameType === '3-5-7' || gameType === 'cribbage') {
-      const sessionConfig = sessionGameConfigs?.[gameType];
-      
-      // PRIORITY 1: Use session-specific config if available (remembers settings from earlier in session)
-      if (sessionConfig && sessionConfig.game_type === gameType) {
-        console.log('[DEALER SETUP] Using session config for', gameType, ':', sessionConfig);
-        setAnteAmount(String(sessionConfig.ante_amount));
-        setRolloverAmount(String(sessionConfig.rollover_amount ?? 1));
-        setLegValue(String(sessionConfig.leg_value));
-        setLegsToWin(String(sessionConfig.legs_to_win));
-        setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
-        setPussyTaxValue(String(sessionConfig.pussy_tax_value));
-        setPotMaxEnabled(sessionConfig.pot_max_enabled);
-        setPotMaxValue(String(sessionConfig.pot_max_value));
-        setChuckyCards(String(sessionConfig.chucky_cards));
-        setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
-        setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
-        
-        // Apply cribbage-specific settings if present
-        if (gameType === 'cribbage') {
-          if (sessionConfig.cribbage_game_mode) {
-            setCribbageGameMode(sessionConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
-          }
-          if (sessionConfig.skunk_enabled !== undefined) {
-            setSkunksEnabled(sessionConfig.skunk_enabled);
-          }
-          if (sessionConfig.custom_points_to_win !== undefined) {
-            setCustomPointsToWin(String(sessionConfig.custom_points_to_win));
-          }
-        }
-        return;
-      }
-      
-      // PRIORITY 2: Fall back to global defaults
-      const defaults = gameType === 'holm-game' ? holmDefaults : 
-                       gameType === '3-5-7' ? threeFiveSevenDefaults : null;
-      if (defaults) {
-        console.log('[DEALER SETUP] Using global defaults for', gameType);
-        applyDefaults(defaults);
-      }
-    }
   };
 
   // Handle dealer timeout - mark as sitting out and re-evaluate
@@ -995,13 +913,45 @@ const DealerGameSetupInner = ({
       return;
     }
     
+    // A card configuration must be fully resolved before its form appears.
+    // Otherwise a prior non-card game can donate its zero-valued fields to a
+    // 3-5-7/Holm form for one render or until the defaults request completes.
+    if (gameType === 'holm-game' || gameType === '3-5-7') {
+      const sessionConfig = sessionGameConfigs?.[gameType];
+      let defaults = resolveSelectedCardGameConfig(
+        gameType,
+        sessionConfig,
+        gameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults,
+      );
+      if (defaults) {
+        applyDefaults(defaults);
+      } else {
+
+        const { data, error } = await supabase
+          .from('game_defaults')
+          .select('*')
+          .eq('game_type', gameType === 'holm-game' ? 'holm' : '3-5-7')
+          .single();
+        if (error || !data) {
+          toast.error(`Could not load ${gameType === 'holm-game' ? 'Holm' : '3-5-7'} settings`);
+          return;
+        }
+        defaults = data;
+        if (gameType === 'holm-game') {
+          setHolmDefaults(data);
+        } else {
+          setThreeFiveSevenDefaults(data);
+        }
+        applyDefaults(defaults);
+      }
+      setSelectedGameType(gameType);
+      setSelectionStep('config');
+      return;
+    }
+
     setSelectedGameType(gameType);
     setSelectionStep('config');
-    
-    // For card games with complex config, load session config or defaults
-    if (gameType === 'holm-game' || gameType === '3-5-7') {
-      handleGameTypeChange(gameType);
-    } else if (isSimpleAnteGame(gameType)) {
+    if (isSimpleAnteGame(gameType)) {
       // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
