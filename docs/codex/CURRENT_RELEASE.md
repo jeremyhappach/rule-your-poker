@@ -2,7 +2,7 @@
 
 Date: 2026-09-03
 
-## Game-route trace identity initialization — release candidate
+## Game-route trace identity initialization — published
 
 - The universal freeze-trace identity writer now runs only after the route has
   initialized `currentRound`. The prior placement evaluated that identifier in
@@ -13,6 +13,16 @@ Date: 2026-09-03
   ordering regression contract now prevents the forward reference.
 
 Validation: focused trace/order suite, TypeScript, and production build passed.
+Published commit `5b7fec0d3` is live on `holm357.com` as bundle
+`assets/index-TMwRJ27e.js`. Its production fake-money rerun then passed all
+three Cribbage count-chaos rows under long-haul jitter, forced radio loss,
+delayed frames, and mobile peer reloads: pegging/counting branches,
+phase-rejoin matrix, and fifteen/flush/nobs counting. The exact sessions
+`047101da-7343-414a-8821-2eefa627aa61`,
+`ad9f2df2-bad6-4e1e-a1d9-252d288c7d6e`, and
+`7687a234-bff2-407c-a1f6-d7ca301997b7` were cleanup-verified. This validates
+the covered paths only; it does not establish full Cribbage coverage or yet
+explain a player-specific live freeze.
 
 ## Universal Game Freeze Trace — published
 
