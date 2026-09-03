@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isThreeFiveSevenDecisionSurfaceEnvelopeOpen } from './decisionSurfaceEnvelope';
+import {
+  isThreeFiveSevenCurrentRoundHandReady,
+  isThreeFiveSevenDecisionSurfaceEnvelopeOpen,
+} from './decisionSurfaceEnvelope';
 
 const playable = {
   canDecide: true,
@@ -30,5 +33,33 @@ describe('3-5-7 decision surface envelope', () => {
     ['auto-fold', { autoFold: true }],
   ])('stays closed for %s', (_label, patch) => {
     expect(isThreeFiveSevenDecisionSurfaceEnvelopeOpen({ ...playable, ...patch })).toBe(false);
+  });
+
+  it.each([
+    [1, 3],
+    [2, 5],
+    [3, 7],
+  ])('admits only the exact current-round hand for round %i', (roundNumber, cardCount) => {
+    expect(isThreeFiveSevenCurrentRoundHandReady({
+      roundNumber,
+      rawCardCount: cardCount,
+      presentedCardCount: cardCount,
+    })).toBe(true);
+  });
+
+  it('rejects a cached Round 1 hand while Round 2 is awaiting its five-card frame', () => {
+    expect(isThreeFiveSevenCurrentRoundHandReady({
+      roundNumber: 2,
+      rawCardCount: 0,
+      presentedCardCount: 3,
+    })).toBe(false);
+  });
+
+  it('rejects any raw/presented card-count disagreement', () => {
+    expect(isThreeFiveSevenCurrentRoundHandReady({
+      roundNumber: 3,
+      rawCardCount: 7,
+      presentedCardCount: 5,
+    })).toBe(false);
   });
 });

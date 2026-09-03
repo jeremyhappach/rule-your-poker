@@ -1,7 +1,10 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
-import { isThreeFiveSevenDecisionSurfaceEnvelopeOpen } from "@/lib/threeFiveSeven/decisionSurfaceEnvelope";
+import {
+  isThreeFiveSevenCurrentRoundHandReady,
+  isThreeFiveSevenDecisionSurfaceEnvelopeOpen,
+} from "@/lib/threeFiveSeven/decisionSurfaceEnvelope";
 import {
   canAdmitThreeFiveSevenTerminalPresentation,
   isThreeFiveSevenAuthoritativeFallbackReady as isThreeFiveSevenAuthoritativeFallbackReadyForLiveHand,
@@ -6295,19 +6298,17 @@ export const MobileGameTable = ({
     // dealerGameId, or handContextId disagrees with the active
     // identity, discard the cached cards BEFORE any read below.
     //
-    // roundId is captured on the tuple for identity parity but is
-    // deliberately excluded from this predicate. Within-hand round
-    // progression (R1→R2→R3) keeps handNumber, dealerGameId, and
-    // handContextId fixed for 3-5-7 (handContextId = `${dg}#h${N}`),
-    // so this invalidator does not fire and the staged-round-floor
-    // path below remains reachable unchanged.
+    // roundId is captured on the tuple for identity parity. The route passes
+    // the exact round identity as handContextId, so a 3-5-7 R1→R2→R3
+    // transition must invalidate the prior private-card cache just like a
+    // new hand does.
     //
     // This is the sole correction for the H1→H2 5-card survivor bug:
     // the Priority-1 branch used to greedily re-cache whatever the
     // parent's playerCards prop happened to hold when handContextId
     // rotated, even if that array was the stale H1R2 5-card row.
     // The invalidator below runs first and clears the tuple so no
-    // reader (Priority-1, holm-completed, staged-round-floor,
+    // reader (Priority-1, holm-completed,
     // same-hand fingerprint) can hand back the stale H1 array.
     // ─────────────────────────────────────────────────────────────────
     {
@@ -6414,13 +6415,7 @@ export const MobileGameTable = ({
 
       if (handContextId !== cachedHandContextId) {
         // Case 1: handContextId changed — new hand boundary.
-        if (__is357GameType(gameType) && (currentRound ?? 0) > 1 && cachedCards.length > 0) {
-          const stagedCards = rawCurrentPlayerCards.length >= cachedCards.length ? rawCurrentPlayerCards : cachedCards;
-          if (rawCurrentPlayerCards.length >= cachedCards.length) {
-            currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
-          }
-          chosen = { source: '357-staged-round-floor', cards: stagedCards };
-        } else if (rawCurrentPlayerCards.length > 0) {
+        if (rawCurrentPlayerCards.length > 0) {
           currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
           chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
         } else {
@@ -7076,6 +7071,12 @@ export const MobileGameTable = ({
   const threeFiveSevenDecisionPresentationGate = __is357GameType(gameType)
     ? threeFiveSevenDealPresentationReady
     : true;
+  const threeFiveSevenCurrentRoundHandReady = !__is357GameType(gameType)
+    || isThreeFiveSevenCurrentRoundHandReady({
+      roundNumber: currentRound,
+      rawCardCount: rawCurrentPlayerCards.length,
+      presentedCardCount: currentPlayerCards.length,
+    });
   // The decision rail and controls form one authoritative envelope. A 3-5-7
   // hand can arrive before its same-frame deadline/timer presentation has
   // committed; it is not actionable until that timer is visible and live.
@@ -7087,7 +7088,7 @@ export const MobileGameTable = ({
       && !!maxTime
       && !!timerEpoch
     );
-  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen && threeFiveSevenDecisionPresentationGate;
+  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen && threeFiveSevenDecisionPresentationGate && threeFiveSevenCurrentRoundHandReady;
   const decisionSurfaceEnvelopeOpen = __is357GameType(gameType)
     ? isThreeFiveSevenDecisionSurfaceEnvelopeOpen({
         canDecide: !!canDecide,
@@ -7140,6 +7141,7 @@ export const MobileGameTable = ({
     if (!holmDecisionGate) return 'holmDecisionGate';
     if (!threeFiveSevenDecisionBoundaryOpen) return 'threeFiveSevenDecisionBoundaryOpen';
     if (!threeFiveSevenDecisionPresentationGate) return 'threeFiveSevenDecisionPresentationGate';
+    if (!threeFiveSevenCurrentRoundHandReady) return 'threeFiveSevenCurrentRoundHandReady';
     return 'no_matching_branch';
   };
   const evaluateLowerZoneOwner = (): { renderedOwner: LowerZoneRenderedOwner; reason: string | null } => {

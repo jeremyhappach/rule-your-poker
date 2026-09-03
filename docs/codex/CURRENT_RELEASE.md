@@ -2,6 +2,21 @@
 
 Date: 2026-09-03
 
+## 3-5-7 current-round decision admission — candidate
+
+- The Drop/Stay rail could reopen during an R1→R2 or R2→R3 transition while
+  the table still rendered cached cards from the prior round. The stale cache
+  met the generic card-presence condition even though the exact current-round
+  hand had not arrived.
+- The rail now fails closed until raw and presented private-card counts both
+  match the current authoritative round (3, 5, or 7), and the prior-round
+  cache is no longer reused across a 3-5-7 round identity boundary. This
+  preserves legitimate new-round decisions while preventing a committed
+  decision surface from visibly reappearing over stale cards.
+
+Validation: focused decision-envelope regression suite, TypeScript, and
+development production build passed. Published smoke remains required.
+
 ## Game-route trace identity initialization — published
 
 - The universal freeze-trace identity writer now runs only after the route has
