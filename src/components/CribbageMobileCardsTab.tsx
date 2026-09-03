@@ -627,13 +627,17 @@ export const CribbageMobileCardsTab = ({
   
   // Pre-discard: show 6 cards compactly; post-discard: show 4 cards relaxed
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
-  const expectsCribbageHumanAction = isPreDiscard || (
+  // A current authoritative phase may arrive before this hand's presentation
+  // identity is admitted. In that window the parent deliberately mounts a
+  // non-interactive opening-deal surface. It is not a missing action control,
+  // so do not turn the normal admission boundary into a recovery fetch.
+  const expectsCribbageHumanAction = !activeHandBlocked && (isPreDiscard || (
     cribbageState.phase === 'pegging'
     && isMyTurn
     && !!canPlayAnyCard
     && !peggingBoundaryBlocked
     && !selfPlayUnresolved
-  );
+  ));
   useAuthoritativeActionSurfaceGuard({
     expected: expectsCribbageHumanAction,
     gameId,
