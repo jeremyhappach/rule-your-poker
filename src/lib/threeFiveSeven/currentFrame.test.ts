@@ -164,6 +164,41 @@ describe('3-5-7 atomic current frame', () => {
     expect(frame.round).toBeNull();
   });
 
+  it('admits the authoritative game-over to next-dealer setup handoff', () => {
+    const base = rawFrame();
+    const current = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: { ...base.game, status: 'game_over' },
+      round: { ...base.round, status: 'completed' },
+    })), 12);
+    const nextDealerSetup = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame({
+      game: {
+        ...base.game,
+        status: 'game_selection',
+        current_game_uuid: null,
+        total_hands: 0,
+        current_round: null,
+      },
+      round: null,
+      player_cards: [],
+      viewer_cards_required: false,
+      viewer_cards_present: false,
+      identity: {
+        ...base.identity,
+        dealer_game_id: null,
+        hand_number: 0,
+        round_number: null,
+        round_id: null,
+        opening_transfer_required: false,
+        opening_transfer_cursor: null,
+      },
+    })), 13);
+
+    expect(acceptThreeFiveSevenFrame(current, nextDealerSetup)).toEqual({
+      accepted: true,
+      reason: 'terminal_postgame_handoff',
+    });
+  });
+
   it('rejects a late older request after the successor frame committed', () => {
     const current = frameCursor(parseThreeFiveSevenCurrentFrame(rawFrame()), 12);
     const latePrior = {

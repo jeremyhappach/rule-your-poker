@@ -35,7 +35,7 @@ export interface ThreeFiveSevenFrameCursor {
 }
 
 export type ThreeFiveSevenFrameAcceptance =
-  | { accepted: true; reason: 'first_frame' | 'newer_request' | 'forward_active_identity' | 'same_active_identity' }
+  | { accepted: true; reason: 'first_frame' | 'newer_request' | 'forward_active_identity' | 'same_active_identity' | 'terminal_postgame_handoff' }
   | { accepted: false; reason: 'older_request' | 'regressive_active_identity' | 'conflicting_active_round_id' | 'regressive_active_lifecycle' };
 
 export function isThreeFiveSevenGameType(gameType: unknown): boolean {
@@ -259,6 +259,20 @@ export function acceptThreeFiveSevenFrame(
     || incoming.status === 'game_selection'
     || incoming.status === 'configuring'
     || incoming.status === 'ante_decision';
+  // Postgame authority deliberately clears the outgoing dealer-game identity
+  // before opening the next dealer's setup. This is not a delayed pregame
+  // snapshot: it is the only valid game_over -> game_selection boundary and
+  // must replace the terminal frame on every connected client.
+  const terminalPostgameHandoff =
+    current.status === 'game_over'
+    && incoming.status === 'game_selection'
+    && incoming.dealerGameId === null
+    && incoming.handNumber === 0
+    && incoming.roundNumber === null
+    && incoming.roundId === null;
+  if (terminalPostgameHandoff) {
+    return { accepted: true, reason: 'terminal_postgame_handoff' };
+  }
   if (
     currentActive
     && incomingPregame
