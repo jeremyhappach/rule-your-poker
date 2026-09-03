@@ -3119,21 +3119,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       activeGameComponent: game?.status === 'in_progress' ? 'Game' : null,
       waitingTableComponent: game?.status !== 'in_progress' ? 'Game.waiting-shell' : null,
     });
-    if (game) {
-      setGameFreezeTraceIdentity({
-        gameId: gameId ?? null,
-        gameType: game.game_type ?? null,
-        dealerGameId: (game as any)?.current_game_uuid ?? null,
-        roundId: currentRound?.id ?? null,
-        handNumber: game.total_hands ?? null,
-        phase: currentRound?.status ?? game.status ?? null,
-        gameStatus: game.status ?? null,
-        viewerUserId: user?.id ?? null,
-      });
-    } else {
-      clearGameFreezeTraceIdentity();
-    }
-  }, [gameId, normalShellSessionId, user?.id, mobileActiveTab, game?.status, game?.game_type, game?.total_hands, (game as any)?.current_game_uuid, currentRound?.id, currentRound?.status]);
+  }, [gameId, normalShellSessionId, user?.id, mobileActiveTab, game?.status, game?.game_type, (game as any)?.current_game_uuid]);
 
   useEffect(() => {
     recordConsumerSubscription({
@@ -6733,6 +6719,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  useEffect(() => {
+    if (game) {
+      setGameFreezeTraceIdentity({
+        gameId: gameId ?? null,
+        gameType: game.game_type ?? null,
+        dealerGameId: (game as any)?.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+        handNumber: game.total_hands ?? null,
+        phase: currentRound?.status ?? game.status ?? null,
+        gameStatus: game.status ?? null,
+        viewerUserId: user?.id ?? null,
+      });
+    } else {
+      clearGameFreezeTraceIdentity();
+    }
+  }, [
+    gameId,
+    user?.id,
+    game?.status,
+    game?.game_type,
+    game?.total_hands,
+    (game as any)?.current_game_uuid,
+    currentRound?.id,
+    currentRound?.status,
+  ]);
 
   const threeFiveSevenRolloverPresentation = selectThreeFiveSevenRolloverPresentation(
     directThreeFiveSevenRolloverPresentation,

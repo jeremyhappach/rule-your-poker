@@ -2,6 +2,18 @@
 
 Date: 2026-09-03
 
+## Game-route trace identity initialization — release candidate
+
+- The universal freeze-trace identity writer now runs only after the route has
+  initialized `currentRound`. The prior placement evaluated that identifier in
+  a hook dependency list before its declaration and could crash a game route
+  with `Cannot access '<minified symbol>' before initialization`.
+- This is a startup-only placement correction. It changes no gameplay rule,
+  timer, network behavior, persistence, or trace controls. A focused source
+  ordering regression contract now prevents the forward reference.
+
+Validation: focused trace/order suite, TypeScript, and production build passed.
+
 ## Universal Game Freeze Trace — published
 
 - The prior Cribbage-only liveness recorder is replaced by one player-operated
