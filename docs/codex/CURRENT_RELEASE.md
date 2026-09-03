@@ -2,7 +2,7 @@
 
 Date: 2026-09-03
 
-## Universal Game Freeze Trace — release candidate
+## Universal Game Freeze Trace — published
 
 - The prior Cribbage-only liveness recorder is replaced by one player-operated
   `GAME TRACE` control for every active game. Visibility is controlled only by
@@ -19,8 +19,10 @@ Date: 2026-09-03
   outcome boundaries. No rules, timers, settlement, or persistent game state
   changed.
 
-Validation: the focused trace suite, TypeScript, and production build passed.
-Published runtime smoke remains the acceptance gate.
+Validation: focused trace suite, TypeScript, and production build passed.
+Commit `337bd62f5ee80f0155a289896c1e3faec75093c6` is published on
+`holm357.com` as bundle `assets/index-D20gbEMQ.js`. Player smoke remains the
+acceptance gate.
 
 ## 3-5-7 terminal decision-surface retirement — production checkpoint
 
