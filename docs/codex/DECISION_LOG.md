@@ -1,5 +1,16 @@
 # Durable decision log
 
+## D-112 — Freeze evidence is universal but player-operated
+
+The Game Freeze Trace is a shared, admin-visible diagnostic availability gate,
+not a harness or game-state owner. When Global Admin enables it, every active
+game exposes the same explicit Start/Stop/Send control to its player. Until a
+player starts it, it captures nothing; a bounded, card-free session buffer may
+survive a reload and is persisted only through one player-initiated
+`debug_events` send. Common route hydration evidence belongs to the universal
+recorder; game-specific producers may add bounded diagnostic events without
+changing polling, Realtime, timers, rules, or settlement.
+
 ## D-001 — Database is authoritative
 
 Gameplay, settlement, balances, snapshots, and persistent lifecycle truth live in Supabase/PostgreSQL. Client presentation may not become an alternate progression owner.

@@ -59,6 +59,7 @@ import {
 } from "@/lib/yahtzeeBotDebugStraight";
 import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
+import { recordGameFreezeTrace } from "@/lib/gameFreezeTrace";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
@@ -1266,11 +1267,22 @@ export function YahtzeeGameTable({
           }
 
           const requestedMask = [...intent.mask];
+          const holdStartedAt = Date.now();
+          recordGameFreezeTrace('yahtzee.hold.request.started', {
+            roundId: intent.roundId,
+            expectedActionSequence: currentState.actionSequence ?? 0,
+          });
           const result = await setYahtzeeHolds({
             roundId: intent.roundId,
             playerId: intent.playerId,
             holdMask: requestedMask,
             expectedActionSequence: currentState.actionSequence ?? 0,
+          });
+          recordGameFreezeTrace('yahtzee.hold.request.finished', {
+            roundId: intent.roundId,
+            durationMs: Date.now() - holdStartedAt,
+            outcome: result.outcome,
+            actionSequence: result.state.actionSequence ?? null,
           });
 
           // An old round's response has no authority over the newly mounted
@@ -1322,6 +1334,9 @@ export function YahtzeeGameTable({
           }
         }
       } catch (error) {
+        recordGameFreezeTrace('yahtzee.hold.request.failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
         const currentState = latestActionStateRef.current;
         const intent = holdIntentRef.current;
         const committedPlayerState = intent
@@ -1373,11 +1388,23 @@ export function YahtzeeGameTable({
       turnSeededKeyRef.current = turnKey;
       const isFirstRoll = myPs.rollsRemaining === 3;
       const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
+      const rollStartedAt = Date.now();
+      recordGameFreezeTrace('yahtzee.roll.request.started', {
+        roundId: currentRoundId,
+        expectedActionSequence: rawState.actionSequence ?? 0,
+        rollsRemaining: myPs.rollsRemaining,
+      });
       const result = await applyYahtzeeAction({
         roundId: currentRoundId,
         playerId: myPlayer.id,
         action: 'roll',
         expectedActionSequence: rawState.actionSequence ?? 0,
+      });
+      recordGameFreezeTrace('yahtzee.roll.request.finished', {
+        roundId: currentRoundId,
+        durationMs: Date.now() - rollStartedAt,
+        outcome: result.outcome,
+        actionSequence: result.state.actionSequence ?? null,
       });
       acceptCommittedState(result.state);
       const committedPs = result.state.playerStates[myPlayer.id];
@@ -1404,6 +1431,10 @@ export function YahtzeeGameTable({
         uiRollingTimerRef.current = null;
       }, duration);
     } catch (error) {
+      recordGameFreezeTrace('yahtzee.roll.request.failed', {
+        roundId: currentRoundId,
+        message: error instanceof Error ? error.message : String(error),
+      });
       console.error('[YAHTZEE] Authoritative roll failed', error);
       onRefetch();
     } finally {
@@ -1522,12 +1553,24 @@ export function YahtzeeGameTable({
       setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
       yahtzeeSync.freezePresentation();
       presentationFrozen = true;
+      const scoreStartedAt = Date.now();
+      recordGameFreezeTrace('yahtzee.score.request.started', {
+        roundId: currentRoundId,
+        category,
+        expectedActionSequence: rawState.actionSequence ?? 0,
+      });
       const result = await applyYahtzeeAction({
         roundId: currentRoundId,
         playerId: myPlayer.id,
         action: 'score',
         category,
         expectedActionSequence: rawState.actionSequence ?? 0,
+      });
+      recordGameFreezeTrace('yahtzee.score.request.finished', {
+        roundId: currentRoundId,
+        durationMs: Date.now() - scoreStartedAt,
+        outcome: result.outcome,
+        actionSequence: result.state.actionSequence ?? null,
       });
       acceptCommittedState(result.state);
       if (result.outcome === 'rejected') {
@@ -1554,6 +1597,10 @@ export function YahtzeeGameTable({
       setLocalDice(committedPs.dice);
       setLocalRollsRemaining(committedPs.rollsRemaining);
     } catch (error) {
+      recordGameFreezeTrace('yahtzee.score.request.failed', {
+        roundId: currentRoundId,
+        message: error instanceof Error ? error.message : String(error),
+      });
       console.error('[YAHTZEE] Authoritative score failed', error);
       onRefetch();
     } finally {

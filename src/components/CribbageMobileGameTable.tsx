@@ -104,7 +104,7 @@ import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
-import { recordCribbageLivenessTrace } from '@/lib/cribbage/livenessTrace';
+import { recordGameFreezeTrace } from '@/lib/gameFreezeTrace';
 import { getMsSinceVisibilityResume, getRealtimeStatus } from '@/lib/resumeSignals';
 import {
   createLatestAuthoritativeLoader,
@@ -4514,7 +4514,7 @@ export const CribbageMobileGameTable = ({
     const dealerSelectionLoader = createLatestAuthoritativeLoader<DealerSelectionState | null>({
       load: async (source) => {
         const startedAt = Date.now();
-        recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.started', { source });
+        recordGameFreezeTrace('cribbage.dealer_selection_fetch.started', { source });
         try {
           const { data, error } = await supabase
             .from('games')
@@ -4523,7 +4523,7 @@ export const CribbageMobileGameTable = ({
             .maybeSingle();
           if (error) throw error;
           const state = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-          recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.finished', {
+          recordGameFreezeTrace('cribbage.dealer_selection_fetch.finished', {
             source,
             durationMs: Date.now() - startedAt,
             hasState: !!state,
@@ -4531,7 +4531,7 @@ export const CribbageMobileGameTable = ({
           });
           return state;
         } catch (error) {
-          recordCribbageLivenessTrace('cribbage.dealer_selection_fetch.failed', {
+          recordGameFreezeTrace('cribbage.dealer_selection_fetch.failed', {
             source,
             durationMs: Date.now() - startedAt,
             message: error instanceof Error ? error.message.slice(0, 180) : 'non-error',
@@ -4541,7 +4541,7 @@ export const CribbageMobileGameTable = ({
       },
       apply: (raw, source) => {
         if (cancelled) return;
-        recordCribbageLivenessTrace('cribbage.dealer_selection_snapshot.applied', {
+        recordGameFreezeTrace('cribbage.dealer_selection_snapshot.applied', {
           source,
           hasState: !!raw,
           isComplete: raw?.isComplete ?? null,
@@ -4602,7 +4602,7 @@ export const CribbageMobileGameTable = ({
         }
       )
       .subscribe((status, err) => {
-        recordCribbageLivenessTrace('cribbage.dealer_selection_realtime.status', {
+        recordGameFreezeTrace('cribbage.dealer_selection_realtime.status', {
           status,
           hasError: !!err,
           message: err instanceof Error ? err.message.slice(0, 180) : err ? String((err as any)?.message ?? 'non-error').slice(0, 180) : null,
@@ -5385,17 +5385,17 @@ export const CribbageMobileGameTable = ({
     const exactStateLoader = createLatestAuthoritativeLoader({
       load: async (source) => {
         const startedAt = Date.now();
-        recordCribbageLivenessTrace('cribbage.private_state_fetch.started', { source });
+        recordGameFreezeTrace('cribbage.private_state_fetch.started', { source });
         try {
           const state = await fetchCribbageState(currentRoundId);
-          recordCribbageLivenessTrace('cribbage.private_state_fetch.finished', {
+          recordGameFreezeTrace('cribbage.private_state_fetch.finished', {
             source,
             durationMs: Date.now() - startedAt,
             phase: state?.phase ?? null,
           });
           return state;
         } catch (error) {
-          recordCribbageLivenessTrace('cribbage.private_state_fetch.failed', {
+          recordGameFreezeTrace('cribbage.private_state_fetch.failed', {
             source,
             durationMs: Date.now() - startedAt,
             message: error instanceof Error ? error.message.slice(0, 180) : 'non-error',
@@ -5404,7 +5404,7 @@ export const CribbageMobileGameTable = ({
         }
       },
       apply: (newState, source) => {
-        recordCribbageLivenessTrace('cribbage.private_state_snapshot.applied', {
+        recordGameFreezeTrace('cribbage.private_state_snapshot.applied', {
           source,
           phase: newState?.phase ?? null,
           hasCurrentTurn: !!newState?.pegging?.currentTurnPlayerId,
@@ -5430,14 +5430,14 @@ export const CribbageMobileGameTable = ({
           filter: `id=eq.${currentRoundId}`,
         },
         () => {
-          recordCribbageLivenessTrace('cribbage.private_state_realtime.payload', {
+          recordGameFreezeTrace('cribbage.private_state_realtime.payload', {
             roundId: currentRoundId,
           });
           void exactStateLoader.refresh('realtime-refetch');
         }
       )
       .subscribe((status, err) => {
-        recordCribbageLivenessTrace('cribbage.private_state_realtime.status', {
+        recordGameFreezeTrace('cribbage.private_state_realtime.status', {
           status,
           hasError: !!err,
           message: err instanceof Error ? err.message.slice(0, 180) : err ? String((err as any)?.message ?? 'non-error').slice(0, 180) : null,

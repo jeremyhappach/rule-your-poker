@@ -67,7 +67,7 @@ __wartimeRegisterHookApp({
 });
 __wartimeRegisterEmitterApp('global.error.origin', __WARTIME_SRC_APP.GLOBAL_ERROR_ORIGIN.id);
 import { DebugTray } from "@/lib/debugTray/DebugTray";
-import { CribbageLivenessTracePill } from "@/components/CribbageLivenessTracePill";
+import { GameFreezeTracePill } from "@/components/GameFreezeTracePill";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
 import { ReleaseProtectedGameRoute, ReleaseVersionGate } from "@/components/ReleaseVersionGate";
@@ -226,7 +226,7 @@ const App = () => {
               <LifecycleDebugBadge />
               {/* Tray always mounts; each pill self-gates its own visibility. */}
               <DebugTray>
-                <CribbageLivenessTracePill />
+                <GameFreezeTracePill />
                 <NetworkSimIndicator />
                 <DebugModeIndicator />
                 <FeltDebugPill />

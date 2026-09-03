@@ -29,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical, TimerOff } from "lucide-react";
 import { useNoTimersEnabled, setNoTimersEnabled } from "@/lib/geometryLab/noTimersStore";
+import { useGameFreezeTraceEnabled, setGameFreezeTraceEnabled } from "@/lib/gameFreezeTraceSetting";
 import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
 import {
   isWartimeEnabled,
@@ -656,6 +657,8 @@ const Index = () => {
                     {/* No Timers — global admin harness (sibling of Maintenance). */}
                     <NoTimersSettingRow />
 
+                    <GameFreezeTraceSettingRow />
+
                     {/* Harnesses (master gate for game-rule harness profiles) */}
                     <div className="flex items-center justify-between py-2 bg-red-900/20 rounded-lg px-3 border border-red-600/30">
                       <div className="space-y-0.5">
@@ -1053,6 +1056,45 @@ function NoTimersSettingRow() {
                 : "Normal timer behavior restored on the next tick."
               : "Failed to toggle No Timers.",
             variant: ok ? "default" : "destructive",
+          });
+        }}
+        className="data-[state=checked]:bg-slate-300"
+      />
+    </div>
+  );
+}
+
+function GameFreezeTraceSettingRow() {
+  const enabled = useGameFreezeTraceEnabled();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex items-center justify-between py-2 bg-slate-800/40 rounded-lg px-3 border border-slate-500/30">
+      <div className="space-y-0.5">
+        <Label htmlFor="game-freeze-trace" className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-slate-300" />
+          Game Freeze Trace
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Shows the player-operated GAME TRACE control in every active game. Independent of harnesses and Debug Tools; traces remain local until the player sends one incident capsule.
+        </p>
+      </div>
+      <Switch
+        id="game-freeze-trace"
+        checked={enabled}
+        disabled={busy}
+        onCheckedChange={async (next) => {
+          setBusy(true);
+          const ok = await setGameFreezeTraceEnabled(next);
+          setBusy(false);
+          toast({
+            title: ok ? (next ? 'Game Freeze Trace Enabled' : 'Game Freeze Trace Disabled') : 'Error',
+            description: ok
+              ? next
+                ? 'GAME TRACE is now available in every active game.'
+                : 'GAME TRACE is now hidden for all players.'
+              : 'Failed to toggle Game Freeze Trace.',
+            variant: ok ? 'default' : 'destructive',
           });
         }}
         className="data-[state=checked]:bg-slate-300"

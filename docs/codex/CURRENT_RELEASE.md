@@ -1,6 +1,26 @@
 # Current release and cutover state
 
-Date: 2026-09-02
+Date: 2026-09-03
+
+## Universal Game Freeze Trace — release candidate
+
+- The prior Cribbage-only liveness recorder is replaced by one player-operated
+  `GAME TRACE` control for every active game. Visibility is controlled only by
+  the new **Game Freeze Trace** switch in Global Admin Settings
+  (`system_settings.game_freeze_trace`); it does not depend on a harness, URL
+  flag, Global Debug Mode, or a device-local Debug Tools preference.
+- Recording remains explicitly started and stopped by the player, is bounded to
+  60 card-free entries in session storage, survives a normal reload, and sends
+  one incident capsule to `debug_events` only when the player taps Send. It
+  does not poll, retry, change Realtime behavior, or participate in gameplay.
+- Every game now records the common authoritative route fetch/snapshot
+  boundary while a trace is active. Cribbage retains its dealer-selection and
+  private-state evidence; Yahtzee adds hold, roll, and score RPC timing and
+  outcome boundaries. No rules, timers, settlement, or persistent game state
+  changed.
+
+Validation: the focused trace suite, TypeScript, and production build passed.
+Published runtime smoke remains the acceptance gate.
 
 ## 3-5-7 terminal decision-surface retirement — production checkpoint
 
