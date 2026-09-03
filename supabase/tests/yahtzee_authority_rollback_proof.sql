@@ -1,5 +1,8 @@
--- Run after the Yahtzee authority migration inside a caller-owned transaction.
--- The complete scheduled owner is invoked directly; all synthetic state rolls back.
+-- Self-contained rollback proof for the Yahtzee authority migration.
+-- The complete scheduled owner is invoked directly; all synthetic state and
+-- shared-setting changes roll back with this file.
+BEGIN;
+
 DO $proof$
 DECLARE
   v_game_id uuid:=gen_random_uuid();
@@ -580,3 +583,5 @@ BEGIN
   END IF;
 END;
 $proof$;
+
+ROLLBACK;

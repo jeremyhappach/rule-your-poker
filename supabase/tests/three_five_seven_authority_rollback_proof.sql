@@ -1,7 +1,8 @@
--- Complete rollback-only proof for the 3-5-7 authority cutover.
--- The caller owns BEGIN/ROLLBACK so this same body can run before and after
--- deployment. It invokes the complete scheduled recovery statement, not an
--- isolated helper.
+-- Complete self-contained rollback proof for the 3-5-7 authority cutover.
+-- It invokes the complete scheduled recovery statement, not an isolated helper,
+-- and cannot retain synthetic data or shared-setting changes when run directly.
+
+BEGIN;
 
 DO $proof$
 DECLARE
@@ -835,3 +836,5 @@ BEGIN
   END;
 END;
 $proof$;
+
+ROLLBACK;

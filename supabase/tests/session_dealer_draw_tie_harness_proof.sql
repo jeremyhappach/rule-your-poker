@@ -1,6 +1,7 @@
 -- Execute only inside a transaction that also installs the candidate migration.
--- The caller must ROLLBACK after this block; every synthetic game/player/timer
--- and harness-setting mutation is transaction-local.
+-- Self-contained rollback proof: every synthetic game/player/timer and
+-- harness-setting mutation is transaction-local and rolled back by this file.
+BEGIN;
 
 DO $proof$
 DECLARE
@@ -199,3 +200,5 @@ BEGIN
   END IF;
 END;
 $proof$;
+
+ROLLBACK;

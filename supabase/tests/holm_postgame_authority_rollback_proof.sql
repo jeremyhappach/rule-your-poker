@@ -1,7 +1,9 @@
 -- Complete rollback-only proof for Holm's exact postgame authority.
 -- Covers winner, chopped/tie, duplicate, replay, late replay,
 -- authorization, continuation, canonical-timer recovery, unsettled admission,
--- and already-terminal state. The caller must wrap this file in BEGIN/ROLLBACK.
+-- and already-terminal state. This file owns its BEGIN/ROLLBACK boundary.
+
+BEGIN;
 
 DO $proof$
 DECLARE
@@ -504,3 +506,5 @@ BEGIN
   RAISE NOTICE 'holm_postgame_authority_rollback_proof:passed';
 END;
 $proof$;
+
+ROLLBACK;

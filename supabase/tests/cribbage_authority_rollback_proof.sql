@@ -1,5 +1,7 @@
--- Run in the same transaction immediately after the authority/startup migrations.
--- The caller owns BEGIN/ROLLBACK so this proof cannot retain synthetic data.
+-- Self-contained rollback proof for the Cribbage authority/startup migrations.
+-- It must never retain synthetic data or mutate shared settings when run directly.
+BEGIN;
+
 DO $proof$
 DECLARE
   v_game_id uuid:=gen_random_uuid();
@@ -515,3 +517,5 @@ BEGIN
   END IF;
 END;
 $proof$;
+
+ROLLBACK;

@@ -1,5 +1,7 @@
--- Execute inside BEGIN after the candidate migration and always ROLLBACK.
--- Every game, player, dealer-game, round, and fixture mutation below is synthetic.
+-- Self-contained rollback proof for the candidate migration.
+-- Every game, player, dealer-game, round, fixture, and shared-setting mutation
+-- below is synthetic and is rolled back by this file.
+BEGIN;
 
 DO $proof$
 DECLARE
@@ -185,3 +187,5 @@ BEGIN
   END IF;
 END;
 $proof$;
+
+ROLLBACK;

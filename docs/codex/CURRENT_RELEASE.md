@@ -2,6 +2,21 @@
 
 Date: 2026-09-03
 
+## Shared-setting rollback-proof isolation — published
+
+- Every SQL proof that writes `public.system_settings` now owns an explicit
+  `BEGIN`/`ROLLBACK` boundary. Running a proof directly can no longer retain
+  its synthetic rows or leave a global setting changed; a source regression
+  test scans the complete proof directory and rejects any future exception.
+- The production `make_it_take_it` setting was found disabled with the
+  incident timestamp (`2026-09-01 22:58:40 UTC`) and restored through a
+  conditional exact-row update. The returned receipt and a subsequent
+  read-back both confirm `{"enabled": true}` at `2026-09-03 20:18:50 UTC`.
+  A separate transaction/rollback proof confirmed that the row remained true.
+  No historical game, settlement, balance, or financial rows were changed.
+
+Validation: the rollback-isolation regression test and TypeScript passed.
+
 ## 3-5-7 current-round decision admission — published
 
 - The Drop/Stay rail could reopen during an R1→R2 or R2→R3 transition while
