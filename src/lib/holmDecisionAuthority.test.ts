@@ -58,7 +58,8 @@ describe('Holm exact decision authority client', () => {
     const generic = readFileSync(new URL('./gameLogic.ts', import.meta.url), 'utf8');
 
     expect(game.match(/submitHolmDecision\(\{/g)).toHaveLength(2);
-    expect(bot).toContain('await submitHolmDecision({');
+    expect(bot).toContain('await runHolmBotDecisionAfterDelay(');
+    expect(bot).toContain('submitHolmDecision({');
     expect(generic).toContain('return submitHolmDecision({');
   });
 });

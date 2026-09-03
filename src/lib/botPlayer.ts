@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
 import { submitHolmDecision } from './holmDecisionAuthority';
+import { runHolmBotDecisionAfterDelay } from './holmBotDecisionSchedule';
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
@@ -374,28 +375,31 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '%');
     }
     
-    // Non-blocking delay before bot makes decision - fire and forget
-    // This allows the caller to return immediately while bot "thinks"
+    // Keep the caller's in-flight scheduler latch through both the visible
+    // thinking delay and the authoritative decision attempt. Returning as
+    // soon as a timer is scheduled lets the same bot turn be re-woken and
+    // queues duplicate stale attempts before this one reaches PostgreSQL.
     const shouldFold = Math.random() * 100 < foldProbability;
     const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
     
     console.log('[BOT DECISIONS] Bot at position', bot.position, 'will decide:', decision, 'after', decisionDelay, 's');
     
-    setTimeout(async () => {
-      try {
-        await submitHolmDecision({
+    try {
+      await runHolmBotDecisionAfterDelay(decisionDelay, () =>
+        submitHolmDecision({
           gameId,
           roundId: currentRound.id,
           playerId: bot.id,
           decision,
-        });
-        // The Holm authority adapter retains the existing round-completion fallback.
-      } catch (err) {
-        console.error('[BOT DECISIONS] Error in delayed bot decision:', err);
-      }
-    }, decisionDelay * 1000);
+        }),
+      );
+      // The Holm authority adapter retains the existing round-completion fallback.
+    } catch (err) {
+      console.error('[BOT DECISIONS] Error in delayed bot decision:', err);
+      throw err;
+    }
     
-    // Return true to indicate a decision was scheduled
+    // Return true only after the authoritative attempt has settled.
     return true;
   }
   

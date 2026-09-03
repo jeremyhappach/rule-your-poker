@@ -2,6 +2,21 @@
 
 Date: 2026-09-03
 
+## Holm bot scheduler completion boundary — published
+
+- A Holm bot dispatch formerly returned as soon as its local thinking timer was
+  scheduled. The generic scheduler then treated the unchanged turn as
+  completed, released its in-flight latch, and could re-wake the same bot
+  before the first authoritative RPC began.
+- The dispatch now remains in flight through both the configured delay and
+  `holm_submit_decision`. The existing post-attempt fetch/wake mechanism runs
+  only after that attempt settles. PostgreSQL remains the sole decision,
+  duplicate, stale-turn, pause, and deadline authority.
+
+Validation: focused fake-timer scheduler and Holm authority tests, TypeScript,
+and the development production build passed. This is bot-only hardening; a
+fake-money Holm-with-bot smoke remains the runtime acceptance gate.
+
 ## Shared-setting rollback-proof isolation — published
 
 - Every SQL proof that writes `public.system_settings` now owns an explicit
