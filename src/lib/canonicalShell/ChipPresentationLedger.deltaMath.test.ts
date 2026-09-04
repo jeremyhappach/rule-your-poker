@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// These are pure accounting-projection tests. Importing the browser client
+// must not require localStorage or start an authenticated network session.
+vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 import {
   aggregatesConcurrentPotArrival,
   residualDeltaForEndpoint,

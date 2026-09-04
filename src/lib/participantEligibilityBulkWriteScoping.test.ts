@@ -12,13 +12,15 @@ import { join } from 'path';
  * game and previously had no scoping clause, which silently revived 'left' and
  * 'observer' rows back to 'active' between dealer games.
  *
- * The four sites below MUST scope their bulk writes with
+ * The remaining 3-5-7 sites MUST scope their bulk writes with
  *   .neq('status', 'left').neq('status', 'observer')
  * so that:
- *   - left player survives startRound / Holm terminal cleanup without becoming active
+ *   - left player survives startRound without becoming active
  *   - observer survives the same paths
  *   - active player still resets normally (current_decision / decision_locked cleared)
  *
+ * Holm now delegates settlement to PostgreSQL and has no browser bulk writes.
+ * Its SQL rollback proof verifies that departed players remain left.
  * This test reads the source files and asserts the scoping clauses are present
  * adjacent to each `status: 'active'` bulk write. It is intentionally a static
  * regression guard — the surrounding functions are too large to mount in a
@@ -58,9 +60,7 @@ describe('Participant eligibility — bulk-write scoping', () => {
   const holmGameLogic = read('src/lib/holmGameLogic.ts');
 
   it('gameLogic.startRound: per-round reset does not revive left/observer', () => {
-    // Find the startRound reset block (uniquely identified by the comment + status:'active' write
-    // following the 'WON round creation race' log line).
-    const block = blockAround(gameLogic, 'WON round creation race');
+    const block = blockAround(gameLogic, 'const { error: resetError } = await supabase');
     expect(block).toContain("status: 'active'");
     assertScoped(block, 'gameLogic.startRound');
   });
@@ -71,28 +71,22 @@ describe('Participant eligibility — bulk-write scoping', () => {
     assertScoped(block, 'gameLogic everyone-folded pussy-tax');
   });
 
-  it('holmGameLogic beat-Chucky showdown path: new-game reset does not revive left/observer', () => {
-    const block = blockAround(holmGameLogic, 'HOLM SHOWDOWN] Resetting player states');
-    expect(block).toContain("status: 'active'");
-    assertScoped(block, 'holmGameLogic beat-Chucky');
+  it('Holm cannot reset participant eligibility from the browser', () => {
+    expect(holmGameLogic).toContain("rpc('resolve_holm_showdown'");
+    expect(holmGameLogic).not.toMatch(/\.(update|insert|delete|upsert)\(/);
+    expect(holmGameLogic).not.toContain('settleHolmHand');
+    // The real-role SQL boundary proof also asserts that a departed player
+    // stays left through both winner and tie settlement.
   });
 
-  it('holmGameLogic tie/chop path: new-game reset does not revive left/observer', () => {
-    const block = blockAround(holmGameLogic, 'HOLM TIE] Resetting player states');
-    expect(block).toContain("status: 'active'");
-    assertScoped(block, 'holmGameLogic tie/chop');
-  });
-
-  it('all four sites still reset decision state for active participants', () => {
+  it('remaining legacy 357 sites still reset decision state for active participants', () => {
     // Sanity: the scoping must not have accidentally removed the per-decision reset
     // payload. Active players must continue to get current_decision cleared.
     for (const needle of [
-      'WON round creation race',
+      'const { error: resetError } = await supabase',
       'EVERYONE FOLDED',
-      'HOLM SHOWDOWN] Resetting player states',
-      'HOLM TIE] Resetting player states',
     ]) {
-      const src = needle.startsWith('HOLM') ? holmGameLogic : gameLogic;
+      const src = gameLogic;
       const block = blockAround(src, needle);
       expect(block, `${needle}: lost current_decision reset`).toMatch(/current_decision:\s*null/);
     }

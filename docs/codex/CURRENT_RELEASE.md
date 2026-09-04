@@ -1,6 +1,32 @@
 # Current release and cutover state
 
-Date: 2026-09-03
+Date: 2026-09-04
+
+## Remediation WP1 — Holm settlement authority boundary
+
+- The internal Holm payout helper no longer accepts browser-role calls, and
+  client inserts cannot forge Holm terminal settlement claims. The existing
+  authenticated action and resolver remain the legal settlement path.
+- An already-settled hand now returns its receipt without repairing or writing
+  current state. A new settlement requires the exact current dealer-game and
+  hand identity. Normal settlement, chip movement and presentation stages are
+  unchanged.
+- Removed the unreachable browser settlement implementation and its unused
+  payout adapter. All exported action/presentation wrappers remain available.
+- Deployed migration `holm_settlement_authority_boundary` passed the complete
+  rollback proof before and after application: actual anonymous/authenticated
+  roles, forged claims, exact winner/tie payouts, conservation, duplicate and
+  late replay, successor creation, departed-player eligibility, ordinary
+  terminal and Session Ended cases. All synthetic rows rolled back.
+- The chip projection suite now isolates its unused Supabase import; the
+  focused Holm/eligibility/chip checks pass 19 assertions. Explicit application
+  TypeScript checking reports 45 existing diagnostics, down from 48 after dead
+  Holm code removal, with no new diagnostics. Broader type debt remains in the
+  remediation program.
+
+Production runtime smoke remains required: normal Holm winner/continuation,
+tie/Chucky finish, terminal presentation and next dealer game. This boundary
+does not yet close the other table writers identified by the audit.
 
 ## Dealer-game transition harness correction — current-build canary passed
 
