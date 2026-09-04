@@ -2,6 +2,26 @@
 
 Date: 2026-09-03
 
+## Dealer-game transition harness correction — current-build canary passed
+
+- The fake-money two-human transition harness now explicitly selects the
+  target's Card Games or Dice Games tab. It can no longer inherit a dice
+  predecessor's selected tab and falsely report that a card-game successor is
+  absent. Changed-parameter ante scenarios now derive a distinct legal value
+  from the source dealer game's committed configuration, rather than assuming
+  a particular global default.
+- Published harness commit `84aa2da34` passed local focused checks and the
+  current production transition canary. Yahtzee → Holm, Holm changed
+  configuration, 3-5-7 → Yahtzee, and Holm → 3-5-7 each converged on exactly
+  one successor dealer-game identity and completed successor terminal proof
+  under long-haul transport, one offline/rejoin burst, and the continuous
+  observer. All four guarded fake-money cleanups were verified; no observer
+  violation or unexpected 6,000 ms peer-progress breach occurred. Peer maxima
+  were 3,493 ms, 3,468 ms, 2,732 ms, and 3,700 ms respectively.
+- This corrects false-negative campaign evidence and validates the listed
+  boundaries only. It is not a full ordered-transition matrix or a claim of
+  complete cross-game lifecycle coverage.
+
 ## Cribbage durable dealer-selection receipt — production acceptance
 
 - The already-published `0eb2d793f` correction drains the exact persisted
