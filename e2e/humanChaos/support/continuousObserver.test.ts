@@ -35,6 +35,7 @@ function snapshot(
     visibleTimerCount: 0,
     visibleFaceCardIds: [],
     opponentCardBackCounts: [],
+    visibleDice: [],
     maskedVisibleFaceCardIds: [],
     staleArtifactKeys: [],
     announcement: null,

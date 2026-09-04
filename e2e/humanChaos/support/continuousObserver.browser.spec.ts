@@ -107,3 +107,53 @@ test('continuous observer survives two contexts and retains transient defects', 
     await Promise.allSettled([hostContext.close(), peerContext.close()]);
   }
 });
+
+test('continuous observer recognizes Yahtzee dice-only peer progress', async ({ browser }) => {
+  const observer = new HumanChaosContinuousObserver();
+  const hostContext = await browser.newContext();
+  const peerContext = await browser.newContext();
+
+  try {
+    await Promise.all([
+      observer.attachContext(hostContext, 'host'),
+      observer.attachContext(peerContext, 'peer'),
+    ]);
+    const [hostPage, peerPage] = await Promise.all([
+      hostContext.newPage(),
+      peerContext.newPage(),
+    ]);
+    const table = `
+      <div
+        data-lifecycle-branch="loaded-inner"
+        data-authoritative-game-id="game-1"
+        data-authoritative-game-status="in_progress"
+        data-authoritative-game-type="yahtzee"
+        data-authoritative-dealer-game-id="dealer-1"
+        data-authoritative-round-id="round-1"
+      >
+        <div data-canonical-shell-root>
+          <div data-canonical-felt-surface></div>
+          <div data-authoritative-action-surface="yahtzee-actions"><button>Roll 1</button></div>
+          <div data-die-idx="0" data-die-value="2" data-die-held="false" data-die-row="animating" data-die-phase-branch="normal" style="width:20px;height:20px"></div>
+        </div>
+      </div>
+    `;
+    const url = `data:text/html,${encodeURIComponent(table)}`;
+    await Promise.all([hostPage.goto(url), peerPage.goto(url)]);
+    await hostPage.waitForTimeout(150);
+
+    await hostPage.getByRole('button', { name: 'Roll 1' }).click();
+    await peerPage.evaluate(() => {
+      document.querySelector('[data-die-idx="0"]')?.setAttribute('data-die-value', '6');
+    });
+    await peerPage.waitForTimeout(150);
+
+    const evidence = observer.finish();
+    expect(evidence.actionReceipts[0]?.peerProgressMs).not.toBeNull();
+    expect(evidence.finalSnapshots.peer?.visibleDice).toEqual([
+      '0:6:false:animating:normal',
+    ]);
+  } finally {
+    await Promise.allSettled([hostContext.close(), peerContext.close()]);
+  }
+});
