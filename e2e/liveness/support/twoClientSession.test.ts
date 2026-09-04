@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { dealerGameSetupTab } from './twoClientSession';
 
 const source = readFileSync(new URL('./twoClientSession.ts', import.meta.url), 'utf8');
 
@@ -34,5 +35,12 @@ describe('two-client session chaos ownership', () => {
     expect(responseRead).toBeGreaterThan(click);
     expect(statusCheck).toBeGreaterThan(responseRead);
     expect(ante).toBeGreaterThan(statusCheck);
+  });
+
+  it('selects the target game family rather than inheriting the prior dealer setup tab', () => {
+    expect(dealerGameSetupTab('cribbage')).toBe('Card Games');
+    expect(dealerGameSetupTab('holm-game')).toBe('Card Games');
+    expect(dealerGameSetupTab('yahtzee')).toBe('Dice Games');
+    expect(dealerGameSetupTab('ship-captain-crew')).toBe('Dice Games');
   });
 });

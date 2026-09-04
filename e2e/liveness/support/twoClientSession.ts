@@ -16,6 +16,16 @@ export type DealerGameType =
   | 'ship-captain-crew'
   | 'yahtzee';
 
+const DICE_DEALER_GAMES = new Set<DealerGameType>([
+  'horses',
+  'ship-captain-crew',
+  'yahtzee',
+]);
+
+export function dealerGameSetupTab(gameType: DealerGameType): 'Card Games' | 'Dice Games' {
+  return DICE_DEALER_GAMES.has(gameType) ? 'Dice Games' : 'Card Games';
+}
+
 type Credentials = PlayerCredentials;
 
 export type DealerGameEntryOptions = {
@@ -224,9 +234,13 @@ export async function configureDealerGameUnderChaos(
   } = session;
   peerNetwork.useLongHaulProfile();
   const setupPage = await waitForDealerGameSetupOwner(hostPage, peerPage);
-  if (['horses', 'ship-captain-crew', 'yahtzee'].includes(gameType)) {
-    await setupPage.getByRole('tab', { name: 'Dice Games', exact: true }).click();
-  }
+  // Dealer setup persists its currently selected tab across dealer games. Pick
+  // the target family explicitly so a dice-game predecessor cannot hide a
+  // card-game successor (or vice versa) from this harness.
+  await setupPage.getByRole('tab', {
+    name: dealerGameSetupTab(gameType),
+    exact: true,
+  }).click();
   const simpleConfigTypes = new Set<DealerGameType>([
     'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee',
   ]);

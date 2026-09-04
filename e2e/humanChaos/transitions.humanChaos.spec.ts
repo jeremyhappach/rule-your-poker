@@ -41,10 +41,20 @@ function selectedTransition(): ChaosScenario {
   return scenario;
 }
 
-async function configureChangedParameters(gameType: DealerGameType, surface: Locator): Promise<void> {
+function differentWholeNumber(sourceConfig: unknown, key: string, preferred: number): string {
+  const sourceValue = Number(configRecord(sourceConfig)[key]);
+  expect(Number.isFinite(sourceValue)).toBe(true);
+  return String(sourceValue === preferred ? preferred + 1 : preferred);
+}
+
+async function configureChangedParameters(
+  gameType: DealerGameType,
+  surface: Locator,
+  sourceConfig: unknown,
+): Promise<void> {
   switch (gameType) {
     case 'holm-game':
-      await surface.locator('#ante-holm').fill('2');
+      await surface.locator('#ante-holm').fill(differentWholeNumber(sourceConfig, 'ante_amount', 2));
       return;
     case '3-5-7':
       await surface.locator('#legs-to-win').fill('2');
@@ -65,7 +75,7 @@ async function configureChangedParameters(gameType: DealerGameType, surface: Loc
     case 'horses':
     case 'ship-captain-crew':
     case 'yahtzee':
-      await surface.locator('#ante-simple').fill('2');
+      await surface.locator('#ante-simple').fill(differentWholeNumber(sourceConfig, 'ante_amount', 2));
       return;
   }
 }
@@ -105,6 +115,7 @@ function expectCommittedSuccessorConfig(
 async function startSuccessor(
   scenario: ChaosScenario,
   session: Awaited<ReturnType<typeof createTwoClientSession>>,
+  sourceConfig: unknown,
 ): Promise<void> {
   if (scenario.variant === 'unchanged') {
     const owner = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
@@ -116,7 +127,7 @@ async function startSuccessor(
   if (!target) throw new Error(`Transition has no target: ${scenario.id}`);
   await configureDealerGameUnderChaos(session, target, {
     configure: async (surface) => {
-      if (scenario.variant === 'changed') await configureChangedParameters(target, surface);
+      if (scenario.variant === 'changed') await configureChangedParameters(target, surface, sourceConfig);
       else await configureShortestTerminal(target, surface);
     },
   });
@@ -185,7 +196,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       await waitForPlayableTransitionAction(session, source);
       await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
 
-      await startSuccessor(scenario, session);
+      await startSuccessor(scenario, session, sourceConfig);
       const successorDealerGameId = await waitForBothClientsAtDealerGame(session, target);
       evidence.successorDealerGameId = successorDealerGameId;
       expect(successorDealerGameId).not.toBe(sourceDealerGameId);
