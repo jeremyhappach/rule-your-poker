@@ -2,6 +2,23 @@
 
 Date: 2026-09-03
 
+## Cribbage durable dealer-selection receipt — production acceptance
+
+- The already-published `0eb2d793f` correction drains the exact persisted
+  completed high-card receipt independently of one-time initialization. A late
+  host receipt therefore preserves the established 2.2-second presentation
+  dwell and invokes the existing replay-safe handoff once; recovery/remount or
+  duplicate Realtime delivery cannot re-run it.
+- Production fake-money acceptance on 2026-09-04 passed both the normal
+  dealer-draw/rejoin case and the forced tie/redraw case under long-haul
+  recovery. Both observers recorded zero violations and zero unexpected
+  6,000 ms peer-budget breaches; their peer maxima were 3,580 ms and
+  3,113 ms. The one-shot tie fixture was consumed and cancelled, and guarded
+  cleanup deleted and verified games `97c38f70-aa04-4508-a557-94fa33f9db1a`
+  and `df8329a8-bdb5-4a9b-a497-d9747ff26e22`.
+- This closes the documented missed-completion-receipt seam. It does not
+  explain any separate player-specific live count freeze.
+
 ## Holm bot scheduler completion boundary — published
 
 - A Holm bot dispatch formerly returned as soon as its local thinking timer was
