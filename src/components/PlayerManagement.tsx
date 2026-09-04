@@ -75,10 +75,10 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
     
     setUpdating(profileId);
     
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_superuser: !currentValue })
-      .eq('id', profileId);
+    const { error } = await supabase.rpc('admin_set_user_role', {
+      p_user_id: profileId,
+      p_enabled: !currentValue,
+    });
 
     if (error) {
       console.error('Error updating is_superuser:', error);

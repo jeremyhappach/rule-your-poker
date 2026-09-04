@@ -3128,6 +3128,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_user_role: {
+        Args: { p_user_id: string; p_enabled: boolean }
+        Returns: Json
+      }
       acknowledge_holm_prepared_hand_dealt: {
         Args: {
           p_dealer_game_id: string

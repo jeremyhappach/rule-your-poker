@@ -1,5 +1,17 @@
 # Durable decision log
 
+## D-113 — Admin roles own privilege; profile flags are projections
+
+`public.user_roles` is the sole admin authority. The legacy
+`profiles.is_superuser` field is a protected projection maintained in the same
+transaction as role changes so existing SQL and display consumers remain
+compatible. It cannot grant a role. Browser admin changes use the serialized,
+idempotent `admin_set_user_role` command; browser roles cannot mutate role rows
+directly. Ordinary profile preferences remain self-editable, while identity and
+activation/admin authority have independent database guards. Password recovery
+uses verified recovery tokens; the legacy password-replacement endpoint is
+retired and contains no service credentials or account mutation.
+
 ## D-112 — Freeze evidence is universal but player-operated
 
 The Game Freeze Trace is a shared, admin-visible diagnostic availability gate,

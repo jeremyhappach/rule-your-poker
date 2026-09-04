@@ -2,7 +2,32 @@
 
 Date: 2026-09-04
 
-## Remediation WP1 — Holm settlement authority boundary
+## Remediation WP2a — protected admin roles and retired password replacement
+
+- `user_roles` is the authoritative admin source. `profiles.is_superuser` is
+  now a transactionally maintained, protected compatibility projection. No
+  roles were inferred or granted from the formerly editable profile flag.
+- Admin controls use `admin_set_user_role`; browser roles cannot directly
+  change role rows. Grant/revoke is serialized and idempotent. Profile identity
+  cannot change, and ordinary users cannot change activation or admin flags.
+  Ordinary profile preferences remain supported.
+- The deployed `reset-password` function v4 returns HTTP 410 and has no
+  credentials, account mutation or email capability. Normal token-based
+  recovery in `Auth.tsx` remains the supported flow. An authenticated test
+  request confirmed 410, followed by local-session sign-out.
+- Complete real-role rollback proof passed before and after migration:
+  anonymous/nonadmin denial, profile and role bypass denial, ordinary preference
+  updates, authorized grant/revoke and activation, duplicate requests, and
+  atomic role/projection agreement. The endpoint unit tests and production
+  build pass; explicit app TypeScript has the same 45 baseline diagnostics.
+
+Publication verification and Jeremy's runtime smoke are distinct gates. The
+next package protects participant identity and private profile reads.
+
+## Remediation WP1 — Holm settlement authority boundary (published)
+
+Published commit `9e9c16f8c3d39b1e6825edd26dfdc94f8ceeb31f`; production Vercel
+deployment is READY and `holm357.com/build-manifest.json` matches that commit.
 
 - The internal Holm payout helper no longer accepts browser-role calls, and
   client inserts cannot forge Holm terminal settlement claims. The existing
