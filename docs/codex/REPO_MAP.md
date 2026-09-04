@@ -46,6 +46,13 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 ## Supabase boundary
 
+Admin role commands/projections are in
+`20260904233922_protected_admin_role_source.sql`; participant identity, host
+bot admission and private contact reads are in
+`20260904234530_participant_identity_and_profile_privacy.sql`.
+`PlayerManagement.tsx` calls `admin_set_user_role` and `admin_get_profiles`.
+The four Add Bot callers retain `create_session_bot`; its allocator is internal.
+
 | Area | Source owner |
 |---|---|
 | Cribbage gameplay authority | `supabase/migrations/20260816113000_cribbage_authority_cutover.sql`: private hidden state, redacted projection, guarded mutations, dealer/start/discard/pegging/counting/continuation/settlement RPCs, and disconnect recovery. `20260816124000_fix_cribbage_startup_handoff.sql` adds atomic ante-to-dealer-selection entry and repairs the scheduled recovery query. `20260816153000_cribbage_postgame_authority.sql` owns exact-settlement continuation to the next dealer-game setup with a durable replay claim. Client intent/state access is in `src/lib/cribbageAuthority.ts`; `Game.tsx` submits the postgame identity. |

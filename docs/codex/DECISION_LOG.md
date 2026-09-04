@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-114 — Participant identity is immutable and contact reads are privileged
+
+Player/session/user UUIDs and the bot/human flag cannot be reassigned after
+insertion. Human admission is bound to the authenticated user; bot admission
+uses `create_session_bot`, whose supplied bot UUID is also the retry identity.
+The server records the actual authenticated actor and admits only host/admin
+requests in a nonterminal fake-money session. Profile email is excluded from
+public column grants and is returned only by an authorized admin projection.
+Seat position remains a separate lifecycle intent, not a substitute identity.
+
 ## D-113 — Admin roles own privilege; profile flags are projections
 
 `public.user_roles` is the sole admin authority. The legacy

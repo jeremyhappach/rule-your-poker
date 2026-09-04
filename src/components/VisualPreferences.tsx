@@ -52,7 +52,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('*')
+      .select('table_layout, card_back_design, deck_color_mode, use_haptic, play_sounds, network_sim_mode, network_sim_logging')
       .eq('id', userId)
       .maybeSingle();
     

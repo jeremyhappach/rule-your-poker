@@ -2,7 +2,36 @@
 
 Date: 2026-09-04
 
-## Remediation WP2a — protected admin roles and retired password replacement
+## Remediation WP2b — participant identity and private profile reads
+
+- Player UUID, session UUID, user UUID and bot/human identity are immutable.
+  Browser inserts can create only the caller's own human participant/profile;
+  bot creation uses the existing transaction with server host/admin admission,
+  fake-money/terminal guards, authenticated actor provenance and UUID retry
+  deduplication. Bots added during play wait for a later hand.
+- Removed the unused browser bot-number allocator. The internal allocator
+  remains part of atomic bot creation, preserving monotonic session ordinals.
+- Profile email is no longer available through public table reads. Admins use
+  `admin_get_profiles`; roster and visual preference consumers request their
+  permitted columns explicitly.
+- Complete rollback proofs pass before and after migration, covering anon,
+  owner, peer and outsider identity writes, direct bot/profile fabrication,
+  human joining, ordinary player controls, host bot creation/replay, durable
+  actor/ordinal behavior, real-money and terminal rejection, contact privacy
+  and balance preservation. No synthetic data survives.
+- Real PostgREST checks pass for admin/member preference reads, direct email
+  denial and admin-only contact retrieval. Both test sessions were signed out.
+  Production build passes; application TypeScript remains at 45 baseline
+  diagnostics. Realtime's deployed filter also checks column read privileges.
+
+Seat movement, host/lifecycle authority and remaining financial writers retain
+their separately sequenced remediation packages; this is not blanket closure
+of C01. Runtime smoke should exercise joining, Add Bot and visual preferences.
+
+## Remediation WP2a — protected admin roles and retired password replacement (published)
+
+Published commit `1296dfdf1a049ea56d782c0dc7e5f069c55895f5`; production deployment
+is READY and the public build manifest matches.
 
 - `user_roles` is the authoritative admin source. `profiles.is_superuser` is
   now a transactionally maintained, protected compatibility projection. No

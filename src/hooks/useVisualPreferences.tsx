@@ -69,7 +69,7 @@ export function VisualPreferencesProvider({
     
     const { data } = await supabase
       .from('profiles')
-      .select('*')
+      .select('table_layout, card_back_design, deck_color_mode')
       .eq('id', userId)
       .maybeSingle();
     

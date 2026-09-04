@@ -32,11 +32,7 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   }, []);
 
   const fetchProfiles = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, username, is_active, is_superuser, created_at, last_seen_at, email')
-      .not('username', 'ilike', 'Bot %')
-      .order('username');
+    const { data, error } = await supabase.rpc('admin_get_profiles');
 
     if (error) {
       console.error('Error fetching profiles:', error);

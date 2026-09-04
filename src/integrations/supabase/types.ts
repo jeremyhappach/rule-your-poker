@@ -3128,6 +3128,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          username: string
+          is_active: boolean
+          is_superuser: boolean
+          created_at: string
+          last_seen_at: string | null
+          email: string | null
+        }[]
+      }
       admin_set_user_role: {
         Args: { p_user_id: string; p_enabled: boolean }
         Returns: Json
