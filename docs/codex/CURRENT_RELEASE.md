@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## Holm folded-card draw correction — 2026-09-05
+
+- The strengthened canary exposed two HTTP 400 Stay responses with
+  `holm_card_integrity:duplicate_card`, followed by timeout/auto-fold. The
+  single-stayer resolver excluded only the stayer's hand and community when
+  drawing Chucky, allowing reuse of a folded participant's physical card.
+- Applied `20260905192836_exclude_all_dealt_cards_from_holm_chucky.sql`.
+  The resolver now excludes every `player_cards` row belonging to that round.
+  Card-integrity enforcement, existing Chucky cards, financial calculations,
+  settlement replay and historical sessions are preserved.
+- A deterministic rollback fixture assigns the folded player the old draw's
+  exact four cards. It reproduces the live integrity error before correction,
+  then passes with the correction both transaction-locally and after deployment.
+  The complete proof also covers authorization, winner/tie, continuation,
+  terminal states, duplicate/late replay and chip conservation. Nine focused
+  ownership tests pass. Live rerun evidence is in `action-proof-results.json`.
+
 ## Committed-action seam proof — 2026-09-05
 
 - Holm, 3-5-7 and Gin observation now binds the clicked mutation's server

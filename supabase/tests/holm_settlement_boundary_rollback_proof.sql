@@ -4,7 +4,7 @@ BEGIN;
 SET LOCAL lock_timeout = '2s';
 SET LOCAL statement_timeout = '60s';
 
-CREATE OR REPLACE FUNCTION pg_temp.holm_boundary_fixture(p_name text, p_tie boolean, p_end boolean)
+CREATE OR REPLACE FUNCTION pg_temp.holm_boundary_fixture(p_name text, p_tie boolean, p_end boolean, p_undrawn boolean DEFAULT false)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $fixture$
 DECLARE
   u uuid[]; g uuid:=gen_random_uuid(); d uuid:=gen_random_uuid();
@@ -38,7 +38,8 @@ BEGIN
     pot,status,community_cards,community_cards_revealed,chucky_cards,current_turn_position,
     decision_deadline)
   VALUES(r,g,d,1,1,4,4,'betting',board,2,
-    '[{"rank":"2","suit":"♣"},{"rank":"3","suit":"♥"},{"rank":"4","suit":"♠"},{"rank":"5","suit":"♦"}]'::jsonb,
+    CASE WHEN p_undrawn THEN '[]'::jsonb ELSE
+    '[{"rank":"2","suit":"♣"},{"rank":"3","suit":"♥"},{"rank":"4","suit":"♠"},{"rank":"5","suit":"♦"}]'::jsonb END,
     1,clock_timestamp()+interval '5 minutes');
   INSERT INTO public.player_cards(player_id,round_id,cards) VALUES
   (p1,r,CASE WHEN p_tie THEN
@@ -193,6 +194,47 @@ BEGIN
  RAISE NOTICE 'holm_boundary:passed authorization, claim denial, winner, tie, duplicate, replay, late replay, continuation, terminal and conservation';
 END;
 $proof$;
+
+-- Reproduce the live single-stayer failure deterministically: the folded
+-- player's hand is exactly what the old partial-cohort Chucky draw would pick.
+DO $folded_cohort_proof$
+DECLARE f jsonb; g uuid; r uuid; p1 uuid; p2 uuid; board jsonb; hand jsonb;
+  folded jsonb; actual_chucky jsonb; result jsonb; before_replay jsonb;
+BEGIN
+  f:=pg_temp.holm_boundary_fixture('folded cards stay out of Chucky deck',false,false,true);
+  g:=(f->>'game')::uuid; r:=(f->>'round')::uuid;
+  p1:=(f->>'p1')::uuid; p2:=(f->>'p2')::uuid;
+  SELECT (private.holm_authoritative_round(round_row)).community_cards INTO board
+    FROM public.rounds round_row WHERE id=r;
+  SELECT cards INTO hand FROM public.player_cards WHERE round_id=r AND player_id=p1;
+  folded:=public.holm_deterministic_chucky_cards(r,hand||board,4);
+  UPDATE public.player_cards SET cards=folded WHERE round_id=r AND player_id=p2;
+  UPDATE public.players SET decision_locked=true,current_decision='fold' WHERE id=p2;
+  PERFORM private.assert_holm_round_card_integrity(r);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',f->>'u1','role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',f->>'u1',true);
+  EXECUTE 'SET LOCAL ROLE authenticated';
+  result:=public.holm_submit_decision(g,r,p1,'stay');
+  EXECUTE 'RESET ROLE';
+  PERFORM private.assert_holm_round_card_integrity(r);
+  SELECT (private.holm_authoritative_round(round_row)).chucky_cards INTO actual_chucky
+    FROM public.rounds round_row WHERE id=r;
+  IF jsonb_array_length(actual_chucky)<>4
+     OR EXISTS (SELECT 1 FROM jsonb_array_elements(actual_chucky) a
+       JOIN jsonb_array_elements(folded) b ON a=b)
+     OR (SELECT status FROM public.rounds WHERE id=r)<>'completed'
+     OR (SELECT count(*) FROM public.game_results WHERE game_id=g AND hand_number=1)<>1
+     OR (SELECT sum(chips) FROM public.players WHERE game_id=g)+(SELECT pot FROM public.games WHERE id=g)<>200 THEN
+    RAISE EXCEPTION 'holm_boundary:folded_cohort_settlement_failed:%',result;
+  END IF;
+  before_replay:=pg_temp.holm_boundary_snapshot(g);
+  result:=public.holm_submit_decision(g,r,p1,'stay');
+  IF pg_temp.holm_boundary_snapshot(g) IS DISTINCT FROM before_replay THEN
+    RAISE EXCEPTION 'holm_boundary:folded_cohort_replay_mutated';
+  END IF;
+  RAISE NOTICE 'holm_boundary:folded-cohort draw, settlement, conservation and replay passed';
+END;
+$folded_cohort_proof$;
 
 -- Exercise deferred transfer-journal constraints before discarding fixtures.
 SET CONSTRAINTS ALL IMMEDIATE;
