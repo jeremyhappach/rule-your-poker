@@ -116,9 +116,13 @@ BEGIN
        END;
        IF NOT denied THEN RAISE EXCEPTION 'holm_boundary:mislabeled_claim_accepted'; END IF;
        -- Non-financial history remains compatible.
+       denied:=false;
+       BEGIN
        INSERT INTO public.game_results(game_id,dealer_game_id,hand_number,game_type,
          winning_hand_description,pot_won)
        VALUES(g,d,1,'gin-rummy','nonfinancial boundary proof',0);
+       EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+       IF NOT denied THEN RAISE EXCEPTION 'holm_boundary:browser_result_insert_allowed'; END IF;
        EXECUTE 'RESET ROLE';
      END LOOP;
    END IF;

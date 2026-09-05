@@ -1,5 +1,18 @@
 # Durable decision log
 
+## D-119 — Monetary changes derive from legal server commands
+
+Browser roles cannot mutate chips, legs, pots, transfer cursors or result rows,
+or invoke arbitrary financial helpers. Signed scores remain legal inside
+authoritative transactions. Journal triggers describe committed movements;
+they do not authorize a browser-selected movement. Obsolete browser financial
+paths are removed instead of retained as fallback writers.
+
+Jeremy approved whole-chip Holm remainder awards clockwise from the dealer.
+The server uses the canonical seat ring's descending order with wraparound,
+skips non-winners and treats the dealer as last. Both partial ties and Chucky
+split awards use the same private helper. Each split exhausts the original pot.
+
 ## D-118 — Participation does not restore money from history
 
 The existing participant row owns its balance through departure and rejoin.

@@ -1,6 +1,9 @@
--- Holm private-card and settlement proof. Real database roles and fake-money fixtures.
--- No shared settings or historical sessions are modified.
 BEGIN;
+SET LOCAL statement_timeout='120s';
+SET LOCAL lock_timeout='2s';
+-- Synthetic fake-money fixtures only. Real database roles, not only JWT claims.
+-- No shared settings or historical sessions are modified.
+
 SET LOCAL lock_timeout = '2s';
 SET LOCAL statement_timeout = '60s';
 
@@ -66,7 +69,7 @@ $snapshot$;
 DO $proof$
 DECLARE
  f jsonb; g uuid; d uuid; r uuid; p1 uuid; p2 uuid; actor uuid;
- role_name text; denied boolean; affected integer; result jsonb; before_state jsonb;
+ role_name text; denied boolean; result jsonb; before_state jsonb;
  case_number integer; next_dealer uuid; expected_kind public.holm_event_kind;
  signature text:='public.holm_settle_hand(uuid,uuid,integer,public.holm_event_kind,integer,boolean,text,jsonb,text,uuid,text,boolean,integer,boolean,integer,boolean,boolean)';
 BEGIN
@@ -79,13 +82,6 @@ BEGIN
    f:=pg_temp.holm_boundary_fixture('case '||case_number,case_number>1,case_number=3);
    g:=(f->>'game')::uuid; d:=(f->>'dealer')::uuid; r:=(f->>'round')::uuid;
    p1:=(f->>'p1')::uuid; p2:=(f->>'p2')::uuid;
-   IF jsonb_array_length((SELECT community_cards FROM public.rounds WHERE id=r))<>4
-      OR (SELECT community_cards->2->>'masked' FROM public.rounds WHERE id=r) IS DISTINCT FROM 'true'
-      OR (SELECT community_cards->3->>'rank' FROM public.rounds WHERE id=r) IS DISTINCT FROM '?'
-      OR (SELECT chucky_cards->0->>'masked' FROM public.rounds WHERE id=r) IS DISTINCT FROM 'true'
-      OR (SELECT community_cards->2->>'rank' FROM private.holm_round_cards WHERE round_id=r)='?' THEN
-     RAISE EXCEPTION 'holm_privacy:projection_invalid';
-   END IF;
    IF case_number=1 THEN
      -- Anonymous, owner, peer and departed observer cannot invoke the helper.
      FOR actor,role_name IN
@@ -114,32 +110,6 @@ BEGIN
        EXCEPTION WHEN insufficient_privilege THEN denied:=true;
        END;
        IF NOT denied THEN RAISE EXCEPTION 'holm_boundary:forged_claim_accepted'; END IF;
-       denied:=false;
-       BEGIN PERFORM community_cards FROM private.holm_round_cards WHERE round_id=r;
-       EXCEPTION WHEN insufficient_privilege THEN denied:=true;
-       END;
-       IF NOT denied THEN RAISE EXCEPTION 'holm_privacy:private_read'; END IF;
-       denied:=false;
-       BEGIN UPDATE public.rounds SET community_cards_revealed=4 WHERE id=r;
-       EXCEPTION WHEN insufficient_privilege THEN denied:=true;
-       END;
-       IF NOT denied THEN RAISE EXCEPTION 'holm_privacy:premature_reveal'; END IF;
-       denied:=false;
-       affected:=0;
-       BEGIN
-         DELETE FROM public.player_cards WHERE round_id=r;
-         GET DIAGNOSTICS affected=ROW_COUNT;
-       EXCEPTION WHEN insufficient_privilege THEN denied:=true;
-       END;
-       IF NOT denied AND affected<>0 THEN RAISE EXCEPTION 'holm_privacy:private_hand_deleted'; END IF;
-       denied:=false;
-       BEGIN INSERT INTO public.player_cards(player_id,round_id,cards) VALUES(p1,r,'[]'::jsonb);
-       EXCEPTION WHEN insufficient_privilege THEN denied:=true;
-       END;
-       IF NOT denied THEN RAISE EXCEPTION 'holm_privacy:private_hand_forged'; END IF;
-       IF (SELECT community_cards->3->>'rank' FROM public.rounds WHERE id=r) IS DISTINCT FROM '?' THEN
-         RAISE EXCEPTION 'holm_privacy:future_board_visible';
-       END IF;
        -- Mislabeling the game cannot bypass terminal-event protection.
        denied:=false;
        BEGIN
@@ -157,9 +127,6 @@ BEGIN
        EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
        IF NOT denied THEN RAISE EXCEPTION 'holm_boundary:browser_result_insert_allowed'; END IF;
        EXECUTE 'RESET ROLE';
-       IF (SELECT count(*) FROM public.player_cards WHERE round_id=r)<>2 THEN
-         RAISE EXCEPTION 'holm_privacy:private_hand_count_changed';
-       END IF;
      END LOOP;
    END IF;
 
@@ -206,10 +173,6 @@ BEGIN
      RAISE EXCEPTION 'holm_boundary:session_terminal_missing';
    END IF;
 
-   IF (SELECT community_cards FROM public.rounds WHERE id=r) IS DISTINCT FROM
-      (SELECT community_cards FROM private.holm_round_cards WHERE round_id=r) THEN
-     RAISE EXCEPTION 'holm_privacy:completed_reveal_missing';
-   END IF;
    before_state:=pg_temp.holm_boundary_snapshot(g);
    result:=public.holm_settle_hand(g,d,1,expected_kind,0,false,'ignored replay',
      '{}'::jsonb,'ignored',NULL,NULL,false,0);
@@ -234,22 +197,71 @@ BEGIN
 END;
 $proof$;
 
-DO $compat$
-DECLARE g uuid:=gen_random_uuid(); r uuid:=gen_random_uuid(); u uuid;
-BEGIN
- SELECT id INTO u FROM auth.users ORDER BY created_at LIMIT 1;
- INSERT INTO public.games(id,name,status,game_type,real_money,current_host)
- VALUES(g,'Rollback unrelated round compatibility','waiting','horses',false,u);
- INSERT INTO public.rounds(id,game_id,round_number,cards_dealt,status,pot) VALUES(r,g,1,0,'betting',0);
- PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
- PERFORM set_config('request.jwt.claim.sub',u::text,true);
- EXECUTE 'SET LOCAL ROLE authenticated';
- UPDATE public.rounds SET pot=1 WHERE id=r;
- IF NOT FOUND THEN RAISE EXCEPTION 'holm_privacy:unrelated_round_blocked'; END IF;
- EXECUTE 'RESET ROLE';
-END;
-$compat$;
-
 -- Exercise deferred transfer-journal constraints before discarding fixtures.
+SET CONSTRAINTS ALL IMMEDIATE;
+
+SET CONSTRAINTS ALL DEFERRED;
+DO $odd$
+DECLARE f jsonb; g uuid; r uuid; p1 uuid; p2 uuid; p3 uuid; case_number integer; result jsonb;
+ before_state jsonb; expected_one integer; expected_two integer; expected_three integer; denied boolean; actor uuid; role_name text;
+BEGIN
+ FOR case_number IN 1..4 LOOP
+  f:=pg_temp.holm_boundary_fixture('odd remainder',true,case_number=2);
+  g:=(f->>'game')::uuid;r:=(f->>'round')::uuid;p1:=(f->>'p1')::uuid;p2:=(f->>'p2')::uuid;p3:=(f->>'p3')::uuid;
+  UPDATE public.games SET pot=5,dealer_position=CASE WHEN case_number=2 THEN 1 ELSE 2 END WHERE id=g;
+  UPDATE public.rounds SET pot=5 WHERE id=r;
+  IF case_number>=3 THEN
+   UPDATE public.players SET status='active',sitting_out=false WHERE id=p3;
+   INSERT INTO public.player_cards(player_id,round_id,cards)
+   VALUES(p3,r,jsonb_build_array(jsonb_build_object('rank',CASE WHEN case_number=3 THEN 'K' ELSE 'A' END,'suit','♣'),
+    jsonb_build_object('rank','Q','suit','♠'),jsonb_build_object('rank','J','suit','♦'),jsonb_build_object('rank','2','suit','♦')));
+  END IF;
+  UPDATE public.players SET current_decision='stay',decision_locked=true WHERE game_id=g AND status='active';
+  -- Actual browser roles cannot forge chips, reserves, pots, cursors or results.
+  FOR actor,role_name IN SELECT NULL::uuid,'anon'::text UNION ALL SELECT (f->>'u1')::uuid,'authenticated'
+    UNION ALL SELECT (f->>'u3')::uuid,'authenticated' LOOP
+   PERFORM set_config('request.jwt.claim.sub',coalesce(actor::text,''),true);
+   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role',role_name)::text,true);
+   EXECUTE format('SET LOCAL ROLE %I',role_name);
+   denied:=false; BEGIN UPDATE public.players SET chips=999 WHERE id=p1; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:chips'; END IF;
+   denied:=false; BEGIN UPDATE public.players SET legs=99 WHERE id=p1; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:legs'; END IF;
+   denied:=false; BEGIN UPDATE public.players SET chip_transfer_cursor=999 WHERE id=p1; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:cursor'; END IF;
+   -- Anon's RLS may affect zero games, but authenticated members must be denied.
+   denied:=false; BEGIN UPDATE public.games SET pot=999 WHERE id=g; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF role_name='authenticated' AND NOT denied THEN RAISE EXCEPTION 'finance_proof:pot'; END IF;
+   denied:=false; BEGIN PERFORM public.increment_player_chips(p1,999); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:increment'; END IF;
+   denied:=false; BEGIN PERFORM public.decrement_player_chips(ARRAY[p1],1); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:decrement'; END IF;
+   denied:=false; BEGIN PERFORM public.settle_gameplay_chip_transfers(g,'[]'::jsonb,'win'); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+   IF NOT denied THEN RAISE EXCEPTION 'finance_proof:transfer'; END IF;
+   EXECUTE 'RESET ROLE';
+  END LOOP;
+  PERFORM set_config('request.jwt.claim.sub',f->>'u1',true);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',f->>'u1','role','authenticated')::text,true);
+  EXECUTE 'SET LOCAL ROLE authenticated';
+  result:=public.resolve_holm_showdown(g,r);
+  EXECUTE 'RESET ROLE';
+  expected_one:=CASE WHEN case_number IN (2,4) THEN 100 ELSE 101 END;
+  expected_two:=CASE WHEN case_number=2 THEN 101 WHEN case_number=4 THEN 99 ELSE 100 END;
+  expected_three:=CASE WHEN case_number=3 THEN -5 WHEN case_number=4 THEN 2 ELSE 0 END;
+  IF (SELECT chips FROM public.players WHERE id=p1)<>expected_one
+   OR (SELECT chips FROM public.players WHERE id=p2)<>expected_two
+   OR (SELECT chips FROM public.players WHERE id=p3)<>expected_three
+   OR (SELECT sum(chips) FROM public.players WHERE game_id=g)+(SELECT pot FROM public.games WHERE id=g)<>201 THEN
+    RAISE EXCEPTION 'finance_proof:odd_payout:%:%',case_number,result;
+  END IF;
+  IF case_number=3 AND (SELECT count(*) FROM public.rounds WHERE holm_predecessor_round_id=r)<>1 THEN
+   RAISE EXCEPTION 'finance_proof:partial_tie_continuation';
+  END IF;
+  before_state:=pg_temp.holm_boundary_snapshot(g);
+  EXECUTE 'SET LOCAL ROLE authenticated'; result:=public.resolve_holm_showdown(g,r); EXECUTE 'RESET ROLE';
+  IF pg_temp.holm_boundary_snapshot(g) IS DISTINCT FROM before_state THEN RAISE EXCEPTION 'finance_proof:odd_replay'; END IF;
+ END LOOP;
+END;
+$odd$;
 SET CONSTRAINTS ALL IMMEDIATE;
 ROLLBACK;

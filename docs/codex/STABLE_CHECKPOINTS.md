@@ -2,6 +2,12 @@
 
 ## Platform
 
+- WP5 published stand-up/rejoin passed automated desktop/mobile smoke on
+  2026-09-04 at `3a7175eb738a2897141b85d83dc35d9546ec3f35`. The client sends
+  versioned commands, and rejoin preserves participant UUID and balance.
+  Exact fake-session cleanup was verified. Preserve the database balance
+  owner and stale-participation rejection.
+
 - WP4 server dice actions passed two published browser checks on 2026-09-04
   at `7d8c29e7dd69209105f53c8356c7bd4dc1671f9e`: Horses and SCC with desktop
   and mobile humans, server-generated roll receipts, completed rounds and

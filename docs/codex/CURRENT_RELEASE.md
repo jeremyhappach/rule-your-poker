@@ -2,7 +2,28 @@
 
 Date: 2026-09-04
 
-## Remediation WP5 — atomic departure and rejoin
+## Remediation WP6 — financial commands and whole-chip conservation
+
+- Browser roles cannot set player chips/legs, session pots, or transfer
+  cursors, including funded INSERTs. Arbitrary increment/decrement/transfer
+  helpers and result INSERTs are revoked. Existing legal server actions retain
+  signed balances and transactional chip presentation.
+- Both Holm split branches award every whole chip. Remainders go to tied
+  winners clockwise from the dealer using the canonical descending seat order;
+  the dealer receives an odd chip last. Input array order cannot change awards.
+- Removed 4,200 lines of obsolete bootstrap, payout and result-writing code,
+  including the unused ante handler and old Horses/SCC round owners. Holm
+  recovery delivery delegates exact round identity to its server owner.
+- Complete SQL proofs pass before/after migration for Holm odd two/three-way
+  ties, partial-tie continuation, replay, authorization and conservation, plus
+  existing Horses/SCC, Cribbage, Gin, Yahtzee, 3-5-7 and ante authority suites.
+- Build and 39 required checks pass. The broad liveness suite has 264 passes
+  and one existing Windows line-ending assertion failure in
+  `sessionDealerDrawTieHarness.test.ts`; normalized SQL matches the assertion.
+  That test infrastructure fix remains WP12. Removing dead paths reduces
+  application TypeScript diagnostics from 45 to 41.
+
+## Remediation WP5 — atomic departure and rejoin (published)
 
 - Versioned server commands lock the session and caller's participant. Departure
   records the authoritative balance and hand identity in a private audit row;
@@ -19,7 +40,10 @@ Date: 2026-09-04
 - Complete rollback proof passes before and after migration across all seven
   games: authorization, duplicate/late requests, rejoin balance, seat conflicts,
   continuation, terminal replay and session-account conservation. Seventeen
-  focused checks pass. Published browser validation is the remaining check.
+  focused checks and build pass. Production is READY at
+  `3a7175eb738a2897141b85d83dc35d9546ec3f35` and its manifest matches.
+  Published stand-up/rejoin preserves participant identity and balance;
+  exact fake-session cleanup was verified.
 
 ## Remediation WP4 — Horses/SCC server actions (published)
 
