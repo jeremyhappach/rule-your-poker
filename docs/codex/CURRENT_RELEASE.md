@@ -2,7 +2,30 @@
 
 Date: 2026-09-04
 
-## Remediation WP2b — participant identity and private profile reads
+## Remediation WP3a — Holm private future cards
+
+- Full community and Chucky cards are stored in `private.holm_round_cards`.
+  A BEFORE trigger publishes only the permitted reveal prefix, preserving the
+  four-slot transport layout without putting future values into public WAL.
+- Decision and showdown owners hydrate private cards for evaluation. Browser
+  roles cannot change Holm rounds or hands. Bots evaluate the revealed prefix.
+- The complete rollback proof passes before and after migration: private-read
+  and forged-reveal denial, winner/tie payouts, conservation, duplicate/late
+  replay, continuation, terminal outcomes, deferred foreign keys and unrelated
+  Horses writer compatibility. Synthetic fixtures roll back.
+- All 42 focused Holm checks pass, including masked slots becoming sequential
+  face reveals and reconnect reconciliation. Corrected missing cleanup between
+  the two existing community tests. Build and its 39 required checks pass;
+  application TypeScript retains 45 baseline diagnostics.
+
+Runtime acceptance: play a fake-money Holm hand, verify two visible community
+cards and two backs, ordinary reveal/Chucky presentation, next hand and reconnect.
+Fixture containment remains WP3b; shared configuration authority remains WP9.
+
+## Remediation WP2b — participant identity and private profile reads (published)
+
+Published commit `27779efea46bf4940851a33e85ef80a79e84461c`; production is READY
+and the public build manifest matches.
 
 - Player UUID, session UUID, user UUID and bot/human identity are immutable.
   Browser inserts can create only the caller's own human participant/profile;

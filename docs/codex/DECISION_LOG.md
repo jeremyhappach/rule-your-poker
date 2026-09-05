@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-115 — Holm public cards are a reveal projection
+
+Private round storage owns full community and Chucky cards. Public rows retain
+slot count and order but contain masked objects for unrevealed values. Projection
+happens before public INSERT/UPDATE so Realtime never receives new future card
+values. Only server decision and showdown owners hydrate private cards; client
+bots evaluate the public revealed prefix. Round identity and committed cards
+cannot change beneath the projection. Presentation geometry and reveal timing
+remain owned by the existing shell and Holm presentation components.
+
 ## D-114 — Participant identity is immutable and contact reads are privileged
 
 Player/session/user UUIDs and the bot/human flag cannot be reassigned after

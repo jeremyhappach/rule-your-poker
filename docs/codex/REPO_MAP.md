@@ -46,6 +46,12 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 ## Supabase boundary
 
+Holm community/Chucky authority and public reveal projection are in
+`20260904235545_holm_private_round_cards.sql`: `private.holm_round_cards`,
+the BEFORE projection trigger and the private hydration helper used by the
+existing decision/showdown owners. Its complete rollback proof is
+`supabase/tests/holm_private_cards_rollback_proof.sql`.
+
 Admin role commands/projections are in
 `20260904233922_protected_admin_role_source.sql`; participant identity, host
 bot admission and private contact reads are in

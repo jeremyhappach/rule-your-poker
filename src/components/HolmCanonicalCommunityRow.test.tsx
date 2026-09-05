@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 
 vi.mock('./PlayingCard', () => ({
   PlayingCard: ({ card }: { card?: { rank?: string } }) => (
@@ -62,20 +62,24 @@ describe('HolmCanonicalCommunityRow late community reveal', () => {
   });
 
   afterEach(() => {
+    cleanup();
     boundingBoxSpy.mockRestore();
     vi.useRealTimers();
   });
 
-  it('flips cards 3 and 4 one after another when a live hand advances from two to four', () => {
+  it('flips cards 3 and 4 when the server replaces masked slots with revealed cards', () => {
     const onFullRevealComplete = vi.fn();
     const { rerender } = render(
       <HolmCanonicalCommunityRow
         handContextId="hand-1"
-        cards={cards}
+        cards={[...cards.slice(0, 2), { rank: '?', suit: '?' }, { rank: '?', suit: '?' }] as any}
         revealed={2}
         onFullRevealComplete={onFullRevealComplete}
       />,
     );
+
+    expect(screen.getAllByTestId('card-back')).toHaveLength(2);
+    expect(screen.queryByTestId('face-?')).toBeNull();
 
     rerender(
       <HolmCanonicalCommunityRow

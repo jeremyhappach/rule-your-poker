@@ -251,7 +251,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // and (game_id, hand_number, round_number) is NOT unique across different dealer games.
   let roundQuery = supabase
     .from('rounds')
-    .select('id, current_turn_position, community_cards, hand_number, round_number')
+    .select('id, current_turn_position, community_cards, community_cards_revealed, hand_number, round_number')
     .eq('game_id', gameId);
   
   // Scope to dealer_game_id for ALL game types
@@ -342,7 +342,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   // Parse community cards for Holm games
   const communityCards: Card[] = isHolmGame && currentRound.community_cards
-    ? (currentRound.community_cards as unknown as Card[])
+    ? (currentRound.community_cards as unknown as Card[]).slice(0, currentRound.community_cards_revealed ?? 0)
     : [];
 
   // For Holm games, process only the current turn's bot (should be just 1)
