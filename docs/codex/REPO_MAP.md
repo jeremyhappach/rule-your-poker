@@ -729,3 +729,10 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - `src/lib/authoritativeRecoveryScheduler.ts` combines client safety-read reasons;
   `serializedAuthoritativeFetch.ts` remains the single fetch drain.
 - Both legacy deadline Edge Functions are inert; pg_cron owns durable recovery.
+# Random outcome ownership (remediation WP11c)
+
+- `private.secure_random_int`, `secure_random_unit` and `secure_shuffle_key` are
+  the shared entropy boundary for all persisted game outcomes.
+- `private.cribbage_finish_discard` selects the three-player fourth crib card and
+  starter atomically; `secure_randomness_and_crib_rollback_proof.sql` covers the
+  actual source, full crib, privacy-preserving card uniqueness and replay.

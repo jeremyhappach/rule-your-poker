@@ -1781,3 +1781,16 @@ hand errors do not block a successor. Owner calls restore all authority/JWT
 context on success and failure. Client safety reads share one schedule and one
 serialized loader; they never repair gameplay by writing state. Both legacy Edge
 deadline entrypoints are permanently inert HTTP 410 handlers.
+# D-130 — cryptographic server outcomes and three-player crib (2026-09-04)
+
+Persisted game outcomes use pgcrypto entropy under existing database authority.
+Bounded integer draws reject the incomplete modulo interval; shuffle keys use
+128 random bits. Client-supplied seeds/outcomes cannot control those draws.
+Deterministic harnesses remain explicitly fake-money only. This contract does
+not claim publicly verifiable randomness or independence from database operators.
+PostgreSQL documents `gen_random_bytes` as cryptographically strong and `random()`
+as unsuitable for cryptography: https://www.postgresql.org/docs/current/pgcrypto.html
+
+Jeremy chose a four-card crib for three-player Cribbage. At the last discard the
+server selects a fourth undealt card separately from the starter, then persists
+both once. Existing two/four-player behavior and scoring are preserved.

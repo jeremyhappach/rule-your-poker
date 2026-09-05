@@ -129,7 +129,9 @@ contradictions.
 
 - Supported player counts are two through four. With two players, each gets six
   cards and discards two. With three or four players, each gets five and
-  discards one. The dealer owns the crib.
+  discards one. With three players, the server adds one undealt card so the crib
+  contains four cards. That card is distinct from every hand and the starter.
+  The dealer owns the crib.
 - Phases are dealer selection, dealing, discarding, cutting, pegging, counting,
   and complete. The first dealer is selected by high-card draw; the dealer
   rotates each hand.

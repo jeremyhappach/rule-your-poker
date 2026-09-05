@@ -1,6 +1,24 @@
 # Current release and cutover state
 
+## Remediation WP11c — server randomness and four-card Cribbage
+
+- All database card shuffles, dealer draws, cuts, dice and randomized bot choices
+  now use the installed pgcrypto generator. Dice and seat indices use rejection
+  sampling; outcomes remain persisted by the existing authoritative commands.
+- Three-player Cribbage adds an undealt fourth crib card at the final discard,
+  excluding all hands and the starter. Two/four-player rules and scoring remain.
+  Replayed discard/cut requests cannot redraw or re-award heels.
+- Full compatibility and direct cryptographic-source/2–4-player real/fake-money
+  crib proofs pass before/after migration, including uniqueness, replay, bounds,
+  chip conservation and the 29-point crib. Legacy dice fixture routing uses an
+  entropy stub only inside its rollback proof; the cryptographic proof runs
+  against the actual source. Eight focused checks and the build pass.
+
 ## Remediation WP11b — recovery isolation and one catch-up schedule
+
+- Production READY and manifest match `917d4d4390229228c212ecadde3b73245d40d3ba`.
+  Published reconnect/failed-read/retired-endpoint test passes in 27.8 seconds;
+  exact fake-session cleanup verified.
 
 - Recovery failures roll back one work unit and persist its session/round identity,
   SQLSTATE and bounded retry time. Other sessions continue. Admission diagnostics

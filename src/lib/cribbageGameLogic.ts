@@ -337,8 +337,10 @@ export function advanceCribbageToCutting(state: CribbageState): CribbageState {
  * Advance to cutting phase and reveal cut card
  */
 function advanceToCutting(state: CribbageState): CribbageState {
+  if (state.phase !== 'discarding') return state;
   // Get a card that hasn't been dealt
   const usedCards = new Set<string>();
+  for (const card of state.crib) usedCards.add(`${card.rank}-${card.suit}`);
   for (const ps of Object.values(state.playerStates)) {
     for (const card of [...ps.hand, ...ps.discardedToCrib]) {
       usedCards.add(`${card.rank}-${card.suit}`);
@@ -366,12 +368,16 @@ function advanceToCutting(state: CribbageState): CribbageState {
         ? deck.find(c => c.rank === 'J')
         : undefined;
   const cutCard = harnessCut ?? deck[Math.floor(Math.random() * deck.length)];
-
+  const extraCards = deck.filter(card => card.rank !== cutCard.rank || card.suit !== cutCard.suit);
+  const crib = Object.keys(state.playerStates).length === 3 && state.crib.length === 3
+    ? [...state.crib, extraCards[Math.floor(Math.random() * extraCards.length)]]
+    : state.crib;
   
   let newState: CribbageState = {
     ...state,
     phase: 'cutting',
     cutCard,
+    crib,
   };
   
   // Check for "His Heels" (cut card is Jack = 2 points to dealer)

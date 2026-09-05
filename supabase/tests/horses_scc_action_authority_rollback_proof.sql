@@ -2,6 +2,10 @@
 -- Full action, money boundary, presentation continuation and settlement proof.
 -- All synthetic rows and temporary settings changes roll back.
 BEGIN;
+-- Transaction-only entropy injection tests fixture routing independently of the
+-- production cryptographic source, proved in secure_randomness_and_crib_rollback_proof.
+CREATE OR REPLACE FUNCTION private.secure_random_int(p_bound integer) RETURNS integer
+LANGUAGE sql VOLATILE SET search_path='' AS $test_entropy$ SELECT floor(random()*p_bound)::integer $test_entropy$;
 SET LOCAL statement_timeout='60s';
 SET LOCAL lock_timeout='2s';
 
@@ -120,7 +124,7 @@ BEGIN
   IF (SELECT horses_state FROM public.rounds WHERE id=r) IS DISTINCT FROM old_s THEN RAISE EXCEPTION 'dice_proof:late_action_mutated_successor'; END IF;
   IF (SELECT sum(chips) FROM public.players WHERE game_id=g)+(SELECT pot FROM public.games WHERE id=g)<>200 THEN RAISE EXCEPTION 'dice_proof:chip_drift'; END IF;
 
-  -- Real money uses the same seeded ordinary RNG even with global fixtures on.
+  -- Real money uses the injected ordinary entropy even with global fixtures on.
   f:=pg_temp.dice_action_fixture(kind,true);r:=(f->>'r')::uuid;p1:=(f->>'p1')::uuid;
   PERFORM setseed(0.21);
   SELECT jsonb_agg(floor(random()*6+1)::integer) INTO expected_values FROM generate_series(1,5);
