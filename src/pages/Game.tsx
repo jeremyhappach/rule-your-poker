@@ -1,3 +1,4 @@
+import { createAuthoritativeRecoveryScheduler } from "@/lib/authoritativeRecoveryScheduler";
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
@@ -3515,6 +3516,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
+  const recoveryTransportSubscribedRef = useRef(false);
+  const recoveryScheduler = useMemo(() => createAuthoritativeRecoveryScheduler(
+    () => fetchGameData('realtime_fallback').then(succeeded => {
+      if (succeeded && recoveryTransportSubscribedRef.current) recoveryScheduler.setReason('realtime', false);
+      return succeeded;
+    }),
+  ), [gameId]);
+  useEffect(() => {
+    recoveryScheduler.setActive(!safetyPollsDisabled);
+    return () => recoveryScheduler.setActive(false);
+  }, [recoveryScheduler, safetyPollsDisabled]);
   const lastKnownGameTypeRef = useRef<string | null>(null);
   const acceptedSessionRevisionRef = useRef<{ gameId: string; revision: number } | null>(null);
   const lastKnownRoundRef = useRef<number | null>(null);
@@ -3969,32 +3981,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
 
 
-    // Fallback polling if realtime subscription drops.
-    // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
-    let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
-    let realtimeSubscribed = false;
-    const startFallbackPolling = () => {
-      if (safetyPollsDisabled) return;
-      if (fallbackPollInterval) return;
-      // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
-      fallbackPollInterval = __scheduleWartimeInterval({
-        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_FALLBACK_POLL.id,
-        ownerLabel: 'game.realtime.fallbackPolling',
-        intervalMs: 5000,
-        extra: { purpose: 'realtime fallback polling' },
-        fn: () => {
-          void fetchGameData('realtime_fallback').then((succeeded) => {
-            if (succeeded && realtimeSubscribed) stopFallbackPolling();
-          });
-        },
-      });
-    };
-    const stopFallbackPolling = () => {
-      if (!fallbackPollInterval) return;
-      __cancelWartimeAsyncOwner(fallbackPollInterval as unknown as number, 'fallback_poll_stopped');
-      clearInterval(fallbackPollInterval);
-      fallbackPollInterval = null;
-    };
+    // Transport and lifecycle recovery share one read scheduler.
+    recoveryTransportSubscribedRef.current = false;
+    const startFallbackPolling = () => recoveryScheduler.setReason('realtime', true, 5000);
+    const stopFallbackPolling = () => recoveryScheduler.setReason('realtime', false);
 
     const channel = supabase
       .channel(`game-${gameId}`)
@@ -4772,7 +4762,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
-          realtimeSubscribed = true;
+          recoveryTransportSubscribedRef.current = true;
           // A healthy socket is not proof that the HTTP catch-up succeeded.
           // Keep recovery armed until one full snapshot completes.
           startFallbackPolling();
@@ -4794,7 +4784,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          realtimeSubscribed = false;
+          recoveryTransportSubscribedRef.current = false;
           console.warn('[SUBSCRIPTION] Realtime issue; enabling fallback polling:', status);
           startFallbackPolling();
         }
@@ -5158,65 +5148,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.awaiting_next_round, winner357ShowCards, gameId, game?.current_game_uuid, user?.id]);
 
-  // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
-  // This catches cases where realtime subscription misses the status update
-  useEffect(() => {
-    if (!gameId || !game) return;
-
-    if (safetyPollsDisabled) return;
-    
-    // Only poll when we think we're in_progress with awaiting_next_round
-    // but might actually be game_over
-    if (game.status !== 'in_progress' || !game.awaiting_next_round) {
-      return;
-    }
-    
-    console.log('[SAFETY POLL] Game in awaiting_next_round state, setting up safety poll');
-    
-    const safetyPoll = __scheduleWartimeInterval({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
-      ownerLabel: 'game.awaitingNextRound.statusPoll',
-      intervalMs: 2000,
-      extra: {
-        purpose: 'detect missed game_over while awaiting_next_round',
-        guard_gameStatus: game.status,
-        guard_awaitingNextRound: game.awaiting_next_round,
-      },
-      fn: async (asyncOwnerId, tickNumber) => {
-      console.log('[SAFETY POLL] Checking if game status changed to game_over...');
-      const { data: freshGame, error } = await supabase
-        .from('games')
-        .select('status')
-        .eq('id', gameId)
-        .single();
-      
-      if (!error && freshGame) {
-        if (freshGame.status === 'game_over' || freshGame.status === 'session_ended') {
-          console.log('[SAFETY POLL] 🚨 DETECTED STATUS CHANGE TO:', freshGame.status, '- FETCHING!');
-          fetchGameData();
-          // Clear interval since we caught it
-          __emitWartimeAsyncOwnerFired({
-            asyncOwnerId,
-            outcome: 'cancelled',
-            sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
-            identity: __wartimeLiveGameIdentity(),
-            liveIdentity: __wartimeLiveGameIdentity(),
-            suppressionReason: 'game_over_detected',
-            extra: { tickNumber, freshStatus: freshGame.status },
-          });
-          __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'game_over_detected');
-          clearInterval(safetyPoll);
-        }
-      }
-      },
-    }); // Check every 2 seconds
-    
-    return () => {
-      __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'effect_cleanup');
-      clearInterval(safetyPoll);
-    };
-  }, [gameId, game?.status, game?.awaiting_next_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
-
   // Update pause ref and clear timer when paused
   
   // Update pause ref and clear timer when paused
@@ -5570,235 +5501,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.is_paused, gameId, game?.current_game_uuid]);
 
-  // CRITICAL: Aggressive polling fallback for realtime reliability issues
-  // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
+  // Missing notifications are repaired with coherent reads. Database recovery
+  // owns all progression; this scheduler never advances a hand or settlement.
   useEffect(() => {
-    if (!gameId || !user) return;
+    const participant = players.find(p => p.user_id === user?.id);
+    const pregame = ['waiting', 'waiting_for_players', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'].includes(game?.status ?? '');
+    const missingCards = expectsSharedPlayerCards(game?.game_type)
+      && participant?.ante_decision === 'ante_up' && !participant.sitting_out
+      && game?.status === 'in_progress' && playerCards.length === 0;
+    const needed = !!gameId && !!user && (pregame || missingCards
+      || participant?.sitting_out === true || game?.status === 'game_over'
+      || game?.awaiting_next_round === true
+      || (isThreeFiveSevenFrameGameType(game?.game_type) && game?.status === 'in_progress'));
+    recoveryScheduler.setReason('lifecycle', needed, 3000);
+  }, [gameId, user?.id, players, game?.status, game?.game_type, game?.awaiting_next_round, playerCards.length, recoveryScheduler]);
 
-    if (safetyPollsDisabled) return;
-    
-    const currentPlayer = players.find(p => p.user_id === user?.id);
-    const isSittingOut = currentPlayer?.sitting_out === true;
-    const needsAnteDecision = currentPlayer?.ante_decision === null && game?.status === 'ante_decision';
-    const isDealer = currentPlayer?.position === game?.dealer_position;
-    const isCreator = currentPlayer?.position === 1;
-    
-    // Check if player just anted up but has no cards yet (critical race condition)
-    const justAntedUpNoCards =
-      expectsSharedPlayerCards(game?.game_type) &&
-      currentPlayer && 
-      currentPlayer.ante_decision === 'ante_up' && 
-      !currentPlayer.sitting_out &&
-      game?.status === 'in_progress' &&
-      playerCards.length === 0;
-    
-    // Check if we're waiting for ante_decision status after config complete
-    // Non-dealers should poll aggressively when game is in ante_decision but they haven't seen the dialog yet
-    const waitingForAnteDialog = 
-      game?.status === 'ante_decision' && 
-      currentPlayer && 
-      currentPlayer.ante_decision === null && 
-      !isDealer &&
-      !showAnteDialog;
-    
-    const waitingForAnteStatus = 
-      game?.status === 'configuring' || 
-      waitingForAnteDialog;
-    
-    // CRITICAL: Poll when stuck on game_over - dealer may have moved on to game_selection/configuring/ante_decision
-    // Non-dealers should poll to detect when the game has transitioned past game_over
-    const stuckOnGameOver = 
-      game?.status === 'game_over' && 
-      currentPlayer && 
-      !isDealer;
-    
-    // Also poll during game_selection if not the dealer - wait for configuring transition
-    const waitingForConfig = 
-      game?.status === 'game_selection' && 
-      currentPlayer && 
-      !isDealer;
-    
-    // CRITICAL: Poll during waiting/dealer_selection for non-creators to detect game start
-    const waitingForGameStart = 
-      (game?.status === 'waiting' || game?.status === 'waiting_for_players' || game?.status === 'dealer_selection') && 
-      currentPlayer && 
-      !isCreator;
-    
-    // CRITICAL: Host in waiting status should also poll to see new players joining
-    // Realtime INSERT events are unreliable
-    const hostWaitingForPlayers = 
-      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
-      isCreator;
-    
-    // CRITICAL: Observers in waiting status should poll to see other players joining (including bots)
-    // Observers aren't players yet so they don't trigger the other polling conditions
-    const observerWaitingForPlayers = 
-      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
-      !currentPlayer;
-    
-    // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
-    // and no one can make a decision. This can happen due to race conditions.
-    const latestRound = game?.game_type === 'holm-game'
-      ? pickActiveSingleRoundGameRound(game?.rounds, {
-          dealerGameId: game?.current_game_uuid ?? null,
-          currentRoundNumber: game?.current_round ?? null,
-          currentHandNumber: game?.total_hands ?? null,
-        })
-      : pickActive357Round(game?.rounds, {
-          currentRoundNumber: game?.current_round,
-          currentHandNumber: game?.total_hands,
-          dealerGameId: game?.current_game_uuid,
-        }) ?? null;
-    // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
-    // last 2 community cards never flipped (community_cards_revealed stays at 2).
-    // This can happen if the client that acquired the round lock disconnects mid-showdown.
-    const holmShowdownStuck =
-      game?.game_type === 'holm-game' &&
-      game?.status === 'in_progress' &&
-      latestRound?.status === 'showdown' &&
-      (latestRound?.community_cards_revealed ?? 0) < 4 &&
-      currentPlayer;
-
-    // Also detect when Holm game started but no round was created
-    // CRITICAL: Check rounds array, NOT game.current_round (which we no longer update for Holm)
-    const holmNoRound = 
-      game?.game_type === 'holm-game' &&
-      game?.status === 'in_progress' &&
-      (!game?.rounds || game?.rounds?.length === 0) &&
-      currentPlayer;
-    
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmNoRound;
-    
-    if (!shouldPoll) return;
-    
-    console.log('[CRITICAL POLL] Starting aggressive polling:', {
-      isSittingOut,
-      needsAnteDecision,
-      justAntedUpNoCards,
-      waitingForAnteDialog,
-      waitingForAnteStatus,
-      stuckOnGameOver,
-      waitingForConfig,
-      waitingForGameStart,
-      hostWaitingForPlayers,
-      observerWaitingForPlayers,
-      holmShowdownStuck,
-      holmNoRound,
-      showAnteDialog,
-      gameStatus: game?.status,
-      playerCardsCount: playerCards.length
-    });
-    
-    // Poll at reasonable intervals - NOT 250ms which hammers the DB
-    // Critical states poll every 2 seconds, normal states every 3 seconds
-    const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
-      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || holmNoRound) ? 2000 : 3000;
-    
-    const intervalId = __scheduleWartimeInterval({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_CRITICAL_POLL.id,
-      ownerLabel: 'game.criticalLifecyclePoll',
-      intervalMs: pollInterval,
-      extra: {
-        purpose: 'critical lifecycle polling',
-        guard_waitingForAnteDialog: waitingForAnteDialog,
-        guard_stuckOnGameOver: stuckOnGameOver,
-        guard_waitingForConfig: waitingForConfig,
-        guard_waitingForGameStart: waitingForGameStart,
-        guard_holmNoRound: holmNoRound,
-        guard_holmShowdownStuck: holmShowdownStuck,
-      },
-      fn: async (_asyncOwnerId, tickNumber) => {
-      console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
-
-      // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
-      // the showdown safely (holmGameLogic has an atomic recovery claim).
-      if (holmShowdownStuck) {
-        console.log('[CRITICAL POLL] Detected stuck Holm showdown - attempting to resume endHolmRound');
-        try {
-          await endHolmRound(gameId!);
-        } catch (e) {
-          console.error('[CRITICAL POLL] Failed to resume stuck Holm showdown:', e);
-        }
-      }
-
-      // Polling is presentation recovery only. The first-hand RPC owns round
-      // creation; a poller never repairs or creates authoritative state.
-      if (holmNoRound) {
-        console.log('[CRITICAL POLL] Holm game with no round detected - waiting for proper round creation');
-      }
-      
-      fetchGameData();
-    },
-    });
-    
-    return () => {
-      console.log('[CRITICAL POLL] Stopping polling');
-      __cancelWartimeAsyncOwner(intervalId as unknown as number, 'effect_cleanup');
-      clearInterval(intervalId);
-    };
-   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
-  
-  // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
-  // More aggressive polling to prevent round desync between clients
-  useEffect(() => {
-    if (!gameId || !game) return;
-
-    if (safetyPollsDisabled) return;
-    
-    const is357Game = game?.game_type === '3-5-7-game';
-    const isActiveGame = game?.status === 'in_progress';
-    
-    if (!is357Game || !isActiveGame) return;
-    
-    const syncPoll = async () => {
-      const { data: freshGame, error } = await supabase
-        .from('games')
-        .select('current_round, awaiting_next_round, status')
-        .eq('id', gameId)
-        .single();
-      
-      if (error || !freshGame) return;
-      
-      const localRound = game?.current_round;
-      const dbRound = freshGame.current_round;
-      
-      // Detect desync: DB round is different from local round (including when local is null)
-      const needsSync = dbRound !== null && (localRound === null || dbRound !== localRound);
-      
-      if (needsSync) {
-        console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING SYNC!');
-        lastKnownRoundRef.current = dbRound;
-        // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
-        emit357ClearEvent('sync_poll_desync', '3-second 357 sync poll detected DB round != local round', 5091);
-        setPlayerCards([]);
-        setCardStateContext(null);
-        fetchGameData();
-      }
-    };
-    
-    // Poll every 3 seconds as fallback for round sync (not 750ms which hammers DB)
-    const pollInterval = __scheduleWartimeInterval({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SYNC_POLL.id,
-      ownerLabel: 'game.357RoundSyncPoll',
-      intervalMs: 3000,
-      extra: {
-        purpose: '3-5-7 round sync fallback',
-        guard_gameType: game?.game_type ?? null,
-        guard_status: game?.status ?? null,
-        guard_localRound: game?.current_round ?? null,
-      },
-      fn: () => syncPoll(),
-    });
-    
-    // Also sync immediately on mount
-    syncPoll();
-    
-    return () => {
-      __cancelWartimeAsyncOwner(pollInterval as unknown as number, 'effect_cleanup');
-      clearInterval(pollInterval);
-    };
-  }, [gameId, game?.game_type, game?.status, game?.current_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
-  
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
       gameStatus: game?.status,
@@ -6914,59 +6631,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
   }
 
-  // CRITICAL: Healing poll for missing round/community cards/player cards in Holm games
-  // When we're in_progress with a Holm game but have no community cards OR player cards, poll until we get them
-  const roundHealingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
   useEffect(() => {
-    const isHolmGame = game?.game_type === 'holm-game';
-    const isInProgress = game?.status === 'in_progress';
-    const hasCommunityCards = communityCards && communityCards.length > 0;
-    const hasRoundData = currentRound && currentRound.community_cards;
-    
-    // Also check for player cards - critical for game type switches
-    const hasPlayerCards = playerCards && playerCards.length > 0;
-    // For Holm, validate we have 4 cards per player
-    const hasValidPlayerCards = hasPlayerCards && playerCards.some(pc => {
-      const cards = pc.cards as unknown as any[];
-      return cards && cards.length === 4;
-    });
-    
-    const needsCommunityHealing = isHolmGame && isInProgress && !hasCommunityCards && !hasRoundData && !game?.awaiting_next_round;
-    const needsPlayerCardHealing = isHolmGame && isInProgress && !hasValidPlayerCards && !game?.awaiting_next_round;
-    const needsHealing = needsCommunityHealing || needsPlayerCardHealing;
-    
-    if (needsHealing) {
-      if (safetyPollsDisabled) return;
-      console.log('[ROUND HEAL] 🚑 Holm game needs healing:', {
-        needsCommunityHealing,
-        needsPlayerCardHealing,
-        playerCardsCount: playerCards?.length,
-        hasValidPlayerCards
-      });
-      
-      const healingPoll = async () => {
-        console.log('[ROUND HEAL] 🔄 Polling for round/player card data...');
-        await fetchGameData();
-      };
-      
-      // Start polling every 2 seconds (not 300ms which hammers DB)
-      healingPoll(); // Immediate first attempt
-      roundHealingRef.current = setInterval(healingPoll, 2000);
-      
-      return () => {
-        if (roundHealingRef.current) {
-          clearInterval(roundHealingRef.current);
-          roundHealingRef.current = null;
-        }
-      };
-    } else if (roundHealingRef.current && hasCommunityCards && hasValidPlayerCards) {
-      // Stop polling if we got both community and player cards
-      console.log('[ROUND HEAL] ✅ Got community and player cards, stopping poll');
-      clearInterval(roundHealingRef.current);
-      roundHealingRef.current = null;
-    }
-  }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round, playerCards]);
+    const hasCommunityCards = !!communityCards?.length;
+    const hasValidPlayerCards = playerCards.some(row => Array.isArray(row.cards) && row.cards.length === 4);
+    const needed = game?.game_type === 'holm-game' && game?.status === 'in_progress'
+      && !game?.awaiting_next_round && (!hasCommunityCards || !currentRound || !hasValidPlayerCards);
+    recoveryScheduler.setReason('holm_cards', needed, 2000);
+  }, [game?.game_type, game?.status, game?.awaiting_next_round, communityCards, currentRound, playerCards, recoveryScheduler]);
 
   // Auto-trigger bot decisions when appropriate
   // Use a ref to track if we're already processing a bot decision to avoid duplicates

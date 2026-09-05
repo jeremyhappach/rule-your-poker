@@ -1772,3 +1772,12 @@ independent: older revisions and conflicting equal-progress content are rejected
 Private card projections retain actor masking and carry the same revision domain
 on reads and action responses. Round-scoped dice receipts use the stamped round
 revision. Existing presentation contracts and identity resets remain unchanged.
+# D-129 — isolate recovery by session and consolidate catch-up (2026-09-04)
+
+The existing single dispatcher remains the durable owner. A malformed work unit
+rolls back independently, records its exact session/round and retries with bounded
+backoff. A failed session does not poison other sessions' family health. Retired
+hand errors do not block a successor. Owner calls restore all authority/JWT
+context on success and failure. Client safety reads share one schedule and one
+serialized loader; they never repair gameplay by writing state. Both legacy Edge
+deadline entrypoints are permanently inert HTTP 410 handlers.

@@ -425,6 +425,14 @@ BEGIN
      OR v_result->'opening_transfer_cursor' IS DISTINCT FROM 'null'::jsonb THEN
     RAISE EXCEPTION '357_authority_proof:zero_charge_terminal_bootstrap_claim_invalid:%',v_result;
   END IF;
+  -- Deterministic non-sweep hands: the instant-sweep test switch does not
+  -- suppress the settlement owner's independent 3/5/7 check.
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  UPDATE public.player_cards SET cards=CASE WHEN player_id=v_t1
+    THEN '[{"rank":"2","suit":"♠"},{"rank":"4","suit":"♠"},{"rank":"6","suit":"♠"}]'::jsonb
+    ELSE '[{"rank":"2","suit":"♥"},{"rank":"4","suit":"♥"},{"rank":"6","suit":"♥"}]'::jsonb END
+   WHERE round_id=v_terminal_round;
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
   PERFORM public.three_five_seven_submit_decision(v_terminal_game,v_terminal_round,v_terminal_dealer,1,1,v_t1,'stay');
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
@@ -788,6 +796,14 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
   SELECT public.three_five_seven_begin_game(v_session_terminal_game) INTO v_result;
   v_session_terminal_round:=(v_result->>'round_id')::uuid;
+  -- Deterministic non-sweep hands: the instant-sweep test switch does not
+  -- suppress the settlement owner's independent 3/5/7 check.
+  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+  UPDATE public.player_cards SET cards=CASE WHEN player_id=v_st1
+    THEN '[{"rank":"2","suit":"♠"},{"rank":"4","suit":"♠"},{"rank":"6","suit":"♠"}]'::jsonb
+    ELSE '[{"rank":"2","suit":"♥"},{"rank":"4","suit":"♥"},{"rank":"6","suit":"♥"}]'::jsonb END
+   WHERE round_id=v_session_terminal_round;
+  PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
   PERFORM public.three_five_seven_submit_decision(
     v_session_terminal_game,v_session_terminal_round,v_session_terminal_dealer,1,1,v_st1,'stay'
   );

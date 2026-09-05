@@ -1,6 +1,26 @@
 # Current release and cutover state
 
+## Remediation WP11b — recovery isolation and one catch-up schedule
+
+- Recovery failures roll back one work unit and persist its session/round identity,
+  SQLSTATE and bounded retry time. Other sessions continue. Admission diagnostics
+  distinguish session failures from dispatcher failure and ignore retired hands.
+- All recovery owners restore caller JWT and game-write contexts. Canonical timer
+  failure handling remains per timer; its legacy dice normalization is isolated.
+- Transport, lifecycle, awaiting status, 3-5-7 and missing Holm cards share one
+  read scheduler. Removed the poller's independent Holm progression request.
+- Legacy `enforce-deadlines` v11 and `enforce-all-deadlines` v8 return 410 before
+  any database client or mutation. Removed their unreachable implementation.
+- Complete compatibility/dispatcher and malformed-session/retry/health/context
+  rollback proofs pass before/after migration. Seventeen focused checks and the
+  build/39 required checks pass; TypeScript decreases to 34 existing diagnostics.
+
+
 ## Remediation WP11a — coherent frames and snapshot revisions
+
+- Production READY and manifest match `8107a2379bc456645bac49ce02d649f53f857c2e`.
+  All seven published pause/reconnect checks pass in 3.8 minutes; cleanup verified.
+  112 focused synchronization checks pass, including a mounted-hook revision test.
 
 - All seven families publish gameplay from coherent database frames. Realtime
   requests a refresh; partial games rows cannot replace active round/roster state.

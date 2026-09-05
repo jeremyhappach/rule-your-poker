@@ -720,3 +720,12 @@ Legacy id `opponent_instant_knock` resolves read-only to
   gameplay progress; `authoritativeGameState.ts` owns row merge/Realtime policy.
 - `supabase/tests/coherent_session_frame_rollback_proof.sql` proves revision,
   actual-role admission and cleanup behavior.
+# Recovery ownership (remediation WP11b)
+
+- `private.game_recovery_unit_failures` stores exact work failures and retry times;
+  `recovery_session_deferred` excludes only affected current identities.
+- `private.capture_recovery_context` / `restore_recovery_context` bracket all
+  recovery owners; `evaluate_real_money_liveness` exposes scoped failure evidence.
+- `src/lib/authoritativeRecoveryScheduler.ts` combines client safety-read reasons;
+  `serializedAuthoritativeFetch.ts` remains the single fetch drain.
+- Both legacy deadline Edge Functions are inert; pg_cron owns durable recovery.
