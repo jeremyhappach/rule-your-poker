@@ -27,6 +27,12 @@ Date: 2026-09-04
   `20260905005247_allow_zero_financial_genesis_cursor.sql` accepts zero genesis
   while rejecting funded inserts and forged nonzero cursors. Its authenticated
   game/host creation and rejection proof passes before and after application.
+- The next browser check exposed a null-host admission race from WP5:
+  joining a room could assign its peer as host before the creator pressed Start.
+  `20260905005636_preserve_initial_session_host_on_join.sql` stamps the
+  authenticated creator on game INSERT and uses the earliest seated human
+  when repairing an absent host. The real-role genesis proof now includes
+  peer admission, preserved creator ownership and successful dealer selection.
 
 ## Remediation WP5 — atomic departure and rejoin (published)
 

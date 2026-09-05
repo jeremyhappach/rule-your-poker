@@ -13,6 +13,11 @@ The server uses the canonical seat ring's descending order with wraparound,
 skips non-winners and treats the dealer as last. Both partial ties and Chucky
 split awards use the same private helper. Each split exhausts the original pot.
 
+Session creation uses the database's zero transfer cursor. Admission stamps
+the authenticated creator as host before peers join; a missing host falls
+back to the earliest currently seated human, never automatically to the latest
+joiner. These boundaries are covered together by the financial genesis proof.
+
 ## D-118 — Participation does not restore money from history
 
 The existing participant row owns its balance through departure and rejoin.
