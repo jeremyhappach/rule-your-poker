@@ -10,10 +10,13 @@ test('preferences and dealer setup exit use the shared server commands', async (
   try {
     await startSessionUnderChaos(session);
     const dealer = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
+    // Dealer setup covers that player's HUD. The other seated player can
+    // edit preferences while waiting for the dealer to choose a game.
+    const participant = dealer === session.hostPage ? session.peerPage : session.hostPage;
     for (const label of ['Auto Ante (All)', 'Auto Ante (Run it Back)']) {
-      await dealer.getByRole('button', { name: 'Player options', exact: true }).click();
-      const pending = dealer.waitForResponse(r => r.url().includes('/rpc/set_session_player_intent') && r.request().method() === 'POST');
-      await dealer.getByRole('menuitemcheckbox', { name: label, exact: true }).click();
+      await participant.getByRole('button', { name: 'Player options', exact: true }).click();
+      const pending = participant.waitForResponse(r => r.url().includes('/rpc/set_session_player_intent') && r.request().method() === 'POST');
+      await participant.getByRole('menuitemcheckbox', { name: label, exact: true }).click();
       const response = await pending;
       expect(response.ok()).toBe(true);
       const receipt = await response.json();

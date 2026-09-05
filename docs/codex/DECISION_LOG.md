@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-125 — Session lifecycle cannot bypass financial completion
+
+The shared session-end command validates host/admin authority and exact phase
+identity. Active dealer games record pending end; immediate terminal disposition
+requires neutral unfunded setup or the exact trusted terminal settlement. Empty
+fake rooms can be deleted, and real-money history is retained. Maintenance blocks
+new non-admin rooms while existing games finish through their rule engines.
+Browser game-row updates/deletes and obsolete end/participation APIs are revoked.
+Canonical config expiry supplies and restores the family authority contexts.
+
 ## D-124 — Participation intent and setup exits have one server owner
 
 Participant intent uses a per-player version and exact dealer-game identity;

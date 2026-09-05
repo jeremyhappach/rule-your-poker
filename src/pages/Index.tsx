@@ -265,31 +265,13 @@ const Index = () => {
       
       const gameIds = deletableGames.map(g => g.id);
       
-      // Get all round IDs for these games
-      const { data: rounds } = await supabase
-        .from('rounds')
-        .select('id')
-        .in('game_id', gameIds);
-      
-      const roundIds = rounds?.map(r => r.id) || [];
-      
-      // Delete player_cards and player_actions for these rounds
-      if (roundIds.length > 0) {
-        await supabase.from('player_cards').delete().in('round_id', roundIds);
-        await supabase.from('player_actions').delete().in('round_id', roundIds);
+      for (const gameId of gameIds) {
+        const { data, error } = await supabase.rpc('admin_blast_fake_money_game', { p_game_id: gameId });
+        if (error) throw error;
+        const outcome = (data as { outcome?: string } | null)?.outcome;
+        if (outcome !== 'deleted' && outcome !== 'already-deleted') throw new Error('Session cleanup was not accepted.');
       }
-      
-      // Delete rounds for these games
-      await supabase.from('rounds').delete().in('game_id', gameIds);
-      
-      // Delete players for these games
-      await supabase.from('players').delete().in('game_id', gameIds);
-      
-      // Delete the games
-      const { error } = await supabase.from('games').delete().in('id', gameIds);
-      
-      if (error) throw error;
-      
+
       // Count real money games that were protected
       const { count: realMoneyCount } = await supabase
         .from('games')
@@ -639,7 +621,7 @@ const Index = () => {
                           if (success) {
                             toast({
                               title: enabled ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
-                              description: enabled ? "All active sessions have been ended" : "Users can now access the app",
+                              description: enabled ? "New sessions are blocked. Active games will finish before their sessions close." : "Users can now access the app",
                             });
                           } else {
                             toast({

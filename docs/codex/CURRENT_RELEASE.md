@@ -2,6 +2,26 @@
 
 Date: 2026-09-04
 
+## Remediation WP9c — session lifecycle command boundary
+
+- Session end validates host/admin authority and exact dealer-game/timer identity.
+  Active games receive a pending request; exact settled games can end. Empty fake
+  rooms may be deleted, while real-money rooms and historical results remain.
+- Browser session updates/deletes and older end/participation entrypoints are
+  revoked. Genesis rejects forged active state. Maintenance uses an admin command
+  that blocks new non-admin rooms and closes active sessions at settlement.
+- Removed the unused insufficient-player countdown, browser configuration-timeout
+  teardown, old Chucky status repair and remaining generic decision writers.
+  The canonical config expiry owner restores each game's authority context.
+- Complete rollback suites pass before/after application, including seven-game
+  end/late replay/config expiry, authorization, exact settlement, archive and
+  financial conservation. Maintenance enablement was not exercised against
+  unrelated live sessions; its per-session behavior and admin checks were proved.
+- Fifty-seven focused checks and build/39 required checks pass. TypeScript is
+  35 existing diagnostics. The complete source writer inventory now has only
+  genesis, ante/auto-fold and deck-color preference writes; WP9d closes gameplay
+  writers while preserving the presentation preference.
+
 ## Remediation WP9b — participation intent and atomic setup exit
 
 - Seated humans change their own preferences through a versioned command. The
@@ -19,6 +39,9 @@ Date: 2026-09-04
   requests, authorization, seat projection, row retention and chip conservation.
 - Thirty-seven focused checks and the build's 39 required checks pass.
   TypeScript falls from 39 to 37 existing diagnostics; no new diagnostics remain.
+- Production READY and manifest match `92c16a59a31e667ab6e535d1f85f2082d0ae64bc`.
+  Published preference/setup-exit browser check passes in 22.8 seconds, including
+  retained players and zero chip movement. Exact fake-session cleanup verified.
 
 ## Remediation WP9a — rule configuration and dealer-draw authority
 

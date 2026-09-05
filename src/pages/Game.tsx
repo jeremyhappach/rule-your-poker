@@ -1,3 +1,4 @@
+import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
@@ -460,7 +461,6 @@ import { useDebugHarness } from "@/lib/debugHarness/useDebugHarness";
 
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { VisualBugReportButton } from "@/components/VisualBugReportButton";
-import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
@@ -1855,7 +1855,6 @@ const Game = () => {
   }, [gameId]);
   
   const [isRunningItBack, setIsRunningItBack] = useState<boolean | null>(null);
-  const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
   const [allowBotDealers, setAllowBotDealers] = useState(false); // Fetched from game_defaults
@@ -8639,16 +8638,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (!_is357ForProceed) {
               console.warn('[AWAITING_NEXT_ROUND] proceedToNextRound-suppressed-non-357 game_type=', _gtForProceed,
                 '— refusing to run 3-5-7 round-advance path against', _gtForProceed, 'game.');
-              // Clear awaiting flag so we don't loop on the timer.
-              try {
-                await supabase
-                  .from('games')
-                  .update({ awaiting_next_round: false, next_round_number: null })
-                  .eq('id', gameId)
-                  .eq('awaiting_next_round', true);
-              } catch (e) {
-                console.warn('[AWAITING_NEXT_ROUND] Failed to clear stale awaiting flag', e);
-              }
               return;
             }
 
@@ -11423,21 +11412,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // (legs-to-player -> pot-to-player) to finish before transitioning.
       if (game?.game_type !== 'holm-game') return;
 
-      // If Chucky beat a player, the game should NOT have ended - auto-proceed to next hand
-      if (game.last_round_result.includes('Chucky beat')) {
-        console.log('[CHUCKY WIN FIX] Chucky beat player but game_over was set incorrectly - auto-proceeding');
-        const timer = setTimeout(async () => {
-          // Reset status to in_progress and set awaiting_next_round
-          await supabase
-            .from('games')
-            .update({
-              status: 'in_progress',
-              awaiting_next_round: true
-            })
-            .eq('id', gameId);
-        }, 2000);
-        return () => clearTimeout(timer);
-      }
+      // Continuation and terminal disposition come from the Holm server receipt.
+      if (game.last_round_result.includes("Chucky beat")) return;
 
       // If player beat Chucky, let the HolmWinPotAnimation drive the transition (don’t skip it).
       const isPlayerBeatChucky = game.last_round_result.includes('beat Chucky') && !game.last_round_result.includes('Chucky beat');
@@ -13627,82 +13603,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleEndSession = async () => {
     if (!gameId) return;
-
     try {
-      const request357SessionEnd = async () => {
-        const { data, error } = await supabase.rpc('three_five_seven_request_session_end', {
-          p_game_id: gameId,
-        });
-        if (error || !(data as { request_recorded?: boolean } | null)?.request_recorded) {
-          throw error ?? new Error('3-5-7 LAST HAND request was not recorded');
-        }
-      };
-      const isThreeFiveSeven = ['3-5-7', '3-5-7-game', '357'].includes(game?.game_type || '');
-
-      // If we're in a pre-game state (no active dealer game running),
-      // end session immediately instead of deferring to end-of-hand
-      const noActiveDealerGame = ['game_selection', 'dealer_selection', 'configuring', 'waiting'].includes(game?.status || '');
-      
-      if (noActiveDealerGame) {
-        // Check if session has any history (game_results)
-        const { count } = await supabase
-          .from('game_results')
-          .select('id', { count: 'exact', head: true })
-          .eq('game_id', gameId);
-        
-        const hasHistory = (count ?? 0) > 0;
-        
-        if (hasHistory || game?.real_money) {
-          if (isThreeFiveSeven) {
-            await request357SessionEnd();
-          } else {
-            // Archive to session_ended
-            await supabase
-              .from('games')
-              .update({
-                status: 'session_ended',
-                session_ended_at: new Date().toISOString(),
-                pending_session_end: false,
-                game_over_at: new Date().toISOString(),
-              })
-              .eq('id', gameId);
-          }
-        } else if (isThreeFiveSeven) {
-          await request357SessionEnd();
-        } else {
-          // No history, safe to delete
-          // Delete players first, then game
-          await supabase.from('players').delete().eq('game_id', gameId);
-          await supabase.from('games').delete().eq('id', gameId);
-        }
-      } else {
-        // Active game in progress - defer to end-of-hand
-        if (isThreeFiveSeven) {
-          await request357SessionEnd();
-        } else if (game?.game_type === 'holm' || game?.game_type === 'holm-game') {
-          // Holm's final decision and terminal settlement are server-owned. This
-          // request takes the same game-row lock so LAST HAND cannot be lost if
-          // a browser closes while the final decision is resolving.
-          const { data, error } = await supabase.rpc('holm_request_session_end', {
-            p_game_id: gameId,
-          });
-
-          if (error || !(data as { request_recorded?: boolean } | null)?.request_recorded) {
-            throw error ?? new Error('Holm LAST HAND request was not recorded');
-          }
-        } else {
-          await supabase
-            .from('games')
-            .update({
-              pending_session_end: true,
-            })
-            .eq('id', gameId);
-        }
-      }
-
+      const disposition = await requestSessionEnd(gameId);
       setShowEndSessionDialog(false);
-    } catch (error: any) {
-      console.error('Error ending session:', error);
+      if (disposition === "deleted") navigate("/", { replace: true });
+      else await fetchGameData();
+    } catch (error) {
+      toast({ title: "Could not end session", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
     }
   };
 
@@ -16063,21 +15970,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         onUpdate={fetchGameData}
       />
 
-      {/* Not enough players countdown overlay */}
-      {showNotEnoughPlayers && (
-        <NotEnoughPlayersCountdown 
-          gameId={gameId!} 
-          onComplete={() => setShowNotEnoughPlayers(false)}
-          onResume={() => {
-            setShowNotEnoughPlayers(false);
-            // Re-run the end-of-game evaluation which will now find enough players
-            handleGameOverComplete();
-          }}
-          currentPlayerId={currentPlayer?.id}
-          isCurrentPlayerSittingOut={currentPlayer?.sitting_out}
-          isCurrentPlayerWaiting={currentPlayer?.waiting}
-        />
-      )}
+
 
 
       <AlertDialog open={showEndSessionDialog} onOpenChange={setShowEndSessionDialog}>

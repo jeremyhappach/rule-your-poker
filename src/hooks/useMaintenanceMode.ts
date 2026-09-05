@@ -49,48 +49,12 @@ export const useMaintenanceMode = () => {
   }, []);
 
   const toggleMaintenanceMode = async (enabled: boolean): Promise<boolean> => {
-    // If enabling maintenance mode, end all active sessions first
-    if (enabled) {
-      console.log('[MAINTENANCE] Enabling maintenance mode - ending all active sessions');
-      
-      // Get all active games
-      const { data: activeGames } = await supabase
-        .from('games')
-        .select('id')
-        .in('status', ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over']);
-
-      if (activeGames && activeGames.length > 0) {
-        const gameIds = activeGames.map(g => g.id);
-        
-        // End all active sessions
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString(),
-            pending_session_end: false
-          })
-          .in('id', gameIds);
-        
-        console.log('[MAINTENANCE] Ended', gameIds.length, 'active sessions');
-      }
-    }
-
-    // Update the maintenance mode setting
-    const { error } = await supabase
-      .from('system_settings')
-      .update({ 
-        value: { enabled },
-        updated_at: new Date().toISOString()
-      })
-      .eq('key', 'maintenance_mode');
-
+    const { data, error } = await supabase.rpc("admin_set_maintenance_mode" as any, { p_enabled: enabled } as any);
     if (error) {
-      console.error('[MAINTENANCE] Error updating maintenance mode:', error);
+      console.error("Maintenance request failed:", error);
       return false;
     }
-
-    setIsMaintenanceMode(enabled);
+    setIsMaintenanceMode((data as unknown as { enabled: boolean }).enabled);
     return true;
   };
 

@@ -1,5 +1,15 @@
 # Repository map
 
+## Session lifecycle commands (WP9c)
+
+- `20260905015956_session_lifecycle_command_boundary.sql` owns shared end requests,
+  maintenance mode and browser session write restrictions. Existing fake-money
+  blast remains the admin deletion owner.
+- `src/lib/sessionLifecycleAuthority.ts` submits exact session/dealer-game/timer
+  identity. Game and lobby handlers consume the disposition.
+- The unused `NotEnoughPlayersCountdown` and browser timeout teardown are removed.
+  `gameLogic.ts` has no generic decision or all-decisions-in writer.
+
 ## Participation intent and setup decline (WP9b)
 
 - `20260905014334_session_participation_intent_and_setup_handoff.sql` owns

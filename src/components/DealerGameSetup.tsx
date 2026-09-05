@@ -210,8 +210,6 @@ const DealerGameSetupInner = ({
   // Timer settings are passed as props (cached at session start)
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDeletingEmptySession, setShowDeletingEmptySession] = useState(false);
-  const [deleteCountdown, setDeleteCountdown] = useState(5);
   const hasSubmittedRef = useRef(false);
   const handleDealerTimeoutRef = useRef<() => void>(() => {});
   const configTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -465,94 +463,19 @@ const DealerGameSetupInner = ({
         return;
       }
 
-      if (outcome === 'session_ended') {
-        onSessionEnd();
-        return;
-      }
+      if (outcome === 'session_ended') return;
 
       if (outcome === 'waiting') {
         // Server already wrote status='waiting' and soft-removed sit-outs.
         return;
       }
 
-      // outcome === 'empty_no_humans' → caller shows 5s countdown then deletes.
-      const deleteEmptySession = async () => {
-        console.log('[DEALER SETUP] Deleting empty session (no hands played)');
-
-        // Delete in FK-safe order, but parallelize where possible
-        const { data: roundRows } = await supabase
-          .from('rounds')
-          .select('id')
-          .eq('game_id', gameId);
-
-        const roundIds = (roundRows ?? []).map((r: any) => r.id).filter(Boolean);
-
-        // Parallel delete: these 3 don't depend on each other
-        const parallelDeletes = [
-          roundIds.length > 0 
-            ? supabase.from('player_cards').delete().in('round_id', roundIds)
-            : Promise.resolve({ error: null }),
-          supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId),
-          supabase.from('chat_messages').delete().eq('game_id', gameId),
-        ];
-        
-        const results = await Promise.all(parallelDeletes);
-        for (const { error } of results) {
-          if (error) throw error;
-        }
-
-        // Sequential deletes (FK dependencies): rounds -> players -> games
-        {
-          const { error } = await supabase.from('rounds').delete().eq('game_id', gameId);
-          if (error) throw error;
-        }
-        {
-          const { error } = await supabase.from('players').delete().eq('game_id', gameId);
-          if (error) throw error;
-        }
-        {
-          const { error } = await supabase.from('games').delete().eq('id', gameId);
-          if (error) throw error;
-        }
-      };
-
-      // Empty session with no humans: keep client-side 5s UI countdown then cascade delete.
-      await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
-
-      setShowDeletingEmptySession(true);
-      setDeleteCountdown(5);
-
-      const interval = setInterval(() => {
-        setDeleteCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      setTimeout(async () => {
-        try {
-          await deleteEmptySession();
-          onSessionEnd();
-        } catch (err) {
-          console.error('[DEALER SETUP] Failed to delete empty session:', err);
-          toast.error('Failed to delete empty session');
-          hasSubmittedRef.current = false;
-        }
-      }, 5000);
+      // All dispositions are persisted by the canonical deadline owner.
+      return;
 
     } catch (err) {
       console.error('[DEALER SETUP] Timeout handling failed:', err);
       toast.error('Dealer timeout failed — retrying…');
-
-      // Try server-side enforcement as a fallback (bypasses client-side permission issues)
-      try {
-        await supabase.functions.invoke('enforce-deadlines', { body: { gameId } });
-      } catch {
-        // ignore
-      }
 
       // Allow retry on next tick if we're still on this screen
       hasSubmittedRef.current = false;

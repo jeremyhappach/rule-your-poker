@@ -2,6 +2,11 @@
 
 ## Platform
 
+- WP9b published preference/setup-exit check passed at
+  `92c16a59a31e667ab6e535d1f85f2082d0ae64bc`: non-dealer ante preferences used
+  versioned commands, dealer Sit Out committed waiting atomically, both rows and
+  zero-sum chips remained. Exact fake-session cleanup was verified.
+
 - WP9a published Horses check passed at
   `dc8768dee5ddeba6025cb7b9d2ce2f05f0f5cf4c`: two-player creation, server dealer
   draw/configuration, antes, both actors' server rolls and round completion.

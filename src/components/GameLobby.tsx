@@ -1,3 +1,4 @@
+import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchLobbyGames, LobbyFetchAbortedError } from "@/lib/lobbyFetch";
 import { supabase } from "@/integrations/supabase/client";
@@ -340,7 +341,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
         console.error("Error seating host:", playerError);
 
         // Clean up the game if we couldn't seat the host
-        await perf.step("games.cleanupDelete", () => supabase.from("games").delete().eq("id", game.id));
+        await perf.step("games.cleanup", () => requestSessionEnd(game.id));
 
         toast({
           title: "Error",
@@ -400,94 +401,13 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
   };
 
   const deleteGame = async (gameId: string) => {
-    // Check if game has any history (rounds played)
-    const { data: rounds, error: roundsError } = await supabase
-      .from('rounds')
-      .select('id')
-      .eq('game_id', gameId)
-      .limit(1);
-
-    if (roundsError) {
-      console.error('Error checking game history:', roundsError);
-      toast({
-        title: "Error",
-        description: "Failed to check game history",
-        variant: "destructive",
-      });
-      return;
+    try {
+      await requestSessionEnd(gameId);
+      setDeleteGameId(null);
+      await fetchGames();
+    } catch (error) {
+      toast({ title: "Could not close session", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
     }
-
-    const hasHistory = rounds && rounds.length > 0;
-
-    if (hasHistory) {
-      // Move to session_ended status instead of deleting (so it moves to historical)
-      const { error: updateError } = await supabase
-        .from('games')
-        .update({
-          status: 'session_ended',
-          session_ended_at: new Date().toISOString()
-        })
-        .eq('id', gameId);
-
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: "Failed to end game session",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Session Ended",
-        description: "Game moved to historical (history preserved)",
-      });
-    } else {
-      // No history, safe to delete
-      // First delete dependent records (players, chat messages, etc.)
-      await supabase.from('chat_messages').delete().eq('game_id', gameId);
-      await supabase.from('session_events').delete().eq('game_id', gameId);
-      await supabase.from('players').delete().eq('game_id', gameId);
-      
-      const { error } = await supabase
-        .from('games')
-        .delete()
-        .eq('id', gameId);
-
-      if (error) {
-        console.error('Delete game error:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete game",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Verify the game was actually deleted
-      const { data: stillExists } = await supabase
-        .from('games')
-        .select('id')
-        .eq('id', gameId)
-        .maybeSingle();
-
-      if (stillExists) {
-        toast({
-          title: "Permission Denied",
-          description: "Only the game host can delete this game",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Success",
-        description: "Game deleted",
-      });
-    }
-
-    setDeleteGameId(null);
-    fetchGames();
   };
 
   const activeGames = games.filter(g => 
