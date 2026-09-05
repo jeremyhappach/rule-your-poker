@@ -261,11 +261,13 @@ function matchesActionBaseline(snapshot: ChaosDomSnapshot | null, action: ChaosA
 
 function hasMutationProjection(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
   return target.field === 'decisionLocks' ? Array.isArray(snapshot.decisionLocks)
+    : target.field === 'roundStatus' ? typeof snapshot.roundStatus === 'string'
     : Number.isSafeInteger(snapshot[target.field]);
 }
 
 function mutationReached(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
   return target.field === 'decisionLocks' ? snapshot.decisionLocks?.includes(target.value) === true
+    : target.field === 'roundStatus' ? snapshot.roundStatus === target.value
     : typeof snapshot[target.field] === 'number' && snapshot[target.field]! >= target.value;
 }
 

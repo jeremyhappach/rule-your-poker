@@ -1,7 +1,8 @@
 export type MutationProgressTarget = {
   roundId: string;
 } & ({ field: 'holmTurnSequence' | 'ginActionCount'; value: number }
-  | { field: 'decisionLocks'; value: string });
+  | { field: 'decisionLocks'; value: string }
+  | { field: 'roundStatus'; value: 'completed' });
 
 type JsonRecord = Record<string, any>;
 const record = (value: unknown): JsonRecord | null => value !== null && typeof value === 'object'
@@ -35,7 +36,11 @@ export function mutationProgressTarget(
     if (!['decision_committed', 'already_decided'].includes(result.outcome)
       || result.round?.id !== input.p_round_id || result.decision !== input.p_decision
       || typeof input.p_player_id !== 'string') return null;
-    return { field: 'decisionLocks', roundId: input.p_round_id, value: input.p_player_id };
+    // Settlement may clear participant locks in this same transaction. Only
+    // the exact committed response can substitute its completed-round target.
+    return result.round.status === 'completed'
+      ? { field: 'roundStatus', roundId: input.p_round_id, value: 'completed' }
+      : { field: 'decisionLocks', roundId: input.p_round_id, value: input.p_player_id };
   }
   if (endpoint.endsWith('/holm_submit_decision')) {
     const denied = ['already_locked', 'already_terminal', 'round_not_betting', 'player_not_eligible',

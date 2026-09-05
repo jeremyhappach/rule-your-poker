@@ -1,5 +1,26 @@
 # Current release and cutover state
 
+## Qualification follow-up result — 2026-09-05
+
+- Gin now strictly passes with 51 committed-action receipts. Both Done Laying
+  Off actions are attributed within the ordinary six-second budget.
+- 3-5-7 now strictly passes. Its final decision can atomically clear player
+  locks during settlement; the harness binds that response's completed round
+  to both clients rather than requiring a lock that no longer exists.
+- Holm completes gameplay after the folded-card correction below, with six
+  committed decisions and no duplicate-card refusal. It remains unqualified
+  for timing: an intentionally lost ante response has 6,624 ms peer recovery,
+  and a Fold has 6,592 ms actor application (RPC 3,639 ms). Keep both findings;
+  do not widen limits or repeat the whole campaign to chase a pass.
+- This bounded follow-up used five live fake sessions, one worker and zero
+  automatic retries. All five have verified cleanup. Current retained canaries
+  are six strict passes and one unqualified, across different recorded builds;
+  this is not completion of the full current-build F00 baseline.
+- Forty-seven harness checks, focused detector TypeScript and nine Holm
+  ownership tests pass. The preceding application build passed 1,453 source
+  tests and ten browser controls. The follow-up changes only SQL and harness
+  code. The complete 165-row matrix and soak remain held.
+
 ## Holm folded-card draw correction — 2026-09-05
 
 - The strengthened canary exposed two HTTP 400 Stay responses with

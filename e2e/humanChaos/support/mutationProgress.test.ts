@@ -17,6 +17,9 @@ it('requires the exact 357 participant decision and committed round', () => {
   expect(mutationProgressTarget('/three_five_seven_submit_decision', request, response))
     .toEqual({ field: 'decisionLocks', roundId: 'round-a', value: 'player-a' });
   expect(mutationProgressTarget('/three_five_seven_submit_decision', request, { ...response, decision: 'fold' })).toBeNull();
+  expect(mutationProgressTarget('/three_five_seven_submit_decision', request, { ...response, round: { id: 'round-a', status: 'completed' } }))
+    .toEqual({ field: 'roundStatus', roundId: 'round-a', value: 'completed' });
+  expect(mutationProgressTarget('/three_five_seven_submit_decision', request, { ...response, outcome: 'refused', round: { id: 'round-a', status: 'completed' } })).toBeNull();
 });
 
 it('accepts only an applied Gin action or its matching immutable replay', () => {

@@ -132,6 +132,21 @@ describe('continuous human-chaos observer evidence', () => {
     expect(continuousObserverFailure(evidence)).toBeNull();
   });
 
+  it('binds the final 357 decision to its completed round after settlement clears locks', () => {
+    const receipt: ChaosNetworkReceipt = { ...committedHolm,
+      endpoint: '/rest/v1/rpc/three_five_seven_submit_decision',
+      mutationTarget: { field: 'roundStatus', roundId: 'round-1', value: 'completed' } };
+    for (const peerRound of ['round-1', 'wrong-round']) {
+      const evidence = buildContinuousObserverEvidence([
+        ...baselines(), holmAction(),
+        snapshot('host', 1_400, 'settled', { roundStatus: 'completed', decisionLocks: [] }),
+        snapshot('peer', 1_500, 'settled', { roundId: peerRound, roundStatus: 'completed', decisionLocks: [] }),
+      ], [receipt], { finishedAt: 5_000, peerBudgetMs: 2_000 });
+      if (peerRound === 'round-1') expect(continuousObserverFailure(evidence)).toBeNull();
+      else expect(continuousObserverFailure(evidence)).not.toBeNull();
+    }
+  });
+
   it.each(['horses', 'ship-captain-crew'])('recognizes %s roll progression without DOM dice on the acting seat', (gameType) => {
     const diceSnapshot = (client: 'host' | 'peer', time: number, roll: number, disabled = false) =>
       snapshot(client, time, 'betting', { gameType,

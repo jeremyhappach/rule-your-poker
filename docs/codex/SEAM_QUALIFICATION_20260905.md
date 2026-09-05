@@ -130,6 +130,36 @@ before broader schedules. Bind or implement the 25 unresolved requirements only
 after checking existing standalone assertions. Existing approval persists; this
 hold avoids spending usage on ambiguous repetitions, not a request for approval.
 
+## Follow-up live verdicts
+
+The committed-action follow-up used frontend `844c8252859dd354cba2bea341536b9ba9379183`.
+Gin passes with 51 bound actions. Its two Done Laying Off actor observations
+are 881 and 4,871 ms; the seated peer observations are 2,231 and 1,445 ms.
+The 357 terminal decision clears participant locks atomically, so its receipt
+now supplies an exact completed-round target. That focused rerun passes.
+
+Holm exposed a genuine database defect: the single-stayer Chucky draw excluded
+only the stayer and community cards, so it could draw a folded player's card.
+Two Stay RPCs failed with SQLSTATE 23514 / `holm_card_integrity:duplicate_card`.
+Migration `20260905192836` excludes all dealt round cards. A deterministic
+rollback reproduction fails before this change and the complete settlement
+proof passes with it before and after application. Integrity checks remain on.
+
+The corrected Holm run completes gameplay without card-integrity failures,
+but remains a strict timing failure: 6,624 ms peer recovery after the injected
+ante response loss and 6,592 ms actor application for a Fold (3,639 ms RPC).
+These are retained observations, not evidence of a permanent freeze and not
+permission to widen normal limits. Next isolate that Fold's RPC/accepted-frame/
+render interval and distinguish the explicit ante fault's recovery contract.
+No broad or repeated run is justified until this remaining qualification issue
+is explained. Five follow-up fake sessions were cleaned up; all runs, including
+failures, remain in `action-proof-results.json` and `holm-cohort-proof.json`.
+
+The latest retained seven-game sample is six strict passes and Holm unqualified.
+It spans recorded builds and does not replace the full F00 baseline. Forty-seven
+harness checks, the detector TypeScript check and nine focused Holm ownership
+tests pass. The full matrix and overnight soak remain held for cost control.
+
 ## Evidence
 
 Retained under `C:/Users/jerem/Desktop/poker/poker-seam-campaign-2026-09-05/`:
