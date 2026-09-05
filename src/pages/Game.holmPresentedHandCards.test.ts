@@ -14,12 +14,10 @@ const holmRoundSelection = gameSource.slice(
 );
 
 describe('Game Holm presented-hand card ownership', () => {
-  it('loads the exact per-client selected hand without any latest-round fallback', () => {
-    expect(holmRoundSelection).toContain("timedQuery('rounds.holm-presented'");
-    expect(holmRoundSelection).toContain(".eq('id', selectedHolmRound.id)");
-    expect(holmRoundSelection).toContain(".eq('dealer_game_id', gameData.current_game_uuid)");
-    expect(holmRoundSelection).toContain(".eq('hand_number', selectedHolmRound.hand_number ?? 0)");
-    expect(holmRoundSelection).toContain(".eq('round_number', selectedHolmRound.round_number)");
+  it('uses the exact hand selected from the accepted frame without a second round lookup', () => {
+    expect(holmRoundSelection).toContain('roundData = selectedHolmRound');
+    expect(holmRoundSelection).not.toContain(".from('rounds')");
+    expect(holmRoundSelection).not.toContain("timedQuery('rounds.holm-presented'");
     expect(holmRoundSelection).not.toContain(".order('hand_number'");
     expect(holmRoundSelection).not.toContain("timedQuery('rounds.holm-latest'");
   });

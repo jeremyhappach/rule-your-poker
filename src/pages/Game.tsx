@@ -9053,20 +9053,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
           } else {
             roundSelectionBranch357 = 'holm_branch';
-            const { data, error } = await timedQuery('rounds.holm-presented', 'rounds', () =>
-              supabase
-                .from('rounds')
-                .select('id, round_number, hand_number, cards_dealt')
-                .eq('id', selectedHolmRound.id)
-                .eq('game_id', gameId)
-                .eq('dealer_game_id', gameData.current_game_uuid)
-                .eq('hand_number', selectedHolmRound.hand_number ?? 0)
-                .eq('round_number', selectedHolmRound.round_number)
-                .maybeSingle());
-
-            roundData = data;
-            roundQueryError357 = { code: (error as any)?.code ?? null, message: (error as any)?.message ?? null };
-            roundQueryRowsReturned357 = data ? 1 : 0;
+            // This exact presentation row already belongs to the accepted
+            // session frame. Re-querying it adds a serial network round trip
+            // and mixes a later read into the frame without adding identity proof.
+            roundData = selectedHolmRound;
+            roundQueryError357 = { code: null, message: null };
+            roundQueryRowsReturned357 = 1;
             ffRecord({
               writerId: 'Game.tsx:fetchHolmPresentedRound',
               source: 'HOLM_SELF_HAND_LINEAGE',
@@ -12783,7 +12775,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Note: checkHolmRoundComplete is called inside makeDecision, no need to call again
       if (game?.game_type === 'holm-game') {
         console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance ***');
-        setTimeout(() => fetchGameData(), 150);
+        void fetchGameData('manual');
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -12911,7 +12903,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Note: checkHolmRoundComplete is called inside makeDecision, no need to call again
       if (game?.game_type === 'holm-game') {
         console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance (fold) ***');
-        setTimeout(() => fetchGameData(), 150);
+        void fetchGameData('manual');
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);

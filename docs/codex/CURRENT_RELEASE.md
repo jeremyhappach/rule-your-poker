@@ -1,5 +1,23 @@
 # Current release and cutover state
 
+## Holm refresh latency correction — 2026-09-05
+
+- The retained Fold was accepted by PostgreSQL. Its acting client received a
+  completed-round frame, then issued a redundant lookup of the already-selected
+  round before loading cards. That lookup took 978 ms in the failing trace;
+  Stay/Fold also deferred the explicit refresh by 150 ms.
+- Holm now uses its exact selected round from the accepted session frame and
+  requests the existing serialized refresh immediately. Published/held/prepared
+  hand selection, dealer-game guards, card fetching and stale-state rejection
+  are preserved. There is no new timer, state owner or database migration.
+- The shared driver now labels its deliberate committed-ante response loss
+  for the existing finite 15-second recovery contract. Ordinary actions retain
+  their 6-second budget and both-client progress requirement.
+- Full build passes: application typecheck, 1,453 source tests and 47 harness
+  checks. The retained failure and the single focused post-publication run are
+  recorded in `C:/Users/jerem/Desktop/poker/poker-seam-campaign-2026-09-05/holm-refresh-results.json`.
+  One passing canary does not establish the full current-build F00 baseline.
+
 ## Qualification follow-up result — 2026-09-05
 
 - Gin now strictly passes with 51 committed-action receipts. Both Done Laying

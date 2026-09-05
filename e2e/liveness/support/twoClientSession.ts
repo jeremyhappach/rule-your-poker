@@ -313,6 +313,10 @@ export async function submitOutstandingAnteUnderChaos(session: TwoClientSession)
   // authoritative decision is committed, but that browser loses the exact RPC
   // response. Reconciliation must converge without a second write.
   decisionNetwork.loseNextResponse(/\/rest\/v1\/rpc\/submit_ante_decision$/);
+  await decisionSurface.evaluate(() => {
+    (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
+      'ante-committed-response-deliberately-lost';
+  });
   await decisionSurface.getByRole('button', { name: /Ante Up!/ }).click();
 }
 
