@@ -108,7 +108,8 @@ BEGIN
    EXECUTE 'RESET ROLE';
    -- A delayed old-round completion must never disable automation in a new dealer game.
    INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type) VALUES(g,users[1],kind) RETURNING id INTO dg;
-   UPDATE public.games SET current_game_uuid=dg,is_paused=false WHERE id=g;
+   UPDATE public.games SET is_paused=false WHERE id=g;
+   UPDATE public.games SET current_game_uuid=dg WHERE id=g;
    UPDATE public.rounds SET status='completed' WHERE id=rd;
    IF NOT (SELECT auto_fold FROM public.players WHERE id=p) OR
     (SELECT auto_play_stop_round_id IS NOT NULL FROM public.players WHERE id=p) THEN RAISE EXCEPTION 'proof:cross_identity_stop'; END IF;

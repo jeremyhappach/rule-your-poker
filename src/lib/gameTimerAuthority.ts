@@ -57,9 +57,14 @@ export async function setGamePaused(
   gameId: string,
   paused: boolean,
 ): Promise<AuthorityResult> {
+  const identity = await supabase.from('games').select('current_game_uuid,pause_version' as any).eq('id', gameId).single();
+  if (identity.error) throw identity.error;
+  const current = identity.data as unknown as { current_game_uuid: string | null; pause_version: number };
   const { data, error } = await supabase.rpc('set_game_paused' as any, {
     p_game_id: gameId,
     p_paused: paused,
+    p_expected_dealer_game_id: current.current_game_uuid,
+    p_expected_pause_version: current.pause_version,
   } as any);
   if (error) throw error;
   return (data ?? {}) as AuthorityResult;

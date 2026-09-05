@@ -3455,10 +3455,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
   // Handle pause/resume toggle for host
+  const pauseRequestInFlightRef = useRef(false);
   const handleTogglePause = useCallback(async () => {
-    if (!game || !gameId) return;
+    if (!game || !gameId || pauseRequestInFlightRef.current) return;
+    pauseRequestInFlightRef.current = true;
     const newPausedState = !game.is_paused;
-    setGame(prev => prev ? { ...prev, is_paused: newPausedState } : prev);
     try {
       const result = await setGamePaused(gameId, newPausedState);
       if (!['paused', 'resumed', 'already_set'].includes(result.outcome ?? '')) {
@@ -3466,12 +3467,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     } catch (error) {
       console.error('[PAUSE] Database pause transition failed:', error);
-      setGame(prev => prev ? { ...prev, is_paused: !newPausedState } : prev);
       toast({
         title: "Error",
         description: newPausedState ? "Failed to pause game" : "Failed to resume game",
         variant: "destructive",
       });
+    } finally {
+      try { await fetchGameData(); }
+      finally { pauseRequestInFlightRef.current = false; }
     }
   }, [game, gameId, toast]);
 

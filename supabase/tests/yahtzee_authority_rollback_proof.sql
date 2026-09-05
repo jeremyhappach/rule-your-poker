@@ -569,7 +569,9 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object(
     'role','authenticated','sub',v_user_one
   )::text,true);
-  v_result:=public.set_game_paused(v_real_timeout_game_id,false);
+  v_result:=public.set_game_paused(v_real_timeout_game_id,false,
+    (SELECT current_game_uuid FROM public.games WHERE id=v_real_timeout_game_id),
+    (SELECT pause_version FROM public.games WHERE id=v_real_timeout_game_id));
   IF v_result->>'outcome'<>'resumed'
      OR (SELECT is_paused FROM public.games WHERE id=v_real_timeout_game_id)
      OR (SELECT decision_deadline FROM public.rounds WHERE id=v_real_timeout_round_id)<=clock_timestamp()

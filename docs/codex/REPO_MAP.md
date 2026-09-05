@@ -1,5 +1,13 @@
 # Repository map
 
+## Shared pause/resume (WP10)
+
+- `20260905022016_seven_game_pause_resume_envelope.sql` owns pause versions,
+  the shared gameplay guards, deadline shifting and trusted timeout compatibility.
+- `gameTimerAuthority.ts` sends exact pause identity; Game waits for the result.
+  `seven_game_pause_rollback_proof.sql` covers role/action/deadline invariants.
+  `e2e/liveness/pauseResume.spec.ts` covers published pause/reconnect/resume.
+
 ## Atomic creation and final player commands (WP9d)
 
 - `20260905020903_atomic_session_creation_and_final_player_authority.sql` owns

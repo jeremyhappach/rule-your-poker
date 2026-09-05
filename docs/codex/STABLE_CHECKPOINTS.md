@@ -2,6 +2,10 @@
 
 ## Platform
 
+- WP9d published creation/preferences/setup-exit check passed at
+  `b03eb3bd5ae2f0a2a1013b79cd63479727662553` in 21.0 seconds.
+  Atomic host seating, command-only player actions and cleanup were verified.
+
 - WP9c published Cribbage terminal check passed at
   `71d517dfc67b32b9476d8e7248d19c9822666082`: exact settlement, connected
   Session Ended, fresh reconnect and fake-session cleanup. Runtime was 46.6 seconds.

@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-127 — Pause serializes with actions and freezes authoritative progression
+
+Every game observes the same database pause guard. A versioned host/admin
+request locks current rounds before the session and uses NOWAIT to reject a
+competing transition without introducing a waiting lock cycle. Resume shifts
+stored deadlines and restores the five authority contexts. Untimed decisions
+remain untimed. The round, financial and progression guards apply to service
+recovery as well as human actions; participation intent and graceful end remain
+control operations. The trusted Yahtzee timeout wrapper uses the same envelope.
+
 ## D-126 — Genesis and automatic-play intent are server transactions
 
 Session creation claims a request UUID and payload before returning its single

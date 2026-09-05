@@ -1,6 +1,26 @@
 # Current release and cutover state
 
+## Remediation WP10 — shared pause/resume envelope
+
+- Pause requests compare dealer-game identity and a persisted pause version.
+  A competing action returns a retryable busy result instead of a lock cycle.
+  The UI waits for authoritative state and does not roll back newer snapshots.
+- All seven games now reject round, financial and progression writes while
+  paused, including service recovery. Participation options and session-end
+  requests remain available. Gin and 3-5-7 sweeps skip paused sessions.
+- Resume restores every family's guard context, shifts real deadlines and
+  presentation leases, and preserves untimed Gin/Cribbage human choices.
+  Trusted Yahtzee timeout pause uses the same envelope; browser callers cannot
+  use the legacy unversioned entrypoint.
+- Full seven-game pause/action/deadline proofs, canonical timer proof and all
+  compatibility suites pass before/after migration. Twenty-two focused checks
+  and build/39 required checks pass; TypeScript remains 35 existing diagnostics.
+
 ## Remediation WP9d — atomic creation and final player authority
+
+- Production READY and manifest match `b03eb3bd5ae2f0a2a1013b79cd63479727662553`.
+  Published creation, preferences and setup-exit browser check passed in 21.0
+  seconds; exact fake-session cleanup verified.
 
 - Table creation and host seating commit together. A persisted request ID returns
   the same table after a lost response and cannot resurrect a deleted fake table.

@@ -247,13 +247,17 @@ BEGIN
     (v_pause_game,v_users[2],2,100,'active',false);
   SELECT config_deadline INTO v_before_deadline FROM public.games
    WHERE id=v_pause_game;
-  SELECT public.set_game_paused(v_pause_game,true) INTO v_result;
+  SELECT public.set_game_paused(v_pause_game,true,
+    (SELECT current_game_uuid FROM public.games WHERE id=v_pause_game),
+    (SELECT pause_version FROM public.games WHERE id=v_pause_game)) INTO v_result;
   IF v_result->>'outcome'<>'paused' THEN
     RAISE EXCEPTION 'canonical_timer_proof:pause_failed:%',v_result;
   END IF;
   UPDATE public.games SET timer_paused_at=timer_paused_at-interval '5 seconds'
    WHERE id=v_pause_game;
-  SELECT public.set_game_paused(v_pause_game,false) INTO v_result;
+  SELECT public.set_game_paused(v_pause_game,false,
+    (SELECT current_game_uuid FROM public.games WHERE id=v_pause_game),
+    (SELECT pause_version FROM public.games WHERE id=v_pause_game)) INTO v_result;
   SELECT config_deadline INTO v_after_deadline FROM public.games
    WHERE id=v_pause_game;
   IF v_result->>'outcome'<>'resumed'
@@ -265,7 +269,9 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object(
     'role','authenticated','sub',v_outsider
   )::text,true);
-  SELECT public.set_game_paused(v_pause_game,true) INTO v_result;
+  SELECT public.set_game_paused(v_pause_game,true,
+    (SELECT current_game_uuid FROM public.games WHERE id=v_pause_game),
+    (SELECT pause_version FROM public.games WHERE id=v_pause_game)) INTO v_result;
   IF v_result->>'outcome'<>'not_authorized'
      OR (SELECT is_paused FROM public.games WHERE id=v_pause_game) THEN
     RAISE EXCEPTION 'canonical_timer_proof:unauthorized_pause_mutated:%',v_result;
