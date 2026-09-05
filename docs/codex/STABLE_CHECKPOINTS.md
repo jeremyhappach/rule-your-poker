@@ -2,6 +2,13 @@
 
 ## Platform
 
+- WP4 server dice actions passed two published browser checks on 2026-09-04
+  at `7d8c29e7dd69209105f53c8356c7bd4dc1671f9e`: Horses and SCC with desktop
+  and mobile humans, server-generated roll receipts, completed rounds and
+  canonical continuity. Exact fake-money cleanup was verified. This is
+  automated action/round coverage; Jeremy's broader production smoke remains
+  the acceptance authority.
+
 - 3-5-7 terminal decision-surface retirement passed published production
   fake-money smoke on 2026-09-02 at commit `8b61aefe5`. The authoritative
   `session_ended` transition now retires Drop/Stay before the later canonical

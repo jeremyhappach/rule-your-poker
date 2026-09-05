@@ -1,5 +1,16 @@
 # Durable decision log
 
+## D-118 — Participation does not restore money from history
+
+The existing participant row owns its balance through departure and rejoin.
+Server commands lock session then participant and compare a participation
+version; old requests cannot reverse a newer seat/departure. Mid-hand departure
+audit is private and separate from settlement snapshots. Live hands retain
+their settlement/recovery owner, while postgame uses server disposition.
+Taking a vacated seat preserves the old participant and all history. An
+in-flight occupied seat remains reserved through its settlement. Browser
+snapshot writes and snapshot-to-player balance restoration are retired.
+
 ## D-117 — Dice commands own rolls and durable completion
 
 Horses/SCC follows the Yahtzee action boundary: UUID identity plus expected

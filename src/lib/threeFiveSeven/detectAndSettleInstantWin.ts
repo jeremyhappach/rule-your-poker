@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { type Card, has357Hand } from "../cardUtils";
 import { getBotAlias } from "../botAlias";
 import { emit357InstantWinTerminal } from "./instantWinLifecycle";
-import { recordGameResult, snapshotPlayerChips } from "../gameLogic";
+import { recordGameResult } from "../gameLogic";
 import { potToPlayer, settleGameplayChipTransfers } from "../gameplayChipTransfers";
 
 export type InstantWinDetectionResult =
@@ -163,8 +163,6 @@ export async function detectAndSettleInstantWin357(args: {
           roundId, handNumber: commitHandNumber, error: (e as Error)?.message ?? String(e),
         });
       }
-
-      try { await snapshotPlayerChips(gameId, commitHandNumber); } catch { /* audit-only */ }
 
       await supabase.from("players")
         .update({ legs: 0, current_decision: null, decision_locked: false })

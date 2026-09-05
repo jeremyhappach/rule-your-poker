@@ -2,7 +2,26 @@
 
 Date: 2026-09-04
 
-## Remediation WP4 — Horses/SCC server actions
+## Remediation WP5 — atomic departure and rejoin
+
+- Versioned server commands lock the session and caller's participant. Departure
+  records the authoritative balance and hand identity in a private audit row;
+  it never reserves an unfinished hand's settlement snapshot. Rejoining keeps
+  the participant UUID and current balance. Delayed commands cannot undo a
+  newer participation change.
+- Public snapshot mutation and the unversioned stand-up command are revoked.
+  All browser snapshot writers and balance restoration are removed. The seven
+  settlement owners retain financial snapshot ownership. A zero-balance
+  newcomer after settlement is captured by the seat command for finalization.
+- Active hands keep their existing recovery/settlement owner after a departure.
+  Postgame uses the existing server disposition. Seat reuse preserves history,
+  and an active hand's occupied seat cannot be reassigned.
+- Complete rollback proof passes before and after migration across all seven
+  games: authorization, duplicate/late requests, rejoin balance, seat conflicts,
+  continuation, terminal replay and session-account conservation. Seventeen
+  focused checks pass. Published browser validation is the remaining check.
+
+## Remediation WP4 — Horses/SCC server actions (published)
 
 - Roll/hold/lock commands require exact current round, hand, turn and action
   sequence. The server generates dice, enforces SCC acquisition/locks, owns
@@ -21,8 +40,11 @@ Date: 2026-09-04
   SCC ordering/permanent locks, fixture isolation, winner/tie settlement,
   conservation, continuation and terminal cases. Synthetic data rolls back.
 - All 31 focused tests and build with 39 required checks pass. Application
-  TypeScript remains at 45 existing diagnostics. Two-client browser validation
-  is the remaining release check.
+  TypeScript remains at 45 existing diagnostics. Production is READY at
+  `7d8c29e7dd69209105f53c8356c7bd4dc1671f9e` and the manifest matches.
+  Two published browser checks pass: both human clients use server dice
+  actions, finish the round and retain canonical continuity. Both exact fake
+  sessions were deleted through guarded cleanup.
 
 ## Remediation WP3b — exclude real money from executable fixtures (published)
 

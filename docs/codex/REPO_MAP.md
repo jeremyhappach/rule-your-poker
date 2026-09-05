@@ -503,10 +503,10 @@ Canonical snapshot identity is
 
 | Role | Source |
 |---|---|
-| Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
-| Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
+| Shared participation commands | `src/lib/sessionParticipation.ts` calls `public.session_leave` and `public.session_take_seat`; migration `20260905003226_atomic_departure_rejoin.sql`. |
+| Departing-player audit | `private.session_departures`, written from locked server rows by participation version. No financial snapshot key is reserved mid-hand. Browser snapshot DML is revoked. |
 | Holm transactional writer | `public.holm_settle_hand`, latest projection change in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`. |
-| Game-specific client writers | Gin in its round logic and normal 3-5-7 in `gameLogic.ts`; Horses/SCC client code submits terminal identity only through `src/lib/horsesSettleGame.ts`. |
+| Financial snapshot writers | Seven transactional settlement owners. The seat command also records a zero opening balance for a newcomer at an already-settled boundary. Browser snapshot writers are removed. |
 | Cribbage transactional writer | `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 | Yahtzee transactional writer | `public.yahtzee_settle_game` in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest definition in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`. |
 | Session Ended reader | `SessionEndedTablePhase.tsx:SessionEndedFeltPanel` merges the latest snapshot participants with the current roster; humans dedupe by `user_id`, bots by `player_id`. |

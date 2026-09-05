@@ -359,7 +359,8 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
 
-import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
+import { leaveSession, takeSessionSeat } from "@/lib/sessionParticipation";
+import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, endRound } from "@/lib/gameLogic";
 import { submitHolmDecision } from '@/lib/holmDecisionAuthority';
 import {
   acknowledgePreparedHolmHandDealt,
@@ -3477,59 +3478,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
   
-  // After a player leaves, check if the session has enough humans to continue.
-  // If not, revert to 'waiting' or end the session entirely.
-  const checkAndCleanupAfterPlayerLeave = async (gId: string) => {
-    const { data: remainingPlayers } = await supabase
-      .from('players')
-      .select('id, is_bot, sitting_out, status')
-      .eq('game_id', gId)
-      .neq('status', 'left');
-
-    const activeHumans = remainingPlayers?.filter(p => !p.is_bot && !p.sitting_out) || [];
-    const totalPlayers = remainingPlayers?.length || 0;
-
-    console.log('[CLEANUP] After player leave:', { activeHumans: activeHumans.length, totalPlayers });
-
-    if (totalPlayers === 0) {
-      // No players left at all — delete or archive
-      const { data: gData } = await supabase.from('games').select('real_money, status').eq('id', gId).single();
-      if (gData?.real_money) {
-        await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
-      } else {
-        // Check if game has history (game_results OR dealer_games)
-        const { count } = await supabase.from('game_results').select('id', { count: 'exact', head: true }).eq('game_id', gId);
-        const { count: dealerGameCount } = await supabase.from('dealer_games').select('id', { count: 'exact', head: true }).eq('session_id', gId);
-        if ((count ?? 0) > 0 || (dealerGameCount ?? 0) > 0) {
-          await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
-        } else {
-          await supabase.from('players').delete().eq('game_id', gId);
-          await supabase.from('games').delete().eq('id', gId);
-        }
-      }
-      return;
-    }
-
-    // If < 2 active players or 0 humans, session can't continue in a game state
-    if (activeHumans.length === 0 || totalPlayers < 2) {
-      const { data: gData } = await supabase.from('games').select('status, real_money').eq('id', gId).single();
-      if (!gData) return;
-      
-      const transitionalStates = ['dealer_selection', 'game_selection', 'configuring', 'dealer_announcement',
-        'cribbage_dealer_selection', 'ante_decision', 'in_progress', 'game_over'];
-      
-      if (transitionalStates.includes(gData.status) || gData.status === 'waiting' || gData.status === 'waiting_for_players') {
-        console.log('[CLEANUP] Not enough players in state:', gData.status, '- reverting to waiting');
-        
-        // If real money or has history, just revert to waiting so remaining player sees the lobby
-        await supabase.from('games').update({ status: 'waiting' }).eq('id', gId);
-      }
-    }
-  };
-
-  // The database owns post-dealer-game participation resolution for real-money
-  // sessions. It either closes a settled zero-human session exactly once or
-  // returns the session to post-game waiting, where absence is reconciled.
   const resolvePostgameParticipation = async (gId: string): Promise<string> => {
     const { data, error } = await supabase.rpc(
       'resolve_postgame_participation' as any,
@@ -3539,170 +3487,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return (data as { outcome?: string } | null)?.outcome ?? 'unknown';
   };
 
-  // Stand Up is one atomic server action at a settled post-game boundary:
-  // record the caller's exit, then either end, wait, or preserve continuation
-  // from the resulting authoritative participant counts.
-  const standUpAndResolvePostgame = async (gId: string): Promise<{
-    outcome: string;
-    lifecycleResolved: boolean;
-  }> => {
-    const { data, error } = await supabase.rpc(
-      'stand_up_and_resolve_postgame' as any,
-      { p_game_id: gId } as any,
-    );
-    if (error) throw error;
-
-    const result = data as {
-      outcome?: string;
-      lifecycle_resolved?: boolean;
-    } | null;
-
-    return {
-      outcome: result?.outcome ?? 'unknown',
-      lifecycleResolved: result?.lifecycle_resolved === true,
-    };
-  };
-
+  // Departure and postgame disposition commit together on the server.
   const handleStandUpNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (!currentPlayer) return;
-    
-    // Snapshot this player's chips before they leave (for real money games)
-    if (game?.real_money) {
-      const username = currentPlayer.profiles?.username || 'Unknown';
-      await snapshotDepartingPlayer(
-        gameId!, 
-        currentPlayer.id, 
-        currentPlayer.user_id, 
-        currentPlayer.chips, 
-        username,
-        currentPlayer.is_bot
-      );
-    }
-    
+    if (!currentPlayer || !gameId) return;
     try {
-      const result = await standUpAndResolvePostgame(gameId!);
-      console.log('[PLAYER OPTIONS] Stand-up disposition:', result);
-
-      if (result.outcome === 'not-authorized' || result.outcome === 'missing-game') {
-        throw new Error(`Stand up rejected: ${result.outcome}`);
-      }
-
-      // Never-started rooms and non-postgame states retain the established
-      // cleanup owner. Settled post-game lifecycle was already decided in the
-      // same transaction as the player exit and must not be second-guessed by
-      // the legacy client-side count.
-      if (!result.lifecycleResolved) {
-        await checkAndCleanupAfterPlayerLeave(gameId!);
-      } else {
-        await fetchGameData();
-      }
-
-      // If cleanup deleted the game (e.g. last human stood up with no bots),
-      // navigate back to lobby so we don't leave the viewer on a stale page
-      // whose Join button would FK-violate against a now-missing games.id.
-      const { data: stillThere } = await supabase
-        .from('games')
-        .select('id')
-        .eq('id', gameId!)
-        .maybeSingle();
+      await leaveSession(gameId, currentPlayer.id, (currentPlayer as any).participation_version ?? 0);
+      const { data: stillThere, error } = await supabase.from('games').select('id').eq('id', gameId).maybeSingle();
+      if (error) throw error;
       if (!stillThere) {
         recordTerminalRecovery('completed-teardown', { gameId, source: 'stand-up-cleanup' });
         releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
+      } else {
+        await fetchGameData();
       }
     } catch (error) {
+      await fetchGameData();
       console.error('[PLAYER OPTIONS] Failed to stand up:', error);
-      toast({ title: "Error", description: "Failed to stand up", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to stand up. Please try again.", variant: "destructive" });
     }
   };
-  
+
   const handleLeaveGameNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
-    
-    // If user is an observer (not a player), just navigate back to lobby
-    if (!currentPlayer) {
-      recordTerminalRecovery('explicit-leave', { gameId, source: 'observer-leave' });
-      releaseRecoveryLease('explicit-leave', { gameId });
-      navigate('/');
-      return;
-    }
-
-    
-    // Check if host is leaving during waiting phase - delete the entire game
-    // CRITICAL: NEVER delete real_money games - archive them instead
-    if ((game?.status === 'waiting' || game?.status === 'waiting_for_players') && isCreator) {
-      if (game?.real_money) {
-        // Real money games: NEVER delete - archive to session_ended
-        console.log('[PLAYER OPTIONS] Real money game - archiving instead of deleting');
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString(),
-            game_over_at: new Date().toISOString(),
-          })
-          .eq('id', gameId);
-      } else {
-        // Delete all players first (including bots)
-        await supabase.from('players').delete().eq('game_id', gameId);
-        // Delete the game
-        const { error } = await supabase.from('games').delete().eq('id', gameId);
-        if (error) {
-          console.error('[PLAYER OPTIONS] Failed to delete game:', error);
-          toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
-        }
+    if (!gameId) return;
+    try {
+      if (currentPlayer) {
+        await leaveSession(gameId, currentPlayer.id, (currentPlayer as any).participation_version ?? 0);
       }
-      recordTerminalRecovery('explicit-leave', { gameId, source: 'host-leave-waiting' });
-      releaseRecoveryLease('explicit-leave', { gameId });
-      navigate('/');
-      return;
-    }
-
-    
-    // Snapshot this player's chips before they leave (for real money games)
-    if (game?.real_money) {
-      const username = currentPlayer.profiles?.username || 'Unknown';
-      await snapshotDepartingPlayer(
-        gameId!, 
-        currentPlayer.id, 
-        currentPlayer.user_id, 
-        currentPlayer.chips, 
-        username,
-        currentPlayer.is_bot
-      );
-    }
-    
-    // Soft-delete the player record (preserve for hand history FK integrity).
-    // Clear participation-eligibility flags to match handleStandUpNow.
-    const { error } = await supabase
-      .from('players')
-      .update({
-        status: 'left',
-        sitting_out: true,
-        stand_up_next_hand: false,
-        sit_out_next_hand: false,
-        ante_decision: null,
-        auto_ante: false,
-        auto_ante_runback: false,
-        auto_fold: false,
-        waiting: false,
-      })
-      .eq('id', currentPlayer.id);
-    
-    if (error) {
-      console.error('[PLAYER OPTIONS] Failed to leave game:', error);
-      toast({ title: "Error", description: "Failed to leave game", variant: "destructive" });
-    } else {
-      // Fire-and-forget: check if session needs cleanup after we leave
-      checkAndCleanupAfterPlayerLeave(gameId!);
       recordTerminalRecovery('explicit-leave', { gameId, source: 'leave-game-now' });
       releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
+    } catch (error) {
+      await fetchGameData();
+      console.error('[PLAYER OPTIONS] Failed to leave game:', error);
+      toast({ title: "Error", description: "Failed to leave game. Please try again.", variant: "destructive" });
     }
   };
 
-  
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
     if (!game || !gameId) return;
@@ -16010,144 +15833,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
   const handleSelectSeat = async (position: number) => {
-    if (!gameId || !user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to select a seat.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const currentPlayer = players.find(p => p.user_id === user.id);
-    
-    // Setup states where new players can join immediately (not sitting out)
-    const setupStates = ['waiting', 'waiting_for_players', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
-    // If game is actively playing (not in setup/config), new players should sit out until next game
-    const gameInProgress = !setupStates.includes(game?.status || '');
-    
-    // For waiting status (before game starts), players join in "waiting" status (ready to play)
-    const isWaitingForPlayers = game?.status === 'waiting' || game?.status === 'waiting_for_players';
-    
+    if (!user || !gameId) return;
     try {
-      if (!currentPlayer) {
-        // Check if this user already has a player record in this game (they left and are returning)
-        const { data: existingPlayer } = await supabase
-          .from('players')
-          .select('*')
-          .eq('game_id', gameId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (existingPlayer) {
-          // Player is returning - reactivate, update position, restore chips from snapshot
-          const lastKnownChips = await getLastKnownChips(gameId, user.id);
-          const { error: updateError } = await supabase
-            .from('players')
-            .update({
-              status: 'active',
-              position: position,
-              sitting_out: gameInProgress,
-              waiting: gameInProgress, // If game in progress, mark as waiting to join next game
-              ante_decision: null, // Reset ante decision so they get the popup
-              stand_up_next_hand: false,
-              sit_out_next_hand: false,
-              ...(lastKnownChips !== null ? { chips: lastKnownChips } : {}),
-            })
-            .eq('id', existingPlayer.id);
-          
-          if (updateError) {
-            console.error('Error rejoining game:', updateError);
-            toast({
-              title: "Error Rejoining Game",
-              description: updateError.message || "Failed to select seat. Please try again.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          // Toast removed per user request
-        } else {
-          // User is a new observer - insert them as a new player
-          // Check if they have a previous chip count from an earlier departure
-          const lastKnownChips = await getLastKnownChips(gameId, user.id);
-          
-          // Fetch user's profile to get their deck_color_mode preference
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('deck_color_mode')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          // For waiting status: players join with waiting=true (ready to play when game starts)
-          // For other setup phases: players join immediately
-          // For in_progress games: players sit out until next game
-          const { error: joinError } = await supabase
-            .from('players')
-            .insert({
-              game_id: gameId,
-              user_id: user.id,
-              chips: lastKnownChips ?? 0, // Restore previous chips if available
-              position: position,
-              sitting_out: gameInProgress,
-              waiting: isWaitingForPlayers ? true : gameInProgress, // waiting: mark as waiting to play
-              ante_decision: null, // Ensure ante_decision is null so they get the popup
-              deck_color_mode: userProfile?.deck_color_mode || null // Copy from profile
-            });
-
-          if (joinError) {
-            console.error('Error joining game:', joinError);
-            toast({
-              title: "Error Joining Game",
-              description: joinError.message || "Failed to select seat. Please try again.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          // Toast removed per user request
-        }
-      } else {
-        // Existing player changing seats
-        // Keep sitting_out status if game is in progress
-        const { error: updateError } = await supabase
-          .from('players')
-          .update({
-            position: position,
-            sitting_out: gameInProgress ? currentPlayer.sitting_out : false,
-            // When the table is in the waiting/lobby phase, taking a seat
-            // re-activates the viewer — there is no separate "Rejoin"
-            // affordance. Clears waiting/observer status so they're
-            // dealt in normally on the next game.
-            ...(gameInProgress ? {} : { status: 'active', waiting: false }),
-          })
-          .eq('id', currentPlayer.id);
-          
-        if (updateError) {
-          console.error('Error changing seats:', updateError);
-          toast({
-            title: "Error Changing Seats",
-            description: updateError.message || "Failed to change seats. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Toast removed per user request
-      }
-      
-      // Refetch to update UI
-      setTimeout(() => fetchGameData(), 500);
+      await takeSessionSeat(gameId, user.id, position);
+      await fetchGameData();
     } catch (error: any) {
-      console.error('Error selecting seat:', error);
+      await fetchGameData();
       toast({
-        title: "Unexpected Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Unable to take seat",
+        description: error?.message || "Please try again.",
         variant: "destructive",
       });
     }
   };
-
   // Calculate the NEXT dealer position (for game_over countdown display)
   // This needs to be BEFORE the loading return to maintain consistent hook order
   // This needs to match the logic in rotateDealerPosition which considers:

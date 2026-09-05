@@ -42,13 +42,6 @@ __wartimeRegisterHookGL({
   sourceFunction: 'instant-win recordGameResult correlation call site',
 });
 __wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id);
-__wartimeRegisterHookGL({
-  requirementId: 'db.mutation.correlation',
-  sourceSiteId: WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id,
-  sourceFile: 'src/lib/gameLogic.ts',
-  sourceFunction: 'instant-win snapshotPlayerChips correlation call site',
-});
-__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id);
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
@@ -112,164 +105,6 @@ async function resolveDealerGameId(
     console.warn('[SNAPSHOT] No dealer game resolved — writing legacy null identity', { gameId });
   }
   return resolved;
-}
-
-/**
- * Snapshot all players' chip counts after a hand completes.
- * This is used for accurate session results and for restoring chips when departed players rejoin.
- *
- * Idempotent at the database level: the unique index
- * `session_player_snapshots_dealer_hand_participant_key` makes a replay of the
- * same authoritative hand a no-op, while a later dealer game reusing the same
- * `hand_number` is a distinct identity and always writes.
- */
-export async function snapshotPlayerChips(
-  gameId: string,
-  handNumber: number,
-  dealerGameId?: string | null,
-) {
-  const resolvedDealerGameId = await resolveDealerGameId(gameId, dealerGameId);
-  console.log('[SNAPSHOT] Snapshotting player chips for game:', gameId, 'dealerGame:', resolvedDealerGameId, 'hand:', handNumber);
-  
-  // Fetch all players with their profiles for username
-  const { data: players, error: playersError } = await supabase
-    .from('players')
-    .select('id, user_id, chips, is_bot, created_at, profiles(username)')
-    .eq('game_id', gameId);
-  
-  if (playersError || !players) {
-    console.error('[SNAPSHOT] Error fetching players:', playersError);
-    return;
-  }
-  
-  // Build snapshot records
-  const snapshots = players.map(player => {
-    // Get username - for bots use alias, for humans use profile username
-    let username = 'Unknown';
-    if (player.is_bot) {
-      username = getBotAlias(players, player.user_id);
-    } else if (player.profiles && typeof player.profiles === 'object' && 'username' in player.profiles) {
-      username = (player.profiles as { username: string }).username || 'Unknown';
-    }
-    
-    return {
-      game_id: gameId,
-      dealer_game_id: resolvedDealerGameId,
-      player_id: player.id,
-      user_id: player.user_id,
-      username,
-      chips: player.chips,
-      is_bot: player.is_bot,
-      hand_number: handNumber
-    };
-  });
-  
-  if (snapshots.length === 0) {
-    console.log('[SNAPSHOT] No players to snapshot');
-    return;
-  }
-  
-  const { error: insertError } = resolvedDealerGameId
-    ? await supabase
-        .from('session_player_snapshots')
-        .upsert(snapshots, {
-          onConflict: 'game_id,dealer_game_id,hand_number,player_id',
-          ignoreDuplicates: true,
-        })
-    : await supabase.from('session_player_snapshots').insert(snapshots);
-  
-  if (insertError) {
-    console.error('[SNAPSHOT] Error inserting snapshots:', insertError);
-  } else {
-    console.log('[SNAPSHOT] Successfully snapshotted', snapshots.length, 'players');
-  }
-}
-
-/**
- * Snapshot a single player's chips when they leave mid-session.
- * This ensures their final chip balance is captured for accurate session results.
- *
- * Conflict behavior is DO NOTHING (`ignoreDuplicates: true`), never DO UPDATE.
- * Financial boundary: a snapshot already present for this exact
- * (game, dealer game, hand, participant) identity is the post-settlement
- * authoritative balance for that hand, and departure itself moves no chips, so
- * the existing row must not be degraded. A departure after further play lands
- * on a later `hand_number` and therefore writes its own row.
- * (`session_player_snapshots` also has no UPDATE RLS policy, so a DO UPDATE
- * upsert from the client would be rejected outright.)
- */
-export async function snapshotDepartingPlayer(
-  gameId: string, 
-  playerId: string, 
-  userId: string, 
-  chips: number, 
-  username: string,
-  isBot: boolean
-) {
-  console.log('[SNAPSHOT] Snapshotting departing player:', username, 'chips:', chips);
-  
-  // Get the current hand number from the game's total_hands
-  const { data: game, error: gameError } = await supabase
-    .from('games')
-    .select('total_hands, current_game_uuid')
-    .eq('id', gameId)
-    .maybeSingle();
-  
-  if (gameError || !game) {
-    console.error('[SNAPSHOT] Error fetching game for departing snapshot:', gameError);
-    return;
-  }
-  
-  const handNumber = game.total_hands || 0;
-  const dealerGameId = (game.current_game_uuid as string | null) ?? null;
-  
-  const row = {
-    game_id: gameId,
-    dealer_game_id: dealerGameId,
-    player_id: playerId,
-    user_id: userId,
-    username,
-    chips,
-    is_bot: isBot,
-    hand_number: handNumber
-  };
-
-  const { error: insertError } = dealerGameId
-    ? await supabase
-        .from('session_player_snapshots')
-        .upsert(row, {
-          onConflict: 'game_id,dealer_game_id,hand_number,player_id',
-          ignoreDuplicates: true,
-        })
-    : await supabase.from('session_player_snapshots').insert(row);
-  
-  if (insertError) {
-    console.error('[SNAPSHOT] Error inserting departing player snapshot:', insertError);
-  } else {
-    console.log('[SNAPSHOT] Successfully snapshotted departing player:', username);
-  }
-}
-
-
-/**
- * Get the last known chip count for a user in a session (for rejoining players)
- */
-export async function getLastKnownChips(gameId: string, userId: string): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('session_player_snapshots')
-    .select('chips')
-    .eq('game_id', gameId)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  
-  if (error) {
-    console.error('[SNAPSHOT] Error fetching last known chips:', error);
-    return null;
-  }
-  
-  return data?.chips ?? null;
 }
 
 /**
@@ -1146,28 +981,6 @@ export async function startRound(gameId: string, roundNumber: number) {
                 error: (e as Error)?.message ?? String(e),
               });
             }
-
-            // Fire-and-forget snapshot for audit parity with handleGameOver.
-            try {
-              void __withWartimeDbMutationCorrelation({
-                label: 'instant_win.snapshot_player_chips',
-                table: 'session_player_snapshots',
-                op: 'insert',
-                identity: {
-                  gameId,
-                  roundId: round.id,
-                  dealerGameId: currentGameUuid,
-                  handNumber: commitHandNumber,
-                  terminalResultIdentity: sweepMessage,
-                },
-                payloadHash: `snapshot|hand=${commitHandNumber}|players=${allPlayers.length}`,
-                causedByEventId: __recordResultCausedBy,
-                sourceSiteId: WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id,
-              }, async () => {
-                await snapshotPlayerChips(gameId, commitHandNumber);
-                return { error: null } as { error: null };
-              });
-            } catch { /* audit-only */ }
 
             await __withWartimeDbMutationCorrelation({
               label: 'instant_win.players_reset_legs_decisions',
@@ -2101,9 +1914,6 @@ async function handleGameOverLegacy(
     '357', // game_type
     currentGameUuid // dealer_game_id
   );
-  
-  // Fire-and-forget: Snapshot player chips (audit trail only)
-  snapshotPlayerChips(gameId, handNumber);
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
