@@ -2,6 +2,12 @@
 
 ## Platform
 
+- WP6 published Horses/SCC checks passed at
+  `7ae6933948dde6488989e21f16f71b6a4353784e` on 2026-09-04. Creation, host
+  preservation after peer admission, dealer selection, antes, authoritative rolls,
+  and round completion passed; both fake sessions were cleaned up. Preserve zero
+  genesis cursors and creator-owned initial host identity.
+
 - WP5 published stand-up/rejoin passed automated desktop/mobile smoke on
   2026-09-04 at `3a7175eb738a2897141b85d83dc35d9546ec3f35`. The client sends
   versioned commands, and rejoin preserves participant UUID and balance.

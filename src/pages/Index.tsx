@@ -63,7 +63,7 @@ import { GeometryLab } from "@/components/admin/GeometryLab";
 import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
 import { GeometryLabDraftProvider } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import { GeometryLabModalChrome } from "@/components/admin/GeometryLabModalChrome";
-import { formatChipValue } from "@/lib/utils";
+import { accountAmountIsNegative, formatAccountAmount } from "@/lib/accountMoney";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
 
@@ -91,7 +91,7 @@ const Index = () => {
   const { enabled: debugModeEnabled, loading: debugModeLoading, toggle: toggleDebugMode } = useGlobalDebugMode();
   const [isTogglingDebugMode, setIsTogglingDebugMode] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
-  const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
+  const { balance, loading: balanceLoading, error: balanceError, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
   
@@ -471,7 +471,7 @@ const Index = () => {
             size="sm"
             onClick={handleBalanceButtonClick}
             className="flex-1 min-w-0 h-8 px-3 justify-between"
-            title={isAdmin ? "Player Balances" : "My Balance"}
+            title={balanceError ? "Balance unavailable — open to retry" : balanceLoading ? "Loading balance" : isAdmin ? "Player Balances" : "My Balance"}
           >
             <span 
               className="truncate"
@@ -484,10 +484,10 @@ const Index = () => {
             </span>
             <span 
               className={`font-bold ml-2 flex-shrink-0 ${
-                balance >= 0 ? 'text-green-500' : 'text-red-500'
+                balance === null ? 'text-muted-foreground' : accountAmountIsNegative(balance) ? 'text-red-500' : 'text-green-500'
               }`}
             >
-              ${formatChipValue(balance)}
+              {balance === null ? "—" : `$${formatAccountAmount(balance)}`}
             </span>
           </Button>
           

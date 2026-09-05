@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAllPlayerBalances } from "@/hooks/usePlayerBalance";
 import { useState, useEffect, useMemo } from "react";
 import { TransactionHistoryDialog } from "./TransactionHistoryDialog";
-import { formatChipValue } from "@/lib/utils";
+import { accountAmountIsNegative, formatAccountAmount } from "@/lib/accountMoney";
 import { ArrowUpDown } from "lucide-react";
 
 interface AdminPlayerListDialogProps {
@@ -24,7 +24,7 @@ export const AdminPlayerListDialog = ({
   open,
   onOpenChange,
 }: AdminPlayerListDialogProps) => {
-  const { players, loading, refetch } = useAllPlayerBalances();
+  const { players, loading, error, refetch } = useAllPlayerBalances();
   const [selectedPlayer, setSelectedPlayer] = useState<{
     id: string;
     username: string;
@@ -116,6 +116,10 @@ export const AdminPlayerListDialog = ({
             <div className="text-center py-8 text-muted-foreground">
               Loading players...
             </div>
+          ) : error ? (
+            <div role="alert" className="space-y-2 py-8 text-center text-destructive">
+              <p>{error}</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button>
+            </div>
           ) : sortedPlayers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No players found
@@ -133,10 +137,10 @@ export const AdminPlayerListDialog = ({
                   </span>
                   <span
                     className={`font-bold ml-2 flex-shrink-0 ${
-                      player.balance >= 0 ? 'text-green-500' : 'text-red-500'
+                      accountAmountIsNegative(player.balance) ? 'text-red-500' : 'text-green-500'
                     }`}
                   >
-                    ${formatChipValue(player.balance)}
+                    ${formatAccountAmount(player.balance)}
                   </span>
                 </button>
               ))}

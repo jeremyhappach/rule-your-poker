@@ -1,5 +1,16 @@
 # Repository map
 
+## Account ledger authority (WP7)
+
+- `supabase/migrations/20260905005940_immutable_account_ledger_and_exact_balances.sql`
+  owns append-only account guards, idempotent admin entry/reversal commands,
+  exact statement/balance reads, retained source identity and real-session archival.
+- `src/hooks/usePlayerBalance.ts` consumes server balances and statement pages;
+  `src/lib/accountMoney.ts` formats decimal text without floating-point conversion.
+- `src/lib/accountEntryDraft.ts` retains unresolved manual request payloads across
+  refresh. `AddTransactionDialog` submits them; `TransactionHistoryDialog` exposes
+  linked corrections and read recovery. Direct financial writes are forbidden.
+
 Status: source-indexed during the first Codex ingestion on 2026-08-01.
 
 Baseline inspected: branch `main`, commit

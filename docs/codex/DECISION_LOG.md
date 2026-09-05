@@ -1,5 +1,17 @@
 # Durable decision log
 
+## D-120 — Account history is append-only and balance reads are exact
+
+`admin_record_account_entry` owns manual deposits/payouts with an actor-scoped
+request identity and immutable payload. `admin_reverse_account_entry` appends
+one linked inverse entry; it never frees the original session-result claim.
+The UI persists unresolved manual requests across refresh and retries that same
+identity. PostgreSQL computes full balances; decimal text crosses the API and
+keyset pagination controls statement size. Read failure is unavailable, never zero.
+Real-money session/profile history cannot be removed through deletion cascades;
+empty real rooms archive while explicit fake rooms retain destructive cleanup.
+No historical discrepancy is corrected by inference.
+
 ## D-119 — Monetary changes derive from legal server commands
 
 Browser roles cannot mutate chips, legs, pots, transfer cursors or result rows,

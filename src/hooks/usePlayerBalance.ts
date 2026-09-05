@@ -1,149 +1,125 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Transaction {
+export interface AccountTransaction {
   id: string;
   profile_id: string;
   date: string;
   transaction_type: string;
-  amount: number;
+  amount: string;
   notes: string | null;
   created_at: string;
+  source_game_id: string | null;
+  actor_id: string | null;
+  reversal_of: string | null;
+  reversed: boolean;
 }
+type Cursor = { date: string; id: string };
+type Statement = {
+  balance: string;
+  transactions: AccountTransaction[];
+  has_more: boolean;
+  next_cursor: Cursor | null;
+};
 
 export const usePlayerBalance = (profileId: string | undefined) => {
-  const [balance, setBalance] = useState<number>(0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [statement, setStatement] = useState<Statement | null>(null);
+  const [loadedProfile, setLoadedProfile] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
 
   const fetchTransactions = useCallback(async () => {
-    if (!profileId) {
-      setBalance(0);
-      setTransactions([]);
-      setLoading(false);
-      return;
-    }
-
+    const request = ++generation.current;
     setLoading(true);
-
-    const { data, error } = await supabase
-      .from('player_transactions')
-      .select('*')
-      .eq('profile_id', profileId)
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('[usePlayerBalance] Error fetching transactions:', error);
-      setBalance(0);
-      setTransactions([]);
-    } else {
-      const txns = (data || []) as Transaction[];
-      setTransactions(txns);
-      // Calculate balance as sum of all amounts
-      const total = txns.reduce((sum, t) => sum + Number(t.amount), 0);
-      setBalance(total);
+    setError(null);
+    setStatement(null);
+    setLoadedProfile(profileId);
+    if (!profileId) { setLoading(false); return; }
+    try {
+      const { data, error: failure } = await supabase.rpc("account_statement" as any, {
+        p_profile_id: profileId, p_limit: 50,
+      } as any);
+      if (failure) throw failure;
+      if (generation.current === request) setStatement(data as unknown as Statement);
+    } catch {
+      if (generation.current === request) setError("Unable to load this account. Please retry.");
+    } finally {
+      if (generation.current === request) { setLoading(false); setLoadingMore(false); }
     }
-
-    setLoading(false);
   }, [profileId]);
 
   useEffect(() => {
-    fetchTransactions();
+    void fetchTransactions();
+    return () => { generation.current++; };
   }, [fetchTransactions]);
 
-  return { balance, transactions, loading, refetch: fetchTransactions };
+  const loadMore = useCallback(async () => {
+    if (!profileId || !statement?.has_more || !statement.next_cursor || loadingMore) return;
+    const request = generation.current;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const { data, error: failure } = await supabase.rpc("account_statement" as any, {
+        p_profile_id: profileId, p_limit: 50,
+        p_before_date: statement.next_cursor.date, p_before_id: statement.next_cursor.id,
+      } as any);
+      if (failure) throw failure;
+      if (generation.current !== request) return;
+      const next = data as unknown as Statement;
+      setStatement(previous => ({
+        ...next,
+        transactions: [...new Map([...(previous?.transactions ?? []), ...next.transactions].map(row => [row.id, row])).values()],
+      }));
+    } catch {
+      if (generation.current === request) setError("Unable to load more transactions. Please retry.");
+    } finally {
+      if (generation.current === request) setLoadingMore(false);
+    }
+  }, [profileId, statement, loadingMore]);
+
+  const current = loadedProfile === profileId ? statement : null;
+  return {
+    balance: error ? null : current?.balance ?? null,
+    transactions: current?.transactions ?? [], loading, loadingMore, error,
+    hasMore: current?.has_more ?? false, loadMore, refetch: fetchTransactions,
+  };
 };
 
-// Hook to get all active players with balances (for admin view)
+export type AccountBalance = {
+  id: string; username: string; balance: string; lastTransactionDate: string | null;
+};
+
 export const useAllPlayerBalances = () => {
-  const [players, setPlayers] = useState<Array<{
-    id: string;
-    username: string;
-    balance: number;
-    lastTransactionDate: string | null;
-  }>>([]);
+  const [players, setPlayers] = useState<AccountBalance[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
   const fetchAllBalances = useCallback(async () => {
+    const request = ++generation.current;
     setLoading(true);
-
-    // Get all active profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username, is_active')
-      .eq('is_active', true)
-      .not('username', 'like', 'Bot %');
-
-    if (profilesError) {
-      console.error('[useAllPlayerBalances] Error fetching profiles:', profilesError);
-      setPlayers([]);
-      setLoading(false);
-      return;
+    setError(null);
+    try {
+      const { data, error: failure } = await supabase.rpc("admin_account_balances" as any);
+      if (failure) throw failure;
+      if (request === generation.current) setPlayers(data as unknown as AccountBalance[]);
+    } catch {
+      if (request === generation.current) { setPlayers([]); setError("Unable to load account balances. Please retry."); }
+    } finally {
+      if (request === generation.current) setLoading(false);
     }
-
-    // Get all transactions
-    const { data: transactions, error: txnError } = await supabase
-      .from('player_transactions')
-      .select('profile_id, amount, date');
-
-    if (txnError) {
-      console.error('[useAllPlayerBalances] Error fetching transactions:', txnError);
-      // Still show players with 0 balance
-      setPlayers((profiles || []).map(p => ({
-        id: p.id,
-        username: p.username,
-        balance: 0,
-        lastTransactionDate: null,
-      })));
-      setLoading(false);
-      return;
-    }
-
-    // Calculate balance and last transaction date per profile
-    const balanceMap = new Map<string, number>();
-    const lastTxnMap = new Map<string, string>();
-    (transactions || []).forEach(t => {
-      const current = balanceMap.get(t.profile_id) || 0;
-      balanceMap.set(t.profile_id, current + Number(t.amount));
-      
-      const existingDate = lastTxnMap.get(t.profile_id);
-      if (!existingDate || new Date(t.date) > new Date(existingDate)) {
-        lastTxnMap.set(t.profile_id, t.date);
-      }
-    });
-
-    // Combine profiles with balances
-    const playersWithBalances = (profiles || []).map(p => ({
-      id: p.id,
-      username: p.username,
-      balance: balanceMap.get(p.id) || 0,
-      lastTransactionDate: lastTxnMap.get(p.id) || null,
-    }));
-
-    // Sort by balance descending by default
-    playersWithBalances.sort((a, b) => b.balance - a.balance);
-
-    setPlayers(playersWithBalances);
-    setLoading(false);
   }, []);
-
   useEffect(() => {
-    fetchAllBalances();
+    void fetchAllBalances();
+    return () => { generation.current++; };
   }, [fetchAllBalances]);
-
-  return { players, loading, refetch: fetchAllBalances };
+  return { players, loading, error, refetch: fetchAllBalances };
 };
 
-// Function to delete a transaction (admin only)
-export const deleteTransaction = async (transactionId: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('player_transactions')
-    .delete()
-    .eq('id', transactionId);
-
-  if (error) {
-    console.error('[deleteTransaction] Error:', error);
-    return false;
-  }
-  return true;
-};
+export async function reverseAccountEntry(requestId: string, entryId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_reverse_account_entry" as any, {
+    p_request_id: requestId, p_entry_id: entryId, p_reason: reason,
+  } as any);
+  if (error) throw error;
+}

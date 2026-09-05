@@ -2,6 +2,22 @@
 
 Date: 2026-09-04
 
+## Remediation WP7 — immutable account ledger and exact balances
+
+- Admin deposits and payouts use a server command with a persisted request UUID.
+  Lost responses retry the same payload after refresh. Corrections append one
+  linked reversal; original history and session-result deduplication claims stay.
+- Browser ledger mutation is revoked. History cannot be updated, deleted or
+  truncated; source sessions and financial profiles cannot cascade away.
+  Pristine real-money rooms archive when abandoned; fake-money cleanup remains.
+- Server statements calculate complete decimal balances and paginate by date/UUID.
+  The UI preserves decimal text, exposes unavailable reads and retry controls,
+  and loads additional history without treating the API row cap as the balance.
+- Complete account proof passes before and after migration, including more than
+  1,200 statement entries, authorization, replay, linked corrections, conservation
+  and archival across seven games. Existing seven-game settlement proofs pass
+  against the candidate schema. Six focused client tests and production build pass.
+
 ## Remediation WP6 — financial commands and whole-chip conservation
 
 - Browser roles cannot set player chips/legs, session pots, or transfer
@@ -33,6 +49,9 @@ Date: 2026-09-04
   authenticated creator on game INSERT and uses the earliest seated human
   when repairing an absent host. The real-role genesis proof now includes
   peer admission, preserved creator ownership and successful dealer selection.
+- Production is verified at `7ae6933948dde6488989e21f16f71b6a4353784e`:
+  Vercel READY, matching manifest, both published dice action/round checks pass,
+  and both exact fake-session cleanups are verified.
 
 ## Remediation WP5 — atomic departure and rejoin (published)
 
