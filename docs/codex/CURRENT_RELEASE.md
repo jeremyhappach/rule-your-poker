@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## Authorized September 4 session rectification — 2026-09-05
+
+- At Jeremy's explicit request, completed real-money session
+  `2ba49ea6-4f4e-4131-818a-a8832945bf27` (Sep 4 - Scents and Subtle Sounds)
+  and voided its final Holm dealer game `0490bb21-3c38-44bd-8d16-a690485b2fb1`.
+  This session is no longer a frozen live reproduction; its original evidence
+  is retained outside the checkout.
+- Returned the exact net Holm contributions: Hap $37 and mcru81 $49. The $86
+  pot is zero; earlier games remain intact. Final session results are Hap -$20
+  and mcru81 +$20, posted once by the canonical SessionResult trigger. Account
+  balances immediately after completion are -$390 and $346, respectively.
+- Rollback/duplicate-replay and historical-preservation proofs passed. An
+  independent committed read confirms session_ended, not paused, no open rounds,
+  and all timers cancelled or completed. No product code or schema changed.
+- Refund receipt `9de040d8-c8e4-4055-ab19-f36541fff3dc`, transfer cursor 66.
+  Evidence and applied SQL: `C:/Users/jerem/Desktop/poker/session-rectification-2026-09-05/README.md`.
+
 ## Holm refresh latency correction — 2026-09-05
 
 - The corrected focused live run passes: four accepted decisions, maximum
