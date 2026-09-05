@@ -167,6 +167,7 @@ export interface UseHorsesMobileControllerArgs {
   currentRoundId: string | null;
   horsesState: HorsesStateFromDB | null;
   gameType?: string; // 'horses' or 'ship-captain-crew'
+  realMoney?: boolean;
   isPaused?: boolean; // When true, timers freeze and no timeouts are enforced
   decisionTimerSeconds?: number; // Configurable turn timer from game_defaults (default 30)
 }
@@ -197,6 +198,7 @@ export function useHorsesMobileController({
   currentRoundId: propRoundId,
   horsesState,
   gameType = 'horses',
+  realMoney,
   isPaused = false,
   decisionTimerSeconds: configuredTimerSeconds,
 }: UseHorsesMobileControllerArgs) {
@@ -1537,7 +1539,7 @@ export function useHorsesMobileController({
 
     // Roll immediately so the animation displays the NEW dice values (prevents old->new flash)
     const rollNumber = getRollNumber(localHand.rollsRemaining);
-    const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
+    const newHand = isSCC ? rollSCCDice(localHand as SCCHand, realMoney) : rollDice(localHand as HorsesHand, realMoney);
     const newVals = (newHand.dice as any[]).map((d: any) => d.value).join(",");
 
 
@@ -1633,6 +1635,7 @@ export function useHorsesMobileController({
     advanceToNextTurn,
     myPlayer?.id,
     isSCC,
+    realMoney,
     turnOrder,
     logDebug,
   ]);
@@ -1896,7 +1899,7 @@ export function useHorsesMobileController({
 
           // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
           const botRollNumber = getRollNumber(botHand.rollsRemaining);
-          const rolledHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
+          const rolledHand = isSCC ? rollSCCDice(botHand as SCCHand, realMoney) : rollDice(botHand as HorsesHand, realMoney);
 
           // Audit log the bot dice rolls for randomness validation
 
@@ -2097,6 +2100,7 @@ export function useHorsesMobileController({
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
     currentTurnPlayer?.auto_fold, // Added to trigger auto-roll for human players
+    realMoney,
     interactionsAllowed,
     syncHandle.isIdentityStale,
     // REMOVED: horsesState?.currentTurnPlayerId - causes re-runs on every state update

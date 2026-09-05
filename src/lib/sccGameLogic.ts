@@ -82,13 +82,13 @@ function rollDie(): number {
 /**
  * Process a roll: apply auto-freeze logic for 6-5-4 in sequence
  */
-export function rollSCCDice(hand: SCCHand): SCCHand {
+export function rollSCCDice(hand: SCCHand, realMoney?: boolean): SCCHand {
   if (hand.rollsRemaining <= 0 || hand.isComplete) {
     return hand;
   }
 
   // Debug harness: force No Qualify by capping rolled values to 1–3 (never 4/5/6).
-  const forceNQ = getActiveHarnessCached('ship-captain-crew') === 'force_no_qualify';
+  const forceNQ = realMoney === false && getActiveHarnessCached('ship-captain-crew') === 'force_no_qualify';
   const roll = () => (forceNQ ? Math.floor(Math.random() * 3) + 1 : rollDie());
 
   // Roll all non-held dice

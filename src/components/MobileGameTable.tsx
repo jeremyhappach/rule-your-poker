@@ -2276,6 +2276,7 @@ export const MobileGameTable = ({
     currentRoundId: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
+    realMoney,
     isPaused: isPaused ?? false,
     decisionTimerSeconds: maxTime,
   });

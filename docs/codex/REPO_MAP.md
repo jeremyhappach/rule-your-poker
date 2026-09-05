@@ -46,6 +46,10 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 ## Supabase boundary
 
+`20260905000428_real_money_fixture_exclusion.sql` gates Holm/Cribbage/Gin
+fixtures by server money mode and gives the private Cribbage cut helper an
+explicit game UUID. Both public discard owners supply the round's UUID.
+
 Holm community/Chucky authority and public reveal projection are in
 `20260904235545_holm_private_round_cards.sql`: `private.holm_round_cards`,
 the BEFORE projection trigger and the private hydration helper used by the

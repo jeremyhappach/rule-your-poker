@@ -2,7 +2,27 @@
 
 Date: 2026-09-04
 
-## Remediation WP3a — Holm private future cards
+## Remediation WP3b — exclude real money from executable fixtures
+
+- Holm forced winners and Cribbage/Gin deal fixtures require explicit
+  fake-money server context. Cribbage cut resolution now receives the actual
+  round's game UUID from both public discard owners and checks its money mode.
+  A persisted campaign profile cannot override that check.
+- Human and bot Horses/SCC rolls receive money mode; real or missing context
+  ignores the global tie/no-qualify fixtures. Server dice/action ownership
+  remains the next package, so this does not close arbitrary dice submission.
+- Complete rollback proof passes before and after migration: ordinary real
+  and unknown-money deals, preserved fake-money fixtures, real-money cut
+  protection, authenticated discard/reconcile calls, Holm outcome isolation,
+  replay, conservation, continuation, privacy and terminal cases. Settings
+  toggled only inside rolled-back proofs; no historical data changed.
+- Twenty focused checks and the production build with its 39 required checks
+  pass. Application TypeScript remains at 45 existing diagnostics.
+
+## Remediation WP3a — Holm private future cards (published)
+
+Published commit `85811b9ed4667928dab956846cd267ec04d185c1`; production is READY
+and the public build manifest matches.
 
 - Full community and Chucky cards are stored in `private.holm_round_cards`.
   A BEFORE trigger publishes only the permitted reveal prefix, preserving the
@@ -20,7 +40,7 @@ Date: 2026-09-04
 
 Runtime acceptance: play a fake-money Holm hand, verify two visible community
 cards and two backs, ordinary reveal/Chucky presentation, next hand and reconnect.
-Fixture containment remains WP3b; shared configuration authority remains WP9.
+Shared configuration authority remains WP9.
 
 ## Remediation WP2b — participant identity and private profile reads (published)
 

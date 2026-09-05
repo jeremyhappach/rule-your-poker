@@ -1,5 +1,14 @@
 # Durable decision log
 
+## D-116 — Fixture execution requires explicit fake-money context
+
+A global harness selection never overrides a game's money mode. Server deal,
+cut and outcome owners admit fixtures only when authoritative `real_money` is
+false. Missing context fails closed. Private cut helpers receive the round's
+game UUID from the existing command owner rather than trusting a campaign
+profile in state. Client dice consumers carry the same context while their
+remaining server ownership migration is completed.
+
 ## D-115 — Holm public cards are a reveal projection
 
 Private round storage owns full community and Chucky cards. Public rows retain
