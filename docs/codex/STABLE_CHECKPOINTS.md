@@ -2,6 +2,11 @@
 
 ## Platform
 
+- WP9a published Horses check passed at
+  `dc8768dee5ddeba6025cb7b9d2ce2f05f0f5cf4c`: two-player creation, server dealer
+  draw/configuration, antes, both actors' server rolls and round completion.
+  The browser test honors each receipt's roll-animation deadline. Cleanup verified.
+
 - WP8b Gin two-human terminal smoke passed at
   `d00bb5e67888b13a0b47b02d199268ca0d9f88e8`: six hands, exact settlement,
   connected Session Ended and fresh-ended reconnect. The run took 13.3 minutes,

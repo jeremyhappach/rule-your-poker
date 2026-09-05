@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { setSessionPlayerIntent, transferSessionHost } from "@/lib/sessionPlayerIntent";
 import { getBotAlias } from "@/lib/botAlias";
 
 interface ClickedPlayer {
@@ -45,6 +45,7 @@ export const PlayerClickDialog = ({
   onUpdate,
 }: PlayerClickDialogProps) => {
   const [updating, setUpdating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   
   if (!player) return null;
   
@@ -57,18 +58,14 @@ export const PlayerClickDialog = ({
   
   const handleMakeHost = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
-      const { error } = await supabase
-        .from('games')
-        .update({ current_host: player.user_id })
-        .eq('id', gameId);
-      
-      if (error) throw error;
+      await transferSessionHost(gameId, player.id);
       
       onUpdate();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error making host:', error);
+      setActionError(error instanceof Error ? error.message : "Could not change host. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -77,16 +74,13 @@ export const PlayerClickDialog = ({
   // Bot-specific handlers
   const handleSitOutNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
-      await supabase
-        .from('players')
-        .update({ 
-          sit_out_next_hand: true,
-          stand_up_next_hand: false,
-        })
-        .eq('id', player.id);
+      await setSessionPlayerIntent(player.id, "sit_out_next_hand");
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -94,18 +88,15 @@ export const PlayerClickDialog = ({
   
   const handleStandUpNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
       // Set flag to remove bot after current hand ends
-      await supabase
-        .from('players')
-        .update({ 
-          stand_up_next_hand: true,
-          sit_out_next_hand: false,
-        })
-        .eq('id', player.id);
+      await setSessionPlayerIntent(player.id, "stand_up_next_hand");
       
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -113,17 +104,13 @@ export const PlayerClickDialog = ({
   
   const handleRejoinNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
-      await supabase
-        .from('players')
-        .update({ 
-          waiting: true,
-          sit_out_next_hand: false,
-          stand_up_next_hand: false,
-        })
-        .eq('id', player.id);
+      await setSessionPlayerIntent(player.id, "rejoin");
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -142,6 +129,7 @@ export const PlayerClickDialog = ({
           </DialogDescription>
         </DialogHeader>
         
+        {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
         <div className="flex flex-col gap-2 pt-2">
           {/* Make Host option - only for host clicking non-bot, non-self players */}
           {canMakeHost && (

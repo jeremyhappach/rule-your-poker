@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-124 — Participation intent and setup exits have one server owner
+
+Participant intent uses a per-player version and exact dealer-game identity;
+host transfers use a host version and current-host authorization. Browsers cannot
+edit those fields directly. Setup exits claim the session/deadline/dealer identity,
+apply queued intent and choose disposition atomically, retaining participant rows
+and balances. Two-player seat projection occurs before selecting the next dealer.
+The 3-5-7 compatibility entrypoint forwards to this owner and preserves historical
+receipts. Old browser evaluators, seat movers and setup cleanup chains are removed.
+
 ## D-123 — Rule configuration and dealer draws have no browser write alternative
 
 `configure_dealer_game` remains the atomic configuration owner, and existing

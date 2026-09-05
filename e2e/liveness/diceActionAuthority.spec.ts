@@ -43,6 +43,10 @@ for (const gameType of ['horses', 'ship-captain-crew'] as const) {
             const player = receipt.state.playerStates[request._player_id];
             expect(player.dice).toHaveLength(5);
             expect(player.dice.every((d: { value: number }) => d.value >= 1 && d.value <= 6)).toBe(true);
+            // The server receipt owns the earliest next roll; a local animation
+            // can finish slightly before that boundary on a fast browser.
+            const remaining = Date.parse(player.rollAnimationMinEndAt ?? '') - Date.now();
+            if (remaining > 0) await page.waitForTimeout(remaining);
           }
         }
         const { data, error } = await session.cleanupClient.from('rounds').select('horses_state').eq('id', round!.id).single();

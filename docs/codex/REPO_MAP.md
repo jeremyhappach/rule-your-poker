@@ -1,5 +1,15 @@
 # Repository map
 
+## Participation intent and setup decline (WP9b)
+
+- `20260905014334_session_participation_intent_and_setup_handoff.sql` owns
+  versioned participant options, host transfer and atomic setup decline.
+- `src/lib/sessionPlayerIntent.ts` supplies the command clients; concurrent local
+  gestures are serialized and stale server receipts surface as errors.
+- `playerStateEvaluation.ts` retains only the rejoin command adapter. The old
+  participation evaluator, `normalizeTwoPlayerSeats.ts`, and `dealerGameBoundary.ts`
+  browser writers are removed. Existing server game engines consume queued intent.
+
 ## Rule configuration and dealer draws (WP9a)
 
 - `20260905013041_rule_configuration_and_dealer_draw_authority.sql` protects

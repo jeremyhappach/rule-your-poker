@@ -2006,26 +2006,7 @@ export function useHorsesMobileController({
           latestState = locked.state;
         }
 
-        // If this was a human player with auto_fold (timed out), mark them to sit out next hand
-        // BUT only if sit_out_next_hand hasn't been explicitly cleared (e.g. by deferred auto-roll off)
-        const currentPlayerData = players.find((p) => p.id === botId);
-        if (currentPlayerData && !currentPlayerData.is_bot && currentPlayerData.auto_fold) {
-          // Re-fetch current sit_out_next_hand to avoid overwriting a deliberate clear
-          const { data: freshPlayer } = await supabase
-            .from("players")
-            .select("sit_out_next_hand")
-            .eq("id", botId)
-            .single();
-
-          if (freshPlayer && freshPlayer.sit_out_next_hand === false) {
-          } else {
-            await supabase
-              .from("players")
-              .update({ sit_out_next_hand: true })
-              .eq("id", botId);
-            toast.info(`${getPlayerUsername(currentPlayerData)} timed out - sitting out next hand`);
-          }
-        }
+        // Timeout participation is recorded by the server expiry transaction.
 
         // OPTIMIZATION: When this bot's completion will be the LAST player to
         // complete the round, skip the post-turn pause. Holding here adds a

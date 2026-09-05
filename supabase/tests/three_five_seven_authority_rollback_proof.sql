@@ -530,9 +530,9 @@ BEGIN
      OR v_replay->>'outcome'<>'already_declined'
      OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'waiting'
      OR NOT (SELECT sitting_out FROM public.players WHERE id=v_t1)
-     OR (SELECT count(*) FROM private.three_five_seven_setup_declines
-          WHERE game_id=v_terminal_game AND dealer_game_id=v_terminal_dealer
-            AND round_id=v_terminal_round AND hand_number=1 AND declining_player_id=v_t1)<>1 THEN
+     OR (SELECT count(*) FROM private.session_setup_declines
+          WHERE game_id=v_terminal_game AND expected_deadline=v_deadline
+            AND expected_position=1 AND player_id=v_t1)<>1 THEN
     RAISE EXCEPTION '357_authority_proof:setup_decline_replay_invalid:%/%',v_result,v_replay;
   END IF;
   -- A validated shared configuration handoff may create the next dealer game;

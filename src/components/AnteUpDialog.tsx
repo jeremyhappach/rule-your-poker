@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { setSessionPlayerIntent } from "@/lib/sessionPlayerIntent";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { submitAnteDecision } from "@/lib/gameTimerAuthority";
@@ -75,6 +75,7 @@ export const AnteUpDialog = ({
   const [hasDecided, setHasDecided] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState<'ante_up' | 'sit_out' | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [savingPreference, setSavingPreference] = useState(false);
   const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
   const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);
 
@@ -135,7 +136,7 @@ export const AnteUpDialog = ({
   };
 
   const handleAnteUp = async () => {
-    if (hasDecided || submittingDecision) return;
+    if (hasDecided || submittingDecision || savingPreference) return;
     logDebugEvent({
       gameId,
       userId: playerId,
@@ -176,44 +177,25 @@ export const AnteUpDialog = ({
 
   };
 
-  const toggleAutoAnteRunback = async (checked: boolean) => {
-    // Mutual exclusivity: if enabling runback, disable all
-    const newRunback = checked;
-    const newAll = checked ? false : localAutoAnte;
-    
-    setLocalAutoAnteRunback(newRunback);
-    setLocalAutoAnte(newAll);
-
-    // Persist to database immediately
-    await supabase
-      .from('players')
-      .update({
-        auto_ante_runback: newRunback,
-        auto_ante: newAll,
-      })
-      .eq('id', playerId);
+  const saveAntePreference = async (option: 'auto_ante' | 'auto_ante_runback', checked: boolean) => {
+    if (savingPreference || submittingDecision) return;
+    setSavingPreference(true);
+    try {
+      const saved = await setSessionPlayerIntent(playerId, option, checked);
+      setLocalAutoAnte(saved.auto_ante);
+      setLocalAutoAnteRunback(saved.auto_ante_runback);
+      setSubmissionError(null);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Could not save ante preference. Please try again.');
+    } finally {
+      setSavingPreference(false);
+    }
   };
-
-  const toggleAutoAnteAll = async (checked: boolean) => {
-    // Mutual exclusivity: if enabling all, disable runback
-    const newAll = checked;
-    const newRunback = checked ? false : localAutoAnteRunback;
-    
-    setLocalAutoAnte(newAll);
-    setLocalAutoAnteRunback(newRunback);
-
-    // Persist to database immediately
-    await supabase
-      .from('players')
-      .update({
-        auto_ante: newAll,
-        auto_ante_runback: newRunback,
-      })
-      .eq('id', playerId);
-  };
+  const toggleAutoAnteRunback = (checked: boolean) => saveAntePreference('auto_ante_runback', checked);
+  const toggleAutoAnteAll = (checked: boolean) => saveAntePreference('auto_ante', checked);
 
   const handleSitOut = async () => {
-    if (hasDecided || submittingDecision) return;
+    if (hasDecided || submittingDecision || savingPreference) return;
     logDebugEvent({
       gameId,
       userId: playerId,
@@ -326,7 +308,7 @@ export const AnteUpDialog = ({
           <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={handleAnteUp}
-              disabled={submittingDecision !== null}
+              disabled={submittingDecision !== null || savingPreference}
               size="lg"
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
@@ -334,7 +316,7 @@ export const AnteUpDialog = ({
             </Button>
             <Button
               onClick={handleSitOut}
-              disabled={submittingDecision !== null}
+              disabled={submittingDecision !== null || savingPreference}
               size="lg"
               variant="destructive"
               className="font-bold"
@@ -354,6 +336,7 @@ export const AnteUpDialog = ({
             <p className="text-xs text-muted-foreground font-medium">For future ante decisions:</p>
             <div className="flex items-center space-x-2">
               <Checkbox
+                disabled={savingPreference || submittingDecision !== null}
                 id="auto-ante-runback"
                 checked={localAutoAnteRunback}
                 onCheckedChange={(checked) => toggleAutoAnteRunback(checked === true)}
@@ -364,6 +347,7 @@ export const AnteUpDialog = ({
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
+                disabled={savingPreference || submittingDecision !== null}
                 id="auto-ante-all"
                 checked={localAutoAnte}
                 onCheckedChange={(checked) => toggleAutoAnteAll(checked === true)}

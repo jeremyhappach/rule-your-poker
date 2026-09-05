@@ -7,9 +7,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { setSessionPlayerIntent } from "@/lib/sessionPlayerIntent";
 import { getBotAlias } from "@/lib/botAlias";
-import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 
 interface BotPlayer {
   id: string;
@@ -40,6 +39,7 @@ export const BotOptionsDialog = ({
   onUpdate,
 }: BotOptionsDialogProps) => {
   const [updating, setUpdating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   
   if (!bot) return null;
   
@@ -48,16 +48,13 @@ export const BotOptionsDialog = ({
   
   const handleSitOutNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
-      await supabase
-        .from('players')
-        .update({ 
-          sit_out_next_hand: true,
-          stand_up_next_hand: false,
-        })
-        .eq('id', bot.id);
+      await setSessionPlayerIntent(bot.id, "sit_out_next_hand");
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -65,18 +62,15 @@ export const BotOptionsDialog = ({
   
   const handleStandUpNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
       // Set flag to remove bot after current hand ends
-      await supabase
-        .from('players')
-        .update({ 
-          stand_up_next_hand: true,
-          sit_out_next_hand: false,
-        })
-        .eq('id', bot.id);
+      await setSessionPlayerIntent(bot.id, "stand_up_next_hand");
       
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -84,17 +78,13 @@ export const BotOptionsDialog = ({
   
   const handleRejoinNextHand = async () => {
     setUpdating(true);
+    setActionError(null);
     try {
-      await supabase
-        .from('players')
-        .update({ 
-          waiting: true,
-          sit_out_next_hand: false,
-          stand_up_next_hand: false,
-        })
-        .eq('id', bot.id);
+      await setSessionPlayerIntent(bot.id, "rejoin");
       onUpdate();
       onOpenChange(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not change participation. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -112,6 +102,7 @@ export const BotOptionsDialog = ({
           </DialogDescription>
         </DialogHeader>
         
+        {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
         <div className="flex flex-col gap-2 pt-2">
           {isSittingOut ? (
             <Button

@@ -100,7 +100,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
-import { declineThreeFiveSevenSetup } from "@/lib/threeFiveSeven/declineSetup";
+import { declineSessionSetup, setSessionPlayerIntent } from "@/lib/sessionPlayerIntent";
 import type { DealerGameSetupCommitResult } from "@/lib/dealerGameSetupAuthority";
 import {
   advanceAntePhase,
@@ -399,9 +399,6 @@ import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
-import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
-import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/normalizationDbg";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
 import { Card as CardType, has357Hand } from "@/lib/cardUtils";
@@ -3407,85 +3404,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Player options - synced with database
   const handlePlayerOptionChange = async (option: 'auto_ante' | 'auto_ante_runback' | 'sit_out_next_hand' | 'stand_up_next_hand', value: boolean) => {
-    const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (!currentPlayer) {
-      console.error('[PLAYER OPTIONS] No current player found');
-      return;
-    }
-    
-    console.log('[PLAYER OPTIONS] Setting', option, 'to', value, 'for player', currentPlayer.id);
-    
-    // Log sit_out_next_hand changes for debugging (only when setting to true)
-    if (option === 'sit_out_next_hand' && value === true) {
-      const { logSitOutNextHandSet } = await import('@/lib/sittingOutDebugLog');
-      await logSitOutNextHandSet(
-        currentPlayer.id,
-        currentPlayer.user_id,
-        gameId!,
-        currentPlayer.profiles?.username,
-        currentPlayer.is_bot,
-        currentPlayer.sit_out_next_hand,
-        'User manually toggled sit_out_next_hand via PlayerOptionsMenu',
-        'Game.tsx:handlePlayerOptionChange',
-        { game_status: game?.status, current_round: game?.current_round }
-      );
-    }
-    
-    // Mutual exclusivity: auto_ante and auto_ante_runback cannot both be true
-    const updates: Record<string, boolean> = { [option]: value };
-    if (option === 'auto_ante' && value === true) {
-      updates.auto_ante_runback = false;
-    } else if (option === 'auto_ante_runback' && value === true) {
-      updates.auto_ante = false;
-    }
-    
-    // Optimistic update
-    const optionToStateKey = (opt: string) => {
-      if (opt === 'auto_ante') return 'autoAnte';
-      if (opt === 'auto_ante_runback') return 'autoAnteRunback';
-      if (opt === 'sit_out_next_hand') return 'sitOutNextHand';
-      return 'standUpNextHand';
-    };
-    
-    setPlayerOptions(prev => {
-      const newState = { ...prev };
-      for (const [key, val] of Object.entries(updates)) {
-        newState[optionToStateKey(key) as keyof typeof prev] = val;
-      }
-      return newState;
-    });
-    
-    // Persist to database
-    const { error, data } = await supabase
-      .from('players')
-      .update(updates)
-      .eq('id', currentPlayer.id)
-      .select();
-    
-    if (error) {
-      console.error('[PLAYER OPTIONS] Failed to save:', error);
-      // Revert on error
-      setPlayerOptions(prev => {
-        const newState = { ...prev };
-        for (const [key, val] of Object.entries(updates)) {
-          newState[optionToStateKey(key) as keyof typeof prev] = !val;
-        }
-        return newState;
-      });
-    } else {
-      console.log('[PLAYER OPTIONS] ✅ Successfully saved:', updates, 'Result:', data);
+    const player = players.find(p => p.user_id === user?.id);
+    if (!player) return;
+    try {
+      const saved = await setSessionPlayerIntent(player.id, option, value);
+      setPlayerOptions({ autoAnte: saved.auto_ante, autoAnteRunback: saved.auto_ante_runback, sitOutNextHand: saved.sit_out_next_hand, standUpNextHand: saved.stand_up_next_hand });
+    } catch (error) {
+      await fetchGameData();
+      toast({ title: 'Could not save preference', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
     }
   };
   
-  const resolvePostgameParticipation = async (gId: string): Promise<string> => {
-    const { data, error } = await supabase.rpc(
-      'resolve_postgame_participation' as any,
-      { p_game_id: gId } as any,
-    );
-    if (error) throw error;
-    return (data as { outcome?: string } | null)?.outcome ?? 'unknown';
-  };
-
   // Departure and postgame disposition commit together on the server.
   const handleStandUpNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -13280,6 +13209,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // When opting back in (auto_fold=false), also extend the turn deadline so the
   // enforce-deadlines edge function doesn't immediately re-set auto_fold=true.
   const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
+    try {
     console.log('[AUTO_FOLD] Changing auto_fold for player:', playerId, 'to:', autoFold);
 
     // ─── Deferred-off guard for Horses/SCC ───────────────────────────
@@ -13293,10 +13223,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setPendingAutoRollOff(true);
 
         // Clear sit_out_next_hand immediately so the player stays in next hand
-        await supabase
-          .from('players')
-          .update({ sit_out_next_hand: false })
-          .eq('id', playerId);
+        await setSessionPlayerIntent(playerId, "cancel_exit");
 
         return; // Do NOT write auto_fold=false yet
       }
@@ -13308,10 +13235,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // opts back in and plays the rest of the dealer game, will still be
     // converted to sitting_out at the dealer-game boundary by
     // evaluatePlayerStatesEndOfGame.
-    const autoFoldUpdate: Record<string, any> = { auto_fold: autoFold };
+    const autoFoldUpdate = { auto_fold: autoFold };
     if (!autoFold) {
-      autoFoldUpdate.sit_out_next_hand = false;
-      autoFoldUpdate.stand_up_next_hand = false;
+      await setSessionPlayerIntent(playerId, "cancel_exit");
     }
     const { error } = await supabase
       .from('players')
@@ -13326,6 +13252,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Dice turn deadlines remain database-owned. Opting back in applies to
     // future authoritative turns; the browser must not extend a whole JSON
     // state snapshot that can race the expiry scheduler.
+    } catch (error) {
+      deferredAutoRollOffRef.current = null;
+      setPendingAutoRollOff(false);
+      toast({ title: 'Could not update participation', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    }
   };
 
   const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
@@ -14740,123 +14671,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
-                      // Handle dealer sitting out - mark as sitting out then evaluate player counts
                       if (!dealerPlayer?.id || !gameId) return;
-
-                      if (is357GameType) {
-                        try {
-                          await declineThreeFiveSevenSetup({
-                            gameId,
-                            expectedDealerPosition: game.dealer_position || 1,
-                            expectedConfigDeadline: (game as { config_deadline?: string | null }).config_deadline,
-                          });
-                          await fetchGameData();
-                        } catch (error) {
-                          console.error('[3-5-7 SETUP DECLINE] Authoritative transition failed:', error);
-                          toast({
-                            title: 'Could not sit out',
-                            description: error instanceof Error ? error.message : 'The server rejected the setup handoff.',
-                            variant: 'destructive',
-                          });
-                        }
-                        return;
-                      }
-                      
-                      console.log('[SIT OUT] Dealer sitting out from game selection');
-                      
-                      // Step 1: Mark dealer as sitting out
-                      await supabase
-                        .from('players')
-                        .update({
-                          sitting_out: true,
-                          sit_out_next_hand: false,
-                          waiting: false
-                        })
-                        .eq('id', dealerPlayer.id);
-                      
-                      // Step 2: Evaluate all player states AFTER marking sitting out
-                      const { activePlayerCount, activeHumanCount, eligibleDealerCount } = 
-                        await evaluatePlayerStatesEndOfGame(gameId);
-                      
-                      console.log('[SIT OUT] After evaluation - active:', activePlayerCount, 
-                        'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
-                      
-                      // A real-money setup exit is a server-owned lifecycle
-                      // boundary. One human returns to post-game waiting; zero
-                      // humans closes exactly once from final snapshots.
-                      if (activeHumanCount < 1 || activePlayerCount < 2) {
-                        if (game?.real_money) {
-                          const outcome = await resolvePostgameParticipation(gameId);
-                          console.log('[SIT OUT] Postgame participation outcome:', outcome);
-                          await fetchGameData();
-                          return;
-                        }
-
-                        console.log('[SIT OUT] Not enough players to continue - reverting to waiting');
-                        
-                        // Session hygiene + keep passive sit-outs seated (no status='left').
-                        await sanitizePlayerAutomationStateForSession(gameId);
-                        await clearDealerGameTransientSessionState(gameId);
-                        
-                        // Revert to waiting status
-                        await supabase
-                          .from('games')
-                          .update({
-                            status: 'waiting',
-                            awaiting_next_round: false,
-                            last_round_result: null,
-                            config_deadline: null,
-                            game_type: null
-                          })
-                          .eq('id', gameId);
-                        
+                      try {
+                        await declineSessionSetup(gameId, game.dealer_position || 1, game.config_deadline);
                         await fetchGameData();
-                        return;
-                      }
-
-                      // Need an eligible dealer to continue even when two or
-                      // more players remain. This is not a session-end path.
-                      if (eligibleDealerCount < 1) {
-                        await sanitizePlayerAutomationStateForSession(gameId);
-                        await clearDealerGameTransientSessionState(gameId);
-                        await supabase
-                          .from('games')
-                          .update({
-                            status: 'waiting',
-                            awaiting_next_round: false,
-                            last_round_result: null,
-                            config_deadline: null,
-                            game_type: null,
-                          })
-                          .eq('id', gameId);
+                      } catch (error) {
                         await fetchGameData();
-                        return;
+                        toast({ title: 'Could not sit out', description: error instanceof Error ? error.message : 'The server rejected the setup handoff.', variant: 'destructive' });
                       }
-                      
-                      // Step 4: We have enough players - rotate dealer to next eligible player
-                      const newDealerPosition = await rotateDealerPosition(gameId, game.dealer_position || 1);
-                      console.log('[SIT OUT] Rotating dealer to position:', newDealerPosition);
-                      
-                      // Set new dealer position and reset to game selection
-                      const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
-                      const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
-                      
-                      // Topology normalization at the next-dealer-game bootstrap boundary.
-                      recordNormalizationDbg({ kind: 'call-site', caller: 'DealerConfig sitout#1', didInvokeNormalizer: true, statusTransition: '→game_selection' });
-                      try { await normalizeTwoPlayerSeatsIfNeeded(gameId, 'DealerConfig sitout#1'); }
-                      catch (e) { console.error('[SIT OUT → game_selection] normalize threw:', e); }
-
-                      await supabase
-                        .from('games')
-                        .update({
-                          dealer_position: newDealerPosition,
-                          config_deadline: configDeadline,
-                          config_complete: false,
-                          game_type: null
-                        })
-                        .eq('id', gameId);
-                      
-                      await fetchGameData();
                     }}
                   />
                 )}
@@ -15180,86 +15002,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
                       if (!dealerPlayer?.id || !gameId) return;
-                      if (is357GameType) {
-                        try {
-                          await declineThreeFiveSevenSetup({
-                            gameId,
-                            expectedDealerPosition: game.dealer_position || 1,
-                            expectedConfigDeadline: (game as { config_deadline?: string | null }).config_deadline,
-                          });
-                          await fetchGameData();
-                        } catch (error) {
-                          console.error('[3-5-7 SETUP DECLINE] Authoritative transition failed:', error);
-                          toast({
-                            title: 'Could not sit out',
-                            description: error instanceof Error ? error.message : 'The server rejected the setup handoff.',
-                            variant: 'destructive',
-                          });
-                        }
-                        return;
-                      }
-                      await supabase
-                        .from('players')
-                        .update({ sitting_out: true, sit_out_next_hand: false, waiting: false })
-                        .eq('id', dealerPlayer.id);
-                      const { activePlayerCount, activeHumanCount, eligibleDealerCount } =
-                        await evaluatePlayerStatesEndOfGame(gameId);
-                      if (activeHumanCount < 1 || activePlayerCount < 2) {
-                        if (game?.real_money) {
-                          const outcome = await resolvePostgameParticipation(gameId);
-                          console.log('[DEALER SETUP] Postgame participation outcome:', outcome);
-                          await fetchGameData();
-                          return;
-                        }
-
-                        await sanitizePlayerAutomationStateForSession(gameId);
-                        await clearDealerGameTransientSessionState(gameId);
-                        await supabase
-                          .from('games')
-                          .update({
-                            status: 'waiting',
-                            awaiting_next_round: false,
-                            last_round_result: null,
-                            config_deadline: null,
-                            game_type: null,
-                          })
-                          .eq('id', gameId);
+                      try {
+                        await declineSessionSetup(gameId, game.dealer_position || 1, game.config_deadline);
                         await fetchGameData();
-                        return;
-                      }
-                      if (eligibleDealerCount < 1) {
-                        await sanitizePlayerAutomationStateForSession(gameId);
-                        await clearDealerGameTransientSessionState(gameId);
-                        await supabase
-                          .from('games')
-                          .update({
-                            status: 'waiting',
-                            awaiting_next_round: false,
-                            last_round_result: null,
-                            config_deadline: null,
-                            game_type: null,
-                          })
-                          .eq('id', gameId);
+                      } catch (error) {
                         await fetchGameData();
-                        return;
+                        toast({ title: 'Could not sit out', description: error instanceof Error ? error.message : 'The server rejected the setup handoff.', variant: 'destructive' });
                       }
-                      const newDealerPosition = await rotateDealerPosition(gameId, game.dealer_position || 1);
-                      const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
-                      const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
-                      // Topology normalization at the next-dealer-game bootstrap boundary.
-                      recordNormalizationDbg({ kind: 'call-site', caller: 'DealerConfig sitout#2', didInvokeNormalizer: true, statusTransition: '→game_selection' });
-                      try { await normalizeTwoPlayerSeatsIfNeeded(gameId, 'DealerConfig sitout#2'); }
-                      catch (e) { console.error('[SIT OUT#2 → game_selection] normalize threw:', e); }
-                      await supabase
-                        .from('games')
-                        .update({
-                          dealer_position: newDealerPosition,
-                          config_deadline: configDeadline,
-                          config_complete: false,
-                          game_type: null,
-                        })
-                        .eq('id', gameId);
-                      await fetchGameData();
                     }}
                   />
                 )}

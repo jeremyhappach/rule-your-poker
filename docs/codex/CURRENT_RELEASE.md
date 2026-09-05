@@ -2,6 +2,24 @@
 
 Date: 2026-09-04
 
+## Remediation WP9b — participation intent and atomic setup exit
+
+- Seated humans change their own preferences through a versioned command. The
+  current host may control fake-money bots; other humans cannot change each
+  other's intent. Browser writes to those flags and host identity are blocked.
+- Host transfers validate the current host, target participant and host version.
+  Setup decline applies queued intent, retains participant rows, normalizes the
+  two-player seats and chooses continuation/waiting/end in one exact transaction.
+  Older 3-5-7 decline names and historical receipts retain inert replay behavior.
+- Removed the obsolete browser participation evaluator, dealer-boundary reset
+  and seat-normalization writers. Controls display rejected actions and ante
+  preferences finish saving before an ante decision can be submitted.
+- Complete participation and seven-family compatibility rollback proofs pass
+  before and after migration, including pause, pending end, stale/duplicate/late
+  requests, authorization, seat projection, row retention and chip conservation.
+- Thirty-seven focused checks and the build's 39 required checks pass.
+  TypeScript falls from 39 to 37 existing diagnostics; no new diagnostics remain.
+
 ## Remediation WP9a — rule configuration and dealer-draw authority
 
 - Browser roles cannot edit rule amounts, scoring settings, timer configuration
@@ -17,6 +35,10 @@ Date: 2026-09-04
   following WP9 packages; this step closes rule configuration and draw outcomes.
 - Thirty-one focused checks and the production build (39 required checks) pass.
   TypeScript falls from 41 to 39 existing diagnostics after removing dead code.
+- Production READY and manifest match `dc8768dee5ddeba6025cb7b9d2ce2f05f0f5cf4c`.
+  Published two-player Horses setup/draw/action smoke passed in 49.6 seconds.
+  The test now honors the server roll-animation deadline after an initial click
+  arrived just before that deadline; both fake-session cleanups were verified.
 
 ## Remediation WP8b — Gin atomic postgame and generic writer retirement
 
