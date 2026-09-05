@@ -158,8 +158,12 @@ export function useShellTabBar(state: ShellTabBarState | null): void {
 /** Shell-rendered tab bar. Reads from the provider. */
 export function ShellTabBar() {
   const state = useContext(ShellTabBarStateContext);
-  if (!state) return null;
+  return state ? <RegisteredShellTabBar state={state} /> : null;
+}
 
+// Registration can appear/disappear while the shell remains mounted. Keep the
+// registered bar's hooks in their own component across that lifecycle boundary.
+function RegisteredShellTabBar({ state }: { state: ShellTabBarState }) {
   const {
     cardsIcon,
     activeTab,

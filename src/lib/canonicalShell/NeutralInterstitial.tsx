@@ -440,7 +440,6 @@ export function NeutralInterstitial({
             position={player.position}
             name={label}
             chipValue={formatChipBalance(player.chips ?? 0)}
-            chipAmount={player.chips ?? 0}
             status={status}
             playerId={player.id}
           />

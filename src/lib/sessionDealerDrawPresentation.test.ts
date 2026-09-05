@@ -16,7 +16,7 @@ const completedState: DealerSelectionState = {
     {
       playerId: 'player-1',
       position: 1,
-      card: { rank: 'K', suit: 'hearts' },
+      card: { rank: 'K', suit: '♥' },
       isRevealed: true,
       isWinner: true,
       isDimmed: false,
@@ -25,7 +25,7 @@ const completedState: DealerSelectionState = {
     {
       playerId: 'player-2',
       position: 2,
-      card: { rank: '9', suit: 'clubs' },
+      card: { rank: '9', suit: '♣' },
       isRevealed: true,
       isWinner: false,
       isDimmed: true,
@@ -43,7 +43,7 @@ const tiedState: DealerSelectionState = {
     {
       playerId: 'player-1',
       position: 1,
-      card: { rank: '9', suit: 'hearts' },
+      card: { rank: '9', suit: '♥' },
       isRevealed: true,
       isWinner: true,
       isDimmed: false,
@@ -52,7 +52,7 @@ const tiedState: DealerSelectionState = {
     {
       playerId: 'player-2',
       position: 2,
-      card: { rank: '9', suit: 'clubs' },
+      card: { rank: '9', suit: '♣' },
       isRevealed: true,
       isWinner: true,
       isDimmed: false,
@@ -61,7 +61,7 @@ const tiedState: DealerSelectionState = {
     {
       playerId: 'player-1',
       position: 1,
-      card: { rank: 'K', suit: 'diamonds' },
+      card: { rank: 'K', suit: '♦' },
       isRevealed: true,
       isWinner: true,
       isDimmed: false,
@@ -70,7 +70,7 @@ const tiedState: DealerSelectionState = {
     {
       playerId: 'player-2',
       position: 2,
-      card: { rank: '5', suit: 'spades' },
+      card: { rank: '5', suit: '♠' },
       isRevealed: true,
       isWinner: false,
       isDimmed: true,
@@ -109,7 +109,7 @@ describe('session dealer-draw presentation receipt', () => {
   it('supports more than one tie without collapsing later waves', () => {
     const thirdRound = tiedState.cards.slice(2).map((card) => ({
       ...card,
-      card: { ...card.card, rank: card.position === 1 ? 'A' : 'Q' },
+      card: { ...card.card, rank: card.position === 1 ? 'A' as const : 'Q' as const },
       roundNumber: 3,
     }));
     const frames = deriveSessionDealerDrawPresentationFrames({

@@ -30,7 +30,7 @@ describe('Holm authority source guards', () => {
     const deadlineAssignments = [
       ...holmLogicSource.matchAll(/decision_deadline:[ \t]*([^\r\n,}]+)/g),
     ].map(match => match[1].trim());
-    expect(deadlineAssignments.length).toBeGreaterThan(0);
+    expect(deadlineAssignments).toHaveLength(0);
     expect(deadlineAssignments.every(value => value === 'null')).toBe(true);
     expect(holmRoundUtilsSource).not.toContain('.update(');
   });

@@ -25,9 +25,9 @@ describe('Game Gin Realtime read policy', () => {
     expect(roundUpdateBlock).toContain('debouncedFetch();');
   });
 
-  it('reuses the loaded bot-dealer default on routine Realtime snapshots', () => {
-    expect(source).toContain("const shouldFetchBotDealerDefault = fetchTrigger !== 'realtime_update'");
-    expect(source).toContain('allowBotDealersLoadedRef.current');
+  it('reads the bot-dealer default inside the coherent session frame', () => {
+    expect(source).toContain("supabase.rpc('read_session_frame'");
+    expect(source).toContain('frame?.allow_bot_dealers ?? allowBotDealersRef.current');
     expect(source).toContain('data: { allow_bot_dealers: allowBotDealersRef.current }');
   });
 

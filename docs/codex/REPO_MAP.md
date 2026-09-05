@@ -1,5 +1,19 @@
 # Repository map
 
+## Current authority/release contract (WP12)
+
+- Games/rounds/snapshots use validated same-session dealer-game foreign keys in
+  20260905031325_enforce_session_identity_constraints.sql; new snapshots validate
+  participant provenance. Historical missing identities are preserved.
+- 20260905032418_close_anonymous_privileged_function_access.sql closes anonymous
+  privileged APIs while preserving authenticated/service compatibility.
+- src/integrations/supabase/types.ts is regenerated from the deployed project.
+- package.json build runs the explicit app typecheck and all src Vitest suites.
+- threeFiveSeven/decisionReceipt.ts validates game/round revisions; the remaining
+  decision-completion recovery need uses authoritativeRecoveryScheduler.ts.
+- Seven deployed Edge functions now have local source; reset, trivia and both
+  legacy deadline functions are tombstones. supabase/config.toml matches JWT gates.
+
 ## Shared pause/resume (WP10)
 
 - `20260905022016_seven_game_pause_resume_envelope.sql` owns pause versions,

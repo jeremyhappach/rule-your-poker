@@ -826,12 +826,12 @@ export function useChipPresentationLedger(
       if (gameRow) setRawPot(gameRow as Record<string, unknown>);
       for (const [key, cursor] of rawCursorsRef.current) {
         const firstLiveCursor = liveBuffered
-          .filter((batch) => Object.hasOwn(batch.opening_balances, key))
+          .filter((batch) => Object.prototype.hasOwnProperty.call(batch.opening_balances, key))
           .reduce<number | null>((lowest, batch) =>
             lowest == null || batch.cursor < lowest ? batch.cursor : lowest, null);
         if (firstLiveCursor != null && cursor >= firstLiveCursor) {
           const historicalCursor = historicalBatches
-            .filter((batch) => batch.cursor < firstLiveCursor && Object.hasOwn(batch.opening_balances, key))
+            .filter((batch) => batch.cursor < firstLiveCursor && Object.prototype.hasOwnProperty.call(batch.opening_balances, key))
             .reduce((highest, batch) => Math.max(highest, batch.cursor), 0);
           releasedCursorsRef.current.set(key, historicalCursor);
         } else {

@@ -32,6 +32,7 @@ const tax: ThreeFiveSevenAllFoldPresentation = {
 };
 
 const reAnte: ThreeFiveSevenRolloverPresentation = {
+  openingTransferRequired: true,
   gameId: 'game-1',
   dealerGameId: 'dealer-1',
   roundId: 'round-h2-r1',

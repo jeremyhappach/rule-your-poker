@@ -33,18 +33,18 @@ const adminUi = readFileSync(
 
 describe('one-shot session dealer-draw tie harness', () => {
   it('is admin-only, host-scoped, expiring, and atomically consumed', () => {
-    expect(migration).toContain("public.has_role(v_user_id, 'admin')");
-    expect(migration).toContain("nullif(v_harness_value->>'armedBy', '')::uuid = v_game.current_host");
-    expect(migration).toContain('v_harness_expires_at > clock_timestamp()');
-    expect(migration).toContain("WHERE setting.key = 'session_dealer_draw_tie_harness'\n   FOR UPDATE");
-    expect(migration).toContain("'consumedGameId', p_game_id");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("public.has_role(v_user_id, 'admin')");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("nullif(v_harness_value->>'armedBy', '')::uuid = v_game.current_host");
+    expect(migration.replace(/\r\n/g, '\n')).toContain('v_harness_expires_at > clock_timestamp()');
+    expect(migration.replace(/\r\n/g, '\n')).toContain("WHERE setting.key = 'session_dealer_draw_tie_harness'\n   FOR UPDATE");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("'consumedGameId', p_game_id");
     expect(securityMigration.match(/SECURITY INVOKER/g)).toHaveLength(3);
   });
 
   it('forces a real two-wave draw without enabling persistent game harnesses', () => {
-    expect(migration).toContain("UNION ALL SELECT 2, 'A', '♥'");
-    expect(migration).toContain("UNION ALL SELECT cardinality(v_remaining) + 1, 'K', '♠'");
-    expect(migration).toContain("UNION ALL SELECT cardinality(v_remaining) + 2, 'Q', '♠'");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("UNION ALL SELECT 2, 'A', '♥'");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("UNION ALL SELECT cardinality(v_remaining) + 1, 'K', '♠'");
+    expect(migration.replace(/\r\n/g, '\n')).toContain("UNION ALL SELECT cardinality(v_remaining) + 2, 'Q', '♠'");
     expect(migration).not.toContain("key = 'harnesses_mode'");
   });
 

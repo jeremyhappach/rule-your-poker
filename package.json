@@ -18,10 +18,13 @@
     "test:human-chaos-deadline": "playwright test -c playwright.human-chaos.config.ts deadlines.humanChaos.spec.ts",
     "test:human-chaos-draw": "playwright test -c playwright.human-chaos.config.ts dealerDraws.humanChaos.spec.ts",
     "test:human-chaos-contract": "vitest run e2e/humanChaos/manifest.test.ts e2e/humanChaos/target.test.ts e2e/humanChaos/support/continuousObserver.test.ts && playwright test -c playwright.human-chaos.config.ts support/continuousObserver.browser.spec.ts",
-    "build": "npm run test:cribbage-rejoin && vite build",
+    "build": "npm run validate && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test:unit": "vitest run src",
+    "validate": "npm run typecheck && npm run test:unit"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

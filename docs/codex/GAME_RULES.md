@@ -1,8 +1,8 @@
 # Game rules and rule-source map
 
-Status: extracted from the checked-out source and migration history during the
-first Codex ingestion on 2026-08-01. Runtime behavior and deployed RPC
-definitions still outrank this document.
+Status: rules extracted at ingestion; authority ownership reconciled through
+the 2026-09-04 remediation program. Runtime and deployed RPC definitions outrank
+historical discrepancy notes retained below.
 
 This file records what the current implementation does. It does not normalize
 similar games, endorse client-owned financial authority, or silently resolve
@@ -18,21 +18,21 @@ contradictions.
   Canonical snapshots use
   `(game_id, dealer_game_id, hand_number, player_id)`.
 - `DealerGameSetup.tsx` exposes seven enabled games: Holm, 3-5-7, Cribbage,
-  Gin Rummy, Horses, Ship Captain Crew, and Yahtzee. It creates the
-  `dealer_games` row and moves the session into the appropriate ante/dealer
-  selection flow.
+  Gin Rummy, Horses, Ship Captain Crew, and Yahtzee. It requests the server
+  configuration/setup command; PostgreSQL creates the dealer-game identity.
 - Eligible gameplay participants exclude `left`, `observer`, and
   `sitting_out` rows. Waiting participants remain visible but join only at a
   canonical boundary. Bots and humans are keyed by UUID, not display aliases.
-- `src/pages/Game.tsx:handleGameOverComplete` owns shared continuation after terminal
-  presentation: pending session-end consumption, participant-state evaluation,
-  next dealer selection/rotation, and return to dealer/game selection.
+- Game.tsx requests the exact family postgame command after presentation.
+  PostgreSQL owns pending-end consumption, participation, dealer rotation and
+  lifecycle disposition. The shell owns only connected presentation continuity.
 - Connected clients retain `PersistentTableShell` through terminal
   presentation, then enter the local Session Ended table phase. Fresh
   mount/reconnect of an already-ended session goes to the lobby.
-- The source does not yet satisfy the doctrine that every financial settlement
-  is one database-owned, replay-safe transaction. The exact seams are listed
-  below.
+- All seven financial settlement paths are database-owned and replay-safe.
+  Browser money/identity/lifecycle DML and obsolete helper execution are closed.
+  Server outcomes use installed pgcrypto entropy. Historical discrepancy notes
+  are not descriptions of the current ownership boundary.
 
 ## Holm
 
@@ -429,7 +429,7 @@ contradictions.
 | Mounted controller | `src/hooks/useHorsesMobileController.ts` owns actions, presentation, and exact completed-round submission; PostgreSQL owns tie rollover and terminal writes. |
 | Bots | `src/lib/horsesBotLogic.ts:getBotHoldDecision`, `shouldBotStopRolling`, and `applyHoldDecision`. |
 | State acceptance | `src/lib/gameStateSync/horsesProgress.ts:getHorsesProgress`. |
-| RPCs | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn`; latest files are named in `REPO_MAP.md`. |
+| RPCs | Exact Horses/SCC server action command; the legacy state setter is not browser-executable. Current action/settlement migrations are recorded in `REPO_MAP.md`. |
 | Settlement/progression | `public.horses_scc_advance_completed_round` selects atomic tie rollover or `public.horses_settle_game`; `public.horses_scc_advance_postgame` shares the canonical timer's replay-safe postgame owner. Latest migration: `20260823173530_horses_scc_connected_authority.sql`. |
 
 ### Implemented rules
@@ -524,11 +524,11 @@ contradictions.
 |---|---|
 | Release blocker | Published iOS runtime shows the Session Ended Results panel contains all participants but does not vertically scroll. Source CSS in `SessionEndedTablePhase.tsx` claims a WebKit scroll owner; runtime evidence wins. This is presentation, not a game-rule change. |
 | Financial authority | Current deployed migrations supersede this audit's former Horses/SCC client seams: their tie rollover, terminal settlement, and postgame continuation are now database-owned. |
-| Cribbage | Three-player source constructs a three-card crib while a source comment expects the dealer's extra fourth card. |
+| Cribbage | Resolved WP11c: Jeremy selected four cards; final discard adds an undealt card, excluding hands/starter. |
 | Gin | Configurable gin/undercut bonuses are stored but scoring hardcodes 25; per-hand result chip deltas describe transfers that do not occur. |
 | Yahtzee | The fixed terminal stake does not enter a pot; direct round JSON mutation still cannot prove roll/category provenance; its ascending-position turn order conflicts with canonical lower-position clockwise order. |
 | 3-5-7 | Normal terminal and instant-sweep authority differ; forced harness cards are not removed from the random deck; repair-path ante idempotency is not proven. |
-| Holm | Partial tie integer division can leave a pot remainder unallocated. |
+| Holm | Resolved WP6: whole-chip remainders are awarded to tied winners clockwise from the dealer. |
 
 These discrepancies remain findings for later scoped tasks unless their game
 section explicitly records a delivered correction.

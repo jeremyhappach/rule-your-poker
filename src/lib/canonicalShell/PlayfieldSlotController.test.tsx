@@ -52,7 +52,7 @@ function render(id: typeof A | typeof B | null) {
 const isNeutral = () =>
   container.querySelector('[data-canonical-shell-neutral]') !== null;
 const isActive = () =>
-  container.querySelector('[data-canonical-shell-slot]') !== null;
+  container.querySelector('[data-testid="child"]') !== null;
 
 describe('PlayfieldSlotController', () => {
   it('cold start null → identity mounts directly without neutral', () => {
@@ -110,11 +110,11 @@ describe('PlayfieldSlotController', () => {
 
   it('child subtree re-keys on identity change (fresh mount)', () => {
     render(A);
-    const slotA = container.querySelector('[data-canonical-shell-slot]');
+    const slotA = container.querySelector('[data-testid="child"]')?.parentElement;
     render(B);
     act(() => { vi.advanceTimersByTime(DWELL + 5); });
-    const slotB = container.querySelector('[data-canonical-shell-slot]');
+    const slotB = container.querySelector('[data-testid="child"]')?.parentElement;
     expect(slotB).not.toBe(slotA);
-    expect(slotB?.getAttribute('data-slot-identity')).toBe('horses/dB');
+    expect(container.querySelector('[data-canonical-shell-slot]')?.getAttribute('data-slot-identity')).toBe('horses/dB');
   });
 });

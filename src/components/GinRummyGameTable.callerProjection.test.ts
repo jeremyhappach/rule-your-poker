@@ -27,7 +27,7 @@ describe('Gin caller-specific projection admission', () => {
       'const state = await fetchGinRummyState(roundId)',
     );
     expect(componentSource).toContain(
-      ".then((state) => applyState(state, 'realtime-refetch'))",
+      "exactStateLoader.refresh('realtime-refetch')",
     );
   });
 

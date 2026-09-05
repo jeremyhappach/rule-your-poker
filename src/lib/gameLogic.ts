@@ -5,13 +5,7 @@ import {
   cardsDealtForRound,
   type EligiblePlayer,
 } from "./threeFiveSeven/advanceRound";
-import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { submitHolmDecision } from './holmDecisionAuthority';
-// detectAndSettleInstantWin357 was retired from the R1 seam path — the
-// instant-357 sweep is now settled inside the `advance_357_round` RPC
-// transaction. The helper remains available for the legacy bootstrap
-// deal path in `startRound`, imported lazily there if needed.
-import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
   // isTargetedWartimePreflightReadyForHarness — no longer imported here; caller owns preflight
   emitWartime,
@@ -36,12 +30,6 @@ __wartimeRegisterHookGL({
 });
 __wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_MUTATION_CORRELATION.id);
 
-/** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
-const FORCED_357_CARDS: Card[] = [
-  { rank: '3', suit: '♣' },
-  { rank: '5', suit: '♦' },
-  { rank: '7', suit: '♥' },
-];
 
 /** Persistent 3-5-7 instant-win diagnostic — writes to debug_events (best-effort). */
 async function trace357InstantWin(
@@ -540,109 +528,3 @@ export async function proceedToNextRound(
   console.log('[PROCEED_NEXT_ROUND] Authoritative advance result:', data);
   return data as unknown as ThreeFiveSevenAdvanceRoundResult;
 }
-
-/**
- * Atomic 3-5-7 round-transition orchestrator.
- *
- * Sends ONLY transition identity to the `advance_357_round` RPC. The
- * server derives the roster, reads prior-round cards for carry-forward,
- * builds the deck, shuffles, deals, resets players, collects the persisted
- * rollover at the R3 -> next-hand R1 seam, and updates the game pointer — all
- * inside a single locked
- * transaction.
- *
- * Round-only fold semantics: every non-left / non-observer / non-sitting
- * player receives the destination card set and normal Drop/Stay
- * eligibility, regardless of the previous round's fold/stay decision.
- *
- * For the new-hand R1 seam only: this function also (a) records the rollover audit
- * game_result row, and (b) invokes the extracted instant-357 detection
- * & settlement helper. Both are guarded on `status === 'advanced'` so
- * a `repaired_and_advanced` / `already_advanced` retry does not
- * double-record.
- */
-async function advance357RoundAtomic(
-  gameId: string,
-  nextRoundNumber: 1 | 2 | 3,
-): Promise<{ status: string; round_id?: string }> {
-  const { data: game, error: gameErr } = await supabase
-    .from('games')
-    .select('id, current_game_uuid, total_hands, ante_amount, game_type, pot, current_host, dealer_position')
-    .eq('id', gameId)
-    .single();
-  if (gameErr || !game) {
-    throw new Error(`advance357:game_fetch_failed: ${gameErr?.message ?? 'no row'}`);
-  }
-  const dealerGameId = game.current_game_uuid;
-  if (!dealerGameId) throw new Error('advance357:no_dealer_game_uuid');
-
-  // Hand number: incremented server-side ONLY on R1 seam. For R2/R3
-  // the server uses `COALESCE(games.total_hands, ...)` so we pass the
-  // current hand number unchanged.
-  const currentHandNumber = typeof game.total_hands === 'number' ? game.total_hands : 0;
-  const handNumberForRpc = nextRoundNumber === 1 ? currentHandNumber + 1 : (currentHandNumber || 1);
-
-  // Timer for destination round.
-  const { data: gameDefaults } = await supabase
-    .from('game_defaults')
-    .select('decision_timer_seconds')
-    .eq('game_type', '3-5-7')
-    .maybeSingle();
-  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
-  const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000).toISOString();
-
-  // Harness force-hand override — R1 seam only.
-  // The RPC applies this per-player when the player has no carry-forward
-  // (i.e. new-hand R1). Ordinary clients pass null.
-  let forcedHandByPlayer: Record<string, Card[]> | null = null;
-  if (nextRoundNumber === 1) {
-    try {
-      const harnessId = await readDebugHarness('3-5-7');
-      if (harnessId === 'instant_win') {
-        const { data: roster } = await supabase
-          .from('players')
-          .select('id, user_id, position, status, sitting_out, is_bot, created_at')
-          .eq('game_id', gameId);
-        const active = (roster ?? []).filter(
-          (p: any) => !p.sitting_out && p.status !== 'observer' && p.status !== 'left',
-        );
-        const sessionHostPlayerId = resolveSessionHostPlayerId(
-          { current_host: (game as any).current_host ?? null },
-          active.map((p: any) => ({
-            id: p.id, user_id: p.user_id ?? null,
-            is_bot: p.is_bot ?? null, created_at: p.created_at ?? null,
-          })),
-        );
-        const dealerPos = (game as any).dealer_position ?? null;
-        const dealerPlayer = dealerPos != null
-          ? active.find((p: any) => p.position === dealerPos) ?? null
-          : null;
-        const targetId = dealerPlayer?.id ?? sessionHostPlayerId;
-        if (targetId) {
-          forcedHandByPlayer = { [targetId]: FORCED_357_CARDS };
-        }
-      }
-    } catch { /* harness read is best-effort */ }
-  }
-
-  const { data: rpcData, error: rpcErr } = await supabase.rpc('advance_357_round', {
-    _game_id: gameId,
-    _dealer_game_id: dealerGameId,
-    _next_round_number: nextRoundNumber,
-    _next_hand_number: handNumberForRpc,
-    _decision_deadline: deadline,
-    _forced_hand_by_player: forcedHandByPlayer as any,
-  });
-  if (rpcErr) {
-    throw new Error(`advance357:rpc_failed: ${rpcErr.message}`);
-  }
-  const result = (rpcData ?? { status: 'unknown' }) as { status: string; round_id?: string };
-
-  // New-hand R1 seam consequences (rollover audit game_results row AND instant-357
-  // detection + full sweep settlement) are now committed inside the
-  // `advance_357_round` RPC transaction. No browser callback is required
-  // after the RPC returns — if the client disconnects immediately, the
-  // authoritative state is still complete.
-  return result;
-}
-

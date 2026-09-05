@@ -5,6 +5,7 @@ import {
   ALL_REAL_MONEY_GAME_TYPES,
   CANONICAL_SESSION_LIVENESS_PHASES,
   REAL_MONEY_GAME_LIVENESS_CONTRACT,
+  type LivenessPhaseContract,
 } from './realMoneyLivenessContract';
 
 const repoFile = (relativePath: string) =>
@@ -31,7 +32,7 @@ describe('real-money liveness contract', () => {
   it('requires a database timer kind for every other deadline-owned phase', () => {
     const phases = [
       ...CANONICAL_SESSION_LIVENESS_PHASES,
-      ...ALL_REAL_MONEY_GAME_TYPES.flatMap((gameType) =>
+      ...ALL_REAL_MONEY_GAME_TYPES.flatMap<LivenessPhaseContract>((gameType) =>
         REAL_MONEY_GAME_LIVENESS_CONTRACT[gameType]),
     ];
     for (const phase of phases) {

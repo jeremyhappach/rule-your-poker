@@ -2,6 +2,21 @@
 
 ## Platform
 
+- WP12a published Cribbage terminal check passed at
+  `c17aa4a6aec26193be336afe9726e1e162a3ce71` in 1.2 minutes: settlement,
+  connected Session Ended, fresh reconnect and exact fake-session cleanup.
+  This also exercises WP11c server entropy under the new session identity keys.
+
+- WP11c published Horses and Ship Captain Crew action checks passed at
+  `8ebb249565dbcf5b13c3039e17c2baf3a2cf81e8` in 1.5 minutes with cleanup.
+
+- WP11b published offline/failed-frame-read/reconnect check passed at
+  `917d4d4390229228c212ecadde3b73245d40d3ba` in 27.8 seconds. Both retired
+  deadline endpoints returned 410 without advancing state; cleanup verified.
+
+- WP11a seven-family published pause/reconnect checks passed at
+  `8107a2379bc456645bac49ce02d649f53f857c2e` in 3.8 minutes with cleanup.
+
 - WP9d published creation/preferences/setup-exit check passed at
   `b03eb3bd5ae2f0a2a1013b79cd63479727662553` in 21.0 seconds.
   Atomic host seating, command-only player actions and cleanup were verified.

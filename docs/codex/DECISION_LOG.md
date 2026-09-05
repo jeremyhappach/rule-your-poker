@@ -1803,3 +1803,13 @@ session and user; active dealer identity is required. Historical null identities
 and missing participants remain evidence, not candidates for inferred backfill.
 Existing unique non-null snapshot keys continue to provide settlement replay
 identity. Proof: session_identity_constraints_rollback_proof.sql and full suite.
+# D-132 — Make validation enforce the deployed authority contract
+
+The release build requires an explicit application typecheck and all src unit
+suites before bundling. Tests now describe current transport/authority owners,
+including retired browser writers and late game/round action receipts. Generated
+types and Edge inventory are reconciled to the current project. Migration history
+is mapped by actual body/name, not assumed equivalent from counts or timestamps.
+Anonymous privileged functions are closed while effective authenticated/service
+grants remain unchanged; five read-only RLS predicates are the explicit exception.
+The historical -$6 discrepancy is preserved and is not considered repaired.

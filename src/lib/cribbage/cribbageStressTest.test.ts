@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Wave 4 — Cribbage Stress Test
  *

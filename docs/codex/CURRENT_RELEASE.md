@@ -1,5 +1,35 @@
 # Current release and cutover state
 
+## Remediation WP12b — release contract and final writer reconciliation
+
+- Application typecheck is clean. The full 216-file suite passes, including
+  repaired browser environments, current transport mocks and reviewed descriptor
+  snapshots. The build now requires typecheck and every src unit suite.
+- The full suite exposed a shared tab-registration hook-order defect. Registered
+  tab effects now mount in their own component; registration/removal/re-registration
+  is covered without changing geometry, tab semantics or registration ownership.
+- Generated types match the current deployed schema. Removed the unused retired
+  357 RPC adapter; the final decision-completion poll uses the shared scheduler.
+  Late 357 action receipts obey both game and round revision checks.
+- No direct browser gameplay/money DML remains in the source AST inventory.
+  Remaining writes are scoped profile/liveness/preferences and own deck color.
+- Anonymous privileged function execution is closed except five read-only RLS
+  predicates. Existing authenticated/service permissions are retained. The two
+  mutable search paths are fixed. Full SQL compatibility/anonymous denial proof
+  passes before/after migration.
+- Reconciled migration names, timestamps and bodies. Corrected literal diff
+  markers in an old local Rabbit Hunt migration to match deployed SQL. Recovered
+  the deployed trivia 410 tombstone and aligned Edge JWT configuration.
+- WP12a production READY and manifest match c17aa4a6aec26193be336afe9726e1e162a3ce71.
+  Published Cribbage settlement/Session Ended/fresh reconnect passes in 1.2 minutes;
+  exact fake-session cleanup verified. Final client publication follows this commit.
+- Historical H11 remains a confirmed -$6 gameplay/account discrepancy. The ledger
+  matches its terminal snapshots; the original pot-losing writer is not provable
+  from the retained insert audits. No historical credit or data edit was made.
+- Fresh restore/load qualification and authenticated diagnostic-operation
+  ownership remain separate follow-ups; leaked-password protection is still
+  disabled in Auth settings. Jeremy's broad real-device smoke remains acceptance.
+
 ## Remediation WP12a — validated session identities
 
 - Games, rounds and non-null snapshots now reference a dealer game in the same

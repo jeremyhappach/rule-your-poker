@@ -564,6 +564,7 @@ interface GameData {
   pussy_tax_enabled?: boolean;
   pussy_tax_value?: number;
   legs_to_win?: number;
+  rollover_amount?: number;
   pot_max_enabled?: boolean;
   pot_max_value?: number;
   last_round_result?: string | null;
@@ -3963,7 +3964,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     fetchGameData('cold_mount');
 
     // Debounce fetch to batch rapid updates during transitions
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let debounceTimer: number | null = null;
     const debouncedFetch = () => {
       if (debounceTimer) {
         __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'debounce_rescheduled');
@@ -4146,7 +4147,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ownerLabel: 'game.realtime.gameTypeDelayedFetch',
               delayMs: 200,
               extra: { purpose: 'fetch after game-type switch realtime payload' },
-              fn: () => fetchGameData(),
+              fn: async () => { await fetchGameData(); },
             });
             return;
           }
@@ -6686,10 +6687,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, []);
   useEffect(() => {
     if (safetyPollsDisabled) {
-      if (awaitingPollRef.current) {
-        clearInterval(awaitingPollRef.current);
-        awaitingPollRef.current = null;
-      }
       return;
     }
 
@@ -7495,131 +7492,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [timeLeft, game?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, currentRound?.id, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
-  const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const awaitingTimerRef = useRef<number | null>(null);
   const gameStateAtTimerStart = useRef<{ awaiting: boolean; round: number } | null>(null);
-  const awaitingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
-  // Poll for awaiting_next_round when round is completed and all decisions are in
+  // Missed decision-completion frames use the shared serialized recovery read.
   useEffect(() => {
-    const isHolmGame = game?.game_type === 'holm-game';
-    const roundCompleted = currentRound?.status === 'completed';
-    const allDecisionsIn = isAllDecisionsInFor(game, currentRound?.id);
-    const alreadyAwaiting = game?.awaiting_next_round === true;
-    const gameInProgress = game?.status === 'in_progress';
-    
-    // For 3-5-7 games: poll when round is completed and all decisions are in
-    const shouldPoll = !isHolmGame && gameInProgress && roundCompleted && allDecisionsIn && !alreadyAwaiting;
-    const pollTraceEnabled = !!gameId && (!game || game?.game_type === '3-5-7');
+    const needed = game?.game_type !== 'holm-game'
+      && game?.status === 'in_progress' && currentRound?.status === 'completed'
+      && isAllDecisionsInFor(game, currentRound?.id) && !game?.awaiting_next_round;
+    recoveryScheduler.setReason('decision-completion', needed, 2000);
+  }, [recoveryScheduler, game?.game_type, game?.status, game?.all_decisions_in,
+    game?.all_decisions_in_round_id, game?.awaiting_next_round, currentRound?.id, currentRound?.status]);
 
-    // ── [ADMISSION-TRACE] poll_enter (per useEffect run) ──────────
-    if (pollTraceEnabled) {
-      const pollBlockedReasons: string[] = [];
-      if (isHolmGame) pollBlockedReasons.push('holm_game');
-      if (!gameInProgress) pollBlockedReasons.push('game_not_in_progress');
-      if (!roundCompleted) pollBlockedReasons.push('round_not_completed');
-      if (!allDecisionsIn) pollBlockedReasons.push('all_decisions_not_in');
-      if (alreadyAwaiting) pollBlockedReasons.push('already_awaiting');
-      if (awaitingPollRef.current) pollBlockedReasons.push('poll_already_active');
-      // (poll-enter/blocked below)
-      persist357Investigation(gameId!, game?.total_hands || 1,
-        shouldPoll && !awaitingPollRef.current
-          ? '357.awaiting_next_round.poll_enter'
-          : '357.awaiting_next_round.poll_blocked',
-        {
-          shouldPoll,
-          pollBlockedReasons,
-          predicates: {
-            isHolmGame, roundCompleted, allDecisionsIn, alreadyAwaiting, gameInProgress,
-            pollAlreadyActive: !!awaitingPollRef.current,
-            currentRoundId: currentRound?.id ?? null,
-            currentRoundStatus: currentRound?.status ?? null,
-            gameId,
-            gameType: game?.game_type ?? null,
-            gameStatus: game?.status ?? null,
-            all_decisions_in: game?.all_decisions_in ?? null,
-            all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
-            awaiting_next_round: game?.awaiting_next_round ?? null,
-          },
-        });
-    }
-    
-    console.log('[AWAITING_POLL] Check', {
-      shouldPoll,
-      isHolmGame,
-      roundCompleted,
-      allDecisionsIn,
-      alreadyAwaiting,
-      gameInProgress
-    });
-    
-    if (shouldPoll && !awaitingPollRef.current) {
-      console.log('[AWAITING_POLL] 🔄 Starting poll for awaiting_next_round');
-      
-      awaitingPollRef.current = __scheduleWartimeInterval({
-        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
-        ownerLabel: 'game.awaitingNextRound.dbPoll',
-        intervalMs: 500,
-        extra: {
-          purpose: 'detect awaiting_next_round after round completion',
-          guard_roundCompleted: roundCompleted,
-          guard_allDecisionsIn: allDecisionsIn,
-          guard_alreadyAwaiting: alreadyAwaiting,
-          guard_gameInProgress: gameInProgress,
-        },
-        fn: async (asyncOwnerId, tickNumber) => {
-        console.log('[AWAITING_POLL] 🔍 Checking for awaiting_next_round...');
-        
-        const { data: freshGame } = await supabase
-          .from('games')
-          .select('awaiting_next_round, last_round_result, next_round_number')
-          .eq('id', gameId)
-          .single();
-        
-        console.log('[AWAITING_POLL] Fresh data:', freshGame);
-        
-        if (freshGame?.awaiting_next_round) {
-          if (pollTraceEnabled) {
-            persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.poll_proceed_called', {
-              tickNumber,
-              freshGame,
-              asyncOwnerId: String(asyncOwnerId),
-            });
-          }
-          console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
-          if (awaitingPollRef.current) {
-            __emitWartimeAsyncOwnerFired({
-              asyncOwnerId,
-              outcome: 'cancelled',
-              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
-              identity: __wartimeLiveGameIdentity(),
-              liveIdentity: __wartimeLiveGameIdentity(),
-              suppressionReason: 'awaiting_next_round_detected',
-              extra: { tickNumber, freshLastRoundResult: freshGame.last_round_result ?? null, freshNextRoundNumber: freshGame.next_round_number ?? null },
-            });
-            __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'awaiting_next_round_detected');
-            clearInterval(awaitingPollRef.current);
-            awaitingPollRef.current = null;
-          }
-          await fetchGameData();
-        }
-        },
-      }); // Poll every 500ms
-    } else if (!shouldPoll && awaitingPollRef.current) {
-      console.log('[AWAITING_POLL] 🛑 Stopping poll');
-      __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'guard_closed');
-      clearInterval(awaitingPollRef.current);
-      awaitingPollRef.current = null;
-    }
-    
-    return () => {
-      if (awaitingPollRef.current) {
-        __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'effect_cleanup');
-        clearInterval(awaitingPollRef.current);
-        awaitingPollRef.current = null;
-      }
-    };
-  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
-  
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
     const currentRoundNumber = game?.current_round || 0;

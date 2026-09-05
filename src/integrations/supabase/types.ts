@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1480,7 +1480,6 @@ export type Database = {
         Row: {
           allow_bot_dealers: boolean
           ante_amount: number
-          rollover_amount: number
           bot_decision_delay_seconds: number
           bot_fold_probability: number
           bot_use_hand_strength: boolean
@@ -1496,8 +1495,8 @@ export type Database = {
           gin_bonus: number
           holm_after_tabled_delay_ms: number
           holm_multi_showdown_delay_ms: number
-          holm_presentation_ack_fallback_seconds: number
           holm_pre_chucky_delay_ms: number
+          holm_presentation_ack_fallback_seconds: number
           holm_rabbit_hunt_post_reveal_delay_ms: number
           id: string
           leg_value: number
@@ -1511,18 +1510,18 @@ export type Database = {
           rabbit_hunt: boolean
           real_money: boolean
           reveal_at_showdown: boolean
+          rollover_amount: number
           skunk_enabled: boolean
           skunk_threshold: number
+          three_five_seven_showdown_delay_ms: number
           timeout_action: string
           timeout_enforcement_enabled: boolean
-          three_five_seven_showdown_delay_ms: number
           undercut_bonus: number
           updated_at: string
         }
         Insert: {
           allow_bot_dealers?: boolean
           ante_amount?: number
-          rollover_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
           bot_use_hand_strength?: boolean
@@ -1538,8 +1537,8 @@ export type Database = {
           gin_bonus?: number
           holm_after_tabled_delay_ms?: number
           holm_multi_showdown_delay_ms?: number
-          holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
+          holm_presentation_ack_fallback_seconds?: number
           holm_rabbit_hunt_post_reveal_delay_ms?: number
           id?: string
           leg_value?: number
@@ -1553,18 +1552,18 @@ export type Database = {
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          rollover_amount?: number
           skunk_enabled?: boolean
           skunk_threshold?: number
+          three_five_seven_showdown_delay_ms?: number
           timeout_action?: string
           timeout_enforcement_enabled?: boolean
-          three_five_seven_showdown_delay_ms?: number
           undercut_bonus?: number
           updated_at?: string
         }
         Update: {
           allow_bot_dealers?: boolean
           ante_amount?: number
-          rollover_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
           bot_use_hand_strength?: boolean
@@ -1580,8 +1579,8 @@ export type Database = {
           gin_bonus?: number
           holm_after_tabled_delay_ms?: number
           holm_multi_showdown_delay_ms?: number
-          holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
+          holm_presentation_ack_fallback_seconds?: number
           holm_rabbit_hunt_post_reveal_delay_ms?: number
           id?: string
           leg_value?: number
@@ -1595,11 +1594,12 @@ export type Database = {
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          rollover_amount?: number
           skunk_enabled?: boolean
           skunk_threshold?: number
+          three_five_seven_showdown_delay_ms?: number
           timeout_action?: string
           timeout_enforcement_enabled?: boolean
-          three_five_seven_showdown_delay_ms?: number
           undercut_bonus?: number
           updated_at?: string
         }
@@ -1678,53 +1678,6 @@ export type Database = {
           },
         ]
       }
-      gameplay_transfer_batches: {
-        Row: {
-          closing_balances: Json
-          created_at: string
-          cursor: number
-          dealer_game_id: string | null
-          game_id: string
-          id: string
-          opening_balances: Json
-          reason: string
-          transfers: Json
-          unmatched_deltas: Json
-        }
-        Insert: {
-          closing_balances?: Json
-          created_at?: string
-          cursor: number
-          dealer_game_id?: string | null
-          game_id: string
-          id?: string
-          opening_balances?: Json
-          reason?: string
-          transfers?: Json
-          unmatched_deltas?: Json
-        }
-        Update: {
-          closing_balances?: Json
-          created_at?: string
-          cursor?: number
-          dealer_game_id?: string | null
-          game_id?: string
-          id?: string
-          opening_balances?: Json
-          reason?: string
-          transfers?: Json
-          unmatched_deltas?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gameplay_transfer_batches_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       game_state_debug_log: {
         Row: {
           all_decisions_in: boolean | null
@@ -1788,21 +1741,109 @@ export type Database = {
         }
         Relationships: []
       }
+      gameplay_transfer_batches: {
+        Row: {
+          closing_balances: Json
+          created_at: string
+          cursor: number
+          dealer_game_id: string | null
+          game_id: string
+          id: string
+          opening_balances: Json
+          reason: string
+          transfers: Json
+          unmatched_deltas: Json
+        }
+        Insert: {
+          closing_balances?: Json
+          created_at?: string
+          cursor: number
+          dealer_game_id?: string | null
+          game_id: string
+          id?: string
+          opening_balances?: Json
+          reason?: string
+          transfers?: Json
+          unmatched_deltas?: Json
+        }
+        Update: {
+          closing_balances?: Json
+          created_at?: string
+          cursor?: number
+          dealer_game_id?: string | null
+          game_id?: string
+          id?: string
+          opening_balances?: Json
+          reason?: string
+          transfers?: Json
+          unmatched_deltas?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameplay_transfer_batches_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gameplay_transfer_pending_changes: {
+        Row: {
+          closing_balance: number
+          created_at: string
+          endpoint_key: string
+          game_id: string
+          id: number
+          opening_balance: number
+          reason: string
+          transaction_id: number
+        }
+        Insert: {
+          closing_balance: number
+          created_at?: string
+          endpoint_key: string
+          game_id: string
+          id?: number
+          opening_balance: number
+          reason?: string
+          transaction_id: number
+        }
+        Update: {
+          closing_balance?: number
+          created_at?: string
+          endpoint_key?: string
+          game_id?: string
+          id?: number
+          opening_balance?: number
+          reason?: string
+          transaction_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameplay_transfer_pending_changes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           all_decisions_in: boolean | null
           all_decisions_in_round_id: string | null
           ante_amount: number
-          rollover_amount: number
           ante_decision_deadline: string | null
           ante_decision_timer_seconds: number
+          authority_revision: number
           awaiting_next_round: boolean | null
           bot_alias_seq: number
           buck_position: number | null
           buck_transfer_presentation: Json | null
           buy_in: number
-          chucky_cards: number | null
           chip_transfer_cursor: number
+          chucky_cards: number | null
           config_complete: boolean
           config_deadline: string | null
           created_at: string
@@ -1816,6 +1857,7 @@ export type Database = {
           game_over_at: string | null
           game_setup_timer_seconds: number
           game_type: string | null
+          host_version: number
           id: string
           is_first_hand: boolean
           is_paused: boolean | null
@@ -1824,25 +1866,29 @@ export type Database = {
           legs_to_win: number
           name: string | null
           next_round_number: number | null
+          pause_version: number
           paused_time_remaining: number | null
           pending_session_end: boolean | null
           points_to_win: number | null
           pot: number | null
-          pot_transfer_cursor: number | null
           pot_max_enabled: boolean
           pot_max_value: number
+          pot_transfer_cursor: number | null
           pussy_tax: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
           rabbit_hunt: boolean
           real_money: boolean
           reveal_at_showdown: boolean
+          rollover_amount: number
           session_ended_at: string | null
           skunk_enabled: boolean | null
           skunk_threshold: number | null
           status: string
           timeout_action: string | null
           timeout_enforcement_enabled: boolean | null
+          timer_generation: number
+          timer_paused_at: string | null
           total_hands: number | null
           updated_at: string
         }
@@ -1850,16 +1896,16 @@ export type Database = {
           all_decisions_in?: boolean | null
           all_decisions_in_round_id?: string | null
           ante_amount?: number
-          rollover_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
+          authority_revision?: number
           awaiting_next_round?: boolean | null
           bot_alias_seq?: number
           buck_position?: number | null
           buck_transfer_presentation?: Json | null
           buy_in?: number
-          chucky_cards?: number | null
           chip_transfer_cursor?: number
+          chucky_cards?: number | null
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
@@ -1873,6 +1919,7 @@ export type Database = {
           game_over_at?: string | null
           game_setup_timer_seconds?: number
           game_type?: string | null
+          host_version?: number
           id?: string
           is_first_hand?: boolean
           is_paused?: boolean | null
@@ -1881,25 +1928,29 @@ export type Database = {
           legs_to_win?: number
           name?: string | null
           next_round_number?: number | null
+          pause_version?: number
           paused_time_remaining?: number | null
           pending_session_end?: boolean | null
           points_to_win?: number | null
           pot?: number | null
-          pot_transfer_cursor?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
+          pot_transfer_cursor?: number | null
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          rollover_amount?: number
           session_ended_at?: string | null
           skunk_enabled?: boolean | null
           skunk_threshold?: number | null
           status?: string
           timeout_action?: string | null
           timeout_enforcement_enabled?: boolean | null
+          timer_generation?: number
+          timer_paused_at?: string | null
           total_hands?: number | null
           updated_at?: string
         }
@@ -1907,16 +1958,16 @@ export type Database = {
           all_decisions_in?: boolean | null
           all_decisions_in_round_id?: string | null
           ante_amount?: number
-          rollover_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
+          authority_revision?: number
           awaiting_next_round?: boolean | null
           bot_alias_seq?: number
           buck_position?: number | null
           buck_transfer_presentation?: Json | null
           buy_in?: number
-          chucky_cards?: number | null
           chip_transfer_cursor?: number
+          chucky_cards?: number | null
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
@@ -1930,6 +1981,7 @@ export type Database = {
           game_over_at?: string | null
           game_setup_timer_seconds?: number
           game_type?: string | null
+          host_version?: number
           id?: string
           is_first_hand?: boolean
           is_paused?: boolean | null
@@ -1938,29 +1990,41 @@ export type Database = {
           legs_to_win?: number
           name?: string | null
           next_round_number?: number | null
+          pause_version?: number
           paused_time_remaining?: number | null
           pending_session_end?: boolean | null
           points_to_win?: number | null
           pot?: number | null
-          pot_transfer_cursor?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
+          pot_transfer_cursor?: number | null
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          rollover_amount?: number
           session_ended_at?: string | null
           skunk_enabled?: boolean | null
           skunk_threshold?: number | null
           status?: string
           timeout_action?: string | null
           timeout_enforcement_enabled?: boolean | null
+          timer_generation?: number
+          timer_paused_at?: string | null
           total_hands?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_current_dealer_session_fkey"
+            columns: ["current_game_uuid", "id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id", "session_id"]
+          },
+        ]
       }
       geometry_overrides: {
         Row: {
@@ -2206,41 +2270,64 @@ export type Database = {
       }
       player_transactions: {
         Row: {
+          actor_id: string | null
           amount: number
           created_at: string
           date: string
           id: string
           notes: string | null
           profile_id: string
+          request_id: string | null
+          reversal_of: string | null
           source_game_id: string | null
           transaction_type: string
         }
         Insert: {
+          actor_id?: string | null
           amount: number
           created_at?: string
           date?: string
           id?: string
           notes?: string | null
           profile_id: string
+          request_id?: string | null
+          reversal_of?: string | null
           source_game_id?: string | null
           transaction_type: string
         }
         Update: {
+          actor_id?: string | null
           amount?: number
           created_at?: string
           date?: string
           id?: string
           notes?: string | null
           profile_id?: string
+          request_id?: string | null
+          reversal_of?: string | null
           source_game_id?: string | null
           transaction_type?: string
         }
         Relationships: [
           {
+            foreignKeyName: "player_transactions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "player_transactions_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_transactions_reversal_of_fkey"
+            columns: ["reversal_of"]
+            isOneToOne: false
+            referencedRelation: "player_transactions"
             referencedColumns: ["id"]
           },
           {
@@ -2255,21 +2342,25 @@ export type Database = {
       players: {
         Row: {
           ante_decision: string | null
+          authority_revision: number
           auto_ante: boolean
           auto_ante_runback: boolean
           auto_fold: boolean
-          chips: number
+          auto_play_stop_round_id: string | null
           chip_transfer_cursor: number | null
+          chips: number
           created_at: string
           current_decision: string | null
           decision_locked: boolean | null
           deck_color_mode: string | null
           game_id: string
           id: string
+          intent_version: number
           is_bot: boolean
           legs: number
           mobile_view: boolean | null
-          position: number
+          participation_version: number
+          position: number | null
           pre_fold: boolean | null
           pre_stay: boolean | null
           sit_out_next_hand: boolean
@@ -2282,21 +2373,25 @@ export type Database = {
         }
         Insert: {
           ante_decision?: string | null
+          authority_revision?: number
           auto_ante?: boolean
           auto_ante_runback?: boolean
           auto_fold?: boolean
-          chips?: number
+          auto_play_stop_round_id?: string | null
           chip_transfer_cursor?: number | null
+          chips?: number
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
           deck_color_mode?: string | null
           game_id: string
           id?: string
+          intent_version?: number
           is_bot?: boolean
           legs?: number
           mobile_view?: boolean | null
-          position: number
+          participation_version?: number
+          position?: number | null
           pre_fold?: boolean | null
           pre_stay?: boolean | null
           sit_out_next_hand?: boolean
@@ -2309,21 +2404,25 @@ export type Database = {
         }
         Update: {
           ante_decision?: string | null
+          authority_revision?: number
           auto_ante?: boolean
           auto_ante_runback?: boolean
           auto_fold?: boolean
-          chips?: number
+          auto_play_stop_round_id?: string | null
           chip_transfer_cursor?: number | null
+          chips?: number
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
           deck_color_mode?: string | null
           game_id?: string
           id?: string
+          intent_version?: number
           is_bot?: boolean
           legs?: number
           mobile_view?: boolean | null
-          position?: number
+          participation_version?: number
+          position?: number | null
           pre_fold?: boolean | null
           pre_stay?: boolean | null
           sit_out_next_hand?: boolean
@@ -2335,6 +2434,13 @@ export type Database = {
           waiting?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "players_auto_play_stop_round_id_fkey"
+            columns: ["auto_play_stop_round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "players_game_id_fkey"
             columns: ["game_id"]
@@ -2410,6 +2516,7 @@ export type Database = {
       }
       rounds: {
         Row: {
+          authority_revision: number
           bet_amount: number | null
           cards_dealt: number
           chucky_active: boolean | null
@@ -2441,6 +2548,7 @@ export type Database = {
           yahtzee_state: Json | null
         }
         Insert: {
+          authority_revision?: number
           bet_amount?: number | null
           cards_dealt: number
           chucky_active?: boolean | null
@@ -2472,6 +2580,7 @@ export type Database = {
           yahtzee_state?: Json | null
         }
         Update: {
+          authority_revision?: number
           bet_amount?: number | null
           cards_dealt?: number
           chucky_active?: boolean | null
@@ -2511,6 +2620,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rounds_dealer_session_fkey"
+            columns: ["dealer_game_id", "game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id", "session_id"]
+          },
+          {
             foreignKeyName: "rounds_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
@@ -2520,7 +2636,7 @@ export type Database = {
           {
             foreignKeyName: "rounds_holm_predecessor_round_id_fkey"
             columns: ["holm_predecessor_round_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
@@ -2611,6 +2727,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snapshots_dealer_session_fkey"
+            columns: ["dealer_game_id", "game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id", "session_id"]
           },
         ]
       }
@@ -3128,20 +3251,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_get_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          username: string
-          is_active: boolean
-          is_superuser: boolean
-          created_at: string
-          last_seen_at: string | null
-          email: string | null
-        }[]
-      }
-      admin_set_user_role: {
-        Args: { p_user_id: string; p_enabled: boolean }
+      account_statement: {
+        Args: {
+          p_before_date?: string
+          p_before_id?: string
+          p_limit?: number
+          p_profile_id: string
+        }
         Returns: Json
       }
       acknowledge_holm_prepared_hand_dealt: {
@@ -3163,6 +3279,15 @@ export type Database = {
         }
         Returns: Json
       }
+      activate_prepared_cribbage_hand: {
+        Args: {
+          p_from_fallback?: boolean
+          p_game_id: string
+          p_predecessor_round_id: string
+          p_successor_round_id: string
+        }
+        Returns: Json
+      }
       activate_prepared_holm_hand: {
         Args: {
           p_from_fallback?: boolean
@@ -3172,27 +3297,59 @@ export type Database = {
         }
         Returns: Json
       }
-      resolve_holm_showdown: {
-        Args: {
-          p_expected_round_id: string
-          p_game_id: string
-        }
-        Returns: Json
-      }
-      recover_pending_holm_showdowns: {
-        Args: { p_game_id: string }
-        Returns: Json
-      }
-      admin_delete_fake_money_games: { Args: never; Returns: number }
+      admin_account_balances: { Args: never; Returns: Json }
       admin_blast_fake_money_game: {
         Args: { p_game_id: string }
         Returns: Json
       }
-      begin_session_dealer_selection: {
-        Args: { p_game_id: string }
+      admin_delete_fake_money_games: { Args: never; Returns: number }
+      admin_get_profiles: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          is_superuser: boolean
+          last_seen_at: string
+          username: string
+        }[]
+      }
+      admin_record_account_entry: {
+        Args: {
+          p_amount: string
+          p_notes?: string
+          p_profile_id: string
+          p_request_id: string
+          p_type: string
+        }
         Returns: Json
       }
-      advance_357_round: {
+      admin_reverse_account_entry: {
+        Args: { p_entry_id: string; p_reason: string; p_request_id: string }
+        Returns: Json
+      }
+      admin_set_maintenance_mode: {
+        Args: { p_enabled: boolean }
+        Returns: Json
+      }
+      admin_set_user_role: {
+        Args: { p_enabled: boolean; p_user_id: string }
+        Returns: Json
+      }
+      advance_357_round_legacy: {
+        Args: {
+          _ante_amount?: number
+          _dealer_game_id: string
+          _decision_deadline: string
+          _forced_hand_by_player?: Json
+          _game_id: string
+          _next_hand_number: number
+          _next_round_number: number
+        }
+        Returns: Json
+      }
+      advance_357_round_unsafe_legacy: {
         Args: {
           _dealer_game_id: string
           _decision_deadline: string
@@ -3203,7 +3360,56 @@ export type Database = {
         }
         Returns: Json
       }
+      advance_ante_phase: {
+        Args: { p_expected_dealer_game_id?: string; p_game_id: string }
+        Returns: Json
+      }
+      advance_session_dealer_selection: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
       allocate_bot_alias_number: { Args: { _game_id: string }; Returns: number }
+      arm_cribbage_dealer_draw_tie_harness: {
+        Args: { p_game_id: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      arm_cribbage_rule_branch_harness: {
+        Args: { p_game_id: string; p_profile: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      arm_gin_rule_branch_harness: {
+        Args: { p_game_id: string; p_profile: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      arm_session_dealer_draw_tie_harness: {
+        Args: { p_ttl_seconds?: number }
+        Returns: Json
+      }
+      arm_target_rule_branch_harness: {
+        Args: { p_game_id: string; p_profile: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      begin_session_dealer_selection: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      cancel_cribbage_dealer_draw_tie_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      cancel_cribbage_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      cancel_gin_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      cancel_session_dealer_draw_tie_harness: { Args: never; Returns: Json }
+      cancel_target_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
       chat_operation_append_boundary_event: {
         Args: {
           _metadata?: Json
@@ -3439,6 +3645,26 @@ export type Database = {
         Args: { _round_id: string }
         Returns: Json
       }
+      configure_dealer_game: {
+        Args: {
+          p_config: Json
+          p_dealer_player_id: string
+          p_expected_config_deadline: string
+          p_expected_dealer_position: number
+          p_game_id: string
+          p_game_type: string
+        }
+        Returns: Json
+      }
+      create_session: {
+        Args: {
+          p_name: string
+          p_position?: number
+          p_real_money: boolean
+          p_request_id: string
+        }
+        Returns: Json
+      }
       create_session_bot: {
         Args: {
           _actor_user_id?: string
@@ -3451,35 +3677,34 @@ export type Database = {
         }
         Returns: Json
       }
+      cribbage_advance_postgame: {
+        Args: {
+          _dealer_game_id: string
+          _game_id: string
+          _hand_number: number
+          _round_id: string
+        }
+        Returns: Json
+      }
       cribbage_apply_discard: {
         Args: { _card_indices: number[]; _player_id: string; _round_id: string }
         Returns: Json
       }
-      activate_prepared_cribbage_hand: {
+      cribbage_apply_pegging_action: {
         Args: {
-          p_from_fallback?: boolean
-          p_game_id: string
-          p_predecessor_round_id: string
-          p_successor_round_id: string
+          _action: string
+          _card_index?: number
+          _expected_event_sequence?: number
+          _player_id: string
+          _round_id: string
         }
         Returns: Json
       }
-      cribbage_complete_counting: {
-        Args: { _round_id: string }
+      cribbage_begin_dealer_selection: {
+        Args: { _game_id: string }
         Returns: Json
       }
-      cribbage_finalize_counting: {
-        Args: { _round_id: string }
-        Returns: Json
-      }
-      cribbage_release_counting: {
-        Args: { _from_fallback?: boolean; _round_id: string }
-        Returns: Json
-      }
-      cribbage_reconcile_discard_transition: {
-        Args: { _round_id: string }
-        Returns: Json
-      }
+      cribbage_complete_counting: { Args: { _round_id: string }; Returns: Json }
       cribbage_create_next_hand: {
         Args: {
           _cribbage_state: Json
@@ -3488,12 +3713,48 @@ export type Database = {
         }
         Returns: Json
       }
+      cribbage_finalize_counting: { Args: { _round_id: string }; Returns: Json }
+      cribbage_get_state: { Args: { _round_id: string }; Returns: Json }
+      cribbage_prepare_dealer_selection: {
+        Args: { _game_id: string }
+        Returns: Json
+      }
+      cribbage_reconcile_discard_transition: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
+      cribbage_record_counting_progress: {
+        Args: { _beat_index: number; _round_id: string; _target_index: number }
+        Returns: Json
+      }
+      cribbage_release_counting: {
+        Args: { _from_fallback?: boolean; _round_id: string }
+        Returns: Json
+      }
       cribbage_settle_game: {
         Args: {
           p_dealer_game_id: string
           p_game_id: string
           p_hand_number: number
           p_round_id: string
+        }
+        Returns: Json
+      }
+      cribbage_settle_game_authority_impl: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      cutover_write_lock_active: { Args: never; Returns: boolean }
+      decline_session_setup: {
+        Args: {
+          p_expected_config_deadline: string
+          p_expected_dealer_position: number
+          p_game_id: string
         }
         Returns: Json
       }
@@ -3520,6 +3781,70 @@ export type Database = {
       }
       finalize_voice_operations: { Args: never; Returns: number }
       get_chat_flight_report: { Args: { _game_id: string }; Returns: Json }
+      get_cribbage_dealer_draw_tie_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      get_cribbage_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      get_gin_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      get_real_money_liveness_health: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      get_session_dealer_draw_tie_harness: { Args: never; Returns: Json }
+      get_target_rule_branch_harness: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      gin_rummy_advance_postgame: {
+        Args: {
+          _dealer_game_id: string
+          _game_id: string
+          _hand_number: number
+          _round_id: string
+        }
+        Returns: Json
+      }
+      gin_rummy_apply_action: {
+        Args: {
+          _action: string
+          _card?: Json
+          _expected_action_count?: number
+          _meld_index?: number
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
+      }
+      gin_rummy_get_state: { Args: { _round_id: string }; Returns: Json }
+      gin_rummy_settle_game: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      gin_rummy_settle_game_legacy: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      gin_rummy_start_next_hand: {
+        Args: { _predecessor_round_id: string }
+        Returns: Json
+      }
       handle_config_deadline_timeout: {
         Args: { _game_id: string }
         Returns: Json
@@ -3531,6 +3856,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      holm_advance_postgame: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      holm_apply_deadline_decision: {
+        Args: {
+          p_decision: string
+          p_game_id: string
+          p_mark_auto_fold?: boolean
+          p_player_id: string
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      holm_best_hand_value: { Args: { p_cards: Json }; Returns: number[] }
+      holm_deterministic_chucky_cards: {
+        Args: { p_card_count: number; p_round_id: string; p_used_cards: Json }
+        Returns: Json
+      }
+      holm_five_card_value: { Args: { p_cards: Json }; Returns: number[] }
+      holm_hand_label: { Args: { p_value: number[] }; Returns: string }
+      holm_request_session_end: { Args: { p_game_id: string }; Returns: Json }
       holm_settle_hand: {
         Args: {
           p_awaiting_next_round: boolean
@@ -3553,50 +3905,95 @@ export type Database = {
         }
         Returns: Json
       }
-      holm_submit_decision: {
-        Args:
-          | {
-              p_decision: string
-              p_game_id: string
-              p_player_id: string
-            }
-          | {
+      holm_submit_decision:
+        | {
+            Args: { p_decision: string; p_game_id: string; p_player_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
               p_decision: string
               p_game_id: string
               p_player_id: string
               p_round_id: string
             }
-        Returns: Json
-      }
-      proceed_to_next_holm_hand: {
-        Args: { p_expected_round_id: string; p_game_id: string }
-        Returns: Json
-      }
-      prepare_next_holm_hand: {
-        Args: { p_expected_round_id: string; p_game_id: string }
+            Returns: Json
+          }
+      holm_submit_decision_core: {
+        Args: { p_decision: string; p_game_id: string; p_player_id: string }
         Returns: Json
       }
       horses_advance_turn: {
         Args: { _expected_current_player_id: string; _round_id: string }
         Returns: Json
       }
+      horses_scc_advance_completed_round: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      horses_scc_advance_postgame: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      horses_scc_apply_action: {
+        Args: {
+          _action: string
+          _expected_action_sequence: number
+          _hold_mask?: boolean[]
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
+      }
       horses_set_player_state: {
         Args: { _player_id: string; _round_id: string; _state: Json }
+        Returns: Json
+      }
+      horses_settle_game: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
         Returns: Json
       }
       increment_player_chips: {
         Args: { p_amount: number; p_player_id: string }
         Returns: number
       }
-      settle_gameplay_chip_transfers: {
-        Args: { p_game_id: string; p_reason?: string; p_transfers: Json }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      prepare_next_holm_hand: {
+        Args: { p_expected_round_id: string; p_game_id: string }
         Returns: Json
       }
-      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      prepare_yahtzee_rule_branch_turn: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      proceed_to_next_holm_hand: {
+        Args: { p_expected_round_id: string; p_game_id: string }
+        Returns: Json
+      }
+      proceed_to_next_holm_hand_core: {
+        Args: { p_expected_round_id: string; p_game_id: string }
+        Returns: Json
+      }
       purge_expired_diagnostics: {
         Args: { _retention?: string }
         Returns: number
       }
+      read_session_frame: { Args: { p_game_id: string }; Returns: Json }
       record_chat_flight_event: {
         Args: {
           _client_message_id: string
@@ -3614,15 +4011,168 @@ export type Database = {
         }
         Returns: undefined
       }
+      recover_pending_holm_showdowns: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      refresh_cutover_write_lock_triggers: { Args: never; Returns: number }
+      request_session_end: {
+        Args: {
+          p_expected_dealer_game_id: string
+          p_expected_timer_generation: number
+          p_game_id: string
+        }
+        Returns: Json
+      }
+      resolve_holm_showdown: {
+        Args: { p_expected_round_id: string; p_game_id: string }
+        Returns: Json
+      }
+      resolve_postgame_participation: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      session_leave: {
+        Args: {
+          p_expected_version: number
+          p_game_id: string
+          p_player_id: string
+        }
+        Returns: Json
+      }
+      session_take_seat: {
+        Args: {
+          p_expected_version: number
+          p_game_id: string
+          p_player_id: string
+          p_position: number
+        }
+        Returns: Json
+      }
+      set_automatic_play: {
+        Args: {
+          p_dealer_game_id: string
+          p_enabled: boolean
+          p_expected_version: number
+          p_game_id: string
+          p_player_id: string
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      set_game_paused:
+        | { Args: { p_game_id: string; p_paused: boolean }; Returns: Json }
+        | {
+            Args: {
+              p_expected_dealer_game_id: string
+              p_expected_pause_version: number
+              p_game_id: string
+              p_paused: boolean
+            }
+            Returns: Json
+          }
+      set_session_player_intent: {
+        Args: {
+          p_expected_dealer_game_id: string
+          p_expected_version: number
+          p_game_id: string
+          p_option: string
+          p_player_id: string
+          p_value: boolean
+        }
+        Returns: Json
+      }
+      settle_gameplay_chip_transfers: {
+        Args: { p_game_id: string; p_reason?: string; p_transfers: Json }
+        Returns: Json
+      }
+      stand_up_and_resolve_postgame: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      start_cribbage_initial_hand: { Args: { _game_id: string }; Returns: Json }
+      start_gin_rummy_initial_hand: {
+        Args: { _game_id: string }
+        Returns: Json
+      }
       start_holm_initial_hand: {
         Args: { _game_id: string; _skip_ante_collection?: boolean }
         Returns: Json
       }
-      gin_rummy_settle_game: {
+      start_yahtzee_round: {
+        Args: { _game_id: string; _predecessor_round_id?: string }
+        Returns: Json
+      }
+      submit_ante_decision: {
+        Args: {
+          p_auto_ante?: boolean
+          p_auto_ante_runback?: boolean
+          p_decision: string
+          p_expected_dealer_game_id: string
+          p_game_id: string
+          p_player_id: string
+        }
+        Returns: Json
+      }
+      three_five_seven_advance_postgame: {
         Args: {
           p_dealer_game_id: string
           p_game_id: string
           p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      three_five_seven_advance_round: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      three_five_seven_begin_game: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      three_five_seven_current_frame: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      three_five_seven_decline_setup: {
+        Args: {
+          p_expected_config_deadline: string
+          p_expected_dealer_position: number
+          p_game_id: string
+        }
+        Returns: Json
+      }
+      three_five_seven_expire_round: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      three_five_seven_recover_game: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      three_five_seven_request_session_end: {
+        Args: { p_game_id: string }
+        Returns: Json
+      }
+      three_five_seven_reveal_terminal_cards: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_player_id: string
           p_round_id: string
         }
         Returns: Json
@@ -3636,8 +4186,78 @@ export type Database = {
         }
         Returns: Json
       }
+      three_five_seven_settle_game_authority_impl: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
+      three_five_seven_submit_decision: {
+        Args: {
+          p_dealer_game_id: string
+          p_decision: string
+          p_game_id: string
+          p_hand_number: number
+          p_player_id: string
+          p_round_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      transfer_session_host: {
+        Args: {
+          p_expected_version: number
+          p_game_id: string
+          p_target_player_id: string
+        }
+        Returns: Json
+      }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
+      yahtzee_advance_postgame: {
+        Args: {
+          _dealer_game_id: string
+          _game_id: string
+          _hand_number: number
+          _round_id: string
+        }
+        Returns: Json
+      }
+      yahtzee_apply_action: {
+        Args: {
+          _action: string
+          _category?: string
+          _die_index?: number
+          _expected_action_sequence?: number
+          _hold_mask?: boolean[]
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
+      }
+      yahtzee_apply_auto_roll_action: {
+        Args: {
+          _action: string
+          _category?: string
+          _expected_action_sequence?: number
+          _hold_mask?: boolean[]
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
+      }
+      yahtzee_set_holds: {
+        Args: {
+          _expected_action_sequence?: number
+          _hold_mask: boolean[]
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
+      }
       yahtzee_settle_game: {
         Args: {
           p_dealer_game_id: string
@@ -3673,12 +4293,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3702,11 +4322,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3727,11 +4347,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3752,11 +4372,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3769,11 +4389,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

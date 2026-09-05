@@ -71,7 +71,7 @@ const completeState = (): DealerSelectionState => ({
     {
       playerId: '00000000-0000-0000-0000-000000000001',
       position: 1,
-      card: { rank: 'K', suit: 'clubs' },
+      card: { rank: 'K', suit: '♣' },
       isRevealed: true,
       isWinner: true,
       isDimmed: false,

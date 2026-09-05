@@ -17,6 +17,7 @@ const allFold: ThreeFiveSevenAllFoldPresentation = {
 };
 
 const reAnte: ThreeFiveSevenRolloverPresentation = {
+  openingTransferRequired: true,
   gameId: 'game-1',
   dealerGameId: 'dealer-1',
   roundId: 'round-h3-r1',

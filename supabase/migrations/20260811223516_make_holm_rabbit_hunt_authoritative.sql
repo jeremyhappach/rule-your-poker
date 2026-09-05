@@ -6,7 +6,7 @@ DO $migration$
 DECLARE
   v_definition text;
   v_before text := E'    pot                   = COALESCE(p_round_pot, pot),\n    chucky_active         = CASE WHEN p_clear_chucky_active THEN false ELSE chucky_active END,';
-  v_after text := E'    pot                   = COALESCE(p_round_pot, pot),\n    community_cards_revealed = CASE\n      WHEN p_event_kind = ''pussy_tax_carryforward''\n       AND COALESCE(v_game.rabbit_hunt, false)\n+        THEN GREATEST(COALESCE(community_cards_revealed, 0), 4)\n+      ELSE community_cards_revealed\n+    END,\n    chucky_active         = CASE WHEN p_clear_chucky_active THEN false ELSE chucky_active END,';
+  v_after text := E'    pot                   = COALESCE(p_round_pot, pot),\n    community_cards_revealed = CASE\n      WHEN p_event_kind = ''pussy_tax_carryforward''\n       AND COALESCE(v_game.rabbit_hunt, false)\n        THEN GREATEST(COALESCE(community_cards_revealed, 0), 4)\n      ELSE community_cards_revealed\n    END,\n    chucky_active         = CASE WHEN p_clear_chucky_active THEN false ELSE chucky_active END,';
 BEGIN
   SELECT pg_get_functiondef(
     'public.holm_settle_hand(uuid,uuid,integer,public.holm_event_kind,integer,boolean,text,jsonb,text,uuid,text,boolean,integer,boolean,integer,boolean,boolean)'::regprocedure

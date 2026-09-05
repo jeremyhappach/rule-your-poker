@@ -1605,8 +1605,6 @@ export const CribbageMobileGameTable = ({
       renderHandKey: renderHandKey || null,
       roundId: roundId ?? null,
       handNumber: handNumber ?? null,
-      dealRuntimeReactKey: (currentHandKey || durableHandKey) || null,
-      durableHandKey: durableHandKey || null,
       gameId: gameId ?? null,
       dealerGameId: dealerGameId ?? null,
     });
@@ -1625,8 +1623,6 @@ export const CribbageMobileGameTable = ({
         renderHandKey: null,
         roundId: null,
         handNumber: null,
-        dealRuntimeReactKey: null,
-        durableHandKey: null,
         gameId: null,
         dealerGameId: null,
       });

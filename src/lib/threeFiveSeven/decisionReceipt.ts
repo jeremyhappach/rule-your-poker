@@ -1,9 +1,14 @@
+import { mergeAuthoritativeGameState } from '../authoritativeGameState';
+
 type GameWithRounds = {
   id?: string;
-  rounds?: Array<Record<string, unknown>>;
+  current_game_uuid?: string | null;
+  authority_revision?: number;
+  rounds?: Array<{ id?: string; authority_revision?: number }>;
 };
 
 const GAME_RECEIPT_FIELDS = [
+  'authority_revision',
   'status',
   'current_game_uuid',
   'total_hands',
@@ -29,6 +34,10 @@ export function applyThreeFiveSevenDecisionReceipt<T extends GameWithRounds>(
   if (!current || !isRecord(result)) return current;
   const gameReceipt = isRecord(result.game) ? result.game : null;
   if (!gameReceipt || gameReceipt.id !== gameId || current.id !== gameId) return current;
+  if (current.current_game_uuid && gameReceipt.current_game_uuid
+      && current.current_game_uuid !== gameReceipt.current_game_uuid) return current;
+  // Delayed action responses obey the same revision rules as refreshed frames.
+  if (mergeAuthoritativeGameState(current, gameReceipt as Partial<T>) === current) return current;
 
   const gamePatch: Record<string, unknown> = {};
   for (const field of GAME_RECEIPT_FIELDS) {
@@ -45,9 +54,13 @@ export function applyThreeFiveSevenDecisionReceipt<T extends GameWithRounds>(
   }
 
   const roundIndex = current.rounds.findIndex((round) => round.id === roundReceipt.id);
+  if (roundIndex >= 0
+      && mergeAuthoritativeGameState(current.rounds[roundIndex], roundReceipt) === current.rounds[roundIndex]) {
+    return current;
+  }
   const nextRounds = [...current.rounds];
   if (roundIndex === -1) {
-    nextRounds.push(roundReceipt);
+    nextRounds.push({ ...roundReceipt, id: roundReceipt.id as string });
   } else {
     nextRounds[roundIndex] = { ...nextRounds[roundIndex], ...roundReceipt };
   }

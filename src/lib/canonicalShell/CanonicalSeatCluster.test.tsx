@@ -126,9 +126,9 @@ describe('CanonicalSeatCluster — byte-for-byte contract for existing consumers
     expect(below.querySelector('[data-canonical-seat-cluster-content]')).not.toBeNull();
   });
 
-  it('renders children above the chip cell on bottom-anchored slots (growth=up)', () => {
+  it('renders children above bottom-anchored chips when upward growth is requested', () => {
     renderInLayer(
-      <CanonicalSeatCluster slot={0} position={3} name="A" chipValue="$1">
+      <CanonicalSeatCluster slot={0} position={3} name="A" chipValue="$1" growUpwardAtBottom>
         <span>child</span>
       </CanonicalSeatCluster>,
       { seats: [{ position: 3, occupied: true }] },

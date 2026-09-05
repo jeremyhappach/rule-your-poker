@@ -100,6 +100,8 @@ vi.mock('@/lib/canonicalShell/cardTransport/DealRuntime', () => ({
       expectedCount: fakeDeal.expectedCount,
       activeIntentsForHand: fakeDeal.activeIntentsForHand,
       getSettledCountForPlayer: () => fakeDeal!.settledCountForPlayer,
+      getSettledCardsForPlayer: () => makeHand().slice(0, fakeDeal!.settledCountForPlayer)
+        .map((visibleFace, index) => ({ cardId: 'settled-' + index, visibleFace })),
       getSettledCardIdsForPlayer: () => [],
       settledCardIds: new Set<string>(),
       isSettled: () => false,
@@ -431,6 +433,7 @@ function ParentSelfHealHarness({
     <div data-testid="parent-mounted" data-mount-path={primaryMountOk ? 'primary' : 'self-heal'}>
       <CribbageMobileCardsTab
         cribbageState={stateForRender}
+        selectedCards={[]}
         currentPlayerId={currentPlayerId}
         playerCount={2}
         isProcessing={false}

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCribbageCountingProgressQueue } from './countingProgressQueue';
+import { createCribbageCountingProgressQueue, type CribbageCountingProgress } from './countingProgressQueue';
 
 describe('Cribbage counting progress queue', () => {
   it('keeps one write in flight and coalesces waiting cursors to the newest value', async () => {
     let releaseFirst: (() => void) | null = null;
-    const write = vi.fn(async () => {
+    const write = vi.fn(async (_progress: CribbageCountingProgress) => {
       if (write.mock.calls.length === 1) {
         await new Promise<void>((resolve) => {
           releaseFirst = resolve;

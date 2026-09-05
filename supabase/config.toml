@@ -1,10 +1,19 @@
 project_id = "xvhmbuppghwmwpwrkzao"
 
 [functions.enforce-deadlines]
-verify_jwt = false
+verify_jwt = true
 
 [functions.enforce-all-deadlines]
-verify_jwt = false
+verify_jwt = true
+
+[functions.reset-password]
+verify_jwt = true
+
+[functions.generate-trivia]
+verify_jwt = true
+
+[functions.generate-incident-report]
+verify_jwt = true
 
 [functions.voice-to-text]
 verify_jwt = true

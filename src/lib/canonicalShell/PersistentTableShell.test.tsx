@@ -8,6 +8,13 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Shell structure tests must not contact the configured Supabase project.
+vi.hoisted(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  })));
+});
+
 vi.mock('./diagnostics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./diagnostics')>();
   return { ...actual, recordShellEvent: vi.fn() };
@@ -16,7 +23,7 @@ vi.mock('./diagnostics', async (importOriginal) => {
 import { PersistentTableShell } from './PersistentTableShell';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordShellEvent } from './diagnostics';
-import { useShellTabBar } from './ShellTabBar';
+import { ShellTabBar, ShellTabBarStateContext, useShellTabBar } from './ShellTabBar';
 import { ShellHudChrome } from './ShellHudChrome';
 
 let container: HTMLDivElement;
@@ -35,6 +42,26 @@ afterEach(() => {
 });
 
 describe('PersistentTableShell', () => {
+  it('mounts and removes registered tabs without changing hook order', () => {
+    const errors = vi.spyOn(console, 'error');
+    const state = { cardsIcon: 'spade' as const, activeTab: 'cards' as const, setActiveTab: () => {} };
+    try {
+      for (const registered of [null, state, null, state]) {
+        act(() => {
+          root.render(
+            <ShellTabBarStateContext.Provider value={registered}>
+              <ShellTabBar />
+            </ShellTabBarStateContext.Provider>,
+          );
+        });
+        expect(!!document.body.querySelector('[data-canonical-shell-tabbar]')).toBe(!!registered);
+      }
+      expect(errors.mock.calls.flat().join(' ')).not.toMatch(/order of Hooks|Expected static flag|Rendered (?:more|fewer) hooks/);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
   it('renders a transparent canonical-shell root wrapper', () => {
     act(() => {
       root.render(

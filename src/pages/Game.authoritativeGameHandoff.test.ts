@@ -53,7 +53,7 @@ describe('Game authoritative games-row handoffs', () => {
       fetchStart,
     );
     const discoveryRead = source.indexOf(
-      "timedQuery('games.select+rounds', 'games'",
+      "timedQuery('rpc.read_session_frame', 'read_session_frame'",
       frameFirstGuard,
     );
 

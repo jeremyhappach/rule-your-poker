@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Wave 4 — Phase 4
  * Cribbage descriptor + resolver integration fixtures.

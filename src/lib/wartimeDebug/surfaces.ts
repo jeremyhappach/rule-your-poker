@@ -1076,6 +1076,7 @@ export interface HighCardWriterPayload {
     | 'host-deal'
     | 'host-determine-winner'
     | 'host-complete-replay'
+    | 'host-complete-sync'
     | 'non-host-sync'
     | 'reset-path'
     | 'cribbage-complete-handoff'

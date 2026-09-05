@@ -62,7 +62,7 @@ describe('Gin discard selection policy', () => {
     const state = makeState({
       lastAction: {
         ...makeState().lastAction,
-        card: { rank: '?', suit: '?', value: 0 } as GinRummyCard,
+        card: { rank: '?', suit: '?', value: 0 } as unknown as GinRummyCard,
       },
     });
 

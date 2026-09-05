@@ -11,6 +11,28 @@ const game = {
 };
 
 describe('3-5-7 decision authority receipt', () => {
+  it('rejects a delayed receipt from a retired dealer game or older revision', () => {
+    const current = { ...game, authority_revision: 9 };
+    for (const incoming of [
+      { ...game, current_game_uuid: 'retired-dealer', authority_revision: 10 },
+      { ...game, authority_revision: 8, last_round_result: 'old outcome' },
+      { ...game, authority_revision: 9, last_round_result: 'conflicting outcome' },
+    ]) {
+      expect(applyThreeFiveSevenDecisionReceipt(current, 'game-1', {
+        game: incoming, round: { id: 'round-3', status: 'completed' },
+      })).toBe(current);
+    }
+  });
+  it('rejects an older round even when the game row revision did not change', () => {
+    const current = {
+      ...game, authority_revision: 9,
+      rounds: [{ ...game.rounds[0], authority_revision: 20 }],
+    };
+    expect(applyThreeFiveSevenDecisionReceipt(current, 'game-1', {
+      game: { ...game, authority_revision: 9 },
+      round: { id: 'round-3', authority_revision: 19, status: 'completed' },
+    })).toBe(current);
+  });
   it('publishes the committed terminal result without waiting for Realtime or a full fetch', () => {
     const next = applyThreeFiveSevenDecisionReceipt(game, 'game-1', {
       outcome: 'decision_committed',
