@@ -5,6 +5,14 @@ Holm same-hand community cache promotion: `src/lib/holmCommunityFaces.ts`.
 The four-game owner inventory, rendering contract and acceptance steps are in
 `docs/codex/CARD_FACE_CONTRACT.md`.
 
+Holm/Yahtzee fixture isolation and Holm physical-card validation:
+`supabase/migrations/20260905163042_isolate_holm_yahtzee_fixtures_and_validate_holm_cards.sql`.
+The private validator reads the authoritative Holm round, including hidden
+community/Chucky cards, and runs in opening/continuation constructors and the
+existing settlement owner. Regression proofs:
+`supabase/tests/holm_yahtzee_fixture_isolation_proof.sql` and
+`supabase/tests/holm_settlement_boundary_rollback_proof.sql`.
+
 ## Current authority/release contract (WP12)
 
 - Games/rounds/snapshots use validated same-session dealer-game foreign keys in

@@ -1,5 +1,36 @@
 # Current release and cutover state
 
+## Holm/Yahtzee fixture isolation — 2026-09-05
+
+- Applied `20260905163042_isolate_holm_yahtzee_fixtures_and_validate_holm_cards.sql`.
+  Holm's NULL profile now returns no fixture. Its opening constructor only
+  consumes an explicitly armed fake-money fixture; ordinary cards come from
+  the shuffled deck. Yahtzee's legacy `near_win` scorecard and targeted startup
+  fixture are restricted to explicit fake-money sessions. Invalid/NULL Holm
+  and Yahtzee helper profiles return no fixture data.
+- Holm validates the authoritative community, player and Chucky card cohort
+  before initial/continuation publication and before a new settlement. Invalid
+  or repeated physical cards abort the transaction, including ante/claim writes.
+  Existing completed settlement receipts still replay before validation.
+- Rollback SQL proofs pass before and after migration: eight startup combinations
+  across game, real/fake money and harness mode; valid fake Yahtzee winner/tie
+  paths; duplicate normalization; forced bad-deal rollback; invalid settlement
+  refusal; both Holm continuation paths; authorization, winner/tie payouts,
+  duplicate/late replay, terminal states and conservation. Proofs remain in
+  `supabase/tests/holm_yahtzee_fixture_isolation_proof.sql` and the existing
+  `holm_settlement_boundary_rollback_proof.sql`.
+- Full build passes: app typecheck, 1,453 source tests, 34 harness tests and
+  production bundling. The proof's initial missing transaction wrapper was
+  corrected after the repository's rollback-isolation test caught it.
+- Frozen session `2ba49ea6-4f4e-4131-818a-a8832945bf27` is unchanged, including
+  private cards, history, balances and snapshots; before/after digest
+  `887f240b75d2d859c3afbb13c154a809`. No proof sessions remain; global harness
+  mode remains off and Yahtzee's default harness remains `none`.
+- Jeremy's production smoke remains pending: open a fresh Holm dealer game,
+  check complete unique hands/board and settlement, then verify a fresh Yahtzee
+  real-money game starts with empty scorecards. The historical hand and the
+  separate pause defect are not repaired by this change.
+
 ## Harness progress proof — 2026-09-05
 
 - Validation passes: application typecheck, 1,453 source tests, 34 harness/manifest

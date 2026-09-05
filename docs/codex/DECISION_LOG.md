@@ -1,5 +1,19 @@
 # Durable decision log
 
+## D-129 — Holm/Yahtzee fixtures fail closed; Holm rejects duplicate cards
+
+An absent or invalid test profile returns no fixture data. Holm and Yahtzee
+opening constructors require `real_money IS FALSE` before admitting a fixture;
+Yahtzee's legacy global near-win override has the same boundary. A disabled
+global switch is insufficient protection against a NULL helper fall-through.
+
+Holm validates one authoritative card cohort across all players, community and
+Chucky before publishing a new deal or committing a new settlement. Suit aliases
+normalize to physical-card identity. Failure aborts the existing transaction;
+there is no replacement deal, financial repair or new settlement owner.
+Completed receipts return before validation so replays cannot rewrite historical
+invalid hands. Production evidence remains frozen for separate remediation.
+
 ## D-128 — Resolved faces are required across every card surface
 
 Jeremy requires that players never see an unresolved card face. The shared
