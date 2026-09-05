@@ -4,11 +4,25 @@ const db = vi.hoisted(() => ({ single: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => ({ select: () => ({ eq: () => ({ single: db.single }) }) }), rpc: db.rpc },
 }));
-import { declineSessionSetup, setSessionPlayerIntent, transferSessionHost } from "./sessionPlayerIntent";
+import { declineSessionSetup, setSessionPlayerIntent, transferSessionHost, setAutomaticPlay } from "./sessionPlayerIntent";
 
 beforeEach(() => {
   db.single.mockReset().mockResolvedValue({ data: { game_id: "game", intent_version: 3, games: { current_game_uuid: "dealer" }, host_version: 2 }, error: null });
   db.rpc.mockReset().mockResolvedValue({ data: { outcome: "accepted", player: { id: "player" } }, error: null });
+});
+
+it("binds automatic play to the rendered round and current intent version", async () => {
+  await setAutomaticPlay("game", "round", "dealer", "player", false);
+  expect(db.rpc).toHaveBeenCalledWith("set_automatic_play", {
+    p_game_id: "game", p_round_id: "round", p_dealer_game_id: "dealer", p_player_id: "player",
+    p_expected_version: 3, p_enabled: false,
+  });
+});
+
+it("rejects a stale automatic-play request without a browser fallback write", async () => {
+  db.rpc.mockResolvedValueOnce({ data: { outcome: "stale_identity" }, error: null });
+  await expect(setAutomaticPlay("game", "old-round", "dealer", "player", false)).rejects.toThrow("turn or participation changed");
+  expect(db.rpc).toHaveBeenCalledTimes(1);
 });
 
 it("serializes same-player gestures until the prior result arrives", async () => {

@@ -13,7 +13,7 @@ import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { logSessionCreated } from "@/lib/sessionEventLog";
-import { getTimerSettingsAsync } from "@/hooks/useGlobalTimerSettings";
+import { createSession } from "@/lib/sessionCreation";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
@@ -285,76 +285,15 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
 
       const sessionName = generateGameName(recentNames);
 
-      // Fetch timer settings to cache at session creation
-      const timerSettings = await perf.step("timerSettings.fetch", () => getTimerSettingsAsync());
-
-      // Create game with waiting status and cached timer settings
-      const { data: game, error: gameError } = await perf.step("games.insert", () =>
-        supabase
-          .from("games")
-          .insert({
-            buy_in: 100,
-            status: "waiting",
-            name: sessionName,
-            real_money: realMoney,
-            game_setup_timer_seconds: timerSettings.gameSetup,
-            ante_decision_timer_seconds: timerSettings.anteDecision,
-          })
-          .select()
-          .single()
-      );
-
-      if (gameError) {
-        toast({
-          title: "Error",
-          description: "Failed to create game",
-          variant: "destructive",
-        });
-        perf.done({ error: gameError.message });
-        return;
-      }
-
-      // Log session creation event
-      await perf.step("session_events.insert", () => logSessionCreated(game.id, userId, sessionName));
-
-      // Auto-seat host in a random position (1-7)
-      const randomPosition = Math.floor(Math.random() * 7) + 1;
-
-      // Fetch user's profile to get their deck_color_mode preference
-      const { data: userProfile } = await perf.step("profiles.select", () =>
-        supabase.from("profiles").select("deck_color_mode").eq("id", userId).maybeSingle()
-      );
-
-      const { error: playerError } = await perf.step("players.insert", () =>
-        supabase.from("players").insert({
-          game_id: game.id,
-          user_id: userId,
-          chips: 0,
-          position: randomPosition,
-          sitting_out: false,
-          waiting: true, // Ready to play when game starts
-          deck_color_mode: userProfile?.deck_color_mode || null,
-        })
-      );
-
-      if (playerError) {
-        console.error("Error seating host:", playerError);
-
-        // Clean up the game if we couldn't seat the host
-        await perf.step("games.cleanup", () => requestSessionEnd(game.id));
-
-        toast({
-          title: "Error",
-          description: "Failed to create game",
-          variant: "destructive",
-        });
-        perf.done({ error: playerError.message });
-        return;
-      }
+      const game = await perf.step("session.create", () => createSession(userId, sessionName, realMoney));
+      void logSessionCreated(game.game_id, userId, sessionName).catch(console.warn);
 
       setShowCreateDialog(false);
-      navigate(`/game/${game.id}`);
+      navigate(`/game/${game.game_id}`);
       perf.done({ ok: true });
+    } catch (error) {
+      toast({ title: "Could not create table", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+      perf.done({ error: String(error) });
     } finally {
       setCreatingGame(false);
     }

@@ -1,5 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export function setAutomaticPlay(gameId: string, roundId: string, dealerGameId: string, playerId: string, enabled: boolean): Promise<void> {
+  const request = (pending.get(playerId) ?? Promise.resolve()).catch(() => {}).then(async () => {
+    const { data, error } = await supabase.from("players").select("intent_version" as any).eq("id", playerId).single();
+    if (error) throw error;
+    const response = await supabase.rpc("set_automatic_play" as any, {
+      p_game_id: gameId, p_round_id: roundId, p_dealer_game_id: dealerGameId, p_player_id: playerId,
+      p_expected_version: (data as unknown as { intent_version: number }).intent_version, p_enabled: enabled,
+    } as any);
+    if (response.error) throw response.error;
+    if ((response.data as unknown as { outcome?: string })?.outcome !== "accepted") {
+      throw new Error("Your turn or participation changed. Please try again.");
+    }
+  });
+  pending.set(playerId, request);
+  void request.finally(() => { if (pending.get(playerId) === request) pending.delete(playerId); }).catch(() => {});
+  return request;
+}
+
 export type SessionPlayerOption = "auto_ante" | "auto_ante_runback" | "sit_out_next_hand" | "stand_up_next_hand" | "rejoin" | "cancel_exit";
 export type SessionIntentPlayer = {
   id: string;

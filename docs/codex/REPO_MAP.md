@@ -1,5 +1,15 @@
 # Repository map
 
+## Atomic creation and final player commands (WP9d)
+
+- `20260905020903_atomic_session_creation_and_final_player_authority.sql` owns
+  creation receipts, final player DML grants, automatic-play commands and the
+  round trigger that consumes deferred stop intent.
+- `src/lib/sessionCreation.ts` persists the exact creation request for retries.
+  `src/lib/sessionPlayerIntent.ts` serializes automatic-play and option gestures.
+- Game's human auto-ante and bot bootstrap use `gameTimerAuthority.ts`.
+  The duplicate `makeBotAnteDecisions` browser writer is removed.
+
 ## Session lifecycle commands (WP9c)
 
 - `20260905015956_session_lifecycle_command_boundary.sql` owns shared end requests,

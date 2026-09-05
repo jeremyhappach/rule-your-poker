@@ -10,13 +10,14 @@ BEGIN
  EXECUTE 'SET LOCAL ROLE authenticated';
  denied:=false; BEGIN INSERT INTO public.games(name,status,real_money) VALUES('Forged active session','in_progress',false); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'proof:forged_genesis'; END IF;
- INSERT INTO public.games(name,status,real_money) VALUES('Rollback empty fake','waiting',false) RETURNING id,timer_generation INTO g,gen;
+ r:=public.create_session(gen_random_uuid(),'Rollback empty fake',false,1);
+ g:=(r->>'game_id')::uuid; SELECT timer_generation INTO gen FROM public.games WHERE id=g;
  r:=public.request_session_end(g,NULL,gen);
  IF r->>'terminal_disposition'<>'deleted' THEN RAISE EXCEPTION 'proof:orphan_creation_cleanup:%',r; END IF;
  r:=public.request_session_end(g,NULL,gen);
  IF NOT (r->>'already_terminal')::boolean THEN RAISE EXCEPTION 'proof:delete_replay'; END IF;
- INSERT INTO public.games(name,status,real_money) VALUES('Rollback real archive','waiting',true) RETURNING id,timer_generation INTO g,gen;
- INSERT INTO public.players(game_id,user_id,position,chips,waiting) VALUES(g,users[1],1,0,true) RETURNING id INTO p;
+ r:=public.create_session(gen_random_uuid(),'Rollback real archive',true,1);
+ g:=(r->>'game_id')::uuid; p:=(r->>'player_id')::uuid; SELECT timer_generation INTO gen FROM public.games WHERE id=g;
  denied:=false; BEGIN UPDATE public.games SET pending_session_end=true WHERE id=g; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'proof:raw_lifecycle'; END IF;
  denied:=false; BEGIN DELETE FROM public.games WHERE id=g; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;

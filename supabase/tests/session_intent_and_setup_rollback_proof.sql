@@ -8,8 +8,8 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub',users[1]::text,true);
  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',users[1],'role','authenticated')::text,true);
  EXECUTE 'SET LOCAL ROLE authenticated';
- INSERT INTO public.games(name,status,real_money) VALUES('Rollback intent authority','waiting',false) RETURNING id INTO g;
- INSERT INTO public.players(game_id,user_id,position,chips,waiting) VALUES(g,users[1],1,0,true) RETURNING id INTO p;
+ r:=public.create_session(gen_random_uuid(),'Rollback intent authority',false,1);
+ g:=(r->>'game_id')::uuid; p:=(r->>'player_id')::uuid;
  EXECUTE 'RESET ROLE';
  INSERT INTO public.players(game_id,user_id,position,chips,waiting) VALUES(g,users[2],4,0,true) RETURNING id INTO peer;
  INSERT INTO public.players(game_id,user_id,position,chips,waiting,is_bot) VALUES(g,users[3],6,0,true,true) RETURNING id INTO bot;

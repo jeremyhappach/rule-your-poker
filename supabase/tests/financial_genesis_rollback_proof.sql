@@ -6,8 +6,8 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub',u::text,true);
  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
  EXECUTE 'SET LOCAL ROLE authenticated';
- INSERT INTO public.games(name,status,real_money) VALUES('Rollback financial genesis','waiting',false) RETURNING id INTO g;
- INSERT INTO public.players(game_id,user_id,position,chips,waiting) VALUES(g,u,1,0,true) RETURNING id INTO p;
+ result:=public.create_session(gen_random_uuid(),'Rollback financial genesis',false,1);
+ g:=(result->>'game_id')::uuid; p:=(result->>'player_id')::uuid;
  denied:=false; BEGIN INSERT INTO public.games(name,status,real_money,pot) VALUES('Rejected funded genesis','waiting',false,1);
  EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'genesis_proof:funded_game'; END IF;

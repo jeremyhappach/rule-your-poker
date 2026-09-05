@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-126 — Genesis and automatic-play intent are server transactions
+
+Session creation claims a request UUID and payload before returning its single
+table/host result. Lost-response retries preserve identity; deletion leaves an
+inert request receipt. Browser gameplay DML on games and players is closed,
+retaining only an own-human deck-color preference grant. Server ante commands
+own both human automatic acceptance and bot admission. A round-bound stop intent
+is visible after reconnect and consumed by turn advance; old round delivery
+cannot switch automation off in a newer dealer game.
+
 ## D-125 — Session lifecycle cannot bypass financial completion
 
 The shared session-end command validates host/admin authority and exact phase

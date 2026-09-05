@@ -1,8 +1,28 @@
 # Current release and cutover state
 
+## Remediation WP9d — atomic creation and final player authority
+
+- Table creation and host seating commit together. A persisted request ID returns
+  the same table after a lost response and cannot resurrect a deleted fake table.
+- Human auto-ante and bot ante use the existing server commands. Automatic-play
+  intent validates the exact round and participant version. A pending dice stop
+  persists through reconnect and is consumed by server turn advance.
+- Browser table creation and player insert/update/delete are revoked. Only the
+  seated human's own deck-color preference remains directly writable. New
+  non-admin admission observes maintenance; retained participants can finish.
+- Full seven-family compatibility and new authority rollback proofs pass before
+  and after migration, including actor/payload replay, stale versions, deferred
+  stops, pause intent, later dealer games, terminal state and chip conservation.
+  Twenty-one focused checks and build/39 required checks pass; TypeScript remains
+  at 35 pre-existing diagnostics.
+
 Date: 2026-09-04
 
 ## Remediation WP9c — session lifecycle command boundary
+
+- Production READY and manifest match `71d517dfc67b32b9476d8e7248d19c9822666082`.
+  Published Cribbage terminal test passes in 46.6 seconds through settlement,
+  Session Ended and fresh reconnect; exact fake-session cleanup verified.
 
 - Session end validates host/admin authority and exact dealer-game/timer identity.
   Active games receive a pending request; exact settled games can end. Empty fake

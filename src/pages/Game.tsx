@@ -101,10 +101,11 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
-import { declineSessionSetup, setSessionPlayerIntent } from "@/lib/sessionPlayerIntent";
+import { declineSessionSetup, setSessionPlayerIntent, setAutomaticPlay } from "@/lib/sessionPlayerIntent";
 import type { DealerGameSetupCommitResult } from "@/lib/dealerGameSetupAuthority";
 import {
   advanceAntePhase,
+  submitAnteDecision,
   advanceSessionDealerSelection,
   setGamePaused,
 } from "@/lib/gameTimerAuthority";
@@ -398,7 +399,7 @@ import { advanceCribbagePostgame } from "@/lib/cribbageAuthority";
 import { advanceGinPostgame } from "@/lib/ginRummyRoundLogic";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
-import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
+import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
@@ -5537,82 +5538,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: game?.current_game_uuid ?? null,
         status: game?.status,
       });
-      const tMakeBotStart = Date.now();
-      recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions call issued', {
-        file: 'src/pages/Game.tsx',
-        function: 'bot ante useEffect',
-        caller: 'React effect status=ante_decision',
-        gameId,
-        inFlightKey,
-      });
-      console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
-      // Pass known-paused state (we already gated on game?.is_paused above so
-      // it's false here) and the preselected bot list to skip the two serial
-      // SELECTs inside makeBotAnteDecisions on the happy path.
-      makeBotAnteDecisions(gameId!, {
-        skipPauseCheck: true,
-        preselectedBots: knownBotsNeedingAnte,
-      }).then(async (botResults) => {
-        const tBotReturned = Date.now();
-        recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions returned', {
-          file: 'src/pages/Game.tsx',
-          function: 'bot ante useEffect',
-          gameId,
-          elapsedMs: tBotReturned - tMakeBotStart,
-          botResultCount: botResults.length,
-        });
-        console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart, botResultCount: botResults.length });
-
-        const botDecisionMap = new Map(botResults.map(r => [r.id, r.ante_decision] as const));
-        const latestPlayers = playersRef.current;
-        const mergedPlayers = latestPlayers.map(p => ({
-          id: p.id,
-          ante_decision: botDecisionMap.get(p.id) ?? p.ante_decision ?? null,
-          sitting_out: !!p.sitting_out,
-          status: (p as any).status,
-        }));
-        const activePlayers = mergedPlayers.filter(
-          p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left'
-        );
-        const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
-        recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after bot write (no-refetch)', {
-          file: 'src/pages/Game.tsx',
-          function: 'bot ante useEffect',
-          gameId,
-          dealerGameId: game?.current_game_uuid ?? null,
-          oldValue: null,
-          newValue: allDecided,
-          activePlayers: activePlayers.length,
-          decisions: activePlayers.map(p => ({ id: p.id, ante_decision: p.ante_decision })),
-        });
-        if (allDecided && !anteProcessingRef.current) {
-          recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn call issued', {
-            file: 'src/pages/Game.tsx',
-            function: 'bot ante useEffect',
-            caller: 'allDecided true after bot write (no-refetch)',
-            gameId,
-          });
-          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → requesting database ante advance', { t: Date.now() });
-          anteProcessingRef.current = true;
-          void advanceAntePhase(gameId!, game?.current_game_uuid)
-            .catch((error) => console.warn('[BOT ANTE] Database advance failed', error))
-            .finally(() => { anteProcessingRef.current = false; });
-        } else {
-          recordStartupFlight('EFFECT TIMELINE', 'bot ante effect exited via fallback fetch', {
-            file: 'src/pages/Game.tsx',
-            function: 'bot ante useEffect',
-            skipReason: allDecided ? 'anteProcessingRef already true' : 'allDecided false (awaiting human writes via realtime)',
-            gameId,
-            allDecided,
-            anteProcessingRef: anteProcessingRef.current,
-          });
-        }
-      }).catch((err) => {
-        // On failure clear the in-flight key so a retry can run.
-        if (botAnteInFlightKeyRef.current === inFlightKey) {
+      void advanceAntePhase(gameId!, game?.current_game_uuid).then((result) => {
+        if (["not_authorized", "paused", "stale_identity"].includes(result.outcome ?? "")) {
           botAnteInFlightKeyRef.current = null;
         }
-        console.error('[BOT ANTE] makeBotAnteDecisions failed', err);
+        void fetchGameData();
+      }).catch((error) => {
+        if (botAnteInFlightKeyRef.current === inFlightKey) botAnteInFlightKeyRef.current = null;
+        console.warn('[BOT ANTE] Database advance failed', error);
       });
 
     } else {
@@ -6013,21 +5946,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isRunBack
           });
           
-          // Set latch before DB write
           anteConfirmedLatchRef.current = autoLatchKey;
-          
-          // Auto-accept the ante
-          await supabase
-            .from('players')
-            .update({
-              ante_decision: 'ante_up',
-              sitting_out: false,
-            })
-            .eq('id', freshCurrentPlayer.id);
-          
-          console.log('[ANTE DIALOG] Auto-ante complete');
-          setAnteDialogIdentity(null);
-          return;
+          try {
+            const result = await submitAnteDecision({
+              gameId: gameId!, dealerGameId: game.current_game_uuid!,
+              playerId: freshCurrentPlayer.id, decision: 'ante_up',
+            });
+            if (!['accepted', 'already_decided'].includes(result.outcome ?? '') || result.decision !== 'ante_up') {
+              throw new Error('The ante phase changed. Please confirm your participation.');
+            }
+            setAnteDialogIdentity(null);
+            return;
+          } catch (error) {
+            if (anteConfirmedLatchRef.current === autoLatchKey) anteConfirmedLatchRef.current = null;
+            toast({ title: 'Could not confirm automatic ante', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+            // Fall through to the visible decision surface after any rejected/lost response.
+          }
         }
         
         // Don't show ante dialog for dealer (they auto ante up)
@@ -13147,90 +13081,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     navigate("/");
   };
 
-  // ─── Deferred auto-roll-off latch ───────────────────────────────────
-  // When a player unchecks auto-roll during a bot-owned timed-out turn,
-  // we defer the auto_fold=false write until the turn advances.
-  // Key format: "roundId:playerId"
-  const deferredAutoRollOffRef = useRef<string | null>(null);
-  const [pendingAutoRollOff, setPendingAutoRollOff] = useState(false);
-
-  // Detect turn advance (currentTurnPlayerId changes) → apply deferred write
-  const prevTurnPlayerIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
-    const curTurnId = horsesState?.currentTurnPlayerId ?? null;
-
-    if (prevTurnPlayerIdRef.current !== null && curTurnId !== prevTurnPlayerIdRef.current) {
-      // Turn advanced — apply deferred auto-roll-off if set
-      if (deferredAutoRollOffRef.current && currentPlayer) {
-        const [, deferredPlayerId] = deferredAutoRollOffRef.current.split(':');
-        if (deferredPlayerId === currentPlayer.id) {
-          console.log('[AUTO_FOLD] Turn advanced — applying deferred auto_fold=false for player:', deferredPlayerId);
-          supabase
-            .from('players')
-            .update({ auto_fold: false })
-            .eq('id', deferredPlayerId)
-            .then(({ error }) => {
-              if (error) console.error('[AUTO_FOLD] Deferred write failed:', error);
-            });
-        }
-        deferredAutoRollOffRef.current = null;
-        setPendingAutoRollOff(false);
-      }
-    }
-    prevTurnPlayerIdRef.current = curTurnId;
-  }, [(currentRound?.horses_state as HorsesStateFromDB | null)?.currentTurnPlayerId]);
-
-  // Handle auto_fold toggle - player can disable their auto_fold status
-  // When opting back in (auto_fold=false), also extend the turn deadline so the
-  // enforce-deadlines edge function doesn't immediately re-set auto_fold=true.
   const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
+    if (!gameId || !currentRound?.id || !game?.current_game_uuid) return;
     try {
-    console.log('[AUTO_FOLD] Changing auto_fold for player:', playerId, 'to:', autoFold);
-
-    // ─── Deferred-off guard for Horses/SCC ───────────────────────────
-    // If this player IS the current turn player in an active Horses/SCC turn,
-    // defer the write so the bot loop keeps ownership and completes the turn.
-    if (!autoFold && currentRound?.id && game?.game_type && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
-      const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
-      if (horsesState?.currentTurnPlayerId === playerId && horsesState?.gamePhase === 'playing') {
-        console.log('[AUTO_FOLD] Deferring auto_fold=false — bot owns current turn. Will apply after turn advances.');
-        deferredAutoRollOffRef.current = `${currentRound.id}:${playerId}`;
-        setPendingAutoRollOff(true);
-
-        // Clear sit_out_next_hand immediately so the player stays in next hand
-        await setSessionPlayerIntent(playerId, "cancel_exit");
-
-        return; // Do NOT write auto_fold=false yet
-      }
-    }
-
-    // Opt-back-in (auto_fold=false) is an explicit rejoin gesture and must
-    // cancel any pending sit-out / stand-up intent set by a prior timeout.
-    // Without this, a player who timed out (sit_out_next_hand=true), then
-    // opts back in and plays the rest of the dealer game, will still be
-    // converted to sitting_out at the dealer-game boundary by
-    // evaluatePlayerStatesEndOfGame.
-    const autoFoldUpdate = { auto_fold: autoFold };
-    if (!autoFold) {
-      await setSessionPlayerIntent(playerId, "cancel_exit");
-    }
-    const { error } = await supabase
-      .from('players')
-      .update(autoFoldUpdate)
-      .eq('id', playerId);
-    
-    if (error) {
-      console.error('[AUTO_FOLD] Error updating auto_fold:', error);
-      return;
-    }
-
-    // Dice turn deadlines remain database-owned. Opting back in applies to
-    // future authoritative turns; the browser must not extend a whole JSON
-    // state snapshot that can race the expiry scheduler.
+      await setAutomaticPlay(gameId, currentRound.id, game.current_game_uuid, playerId, autoFold);
+      await fetchGameData();
     } catch (error) {
-      deferredAutoRollOffRef.current = null;
-      setPendingAutoRollOff(false);
       toast({ title: 'Could not update participation', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
     }
   };
@@ -13963,6 +13819,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
+  // The round owner persists and consumes the stop request, including after reconnect.
+  const pendingAutoRollOff = Boolean(currentPlayer && currentRound?.id &&
+    (currentPlayer as typeof currentPlayer & { auto_play_stop_round_id?: string | null }).auto_play_stop_round_id === currentRound.id);
   const hasLiveConfigDeadline = !game.is_paused && !!game.config_deadline &&
     new Date(game.config_deadline).getTime() > Date.now();
 

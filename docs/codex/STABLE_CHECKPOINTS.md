@@ -2,6 +2,10 @@
 
 ## Platform
 
+- WP9c published Cribbage terminal check passed at
+  `71d517dfc67b32b9476d8e7248d19c9822666082`: exact settlement, connected
+  Session Ended, fresh reconnect and fake-session cleanup. Runtime was 46.6 seconds.
+
 - WP9b published preference/setup-exit check passed at
   `92c16a59a31e667ab6e535d1f85f2082d0ae64bc`: non-dealer ante preferences used
   versioned commands, dealer Sit Out committed waiting atomically, both rows and
