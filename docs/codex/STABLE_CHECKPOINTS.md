@@ -2,6 +2,11 @@
 
 ## Platform
 
+- WP7 account browser check passed at `d7b46dc7718d0fb511eab3c2ef6c2dae6bc292f6`.
+  Exact server balance, statement rendering and failed-read recovery were verified
+  without writing financial entries. Lost-response retries and reversals are covered
+  by focused client tests and rollback-only database proofs.
+
 - WP6 published Horses/SCC checks passed at
   `7ae6933948dde6488989e21f16f71b6a4353784e` on 2026-09-04. Creation, host
   preservation after peer admission, dealer selection, antes, authoritative rolls,

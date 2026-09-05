@@ -2,6 +2,21 @@
 
 Date: 2026-09-04
 
+## Remediation WP8a — Cribbage atomic postgame participation
+
+- Cribbage completion enters its exact server handoff before legacy browser
+  leader election, participation evaluation, sanitation or terminal navigation.
+- `cribbage_advance_postgame` applies queued participation, clears automation,
+  derives the next dealer or waiting/ended disposition and records one durable
+  claim in the same transaction. Participant rows and settled balances remain.
+  The claim constraint now admits waiting and session-ended outcomes.
+- The full gameplay/settlement proof plus seven rollback-only postgame variants
+  passes before and after migration under the authenticated role. Coverage includes
+  stale auto-fold flags, sit-out, departure, waiting return, pending end,
+  duplicate/late delivery, conservation and restored authority context.
+  Twenty-three focused client checks pass; connected terminal presentation remains
+  owned by the shared table shell.
+
 ## Remediation WP7 — immutable account ledger and exact balances
 
 - Admin deposits and payouts use a server command with a persisted request UUID.
@@ -17,6 +32,9 @@ Date: 2026-09-04
   1,200 statement entries, authorization, replay, linked corrections, conservation
   and archival across seven games. Existing seven-game settlement proofs pass
   against the candidate schema. Six focused client tests and production build pass.
+- Production READY and manifest match `d7b46dc7718d0fb511eab3c2ef6c2dae6bc292f6`.
+  The published account browser check passes exact balances, history and failed-read
+  recovery without writing account entries. TypeScript remains 41 baseline diagnostics.
 
 ## Remediation WP6 — financial commands and whole-chip conservation
 

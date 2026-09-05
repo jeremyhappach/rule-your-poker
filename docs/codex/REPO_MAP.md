@@ -1,5 +1,12 @@
 # Repository map
 
+## Cribbage postgame authority (WP8a)
+
+- `20260905011535_cribbage_atomic_postgame_participation.sql` extends the existing
+  Cribbage postgame command and claim to own participation and all dispositions.
+- `src/lib/cribbageAuthority.ts:advanceCribbagePostgame` sends exact settled identity;
+  `src/pages/Game.tsx:handleGameOverComplete` dispatches before legacy cleanup.
+
 ## Account ledger authority (WP7)
 
 - `supabase/migrations/20260905005940_immutable_account_ledger_and_exact_balances.sql`

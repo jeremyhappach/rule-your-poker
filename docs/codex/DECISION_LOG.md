@@ -1,5 +1,16 @@
 # Durable decision log
 
+## D-121 — Cribbage postgame intent belongs inside the settled claim
+
+After exact round/dealer-game/hand validation and committed-settlement verification,
+`cribbage_advance_postgame` locks participants and applies queued intent before
+choosing continuation, waiting or session end. It retains participant history and
+refreshes winner eligibility after departures. Browser completion submits identity
+and reads the disposition; it never mutates participation or navigates on its own.
+The existing private claim key remains the replay boundary, including waiting and
+terminal outcomes. Existing scoring, payouts, dealer policy and shell presentation
+ownership are preserved.
+
 ## D-120 — Account history is append-only and balance reads are exact
 
 `admin_record_account_entry` owns manual deposits/payouts with an actor-scoped

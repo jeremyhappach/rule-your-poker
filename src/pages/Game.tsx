@@ -394,6 +394,7 @@ import {
 } from "@/lib/startupFlightRecorder";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { advanceYahtzeePostgame } from "@/lib/yahtzeeAuthority";
+import { advanceCribbagePostgame } from "@/lib/cribbageAuthority";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
@@ -11668,6 +11669,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Cribbage hands only the settled identity to its transactional owner.
+    // No leader election, participant writes, or local terminal navigation.
+    if (game?.game_type === 'cribbage') {
+      gameOverTransitionRef.current = true;
+      try {
+        const dealerGameId = game.current_game_uuid ?? null;
+        const handNumber = game.total_hands ?? null;
+        let roundId = currentRound?.dealer_game_id === dealerGameId
+          && currentRound?.hand_number === handNumber ? currentRound.id : null;
+        if (!roundId && dealerGameId && handNumber != null) {
+          const { data, error } = await supabase.from('rounds').select('id')
+            .eq('game_id', gameId).eq('dealer_game_id', dealerGameId)
+            .eq('hand_number', handNumber).eq('status', 'completed').maybeSingle();
+          if (error) throw error;
+          roundId = data?.id ?? null;
+        }
+        if (!dealerGameId || !roundId || handNumber == null) {
+          throw new Error('Cribbage postgame identity is incomplete; no transition was attempted.');
+        }
+        await advanceCribbagePostgame({ gameId, roundId, dealerGameId, handNumber });
+        anteAnimationFiredRef.current = null;
+        await fetchGameData();
+      } catch (error: any) {
+        console.error('[CRIBBAGE POSTGAME] Authoritative handoff failed:', error);
+        toast({ title: 'Error', description: error?.message || 'Failed to advance Cribbage. Please retry.', variant: 'destructive' });
+        try { await fetchGameData(); }
+        catch (refetchError) { console.error('[CRIBBAGE POSTGAME] Recovery read failed:', refetchError); }
+      } finally { gameOverTransitionRef.current = false; }
+      return;
+    }
+
     // Holm terminal settlement, connected presentation completion, and the
     // disconnected-client timer now converge on the same PostgreSQL owner.
     // Every client may submit the exact settled identity; the durable standard
@@ -12375,99 +12407,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    if (game?.game_type === 'cribbage') {
-      const outgoingDealerGameId = gameData?.current_game_uuid ?? game.current_game_uuid ?? null;
-      const outgoingHandNumber = gameData?.total_hands ?? game.total_hands ?? null;
-      let terminalRoundId = (
-        currentRound?.dealer_game_id === outgoingDealerGameId
-        && currentRound?.hand_number === outgoingHandNumber
-      ) ? currentRound.id : null;
-
-      if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
-        const { data: terminalRound, error: terminalRoundError } = await supabase
-          .from('rounds')
-          .select('id')
-          .eq('game_id', gameId)
-          .eq('dealer_game_id', outgoingDealerGameId)
-          .eq('hand_number', outgoingHandNumber)
-          .maybeSingle();
-        if (terminalRoundError) {
-          throw terminalRoundError;
-        }
-        terminalRoundId = terminalRound?.id ?? null;
-      }
-
-      if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
-        throw new Error('Cribbage postgame identity is incomplete; no transition was attempted.');
-      }
-
-      emit357GameOverCompleteDiag('advance_begin', {
-        ..._gocId(),
-        outgoingDealerGameId,
-        terminalRoundId,
-        outgoingHandNumber,
-        branch: 'cribbage-authoritative-postgame',
-      });
-      const { data: postgameResult, error: postgameError } = await supabase.rpc(
-        'cribbage_advance_postgame' as any,
-        {
-          _game_id: gameId,
-          _round_id: terminalRoundId,
-          _dealer_game_id: outgoingDealerGameId,
-          _hand_number: outgoingHandNumber,
-        } as any,
-      );
-      if (postgameError) {
-        emit357GameOverCompleteDiag('advance_error', {
-          ..._gocId(),
-          outgoingDealerGameId,
-          terminalRoundId,
-          outgoingHandNumber,
-          error: postgameError,
-        });
-        throw postgameError;
-      }
-
-      const postgame = postgameResult as {
-        outcome?: string;
-        status?: string;
-        dealer_position?: number | null;
-      } | null;
-      if (postgame?.outcome === 'stale_identity') {
-        emit357GameOverCompleteDiag('advance_complete', {
-          ..._gocId(),
-          outgoingDealerGameId,
-          terminalRoundId,
-          outgoingHandNumber,
-          resultingStatus: postgame.status ?? null,
-          claimLost: true,
-        });
-        gameOverTransitionRef.current = false;
-        await fetchGameData();
-        return;
-      }
-      if (postgame?.outcome !== 'advanced' && postgame?.outcome !== 'already_advanced') {
-        throw new Error(`Unexpected Cribbage postgame outcome: ${postgame?.outcome ?? 'missing'}`);
-      }
-
-      emit357GameOverCompleteDiag('advance_complete', {
-        ..._gocId(),
-        outgoingDealerGameId,
-        terminalRoundId,
-        outgoingHandNumber,
-        resultingStatus: postgame.status ?? null,
-        selectedNextDealerPosition: postgame.dealer_position ?? null,
-        claimLost: postgame.outcome === 'already_advanced',
-      });
-      gameOverTransitionRef.current = false;
-      anteAnimationFiredRef.current = null;
-      await fetchGameData();
-      emit357GameOverCompleteDiag('complete', {
-        ..._gocId(),
-        finalStatus: postgame.status ?? null,
-      });
-      return;
-    }
 
 
     // STEP 3: Determine next dealer - check "make it take it" first, then
