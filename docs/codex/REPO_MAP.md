@@ -46,6 +46,12 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 ## Supabase boundary
 
+`20260905001047_horses_scc_action_authority.sql` owns Horses/SCC roll/hold/lock
+admission, server dice and the completion boundary shared with recovery.
+`useHorsesMobileController.ts` submits intents and projects receipts. SQL proof:
+`horses_scc_action_authority_rollback_proof.sql`; two-player browser proof:
+`e2e/liveness/diceActionAuthority.spec.ts`.
+
 `20260905000428_real_money_fixture_exclusion.sql` gates Holm/Cribbage/Gin
 fixtures by server money mode and gives the private Cribbage cut helper an
 explicit game UUID. Both public discard owners supply the round's UUID.

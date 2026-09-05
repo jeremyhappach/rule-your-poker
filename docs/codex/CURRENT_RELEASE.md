@@ -2,7 +2,32 @@
 
 Date: 2026-09-04
 
-## Remediation WP3b — exclude real money from executable fixtures
+## Remediation WP4 — Horses/SCC server actions
+
+- Roll/hold/lock commands require exact current round, hand, turn and action
+  sequence. The server generates dice, enforces SCC acquisition/locks, owns
+  roll counters, derives results and stamps presentation timestamps. Legacy
+  player-state submission and direct browser dice-round writes are denied.
+- Human and bot clients submit intent and use returned dice. Queued human
+  actions preserve ordering and reject responses from an older round/sequence.
+  Result notifications wait for the authoritative roll presentation boundary.
+- Turn advance can deliver only a committed completion after its existing
+  presentation hold. Database recovery now advances completed/disconnected
+  turns instead of rejecting their state. Connected bot turns retain the
+  configured full-turn lease once their first action is received.
+- The full rollback proof passes before and after migration: real database
+  roles, forged writes, peer/bot authorization, holds and rerolls, duplicate
+  and late actions, pause, presentation boundaries, disconnected completion,
+  SCC ordering/permanent locks, fixture isolation, winner/tie settlement,
+  conservation, continuation and terminal cases. Synthetic data rolls back.
+- All 31 focused tests and build with 39 required checks pass. Application
+  TypeScript remains at 45 existing diagnostics. Two-client browser validation
+  is the remaining release check.
+
+## Remediation WP3b — exclude real money from executable fixtures (published)
+
+Published `caaa2248fb0a92719114c0aca3d7217ab99dbebd`; production is READY and
+the public build manifest matches.
 
 - Holm forced winners and Cribbage/Gin deal fixtures require explicit
   fake-money server context. Cribbage cut resolution now receives the actual

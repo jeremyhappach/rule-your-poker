@@ -26,7 +26,9 @@ describe('Horses/SCC database authority boundary', () => {
     expect(controller).not.toContain('updateHorsesState');
     expect(controller).not.toMatch(/\.update\(\{\s*horses_state:/s);
     expect(game).not.toMatch(/\.update\(\{\s*horses_state:/s);
-    expect(controller).toContain('horses_set_player_state');
+    expect(controller).not.toContain('horses_set_player_state');
+    expect(controller).toContain('horses_scc_apply_action');
+    expect(controller).not.toMatch(/\b(?:rollDice|rollSCCDice)\(/);
     expect(controller).toContain('horses_advance_turn');
   });
 

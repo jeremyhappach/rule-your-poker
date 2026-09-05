@@ -1,5 +1,15 @@
 # Durable decision log
 
+## D-117 — Dice commands own rolls and durable completion
+
+Horses/SCC follows the Yahtzee action boundary: UUID identity plus expected
+action sequence admits an intent; only PostgreSQL generates dice, counters,
+results and timestamps. Client holds may be optimistic presentation but cannot
+replace the authoritative hand. Turn advance delivers an already committed
+completion after its server timestamp, and recovery uses that same boundary
+when the initiating client is gone. Presentation may delay result display to
+the recorded roll boundary; it cannot complete or advance a hand.
+
 ## D-116 — Fixture execution requires explicit fake-money context
 
 A global harness selection never overrides a game's money mode. Server deal,
