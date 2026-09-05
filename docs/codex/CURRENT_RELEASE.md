@@ -22,6 +22,11 @@ Date: 2026-09-04
   `sessionDealerDrawTieHarness.test.ts`; normalized SQL matches the assertion.
   That test infrastructure fix remains WP12. Removing dead paths reduces
   application TypeScript diagnostics from 45 to 41.
+- Browser creation exposed the deployed zero cursor default: the financial
+  INSERT guard initially allowed only NULL. Follow-up migration
+  `20260905005247_allow_zero_financial_genesis_cursor.sql` accepts zero genesis
+  while rejecting funded inserts and forged nonzero cursors. Its authenticated
+  game/host creation and rejection proof passes before and after application.
 
 ## Remediation WP5 — atomic departure and rejoin (published)
 
