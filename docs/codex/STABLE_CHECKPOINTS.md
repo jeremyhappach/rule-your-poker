@@ -2,6 +2,12 @@
 
 ## Platform
 
+- Harness detector controls (2026-09-05): 34 unit/manifest checks and eight
+  isolated two-context browser checks pass. Broken peer/cosmetic/wrong-session/
+  blocked-control cases are deliberately rejected; valid retry/local-only and
+  dice projection cases pass. These exercise instrumentation on synthetic pages,
+  not production multiplayer gameplay. No session or financial data is written.
+
 - WP12b final published checks passed at
   `bc6909cbaed5cd9f2b6abc6bb3517766b3736a25` in 59.7 seconds: 357 host pause,
   peer reconnect/same-round resume, Gin offline plus failed-frame-read recovery,

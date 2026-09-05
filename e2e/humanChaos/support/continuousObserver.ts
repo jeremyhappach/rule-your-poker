@@ -49,6 +49,11 @@ export type ChaosActionClick = {
   gameId: string | null;
   dealerGameId: string | null;
   roundId: string | null;
+  /** Harness-declared action contract; authoritative surfaces default to both. */
+  progressExpectation?: 'both' | 'actor' | 'none';
+  progressExemptionReason?: string | null;
+  expectedPeerDelayMs?: number | null;
+  expectedIdentity?: { gameId: string; dealerGameId?: string; roundId?: string };
 };
 
 export type ChaosViolation = {
@@ -109,6 +114,9 @@ export type ChaosActionReceipt = {
   actorProgressMs: number | null;
   peerProgressAt: number | null;
   peerProgressMs: number | null;
+  progressExpectation: 'both' | 'actor' | 'none';
+  progressExemptionReason: string | null;
+  progressProblems: string[];
 };
 
 type DurationSummary = {
@@ -130,7 +138,7 @@ export type ChaosIdentityTransition = {
 };
 
 export type ContinuousObserverEvidence = {
-  version: 1;
+  version: 2;
   startedAt: number;
   finishedAt: number;
   eventCount: number;
@@ -150,13 +158,18 @@ export type ContinuousObserverEvidence = {
   finalSnapshots: Partial<Record<ChaosClient, ChaosDomSnapshot>>;
   events: ChaosObserverEvent[];
   networkRequests: ChaosNetworkReceipt[];
+  coverageProblems: string[];
 };
 
 type EvidenceOptions = {
   startedAt?: number;
   finishedAt?: number;
   peerBudgetMs?: number | null;
+  captureProblems?: string[];
 };
+
+// The campaign plan's existing freeze ceiling; a label never disables it.
+export const DEFAULT_PROGRESS_BUDGET_MS = 15_000;
 
 const BINDING_NAME = '__ptownHumanChaosObserverEmit';
 const MAX_EVENTS = 12_000;
@@ -194,16 +207,39 @@ function latestSnapshotBefore(
   return null;
 }
 
+function gameplaySignature(snapshot: ChaosDomSnapshot): string {
+  return JSON.stringify({
+    gameStatus: snapshot.gameStatus, gameType: snapshot.gameType,
+    dealerGameId: snapshot.dealerGameId, roundId: snapshot.roundId,
+    roundStatus: snapshot.roundStatus, setupStep: snapshot.setupStep,
+    cards: snapshot.visibleFaceCardIds, opponentBacks: snapshot.opponentCardBackCounts,
+    // Row/animation phase changes do not establish a new dice outcome.
+    dice: snapshot.visibleDice.map((die) => die.split(':').slice(0, 3).join(':')),
+  });
+}
+
 function firstProgressAfter(
   snapshots: ChaosDomSnapshot[],
   client: ChaosClient,
-  wallTime: number,
-  baselineSignature: string | null,
+  action: ChaosActionClick,
+  baseline: ChaosDomSnapshot | null,
+  observationEnd: number,
 ): ChaosDomSnapshot | null {
-  if (!baselineSignature) return null;
+  if (!matchesActionBaseline(baseline, action)) return null;
+  const identity = action.expectedIdentity;
   return snapshots.find((snapshot) => snapshot.client === client
-    && snapshot.wallTime >= wallTime
-    && snapshot.progressSignature !== baselineSignature) ?? null;
+    && snapshot.wallTime >= action.wallTime && snapshot.wallTime < observationEnd
+    && snapshot.gameId === action.gameId
+    && (!identity || (snapshot.gameId === identity.gameId
+      && (!identity.dealerGameId || snapshot.dealerGameId === identity.dealerGameId)
+      && (!identity.roundId || snapshot.roundId === identity.roundId)))
+    && gameplaySignature(snapshot) !== gameplaySignature(baseline)) ?? null;
+}
+
+function matchesActionBaseline(snapshot: ChaosDomSnapshot | null, action: ChaosActionClick): snapshot is ChaosDomSnapshot {
+  return !!snapshot && !!action.gameId && snapshot.gameId === action.gameId
+    && (!action.dealerGameId || snapshot.dealerGameId === action.dealerGameId)
+    && (!action.roundId || snapshot.roundId === action.roundId);
 }
 
 function buildIdentityTransitions(snapshots: ChaosDomSnapshot[]): ChaosIdentityTransition[] {
@@ -235,6 +271,9 @@ export function buildContinuousObserverEvidence(
   networkRequests: ChaosNetworkReceipt[],
   options: EvidenceOptions = {},
 ): ContinuousObserverEvidence {
+  const finishedAt = options.finishedAt ?? Date.now();
+  const peerBudgetMs = Number.isFinite(options.peerBudgetMs) && options.peerBudgetMs! > 0
+    ? options.peerBudgetMs! : DEFAULT_PROGRESS_BUDGET_MS;
   const snapshots = events
     .filter((event): event is ChaosDomSnapshot => event.kind === 'snapshot')
     .sort((a, b) => a.wallTime - b.wallTime);
@@ -245,20 +284,19 @@ export function buildContinuousObserverEvidence(
     .filter((event): event is ChaosViolation => event.kind === 'violation')
     .sort((a, b) => a.wallTime - b.wallTime);
 
-  const actionReceipts = actions.map((action): ChaosActionReceipt => {
+  const actionReceipts = actions.map((action, actionIndex): ChaosActionReceipt => {
     const peer: ChaosClient = action.client === 'host' ? 'peer' : 'host';
+    const actorBaseline = latestSnapshotBefore(snapshots, action.client, action.wallTime);
     const peerBaseline = latestSnapshotBefore(snapshots, peer, action.wallTime);
+    // Later actions must not retroactively make an earlier stuck action pass.
+    const nextAction = actions.slice(actionIndex + 1).find((candidate) => candidate.client === action.client
+      && candidate.progressExpectation !== 'none');
+    const observationEnd = Math.min(finishedAt + 1, nextAction?.wallTime ?? Infinity);
     const actorProgress = firstProgressAfter(
-      snapshots,
-      action.client,
-      action.wallTime,
-      action.baselineProgressSignature,
+      snapshots, action.client, action, actorBaseline, observationEnd,
     );
     const peerProgress = firstProgressAfter(
-      snapshots,
-      peer,
-      action.wallTime,
-      peerBaseline?.progressSignature ?? null,
+      snapshots, peer, action, peerBaseline, observationEnd,
     );
     const rpcCandidates = networkRequests.filter((request) => request.client === action.client
       && request.method === 'POST'
@@ -269,6 +307,30 @@ export function buildContinuousObserverEvidence(
       ? rpcCandidates.find((request) => request.endpoint.endsWith('/gin_rummy_apply_action'))
       : null;
     const rpc = ginMutation ?? rpcCandidates[0] ?? null;
+    const progressExpectation = action.progressExpectation ?? 'both';
+    const progressProblems: string[] = [];
+    if (!['both', 'actor', 'none'].includes(progressExpectation)) progressProblems.push('invalid-progress-contract');
+    if (progressExpectation !== 'both' && !action.progressExemptionReason?.trim()) {
+      progressProblems.push('missing-progress-exemption-reason');
+    }
+    const faultBudget = action.expectedPeerDelayMs;
+    if (faultBudget != null && (!Number.isFinite(faultBudget) || faultBudget <= 0
+      || !action.expectedPeerDelayReason?.trim())) progressProblems.push('invalid-fault-budget');
+    const budget = action.expectedPeerDelayReason
+      ? Math.max(peerBudgetMs, Number.isFinite(faultBudget) && faultBudget! > 0
+        ? faultBudget! : DEFAULT_PROGRESS_BUDGET_MS)
+      : peerBudgetMs;
+    const assess = (role: 'actor' | 'peer', baseline: ChaosDomSnapshot | null, progress: ChaosDomSnapshot | null) => {
+      if (!matchesActionBaseline(baseline, action)) {
+        progressProblems.push(`${role}-missing-baseline`);
+      } else if (!progress) {
+        progressProblems.push(`${role}-${observationEnd - 1 - action.wallTime >= budget ? 'no-progress' : 'incomplete'}`);
+      } else if (progress.wallTime - action.wallTime > budget) {
+        progressProblems.push(`${role}-latency`);
+      }
+    };
+    if (progressExpectation !== 'none') assess('actor', actorBaseline, actorProgress);
+    if (progressExpectation === 'both') assess('peer', peerBaseline, peerProgress);
     return {
       actionId: action.actionId,
       actor: action.client,
@@ -288,27 +350,25 @@ export function buildContinuousObserverEvidence(
       actorProgressMs: actorProgress ? actorProgress.wallTime - action.wallTime : null,
       peerProgressAt: peerProgress?.wallTime ?? null,
       peerProgressMs: peerProgress ? peerProgress.wallTime - action.wallTime : null,
+      progressExpectation,
+      progressExemptionReason: action.progressExemptionReason ?? null,
+      progressProblems,
     };
   });
 
-  const peerBudgetMs = Number.isFinite(options.peerBudgetMs) ? options.peerBudgetMs! : null;
   const expectedPeerDelayActionIds = actionReceipts
     .filter((receipt) => Boolean(receipt.expectedPeerDelayReason))
     .map((receipt) => receipt.actionId);
-  const peerBudgetBreaches = peerBudgetMs == null
-    ? []
-    : actionReceipts
-      .filter((receipt) => !receipt.expectedPeerDelayReason
-        && receipt.peerProgressMs != null
-        && receipt.peerProgressMs > peerBudgetMs)
+  const peerBudgetBreaches = actionReceipts
+      .filter((receipt) => receipt.progressProblems.some((problem) => ['peer-latency', 'peer-no-progress'].includes(problem)))
       .map((receipt) => receipt.actionId);
   const finalSnapshots: Partial<Record<ChaosClient, ChaosDomSnapshot>> = {};
   for (const snapshot of snapshots) finalSnapshots[snapshot.client] = snapshot;
 
   return {
-    version: 1,
+    version: 2,
     startedAt: options.startedAt ?? events[0]?.wallTime ?? Date.now(),
-    finishedAt: options.finishedAt ?? Date.now(),
+    finishedAt,
     eventCount: events.length,
     snapshotCount: snapshots.length,
     networkRequestCount: networkRequests.length,
@@ -326,20 +386,29 @@ export function buildContinuousObserverEvidence(
     finalSnapshots,
     events,
     networkRequests,
+    coverageProblems: [
+      ...(['host', 'peer'] as const).filter((client) => !snapshots.some((snapshot) =>
+        snapshot.client === client && snapshot.gameId)).map((client) => `missing-client-evidence:${client}`),
+      ...(options.captureProblems ?? []),
+    ],
   };
 }
 
 export function continuousObserverFailure(evidence: ContinuousObserverEvidence): Error | null {
   const problems = [
     ...evidence.violations.map((violation) => `${violation.client}:${violation.code}`),
-    ...evidence.latency.peerBudgetBreaches.map((actionId) => `peer-latency:${actionId}`),
+    ...evidence.actionReceipts.flatMap((receipt) => receipt.progressProblems.map((problem) => `${problem}:${receipt.actionId}`)),
+    ...evidence.coverageProblems,
   ];
   if (!problems.length) return null;
   return new Error(`Continuous chaos observer found ${problems.length} violation(s): ${problems.join(', ')}`);
 }
 
+type BrowserObserverEvent<T = ChaosObserverEvent> = T extends ChaosObserverEvent
+  ? Omit<T, 'client' | 'wallTime' | 'performanceTime' | 'url'> : never;
+
 function browserObserverInit(config: { client: ChaosClient; bindingName: string }): void {
-  const emit = (event: Omit<ChaosObserverEvent, 'client' | 'wallTime' | 'performanceTime' | 'url'>) => {
+  const emit = (event: BrowserObserverEvent) => {
     const binding = (window as unknown as Record<string, unknown>)[config.bindingName];
     if (typeof binding !== 'function') return;
     const payload = {
@@ -677,6 +746,9 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       const rootNode = document.querySelector<HTMLElement>('[data-lifecycle-branch="loaded-inner"]');
       const windowRecord = window as unknown as Record<string, unknown>;
       const expectedPeerDelayOnce = windowRecord.__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__;
+      const progressContract = windowRecord.__PTOWN_CHAOS_PROGRESS_CONTRACT_ONCE__ as
+        Pick<ChaosActionClick, 'progressExpectation' | 'progressExemptionReason' | 'expectedPeerDelayMs' | 'expectedIdentity'> | undefined;
+      delete windowRecord.__PTOWN_CHAOS_PROGRESS_CONTRACT_ONCE__;
       if (typeof expectedPeerDelayOnce === 'string') {
         delete windowRecord.__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__;
       }
@@ -700,6 +772,10 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
         gameId: rootNode?.getAttribute('data-authoritative-game-id') ?? null,
         dealerGameId: rootNode?.getAttribute('data-authoritative-dealer-game-id') ?? null,
         roundId: rootNode?.getAttribute('data-authoritative-round-id') ?? null,
+        progressExpectation: progressContract?.progressExpectation ?? 'both',
+        progressExemptionReason: progressContract?.progressExemptionReason ?? null,
+        expectedPeerDelayMs: progressContract?.expectedPeerDelayMs ?? null,
+        expectedIdentity: progressContract?.expectedIdentity,
       });
     }, true);
     window.addEventListener('pagehide', () => emit({ kind: 'page-lifecycle', event: 'page-hide' }));
@@ -738,10 +814,26 @@ export class HumanChaosContinuousObserver {
   private readonly startedAt = Date.now();
   private requestSequence = 0;
   private sealed = false;
+  private readonly captureProblems = new Set<string>();
+
+  constructor(private readonly options: { peerBudgetMs?: number } = {}) {}
+
+  /** Assert an expected legal control is actually usable, without submitting it. */
+  async requireActionableControl(client: ChaosClient, page: Page, selector: string, timeoutMs = DEFAULT_PROGRESS_BUDGET_MS): Promise<void> {
+    try {
+      await page.locator(selector).first().click({ trial: true, timeout: timeoutMs });
+    } catch {
+      this.recordNodeViolation(client, 'required-control-not-actionable',
+        'The expected legal control was missing, disabled or obstructed.', { selector, timeoutMs });
+      throw new Error(`Required ${client} control was not actionable: ${selector}`);
+    }
+  }
 
   async attachContext(context: BrowserContext, client: ChaosClient): Promise<void> {
     await context.exposeBinding(BINDING_NAME, (_source, event: ChaosObserverEvent) => {
-      if (!this.sealed && this.events.length < MAX_EVENTS) this.events.push(event);
+      if (this.sealed) return;
+      if (this.events.length < MAX_EVENTS) this.events.push(event);
+      else this.captureProblems.add('event-capture-truncated');
     });
     await context.addInitScript(browserObserverInit, { client, bindingName: BINDING_NAME });
     context.on('page', (page) => this.attachPage(page, client));
@@ -761,6 +853,7 @@ export class HumanChaosContinuousObserver {
       };
       this.requestStarts.set(request, receipt);
       if (this.networkRequests.length < MAX_NETWORK_RECEIPTS) this.networkRequests.push(receipt);
+      else this.captureProblems.add('network-capture-truncated');
     });
     context.on('requestfinished', (request) => this.finishRequest(request, 'finished'));
     context.on('requestfailed', (request) => this.finishRequest(
@@ -779,9 +872,9 @@ export class HumanChaosContinuousObserver {
       {
         startedAt: this.startedAt,
         finishedAt: Date.now(),
-        peerBudgetMs: Number.isFinite(configuredBudget) && configuredBudget > 0
-          ? configuredBudget
-          : null,
+        peerBudgetMs: this.options.peerBudgetMs ?? (Number.isFinite(configuredBudget) && configuredBudget > 0
+          ? configuredBudget : null),
+        captureProblems: [...this.captureProblems],
       },
     );
   }
@@ -821,7 +914,11 @@ export class HumanChaosContinuousObserver {
     message: string,
     details: Record<string, unknown>,
   ): void {
-    if (this.sealed || this.events.length >= MAX_EVENTS) return;
+    if (this.sealed) return;
+    if (this.events.length >= MAX_EVENTS) {
+      this.captureProblems.add('event-capture-truncated');
+      return;
+    }
     this.events.push({
       kind: 'violation',
       client,

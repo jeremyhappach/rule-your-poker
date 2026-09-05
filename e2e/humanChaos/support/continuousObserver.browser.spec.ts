@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { HumanChaosContinuousObserver } from './continuousObserver';
+import { continuousObserverFailure, HumanChaosContinuousObserver } from './continuousObserver';
 
 const HEALTHY_TIMED_TABLE = `
   <div
@@ -52,6 +52,7 @@ test('continuous observer survives two contexts and retains transient defects', 
     await hostPage.evaluate(() => {
       const announcement = document.querySelector('[data-canonical-announcement-content]');
       if (announcement) announcement.textContent = 'After';
+      document.querySelector('[data-lifecycle-branch]')?.setAttribute('data-authoritative-round-status', 'completed');
     });
     await peerPage.evaluate(() => {
       const opponentStack = document.querySelector('[data-card-anchor="opp-stack-2"]');
@@ -143,6 +144,9 @@ test('continuous observer recognizes Yahtzee dice-only peer progress', async ({ 
     await hostPage.waitForTimeout(150);
 
     await hostPage.getByRole('button', { name: 'Roll 1' }).click();
+    await hostPage.evaluate(() => {
+      document.querySelector('[data-die-idx="0"]')?.setAttribute('data-die-value', '6');
+    });
     await peerPage.evaluate(() => {
       document.querySelector('[data-die-idx="0"]')?.setAttribute('data-die-value', '6');
     });
@@ -153,7 +157,93 @@ test('continuous observer recognizes Yahtzee dice-only peer progress', async ({ 
     expect(evidence.finalSnapshots.peer?.visibleDice).toEqual([
       '0:6:false:animating:normal',
     ]);
+    expect(continuousObserverFailure(evidence)).toBeNull();
   } finally {
     await Promise.allSettled([hostContext.close(), peerContext.close()]);
   }
 });
+
+for (const mode of ['stuck-peer', 'cosmetic-only', 'wrong-session', 'blocked-control', 'valid-retry', 'local-only'] as const) {
+  test(`progress detector negative control: ${mode}`, async ({ browser }, info) => {
+    const observer = new HumanChaosContinuousObserver({ peerBudgetMs: 350 });
+    const host = await browser.newContext();
+    const peer = await browser.newContext();
+    let requests = 0;
+    try {
+      for (const [context, client] of [[host, 'host'], [peer, 'peer']] as const) {
+        await observer.attachContext(context, client);
+        // All traffic is fulfilled locally: these tests never create a session,
+        // authenticate an account or contact a Supabase project.
+        await context.route('**/*', async (route) => {
+          if (new URL(route.request().url()).pathname.startsWith('/rest/v1/rpc/')) {
+            requests += 1;
+            if (mode === 'valid-retry' && requests === 1) await route.abort('failed');
+            else await route.fulfill({ status: 200, contentType: 'application/json', body: '{"outcome":"applied"}' });
+          } else {
+            await route.fulfill({ status: 200, contentType: 'text/html', body: HEALTHY_TIMED_TABLE });
+          }
+        });
+      }
+      const hostPage = await host.newPage();
+      const peerPage = await peer.newPage();
+      await Promise.all([hostPage.goto('https://harness-proof.supabase.co/table'), peerPage.goto('https://harness-proof.supabase.co/table')]);
+      await hostPage.waitForTimeout(150);
+      await hostPage.evaluate((testMode) => {
+        if (testMode === 'local-only') {
+          (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_PROGRESS_CONTRACT_ONCE__ = {
+            progressExpectation: 'none', progressExemptionReason: 'local card selection',
+          };
+        }
+        document.querySelector('button')!.addEventListener('click', async () => {
+          if (testMode === 'local-only') return;
+          await fetch('/rest/v1/rpc/gin_rummy_apply_action', { method: 'POST' }).catch(() =>
+            fetch('/rest/v1/rpc/gin_rummy_apply_action', { method: 'POST' }));
+          document.querySelector('[data-lifecycle-branch]')!.setAttribute('data-authoritative-round-status', 'completed');
+        });
+      }, mode);
+      await hostPage.getByRole('button', { name: 'Stay' }).click();
+      if (mode !== 'local-only') {
+        await expect(hostPage.locator('[data-lifecycle-branch]')).toHaveAttribute('data-authoritative-round-status', 'completed');
+      }
+      await peerPage.evaluate((testMode) => {
+        if (testMode === 'cosmetic-only') {
+          document.querySelector('[data-canonical-announcement-content]')!.textContent = 'Still animating';
+          document.querySelector('button')!.disabled = true;
+        }
+        if (testMode === 'wrong-session' || testMode === 'valid-retry' || testMode === 'blocked-control') {
+          const root = document.querySelector('[data-lifecycle-branch]')!;
+          if (testMode === 'wrong-session') root.setAttribute('data-authoritative-game-id', 'another-session');
+          root.setAttribute('data-authoritative-round-status', 'completed');
+        }
+        if (testMode === 'blocked-control') {
+          const cover = document.createElement('div');
+          cover.style.cssText = 'position:fixed;inset:0;z-index:99999;background:white';
+          document.body.append(cover);
+        }
+      }, mode);
+      if (mode === 'blocked-control') {
+        await expect(observer.requireActionableControl('peer', peerPage, 'button', 250)).rejects.toThrow('not actionable');
+      } else if (mode === 'valid-retry') {
+        await observer.requireActionableControl('peer', peerPage, 'button', 350);
+      }
+      await peerPage.waitForTimeout(450);
+      const evidence = observer.finish();
+      await info.attach('progress-proof.json', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+      const failure = continuousObserverFailure(evidence);
+      if (mode === 'valid-retry' || mode === 'local-only') {
+        expect(failure).toBeNull();
+        expect(requests).toBe(mode === 'valid-retry' ? 2 : 0);
+      } else if (mode === 'blocked-control') {
+        expect(evidence.actionReceipts[0].peerProgressMs).not.toBeNull();
+        expect(failure?.message).toContain('required-control-not-actionable');
+        expect(requests).toBe(1);
+      } else {
+        expect(evidence.actionReceipts[0].peerProgressMs).toBeNull();
+        expect(failure?.message).toContain('peer-no-progress');
+        expect(requests).toBe(1);
+      }
+    } finally {
+      await Promise.allSettled([host.close(), peer.close()]);
+    }
+  });
+}

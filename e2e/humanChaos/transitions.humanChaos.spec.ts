@@ -166,6 +166,13 @@ async function waitForPlayableTransitionAction(
       session.peerPage,
       '[data-authoritative-action-surface="holm-357-decision"]',
     );
+    if (session.chaosObserver) {
+      const selector = '[data-authoritative-action-surface="holm-357-decision"] button:not([disabled])';
+      await Promise.all([
+        session.chaosObserver.requireActionableControl('host', session.hostPage, selector),
+        session.chaosObserver.requireActionableControl('peer', session.peerPage, selector),
+      ]);
+    }
     return;
   }
   await waitForEitherClientAction(session.hostPage, session.peerPage);

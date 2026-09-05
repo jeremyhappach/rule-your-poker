@@ -1,5 +1,35 @@
 # Current release and cutover state
 
+## Harness progress proof — 2026-09-05
+
+- Validation passes: application typecheck, 1,453 source tests, 34 harness/manifest
+  tests, detector TypeScript check, eight isolated browser controls and production
+  bundling. No live-session smoke or full campaign is claimed for this change.
+- The continuous observer is instrumentation watching two seated human players;
+  `peer` means the other seated player, not a session spectator.
+- Six negative reducer cases first failed against the prior detector. Missing
+  peer progress, missing evidence, early capture termination, wrong-session
+  activity and cosmetic changes now fail instead of producing a green result.
+- Both actor and peer require gameplay projection progress within the declared
+  budget. Default freeze ceiling is the existing 15 seconds. Fault labels have
+  a finite recovery budget; explicit local/private/no-change exemptions require
+  a recorded reason. Exact target identity is supported per action.
+- Event truncation and missing required instrumentation invalidate coverage.
+  Expected legal controls can be checked with a trial click; the 357 transition
+  driver now checks both seated players' controls for obstruction/disablement.
+- The detector has 18 focused reducer/finalizer checks plus browser negative
+  controls for stuck, cosmetic, wrong-session and obstructed states, with valid
+  retry/local-only controls. Synthetic browser traffic is fulfilled locally;
+  no live account, session, balance or database state is changed.
+- Coverage accounting now includes the existing 357 terminal-postgame scenario:
+  165 declared scenarios across 79 requirements. Missing drivers remain explicit.
+  Harness unit/manifest checks now join the normal build gate. This verifies
+  instrumentation and declared coverage, not completion of the full campaign.
+- The continuous DOM projection check complements exact database/settlement
+  assertions. A stricter failure or incomplete result requires diagnosis; it is
+  not automatically evidence of a product bug. Broader per-game action contracts,
+  multi-player topologies and exact-build campaign execution remain follow-ups.
+
 ## P0 — resolved card faces across Holm, Gin, Cribbage and 3-5-7
 
 - Holm's community display now replaces masked opening slots with resolved

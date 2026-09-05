@@ -5,10 +5,10 @@ import { TARGET_GAUNTLET_MANIFEST, validateTargetGauntletManifest } from './mani
 describe('target rule gauntlet manifest', () => {
   it('locks all deterministic target rows without duplicate identities', () => {
     expect(() => validateTargetGauntletManifest()).not.toThrow();
-    expect(TARGET_GAUNTLET_MANIFEST).toHaveLength(45);
+    expect(TARGET_GAUNTLET_MANIFEST).toHaveLength(46);
     expect(TARGET_GAUNTLET_MANIFEST.filter((row) => row.gameType === 'yahtzee')).toHaveLength(18);
     expect(TARGET_GAUNTLET_MANIFEST.filter((row) => row.gameType === 'holm-game')).toHaveLength(15);
-    expect(TARGET_GAUNTLET_MANIFEST.filter((row) => row.gameType === '3-5-7')).toHaveLength(12);
+    expect(TARGET_GAUNTLET_MANIFEST.filter((row) => row.gameType === '3-5-7')).toHaveLength(13);
   });
 
   it('gives every Yahtzee category an exact score-selection row', () => {

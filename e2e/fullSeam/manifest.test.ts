@@ -22,7 +22,11 @@ describe('full human seam coverage ledger', () => {
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'branch-smoke')).toHaveLength(33);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'terminal')).toHaveLength(7);
     expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'human-chaos')).toHaveLength(79);
-    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'target-gauntlet')).toHaveLength(45);
+    expect(FULL_SEAM_SCENARIOS.filter((row) => row.source === 'target-gauntlet')).toHaveLength(46);
+    expect(FULL_SEAM_SCENARIOS).toContainEqual(expect.objectContaining({
+      id: 'target/357-terminal-postgame-handoff',
+      spec: 'e2e/targetGauntlet/targetGames.targetGauntlet.spec.ts',
+    }));
   });
 
   it('locks all 79 rule requirements from the campaign plan without hiding missing drivers', () => {

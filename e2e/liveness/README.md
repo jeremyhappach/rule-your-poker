@@ -53,15 +53,52 @@ crash. Each run attaches `human-chaos-continuous-observer.json` with both
 clients' dealer-game/round transitions, Supabase REST durations, and action to
 actor/peer observed-progress receipts.
 
-Latency is measured by default but is not assigned an arbitrary pass/fail
-budget. A campaign may set `PTOWN_E2E_MAX_ACTION_TO_PEER_MS` to a positive
-millisecond value to make peer-observation overruns fail closed. Validate the
-manifest, target lock, evidence reducer, and latency correlation without
-creating a table via:
+The **observer** is test instrumentation. Its `host` and `peer` contexts are
+actively seated human test players, not session spectators.
+
+Evidence version 2 requires gameplay progress on both clients for each tracked
+authoritative action. Missing progress fails after the campaign's existing
+15-second freeze ceiling; ending observation earlier is **incomplete**, never
+a pass. A campaign sets `PTOWN_E2E_MAX_ACTION_TO_PEER_MS` for its stricter
+healthy/long-haul budget. Announcements, transports and button-disable churn
+cannot satisfy progress, and another session or a later actor action cannot
+rescue an earlier action. Actual dice values/holds, card projections and phase
+changes still count. These DOM receipts complement explicit database/result
+assertions; they do not themselves establish that an RPC committed correctly.
+
+Before a tracked local-only/private/rejected action, the driver may set
+`window.__PTOWN_CHAOS_PROGRESS_CONTRACT_ONCE__` with `progressExpectation:
+'none'` (neither client) or `'actor'` (actor only) and a nonempty
+`progressExemptionReason`. The next tracked click consumes that declaration;
+every exemption is retained in evidence. It is not a global bypass. Drivers
+must declare the semantic expectation before a known legitimate no-change
+action, never add an exemption after a failed run to make it green.
+
+The same one-shot contract accepts `expectedIdentity: { gameId, dealerGameId?,
+roundId? }` when a scenario knows its exact target. A deliberate response-loss
+or offline schedule may also declare positive `expectedPeerDelayMs` together
+with the existing `__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__` reason. A reason
+alone allows the finite 15-second recovery ceiling, not unlimited waiting.
+
+Missing required instrumentation, absent client baselines and truncated event
+capture fail qualification. `requireActionableControl` uses Playwright's
+trial click to test an expected control for visibility, enablement and
+obstruction without submitting it. The 357 transition driver applies this
+to both seated players' decision controls.
+
+Validate the manifest, target lock, evidence reducer, negative controls and
+latency correlation without creating a table via:
 
 ```text
 npm run test:human-chaos-contract
 ```
+
+The browser controls fulfill all requests locally and deliberately reproduce
+a stuck peer, cosmetic-only updates, wrong-session updates, an obstructed legal
+control, response-loss retry and legitimate local-only interaction. The detector
+must reject broken cases and accept valid cases. Reducer/finalization tests also
+run in the normal build gate. Passing these controls verifies the detector; it
+does not certify the full 79-requirement campaign or every game transition.
 
 Player 1 must be an existing admin because every test uses the database-guarded,
 fake-money-only **Blast This Game** action in `finally`; the suite fails if it
