@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { resolveCardFace } from '@/lib/cardGames/resolvedCardFace';
+import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 
 // Minimal card representation for hand history
 type Suit = '♥' | '♦' | '♣' | '♠';
@@ -7,21 +9,6 @@ interface MiniCardData {
   rank: string;
   suit: Suit | string;
 }
-
-// Normalize suit from various formats
-const normalizeSuit = (suit: string): Suit => {
-  const map: Record<string, Suit> = {
-    'hearts': '♥',
-    'diamonds': '♦', 
-    'clubs': '♣',
-    'spades': '♠',
-    '♥': '♥',
-    '♦': '♦',
-    '♣': '♣',
-    '♠': '♠',
-  };
-  return map[suit?.toLowerCase?.()] || map[suit] || suit as Suit;
-};
 
 const getSuitColor = (suit: Suit): string => {
   switch (suit) {
@@ -41,7 +28,13 @@ interface MiniPlayingCardProps {
 }
 
 export function MiniPlayingCard({ card, className }: MiniPlayingCardProps) {
-  const normalizedSuit = normalizeSuit(card.suit);
+  const resolvedFace = resolveCardFace(card);
+  if (!resolvedFace) return (
+    <div className={cn('w-5 h-7', className)} data-playing-card-hidden="1">
+      <CanonicalCardBack widthPx={20} heightPx={28} variant="flat" radiusPx={2} style={{ width: '100%', height: '100%' }} />
+    </div>
+  );
+  const normalizedSuit = resolvedFace.suit;
   const color = getSuitColor(normalizedSuit);
   
   return (

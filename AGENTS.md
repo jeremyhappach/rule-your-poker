@@ -165,6 +165,8 @@ Do not add a second table, felt, seat ring, HUD, lifecycle surface, terminal own
 
 ### Geometry
 
+- Never show an unresolved card face. Preserve canonical backs until rank/suit and reveal admission are resolved; see `docs/codex/CARD_FACE_CONTRACT.md`.
+
 - Use canonical felt-relative/container-relative geometry.
 - Do not use viewport-specific magic pixels, `vh`/`dvh`, device-specific media-query patches, or window measurements unless the existing canonical geometry system explicitly requires them.
 - Interactive felt controls belong in `[data-canonical-felt-interaction-layer]`.

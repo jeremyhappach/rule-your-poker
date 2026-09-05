@@ -38,6 +38,17 @@ describe('HolmChuckyRevealCard', () => {
     vi.unstubAllGlobals();
   });
 
+  it('waits for an actual face before starting or acknowledging a reveal', () => {
+    const complete = vi.fn();
+    const { rerender } = render(<HolmChuckyRevealCard card={{ rank: '?', suit: '?', masked: true } as any} presentationKey="hand#chucky-0" revealed onRevealComplete={complete} />);
+    act(() => vi.runAllTimers());
+    expect(screen.queryByTestId('face-?')).toBeNull();
+    expect(complete).not.toHaveBeenCalled();
+    rerender(<HolmChuckyRevealCard card={card} presentationKey="hand#chucky-0" revealed onRevealComplete={complete} />);
+    act(() => vi.advanceTimersByTime(HOLM_CHUCKY_FLIP_MS));
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it('animates a live reveal and reports completion only after the flip finishes', () => {
     const onRevealComplete = vi.fn();
     const { rerender } = render(

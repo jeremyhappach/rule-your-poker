@@ -1,5 +1,24 @@
 # Current release and cutover state
 
+## P0 — resolved card faces across Holm, Gin, Cribbage and 3-5-7
+
+- Holm's community display now replaces masked opening slots with resolved
+  cards from the exact same presented hand. The continuity cache retains that
+  hand identity across remounts and rejects stale/conflicting replacements.
+- Shared card, transport, compact history and Holm lone-player renderers admit
+  only real unmasked rank/suit pairs. Four-game deal adapters use the same check;
+  Gin adapters preserve masking metadata and its prior reveal gate remains.
+- Community/Chucky/cut/lone-player reveal completion requires resolved faces.
+  Existing privacy, transport timing, geometry, financial and lifecycle owners
+  are preserved. No database migration or historical-state change is included.
+- The contract and four-game sweep are recorded in `CARD_FACE_CONTRACT.md`.
+  Regression coverage includes the actual parent cache-to-row seam, late faces,
+  reconnect, stale/cross-hand delivery, renderer boundaries and source inventory.
+- Typecheck and production bundling pass. All 1,453 checks across 220 suites
+  pass after a focused rerun of the new inventory check: its first full-suite
+  run exceeded the five-second test limit; narrowed parsing resolves that
+  validation failure. Jeremy's real-device smoke remains the acceptance gate.
+
 ## Remediation WP12b — release contract and final writer reconciliation
 
 - Implementation `bc6909cbaed5cd9f2b6abc6bb3517766b3736a25` is published.

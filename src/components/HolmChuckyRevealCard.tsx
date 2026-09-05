@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 
@@ -38,12 +39,14 @@ export function HolmChuckyRevealCard({
   dimmed = false,
   onRevealComplete,
 }: HolmChuckyRevealCardProps) {
+  const faceResolved = isCardFaceResolved(card);
+  const revealReady = revealed && faceResolved;
   const [flipState, setFlipState] = useState<HolmChuckyFlipState>(
-    revealed ? 'revealed' : 'hidden',
+    revealReady ? 'revealed' : 'hidden',
   );
   const mountedRef = useRef(false);
   const presentationKeyRef = useRef(presentationKey);
-  const revealedRef = useRef(revealed);
+  const revealedRef = useRef(revealReady);
   const completedKeyRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onRevealCompleteRef = useRef(onRevealComplete);
@@ -68,24 +71,30 @@ export function HolmChuckyRevealCard({
     if (!mountedRef.current) {
       mountedRef.current = true;
       presentationKeyRef.current = presentationKey;
-      revealedRef.current = revealed;
-      if (revealed) completeReveal();
+      revealedRef.current = revealReady;
+      if (revealReady) completeReveal();
       return;
     }
 
     if (presentationKeyRef.current !== presentationKey) {
       clearFlipTimer();
       presentationKeyRef.current = presentationKey;
-      revealedRef.current = revealed;
+      revealedRef.current = revealReady;
       completedKeyRef.current = null;
-      setFlipState(revealed ? 'revealed' : 'hidden');
-      if (revealed) completeReveal();
+      setFlipState(revealReady ? 'revealed' : 'hidden');
+      if (revealReady) completeReveal();
       return;
     }
 
     // Reveal is monotonic within one exact hand/card identity. Regressive
     // presentation props cannot turn a completed Chucky card face-down.
-    if (!revealed || revealedRef.current) return;
+    if (!faceResolved) {
+      clearFlipTimer();
+      revealedRef.current = false;
+      setFlipState('hidden');
+      return;
+    }
+    if (!revealReady || revealedRef.current) return;
     revealedRef.current = true;
 
     if (prefersReducedMotion()) {
@@ -100,7 +109,7 @@ export function HolmChuckyRevealCard({
       setFlipState('revealed');
       completeReveal();
     }, HOLM_CHUCKY_FLIP_MS);
-  }, [presentationKey, revealed]);
+  }, [presentationKey, revealReady, faceResolved]);
 
   useEffect(() => () => {
     if (timerRef.current !== null) clearTimeout(timerRef.current);
@@ -110,10 +119,10 @@ export function HolmChuckyRevealCard({
   // reset below must never permit one paint of the previous hand's face.
   const renderedFlipState = presentationKeyRef.current === presentationKey
     ? flipState
-    : revealed
+    : revealReady
       ? 'revealed'
       : 'hidden';
-  const faceUp = renderedFlipState !== 'hidden';
+  const faceUp = faceResolved && renderedFlipState !== 'hidden';
   const transition = renderedFlipState === 'flipping'
     ? `transform ${HOLM_CHUCKY_FLIP_MS}ms ease-in-out`
     : 'none';
@@ -167,7 +176,7 @@ export function HolmChuckyRevealCard({
             transform: 'rotateY(180deg)',
           }}
         >
-          <PlayingCard
+          {faceResolved && <PlayingCard
             card={card}
             size="lg"
             tier="medium"
@@ -175,7 +184,7 @@ export function HolmChuckyRevealCard({
             isDimmed={dimmed}
             style={{ width: '100%', height: '100%' }}
             faceFillPx={faceFillPx}
-          />
+          />}
         </div>
       </div>
     </div>

@@ -48,6 +48,10 @@ A game-specific artifact is allowed only when the canonical owner cannot express
 
 ## 4. Geometry
 
+Card faces obey the [resolved card face contract](CARD_FACE_CONTRACT.md): never
+render a masked, missing or invalid rank/suit as a face. Hidden cards stay backs;
+face-reveal completion requires a resolved face and existing visibility admission.
+
 - Active player remains bottom/center.
 - Preserve established absolute observer/selection seats and relative active-play projection.
 - Game artifacts live inside canonical slots.

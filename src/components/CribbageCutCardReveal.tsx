@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -68,7 +69,8 @@ export const CribbageCutCardReveal = ({
   onRevealComplete,
 }: CribbageCutCardRevealProps) => {
 
-  const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
+  const faceResolved = isCardFaceResolved(card);
+  const initialCardKey = faceResolved && card ? `${card.rank}-${card.suit}` : null;
   const initialFlipKey = initialCardKey
     ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}`
     : null;
@@ -124,7 +126,7 @@ export const CribbageCutCardReveal = ({
   }, [handBoundaryKey]);
 
   useEffect(() => {
-    const cardKey = card ? `${card.rank}-${card.suit}` : null;
+    const cardKey = faceResolved && card ? `${card.rank}-${card.suit}` : null;
     const flipKey = cardKey
       ? `${handBoundaryKey ?? 'no-hand-key'}:${cardKey}`
       : null;
@@ -201,7 +203,7 @@ export const CribbageCutCardReveal = ({
       clearTimeout(flipTimer);
       clearTimeout(endTimer);
     };
-  }, [card?.rank, card?.suit, handBoundaryKey]);
+  }, [card?.rank, card?.suit, faceResolved, handBoundaryKey]);
 
   if (!card) return null;
 

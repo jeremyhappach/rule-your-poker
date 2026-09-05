@@ -45,6 +45,7 @@ import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { recordHolmTrace } from '@/lib/holm/holmTrace';
 import { recordCommunityTransport } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { resolveTransportCardFace } from '@/lib/cardGames/resolvedCardFace';
 import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 
 interface SeatEntry {
@@ -52,14 +53,8 @@ interface SeatEntry {
   position: number;
 }
 
-const SYMBOL_TO_WORD: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
-  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
-  spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
-} as Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'>;
-
-function toVisibleFace(card: CardType): { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } {
-  const suitStr = String((card as any).suit ?? 'spades');
-  return { rank: String(card.rank), suit: SYMBOL_TO_WORD[suitStr] ?? 'spades' };
+function toVisibleFace(card: CardType) {
+  return resolveTransportCardFace(card) ?? undefined;
 }
 
 export interface HolmDealOrchestratorProps {

@@ -23,6 +23,17 @@ describe('CribbageCutCardReveal completion boundary', () => {
     vi.useRealTimers();
   });
 
+  it('cannot consume an unresolved cut as a completed reveal', () => {
+    vi.useFakeTimers();
+    const complete = vi.fn();
+    const { rerender } = render(<CribbageCutCardReveal card={{ rank: '?', suit: '?', value: 0 } as any} cardBackColors={{ color: '#123', darkColor: '#012' }} handBoundaryKey="masked-cut" onRevealComplete={complete} />);
+    act(() => vi.advanceTimersByTime(5000));
+    expect(complete).not.toHaveBeenCalled();
+    rerender(<CribbageCutCardReveal card={cutCard} cardBackColors={{ color: '#123', darkColor: '#012' }} handBoundaryKey="masked-cut" onRevealComplete={complete} />);
+    act(() => vi.advanceTimersByTime(600));
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it('acknowledges the hand after the visible cut flip completes', () => {
     vi.useFakeTimers();
     const onRevealComplete = vi.fn();

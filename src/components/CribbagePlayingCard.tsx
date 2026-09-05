@@ -23,6 +23,7 @@
  */
 
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { PlayingCard, type CardSize as CanonicalCardSize } from '@/components/PlayingCard';
@@ -72,7 +73,7 @@ export const CribbagePlayingCard = ({
   const width = useOverride ? widthPx! : entry.width;
   const height = width * 1.5; // 2:3 aspect — preserved from prior renderer.
 
-  if (faceDown) {
+  if (faceDown || !isCardFaceResolved(card)) {
     // Canonical card back; identity-free, shell-owned colors.
     return (
       <CanonicalCardBack

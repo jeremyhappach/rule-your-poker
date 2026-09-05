@@ -21,6 +21,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
@@ -64,21 +66,24 @@ export function HolmLonePlayerFan({
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const onTabledCardsLandedRef = useRef(onTabledCardsLanded);
   const reportedLandingHandRef = useRef<string | null | undefined>(undefined);
+  const [landedSlideHand, setLandedSlideHand] = useState<string | null | undefined>(undefined);
+  const allFacesResolved = sortedCards.length > 0 && sortedCards.every(({ card }) => isCardFaceResolved(card));
   onTabledCardsLandedRef.current = onTabledCardsLanded;
 
   const reportTabledCardsLanded = useCallback(() => {
+    if (!allFacesResolved) return;
     const handContextId = holmLedgerIdentity?.handContextId ?? null;
     if (reportedLandingHandRef.current === handContextId) return;
     reportedLandingHandRef.current = handContextId;
     onTabledCardsLandedRef.current?.(handContextId);
-  }, [holmLedgerIdentity?.handContextId]);
+  }, [holmLedgerIdentity?.handContextId, allFacesResolved]);
 
   // A direct/rejoin render does not replay the slide, but it is already
   // visually settled and may safely report readiness to the parent.
   useEffect(() => {
-    if (animate) return;
+    if (animate && landedSlideHand !== (holmLedgerIdentity?.handContextId ?? null)) return;
     reportTabledCardsLanded();
-  }, [animate, reportTabledCardsLanded]);
+  }, [animate, reportTabledCardsLanded, landedSlideHand, holmLedgerIdentity?.handContextId]);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -185,6 +190,7 @@ export function HolmLonePlayerFan({
       className="relative flex items-center justify-center w-full"
       onAnimationEnd={(event) => {
         if (event.currentTarget !== event.target || event.animationName !== 'holmSoloTableSlide') return;
+        setLandedSlideHand(holmLedgerIdentity?.handContextId ?? null);
         reportTabledCardsLanded();
       }}
       style={{
@@ -203,6 +209,11 @@ export function HolmLonePlayerFan({
           style={{ height: layout.cardHeight }}
         >
           {sortedCards.map(({ card, originalIndex }, displayIndex) => {
+            if (!isCardFaceResolved(card)) return (
+              <div key={displayIndex} style={{ width: layout.cardWidth, height: layout.cardHeight, marginLeft: displayIndex > 0 ? -layout.overlapPx : 0 }}>
+                <CanonicalCardBack widthPx={layout.cardWidth} heightPx={layout.cardHeight} variant="flat" radiusPx={4} style={{ width: '100%', height: '100%' }} />
+              </div>
+            );
             const fourColorConfig = getFourColorSuit(card.suit);
             const cardBg =
               isFourColor && fourColorConfig ? fourColorConfig.bg : "white";

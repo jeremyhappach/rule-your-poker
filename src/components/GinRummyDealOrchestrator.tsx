@@ -1,3 +1,4 @@
+import { resolveTransportCardFace } from '@/lib/cardGames/resolvedCardFace';
 /**
  * GinRummyDealOrchestrator — Wave 2 canonical deal for Gin Rummy.
  *
@@ -48,13 +49,8 @@ interface SeatEntry {
 // same tuple observes the prior dispatch and skips beginDeal+dispatchMany.
 const dispatchedOpeningDealManifests = new Set<string>();
 
-const SYMBOL_TO_WORD: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
-  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
-  spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
-} as Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'>;
-
-function toVisibleFace(card: GinRummyCard): { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } {
-  return { rank: card.rank, suit: SYMBOL_TO_WORD[card.suit] ?? 'spades' };
+function toVisibleFace(card: GinRummyCard) {
+  return resolveTransportCardFace(card) ?? undefined;
 }
 
 export interface GinRummyDealOrchestratorProps {

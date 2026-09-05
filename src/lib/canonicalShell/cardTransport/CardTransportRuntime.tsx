@@ -1,3 +1,4 @@
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 /**
  * CardTransportRuntime — owns launch, travel, arrival, destroy.
  *
@@ -567,7 +568,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const dx = card.to.x - card.from.x;
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const isHidden = card.intent.face === 'hidden';
+  const isHidden = card.intent.face === 'hidden' || !isCardFaceResolved(card.intent.visibleFace);
   // Hidden-card colors are owned by CanonicalCardBack (reads useVisualPreferences
   // directly). `card.intent.cardBackColors` is retained on the intent for debug
   // parity but no longer drives paint here.
@@ -797,7 +798,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       ref={elRef}
       data-card-transport-intent={card.intent.id}
       data-card-transport-card-id={card.intent.cardId}
-      data-card-transport-face={card.intent.face}
+      data-card-transport-face={isHidden ? 'hidden' : 'visible'}
       data-card-transport-flying="true"
       data-recipient-player-id={card.intent.recipientPlayerId ?? ''}
 

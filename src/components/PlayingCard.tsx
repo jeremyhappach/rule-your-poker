@@ -1,4 +1,5 @@
-import { Card as CardType, Suit } from "@/lib/cardUtils";
+import { Card as CardType } from "@/lib/cardUtils";
+import { resolveCardFace } from '@/lib/cardGames/resolvedCardFace';
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
@@ -19,23 +20,6 @@ const TEAM_LOGOS: Record<string, string> = {
   bears: bearsLogo,
   cubs: cubsLogo,
   hawks: hawksLogo,
-};
-
-// Normalize text suit names to symbols (fixes corrupted data from DB)
-const SUIT_NAME_TO_SYMBOL: Record<string, Suit> = {
-  'hearts': '♥',
-  'diamonds': '♦',
-  'clubs': '♣',
-  'spades': '♠',
-  '♥': '♥',
-  '♦': '♦',
-  '♣': '♣',
-  '♠': '♠',
-};
-
-const normalizeSuit = (suit: string): Suit => {
-  const lower = suit?.toLowerCase?.() || '';
-  return SUIT_NAME_TO_SYMBOL[lower] || SUIT_NAME_TO_SYMBOL[suit] || suit as Suit;
 };
 
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -227,7 +211,8 @@ export const PlayingCard = ({
       : sizePxFallback.h);
 
   // Normalize suit to handle corrupted data with text suit names
-  const normalizedSuit = card ? normalizeSuit(card.suit) : null;
+  const resolvedFace = resolveCardFace(card);
+  const normalizedSuit = resolvedFace?.suit ?? null;
 
   // Determine card styling based on effective deck color mode
   const effectiveDeckColorMode = getEffectiveDeckColorMode();
@@ -262,7 +247,7 @@ export const PlayingCard = ({
   const cardFaceStyle = getCardFaceStyle();
 
   // If hidden or no card, show CANONICAL card back.
-  if (isHidden || !card) {
+  if (isHidden || !resolvedFace || !card) {
     return (
       <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-hidden="1">
         <CanonicalCardBack

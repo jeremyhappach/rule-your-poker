@@ -1,5 +1,21 @@
 # Durable decision log
 
+## D-128 — Resolved faces are required across every card surface
+
+Jeremy requires that players never see an unresolved card face. The shared
+validator admits only recognized ranks/suits without masking metadata; hidden
+and unresolved slots render canonical backs. Visibility entitlement remains a
+separate prerequisite. Reveal owners cannot acknowledge a back as a completed
+face reveal. This applies to hands, community/cut/showdown faces, card transport
+and hand history in Holm, Gin, Cribbage and 3-5-7.
+
+Holm's continuity cache now promotes resolved slots from its accepted same-hand
+presentation snapshot and retains exact hand identity across remounts. It rejects
+conflicting rows and cannot regress resolved slots to masked ones. This corrects
+the private-card migration's stale opening-cache failure without exposing future
+cards or changing settlement. See `CARD_FACE_CONTRACT.md` for the source sweep,
+rendering owners, regression checks and remaining production smoke gate.
+
 ## D-127 — Pause serializes with actions and freezes authoritative progression
 
 Every game observes the same database pause guard. A versioned host/admin

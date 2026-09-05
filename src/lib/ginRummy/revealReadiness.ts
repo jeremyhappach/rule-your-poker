@@ -1,10 +1,8 @@
 import type { GinRummyCard, GinRummyState } from '@/lib/ginRummyTypes';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 
 export function isGinCardFaceKnown(card: GinRummyCard): boolean {
-  const projected = card as GinRummyCard & { masked?: boolean };
-  return projected.masked !== true
-    && card.rank !== '?'
-    && (card.suit as string) !== '?';
+  return isCardFaceResolved(card);
 }
 
 export function isGinOpponentRevealReady(

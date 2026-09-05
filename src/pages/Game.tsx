@@ -3052,7 +3052,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const showdownRoundNumberRef = useRef<number | null>(null);
 
   // LIFTED community cards cache - persists across MobileGameTable remounts to prevent flicker during win animation
-  const communityCardsCacheRef = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: false });
+  const communityCardsCacheRef = useRef<{ cards: CardType[] | null; round: number | null; show: boolean; handContextId?: string | null }>({ cards: null, round: null, show: false });
   // Epoch increments whenever the parent explicitly clears lifted card caches.
   // Children use this to avoid writing stale local state back into the external cache.
   const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);

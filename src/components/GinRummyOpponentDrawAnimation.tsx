@@ -90,6 +90,7 @@ export const GinRummyOpponentDrawAnimation = ({
       {isFaceUp ? (
         <CribbagePlayingCard
           card={{
+            ...card,
             suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
             rank: card.rank,
             value: card.value,

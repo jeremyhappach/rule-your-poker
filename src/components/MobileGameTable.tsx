@@ -131,6 +131,8 @@ import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 // CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
 // is now the single stable instance across DEALING → READY → GAMEPLAY.
 import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
+import { useHolmCommunityFaces } from '@/lib/holmCommunityFaces';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { HolmChuckyRevealCard } from "./HolmChuckyRevealCard";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
@@ -1309,7 +1311,7 @@ interface MobileGameTableProps {
   externalShowdownCardsCache?: React.MutableRefObject<Map<string, CardType[]>>;
   externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
   // External community cards cache (lifted to Game.tsx to persist across remounts during win animation)
-  externalCommunityCardsCache?: React.MutableRefObject<{ cards: CardType[] | null; round: number | null; show: boolean }>;
+  externalCommunityCardsCache?: React.MutableRefObject<{ cards: CardType[] | null; round: number | null; show: boolean; handContextId?: string | null }>;
   // Epoch that increments whenever the parent clears externalCommunityCardsCache (prevents repopulation)
   externalCommunityCacheEpoch?: number;
   // 3-5-7 winner show cards - lifted to parent for realtime sync
@@ -3872,26 +3874,32 @@ export const MobileGameTable = ({
   }, [externalCommunityCardsCache, isDealerConfigPhase, gameStatus]);
 
   // Initialize local state from external cache if available (but NOT during dealer config)
+  const restoredCommunityCache = !isDealerConfigPhase && handContextId &&
+    externalCommunityCardsCache?.current.handContextId === handContextId
+      ? externalCommunityCardsCache.current : null;
   const [showCommunityCards, setShowCommunityCards] = useState(() => {
     if (isDealerConfigPhase) return false;
-    if (externalCommunityCardsCache?.current?.show) return true;
+    if (restoredCommunityCache?.show) return true;
     return gameType !== 'holm-game';
   });
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
   const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(() => {
     if (isDealerConfigPhase) return null;
-    return externalCommunityCardsCache?.current?.round || null;
+    return restoredCommunityCache?.round ?? null;
   });
   const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(() => {
     if (isDealerConfigPhase) return null;
-    return externalCommunityCardsCache?.current?.cards || null;
+    return restoredCommunityCache?.cards ?? null;
   });
   // Track which handContextId the approved community cards belong to (prevents stale card flash)
-  const [approvedHandContextId, setApprovedHandContextId] = useState<string | null>(null);
+  const [approvedHandContextId, setApprovedHandContextId] = useState<string | null>(() => restoredCommunityCache?.handContextId ?? null);
+  const resolvedCommunityCards = useHolmCommunityFaces(
+    approvedCommunityCards, communityCards, approvedHandContextId, handContextId, setApprovedCommunityCards,
+  );
   const communityCardsDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(
-    isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
+    restoredCommunityCache?.round ?? null
   ); // Track which round we've detected (to prevent re-triggering)
 
   // Refs/state for positioning the Rabbit Hunt label directly under the rendered community cards
@@ -3944,8 +3952,9 @@ export const MobileGameTable = ({
       cards: approvedCommunityCards,
       round: approvedRoundForDisplay,
       show: showCommunityCards,
+      handContextId: approvedHandContextId,
     };
-  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound, externalCommunityCacheEpoch, effectiveExternalCacheEpoch]);
+  }, [approvedCommunityCards, approvedRoundForDisplay, approvedHandContextId, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound, externalCommunityCacheEpoch, effectiveExternalCacheEpoch]);
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   // Use EXTERNAL refs when provided (from Game.tsx) to persist across component remounts
@@ -8261,8 +8270,9 @@ export const MobileGameTable = ({
       ? players.find((player) => player.id === soloPlayerId) || null
       : null;
     const soloCards = soloPlayerId ? getPlayerCards(soloPlayerId) : [];
-    const communityForHandCall = approvedCommunityCards ?? [];
+    const communityForHandCall = resolvedCommunityCards ?? [];
     if (!soloPlayer || soloCards.length < 4 || communityForHandCall.length < 4) return;
+    if (![...soloCards, ...communityForHandCall].every(isCardFaceResolved)) return;
 
     const soloPlayerName = soloPlayer.is_bot
       ? getBotAlias(players, soloPlayer.user_id)
@@ -8286,7 +8296,7 @@ export const MobileGameTable = ({
     setSoloAnnouncementEmittedHand(handContextId);
   }, [
     announcements,
-    approvedCommunityCards,
+    resolvedCommunityCards,
     chuckyActive,
     gameId,
     gameType,
@@ -14164,12 +14174,13 @@ export const MobileGameTable = ({
             !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&
             !!showCommunityCards &&
+            !approvedCardsAreStale &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
           // ── TERMINAL LATCH (consumer wiring): community presence ───
           // While the terminal-presentation latch is held, community
           // remains visible from the latch snapshot regardless of
           // approvedCommunityCards / currentRound transitions.
-          let communityCardsForRender: CardType[] | null = approvedCommunityCards ?? null;
+          let communityCardsForRender: CardType[] | null = resolvedCommunityCards ?? null;
           let communityHciForRender: string | null = handContextId ?? null;
           // (Holm terminal-latch community override removed — shell
           // owns session-end exclusive handoff.)

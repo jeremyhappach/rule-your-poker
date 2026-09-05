@@ -1,5 +1,10 @@
 # Repository map
 
+Card-face validation and transport conversion: `src/lib/cardGames/resolvedCardFace.ts`.
+Holm same-hand community cache promotion: `src/lib/holmCommunityFaces.ts`.
+The four-game owner inventory, rendering contract and acceptance steps are in
+`docs/codex/CARD_FACE_CONTRACT.md`.
+
 ## Current authority/release contract (WP12)
 
 - Games/rounds/snapshots use validated same-session dealer-game foreign keys in

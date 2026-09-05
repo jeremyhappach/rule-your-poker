@@ -71,6 +71,7 @@ const SYMBOL_TO_WORD: Record<string, string> = {
 };
 
 const toDisplayCard = (card: GinRummyCard) => ({
+  ...card,
   suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
   rank: card.rank,
   value: card.value,

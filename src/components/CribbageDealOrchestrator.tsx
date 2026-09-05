@@ -1,3 +1,4 @@
+import { resolveTransportCardFace } from '@/lib/cardGames/resolvedCardFace';
 /**
  * CribbageDealOrchestrator — Wave 1 substrate proof for ONE DEAL.
  *
@@ -358,9 +359,7 @@ export function CribbageDealOrchestrator({
         // in-flight); `visibleFace` is retained by DealRuntime and
         // surfaced via getSettledCardsForPlayer for the DEALING render.
         const selfFace = isSelf ? selfHandInDisplayOrder[selfIntentIdx] : null;
-        const visibleFace = selfFace
-          ? { rank: selfFace.rank, suit: selfFace.suit }
-          : undefined;
+        const visibleFace = resolveTransportCardFace(selfFace) ?? undefined;
         if (isSelf) selfIntentIdx += 1;
         intents.push({
           id: `${handContextId}#card-${idx}`,

@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -116,6 +117,8 @@ export function HolmCanonicalCommunityRow({
       targetRevealedRef.current < 4 ||
       visuallyRevealedRef.current < 4 ||
       activeFlipRef.current !== null ||
+      !cardsRef.current.slice(0, 4).every(isCardFaceResolved) ||
+      cardsRef.current.length < 4 ||
       fullRevealCompletedHandRef.current === handContextId
     ) {
       return;
@@ -143,7 +146,7 @@ export function HolmCanonicalCommunityRow({
 
     // Do not invent a face or start an animation until the authoritative card
     // identity for this slot has arrived.
-    if (!cardsRef.current[nextIndex]) return;
+    if (!isCardFaceResolved(cardsRef.current[nextIndex])) return;
 
     const sequenceHand = handContextId;
     const flip: CommunityFlip = { index: nextIndex, faceVisible: false };
@@ -285,10 +288,11 @@ export function HolmCanonicalCommunityRow({
     const cardId = `${handContextId}#community-${i}`;
     const settled = deal ? deal.isSettled(cardId) : true;
     const card = cards[i];
-    const isFlippingThisCard = activeFlip?.index === i;
-    const faceUp = settled && !!card && (
+    const samePresentationHand = presentationHandRef.current === handContextId;
+    const isFlippingThisCard = samePresentationHand && activeFlip?.index === i;
+    const faceUp = settled && isCardFaceResolved(card) && (
       i < 2 ||
-      visuallyRevealed > i ||
+      (samePresentationHand ? visuallyRevealed : targetRevealed) > i ||
       (isFlippingThisCard && activeFlip.faceVisible)
     );
     const showBack = settled && !faceUp;

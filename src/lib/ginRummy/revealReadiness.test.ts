@@ -14,6 +14,9 @@ function stateWithOpponentCard(card: Record<string, unknown>): GinRummyState {
 }
 
 describe('Gin opponent reveal readiness', () => {
+  it.each([{ rank: 'A' }, { rank: '', suit: '♠' }, { rank: 'A', suit: 'invalid' }, { rank: 'A', suit: '♠', masked: true }])('rejects incomplete or masked reveal data: %j', card => {
+    expect(isGinOpponentRevealReady(stateWithOpponentCard(card), 'dealer')).toBe(false);
+  });
   it('rejects the caller projection while the opponent face is masked', () => {
     expect(isGinOpponentRevealReady(stateWithOpponentCard({
       rank: '?', suit: '?', value: 0, masked: true,

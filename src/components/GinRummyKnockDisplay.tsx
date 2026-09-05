@@ -30,6 +30,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 const toDisplayCard = (card: GinRummyCard) => ({
+  ...card,
   suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
   rank: card.rank,
   value: card.value,
