@@ -1,26 +1,11 @@
 /**
- * useHighCardDealerSelection — headless dealer-selection controller.
- *
- * Phase C.2 extraction: behavior-preserving move of the logic previously
- * embedded in `HighCardDealerSelection.tsx` into a hook. Identical DB
- * writes, identical callback contract, identical timing constants. The
- * legacy component is now a thin wrapper around this hook for its
- * remaining session-level callsites; canonical Cribbage call this hook
- * directly with NO surface mounted.
- *
- * Contract:
- *   - HOST drives state, pushes to `games.dealer_selection_state`.
- *   - NON-HOST mirrors `syncedState` into the provided callbacks.
- *   - `onComplete` is called HOST-only at the end of multi-card sequence.
- *   - Bypass paths (0 / 1 eligible dealers) complete deterministically.
- *   - 'cribbage' variant: no tie announcement, fast redraw cadence.
- *
- * No semantic drift from the original component. Only the packaging changes.
+ * Presents persisted session/Cribbage dealer-draw receipts inside canonical slots.
+ * PostgreSQL owns card generation, ties and winner selection. This hook may request
+ * Cribbage preparation and schedule local presentation callbacks; it never writes
+ * draw outcomes or chooses cards.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { getBotAlias } from '@/lib/botAlias';
-import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
-import { supabase } from '@/integrations/supabase/client';
+import type { Card } from '@/lib/cardUtils';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { prepareCribbageDealerSelection } from '@/lib/cribbageAuthority';
 import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
@@ -130,7 +115,6 @@ export function useHighCardDealerSelection({
 }: UseHighCardDealerSelectionArgs) {
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
   const onCompleteRef = useRef(onComplete);
@@ -325,23 +309,8 @@ export function useHighCardDealerSelection({
   );
   const eligibleDealerKey = eligibleDealers.map((p) => p.id).join(',');
 
-  const ANNOUNCE_DURATION = 900;
-  const ROUND_PAUSE = 700;
   const WINNER_ANNOUNCE_DELAY = 2200;
-  const CRIBBAGE_TIE_REDEAL_DELAY = 500;
 
-  const clearTimeouts = useCallback(() => {
-    timeoutsRef.current.forEach((t) => {
-      clearTimeout(t);
-      recordHighCardTimer('timeout.cancelled', {
-        gameId,
-        componentKey: `${gameId}:${selectionVariant}`,
-        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
-        reason: 'clearTimeouts',
-      });
-    });
-    timeoutsRef.current = [];
-  }, [gameId, selectionVariant]);
 
   const timerSeqRef = useRef(0);
   const addTimeout = useCallback((fn: () => void, delay: number) => {
@@ -367,52 +336,6 @@ export function useHighCardDealerSelection({
     return t;
   }, [gameId, selectionVariant]);
 
-  const getPlayerName = useCallback(
-    (player: Player) => {
-      if (player.is_bot) {
-        return getBotAlias(sortedPlayers, player.user_id);
-      }
-      return player.profiles?.username || `Seat ${player.position}`;
-    },
-    [sortedPlayers],
-  );
-
-  const syncToDatabase = useCallback(
-    async (state: DealerSelectionState) => {
-      if (!isHost || selectionVariant === 'cribbage') return;
-      const dealerSelectionId = `${gameId}:host`;
-      recordDealerSelectionDiag('dealer_selection_state_published', {
-        sessionId: gameId,
-        dealerSelectionId,
-        cardCount: state.cards?.length ?? 0,
-        winnerPosition: state.winnerPosition ?? null,
-        scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
-        extra: { side: 'host-write', isComplete: state.isComplete },
-      });
-      if ((state.cards?.length ?? 0) > 0) {
-        recordDealerSelectionDiag('dealer_selection_cards_published', {
-          sessionId: gameId,
-          dealerSelectionId,
-          cardCount: state.cards.length,
-          winnerPosition: state.winnerPosition ?? null,
-          scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
-          extra: { side: 'host-write' },
-        });
-      }
-      try {
-        const { error } = await supabase
-          .from('games')
-          .update({ dealer_selection_state: state as any })
-          .eq('id', gameId);
-        if (error) {
-          console.error('[HIGH CARD] Failed to sync state to DB:', error);
-        }
-      } catch (err) {
-        console.error('[HIGH CARD] Error syncing to DB:', err);
-      }
-    },
-    [isHost, gameId, selectionVariant],
-  );
 
   // NON-HOST: react to synced state from database
   const nonHostCardsSeenRef = useRef(false);
@@ -640,281 +563,8 @@ export function useHighCardDealerSelection({
     }
   }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate, gameId, selectionVariant]);
 
-  // Forward declarations to avoid use-before-declaration in closures.
-  const determineWinnerRef = useRef<(roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => void>(() => {});
-  const runSelectionRoundRef = useRef<(playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => void>(() => {});
 
-  const runSelectionRound = useCallback(
-    (playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
-      console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
-
-      onWinnerPositionUpdate?.(null);
-
-      const roundAnnouncement =
-        roundNum === 1
-          ? (isCribbageVariant ? 'Drawing for button' : 'High card wins deal')
-          : isCribbageVariant
-            ? null
-            : 'Tie! Drawing again...';
-
-      if (roundAnnouncement !== null) {
-        lastAnnouncementRef.current = roundAnnouncement;
-      }
-
-      const dealDelayMs =
-        roundNum === 1
-          ? ANNOUNCE_DURATION
-          : isCribbageVariant
-            ? 0
-            : ANNOUNCE_DURATION;
-
-      addTimeout(() => {
-        const newCards: DealerSelectionCard[] = playersInRound.map((player) => {
-          const card = deckRef.current.shift()!;
-          return {
-            playerId: player.id,
-            position: player.position,
-            card,
-            isRevealed: true,
-            isWinner: false,
-            isDimmed: false,
-            roundNumber: roundNum,
-          };
-        });
-
-        recordDealerSelectionDiag('dealer_selection_animation_triggered', {
-          sessionId: gameId,
-          dealerSelectionId: `${gameId}:host`,
-          animationTriggerId: `${gameId}:round-${roundNum}`,
-          cardCount: newCards.length,
-          scope: isCribbageVariant ? 'cribbage' : 'session',
-          extra: { round: roundNum, playersInRound: playersInRound.length },
-        });
-
-        const allCards = [
-          ...existingCards.filter((c) => c.roundNumber !== roundNum),
-          ...newCards,
-        ];
-
-        // P-WAIT.C3 + C4: card-deal + cards-change (host side).
-        const prevHostLen = lastCardsLenRef.current;
-        recordWaitingLifecycle('high-card card-deal', {
-          gameId,
-          round: roundNum,
-          dealt: newCards.length,
-          totalCards: allCards.length,
-          positions: newCards.map(c => c.position),
-          isHost: true,
-        });
-        if (prevHostLen !== allCards.length) {
-          recordWaitingLifecycle('high-card cards-change', {
-            gameId,
-            previousLength: prevHostLen,
-            nextLength: allCards.length,
-            positions: allCards.map(c => c.position),
-            source: 'host-deal',
-            viewerPosition: null,
-            gameStatus: 'dealer_selection',
-          });
-          if (prevHostLen === 0 && allCards.length > 0) {
-            recordWaitingLifecycle('high-card card-reveal', {
-              gameId, source: 'host-deal', cardsLength: allCards.length,
-            });
-          }
-          lastCardsLenRef.current = allCards.length;
-        }
-
-        {
-          const _prevIds = (hookStateRef.current.cards ?? []).map(
-            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
-          );
-          const _nextIds = allCards.map(
-            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
-          );
-          recordHighCardWriter({
-            gameId,
-            source: 'host-deal',
-            callsite: `src/hooks/useHighCardDealerSelection.ts:runSelectionRound round=${roundNum}`,
-            reason: 'host dealt round → onCardsUpdate(allCards)',
-            previousLength: _prevIds.length,
-            nextLength: _nextIds.length,
-            previousCardIds: _prevIds,
-            nextCardIds: _nextIds,
-            renderPath: 'host',
-            surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
-          });
-        }
-
-        onCardsUpdate(allCards);
-
-        // Persist the reveal-only snapshot so non-host subscribers receive
-        // a "cards revealed, no winner yet" frame BEFORE the completed
-        // frame coalesces winner+cards. Without this write the only DB
-        // frame non-hosts ever see is the terminal "isComplete=true"
-        // snapshot, which causes the reveal animation to be skipped.
-        syncToDatabase({
-          cards: allCards,
-          announcement: lastAnnouncementRef.current,
-          isComplete: false,
-          winnerPosition: null,
-        });
-
-        const pauseAfterDealMs =
-          roundNum === 1
-            ? ROUND_PAUSE
-            : isCribbageVariant
-              ? 0
-              : ROUND_PAUSE;
-
-        addTimeout(() => {
-          determineWinnerRef.current(newCards, allCards, playersInRound, roundNum);
-        }, pauseAfterDealMs);
-      }, dealDelayMs);
-    },
-    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, isCribbageVariant],
-  );
-
-  const determineWinner = useCallback(
-    (
-      roundCards: DealerSelectionCard[],
-      allCards: DealerSelectionCard[],
-      playersInRound: Player[],
-      roundNum: number,
-    ) => {
-      let highestRank = 0;
-      let winners: DealerSelectionCard[] = [];
-
-      roundCards.forEach((pc) => {
-        const rankValue = RANK_VALUES[pc.card.rank];
-        if (rankValue > highestRank) {
-          highestRank = rankValue;
-          winners = [pc];
-        } else if (rankValue === highestRank) {
-          winners.push(pc);
-        }
-      });
-
-      console.log(
-        '[HIGH CARD] Round',
-        roundNum,
-        'highest rank:',
-        highestRank,
-        'winners:',
-        winners.length,
-      );
-
-      const updatedCards = allCards.map((p) => {
-        if (p.roundNumber !== roundNum) return p;
-        const isWinner = winners.some((w) => w.playerId === p.playerId);
-        return { ...p, isWinner, isDimmed: !isWinner };
-      });
-
-      {
-        const _prevIds = (hookStateRef.current.cards ?? []).map(
-          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
-        );
-        const _nextIds = updatedCards.map(
-          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
-        );
-        recordHighCardWriter({
-          gameId,
-          source: 'host-determine-winner',
-          callsite: `src/hooks/useHighCardDealerSelection.ts:determineWinner round=${roundNum}`,
-          reason: 'host applied winner/dim flags → onCardsUpdate(updatedCards)',
-          previousLength: _prevIds.length,
-          nextLength: _nextIds.length,
-          previousCardIds: _prevIds,
-          nextCardIds: _nextIds,
-          renderPath: 'host',
-          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
-        });
-      }
-      onCardsUpdate(updatedCards);
-
-      if (winners.length === 1) {
-        const winnerPlayer = playersInRound.find((p) => p.id === winners[0].playerId);
-        if (winnerPlayer) {
-          const name = getPlayerName(winnerPlayer);
-          const winAnnouncement = `${name} wins the deal!`;
-          lastAnnouncementRef.current = winAnnouncement;
-
-          onWinnerPositionUpdate?.(winnerPlayer.position);
-
-          recordWaitingLifecycle('high-card winner-determined', {
-            gameId,
-            winnerPosition: winnerPlayer.position,
-            round: roundNum,
-            viewerSide: 'host',
-            cardsLength: updatedCards.length,
-          });
-
-          syncToDatabase({
-            cards: updatedCards,
-            announcement: winAnnouncement,
-            isComplete: true,
-            winnerPosition: winnerPlayer.position,
-          });
-
-          hasCompletedRef.current = true;
-
-          recordDealerSelectionDiag('dealer_selection_completed', {
-            sessionId: gameId,
-            dealerSelectionId: `${gameId}:host`,
-            cardCount: updatedCards.length,
-            winnerPosition: winnerPlayer.position,
-            scope: isCribbageVariant ? 'cribbage' : 'session',
-            extra: { round: roundNum },
-          });
-
-          addTimeout(() => {
-            recordWaitingLifecycle('high-card dealer-selected', {
-              gameId,
-              winnerPosition: winnerPlayer.position,
-              viewerSide: 'host',
-              cardsLength: updatedCards.length,
-              isComplete: true,
-            });
-            onComplete(winnerPlayer.position);
-          }, WINNER_ANNOUNCE_DELAY);
-        }
-      } else {
-        const announcementToSync = isCribbageVariant
-          ? (lastAnnouncementRef.current ?? null)
-          : 'Tie! Drawing again...';
-
-        syncToDatabase({
-          cards: updatedCards,
-          announcement: announcementToSync,
-          isComplete: false,
-          winnerPosition: null,
-        });
-
-        const tiedPlayerIds = winners.map((w) => w.playerId);
-        const tiedPlayers = playersInRound.filter((p) => tiedPlayerIds.includes(p.id));
-
-        const nextRoundDelayMs = isCribbageVariant ? CRIBBAGE_TIE_REDEAL_DELAY : ROUND_PAUSE;
-
-        addTimeout(() => {
-          runSelectionRoundRef.current(tiedPlayers, roundNum + 1, updatedCards);
-        }, nextRoundDelayMs);
-      }
-    },
-    [
-      addTimeout,
-      getPlayerName,
-      onComplete,
-      onCardsUpdate,
-      onWinnerPositionUpdate,
-      syncToDatabase,
-      isCribbageVariant,
-    ],
-  );
-
-  // Wire refs for cross-callback recursion (preserves original behavior).
-  determineWinnerRef.current = determineWinner;
-  runSelectionRoundRef.current = runSelectionRound;
-
-  // HOST: run the selection sequence and sync to DB
+  // Render the committed receipt; Cribbage may request its server preparation.
   useEffect(() => {
     if (
       !isCribbageVariant &&
@@ -1006,39 +656,6 @@ export function useHighCardDealerSelection({
       return;
     }
 
-    if (!isHost) {
-      return;
-    }
-
-    hasInitializedRef.current = true;
-
-    console.log(
-      '[HIGH CARD] Starting high card dealer selection with',
-      eligibleDealers.length,
-      'eligible players',
-    );
-
-    deckRef.current = shuffleDeck(createDeck());
-
-    recordDealerSelectionDiag('dealer_selection_created', {
-      sessionId: gameId,
-      dealerSelectionId: `${gameId}:host`,
-      cardCount: 0,
-      scope: isCribbageVariant ? 'cribbage' : 'session',
-      extra: { eligibleDealers: eligibleDealers.length },
-    });
-
-    recordWaitingLifecycle('high-card-start', {
-      gameId,
-      isHost,
-      eligibleCount: eligibleDealers.length,
-      viewerPosition: null,
-      playerCount: players.length,
-    });
-
-    runSelectionRound(eligibleDealers, 1, []);
-
-    return () => clearTimeouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, eligibleDealerKey]);
 }

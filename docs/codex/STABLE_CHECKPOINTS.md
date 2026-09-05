@@ -2,6 +2,11 @@
 
 ## Platform
 
+- WP8b Gin two-human terminal smoke passed at
+  `d00bb5e67888b13a0b47b02d199268ca0d9f88e8`: six hands, exact settlement,
+  connected Session Ended and fresh-ended reconnect. The run took 13.3 minutes,
+  and exact fake-session cleanup was verified.
+
 - WP8a Cribbage two-human terminal smoke passed at
   `e3a4f701f869b2d6577acb90763313f5e27ae4f9`: gameplay, exact settlement,
   connected Session Ended and fresh-ended reconnect all passed. The verified-build

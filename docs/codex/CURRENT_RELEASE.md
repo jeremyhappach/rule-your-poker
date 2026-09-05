@@ -2,6 +2,22 @@
 
 Date: 2026-09-04
 
+## Remediation WP9a — rule configuration and dealer-draw authority
+
+- Browser roles cannot edit rule amounts, scoring settings, timer configuration
+  or persisted dealer-draw receipts. Dealer-game records are created only through
+  the existing validated setup command; direct browser mutation is revoked.
+- Removed 1,428 lines of unused configuration/start handlers, the unused
+  `DealerConfig` component and the unreachable browser draw generator/broadcaster.
+  Live setup and draw receipt presentation retain their existing server owners.
+- Complete seven-game setup and dealer-draw rollback proofs pass before and after
+  migration, including actual-role direct-write denial, valid configuration,
+  malformed/unauthorized input, duplicates, ties and late replays.
+- Session lifecycle, host/seat participation and countdown writers remain in the
+  following WP9 packages; this step closes rule configuration and draw outcomes.
+- Thirty-one focused checks and the production build (39 required checks) pass.
+  TypeScript falls from 41 to 39 existing diagnostics after removing dead code.
+
 ## Remediation WP8b — Gin atomic postgame and generic writer retirement
 
 - Gin now submits exact settled identity before any browser participation work.
@@ -14,6 +30,9 @@ Date: 2026-09-04
   pass before and after migration. Thirty-seven focused checks cover all seven
   callback routes, exact payloads, failures and removal of generic writers.
   Setup-screen participation writers remain scoped to WP9.
+- Production READY and manifest match `d00bb5e67888b13a0b47b02d199268ca0d9f88e8`.
+  Published two-human Gin terminal test passes through six hands, exact settlement,
+  connected Session Ended and fresh-ended reconnect; exact cleanup was verified.
 
 ## Remediation WP8a — Cribbage atomic postgame participation
 

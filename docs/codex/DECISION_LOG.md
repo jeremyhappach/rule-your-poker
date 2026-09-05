@@ -1,5 +1,14 @@
 # Durable decision log
 
+## D-123 — Rule configuration and dealer draws have no browser write alternative
+
+`configure_dealer_game` remains the atomic configuration owner, and existing
+session/Cribbage commands own dealer draws. Browser roles cannot mutate protected
+rule fields or draw receipts, nor create their own dealer-game records. Removed
+unused setup handlers and unreachable random draw code; presentation still consumes
+the committed receipt. Later lifecycle/participation closure must use these owners
+without reopening raw configuration writes.
+
 ## D-122 — Every supported game's completion uses its server disposition
 
 Gin applies queued participation and pending end within its exact postgame claim,

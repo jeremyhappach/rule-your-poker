@@ -1,5 +1,13 @@
 # Repository map
 
+## Rule configuration and dealer draws (WP9a)
+
+- `20260905013041_rule_configuration_and_dealer_draw_authority.sql` protects
+  game rule fields and draw receipts and revokes dealer-game browser mutation.
+- `DealerGameSetup` and its existing RPC client remain the live setup path.
+  The unused `DealerConfig` component and unused `Game.tsx` legacy setup handlers
+  are removed. `useHighCardDealerSelection` only presents server receipts.
+
 ## Gin and shared completion boundary (WP8b)
 
 - `20260905012231_gin_atomic_postgame_participation.sql` owns queued participation
