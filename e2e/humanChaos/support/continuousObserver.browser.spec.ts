@@ -163,6 +163,48 @@ test('continuous observer recognizes Yahtzee dice-only peer progress', async ({ 
   }
 });
 
+for (const peerSequence of [3, 4]) {
+  test(`binds a real browser mutation receipt to rendered sequence ${peerSequence}`, async ({ browser }) => {
+    const observer = new HumanChaosContinuousObserver({ peerBudgetMs: 500 });
+    const host = await browser.newContext(), peer = await browser.newContext();
+    const table = `<div data-lifecycle-branch="loaded-inner" data-authoritative-game-id="game-1"
+      data-authoritative-game-type="holm-game" data-authoritative-game-status="in_progress"
+      data-authoritative-dealer-game-id="dealer-1" data-authoritative-round-id="round-1"
+      data-authoritative-round-status="betting" data-authoritative-holm-turn-sequence="3">
+      <div data-canonical-shell-root><div data-canonical-felt-surface></div>
+      <div data-canonical-shell-timer-rail>30</div>
+      <div data-authoritative-action-surface="holm-357-decision"><button>Stay</button></div></div></div>
+      <script>document.querySelector('button').onclick=async()=>{
+        const response=await fetch('/rest/v1/rpc/holm_submit_decision',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({p_game_id:'game-1',p_round_id:'round-1',p_player_id:'player-1',p_decision:'stay'})});
+        const receipt=await response.json();
+        document.querySelector('[data-lifecycle-branch]').setAttribute('data-authoritative-holm-turn-sequence',receipt.turn_sequence);
+      };</script>`;
+    try {
+      for (const context of [host, peer]) {
+        await context.route('**/*', route => route.fulfill({ status: 200,
+          contentType: route.request().method() === 'POST' ? 'application/json' : 'text/html',
+          body: route.request().method() === 'POST' ? JSON.stringify({round_id:'round-1',turn_sequence:4}) : table }));
+      }
+      await observer.attachContext(host, 'host');
+      await observer.attachContext(peer, 'peer');
+      const hostPage = await host.newPage(), peerPage = await peer.newPage();
+      await Promise.all([hostPage.goto('https://harness.supabase.co/game/game-1'), peerPage.goto('https://harness.supabase.co/game/game-1')]);
+      await hostPage.waitForTimeout(120);
+      await hostPage.getByRole('button', {name:'Stay', exact:true}).click();
+      await expect(hostPage.locator('[data-lifecycle-branch]')).toHaveAttribute('data-authoritative-holm-turn-sequence','4');
+      await peerPage.locator('[data-lifecycle-branch]').evaluate((node, value) => node.setAttribute('data-authoritative-holm-turn-sequence',String(value)), peerSequence);
+      await peerPage.waitForTimeout(650);
+      const evidence = observer.finish();
+      expect(evidence.actionReceipts[0]?.mutationTarget).toEqual({field:'holmTurnSequence',roundId:'round-1',value:4});
+      if (peerSequence === 4) expect(continuousObserverFailure(evidence)).toBeNull();
+      else expect(continuousObserverFailure(evidence)?.message).toContain('peer-no-progress');
+    } finally {
+      await Promise.allSettled([host.close(),peer.close()]);
+    }
+  });
+}
+
 for (const mode of ['stuck-peer', 'cosmetic-only', 'wrong-session', 'blocked-control', 'valid-retry', 'local-only'] as const) {
   test(`progress detector negative control: ${mode}`, async ({ browser }, info) => {
     const observer = new HumanChaosContinuousObserver({ peerBudgetMs: 350 });
@@ -178,9 +220,11 @@ for (const mode of ['stuck-peer', 'cosmetic-only', 'wrong-session', 'blocked-con
           if (new URL(route.request().url()).pathname.startsWith('/rest/v1/rpc/')) {
             requests += 1;
             if (mode === 'valid-retry' && requests === 1) await route.abort('failed');
-            else await route.fulfill({ status: 200, contentType: 'application/json', body: '{"outcome":"applied"}' });
+            else await route.fulfill({ status: 200, contentType: 'application/json', body: '{"round_id":"round-1","turn_sequence":4}' });
           } else {
-            await route.fulfill({ status: 200, contentType: 'text/html', body: HEALTHY_TIMED_TABLE });
+            await route.fulfill({ status: 200, contentType: 'text/html', body: HEALTHY_TIMED_TABLE.replace(
+              'data-authoritative-round-id="round-1"', 'data-authoritative-round-id="round-1" data-authoritative-holm-turn-sequence="3"',
+            ) });
           }
         });
       }
@@ -196,9 +240,12 @@ for (const mode of ['stuck-peer', 'cosmetic-only', 'wrong-session', 'blocked-con
         }
         document.querySelector('button')!.addEventListener('click', async () => {
           if (testMode === 'local-only') return;
-          await fetch('/rest/v1/rpc/gin_rummy_apply_action', { method: 'POST' }).catch(() =>
-            fetch('/rest/v1/rpc/gin_rummy_apply_action', { method: 'POST' }));
+          const options = { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_round_id: 'round-1', p_player_id: 'host', p_decision: 'stay' }) };
+          await fetch('/rest/v1/rpc/holm_submit_decision', options).catch(() =>
+            fetch('/rest/v1/rpc/holm_submit_decision', options));
           document.querySelector('[data-lifecycle-branch]')!.setAttribute('data-authoritative-round-status', 'completed');
+          document.querySelector('[data-lifecycle-branch]')!.setAttribute('data-authoritative-holm-turn-sequence', '4');
         });
       }, mode);
       await hostPage.getByRole('button', { name: 'Stay' }).click();
@@ -214,6 +261,7 @@ for (const mode of ['stuck-peer', 'cosmetic-only', 'wrong-session', 'blocked-con
           const root = document.querySelector('[data-lifecycle-branch]')!;
           if (testMode === 'wrong-session') root.setAttribute('data-authoritative-game-id', 'another-session');
           root.setAttribute('data-authoritative-round-status', 'completed');
+          root.setAttribute('data-authoritative-holm-turn-sequence', '4');
         }
         if (testMode === 'blocked-control') {
           const cover = document.createElement('div');

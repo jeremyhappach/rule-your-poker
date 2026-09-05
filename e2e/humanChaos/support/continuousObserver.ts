@@ -1,4 +1,6 @@
 import type { BrowserContext, Page, Request } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { mutationProgressTarget, tracksMutationProgress, type MutationProgressTarget } from './mutationProgress';
 
 export type ChaosClient = 'host' | 'peer';
 
@@ -14,6 +16,9 @@ export type ChaosDomSnapshot = {
   dealerGameId: string | null;
   roundId: string | null;
   roundStatus: string | null;
+  holmTurnSequence?: number | null;
+  ginActionCount?: number | null;
+  decisionLocks?: string[] | null;
   shellCount: number;
   feltCount: number;
   nestedShellCount: number;
@@ -93,6 +98,9 @@ export type ChaosNetworkReceipt = {
   durationMs: number | null;
   outcome: 'finished' | 'failed' | 'pending';
   failure: string | null;
+  mutationKey?: string;
+  mutationTarget?: MutationProgressTarget | null;
+  httpStatus?: number;
 };
 
 export type ChaosActionReceipt = {
@@ -117,6 +125,7 @@ export type ChaosActionReceipt = {
   progressExpectation: 'both' | 'actor' | 'none';
   progressExemptionReason: string | null;
   progressProblems: string[];
+  mutationTarget?: MutationProgressTarget | null;
 };
 
 type DurationSummary = {
@@ -250,6 +259,16 @@ function matchesActionBaseline(snapshot: ChaosDomSnapshot | null, action: ChaosA
     && (!action.roundId || snapshot.roundId === action.roundId);
 }
 
+function hasMutationProjection(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
+  return target.field === 'decisionLocks' ? Array.isArray(snapshot.decisionLocks)
+    : Number.isSafeInteger(snapshot[target.field]);
+}
+
+function mutationReached(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
+  return target.field === 'decisionLocks' ? snapshot.decisionLocks?.includes(target.value) === true
+    : typeof snapshot[target.field] === 'number' && snapshot[target.field]! >= target.value;
+}
+
 function buildIdentityTransitions(snapshots: ChaosDomSnapshot[]): ChaosIdentityTransition[] {
   const previous = new Map<ChaosClient, ChaosDomSnapshot>();
   const transitions: ChaosIdentityTransition[] = [];
@@ -299,13 +318,7 @@ export function buildContinuousObserverEvidence(
     // Later actions must not retroactively make an earlier stuck action pass.
     const nextAction = actions.slice(actionIndex + 1).find((candidate) => candidate.client === action.client
       && candidate.progressExpectation !== 'none');
-    const observationEnd = Math.min(finishedAt + 1, nextAction?.wallTime ?? Infinity);
-    const actorProgress = firstProgressAfter(
-      snapshots, action.client, action, actorBaseline, observationEnd,
-    );
-    const peerProgress = firstProgressAfter(
-      snapshots, peer, action, peerBaseline, observationEnd,
-    );
+    const legacyObservationEnd = Math.min(finishedAt + 1, nextAction?.wallTime ?? Infinity);
     const rpcCandidates = networkRequests.filter((request) => request.client === action.client
       && request.method === 'POST'
       && request.endpoint.includes('/rest/v1/rpc/')
@@ -314,9 +327,49 @@ export function buildContinuousObserverEvidence(
     const ginMutation = action.actionSurface.startsWith('gin-')
       ? rpcCandidates.find((request) => request.endpoint.endsWith('/gin_rummy_apply_action'))
       : null;
-    const rpc = ginMutation ?? rpcCandidates[0] ?? null;
+    const decisionMutation = action.actionSurface === 'holm-357-decision'
+      ? rpcCandidates.find(request => /\/(holm_submit_decision|three_five_seven_submit_decision)$/.test(request.endpoint)) : null;
+    const firstRpc = ginMutation ?? decisionMutation ?? rpcCandidates[0] ?? null;
+    // A lost response can replay the same immutable request. A separate later
+    // click must not donate its commit to this action.
+    const attempts = firstRpc?.mutationKey ? networkRequests.filter(request =>
+      request.client === action.client && request.mutationKey === firstRpc.mutationKey
+      && request.startedAt >= firstRpc.startedAt && request.startedAt < legacyObservationEnd) : [];
+    const committedRpc = attempts.find(request => request.mutationTarget && request.outcome === 'finished');
+    const rpc = committedRpc ?? firstRpc;
+    const target = committedRpc?.mutationTarget ?? null;
+    const projectionAvailable = action.actionSurface.startsWith('gin-') ? Number.isSafeInteger(actorBaseline?.ginActionCount)
+      : action.actionSurface === 'holm-357-decision'
+        && (Number.isSafeInteger(actorBaseline?.holmTurnSequence) || Array.isArray(actorBaseline?.decisionLocks));
+    const boundMutation = Boolean(firstRpc?.mutationKey) || projectionAvailable;
+    // Exact committed sequence/participant evidence remains attributable even
+    // when a newer action starts before a lagging peer has rendered the commit.
+    const observationEnd = target ? finishedAt + 1 : legacyObservationEnd;
+    const matchingIdentity = (snapshot: ChaosDomSnapshot) => snapshot.gameId === action.gameId
+      && snapshot.dealerGameId === action.dealerGameId && snapshot.roundId === action.roundId
+      && snapshot.roundId === target?.roundId
+      && (!action.expectedIdentity || (snapshot.gameId === action.expectedIdentity.gameId
+        && (!action.expectedIdentity.dealerGameId || snapshot.dealerGameId === action.expectedIdentity.dealerGameId)
+        && (!action.expectedIdentity.roundId || snapshot.roundId === action.expectedIdentity.roundId)));
+    const progressFor = (client: ChaosClient, baseline: ChaosDomSnapshot | null) => {
+      if (!target) return firstProgressAfter(snapshots, client, action, baseline, observationEnd);
+      if (!baseline || baseline.gameId !== action.gameId) return null;
+      return snapshots.find(snapshot => snapshot.client === client && matchingIdentity(snapshot)
+        && snapshot.wallTime >= action.wallTime && snapshot.wallTime < observationEnd
+        && mutationReached(snapshot, target)) ?? null;
+    };
+    const actorProgress = progressFor(action.client, actorBaseline);
+    const peerProgress = progressFor(peer, peerBaseline);
+    // An optimistic actor paint cannot predate its proven server acknowledgement.
+    const actorProgressAt = actorProgress ? Math.max(actorProgress.wallTime,
+      target ? committedRpc?.finishedAt ?? actorProgress.wallTime : actorProgress.wallTime) : null;
     const progressExpectation = action.progressExpectation ?? 'both';
     const progressProblems: string[] = [];
+    if (boundMutation && !target && progressExpectation !== 'none') progressProblems.push('mutation-commit-unproven');
+    if (target && target.roundId !== action.roundId) progressProblems.push('mutation-identity-mismatch');
+    if (target && actorBaseline && matchingIdentity(actorBaseline) && mutationReached(actorBaseline, target)) {
+      progressProblems.push('mutation-target-not-new');
+    }
     if (!['both', 'actor', 'none'].includes(progressExpectation)) progressProblems.push('invalid-progress-contract');
     if (progressExpectation !== 'both' && !action.progressExemptionReason?.trim()) {
       progressProblems.push('missing-progress-exemption-reason');
@@ -329,11 +382,14 @@ export function buildContinuousObserverEvidence(
         ? faultBudget! : DEFAULT_PROGRESS_BUDGET_MS)
       : peerBudgetMs;
     const assess = (role: 'actor' | 'peer', baseline: ChaosDomSnapshot | null, progress: ChaosDomSnapshot | null) => {
-      if (!matchesActionBaseline(baseline, action)) {
+      if (!(target ? baseline?.gameId === action.gameId : matchesActionBaseline(baseline, action))) {
         progressProblems.push(`${role}-missing-baseline`);
+      } else if (target && !snapshots.some(snapshot => snapshot.client === (role === 'actor' ? action.client : peer)
+        && matchingIdentity(snapshot) && hasMutationProjection(snapshot, target))) {
+        progressProblems.push(`${role}-missing-projection`);
       } else if (!progress) {
         progressProblems.push(`${role}-${observationEnd - 1 - action.wallTime >= budget ? 'no-progress' : 'incomplete'}`);
-      } else if (progress.wallTime - action.wallTime > budget) {
+      } else if ((role === 'actor' ? actorProgressAt! : progress.wallTime) - action.wallTime > budget) {
         progressProblems.push(`${role}-latency`);
       }
     };
@@ -354,13 +410,14 @@ export function buildContinuousObserverEvidence(
       rpcFinishedAt: rpc?.finishedAt ?? null,
       rpcDurationMs: rpc?.durationMs ?? null,
       rpcOutcome: rpc?.outcome ?? null,
-      actorProgressAt: actorProgress?.wallTime ?? null,
-      actorProgressMs: actorProgress ? actorProgress.wallTime - action.wallTime : null,
+      actorProgressAt,
+      actorProgressMs: actorProgressAt != null ? actorProgressAt - action.wallTime : null,
       peerProgressAt: peerProgress?.wallTime ?? null,
       peerProgressMs: peerProgress ? peerProgress.wallTime - action.wallTime : null,
       progressExpectation,
       progressExemptionReason: action.progressExemptionReason ?? null,
       progressProblems,
+      mutationTarget: target,
     };
   });
 
@@ -560,6 +617,16 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
     const dealerGameId = root?.getAttribute('data-authoritative-dealer-game-id') ?? null;
     const roundId = root?.getAttribute('data-authoritative-round-id') ?? null;
     const roundStatus = root?.getAttribute('data-authoritative-round-status') ?? null;
+    const progressNumber = (attribute: string): number | null => {
+      const raw = root?.getAttribute(attribute);
+      if (raw == null || !/^\d+$/.test(raw)) return null;
+      const value = Number(raw);
+      return Number.isSafeInteger(value) ? value : null;
+    };
+    const holmTurnSequence = progressNumber('data-authoritative-holm-turn-sequence');
+    const ginActionCount = progressNumber('data-authoritative-gin-action-count');
+    const locked = root?.getAttribute('data-authoritative-decision-locks');
+    const decisionLocks = locked == null ? null : locked.split(',').filter(Boolean).sort();
     const staleArtifactKeys: string[] = [];
     if (dealerGameId) {
       const stampArtifacts = (nodes: HTMLElement[], kind: string, signatureOf: (node: HTMLElement) => string) => {
@@ -593,6 +660,9 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       dealerGameId,
       roundId,
       roundStatus,
+      holmTurnSequence,
+      ginActionCount,
+      decisionLocks,
       actionSurfaces,
       visibleFaceCardIds,
       opponentCardBackCounts,
@@ -626,6 +696,9 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       dealerGameId,
       roundId,
       roundStatus,
+      holmTurnSequence,
+      ginActionCount,
+      decisionLocks,
       shellCount,
       feltCount,
       nestedShellCount,
@@ -823,6 +896,7 @@ export class HumanChaosContinuousObserver {
   private requestSequence = 0;
   private sealed = false;
   private readonly captureProblems = new Set<string>();
+  private readonly pendingMutationReads = new Set<Promise<void>>();
 
   constructor(private readonly options: { peerBudgetMs?: number } = {}) {}
 
@@ -859,6 +933,10 @@ export class HumanChaosContinuousObserver {
         outcome: 'pending',
         failure: null,
       };
+      if (request.method() === 'POST' && tracksMutationProgress(receipt.endpoint)) {
+        receipt.mutationKey = createHash('sha256').update(`${receipt.endpoint}:${request.postData() ?? ''}`).digest('hex');
+        receipt.mutationTarget = null;
+      }
       this.requestStarts.set(request, receipt);
       if (this.networkRequests.length < MAX_NETWORK_RECEIPTS) this.networkRequests.push(receipt);
       else this.captureProblems.add('network-capture-truncated');
@@ -882,7 +960,8 @@ export class HumanChaosContinuousObserver {
         finishedAt: Date.now(),
         peerBudgetMs: this.options.peerBudgetMs ?? (Number.isFinite(configuredBudget) && configuredBudget > 0
           ? configuredBudget : null),
-        captureProblems: [...this.captureProblems],
+        captureProblems: [...this.captureProblems,
+          ...(this.pendingMutationReads.size ? ['mutation-response-capture-pending'] : [])],
       },
     );
   }
@@ -914,6 +993,22 @@ export class HumanChaosContinuousObserver {
     receipt.durationMs = receipt.finishedAt - receipt.startedAt;
     receipt.outcome = outcome;
     receipt.failure = failure;
+    if (receipt.mutationKey && outcome === 'finished') {
+      const task = (async () => {
+        try {
+          const response = await request.response();
+          receipt.httpStatus = response?.status();
+          if (response?.ok()) {
+            receipt.mutationTarget = mutationProgressTarget(receipt.endpoint, request.postDataJSON(), await response.json());
+          }
+        } catch {
+          // Unreadable/refused responses cannot establish a committed target.
+          receipt.mutationTarget = null;
+        }
+      })();
+      this.pendingMutationReads.add(task);
+      void task.finally(() => this.pendingMutationReads.delete(task));
+    }
   }
 
   private recordNodeViolation(

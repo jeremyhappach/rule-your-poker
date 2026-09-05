@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## Committed-action seam proof — 2026-09-05
+
+- Holm, 3-5-7 and Gin observation now binds the clicked mutation's server
+  receipt to the exact round and its rendered sequence or participant lock on
+  both seated clients. Passive DOM attributes expose existing authoritative
+  fields; gameplay, settlement and database ownership are unchanged.
+- A peer catching up from the previous round must reach that committed action.
+  Cosmetic changes, another participant's lock, refused/unreadable responses
+  and already-present targets cannot pass. Identical lost-response retries
+  retain their action identity; ordinary latency budgets are unchanged.
+- Local validation passes: app typecheck, 1,453 source tests, 46 harness tests,
+  focused detector TypeScript, ten isolated browser controls and production
+  bundling. Publication and the three affected live canaries are the remaining
+  validation step; this is not a claim that multiplayer freeze risk is eliminated.
+- See `SEAM_QUALIFICATION_20260905.md`. Final run evidence is retained outside
+  the checkout in `poker-seam-campaign-2026-09-05/action-proof-results.json`.
+
 ## Multiplayer seam qualification — 2026-09-05
 
 - Resumed after production and origin/main matched `682e2d0c3`. The broad

@@ -88,6 +88,36 @@ test-only correction.
 
 ## Execution boundary and next work
 
+### Action attribution follow-up
+
+The Holm/357 missing-baseline cases and concealed Gin actions now use specific
+mutation receipts. Holm requires the committed `holm_turn_sequence`; Gin
+requires the action's committed `actionCount`; 357 requires the exact submitting
+player's decision lock. Both clients must render the target under the same
+session, dealer-game and round identity. A prior-round peer baseline alone no
+longer prevents attribution, but merely arriving in the current round is not
+enough. Actor timing also waits for the accepted server acknowledgement.
+
+The browser records only sanitized progress targets and request fingerprints,
+never response hands or request cards. Existing authoritative fields are exposed
+as passive DOM attributes; there are no new counters or progression owners.
+Missing responses/projections fail closed. Identical immutable retries remain
+bound to the first action; the intentional Gin lost-response injection uses
+the existing finite recovery budget. Normal latency limits are unchanged.
+
+The new reducer checks failed before implementation. After correction, 46
+harness checks, focused detector TypeScript, ten isolated browser controls,
+1,453 source tests and the full production build pass. The browser controls
+include stuck peer, cosmetic-only progress, wrong session, blocked control,
+valid retry, and previous-round catch-up without the committed action.
+
+The original Gin latency flags were two Done Laying Off clicks, with RPC
+durations of 635 and 925 ms and actor observations over six seconds. The new
+live rerun must distinguish committed-action application from later scoring
+presentation; those recordings alone do not establish a product latency fix.
+Only the three affected live canaries will rerun after publication. Their final
+verdicts and cleanup evidence belong in the external `action-proof-results.json`.
+
 Do not launch the 165-row matrix, ten-repetition sets or soak while this gate
 remains held. Next, establish per-action contracts for concealed Gin actions and
 for actions submitted while another seated client is still presenting the prior

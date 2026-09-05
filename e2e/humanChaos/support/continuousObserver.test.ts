@@ -61,6 +61,77 @@ describe('continuous human-chaos observer evidence', () => {
   });
   const baselines = () => [snapshot('host', 900, 'before'), snapshot('peer', 900, 'before')];
 
+  const committedHolm: ChaosNetworkReceipt = {
+    requestId: 'committed-holm', client: 'host', method: 'POST',
+    endpoint: '/rest/v1/rpc/holm_submit_decision', startedAt: 1_010, finishedAt: 1_200,
+    durationMs: 190, outcome: 'finished', failure: null, mutationKey: 'holm-decision',
+    mutationTarget: { field: 'holmTurnSequence', roundId: 'round-1', value: 4 },
+  };
+  const holmAction = () => action({ actionSurface: 'holm-357-decision', buttonText: 'Stay' });
+  const holmSnapshot = (client: 'host' | 'peer', time: number, sequence: number, roundId = 'round-1') =>
+    snapshot(client, time, 'betting', { gameType: 'holm-game', roundId, holmTurnSequence: sequence });
+
+  it('attributes a committed decision to a peer that was still presenting the previous round', () => {
+    const evidence = buildContinuousObserverEvidence([
+      holmSnapshot('host', 900, 3), holmSnapshot('peer', 900, 8, 'previous-round'), holmAction(),
+      holmSnapshot('host', 1_250, 4), holmSnapshot('peer', 1_392, 4),
+    ], [committedHolm], { finishedAt: 3_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].peerProgressMs).toBe(392);
+    expect(continuousObserverFailure(evidence)).toBeNull();
+  });
+
+  it.each(['round-1', 'unrelated-round'])('rejects catch-up without the committed decision (%s)', (roundId) => {
+    const evidence = buildContinuousObserverEvidence([
+      holmSnapshot('host', 900, 3), holmSnapshot('peer', 900, 8, 'previous-round'), holmAction(),
+      holmSnapshot('host', 1_250, 4), holmSnapshot('peer', 1_392, roundId === 'round-1' ? 3 : 99, roundId),
+    ], [committedHolm], { finishedAt: 5_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].peerProgressMs).toBeNull();
+    expect(continuousObserverFailure(evidence)?.message).toContain(roundId === 'round-1'
+      ? 'peer-no-progress' : 'peer-missing-projection');
+  });
+
+  it('proves a private Gin action through the committed count even when the next action starts first', () => {
+    const ginSnapshot = (client: 'host' | 'peer', time: number, ginActionCount: number) =>
+      snapshot(client, time, 'betting', { ginActionCount });
+    const receipt: ChaosNetworkReceipt = { ...committedHolm, endpoint: '/rest/v1/rpc/gin_rummy_apply_action',
+      mutationKey: 'gin-draw-4', mutationTarget: { field: 'ginActionCount', roundId: 'round-1', value: 5 } };
+    const evidence = buildContinuousObserverEvidence([
+      ginSnapshot('host', 900, 4), ginSnapshot('peer', 900, 4), action({ actionSurface: 'gin-pile' }),
+      ginSnapshot('host', 1_250, 5),
+      action({ actionId: 'local-selection', wallTime: 1_500, progressExpectation: 'none', progressExemptionReason: 'local selection' }),
+      ginSnapshot('peer', 1_800, 5),
+    ], [receipt], { finishedAt: 3_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].peerProgressMs).toBe(800);
+    expect(continuousObserverFailure(evidence)).toBeNull();
+  });
+
+  it('does not let an unaccepted mutation or an already-present target pass as new progress', () => {
+    const events = [holmSnapshot('host', 900, 4), holmSnapshot('peer', 900, 4), holmAction(),
+      holmSnapshot('host', 1_250, 5), holmSnapshot('peer', 1_500, 5)];
+    const rejected = buildContinuousObserverEvidence(events, [{ ...committedHolm, mutationTarget: null }], { finishedAt: 4_000 });
+    expect(continuousObserverFailure(rejected)?.message).toContain('mutation-commit-unproven');
+    const stale = buildContinuousObserverEvidence(events, [committedHolm], { finishedAt: 4_000 });
+    expect(continuousObserverFailure(stale)?.message).toContain('mutation-target-not-new');
+  });
+
+  it('requires the exact 357 participant lock on both clients, including an immutable retry', () => {
+    const first = { ...committedHolm, endpoint: '/rest/v1/rpc/three_five_seven_submit_decision',
+      outcome: 'failed' as const, mutationKey: '357-stay', mutationTarget: null };
+    const retry: ChaosNetworkReceipt = { ...first, requestId: 'retry', startedAt: 1_400, finishedAt: 1_600,
+      outcome: 'finished', mutationTarget: { field: 'decisionLocks', roundId: 'round-1', value: 'player-a' } };
+    const events = [
+      snapshot('host', 900, 'betting', { decisionLocks: [] }),
+      snapshot('peer', 900, 'betting', { roundId: 'previous-round', decisionLocks: ['player-a'] }), holmAction(),
+      snapshot('host', 1_300, 'betting', { decisionLocks: ['player-a'] }),
+      snapshot('peer', 1_500, 'betting', { decisionLocks: ['player-b'] }),
+      snapshot('peer', 1_900, 'betting', { decisionLocks: ['player-a', 'player-b'] }),
+    ];
+    const evidence = buildContinuousObserverEvidence(events, [first, retry], { finishedAt: 4_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].actorProgressMs).toBe(600);
+    expect(evidence.actionReceipts[0].peerProgressMs).toBe(900);
+    expect(continuousObserverFailure(evidence)).toBeNull();
+  });
+
   it.each(['horses', 'ship-captain-crew'])('recognizes %s roll progression without DOM dice on the acting seat', (gameType) => {
     const diceSnapshot = (client: 'host' | 'peer', time: number, roll: number, disabled = false) =>
       snapshot(client, time, 'betting', { gameType,

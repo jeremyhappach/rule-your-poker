@@ -408,6 +408,10 @@ async function playGin(
             label: 'lost response',
           };
           network.loseNextResponse(/\/rest\/v1\/rpc\/gin_rummy_apply_action$/);
+          await page.evaluate(() => {
+            (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
+              'gin-action-lost-response-retry';
+          });
           forcedAmbiguousDiscard = true;
         }
         const gin = discard.getByRole('button', { name: /GIN!/ });

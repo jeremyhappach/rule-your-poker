@@ -13633,6 +13633,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       data-authoritative-dealer-game-id={(game as any).current_game_uuid ?? undefined}
       data-authoritative-round-id={currentRound?.id ?? undefined}
       data-authoritative-round-status={currentRound?.status ?? undefined}
+      data-authoritative-holm-turn-sequence={currentRound?.holm_turn_sequence}
+      data-authoritative-gin-action-count={currentRound?.gin_rummy_state?.actionCount}
+      data-authoritative-decision-locks={game.game_type === '3-5-7'
+        ? players.filter(player => player.decision_locked).map(player => player.id).sort().join(',')
+        : undefined}
       data-authoritative-game-paused={game.is_paused ? '1' : '0'}
       className={_innerBgClass}
     >
