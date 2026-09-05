@@ -208,6 +208,13 @@ function latestSnapshotBefore(
 }
 
 function gameplaySignature(snapshot: ChaosDomSnapshot): string {
+  // The acting Horses/SCC seat can render its dice without data-die nodes.
+  // Its canonical roll ordinal still changes with gameplay. Ignore button
+  // availability, other labels and unrelated surfaces; those are cosmetic.
+  const diceRollSteps = ['horses', 'ship-captain-crew'].includes(snapshot.gameType ?? '')
+    ? snapshot.actionSurfaces.filter((surface) => surface.startsWith('horses-scc-turn['))
+      .flatMap((surface) => Array.from(surface.matchAll(/(?:\[|\|)Roll ([123]):(?:enabled|disabled)(?=\||\])/g), (match) => Number(match[1])))
+    : [];
   return JSON.stringify({
     gameStatus: snapshot.gameStatus, gameType: snapshot.gameType,
     dealerGameId: snapshot.dealerGameId, roundId: snapshot.roundId,
@@ -215,6 +222,7 @@ function gameplaySignature(snapshot: ChaosDomSnapshot): string {
     cards: snapshot.visibleFaceCardIds, opponentBacks: snapshot.opponentCardBackCounts,
     // Row/animation phase changes do not establish a new dice outcome.
     dice: snapshot.visibleDice.map((die) => die.split(':').slice(0, 3).join(':')),
+    diceRollSteps,
   });
 }
 

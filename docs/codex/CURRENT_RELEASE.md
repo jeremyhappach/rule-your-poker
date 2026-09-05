@@ -1,5 +1,25 @@
 # Current release and cutover state
 
+## Multiplayer seam qualification — 2026-09-05
+
+- Resumed after production and origin/main matched `682e2d0c3`. The broad
+  campaign is held at qualification, with no overnight soak or broad reruns.
+- Reconciled 442 retained records to 144/165 declared scenarios. The requirement
+  ledger still has 25 missing-driver bindings; historical reported passes are
+  not current-build proof.
+- Seven initial canaries completed gameplay and cleanup. Cribbage and Yahtzee
+  passed strictly. Holm/357 had missing peer baselines; Gin had incomplete peer
+  attribution and two over-budget actor observations. These remain unqualified.
+- Identified and corrected a detector gap for Horses/SCC: their acting-seat
+  roll ordinal now counts as gameplay progress even without tagged DOM dice.
+  Availability changes and unrelated controls still cannot count as progress.
+  Two regressions failed before correction; 37 focused harness checks and the
+  detector TypeScript check pass afterward. Both Horses/SCC live reruns pass;
+  latest sample is four strict passes and three unqualified scenarios. All nine
+  fake executions have verified cleanup. Application TypeScript also passes.
+- See `SEAM_QUALIFICATION_20260905.md` and the retained qualification ledger for
+  evidence, rerun verdicts, remaining action-contract work and cost boundary.
+
 ## Holm/Yahtzee fixture isolation — 2026-09-05
 
 - Applied `20260905163042_isolate_holm_yahtzee_fixtures_and_validate_holm_cards.sql`.

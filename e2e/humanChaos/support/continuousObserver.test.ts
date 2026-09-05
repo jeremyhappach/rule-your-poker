@@ -61,6 +61,35 @@ describe('continuous human-chaos observer evidence', () => {
   });
   const baselines = () => [snapshot('host', 900, 'before'), snapshot('peer', 900, 'before')];
 
+  it.each(['horses', 'ship-captain-crew'])('recognizes %s roll progression without DOM dice on the acting seat', (gameType) => {
+    const diceSnapshot = (client: 'host' | 'peer', time: number, roll: number, disabled = false) =>
+      snapshot(client, time, 'betting', { gameType,
+        actionSurfaces: [`horses-scc-turn[Roll ${roll}:${disabled ? 'disabled' : 'enabled'}]`],
+      });
+    const evidence = buildContinuousObserverEvidence([
+      diceSnapshot('host', 900, 1), diceSnapshot('peer', 900, 1),
+      action({ actionSurface: 'horses-scc-turn', buttonText: 'Roll 1' }),
+      diceSnapshot('host', 1_050, 1, true),
+      diceSnapshot('host', 1_721, 2, true), diceSnapshot('peer', 1_937, 2),
+    ], [], { finishedAt: 3_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].actorProgressMs).toBe(721);
+    expect(evidence.actionReceipts[0].peerProgressMs).toBe(937);
+    expect(continuousObserverFailure(evidence)).toBeNull();
+  });
+
+  it('does not treat dice button availability or unrelated roll labels as a completed roll', () => {
+    const base = { gameType: 'horses', actionSurfaces: ['horses-scc-turn[Roll 1:enabled]'] };
+    const evidence = buildContinuousObserverEvidence([
+      snapshot('host', 900, 'betting', base), snapshot('peer', 900, 'betting', base),
+      action({ actionSurface: 'horses-scc-turn', buttonText: 'Roll 1' }),
+      snapshot('host', 1_050, 'betting', { ...base, actionSurfaces: ['horses-scc-turn[Roll 1:disabled]'] }),
+      snapshot('peer', 1_721, 'betting', { ...base, actionSurfaces: ['horses-scc-turn[Roll 1:enabled]', 'unrelated[Roll 2:enabled]'] }),
+    ], [], { finishedAt: 20_000, peerBudgetMs: 2_000 });
+    expect(evidence.actionReceipts[0].actorProgressMs).toBeNull();
+    expect(evidence.actionReceipts[0].peerProgressMs).toBeNull();
+    expect(continuousObserverFailure(evidence)).not.toBeNull();
+  });
+
   it('fails when the actor advances but its seated peer never does', () => {
     const evidence = buildContinuousObserverEvidence([
       ...baselines(), action(), snapshot('host', 1_300, 'after'), snapshot('peer', 20_000, 'before'),
