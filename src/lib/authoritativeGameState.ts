@@ -1,3 +1,5 @@
+import { jsonEqual } from './gameStateSync/stateProgress';
+
 type AuthoritativeGameState = {
   id?: string;
   status?: string | null;
@@ -5,15 +7,15 @@ type AuthoritativeGameState = {
   current_game_uuid?: string | null;
   updated_at?: string | null;
   rounds?: unknown;
+  authority_revision?: number;
 };
 
-const THREE_FIVE_SEVEN_GAME_TYPES = new Set(['3-5-7', '3-5-7-game', '357']);
-const THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES = new Set([
+const ATOMIC_FRAME_STATUSES = new Set([
   'in_progress',
   'game_over',
   'session_ended',
 ]);
-const THREE_FIVE_SEVEN_PREGAME_STATUSES = new Set([
+const PREGAME_STATUSES = new Set([
   'waiting',
   'dealer_selection',
   'dealer_announcement',
@@ -42,13 +44,23 @@ export function mergeAuthoritativeGameState<T extends AuthoritativeGameState>(
 
   const currentTimestamp = timestampValue(current.updated_at);
   const incomingTimestamp = timestampValue(incoming.updated_at);
-  if (
+  const bothVersioned = Number.isSafeInteger(current.authority_revision)
+    && Number.isSafeInteger(incoming.authority_revision);
+  if (bothVersioned && incoming.authority_revision! < current.authority_revision!) return current;
+  if (!bothVersioned && (
     currentTimestamp !== null
     && incomingTimestamp !== null
     && incomingTimestamp < currentTimestamp
-  ) {
+  )) {
     return current;
   }
+
+  const sameRevision = bothVersioned
+    ? current.authority_revision === incoming.authority_revision
+    : currentTimestamp !== null && currentTimestamp === incomingTimestamp;
+  if (sameRevision && Object.entries(incoming).some(([key, value]) =>
+    key !== 'rounds' && key !== '_authorityRevision' && value !== undefined
+    && key in current && !jsonEqual(current[key as keyof T], value))) return current;
 
   const definedIncoming = Object.fromEntries(
     Object.entries(incoming).filter(([, value]) => value !== undefined),
@@ -57,32 +69,26 @@ export function mergeAuthoritativeGameState<T extends AuthoritativeGameState>(
 }
 
 /**
- * 3-5-7 gameplay is published only from its exact atomic current-frame RPC.
+ * Gameplay is published only from a coherent current-frame RPC.
  * A bare `games` Realtime row remains safe during pre-game lifecycle phases,
  * where it carries the shared dealer draw/configuration receipt and no round
- * projection exists yet. Every other game family retains complete-row merge.
+ * projection exists yet.
  */
 export function shouldPublishGamesRealtimeRowDirectly(
   incoming: Pick<AuthoritativeGameState, 'game_type' | 'status' | 'current_game_uuid'> | null | undefined,
   current?: Pick<AuthoritativeGameState, 'game_type' | 'status' | 'current_game_uuid'> | null,
 ): boolean {
   if (!incoming) return false;
-  const incomingIsThreeFiveSeven = !!incoming.game_type
-    && THREE_FIVE_SEVEN_GAME_TYPES.has(incoming.game_type);
-  if (!incomingIsThreeFiveSeven) return true;
-
-  if (incoming.status && THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES.has(incoming.status)) {
+  if (incoming.status && ATOMIC_FRAME_STATUSES.has(incoming.status)) {
     return false;
   }
 
-  const currentIsActiveThreeFiveSeven = !!current?.game_type
-    && THREE_FIVE_SEVEN_GAME_TYPES.has(current.game_type)
-    && !!current.status
-    && THREE_FIVE_SEVEN_ATOMIC_FRAME_STATUSES.has(current.status)
+  const currentIsActive = !!current?.status
+    && ATOMIC_FRAME_STATUSES.has(current.status)
     && !!current.current_game_uuid;
   const incomingIsPregame = !!incoming.status
-    && THREE_FIVE_SEVEN_PREGAME_STATUSES.has(incoming.status);
-  if (currentIsActiveThreeFiveSeven && incomingIsPregame) {
+    && PREGAME_STATUSES.has(incoming.status);
+  if (currentIsActive && incomingIsPregame) {
     // A same/null dealer-game identity is a delayed image from the dealer game
     // already published by the exact frame. The atomic setup handoff mints a
     // new UUID before entering ante_decision, so only that explicit boundary

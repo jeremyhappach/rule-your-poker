@@ -710,3 +710,13 @@ Legacy id `opponent_instant_knock` resolves read-only to
   rule/terminal test exists in this checkout. Cribbage and Yahtzee have
   focused client RPC-boundary tests; direct SQL/deployed behavior remains a
   required proof.
+# Coherent frame ownership (remediation WP11a)
+
+- `public.read_session_frame` joins shared game/round/roster state in one snapshot;
+  3-5-7 retains `three_five_seven_current_frame` and its private-card envelope.
+- `private.session_authority_revision` composes row counters and deletion
+  tombstones; `stamp_authority_revision` stamps dice action state.
+- `src/lib/gameStateSync/snapshotRevision.ts` owns revision admission alongside
+  gameplay progress; `authoritativeGameState.ts` owns row merge/Realtime policy.
+- `supabase/tests/coherent_session_frame_rollback_proof.sql` proves revision,
+  actual-role admission and cleanup behavior.

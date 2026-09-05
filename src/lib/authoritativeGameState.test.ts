@@ -14,6 +14,19 @@ const initial = {
 };
 
 describe('authoritative games-row merge', () => {
+  it('rejects conflicting equal revisions and older revisions even with newer timestamps', () => {
+    const current = { ...initial, authority_revision: 4 };
+    expect(mergeAuthoritativeGameState(current, { authority_revision: 4, status: 'in_progress' })).toBe(current);
+    expect(mergeAuthoritativeGameState(current, { authority_revision: 3, updated_at: '2099-01-01' })).toBe(current);
+    expect(mergeAuthoritativeGameState(current, { authority_revision: 5, status: 'in_progress' })?.status).toBe('in_progress');
+  });
+
+  it('admits joined round updates without changing an equal games-row revision', () => {
+    const current = { ...initial, authority_revision: 4 };
+    expect(mergeAuthoritativeGameState(current, { authority_revision: 4, rounds: [{ id: 'new-round' }] })?.rounds).toEqual([{ id: 'new-round' }]);
+    expect(mergeAuthoritativeGameState(initial, { updated_at: initial.updated_at, status: 'in_progress' })).toBe(initial);
+  });
+
   it('delivers a co-published dealer draw to every client while preserving joined rounds', () => {
     const receipt = {
       id: 'game-1',
@@ -79,7 +92,7 @@ describe('games-row Realtime publication ownership', () => {
     }
   });
 
-  it('routes active 3-5-7 through its atomic frame while preserving direct rows for every other family', () => {
+  it('routes active gameplay through coherent frames for all seven families', () => {
     for (const status of ['in_progress', 'game_over', 'session_ended']) {
       expect(shouldPublishGamesRealtimeRowDirectly({
         game_type: '3-5-7',
@@ -98,7 +111,7 @@ describe('games-row Realtime publication ownership', () => {
       expect(shouldPublishGamesRealtimeRowDirectly({
         game_type: gameType,
         status: 'in_progress',
-      }), gameType).toBe(true);
+      }), gameType).toBe(false);
     }
   });
 

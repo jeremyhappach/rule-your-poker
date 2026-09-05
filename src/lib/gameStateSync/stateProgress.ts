@@ -54,5 +54,14 @@ export function isProgressStrictlyForward(
  * Used as default when no custom isEqual is provided.
  */
 export function jsonEqual<T>(a: T, b: T): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  if (Object.is(a, b)) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((value, index) => jsonEqual(value, b[index]));
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left).filter(key => left[key] !== undefined).sort();
+  const otherKeys = Object.keys(right).filter(key => right[key] !== undefined).sort();
+  return keys.length === otherKeys.length && keys.every((key, index) => key === otherKeys[index] && jsonEqual(left[key], right[key]));
 }

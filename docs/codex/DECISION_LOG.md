@@ -1762,3 +1762,13 @@ Every result-presentation owner, including ordinary and terminal leg awards,
 must use this same gate. Raw settled result text and player-leg deltas may be
 observed for authority and recovery while the ritual is active, but neither
 may create or consume an award presentation until the tableau has expired.
+# D-128 — coherent gameplay frames and independent revisions (2026-09-04)
+
+Active gameplay for every family is admitted from one coherent database frame;
+Realtime game rows request catch-up. Persisted per-row counters, plus compact
+deletion tombstones, compose a monotonic session revision without introducing
+new session locks in action paths. Snapshot revision and gameplay progress are
+independent: older revisions and conflicting equal-progress content are rejected.
+Private card projections retain actor masking and carry the same revision domain
+on reads and action responses. Round-scoped dice receipts use the stamped round
+revision. Existing presentation contracts and identity resets remain unchanged.

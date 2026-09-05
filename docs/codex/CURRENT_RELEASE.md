@@ -1,6 +1,24 @@
 # Current release and cutover state
 
+## Remediation WP11a — coherent frames and snapshot revisions
+
+- All seven families publish gameplay from coherent database frames. Realtime
+  requests a refresh; partial games rows cannot replace active round/roster state.
+- Transactional row revisions form a monotonic session revision, including row
+  deletion and UUID reuse. Older frame bundles are rejected before state writes.
+  Equal-progress content changes require a later authoritative revision.
+- Gin/Cribbage private projections and dice action receipts carry revisions;
+  joined reads retain card masking and expose only public profile fields.
+- Complete seven-family compatibility, pause, timer and revision rollback proofs
+  pass before/after migration. Focused synchronization tests and production build
+  pass; TypeScript remains 35 existing diagnostics. Browser verification follows
+  publication.
+
 ## Remediation WP10 — shared pause/resume envelope
+
+- Production READY and manifest match `9aaa4bf6f5bc039a24fcaf851a840c4564257b39`.
+  All seven published pause/reconnect checks pass. The concurrent Horses case
+  held the roll when pause won; every fake session was cleaned up.
 
 - Pause requests compare dealer-game identity and a persisted pause version.
   A competing action returns a retryable busy result instead of a lock cycle.

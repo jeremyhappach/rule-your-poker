@@ -47,6 +47,8 @@ export interface ThreeFiveSevenPlayerSnapshot {
 }
 
 export interface ThreeFiveSevenAuthoritativeSnapshot {
+  _authorityRevision?: number;
+  _authorityScope?: string;
   // Identity
   roundId: string;
   handNumber: number;

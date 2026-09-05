@@ -13,6 +13,9 @@ type TestState = {
   handNumber: number;
   roundNumber: number;
   status: string;
+  _authorityRevision?: number;
+  _authorityScope?: string;
+  deadline?: string;
 };
 
 const INITIAL_STATE: TestState = {
@@ -103,6 +106,20 @@ describe('useGameStateSync reset hydration', () => {
     expect(latestPresentation).toEqual(RESET_STATE);
     expect(latestPresentation).not.toBe(RESET_STATE);
     expect(latestHandle!.presentationRefValue).toBe(latestPresentation);
+  });
+
+  it('retains current metadata against delayed equal-progress frames and admits a later revision', async () => {
+    const current = { ...INITIAL_STATE, _authorityScope: 'session', _authorityRevision: 10, deadline: 'new' };
+    await act(async () => { latestHandle!.reset(current); });
+    await act(async () => {
+      expect(latestHandle!.receiveAuthoritativeUpdate({ ...current, _authorityRevision: 9, deadline: 'old' }).accepted).toBe(false);
+      expect(latestHandle!.receiveAuthoritativeUpdate({ ...current, deadline: 'conflict' }).accepted).toBe(false);
+    });
+    expect(latestHandle!.authoritativeState).toEqual(current);
+    await act(async () => {
+      expect(latestHandle!.receiveAuthoritativeUpdate({ ...current, _authorityRevision: 11, deadline: 'resumed' }).accepted).toBe(true);
+    });
+    expect(latestPresentation?.deadline).toBe('resumed');
   });
 
   it('forces the first equal post-reset snapshot to hydrate presentation once', async () => {

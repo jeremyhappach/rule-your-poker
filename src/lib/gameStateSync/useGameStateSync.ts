@@ -13,6 +13,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { GameStateSyncConfig, GameStateSyncHandle, AuthoritativeUpdateResult } from './types';
 import { compareProgress, jsonEqual } from './stateProgress';
+import { snapshotRevisionRejection } from './snapshotRevision';
 import {
   identityEquals,
   type VisualContractIdentity,
@@ -163,7 +164,7 @@ export function useGameStateSync<T>(
     const shouldForcePostResetHydration = pendingPostResetHydrationRef.current && writable;
 
     // Skip identical snapshots
-    if (isEqual(currentAuth, incoming)) {
+    if (isEqual(currentAuth, incoming) || jsonEqual(currentAuth, incoming)) {
       if (shouldForcePostResetHydration) {
         const hydratedPresentation = clonePresentationState(incoming);
         presentationRef.current = hydratedPresentation;
@@ -217,6 +218,11 @@ export function useGameStateSync<T>(
     }
 
     // Accept: update authoritative
+    const revisionRejection = snapshotRevisionRejection(currentAuth, incoming, cmp);
+    if (revisionRejection) {
+      return { accepted: false, reason: revisionRejection, previousProgress: currentProgress, incomingProgress,
+        comparison: cmp, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+    }
     authRef.current = incoming;
     setAuthoritative(incoming);
     stampAcceptedIdentity();

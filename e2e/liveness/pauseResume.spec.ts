@@ -44,6 +44,7 @@ for (const gameType of ['holm-game', '3-5-7', 'horses', 'ship-captain-crew', 'cr
           .eq('hand_number', before.data!.total_hands!).eq('round_number', before.data!.current_round!).single();
         expect(current.error).toBeNull();
         const state = current.data!.horses_state as any;
+        const sequence = state.actionSequence ?? 0;
         const actorId = state.currentTurnPlayerId as string;
         const actor = await session.cleanupClient.from('players').select('user_id').eq('id', actorId).single();
         const host = await session.cleanupClient.auth.getUser();
@@ -58,18 +59,22 @@ for (const gameType of ['holm-game', '3-5-7', 'horses', 'ship-captain-crew', 'cr
         const version = (identity.data as any).pause_version;
         const [pause, roll] = await Promise.all([
           session.cleanupClient.rpc('set_game_paused' as any, { p_game_id: session.gameId, p_paused: true, p_expected_dealer_game_id: before.data!.current_game_uuid, p_expected_pause_version: version } as any),
-          actorClient.rpc('horses_scc_apply_action' as any, { _round_id: current.data!.id, _player_id: actorId, _action: 'roll', _expected_action_sequence: state.actionSequence, _hold_mask: null } as any),
+          actorClient.rpc('horses_scc_apply_action' as any, { _round_id: current.data!.id, _player_id: actorId, _action: 'roll', _expected_action_sequence: sequence, _hold_mask: null } as any),
         ]);
         expect(pause.error).toBeNull();
         expect(roll.error).toBeNull();
         const pauseResult = pause.data as any;
         const rollResult = roll.data as any;
         expect(['paused', 'busy']).toContain(pauseResult.outcome);
-        expect(['accepted', 'rejected']).toContain(rollResult.outcome);
+        expect(['applied', 'rejected']).toContain(rollResult.outcome);
         const afterRoll = await session.cleanupClient.from('rounds').select('horses_state').eq('id', current.data!.id).single();
         const next = afterRoll.data!.horses_state as any;
-        expect(next.actionSequence).toBe(state.actionSequence + (rollResult.outcome === 'accepted' ? 1 : 0));
-        if (rollResult.outcome === 'rejected') expect(next.playerStates[actorId].dice).toEqual(state.playerStates[actorId].dice);
+        expect(next.actionSequence ?? 0).toBe(sequence + (rollResult.outcome === 'applied' ? 1 : 0));
+        if (rollResult.outcome === 'rejected') {
+          expect(rollResult.reason).toBe('round_not_current');
+          expect(pauseResult.outcome).toBe('paused');
+          expect(next.playerStates[actorId].dice).toEqual(state.playerStates[actorId].dice);
+        }
         if (pauseResult.outcome === 'paused') {
           const resume = await session.cleanupClient.rpc('set_game_paused' as any, { p_game_id: session.gameId, p_paused: false, p_expected_dealer_game_id: before.data!.current_game_uuid, p_expected_pause_version: pauseResult.pause_version } as any);
           expect(resume.error).toBeNull();

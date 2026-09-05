@@ -878,6 +878,8 @@ function buildHolmSnapshot(
 
   return {
     roundId: currentRound.id,
+    _authorityRevision: (gameData as GameData & { _authorityRevision?: number })._authorityRevision,
+    _authorityScope: gameData.id,
     handNumber: currentRound.hand_number ?? 1,
     // Defensive stamp: mirrors the Horses P0 #2 framework cutover so the
     // most-significant progress dim cannot be canceled by any future
@@ -927,6 +929,8 @@ function buildThreeFiveSevenSnapshot(
 
   return {
     roundId: currentRound.id,
+    _authorityRevision: (gameData as GameData & { _authorityRevision?: number })._authorityRevision,
+    _authorityScope: gameData.id,
     handNumber: currentRound.hand_number ?? 1,
     roundNumber: currentRound.round_number,
     dealerGameId: gameData.current_game_uuid ?? '',
@@ -3512,6 +3516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
+  const acceptedSessionRevisionRef = useRef<{ gameId: string; revision: number } | null>(null);
   const lastKnownRoundRef = useRef<number | null>(null);
   
   // Track max community cards revealed - never decrease during showdowns
@@ -4068,6 +4073,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             current_round: newData?.current_round ?? null,
             total_hands: newData?.total_hands ?? null,
           });
+          if (!publishGamesRowDirectly) {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData('realtime_update');
+            return;
+          }
           if (isRoutineGinGamesRealtimeUpdate(newData, previousGinRouting)) {
             ginTrace('realtime.games metadata-only receipt applied without parent fetch', {
               current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
@@ -9087,24 +9097,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (!exactThreeFiveSevenFrame) {
-      // Unknown families use the shared discovery projection. The global
-      // bot-dealer switch is refreshed on lifecycle/recovery snapshots, while
-      // routine Realtime updates reuse the last successful value.
-      const shouldFetchBotDealerDefault = fetchTrigger !== 'realtime_update'
-        || !allowBotDealersLoadedRef.current;
-      [gameResult, playersResult, defaultsResult] = await Promise.all([
-        timedQuery('games.select+rounds', 'games', () =>
-          supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
-        timedQuery('players.select+profiles', 'players', () =>
-          supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
-        shouldFetchBotDealerDefault
-          ? timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
-            supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single())
-          : Promise.resolve({
-            data: { allow_bot_dealers: allowBotDealersRef.current },
-            error: null,
-          }),
-      ]);
+      const response = await timedQuery('rpc.read_session_frame', 'read_session_frame', () =>
+        supabase.rpc('read_session_frame' as any, { p_game_id: gameId } as any));
+      const frame = response.data as unknown as {
+        game: GameData; players: Player[]; allow_bot_dealers: boolean | null;
+      } | null;
+      gameResult = { data: frame?.game ?? null, error: response.error };
+      playersResult = { data: frame?.players ?? [], error: response.error };
+      defaultsResult = { data: { allow_bot_dealers: frame?.allow_bot_dealers ?? allowBotDealersRef.current }, error: response.error };
     }
 
     let gameData = gameResult!.data as unknown as GameData | null;
@@ -9203,6 +9203,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         rounds: frameResult.frame.round ? [frameResult.frame.round as unknown as Round] : [],
       };
       playersData = frameResult.frame.players as unknown as Player[];
+    }
+
+    // Reject the entire bundle before publishing any roster, round or lifecycle
+    // state. Per-row counters compose one monotonic session revision in SQL.
+    const incomingSessionRevision = (gameData as GameData & { _authorityRevision?: number })._authorityRevision;
+    const acceptedSessionRevision = acceptedSessionRevisionRef.current;
+    if (isStale() || (Number.isSafeInteger(incomingSessionRevision)
+      && acceptedSessionRevision?.gameId === gameId
+      && incomingSessionRevision! < acceptedSessionRevision.revision)) {
+      gameFetchOutcome = 'superseded';
+      finishFetchTrace('superseded_session_frame', 'regressive_session_revision');
+      return;
+    }
+    if (Number.isSafeInteger(incomingSessionRevision)) {
+      acceptedSessionRevisionRef.current = { gameId: gameId!, revision: incomingSessionRevision! };
     }
 
     // ── HARD DEALER-GAME ADMISSION BOUNDARY ─────────────────────────────

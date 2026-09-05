@@ -48,6 +48,8 @@ export interface HolmPlayerSnapshot {
 }
 
 export interface HolmAuthoritativeSnapshot {
+  _authorityRevision?: number;
+  _authorityScope?: string;
   // Identity
   roundId: string;
   handNumber: number;
