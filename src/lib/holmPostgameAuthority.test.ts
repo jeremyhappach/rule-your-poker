@@ -71,14 +71,15 @@ describe('Holm postgame authority client', () => {
 });
 
 describe('Holm postgame ownership wiring', () => {
-  it('routes Holm to PostgreSQL before the legacy browser leader/evaluation chain', () => {
+  it('routes Holm to PostgreSQL with no legacy browser leader/evaluation chain', () => {
     const gameSource = readFileSync(new URL('../pages/Game.tsx', import.meta.url), 'utf8');
     const authoritativeCall = gameSource.indexOf('const postgame = await advanceHolmPostgame({');
-    const leaderChain = gameSource.indexOf('// P0 GUARD (MUT-02): Single-executor leader election.');
+    const handlerEnd = gameSource.indexOf('// Dealer confirms to skip countdown');
 
     expect(authoritativeCall).toBeGreaterThan(0);
-    expect(leaderChain).toBeGreaterThan(authoritativeCall);
-    expect(gameSource.slice(authoritativeCall, leaderChain)).toContain('return;');
+    expect(handlerEnd).toBeGreaterThan(authoritativeCall);
+    expect(gameSource.slice(authoritativeCall, handlerEnd)).toContain('return;');
+    expect(gameSource.slice(authoritativeCall, handlerEnd)).not.toContain('evaluatePlayerStatesEndOfGame');
   });
 
   it('keeps connected and timer recovery on the same hardened private owner', () => {

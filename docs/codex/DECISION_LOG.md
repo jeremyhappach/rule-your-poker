@@ -1,5 +1,14 @@
 # Durable decision log
 
+## D-122 — Every supported game's completion uses its server disposition
+
+Gin applies queued participation and pending end within its exact postgame claim,
+matching Cribbage's transaction boundary. With both callbacks migrated, the generic
+browser leader/cleanup/dealer-rotation chain is removed. All seven game callbacks
+send identity and consume their server outcome; an unknown game type may refresh
+but cannot invoke a generic authoritative writer. Shared shell presentation and
+Session Ended admission remain the connected-client lifecycle owners.
+
 ## D-121 — Cribbage postgame intent belongs inside the settled claim
 
 After exact round/dealer-game/hand validation and committed-settlement verification,

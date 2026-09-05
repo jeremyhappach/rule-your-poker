@@ -1,6 +1,20 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { GinRummyCard, GinRummyState } from './ginRummyTypes';
 
+export async function advanceGinPostgame(identity: {
+  gameId: string; roundId: string; dealerGameId: string; handNumber: number;
+}): Promise<{ outcome: 'advanced' | 'already_advanced' | 'stale_identity'; status: string }> {
+  const { data, error } = await (supabase as any).rpc('gin_rummy_advance_postgame', {
+    _game_id: identity.gameId, _round_id: identity.roundId,
+    _dealer_game_id: identity.dealerGameId, _hand_number: identity.handNumber,
+  });
+  if (error) throw error;
+  if (!['advanced', 'already_advanced', 'stale_identity'].includes(data?.outcome)) {
+    throw new Error('Gin postgame returned no authoritative disposition');
+  }
+  return data;
+}
+
 type GinAuthorityResult = {
   outcome?: string;
   round_id?: string;

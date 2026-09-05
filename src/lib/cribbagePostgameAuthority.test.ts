@@ -23,7 +23,7 @@ it('routes Cribbage before the legacy client mutations and preserves table admis
   const end = callback.indexOf('// Holm terminal settlement', begin);
   const branch = callback.slice(begin, end);
   expect(begin).toBeGreaterThan(0);
-  expect(end).toBeLessThan(callback.indexOf('// P0 GUARD (MUT-02): Single-executor'));
+  expect(callback.slice(0, callback.indexOf('// Dealer confirms to skip countdown'))).not.toContain('Single-executor');
   expect(branch).toContain('await advanceCribbagePostgame(');
   expect(branch).toContain('await fetchGameData()');
   expect(branch).not.toMatch(/\.update\(|\.delete\(|navigate\(|evaluatePlayerStatesEndOfGame|sanitizePlayerAutomationStateForSession/);

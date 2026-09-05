@@ -117,14 +117,15 @@ describe('Horses/SCC progression ownership wiring', () => {
     expect(completedRoundOwner).not.toContain('awaiting_next_round: true');
   });
 
-  it('routes dice postgame before legacy leader election and removes its client timer', () => {
+  it('routes dice postgame without legacy leader election or its client timer', () => {
     const gameSource = readFileSync(new URL('../pages/Game.tsx', import.meta.url), 'utf8');
     const authoritativeCall = gameSource.indexOf('await advanceHorsesSccPostgame({');
-    const leaderChain = gameSource.indexOf('// P0 GUARD (MUT-02): Single-executor leader election.');
+    const handlerEnd = gameSource.indexOf('// Dealer confirms to skip countdown');
 
     expect(authoritativeCall).toBeGreaterThan(0);
-    expect(leaderChain).toBeGreaterThan(authoritativeCall);
-    expect(gameSource.slice(authoritativeCall, leaderChain)).toContain('return;');
+    expect(handlerEnd).toBeGreaterThan(authoritativeCall);
+    expect(gameSource.slice(authoritativeCall, handlerEnd)).toContain('return;');
+    expect(gameSource.slice(authoritativeCall, handlerEnd)).not.toContain('evaluatePlayerStatesEndOfGame');
     expect(gameSource).not.toContain('// SAFETY AUTO-ADVANCE (Horses / SCC only):');
   });
 

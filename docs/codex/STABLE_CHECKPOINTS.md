@@ -2,6 +2,11 @@
 
 ## Platform
 
+- WP8a Cribbage two-human terminal smoke passed at
+  `e3a4f701f869b2d6577acb90763313f5e27ae4f9`: gameplay, exact settlement,
+  connected Session Ended and fresh-ended reconnect all passed. The verified-build
+  run took 1.3 minutes, and exact fake-session cleanup was verified.
+
 - WP7 account browser check passed at `d7b46dc7718d0fb511eab3c2ef6c2dae6bc292f6`.
   Exact server balance, statement rendering and failed-read recovery were verified
   without writing financial entries. Lost-response retries and reversals are covered

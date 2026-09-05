@@ -1,5 +1,13 @@
 # Repository map
 
+## Gin and shared completion boundary (WP8b)
+
+- `20260905012231_gin_atomic_postgame_participation.sql` owns queued participation
+  and pending end inside Gin's existing settlement-bound postgame command.
+- `src/lib/ginRummyRoundLogic.ts:advanceGinPostgame` delivers settled identity.
+  `src/pages/Game.tsx:handleGameOverComplete` has only per-game server handoffs;
+  the generic browser postgame mutation chain has been retired.
+
 ## Cribbage postgame authority (WP8a)
 
 - `20260905011535_cribbage_atomic_postgame_participation.sql` extends the existing

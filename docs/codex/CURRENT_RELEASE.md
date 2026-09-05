@@ -2,6 +2,19 @@
 
 Date: 2026-09-04
 
+## Remediation WP8b — Gin atomic postgame and generic writer retirement
+
+- Gin now submits exact settled identity before any browser participation work.
+  Its server transaction applies queued intent, rechecks winner eligibility,
+  consumes pending session end and records one continuation/waiting/ended claim.
+- All seven games now leave `handleGameOverComplete` through their authoritative
+  paths. Removed the remaining 798-line generic leader/evaluation/rotation chain,
+  including direct terminal navigation and split browser mutations.
+- Full Gin gameplay/settlement proof plus seven actual-role postgame scenarios
+  pass before and after migration. Thirty-seven focused checks cover all seven
+  callback routes, exact payloads, failures and removal of generic writers.
+  Setup-screen participation writers remain scoped to WP9.
+
 ## Remediation WP8a — Cribbage atomic postgame participation
 
 - Cribbage completion enters its exact server handoff before legacy browser
@@ -16,6 +29,10 @@ Date: 2026-09-04
   duplicate/late delivery, conservation and restored authority context.
   Twenty-three focused client checks pass; connected terminal presentation remains
   owned by the shared table shell.
+- Production READY and manifest match `e3a4f701f869b2d6577acb90763313f5e27ae4f9`.
+  Published two-human Cribbage terminal test passes through gameplay, settlement,
+  connected Session Ended and fresh-ended reconnect, with exact cleanup verified.
+  Build passes and TypeScript remains 41 baseline diagnostics.
 
 ## Remediation WP7 — immutable account ledger and exact balances
 
