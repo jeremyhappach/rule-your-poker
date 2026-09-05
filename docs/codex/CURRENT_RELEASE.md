@@ -2,6 +2,15 @@
 
 ## Holm refresh latency correction — 2026-09-05
 
+- The corrected focused live run passes: four accepted decisions, maximum
+  3,828 ms on the actor and 2,902 ms on the other seated client, within the
+  unchanged 6,000 ms ordinary budget. Both connected clients reach Session
+  Ended before the separate fresh mount redirects to the lobby. Cleanup of
+  both follow-up fake sessions is independently verified.
+- The first rerun revealed a driver error: it closed the connected peer
+  1,323 ms after the final action, then counted fresh startup as action latency.
+  The driver now proves both connected terminal panels before replacing one
+  page. Action timestamps, negative controls and latency limits are unchanged.
 - The retained Fold was accepted by PostgreSQL. Its acting client received a
   completed-round frame, then issued a redundant lookup of the already-selected
   round before loading cards. That lookup took 978 ms in the failing trace;

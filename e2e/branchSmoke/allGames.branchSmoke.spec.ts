@@ -1241,6 +1241,14 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
         if (scenario.minHand) expect(result.hand_number).toBeGreaterThanOrEqual(scenario.minHand);
         phaseRejoinController?.assertComplete();
         if (phaseRejoinController) evidence.phaseRejoin = phaseRejoinController.evidence();
+        // Prove both connected seats finish their live terminal presentation
+        // before replacing one with a fresh mount. Otherwise the replacement
+        // erases that seat's final-action evidence and charges startup to it.
+        await Promise.all([
+          expect(session.hostPage.locator('[data-session-ended-panel]')).toBeVisible({ timeout: 120_000 }),
+          expect(session.peerPage.locator('[data-session-ended-panel]')).toBeVisible({ timeout: 120_000 }),
+        ]);
+        evidence.connectedTerminalPanels = { host: true, peer: true };
         await session.peerPage.close();
         session.peerPage = await session.peerContext.newPage();
         await session.peerPage.goto(`/game/${session.gameId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });

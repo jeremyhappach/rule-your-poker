@@ -162,6 +162,34 @@ tests pass. The full matrix and overnight soak remain held for cost control.
 
 ## Evidence
 
+### Holm timing closure
+
+Frontend `83c6070b498c8ada838d9e93706588fa9d9083a0` removes the redundant
+selected-round metadata read (978 ms in the retained failure) and the 150 ms
+Stay/Fold refresh timer. The frame's exact selected identity and card guards
+remain intact. Deliberate ante-response loss now has its existing finite fault
+contract recorded explicitly.
+
+The first rerun exposed a driver defect: the connected peer was closed 1,323 ms
+after the final Stay before it could finish its live update. Its replacement's
+startup was then counted as ordinary action latency. The shared driver now
+asserts both connected Session Ended panels before the separate fresh-mount
+proof. It retains the original action times and six-second ordinary budget.
+
+The corrected focused run passes in 2.1 minutes: four Holm decisions, maximum
+actor 3,828 ms and seated-peer 2,902 ms, zero observation violations or coverage
+gaps, both live terminal panels, fresh-peer lobby entry, and verified cleanup.
+Both follow-up fake sessions have zero remaining database rows. Detailed
+before/after evidence is in `holm-refresh-results.json`; failures remain saved.
+The retained seven-game qualification sample now has seven passes across its
+recorded builds. The full current-build F00 baseline and unbound requirements
+are still outstanding; this is not exhaustive multiplayer acceptance.
+
+The application build/typecheck, 1,453 source tests and 47 harness tests pass.
+A standalone compilation of the branch driver additionally reports pre-existing
+Gin return-type narrowing and PostgREST `abortSignal` typing errors in unchanged
+code. Those are queued separately; the corrected live browser driver passes.
+
 Retained under `C:/Users/jerem/Desktop/poker/poker-seam-campaign-2026-09-05/`:
 
 - `historical-ledger.json` and `inventory.mjs`: scenario/requirement reconciliation.
