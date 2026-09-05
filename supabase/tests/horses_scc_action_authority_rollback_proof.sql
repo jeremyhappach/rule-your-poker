@@ -427,9 +427,13 @@ BEGIN
   END IF;
 
   -- A later dealer game cannot be cleared by an old postgame replay.
+  WITH successor AS (
+    INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type)
+    VALUES(v_game,v_users[1],'horses') RETURNING id
+  )
   UPDATE public.games
      SET status = 'in_progress',
-         current_game_uuid = gen_random_uuid(),
+         current_game_uuid = (SELECT id FROM successor),
          total_hands = 7,
          current_round = 1
    WHERE id = v_game;

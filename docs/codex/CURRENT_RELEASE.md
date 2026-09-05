@@ -1,5 +1,19 @@
 # Current release and cutover state
 
+## Remediation WP12a — validated session identities
+
+- Games, rounds and non-null snapshots now reference a dealer game in the same
+  session through validated composite foreign keys. Deferred checking preserves
+  atomic creation and prepared successors. New snapshot provenance must match
+  the participant; an active dealer identity cannot be omitted.
+- Full compatibility and identity denial/genesis/cascade proofs pass before and
+  after migration. A legacy late-replay test now creates its successor row.
+- Historical evidence remains intact: 2,626 null-identity snapshots, 763 duplicate
+  null-identity groups and 93 snapshots without surviving participants. No IDs,
+  balances or historical rows were invented, merged or deleted.
+- WP11c production READY/manifest match 8ebb249565dbcf5b13c3039e17c2baf3a2cf81e8;
+  both published dice action tests pass in 1.5 minutes with verified cleanup.
+
 ## Remediation WP11c — server randomness and four-card Cribbage
 
 - All database card shuffles, dealer draws, cuts, dice and randomized bot choices

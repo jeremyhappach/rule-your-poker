@@ -1794,3 +1794,12 @@ as unsuitable for cryptography: https://www.postgresql.org/docs/current/pgcrypto
 Jeremy chose a four-card crib for three-player Cribbage. At the last discard the
 server selects a fourth undealt card separately from the starter, then persists
 both once. Existing two/four-player behavior and scoring are preserved.
+# D-131 — Enforce composite session identity, preserve historical provenance gaps
+
+Games.current_game_uuid, rounds.dealer_game_id and non-null snapshot dealer IDs
+must belong to the same session. Validated deferred foreign keys preserve atomic
+genesis and full fake-session deletion. New snapshots validate participant UUID,
+session and user; active dealer identity is required. Historical null identities
+and missing participants remain evidence, not candidates for inferred backfill.
+Existing unique non-null snapshot keys continue to provide settlement replay
+identity. Proof: session_identity_constraints_rollback_proof.sql and full suite.
