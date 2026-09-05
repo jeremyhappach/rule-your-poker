@@ -2,6 +2,15 @@
 
 ## Platform
 
+- WP12b final published checks passed at
+  `bc6909cbaed5cd9f2b6abc6bb3517766b3736a25` in 59.7 seconds: 357 host pause,
+  peer reconnect/same-round resume, Gin offline plus failed-frame-read recovery,
+  and both retired deadline endpoints returning 410 without state advancement.
+  Fake sessions `809937ab-0871-4956-bc4f-8c140d4ce6a5` and
+  `2d720cdd-8e0c-404a-9ac8-07a738012b9a` were removed and cleanup verified.
+  Full local and Vercel build gates pass application typecheck and 1,391 tests.
+  These automated checks do not substitute for Jeremy's broad gameplay smoke.
+
 - WP12a published Cribbage terminal check passed at
   `c17aa4a6aec26193be336afe9726e1e162a3ce71` in 1.2 minutes: settlement,
   connected Session Ended, fresh reconnect and exact fake-session cleanup.

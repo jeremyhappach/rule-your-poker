@@ -2,9 +2,13 @@
 
 ## Remediation WP12b — release contract and final writer reconciliation
 
+- Implementation `bc6909cbaed5cd9f2b6abc6bb3517766b3736a25` is published.
+  Production `dpl_FBgfnGRE49D4gpjry4f6q5vn7sVS` is READY; the public manifest
+  matches. Final two-client 357 pause/reconnect and Gin failed-read recovery/
+  retired-endpoint checks pass in 59.7 seconds; exact fake cleanup verified.
 - Application typecheck is clean. The full 216-file suite passes, including
   repaired browser environments, current transport mocks and reviewed descriptor
-  snapshots. The build now requires typecheck and every src unit suite.
+  snapshots: 1,391 tests. The build now requires typecheck and every src unit suite.
 - The full suite exposed a shared tab-registration hook-order defect. Registered
   tab effects now mount in their own component; registration/removal/re-registration
   is covered without changing geometry, tab semantics or registration ownership.
@@ -22,7 +26,7 @@
   the deployed trivia 410 tombstone and aligned Edge JWT configuration.
 - WP12a production READY and manifest match c17aa4a6aec26193be336afe9726e1e162a3ce71.
   Published Cribbage settlement/Session Ended/fresh reconnect passes in 1.2 minutes;
-  exact fake-session cleanup verified. Final client publication follows this commit.
+  exact fake-session cleanup verified.
 - Historical H11 remains a confirmed -$6 gameplay/account discrepancy. The ledger
   matches its terminal snapshots; the original pot-losing writer is not provable
   from the retained insert audits. No historical credit or data edit was made.
