@@ -11426,15 +11426,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey, holmTerminalRevealPresentationKey, holmTerminalRevealCompleteKey]);
 
   // UUID-scoped persisted result supplies both destination and award amount.
-  const horsesTerminalIdentity = game && gameId && game.current_game_uuid &&
+  const horsesTerminalRoundId = terminalRoundForHold?.id ?? liveTerminalPresentationScopeRef.current?.roundId;
+  const horsesTerminalIdentity = game && gameId && game.current_game_uuid && horsesTerminalRoundId &&
     (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
-    ? [game.game_type, 'winseq', gameId, game.current_game_uuid, game.total_hands, terminalRoundForHold?.id ?? ''].join('|')
+    ? [game.game_type, 'winseq', gameId, game.current_game_uuid, game.total_hands, horsesTerminalRoundId].join('|')
     : null;
   const horsesTerminalIdentityRef = useRef(horsesTerminalIdentity);
   horsesTerminalIdentityRef.current = horsesTerminalIdentity;
   const horsesTerminalEligible = game?.status === 'game_over' || liveTerminalPresentationPending;
   const horsesTerminalWinnerId = horsesSccTerminalWinner((terminalRoundForHold as any)?.horses_state ?? null, game?.game_type ?? '');
   const horsesTerminalSeatsKey = players.map(player => `${player.id}:${player.position}`).join('|');
+  useEffect(() => {
+    if (horsesWinPotTriggerId && horsesWinPotTriggerId !== horsesTerminalIdentity) {
+      setHorsesWinPotTriggerId(null);
+      setHorsesWinPotAmount(0);
+      cachedPotForHorsesWinRef.current = 0;
+    }
+  }, [horsesTerminalIdentity, horsesWinPotTriggerId]);
   useEffect(() => {
     if (!horsesTerminalIdentity || !horsesTerminalEligible || !game?.last_round_result) return;
     if (horsesWinProcessedRef.current === horsesTerminalIdentity || horsesWinPotTriggerId) return;
