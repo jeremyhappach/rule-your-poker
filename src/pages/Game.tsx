@@ -1,4 +1,6 @@
 import { createAuthoritativeRecoveryScheduler } from "@/lib/authoritativeRecoveryScheduler";
+import { executeDiceRequest } from "@/lib/diceRequestRecovery";
+import { horsesSccTerminalWinner } from "@/lib/horsesSccTerminalPresentation";
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
@@ -2102,6 +2104,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.game_type === 'cribbage' ||
     game?.game_type === 'gin-rummy' ||
     game?.game_type === 'yahtzee' ||
+    game?.game_type === 'horses' ||
+    game?.game_type === 'ship-captain-crew' ||
     game?.game_type === '3-5-7' ||
     game?.game_type === '3-5-7-game' ||
     game?.game_type === '357'
@@ -11421,140 +11425,54 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey, holmTerminalRevealPresentationKey, holmTerminalRevealCompleteKey]);
 
-  // Horses/SCC win pot animation trigger detection
-  // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
-  // Track the round/hand that triggered animation to prevent re-triggers
-  const horsesWinAnimationRoundRef = useRef<number | null>(null);
-  
+  // UUID-scoped persisted result supplies both destination and award amount.
+  const horsesTerminalIdentity = game && gameId && game.current_game_uuid &&
+    (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
+    ? [game.game_type, 'winseq', gameId, game.current_game_uuid, game.total_hands, terminalRoundForHold?.id ?? ''].join('|')
+    : null;
+  const horsesTerminalIdentityRef = useRef(horsesTerminalIdentity);
+  horsesTerminalIdentityRef.current = horsesTerminalIdentity;
+  const horsesTerminalEligible = game?.status === 'game_over' || liveTerminalPresentationPending;
+  const horsesTerminalWinnerId = horsesSccTerminalWinner((terminalRoundForHold as any)?.horses_state ?? null, game?.game_type ?? '');
+  const horsesTerminalSeatsKey = players.map(player => `${player.id}:${player.position}`).join('|');
   useEffect(() => {
-    if (game?.game_type !== 'horses' && game?.game_type !== 'ship-captain-crew') return;
-    
-    // When moving to a new round (not game_over), reset the processed ref for that new round
-    if (game?.status !== 'game_over') {
-      // Only reset if we're in a new round (current_round changed)
-      if (horsesWinAnimationRoundRef.current !== null && 
-          game?.current_round !== null && 
-          game?.current_round !== horsesWinAnimationRoundRef.current) {
-        horsesWinProcessedRef.current = null;
-        horsesWinAnimationRoundRef.current = null;
-      }
-      return;
-    }
-    
-    const resultMessage = game?.last_round_result;
-    if (!resultMessage) return;
-    
-    // Example format: "PlayerName wins with Horse" or "BotName wins with ..."
-    const isHorsesWin = resultMessage.includes('wins with');
-    if (!isHorsesWin) return;
-    
-    // Don't re-process the same result (prevents double-trigger from dependency changes)
-    if (horsesWinProcessedRef.current === resultMessage) return;
-    
-    // Don't trigger if animation is already in progress
-    if (horsesWinPotTriggerId) return;
-    
-    // Parse winner name from message "PlayerName wins with ..."
-    const match = resultMessage.match(/^(.+?) wins with/);
-    const winnerName = match?.[1]?.trim() || '';
-    
-    // Find winner player
-    let winnerPlayer = players.find(p => 
-      p.profiles?.username?.trim().toLowerCase() === winnerName.toLowerCase()
-    );
-    
-    // Try bot alias
-    if (!winnerPlayer) {
-      winnerPlayer = players.find(p => 
-        p.is_bot && getBotAlias(players, p.user_id).trim().toLowerCase() === winnerName.toLowerCase()
-      );
-    }
-    
-    if (!winnerPlayer) {
-      console.warn('[HORSES WIN POT] Could not resolve winner player for animation:', { winnerName, resultMessage });
-      return;
-    }
-    
-    // Get pot amount from cache (since DB pot is already reset to 0)
-    const localPot = cachedPotForHorsesWinRef.current || game?.pot || 0;
-
-    // Mark as processed early so the async branch doesn't re-enter on re-render
-    horsesWinProcessedRef.current = resultMessage;
-    horsesWinAnimationRoundRef.current = game?.current_round ?? null;
-
-    const triggerWithPot = (potAmount: number) => {
-      if (potAmount <= 0) {
-        console.warn('[HORSES WIN POT] Skipping animation - pot is 0 even after game_results lookup:', { potAmount });
-        // Reset processed ref so the safety fallback path or a later state change can retry
-        horsesWinProcessedRef.current = null;
-        horsesWinAnimationRoundRef.current = null;
-        return;
-      }
-      console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer!.position, 'pot:', potAmount);
-      const _triggerId = `horses-win-${Date.now()}`;
-      // Win-presentation instrumentation was removed.
-      setHorsesWinPotAmount(potAmount);
-      setHorsesWinWinnerPosition(winnerPlayer!.position);
-      setHorsesWinPotTriggerId(_triggerId);
+    if (!horsesTerminalIdentity || !horsesTerminalEligible || !game?.last_round_result) return;
+    if (horsesWinProcessedRef.current === horsesTerminalIdentity || horsesWinPotTriggerId) return;
+    const identity = horsesTerminalIdentity;
+    let cancelled = false;
+    const trigger = (winnerId: string | null, pot: number) => {
+      if (cancelled || horsesTerminalIdentityRef.current !== identity) return false;
+      const winner = players.find(player => player.id === winnerId);
+      if (!winner || !(pot > 0)) return false;
+      horsesWinProcessedRef.current = identity;
+      setHorsesWinPotAmount(pot);
+      setHorsesWinWinnerPosition(winner.position);
+      setHorsesWinPotTriggerId(identity);
+      return true;
     };
-
-    if (localPot > 0) {
-      triggerWithPot(localPot);
-      return;
-    }
-
-    // Refresh-resilient fallback: pot was reset before this client could cache it.
-    // Authoritative pot lives in game_results.pot_won for the current dealer game / hand.
-    console.log('[HORSES WIN POT] Local pot is 0; querying game_results for authoritative pot');
+    // The exact completed round and the live pot cache avoid another read
+    // on the normal connected path. Refresh recovery uses the durable award.
+    if (trigger(horsesTerminalWinnerId,
+      cachedPotForHorsesWinRef.current || game!.pot || 0)) return;
     void (async () => {
-      try {
-        const dealerGameId = game?.current_game_uuid;
-        const handNumber = game?.total_hands ?? 1;
-        const gameType = game?.game_type;
-
-        // Triple-key scoping required: game_id + dealer_game_id + hand_number.
-        // If dealer_game_id is missing we MUST NOT fall back to a recency-only
-        // lookup — that could pull pot_won from a prior dealer game in the same
-        // session. Bail to safety fallback instead.
-        if (!dealerGameId) {
-          console.warn('[HORSES WIN POT] No current_game_uuid; cannot safely look up pot_won. Letting safety fallback handle.');
-          triggerWithPot(0);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('game_results')
-          .select('pot_won, dealer_game_id, hand_number, game_type, game_id, created_at')
-          .eq('game_id', gameId)
-          .eq('dealer_game_id', dealerGameId)
-          .eq('hand_number', handNumber)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (error) {
-          console.warn('[HORSES WIN POT] game_results lookup failed:', error);
-          triggerWithPot(0);
-          return;
-        }
-
-        const row = data && data[0];
-        // Sanity: row must match the active Horses/SCC dealer game.
-        if (!row) {
-          triggerWithPot(0);
-          return;
-        }
-        if (row.game_type && gameType && row.game_type !== gameType) {
-          console.warn('[HORSES WIN POT] game_results game_type mismatch; ignoring', { rowType: row.game_type, gameType });
-          triggerWithPot(0);
-          return;
-        }
-        triggerWithPot(row.pot_won || 0);
-      } catch (err) {
-        console.warn('[HORSES WIN POT] game_results lookup threw:', err);
-        triggerWithPot(0);
-      }
-    })();
-  }, [game?.status, game?.game_type, game?.last_round_result, game?.current_round, game?.current_game_uuid, game?.total_hands, players, horsesWinPotTriggerId, gameId]);
+      const data = await executeDiceRequest(async signal => {
+        const { data, error } = await supabase.from('game_results')
+          .select('winner_player_id, pot_won, game_type')
+          .eq('game_id', gameId!)
+          .eq('dealer_game_id', game!.current_game_uuid!)
+          .eq('hand_number', game!.total_hands!)
+          .abortSignal(signal).maybeSingle();
+        if (error) throw error;
+        return data;
+      });
+      if (cancelled || horsesTerminalIdentityRef.current !== identity) return;
+      if (!data || data.game_type !== game!.game_type) return;
+      trigger(data.winner_player_id, data.pot_won);
+    })().catch(error => {
+      if (!cancelled) console.error('[HORSES WIN] Authoritative result lookup failed', error);
+    });
+    return () => { cancelled = true; };
+  }, [horsesTerminalIdentity, horsesTerminalEligible, horsesTerminalWinnerId, horsesTerminalSeatsKey, game?.last_round_result, horsesWinPotTriggerId, gameId]);
 
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
@@ -14087,10 +14005,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
                     horsesWinWinnerPosition={horsesWinWinnerPosition}
                     onHorsesWinPotAnimationComplete={() => {
-                      console.log('[HORSES WIN] Animation complete, transitioning to next game');
+                      if (!horsesWinPotTriggerId || horsesWinPotTriggerId !== horsesTerminalIdentityRef.current) return;
+                      markTerminalPresentationComplete(horsesWinPotTriggerId);
                       setHorsesWinPotTriggerId(null);
                       cachedPotForHorsesWinRef.current = 0;
-                      handleGameOverComplete();
+                      if (terminalStatusFactsRef.current.status !== 'session_ended') handleGameOverComplete();
                     }}
                     threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
                     threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
@@ -14631,7 +14550,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // the Gin-specific delta vs Cribbage/Yahtzee at the
           // dealer_selection → ante_decision transition.
           {
-            const _isDiceGameOverProbe = game.status === 'game_over' && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
+            const _isDiceGameOverProbe = (game.status === 'game_over' || _terminalPresentationHold) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
             const _isGinRummyConfiguringProbe = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
             let _selectedBranch = 'fallback:MobileGameTable(main-in-progress-gated)';
             if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
@@ -14890,7 +14809,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Terminal win animation is rendered here too. Keeping it inside
           // PlayfieldSlotController prevents the shared game-over sibling branch
           // from mounting a second MobileGameTable under the active dice table.
-          const isDiceGameOver = game.status === 'game_over' && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
+          const isDiceGameOver = (game.status === 'game_over' || _terminalPresentationHold) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
           if ((isInProgress || isAnteDecision || isDiceGameOver || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
             const isDiceTerminalPresentation = isDiceGameOver || (!!horsesWinPotTriggerId && !isInProgress && !isAnteDecision);
@@ -14951,14 +14870,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 isGameOver={isDiceTerminalPresentation}
                 isDealer={isDiceTerminalPresentation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
                 onNextGame={isDiceTerminalPresentation ? handleDealerConfirmGameOver : undefined}
+                onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                 horsesWinPotTriggerId={horsesWinPotTriggerId}
                 horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
                 horsesWinWinnerPosition={horsesWinWinnerPosition}
                 onHorsesWinPotAnimationComplete={() => {
-                  console.log('[HORSES WIN] Animation complete, transitioning to next game');
+                  if (!horsesWinPotTriggerId || horsesWinPotTriggerId !== horsesTerminalIdentityRef.current) return;
+                  markTerminalPresentationComplete(horsesWinPotTriggerId);
                   setHorsesWinPotTriggerId(null);
                   cachedPotForHorsesWinRef.current = 0;
-                  handleGameOverComplete();
+                  if (terminalStatusFactsRef.current.status !== 'session_ended') handleGameOverComplete();
                 }}
                 // Lifted mobile state
                 activeTab={mobileActiveTab}

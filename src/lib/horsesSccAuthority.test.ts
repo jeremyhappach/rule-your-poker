@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { rpc },
+  supabase: { rpc: (...args: unknown[]) => {
+    const result = Promise.resolve(rpc(...args));
+    return Object.assign(result, { abortSignal: () => result });
+  } },
 }));
 
 import {

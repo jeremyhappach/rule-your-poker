@@ -28,6 +28,17 @@ const liveYahtzeeHandTwoObservation: LiveTerminalPresentationObservation = {
 };
 
 describe('live terminal presentation hold', () => {
+  it.each(['horses', 'ship-captain-crew'])('retains %s across game_over then session_ended and excludes reconnects', gameType => {
+    const live = { ...liveObservation, gameType };
+    const gameOver = { ...live, status: 'game_over', terminalResultPresent: true };
+    const ended = { ...gameOver, status: 'session_ended' };
+    const scope = advanceLiveTerminalPresentationScope(null, live);
+    const retained = advanceLiveTerminalPresentationScope(scope, gameOver);
+    expect(retained).toBe(scope);
+    expect(shouldHoldLiveTerminalPresentation(advanceLiveTerminalPresentationScope(retained, ended), ended)).toBe(true);
+    expect(advanceLiveTerminalPresentationScope(null, ended)).toBeNull();
+    expect(advanceLiveTerminalPresentationScope(retained, { ...ended, roundId: 'other-round' })).toBeNull();
+  });
   it('captures immutable scope while this mount observes live play', () => {
     expect(advanceLiveTerminalPresentationScope(null, liveObservation)).toEqual({
       gameId: 'game-1',

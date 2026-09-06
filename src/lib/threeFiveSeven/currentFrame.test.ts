@@ -6,6 +6,21 @@ import {
   selectExactThreeFiveSevenRound,
 } from './currentFrame';
 
+describe('versioned 357 postgame catch-up', () => {
+  const live = { requestSequence: 12, authorityRevision: 50, status: 'in_progress', dealerGameId: 'dg-1', handNumber: 4, roundNumber: 1, roundId: 'r-4' };
+  const setup = { requestSequence: 13, authorityRevision: 52, status: 'game_selection', dealerGameId: null, handNumber: 0, roundNumber: null, roundId: null };
+  it('catches up when the client missed the terminal snapshot', () => {
+    expect(acceptThreeFiveSevenFrame(live, setup)).toEqual({ accepted: true, reason: 'terminal_postgame_handoff' });
+  });
+  it.each([50, 49, null, undefined])('rejects an unproven or regressive setup revision %s', authorityRevision => {
+    expect(acceptThreeFiveSevenFrame(live, { ...setup, authorityRevision }).accepted).toBe(false);
+  });
+  it('keeps request ordering and exact cleared-identity requirements', () => {
+    expect(acceptThreeFiveSevenFrame(live, { ...setup, requestSequence: 11 }).accepted).toBe(false);
+    expect(acceptThreeFiveSevenFrame(live, { ...setup, roundId: 'old-round' }).accepted).toBe(false);
+  });
+});
+
 function rawFrame(overrides: Record<string, unknown> = {}) {
   const game = {
     id: 'game-1', status: 'in_progress', game_type: '3-5-7',

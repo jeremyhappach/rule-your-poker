@@ -2207,7 +2207,6 @@ export const CribbageMobileGameTable = ({
   const [withheldPlayedCardKey, setWithheldPlayedCardKey] = useState<string | null>(null);
   const opponentPlayedCountRef = useRef<number>(0);
   const playCardRoundKeyRef = useRef<string | null>(null);
-  const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Follow-up polish — cut-card reveal gate.
   // Tracks how many crib discard-to-crib transports have visually
   // settled in the current hand. Cut-card reveal is deferred until this
@@ -5859,10 +5858,6 @@ export const CribbageMobileGameTable = ({
       releasePlayWriterLock(null, 'hand-identity-reset');
       goWriterLockRef.current = false;
       setGoWriterPending(false);
-      if (playCardSafetyTimerRef.current) {
-        clearTimeout(playCardSafetyTimerRef.current);
-        playCardSafetyTimerRef.current = null;
-      }
       return;
     }
     if (cribbageState.phase !== 'pegging') {
@@ -5924,17 +5919,6 @@ export const CribbageMobileGameTable = ({
           opponentPosition: pos,
           destRect: dest,
         });
-        if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
-        playCardSafetyTimerRef.current = setTimeout(() => {
-          setWithheldPlayedCardKey(null);
-          setPlayCardIntent((prev) => {
-            if (prev && prev.id === intentId) {
-              updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
-              return null;
-            }
-            return prev;
-          });
-        }, 1500);
       }
     } else if (count < prev) {
       // Row was reset (31 / go rollover clears sequenceStartIndex, but
@@ -5946,10 +5930,6 @@ export const CribbageMobileGameTable = ({
   // Task C2 — clear in-flight withhold/intent on unmount.
   useEffect(() => {
     return () => {
-      if (playCardSafetyTimerRef.current) {
-        clearTimeout(playCardSafetyTimerRef.current);
-        playCardSafetyTimerRef.current = null;
-      }
       // Turn 2 — component unmount releases any held writer lock.
       if (playWriterLockRef.current !== null) {
         playWriterLockRef.current = null;
@@ -6442,20 +6422,6 @@ export const CribbageMobileGameTable = ({
             dedupeKey: `play_intent:${intentId}`,
             eventReason: 'self play intent created',
           });
-          // Safety timeout — never leave a card permanently hidden.
-          if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
-          playCardSafetyTimerRef.current = setTimeout(() => {
-            setWithheldPlayedCardKey(null);
-            setPlayCardIntent((prev) => {
-              if (prev && prev.id === intentId) {
-                updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
-                // Presentation cleanup is independent from the authoritative
-                // request lock, which remains held until the RPC settles.
-                return null;
-              }
-              return prev;
-            });
-          }, 1500);
         }
       } catch { /* animation is best-effort */ }
 
@@ -6470,6 +6436,7 @@ export const CribbageMobileGameTable = ({
         (signal) => applyCribbagePeggingAction({ ...immutableIntent, signal }),
         { label: 'Cribbage card play' },
       );
+      if (playWriterLockRef.current !== lockClaim) return;
       if (result.state) {
         // Durable history is downstream of authority. Starting this FK-backed
         // write before the RPC can contend with the round row locked by
@@ -6483,6 +6450,12 @@ export const CribbageMobileGameTable = ({
         syncHandle.receiveAuthoritativeUpdate(result.state);
         setCribbageState(result.state);
       }
+      if (result.outcome !== 'applied' && !result.state?.pegging?.playedCards?.some(
+        ({ playerId, card }) => playerId === currentPlayerId && card.rank === cardPlayed.rank && card.suit === cardPlayed.suit
+      )) {
+        setPlayCardIntent(prev => prev?.id === intentId ? null : prev);
+        setWithheldPlayedCardKey(prev => prev === `${currentPlayerId}|${lockCardId}` ? null : prev);
+      }
       lockReleaseReason = result.outcome === 'applied'
         ? 'request-applied'
         : `request-${result.outcome}`;
@@ -6491,8 +6464,11 @@ export const CribbageMobileGameTable = ({
         wroteSnapshot: result.state ? peggingSnapshot(result.state) : null,
       });
     } catch (err) {
+      if (playWriterLockRef.current !== lockClaim) return;
       toast.error((err as Error).message);
       lockReleaseReason = 'request-failed';
+      setPlayCardIntent(prev => prev?.id === intentId ? null : prev);
+      setWithheldPlayedCardKey(prev => prev === `${currentPlayerId}|${lockCardId}` ? null : prev);
     } finally {
       releasePlayWriterLock(lockClaim, lockReleaseReason);
     }
@@ -9016,6 +8992,11 @@ export const CribbageMobileGameTable = ({
               handlePlayCard (self) or opponent playedCards-growth detector. */}
           <CribbagePlayCardAnimation
             intent={playCardIntent}
+            destinationReady={playCardIntent?.mode !== 'self' || Boolean(
+              gameplayRenderState?.pegging?.playedCards?.some(({ playerId, card }) =>
+                playerId === currentPlayerId && card.rank === playCardIntent.card.rank && card.suit === playCardIntent.card.suit
+              )
+            )}
             onLifecycle={(id, event) => {
               const patch: Record<string, unknown> = {};
               if (event === 'mounted') patch.intentMounted = true;
@@ -9027,13 +9008,10 @@ export const CribbageMobileGameTable = ({
               updatePegTransportEntry(id, patch);
             }}
             onSettled={(id) => {
+              if (playCardIntent?.id !== id) return;
               setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
               setWithheldPlayedCardKey(null);
               updatePegTransportEntry(id, { cleanupReason: 'settled' });
-              if (playCardSafetyTimerRef.current) {
-                clearTimeout(playCardSafetyTimerRef.current);
-                playCardSafetyTimerRef.current = null;
-              }
             }}
             onCancelled={(id) => {
               // Animation lifecycle is presentation-only. The authoritative

@@ -27,6 +27,7 @@ export interface ThreeFiveSevenCurrentFrame<
 
 export interface ThreeFiveSevenFrameCursor {
   requestSequence: number;
+  authorityRevision?: number | null;
   status: string;
   dealerGameId: string | null;
   handNumber: number | null;
@@ -36,7 +37,7 @@ export interface ThreeFiveSevenFrameCursor {
 
 export type ThreeFiveSevenFrameAcceptance =
   | { accepted: true; reason: 'first_frame' | 'newer_request' | 'forward_active_identity' | 'same_active_identity' | 'terminal_postgame_handoff' }
-  | { accepted: false; reason: 'older_request' | 'regressive_active_identity' | 'conflicting_active_round_id' | 'regressive_active_lifecycle' };
+  | { accepted: false; reason: 'older_request' | 'regressive_authority_revision' | 'regressive_active_identity' | 'conflicting_active_round_id' | 'regressive_active_lifecycle' };
 
 export function isThreeFiveSevenGameType(gameType: unknown): boolean {
   return gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357';
@@ -224,6 +225,7 @@ export function frameCursor(
 ): ThreeFiveSevenFrameCursor {
   return {
     requestSequence,
+    authorityRevision: nullableInteger(frame.game._authorityRevision),
     status: typeof frame.game.status === 'string' ? frame.game.status : '',
     dealerGameId: frame.identity.dealer_game_id,
     handNumber: frame.identity.hand_number,
@@ -245,6 +247,10 @@ export function acceptThreeFiveSevenFrame(
   if (incoming.requestSequence < current.requestSequence) {
     return { accepted: false, reason: 'older_request' };
   }
+  const hasVersions = current.authorityRevision != null && incoming.authorityRevision != null;
+  if (hasVersions && incoming.authorityRevision! < current.authorityRevision!) {
+    return { accepted: false, reason: 'regressive_authority_revision' };
+  }
 
   const currentActive = current.status === 'in_progress'
     || current.status === 'game_over'
@@ -261,10 +267,11 @@ export function acceptThreeFiveSevenFrame(
     || incoming.status === 'ante_decision';
   // Postgame authority deliberately clears the outgoing dealer-game identity
   // before opening the next dealer's setup. This is not a delayed pregame
-  // snapshot: it is the only valid game_over -> game_selection boundary and
-  // must replace the terminal frame on every connected client.
+  // snapshot. A strictly newer authority revision also admits a client that
+  // missed the intermediate game_over frame entirely.
   const terminalPostgameHandoff =
-    current.status === 'game_over'
+    (current.status === 'game_over' ||
+      (current.status === 'in_progress' && hasVersions && incoming.authorityRevision! > current.authorityRevision!))
     && incoming.status === 'game_selection'
     && incoming.dealerGameId === null
     && incoming.handNumber === 0

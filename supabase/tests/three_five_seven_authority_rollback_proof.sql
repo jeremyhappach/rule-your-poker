@@ -143,6 +143,21 @@ BEGIN
    WHERE round_id=v_round;
   PERFORM set_config('app.three_five_seven_authoritative_write','off',true);
   SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p1,'stay') INTO v_result;
+  IF v_result#>>'{game,status}' IS DISTINCT FROM (SELECT status FROM public.games WHERE id=v_game)
+     OR (v_result#>>'{game,authority_revision}')::bigint IS DISTINCT FROM (SELECT authority_revision FROM public.games WHERE id=v_game)
+     OR (v_result#>>'{round,authority_revision}')::bigint IS DISTINCT FROM (SELECT authority_revision FROM public.rounds WHERE id=v_round) THEN
+    RAISE EXCEPTION '357_authority_proof:decision_receipt_version_or_status_missing:%',v_result;
+  END IF;
+
+  SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p1,'stay') INTO v_result;
+  IF v_result#>>'{game,status}' IS DISTINCT FROM (SELECT status FROM public.games WHERE id=v_game)
+     OR (v_result#>>'{game,authority_revision}')::bigint IS DISTINCT FROM (SELECT authority_revision FROM public.games WHERE id=v_game)
+     OR (v_result#>>'{round,authority_revision}')::bigint IS DISTINCT FROM (SELECT authority_revision FROM public.rounds WHERE id=v_round) THEN
+    RAISE EXCEPTION '357_authority_proof:decision_receipt_version_or_status_missing:%',v_result;
+  END IF;
+
+  IF v_result->>'outcome'<>'already_decided' THEN RAISE EXCEPTION '357_authority_proof:decision_replay_not_deduped'; END IF;
+
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p2,'stay') INTO v_result;

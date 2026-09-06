@@ -4983,8 +4983,9 @@ export const MobileGameTable = ({
   // comparison here never matched, so the hold was never published and the
   // LAST HAND surface unmounted the instant `session_ended` arrived.
   const holmTerminalPresentationActive =
-    gameType === 'holm-game' &&
-    (!!holmWinPotTriggerIdGated || !!chuckyLossTriggerIdGated || holmShowdownPhase !== 'idle');
+    (gameType === 'holm-game' &&
+      (!!holmWinPotTriggerIdGated || !!chuckyLossTriggerIdGated || holmShowdownPhase !== 'idle')) ||
+    ((gameType === 'horses' || gameType === 'ship-captain-crew') && !!horsesWinPotTriggerId);
 
   useEffect(() => {
     onTerminalPresentationActiveChange?.(holmTerminalPresentationActive);

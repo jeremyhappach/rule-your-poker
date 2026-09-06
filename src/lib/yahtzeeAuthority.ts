@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { executeDiceRpc } from './diceRequestRecovery';
 import type { YahtzeeCategory, YahtzeeState } from './yahtzeeTypes';
 
 export interface YahtzeeActionResult {
@@ -39,16 +40,15 @@ export async function applyYahtzeeAction(args: {
   holdMask?: boolean[] | null;
   expectedActionSequence?: number | null;
 }): Promise<YahtzeeActionResult> {
-  const { data, error } = await (supabase as any).rpc('yahtzee_apply_action', {
+  const data = await executeDiceRpc(supabase as any, 'yahtzee_apply_action', {
     _round_id: args.roundId,
     _player_id: args.playerId,
     _action: args.action,
     _die_index: args.dieIndex ?? null,
     _category: args.category ?? null,
-    _hold_mask: args.holdMask ?? null,
+    _hold_mask: args.holdMask ? [...args.holdMask] : null,
     _expected_action_sequence: args.expectedActionSequence ?? null,
-  });
-  if (error) throw error;
+  }, args.expectedActionSequence != null);
   return parseYahtzeeActionResult(data);
 }
 
@@ -65,7 +65,7 @@ export async function applyYahtzeeAutoRollAction(args: {
     _player_id: args.playerId,
     _action: args.action,
     _category: args.category ?? null,
-    _hold_mask: args.holdMask ?? null,
+    _hold_mask: args.holdMask ? [...args.holdMask] : null,
     _expected_action_sequence: args.expectedActionSequence ?? null,
   });
   if (error) throw error;
@@ -78,13 +78,12 @@ export async function setYahtzeeHolds(args: {
   holdMask: boolean[];
   expectedActionSequence: number;
 }): Promise<YahtzeeActionResult> {
-  const { data, error } = await (supabase as any).rpc('yahtzee_set_holds', {
+  const data = await executeDiceRpc(supabase as any, 'yahtzee_set_holds', {
     _round_id: args.roundId,
     _player_id: args.playerId,
-    _hold_mask: args.holdMask,
+    _hold_mask: [...args.holdMask],
     _expected_action_sequence: args.expectedActionSequence,
   });
-  if (error) throw error;
   return parseYahtzeeActionResult(data);
 }
 

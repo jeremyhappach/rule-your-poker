@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
+import { toast } from 'sonner';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from "@/lib/matchChatTabPersistence";
 import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
@@ -405,6 +406,8 @@ export function YahtzeeGameTable({
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
   const acceptCommittedState = useCallback((state: YahtzeeState) => {
+    if (activeRoundIdRef.current !== (currentRoundId ?? null) ||
+        (state.actionSequence ?? 0) < (latestActionStateRef.current?.actionSequence ?? 0)) return false;
     latestActionStateRef.current = state;
     latestActionRoundIdRef.current = currentRoundId ?? null;
     const stamped = {
@@ -1240,6 +1243,7 @@ export function YahtzeeGameTable({
     if (!holdIntentRef.current) return Promise.resolve();
 
     let run: Promise<void>;
+    const syncRoundId = activeRoundIdRef.current;
     run = (async () => {
       setHoldSyncPending(true);
       try {
@@ -1289,7 +1293,7 @@ export function YahtzeeGameTable({
           // identity, even if it arrives after the network request completes.
           if (activeRoundIdRef.current !== intent.roundId) return;
 
-          acceptCommittedState(result.state);
+          if (acceptCommittedState(result.state) === false) return;
           if (result.outcome === 'rejected') {
             throw new Error(`Yahtzee hold rejected: ${result.reason ?? 'unknown reason'}`);
           }
@@ -1334,6 +1338,7 @@ export function YahtzeeGameTable({
           }
         }
       } catch (error) {
+        if (activeRoundIdRef.current !== syncRoundId) return;
         recordGameFreezeTrace('yahtzee.hold.request.failed', {
           message: error instanceof Error ? error.message : String(error),
         });
@@ -1372,6 +1377,7 @@ export function YahtzeeGameTable({
     setActionPending(true);
     try {
       await ensureHoldMaskSynced();
+      if (activeRoundIdRef.current !== currentRoundId) return;
       const rawState = latestActionStateRef.current;
       const myPs = rawState?.playerStates?.[myPlayer.id];
       if (!myPs || rawState?.currentTurnPlayerId !== myPlayer.id || myPs.rollsRemaining <= 0) {
@@ -1406,7 +1412,8 @@ export function YahtzeeGameTable({
         outcome: result.outcome,
         actionSequence: result.state.actionSequence ?? null,
       });
-      acceptCommittedState(result.state);
+      if (activeRoundIdRef.current !== currentRoundId) return;
+      if (acceptCommittedState(result.state) === false) return;
       const committedPs = result.state.playerStates[myPlayer.id];
       if (!committedPs) throw new Error('Yahtzee roll result omitted the acting player state.');
       if (result.outcome === 'rejected') {
@@ -1436,10 +1443,14 @@ export function YahtzeeGameTable({
         message: error instanceof Error ? error.message : String(error),
       });
       console.error('[YAHTZEE] Authoritative roll failed', error);
+      if (activeRoundIdRef.current !== currentRoundId) return;
+      toast.error('The roll could not be confirmed. Please try again.');
       onRefetch();
     } finally {
-      actionInFlightRef.current = false;
-      setActionPending(false);
+      if (activeRoundIdRef.current === currentRoundId) {
+        actionInFlightRef.current = false;
+        setActionPending(false);
+      }
     }
   }, [isManualTurnOpenNow, currentRoundId, currentTurnPlayerId, myPlayer, rolling, acceptCommittedState, ensureHoldMaskSynced, onRefetch]);
 
@@ -1524,6 +1535,7 @@ export function YahtzeeGameTable({
     let scorePresentation: { roundId: string; sequence: number } | null = null;
     try {
       await ensureHoldMaskSynced();
+      if (activeRoundIdRef.current !== currentRoundId) return;
       const rawState = latestActionStateRef.current;
       const myPs = rawState?.playerStates?.[myPlayer.id];
       if (!myPs || rawState?.currentTurnPlayerId !== myPlayer.id) {
@@ -1572,7 +1584,8 @@ export function YahtzeeGameTable({
         outcome: result.outcome,
         actionSequence: result.state.actionSequence ?? null,
       });
-      acceptCommittedState(result.state);
+      if (activeRoundIdRef.current !== currentRoundId) return;
+      if (acceptCommittedState(result.state) === false) return;
       if (result.outcome === 'rejected') {
         throw new Error(`Yahtzee score rejected: ${result.reason ?? 'unknown reason'}`);
       }
@@ -1591,6 +1604,7 @@ export function YahtzeeGameTable({
         settlementRequestRef.current('terminal-score-rpc-acknowledged', true);
       }
       await new Promise(r => setTimeout(r, YAHTZEE_SCORE_PRESENTATION_MS));
+      if (activeRoundIdRef.current !== currentRoundId) return;
       setOptimisticScore({ playerId: myPlayer.id, category, value: result.score ?? pendingScore });
       localDiceRef.current = committedPs.dice;
       localRollsRemainingRef.current = committedPs.rollsRemaining;
@@ -1602,8 +1616,10 @@ export function YahtzeeGameTable({
         message: error instanceof Error ? error.message : String(error),
       });
       console.error('[YAHTZEE] Authoritative score failed', error);
+      if (activeRoundIdRef.current !== currentRoundId) return;
       onRefetch();
     } finally {
+      if (activeRoundIdRef.current !== currentRoundId) return;
       if (scorePresentation) {
         clearActiveScorePresentation(scorePresentation);
       } else {

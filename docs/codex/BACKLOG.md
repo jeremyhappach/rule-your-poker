@@ -2,6 +2,192 @@
 
 Priority is ordered. Re-rank only for a current production blocker.
 
+## New observations — September 5 incident investigation
+
+Jeremy authorized read-only root-cause investigation after quitting the
+session. The five original reports below remain as captured; statements about
+unverified identities or no investigation describe their initial capture.
+The investigation notes supersede that earlier status. Jeremy subsequently
+approved the confirmed corrections; implementation and validation are recorded
+in CURRENT_RELEASE.md. Underlying latency and the unexpected Fold remain queued.
+
+Evidence and recommended correction/acceptance boundaries:
+[September 5 findings](C:/Users/jerem/Desktop/poker/session-lag-investigation-2026-09-05/FINDINGS.md).
+Confirmed: 357 missed-terminal-frame rejection, Cribbage transport/destination
+gap, Horses direct-session-end celebration gate, and long Gin/Horses origin
+responses with database failures. Still unresolved: the producer of the
+unexpected 357 Fold, Yahtzee's complete click-to-render delay, and the original
+database/resource cause behind the measured origin stalls.
+
+### Horses roll delays and missing win celebration — 2026-09-05
+
+Status: Confirmed client corrections implemented and validated; production
+smoke pending. Underlying origin stall cause remains queued.
+
+- Verified Steam session `0195e200-b178-446f-8486-03d7fd8e329f`,
+  dealer game `d479fae9-c61e-436a-aef0-d133fad9791c`, round
+  `ce7b591c-2c06-4b4d-bb72-9d01331fd87e`. Hap's Horses action spent
+  17,703 ms at the Supabase origin. Both completion requests failed HTTP 500;
+  Hap's took 54,471 ms. Postgres reports row-lock/statement timeouts and two
+  cron startup failures in the terminal interval.
+- Last roll persisted 23:02:10Z; terminal settlement recorded 23:02:53Z.
+  The immutable result is a $4 Hap win with `session_ended` disposition.
+  The win effect and dice render admission require `game_over`, so the
+  direct session-ending result skips the celebration. Sit-out is verified
+  context, not a proved delay cause.
+- The controller starts spinning before an unbounded serialized request
+  and only schedules its animation end after a response. Correct request
+  recovery and terminal presentation separately; preserve authoritative
+  dice, settlement, identity guards, and shared shell ownership.
+
+- Report recorded at **2026-09-05 6:03:17 PM CDT (23:03:17 UTC)**. Jeremy
+  said this happened just now; this is the report-capture timestamp, not a
+  verified roll/action timestamp.
+- Actual: Jeremy's **Roll 2** in Horses kept spinning for approximately
+  **30 seconds**. His follow-up confirms he subsequently finished his roll;
+  whether a refresh was needed was not specified.
+- Follow-up recorded at **2026-09-05 6:03:43 PM CDT (23:03:43 UTC)**:
+  after Jeremy finished his roll and the opponent rolled, play froze for a
+  long time before eventually progressing. No win celebration appeared.
+  Jeremy had **Sit out next hand** marked. The duration of this second freeze,
+  winner and resulting phase were not specified. Preserve the sit-out setting
+  as reported context; no causal relationship has been established.
+- Expected: the roll promptly resolves to its dice result and next controls
+  without a prolonged spinning state; subsequent play progresses promptly
+  with the appropriate win celebration and queued sit-out behavior.
+- Context/provenance: Jeremy's live observation in this task's current
+  real-money play log. Session, dealer-game, round and action identities have
+  not been looked up; server acceptance, financial impact and cause are unknown.
+- No database, logs, runtime or product-source investigation performed.
+  Only this backlog observation was added; no product or runtime changes.
+
+### Cribbage pegging card disappears and reappears after landing — 2026-09-05
+
+Status: Confirmed correction implemented and validated; production smoke pending.
+
+- Verified Steam Cribbage dealer game
+  `2f97c462-9537-4245-8738-a2b445db737b`; exact reported card/action
+  was not retained in a browser trace.
+- The play transport disappears after 620 ms, while the played-card row
+  waits for authoritative action state. Removing the old optimistic row
+  update during the authority migration left this presentation gap.
+  The independent 1500 ms cleanup is also unable to guarantee continuity.
+- Retain the landed presentation until the exact action/card is admitted
+  or rejected. Preserve server-owned scoring and request locks; no longer
+  arbitrary timer or optimistic gameplay authority.
+
+- Report recorded at **2026-09-05 5:53:44 PM CDT (22:53:44 UTC)**.
+  Exact occurrence times are unknown; this is the report-capture timestamp.
+- Actual: sometimes when Jeremy plays a pegging card in Cribbage, it lands,
+  then disappears, then reappears. He reports that it does not land correctly.
+  Frequency and disappearance duration were not specified.
+- Expected: the played pegging card lands and remains visibly in place,
+  without disappearing and reappearing.
+- Context/provenance: Jeremy's observation in this task's current real-money
+  play log on 2026-09-05. Session, dealer-game, round and card identities have
+  not been looked up; score/action correctness and cause are unverified.
+- No database, logs, runtime or product-source investigation performed.
+  Only this backlog observation was added; no product or runtime changes.
+
+### Gin draws intermittently show only a card back for 5+ seconds — 2026-09-05
+
+Status: Investigated; slow origin responses confirmed; underlying origin
+stall cause remains open.
+
+- Verified Steam Gin dealer games `8806e69f-8ede-46e9-952e-869f48ed0c03`
+  and `d03c78ca-9052-424d-a721-e2838f11dd28`. Hap's action requests
+  include 7,729/5,815/5,230 ms origin responses; a private-state read took
+  9,151 ms. The gateway lacks action bodies, so these cannot individually
+  be labeled draw versus discard/knock.
+- Stock faces require the caller's private authoritative response; the
+  draw gate retains a back until it arrives. The September 5 resolved-face
+  correction adds no five-second wait. Do not revert privacy or render
+  guessed ranks to hide the response delay.
+
+- Report recorded at **2026-09-05 5:48:39 PM CDT (22:48:39 UTC)**. Jeremy
+  had just played the Gin game; exact affected draw timestamps are unknown.
+- Context: reported during the current real-money play log. Exact session,
+  dealer-game, round, draw source and action identities have not been looked up.
+- Actual: severe intermittent lag after drawing a card. Sometimes Jeremy saw
+  only the card back for **5+ seconds**; this did not happen on every draw.
+- Regression observation: Jeremy reports that neither this delay nor the
+  earlier **"??"** card display used to occur. He suspects the correction for
+  **"??"** introduced or worsened the delay. Record that as his hypothesis,
+  not an established cause or a verified sequence of releases.
+- Expected: the player's drawn card promptly resolves to its visible face
+  without prolonged backs or **"??"** placeholders.
+- Provenance: Jeremy's post-game report in this task on 2026-09-05. No
+  database, logs, runtime or product-source investigation performed.
+
+### 3-5-7 clients diverge after Stay with both players on two legs — 2026-09-05
+
+Status: Confirmed frame/receipt corrections implemented; production smoke
+pending. Unexpected Fold producer remains queued and unresolved.
+
+- Verified Crazy Fingers session `37085570-d3d4-44ab-b0d2-038fba8a926c`,
+  dealer game `07d65f4c-6176-42ae-a070-acc1bec7a602`, H4/R1 round
+  `b1703d56-0c3b-402f-a9fa-dc0314f9035f`. Both began with two legs.
+  The action journal records Hap Stay at 22:15:50.465853Z and a new opponent
+  Fold at 22:15:50.983342Z. The deadline was 22:16:18.249118Z; no
+  deadline execution occurred. This establishes recorded decisions, not
+  evidence that the opponent tapped Fold.
+- The peer advanced to setup by 22:15:52.294Z; Hap remained in_progress.
+  `acceptThreeFiveSevenFrame` rejects a valid identity-cleared setup if
+  that client missed the brief `game_over` frame. Repeated newer fetches
+  are still rejected. An external read-only proof invokes the actual
+  source function and reproduces this behavior.
+- Deployed decision receipts also omit status/revision; the actual receipt
+  merger cannot advance terminal status from that shape. Correct explicit
+  authoritative postgame admission and receipts while retaining all stale
+  identity guards. Trace the unexpected Fold as a separate correctness item.
+
+- Report recorded at **2026-09-05 5:47:55 PM CDT (22:47:55 UTC)**. Jeremy
+  could not log this in real time; the incident occurred earlier and its exact
+  time is unknown. Do not use the report timestamp as the action timestamp.
+- Context: 3-5-7, both players reportedly had two legs. Reported during the
+  current real-money play log; exact session/dealer-game/round identities
+  remain unverified and have not been looked up.
+- Actual: Jeremy chose **Stay**. His opponent reports they did **not** press
+  Fold, then saw the **"dealer is configuring next game"** modal. Jeremy's
+  client remained frozen, saying it was waiting on decisions.
+- Expected: both clients remain aligned on the same authoritative hand and
+  decision outcome, then enter the next-game phase consistently when due.
+- The opponent's no-Fold account is reported testimony; accepted actions,
+  timeout behavior, settlement, financial outcome and recovery are unknown.
+- Provenance: Jeremy's retrospective report in this task on 2026-09-05.
+  No database, logs, runtime or product-source investigation performed;
+  no cause inferred.
+
+### Yahtzee first roll stalls before dice appear — 2026-09-05
+
+Status: Bounded client request recovery implemented; production smoke pending.
+The full reported ten-second incident remains queued for root-cause work.
+
+- Verified Crazy Fingers dealer game
+  `101f878c-f4b3-420a-a158-8fa31b0e6904`, round
+  `a509fca6-95fb-45f4-adf8-aa133f77ed7d`.
+- Roll locks controls, awaits hold synchronization and its RPC, and only
+  then installs dice/starts animation. No bounded RPC recovery exists.
+  However, Hap's slowest recorded Yahtzee origin response was 960 ms;
+  these records do not prove a ten-second server call.
+- Browser click/queue/auth/response-to-render timing was not retained.
+  Preserve this evidence gap; a contemporaneous cron failure alone does
+  not identify the Yahtzee cause. Use focused synthetic verification and
+  bounded exact-action recovery rather than changing authoritative dice.
+
+- Report recorded at **2026-09-05 5:07:12 PM CDT (22:07:12 UTC)**. Jeremy
+  said it had just happened; this is the report-capture timestamp, not a
+  verified roll timestamp.
+- Context: current live real-money Yahtzee game, just paused when reported.
+  Session, dealer-game, round and action identities have not been looked up.
+- Actual: Jeremy pressed **Roll 1**; the Roll button froze/locked, but no dice
+  appeared for approximately ten seconds. He refreshed, and it eventually
+  came back. Exact recovery duration and server acceptance are unverified.
+- Expected: an accepted roll promptly displays its dice and the appropriate
+  next controls without requiring a refresh.
+- Provenance: Jeremy's live report in this task on 2026-09-05. No database,
+  logs, runtime or product-source investigation performed; no cause inferred.
+
 ## P0 — release/correctness
 
 ### 0ANTE. Ante-decision Sit Out can silently no-op

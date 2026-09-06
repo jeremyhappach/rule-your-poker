@@ -38,6 +38,7 @@ import {
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { getRollNumber } from "@/lib/diceAudit";
 import { advanceHorsesSccCompletedRound } from "@/lib/horsesSccAuthority";
+import { executeDiceRpc } from "@/lib/diceRequestRecovery";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -100,11 +101,10 @@ async function horsesApplyAction(
   roundId: string, playerId: string, action: 'roll' | 'set_holds' | 'lock',
   expectedSequence: number, holdMask?: boolean[],
 ): Promise<{ outcome: string; state: HorsesStateFromDB }> {
-  const { data, error } = await (supabase as any).rpc("horses_scc_apply_action", {
+  const data = await executeDiceRpc(supabase as any, "horses_scc_apply_action", {
     _round_id: roundId, _player_id: playerId, _action: action,
-    _expected_action_sequence: expectedSequence, _hold_mask: holdMask ?? null,
+    _expected_action_sequence: expectedSequence, _hold_mask: holdMask ? [...holdMask] : null,
   });
-  if (error) throw error;
   if (!data?.state || !['applied', 'stale_action', 'rejected'].includes(data.outcome)) {
     throw new Error("Invalid Horses/SCC action receipt");
   }
@@ -951,9 +951,12 @@ export function useHorsesMobileController({
   }, [candidateBotControllerUserId]);
 
   const actionRoundRef = useRef(currentRoundId);
-  actionRoundRef.current = currentRoundId;
   const latestActionStateRef = useRef<{ roundId: string; state: HorsesStateFromDB } | null>(null);
   const actionQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  if (actionRoundRef.current !== currentRoundId) {
+    actionRoundRef.current = currentRoundId;
+    actionQueueRef.current = Promise.resolve();
+  }
   if (latestActionStateRef.current?.roundId !== currentRoundId) latestActionStateRef.current = null;
   if (currentRoundId && incomingHorsesState &&
       (!latestActionStateRef.current || (incomingHorsesState.actionSequence ?? 0) > (latestActionStateRef.current.state.actionSequence ?? 0))) {
@@ -972,17 +975,19 @@ export function useHorsesMobileController({
         if (actionRoundRef.current !== roundId) return null;
         if ((receipt.state.actionSequence ?? 0) < (latestActionStateRef.current?.state.actionSequence ?? 0)) return null;
         latestActionStateRef.current = { roundId, state: receipt.state };
-        return receipt.outcome === 'applied' ? receipt.state : null;
+        syncHandle.receiveAuthoritativeUpdate({ ...receipt.state, __syncHandNumber: monotonicHandNumber } as HorsesStateFromDB);
+        return receipt.outcome !== 'rejected' ? receipt.state : null;
       };
       const pending = actionQueueRef.current.then(run).catch((error) => {
+        if (actionRoundRef.current !== roundId) return null;
         console.error('[HORSES] Action failed:', error);
-        toast.error('The action could not be saved. Please try again.');
+        toast.error('The action could not be confirmed. Please try again.');
         return null;
       });
       actionQueueRef.current = pending;
       return pending;
     },
-    [enabled, isPaused, currentRoundId, myPlayer?.id],
+    [enabled, isPaused, currentRoundId, myPlayer?.id, monotonicHandNumber, syncHandle],
   );
 
   const advanceToNextTurn = useCallback(
@@ -1534,7 +1539,8 @@ export function useHorsesMobileController({
     setIsRolling(true);
     const rolledState = await saveMyState('roll', localHandRef.current.dice.map(d => d.isHeld));
     const rolledPlayer = myPlayer && rolledState?.playerStates[myPlayer.id];
-    if (!rolledPlayer || actionRoundRef.current !== currentRoundId) {
+    if (actionRoundRef.current !== currentRoundId) return;
+    if (!rolledPlayer) {
       setIsRolling(false);
       return;
     }
@@ -2127,12 +2133,7 @@ export function useHorsesMobileController({
       processedWinRoundRef.current = originatingRoundId;
 
       try {
-        const { data: identity, error: identityError } = await supabase
-          .from("games")
-          .select("current_game_uuid, total_hands")
-          .eq("id", gameId)
-          .maybeSingle();
-        if (identityError) throw identityError;
+        const identity = { current_game_uuid: dealerGameId, total_hands: monotonicHandNumber };
         if (!identity?.current_game_uuid || identity.total_hands == null) {
           throw new Error("Horses/SCC completed-round identity is incomplete.");
         }
@@ -2147,6 +2148,7 @@ export function useHorsesMobileController({
           dealerGameId: identity.current_game_uuid,
           handNumber: identity.total_hands,
         });
+        if (currentRoundIdRef.current !== originatingRoundId) return;
 
         if (completion.transition === "tie_rollover"
             && completion.status !== "stale_identity"
@@ -2188,7 +2190,7 @@ export function useHorsesMobileController({
           },
         });
       } catch (completionError) {
-        processedWinRoundRef.current = null;
+        if (processedWinRoundRef.current === originatingRoundId) processedWinRoundRef.current = null;
         console.error("[HORSES/SCC] Authoritative completed-round handoff failed:", completionError);
       }
     };
@@ -2200,6 +2202,8 @@ export function useHorsesMobileController({
     currentRoundId,
     // P0 #2: depend on AUTHORITATIVE state, not presentation-derived winningPlayerIds.
     incomingHorsesState,
+    dealerGameId,
+    monotonicHandNumber,
     currentUserId,
     myPlayer,
     isPaused,

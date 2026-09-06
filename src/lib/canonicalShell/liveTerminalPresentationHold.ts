@@ -74,7 +74,8 @@ export function advanceLiveTerminalPresentationScope(
   }
 
   if (
-    observation.status === 'session_ended' &&
+    (observation.status === 'session_ended' ||
+      ((observation.gameType === 'horses' || observation.gameType === 'ship-captain-crew') && observation.status === 'game_over')) &&
     observation.terminalResultPresent &&
     previous &&
     matchesObservedScope(previous, observation)

@@ -1,5 +1,34 @@
 # Current release and cutover state
 
+## Confirmed September 5 incident corrections — 2026-09-05
+
+- Jeremy approved the confirmed fixes; unexplained 357 Fold production,
+  Gin/origin database stalls and Yahtzee's full click-to-render delay remain
+  queued for separate investigation. Historical sessions are preserved.
+- 357 admits the exact cleared next-dealer setup when its authority revision
+  proves forward progress, including clients that missed `game_over`.
+  Migration `20260905234248_three_five_seven_complete_decision_receipts`
+  adds status and row revisions to fresh and replayed decision receipts.
+  The complete rollback proof passed before and after deployment.
+- Cribbage retains a landed pegging card until its authoritative destination
+  is ready; rejection and hand replacement cancel the exact presentation.
+  Removed the independent 1.5-second presentation cleanup.
+- Horses/SCC retain the canonical terminal table through `game_over` and
+  `session_ended`, publish presentation activity and acknowledge true completion.
+  Celebration destination comes from the authoritative player UUID; the live
+  path uses completed state and its pot cache, with a scoped result fallback.
+- Human dice action/hold and Horses/SCC completion requests have five-second
+  attempt deadlines and at most one replay of the same immutable identity.
+  An ignored abort cannot keep request ownership forever. Older-round receipts
+  cannot replace a successor round. These limits do not solve origin latency.
+- Validation passed: 1,470 application tests, 47 harness tests, typecheck and
+  production build. The built application renders its sign-in surface with no
+  browser console errors. Jeremy's production smoke remains pending.
+  Check both clients through 357 next-dealer setup, Cribbage slow
+  final-card/Go/31 plays, dice recovery, and Horses sit-out/session-ending
+  celebration. A fresh mount of an ended session must still enter the lobby.
+
+
 ## Authorized September 4 session rectification — 2026-09-05
 
 - At Jeremy's explicit request, completed real-money session

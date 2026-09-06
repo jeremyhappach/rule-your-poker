@@ -14,10 +14,11 @@
  *
  * The overlay is strictly additive. Withhold coordination — hiding the
  * newly-played card in the authoritative pegging row until the flight
- * lands — is done by the parent (CribbageMobileGameTable) via a filter
+ * lands and the authoritative destination is ready — is done by the parent
+ * (CribbageMobileGameTable) via a filter
  * passed to CribbageAnchoredPeggingRowMount. If either source or
- * destination cannot be resolved, the flight is skipped and onSettled()
- * still fires so the withhold releases immediately.
+ * destination cannot be resolved, the flight is skipped. Completion still
+ * waits for destination readiness so a slow receipt cannot erase the card.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -49,6 +50,7 @@ export type CribbagePlayCardLifecycleEvent =
 
 interface Props {
   intent: CribbagePlayCardIntent | null;
+  destinationReady?: boolean;
   onSettled: (id: string) => void;
   /** Optional lifecycle probe for instrumentation. */
   onLifecycle?: (id: string, event: CribbagePlayCardLifecycleEvent) => void;
@@ -91,10 +93,12 @@ function resolveSelfHandStageRect(): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle, onCancelled }: Props) => {
+export const CribbagePlayCardAnimation = ({ intent, destinationReady = true, onSettled, onLifecycle, onCancelled }: Props) => {
   const [flight, setFlight] = useState<Flight | null>(null);
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [landedId, setLandedId] = useState<string | null>(null);
+  const settledIdRef = useRef<string | null>(null);
 
   const onSettledRef = useRef(onSettled);
   useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
@@ -104,11 +108,12 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle, onCa
   useEffect(() => { onCancelledRef.current = onCancelled; }, [onCancelled]);
 
   useEffect(() => {
+    setLandedId(null);
+    setVisible(false);
+    settledIdRef.current = null;
     if (!intent) return;
 
-    // Terminal-flag: set true immediately before onSettled(id) at natural
-    // or skipped completion. Cleanup fires onCancelled(id) iff still false.
-    const settledRef = { current: false };
+    // Cleanup reports cancellation only before authoritative visual handoff.
     const intentId = intent.id;
 
     onLifecycleRef.current?.(intentId, 'mounted');
@@ -123,8 +128,7 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle, onCa
       const dst = resolvePegRowRect();
       if (!dst || dst.width <= 0 || dst.height <= 0) {
         onLifecycleRef.current?.(intentId, 'skipped');
-        settledRef.current = true;
-        onSettledRef.current(intentId);
+        setLandedId(intentId);
         return;
       }
       endX = dst.left + dst.width / 2;
@@ -163,32 +167,38 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle, onCa
     setAnimating(false);
     setVisible(true);
 
+    let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
         setAnimating(true);
         onLifecycleRef.current?.(intentId, 'started');
       });
     });
 
     const settleTimer = window.setTimeout(() => {
-      setVisible(false);
-      setFlight(null);
-      setAnimating(false);
-      onLifecycleRef.current?.(intentId, 'settled');
-      settledRef.current = true;
-      onSettledRef.current(intentId);
+      setLandedId(intentId);
     }, SETTLE_MS);
 
     return () => {
       cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       window.clearTimeout(settleTimer);
-      if (!settledRef.current) {
+      if (settledIdRef.current !== intentId) {
         onCancelledRef.current?.(intentId);
       }
     };
   }, [intent]);
 
-  if (!visible || !flight || !intent) return null;
+  useEffect(() => {
+    if (!intent || landedId !== intent.id || !destinationReady || settledIdRef.current === intent.id) return;
+    settledIdRef.current = intent.id;
+    setVisible(false);
+    setFlight(null);
+    onLifecycleRef.current?.(intent.id, 'settled');
+    onSettledRef.current(intent.id);
+  }, [intent, landedId, destinationReady]);
+
+  if (!visible || !flight || !intent || flight.key !== intent.id) return null;
 
   const x = animating ? flight.endX : flight.startX;
   const y = animating ? flight.endY : flight.startY;

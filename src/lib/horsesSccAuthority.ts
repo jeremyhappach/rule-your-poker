@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { executeDiceRpc } from './diceRequestRecovery';
 
 export type HorsesSccCompletedRoundResult = {
   status: 'settled' | 'already_settled' | 'advanced' | 'already_advanced' | 'stale_identity';
@@ -46,12 +47,10 @@ function numericRecord(value: unknown): Record<string, number> | null {
 export async function advanceHorsesSccCompletedRound(
   identity: ExactDiceIdentity,
 ): Promise<HorsesSccCompletedRoundResult> {
-  const { data, error } = await (supabase as any).rpc(
+  const data = await executeDiceRpc(supabase as any,
     'horses_scc_advance_completed_round',
     exactIdentityPayload(identity),
   );
-  if (error) throw error;
-
   const allowedStatuses = [
     'settled',
     'already_settled',
