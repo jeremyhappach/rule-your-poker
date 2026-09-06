@@ -124,6 +124,13 @@ stall cause remains open.
 Status: Confirmed frame/receipt corrections implemented; production smoke
 pending. Unexpected Fold producer remains queued and unresolved.
 
+- Jeremy clarified on 2026-09-05 at 7:20 PM CDT that he suspects mcru81
+  manually pressed Fold despite the earlier denial. This is an unverified
+  suspicion, not evidence of a software-generated Fold or deliberate deception.
+  A valid manual Fold must still advance both clients consistently. The
+  confirmed missed-terminal-frame rejection is independent of who initiated
+  the Fold; its correction remains subject to production smoke.
+
 - Verified Crazy Fingers session `37085570-d3d4-44ab-b0d2-038fba8a926c`,
   dealer game `07d65f4c-6176-42ae-a070-acc1bec7a602`, H4/R1 round
   `b1703d56-0c3b-402f-a9fa-dc0314f9035f`. Both began with two legs.
