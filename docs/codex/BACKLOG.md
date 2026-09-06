@@ -131,6 +131,21 @@ pending. Unexpected Fold producer remains queued and unresolved.
   confirmed missed-terminal-frame rejection is independent of who initiated
   the Fold; its correction remains subject to production smoke.
 
+- Read-only Fold-provenance follow-up on 2026-09-05: the journal trigger
+  records decision changes but no caller or input source. The human decision
+  RPC requires the player's authenticated UUID and exact current round;
+  the normal deadline path cannot fold before the deadline, and bot recovery
+  only submits bot decisions. The two client producers are the Drop button
+  and an instant-fold effect requiring `auto_fold=true`; both use the same
+  handler/RPC without a persisted source distinction. The opponent's normal
+  28-second timer was seeded at 22:15:49.269471Z, shortly before the Fold,
+  which is consistent with auto-fold being off but does not prove a click.
+  No historical player-update audit or decision-source event covers the gap.
+  A supplementary gateway-log lookup failed with a dashboard backend error.
+  The evidence rules out normal timeout and bot recovery; manual versus
+  client auto-fold remains unproven. No product or production-data changes
+  were made during this follow-up.
+
 - Verified Crazy Fingers session `37085570-d3d4-44ab-b0d2-038fba8a926c`,
   dealer game `07d65f4c-6176-42ae-a070-acc1bec7a602`, H4/R1 round
   `b1703d56-0c3b-402f-a9fa-dc0314f9035f`. Both began with two legs.
