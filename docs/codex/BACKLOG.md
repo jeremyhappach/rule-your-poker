@@ -19,6 +19,19 @@ responses with database failures. Still unresolved: the producer of the
 unexpected 357 Fold, Yahtzee's complete click-to-render delay, and the original
 database/resource cause behind the measured origin stalls.
 
+Backend follow-up on 2026-09-05: retained successful Horses action SQL has a
+447 ms maximum over statistics covering the incident, versus the recorded
+17,703 ms origin response. Gin private-state SQL has a 4,181 ms maximum versus
+the 9,151 ms origin response. These aggregate counters narrow the missing time
+but do not isolate connection acquisition, planning, other transaction work,
+commit or response transport. Failed completion calls are not represented in
+successful execution counters; their lock/statement timeouts remain evidence.
+Cron confirms two job-startup failures during Horses completion. No historical
+blocker graph or incident resource evidence identifies the initial cause.
+Next evidence needed: correlated backend request/connection timing and lock
+blockers; Yahtzee separately needs the missing browser action timeline.
+See [backend follow-up](C:/Users/jerem/Desktop/poker/session-lag-investigation-2026-09-05/BACKEND_FOLLOWUP.md).
+
 ### Horses roll delays and missing win celebration — 2026-09-05
 
 Status: Confirmed client corrections implemented and validated; production
