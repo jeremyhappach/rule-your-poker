@@ -1,16 +1,16 @@
 /**
- * Chat-operation boundary-event recorder.
+ * Compatibility surface for the retired chat-operation boundary recorder.
  *
- * Captures every reachable "the sender may leave" boundary event
- * (navigation, auth, page-lifecycle, error, service-worker, online/offline)
- * and appends it to every currently open chat operation via the durable
- * `chat_operation_append_boundary_event` RPC.
+ * The durable server recorder is a deployed no-op. Production keeps these
+ * exports for existing lifecycle call sites, but the disabled runtime policy
+ * prevents listener installation and network fan-out.
  *
- * Idempotent single install. Bounded: only fans out to registered
- * current-session chat operations (see serverChatOperation registry).
+ * The dormant implementation remains for compatibility; the registry is
+ * independently bounded in `serverChatOperation.ts`.
  */
 import { supabase } from '@/integrations/supabase/client';
 import {
+  CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED,
   getCurrentSessionChatOperations,
   type CurrentSessionChatOperationRecord,
 } from './serverChatOperation';
@@ -181,11 +181,13 @@ export function recordChatBoundaryEvent(
   name: ChatBoundaryEventName,
   metadata: Record<string, unknown> = {},
 ): void {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try { fanOut(name, metadata); } catch { /* isolated */ }
 }
 
 /** Install all global boundary listeners exactly once. Safe on SSR. */
 export function installChatBoundaryListeners(): void {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   if (installed || typeof window === 'undefined') return;
   installed = true;
 

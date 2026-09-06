@@ -1,5 +1,28 @@
 # Current release and cutover state
 
+## Cross-game latency correction — 2026-09-06
+
+- September 5 gateway evidence establishes a production request amplifier in
+  the retired durable chat-operation recorder. Every ordinary Supabase fetch
+  emitted start/completion boundary RPCs once for every operation retained in
+  an unbounded browser-session registry. Six operations were open during the
+  Yahtzee stall and 13 were open before Horses completed.
+- Gin produced 987 boundary RPCs in six minutes. Horses produced 3,510 in two
+  minutes; 331 exceeded one second, the PostgREST connection pool timed out,
+  and queued completion work held the round lock while settlement stalled.
+  The Nano database's sustained swap and I/O wait amplified this source defect.
+- The deployed boundary/finalization RPCs are already no-ops. The application
+  no longer mounts their global listener/fetch wrapper, and every durable
+  chat-operation network entry point now returns locally. The compatibility
+  registry prunes entries after 60 seconds and supports explicit finalization
+  removal. Chat inserts, realtime receipt, unread state and gameplay authority
+  are unchanged; historical operation rows are preserved.
+- Validation passes: typecheck, 1,469 source tests, 47 harness tests and the
+  production build. Production publication and a two-client smoke remain the
+  acceptance boundary. Confirm normal chat delivery, then play Yahtzee, Gin
+  and Horses while verifying the boundary endpoint remains at zero and no new
+  `PGRST003` pool timeout occurs.
+
 ## Confirmed September 5 incident corrections — 2026-09-05
 
 - Jeremy approved the confirmed fixes; unexplained 357 Fold production,

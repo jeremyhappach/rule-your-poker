@@ -1,94 +1,99 @@
 // @vitest-environment jsdom
-/**
- * Regression test for the observed crash:
- *   `rpc(...).catch is not a function`
- *
- * Supabase's RPC builder is a thenable — it exposes `.then` but not
- * always `.catch`/`.finally`. `fanOut()` must never chain those
- * directly; it must `await` inside a try/catch. This test replaces
- * `supabase.rpc` with a `.then`-only thenable and proves that
- * `recordChatBoundaryEvent()` is exception-isolated.
- */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    from: vi.fn(),
     rpc: vi.fn(),
     auth: { onAuthStateChange: vi.fn() },
   },
 }));
 
+vi.mock('@/lib/runtimeInstrumentation/runtimeTracer', () => ({
+  getClientInstanceId: vi.fn(() => 'client-test'),
+  getTabSessionId: vi.fn(() => 'tab-test'),
+  recordRuntimeEvent: vi.fn(),
+}));
+
 import { supabase } from '@/integrations/supabase/client';
-import { recordChatBoundaryEvent } from './chatOperationBoundary';
-import { registerCurrentSessionChatOperation } from './serverChatOperation';
+import {
+  installChatBoundaryListeners,
+  recordChatBoundaryEvent,
+} from './chatOperationBoundary';
+import {
+  CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED,
+  awaitPeerOperationVisibility,
+  getCurrentSessionChatOperations,
+  openServerChatOperation,
+  registerCurrentSessionChatOperation,
+  unregisterCurrentSessionChatOperation,
+} from './serverChatOperation';
 
-let opCounter = 0;
-function registerOp(): string {
-  const id = `chat-thenable-safety-${++opCounter}`;
-  registerCurrentSessionChatOperation({
-    operationId: id,
-    gameId: 'game-x',
-    sessionId: 'sess-x',
-    route: '/waiting',
-    role: 'sender',
-  });
-  return id;
-}
-
-describe('fanOut: RPC-thenable safety', () => {
-  const unhandled: unknown[] = [];
-  const onUnhandled = (e: Event) => {
-    unhandled.push((e as PromiseRejectionEvent).reason ?? e);
-  };
-
+describe('retired durable chat-operation telemetry', () => {
   beforeEach(() => {
-    unhandled.length = 0;
-    window.addEventListener('unhandledrejection', onUnhandled);
+    vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    window.removeEventListener('unhandledrejection', onUnhandled);
-  });
-
-  it('does not throw when RPC returns a thenable WITHOUT `.catch`', async () => {
-    registerOp();
-    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      then: (onFulfilled: (v: unknown) => void) => { onFulfilled({ data: null, error: null }); },
-    }));
-    expect(() => recordChatBoundaryEvent('PAGE_HIDE', { persisted: false })).not.toThrow();
-    await new Promise((r) => setTimeout(r, 20));
-    expect(unhandled).toHaveLength(0);
-  });
-
-  it('swallows a rejecting thenable without unhandledrejection', async () => {
-    registerOp();
-    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      then: (_ok: unknown, onRej?: (e: unknown) => void) => {
-        if (onRej) onRej(new Error('simulated rpc rejection'));
-      },
-    }));
-    expect(() => recordChatBoundaryEvent('BEFORE_UNLOAD', {})).not.toThrow();
-    await new Promise((r) => setTimeout(r, 20));
-    expect(unhandled).toHaveLength(0);
-  });
-
-  it('swallows a thenable whose then() throws synchronously', async () => {
-    registerOp();
-    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      then: () => { throw new Error('synchronous then() throw'); },
-    }));
-    expect(() => recordChatBoundaryEvent('PAGE_HIDE', {})).not.toThrow();
-    await new Promise((r) => setTimeout(r, 20));
-    expect(unhandled).toHaveLength(0);
-  });
-
-  it('swallows when supabase.rpc itself throws synchronously', async () => {
-    registerOp();
-    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
-      throw new Error('rpc construction failure');
+  it('does not install a fetch wrapper or emit boundary RPCs', () => {
+    const originalFetch = window.fetch;
+    registerCurrentSessionChatOperation({
+      operationId: 'chat-retired-boundary',
+      gameId: 'game-x',
+      sessionId: 'session-x',
+      route: '/game/game-x',
+      role: 'sender',
     });
-    expect(() => recordChatBoundaryEvent('PAGE_HIDE', {})).not.toThrow();
-    await new Promise((r) => setTimeout(r, 20));
-    expect(unhandled).toHaveLength(0);
+
+    expect(CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED).toBe(false);
+    installChatBoundaryListeners();
+    recordChatBoundaryEvent('SUPABASE_FETCH_STARTED', { purpose: 'rpc:read_session_frame' });
+
+    expect(window.fetch).toBe(originalFetch);
+    expect(supabase.auth.onAuthStateChange).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    unregisterCurrentSessionChatOperation('chat-retired-boundary');
+  });
+
+  it('does not open or probe durable operation rows', async () => {
+    const opened = await openServerChatOperation({
+      operationId: 'chat-retired-open',
+      senderUserId: 'user-x',
+      gameId: 'game-x',
+      sessionId: 'session-x',
+      route: '/game/game-x',
+      messagePreview: 'hello',
+    });
+    const visible = await awaitPeerOperationVisibility('chat-retired-open');
+
+    expect(opened).toBe(false);
+    expect(visible).toBe(false);
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it('prunes stale registrations and supports explicit finalization cleanup', () => {
+    registerCurrentSessionChatOperation({
+      operationId: 'chat-retired-stale',
+      gameId: 'game-x',
+      sessionId: 'session-x',
+      route: '/game/game-x',
+      role: 'sender',
+      observedAt: new Date(Date.now() - 60_001).toISOString(),
+    });
+    registerCurrentSessionChatOperation({
+      operationId: 'chat-retired-current',
+      gameId: 'game-x',
+      sessionId: 'session-x',
+      route: '/game/game-x',
+      role: 'peer',
+    });
+
+    const operationIds = getCurrentSessionChatOperations().map((operation) => operation.operationId);
+    expect(operationIds).not.toContain('chat-retired-stale');
+    expect(operationIds).toContain('chat-retired-current');
+
+    unregisterCurrentSessionChatOperation('chat-retired-current');
+    expect(getCurrentSessionChatOperations().map((operation) => operation.operationId))
+      .not.toContain('chat-retired-current');
   });
 });

@@ -1,11 +1,8 @@
 /**
- * Static re-entrancy guard proof.
+ * Static proof for the dormant re-entrancy classifier.
  *
- * Verifies that `isInstrumentationRequest` classifies every known
- * chat-operation instrumentation RPC/table as instrumentation (→ NO
- * SUPABASE_FETCH_* boundary events emitted) while all business
- * Supabase calls (chat_messages insert, players/games/sessions reads,
- * auth token refresh, generic RPCs) remain captured.
+ * Durable chat-operation network telemetry is retired. Keep the compatibility
+ * classifier exact while its disabled implementation remains in source.
  */
 import { describe, it, expect } from 'vitest';
 import { isInstrumentationRequest } from './chatOperationInstrumentationGuard';
@@ -43,12 +40,12 @@ describe('re-entrancy guard: isInstrumentationRequest', () => {
       expect(isInstrumentationRequest('rest', tbl)).toBe(true);
     }
   });
-  it('classifies business RPCs as NON-instrumentation (still captured)', () => {
+  it('classifies business RPCs as non-instrumentation', () => {
     for (const rpc of BUSINESS_RPCS) {
       expect(isInstrumentationRequest('rpc', rpc)).toBe(false);
     }
   });
-  it('classifies business tables as NON-instrumentation (still captured)', () => {
+  it('classifies business tables as non-instrumentation', () => {
     for (const tbl of BUSINESS_TABLES) {
       expect(isInstrumentationRequest('rest', tbl)).toBe(false);
     }

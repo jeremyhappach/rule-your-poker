@@ -45,8 +45,25 @@ export interface CurrentSessionChatOperationRecord {
   observedAt: string;
 }
 
+/**
+ * The durable chat-operation recorder was retired server-side in July 2026.
+ * Keep its client API inert so chat delivery remains compatible while no
+ * production request is sent to the retired RPC/table surface.
+ */
+export const CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED = false;
+
 const CURRENT_SESSION_CHAT_OPERATION_EVENT = 'ptown-current-session-chat-operation';
 const currentSessionChatOperations = new Map<string, CurrentSessionChatOperationRecord>();
+const CURRENT_SESSION_CHAT_OPERATION_MAX_AGE_MS = 60_000;
+
+function pruneCurrentSessionChatOperations(nowMs = Date.now()): void {
+  for (const [operationId, operation] of currentSessionChatOperations) {
+    const observedAtMs = Date.parse(operation.observedAt);
+    if (!Number.isFinite(observedAtMs) || nowMs - observedAtMs >= CURRENT_SESSION_CHAT_OPERATION_MAX_AGE_MS) {
+      currentSessionChatOperations.delete(operationId);
+    }
+  }
+}
 
 function validCurrentSessionChatOperation(record: CurrentSessionChatOperationRecord): boolean {
   return Boolean(
@@ -73,7 +90,12 @@ export function registerCurrentSessionChatOperation(
   }
 }
 
+export function unregisterCurrentSessionChatOperation(operationId: string): void {
+  currentSessionChatOperations.delete(operationId);
+}
+
 export function getCurrentSessionChatOperations(): CurrentSessionChatOperationRecord[] {
+  pruneCurrentSessionChatOperations();
   return Array.from(currentSessionChatOperations.values());
 }
 
@@ -98,6 +120,7 @@ export function createChatOperationId(): string {
 }
 
 export async function openServerChatOperation(input: OpenChatOperationInput): Promise<boolean> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return false;
   const startedAt = new Date().toISOString();
   const route = input.route || (typeof window !== 'undefined' ? window.location.pathname : '');
   if (!input.gameId || !input.sessionId || !route || route === '/') {
@@ -199,6 +222,7 @@ export async function appendChatSenderMilestone(
   metadata: Record<string, unknown> = {},
   ids: { messageId?: string | null; optimisticMessageId?: string | null } = {},
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await supabase.rpc('chat_operation_append_sender_milestone', {
       _operation_id: operationId,
@@ -217,6 +241,7 @@ export async function appendChatPeerMilestone(
   messageId?: string | null,
   snapshots: ShellTabAttentionSnapshot[] = [],
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await supabase.rpc('chat_operation_append_peer_milestone', {
       _operation_id: operationId,
@@ -236,6 +261,7 @@ export async function writeChatOperationSenderHeartbeat(
   operationId: string,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
       'chat_operation_sender_heartbeat',
@@ -252,6 +278,7 @@ export async function writeChatOperationPeerHeartbeat(
   operationId: string,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
       'chat_operation_peer_heartbeat',
@@ -275,6 +302,7 @@ export async function awaitPeerOperationVisibility(
   operationId: string,
   maxMs = 5_000,
 ): Promise<boolean> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return false;
   const deadline = Date.now() + maxMs;
   // Fast path: probe once immediately.
   const probe = async (): Promise<boolean> => {
@@ -304,6 +332,7 @@ export async function markChatOperationDeliveryConfirmed(
   kind: 'sender-db-success' | 'peer-realtime-receipt',
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
       'chat_operation_mark_delivery_confirmed',
@@ -321,6 +350,7 @@ export async function appendChatOperationViolation(
   name: string,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
       'chat_operation_append_violation',
@@ -353,6 +383,8 @@ export async function finalizeServerChatOperation(
   terminalReason: string,
   snapshots: ShellTabAttentionSnapshot[] = [],
 ): Promise<void> {
+  unregisterCurrentSessionChatOperation(operationId);
+  if (!CHAT_OPERATION_NETWORK_TELEMETRY_ENABLED) return;
   try {
     await supabase.rpc('finalize_chat_send_operation', {
       _operation_id: operationId,

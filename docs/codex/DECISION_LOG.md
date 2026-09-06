@@ -1,5 +1,17 @@
 # Durable decision log
 
+## D-130 — Retired diagnostics cannot consume production request capacity
+
+Durable chat-operation telemetry is retired end to end. The database recorder
+and finalizer were already no-ops, so clients cannot mount the global Supabase
+fetch wrapper or call the retired operation RPC/table surface. Existing chat
+delivery, realtime receipt, unread state and local presentation traces remain.
+
+Any compatibility registration is explicitly removable and expires after 60
+seconds. A diagnostic lifecycle may never retain every historical operation or
+fan one ordinary product request out across them. Historical operation rows are
+evidence and remain unchanged.
+
 ## D-129 — Holm/Yahtzee fixtures fail closed; Holm rejects duplicate cards
 
 An absent or invalid test profile returns no fixture data. Holm and Yahtzee
