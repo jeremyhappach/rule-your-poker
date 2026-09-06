@@ -1,6 +1,6 @@
 # Durable decision log
 
-## D-130 — Retired diagnostics cannot consume production request capacity
+## D-133 — Retired diagnostics cannot consume production request capacity
 
 Durable chat-operation telemetry is retired end to end. The database recorder
 and finalizer were already no-ops, so clients cannot mount the global Supabase
