@@ -1,5 +1,52 @@
 # Current release and cutover state
 
+## September 8 first recovery-cost correction
+
+- Production migration `20260908152010_narrow_cribbage_recovery_admission`
+  filters current Cribbage round identities before inspecting private state.
+  The other seven admission categories, one-second scheduler, rotating safety
+  work, real-money guards, timers, gameplay and financial owners are unchanged.
+- Paired idle windows on unchanged Small contain 310 ticks each: execution
+  falls from 53.234 to 41.205 ms/tick (22.6%); shared-buffer hits fall 26.2%.
+  WAL and connection churn are approximately unchanged. The plan's 80%
+  whole-scheduler target is not met, and the monthly bill has not changed.
+- Five rollback-only SQL proofs pass both before and after deployment.
+  Full application typecheck, 1,472 application tests and production build
+  pass; all 48 harness unit tests pass after the benchmark-readiness addition.
+- The three-run browser baseline has two qualified runs (108 ordinary
+  actions) and one retained attribution-window failure despite observed peer
+  card arrival at 1.251 seconds. The post-change run completed five hands and
+  cleanup but hit the same attribution cutoff (peer card arrival 0.997 s);
+  its remaining two repeats did not run. Matched browser qualification is
+  incomplete; do not claim a green browser suite or downgrade readiness.
+  Jeremy's production smoke is still required.
+- Evidence, limitations and remaining gates are in
+  `PERFORMANCE_COST_REDUCTION_20260908.md`. Jeremy reports 5–7 hours/week of
+  play and normally leaves the app open; sustained open-but-idle traffic is
+  the next client-cost measurement. No downgrade, transfer or resize occurred.
+
+## September 7 server stall — capacity correction applied
+
+- Jeremy approved Supabase Pro and resizing only `ptown-poker-prod` from
+  Nano (0.5 GB) to Small (2 GB). The restart completed at 03:11:58 UTC
+  September 8. The other project's compute was not changed.
+- The incident paired Cribbage action statement timeouts with a real-money
+  setup rejection, `real_money_liveness_unavailable:active_recovery_failure`.
+  Recovery workers failed to start while the resource charts showed heavy
+  swap and I/O wait. Historical session, settlement, and admission guards
+  were preserved; no product code or schema changed.
+- Post-resize verification: ACTIVE_HEALTHY, six consecutive successful
+  recovery runs, liveness healthy/admission allowed, no active recovery
+  failures. PostgreSQL confirms 512 MB shared buffers and 90 connections.
+- Jeremy still needs to confirm selecting parameters starts a game and both
+  clients can play Cribbage cards normally. Capacity mitigation is applied;
+  end-to-end gameplay acceptance is not yet claimed. Details and identities:
+  `docs/codex/INCIDENT_20260907.md`.
+- September 8: Jeremy requested a measured path away from the ~$40/month
+  organization cost. `PERFORMANCE_COST_REDUCTION_PLAN.md` records the plan;
+  implementation is approved and the first measured correction is in progress.
+  Any further billing or capacity change remains outside that approval.
+
 ## Cross-game latency correction — 2026-09-06
 
 - September 5 gateway evidence establishes a production request amplifier in

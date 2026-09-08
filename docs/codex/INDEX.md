@@ -11,6 +11,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `PERFORMANCE_COST_REDUCTION_PLAN.md` | September 8 cost-reduction work, benchmark gates, idle recovery optimization, and lower-tier eligibility |
 | `STABLE_CHECKPOINTS.md` | Before touching previously stable behavior |
 | `BACKLOG.md` | Planning post-release work or choosing the next task |
 | `DECISION_LOG.md` | Understanding durable architectural choices |

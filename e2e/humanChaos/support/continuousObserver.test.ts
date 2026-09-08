@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { BrowserContext } from '@playwright/test';
 
 import {
   buildContinuousObserverEvidence,
   continuousObserverFailure,
+  HumanChaosContinuousObserver,
   type ChaosActionClick,
   type ChaosDomSnapshot,
   type ChaosNetworkReceipt,
@@ -52,6 +54,28 @@ function snapshot(
 }
 
 describe('continuous human-chaos observer evidence', () => {
+  it('requires captured matching frames on both clients before an ordinary benchmark action', async () => {
+    const observer = new HumanChaosContinuousObserver();
+    let capture: (_source: unknown, event: ChaosObserverEvent) => void = () => {};
+    const context = {
+      exposeBinding: async (_name: string, callback: typeof capture) => { capture = callback; },
+      addInitScript: async () => {},
+      on: () => {},
+    } as unknown as BrowserContext;
+    await observer.attachContext(context, 'host');
+    const ready = () => observer.hasCapturedRoundBaseline('game-1', 'dealer-1', 'round-1');
+    expect(ready()).toBe(false);
+    capture(null, snapshot('host', 100, 'before'));
+    expect(ready()).toBe(false);
+    capture(null, snapshot('peer', 110, 'old', { roundId: 'old-round' }));
+    expect(ready()).toBe(false);
+    capture(null, snapshot('peer', 120, 'before'));
+    expect(ready()).toBe(true);
+    capture(null, snapshot('peer', 130, 'other', { dealerGameId: 'other-dealer' }));
+    expect(ready()).toBe(false);
+    expect(observer.finish().actionReceipts).toHaveLength(0);
+  });
+
   const action = (overrides: Partial<ChaosActionClick> = {}): ChaosActionClick => ({
     kind: 'action-click', client: 'host', wallTime: 1_000, performanceTime: 100,
     url: 'https://example.invalid/game/1', actionId: 'progress-required',

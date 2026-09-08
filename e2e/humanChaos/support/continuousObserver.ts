@@ -902,6 +902,18 @@ export class HumanChaosContinuousObserver {
 
   constructor(private readonly options: { peerBudgetMs?: number } = {}) {}
 
+  /** Benchmark precondition only; never substitutes for post-click progress. */
+  hasCapturedRoundBaseline(gameId: string, dealerGameId: string, roundId: string): boolean {
+    const snapshots = this.events
+      .filter((event): event is ChaosDomSnapshot => event.kind === 'snapshot')
+      .sort((a, b) => a.wallTime - b.wallTime);
+    return (['host', 'peer'] as const).every(client => {
+      const snapshot = latestSnapshotBefore(snapshots, client, Date.now());
+      return snapshot?.gameId === gameId && snapshot.dealerGameId === dealerGameId
+        && snapshot.roundId === roundId;
+    });
+  }
+
   /** Assert an expected legal control is actually usable, without submitting it. */
   async requireActionableControl(client: ChaosClient, page: Page, selector: string, timeoutMs = DEFAULT_PROGRESS_BUDGET_MS): Promise<void> {
     try {

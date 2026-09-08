@@ -1142,7 +1142,20 @@ test.describe('two-human cross-country branch-smoke matrix', () => {
           ? await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId, {
             onCribbageProgress: phaseRejoinController.onProgress,
           })
-          : await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId);
+          : await playDealerGameToTerminal(session, scenario.gameType, probe, dealerGameId, {
+            onCribbageProgress: process.env.PTOWN_E2E_COST_BASELINE === '1' && scenario.gameType === 'cribbage'
+              ? async (progress) => {
+                if (progress.phase !== 'discarding' || !progress.roundId) return;
+                // An ordinary performance sample needs both pre-click frames.
+                // The default chaos scenario deliberately has no such barrier.
+                // Readiness has the same finite budget; post-click timing and
+                // the observer's strict progress requirements remain unchanged.
+                await expect.poll(() => session.chaosObserver?.hasCapturedRoundBaseline(
+                  session.gameId, dealerGameId, progress.roundId!,
+                ), { timeout: 6_000, intervals: [50, 100, 250] }).toBe(true);
+              }
+              : undefined,
+          });
         evidence.resultId = result.id;
         evidence.handNumber = result.hand_number;
         if (scenario.cribbageFixtureProfile === 'near_double_skunk') {
