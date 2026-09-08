@@ -1,5 +1,23 @@
 # Current release and cutover state
 
+## September 8 test-only timing observer correction
+
+- Approved measurement correction is complete; no product code, gameplay,
+  settlement, schema, billing or hardware changed. All 66 harness tests,
+  11 browser controls, application typecheck and production build pass.
+- Corrected Cribbage/Yahtzee scenarios passed concurrently against unchanged
+  production `f58d800dd2562675c18ffa8facda2deeac3ed80c`: four Cribbage hands
+  and a complete Yahtzee scorecard, both clients' terminal panels, 68 ordinary
+  actions and no observer/timing failures. Maximum peer progress was
+  4,965/4,379 ms, respectively, within the unchanged six-second limit.
+- Independent SQL at 22:59:16 UTC confirms both synthetic sessions/rounds
+  deleted, no real-money game rows updated during the test window, healthy
+  recovery and zero unit failures or lock waiters. All seven games now have
+  a passing selected scenario; earlier parallel failures remain retained.
+  This does not certify financial safety, eliminate lag/freezes or qualify
+  Free-plan capacity. See `TIMING_OBSERVER_CORRECTION_20260908.md` for scope,
+  guards, coverage limits, exact timings and cleanup evidence.
+
 ## September 8 first recovery-cost correction
 
 - The approved recovery runner is deployed on production Small. Migrations

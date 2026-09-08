@@ -19,6 +19,9 @@ export type ChaosDomSnapshot = {
   holmTurnSequence?: number | null;
   ginActionCount?: number | null;
   decisionLocks?: string[] | null;
+  cribbageSelfHandCount?: number | null;
+  cribbageOpponentHandCounts?: Record<string, number>;
+  yahtzeeRollStep?: number | null;
   shellCount: number;
   feltCount: number;
   nestedShellCount: number;
@@ -243,6 +246,23 @@ function firstProgressAfter(
   observationEnd: number,
 ): ChaosDomSnapshot | null {
   if (!matchesActionBaseline(baseline, action)) return null;
+  const roll = action.actionSurface === 'yahtzee-turn' && client === action.client
+    && baseline.gameType === 'yahtzee' ? /^Roll ([123])$/.exec(action.buttonText) : null;
+  if (roll) {
+    // Actor dice have no data-die nodes. Only this turn's canonical roll
+    // ordinal can prove progress; later opponent dice must never donate it.
+    const step = (s: ChaosDomSnapshot) => s.yahtzeeRollStep ?? Number(
+      s.actionSurfaces.find(surface => surface.startsWith('yahtzee-turn['))?.match(/Roll ([123]):/)?.[1] ?? NaN,
+    );
+    if (step(baseline) !== Number(roll[1])) return null;
+    for (const s of snapshots) {
+      if (s.client !== client || s.wallTime < action.wallTime || s.wallTime >= observationEnd) continue;
+      if (!matchesActionBaseline(s, action) || s.gameType !== 'yahtzee'
+        || !s.actionSurfaces.some(surface => surface.startsWith('yahtzee-turn['))) return null;
+      if (step(s) === Number(roll[1]) + 1) return s;
+    }
+    return null;
+  }
   const identity = action.expectedIdentity;
   return snapshots.find((snapshot) => snapshot.client === client
     && snapshot.wallTime >= action.wallTime && snapshot.wallTime < observationEnd
@@ -259,13 +279,22 @@ function matchesActionBaseline(snapshot: ChaosDomSnapshot | null, action: ChaosA
     && (!action.roundId || snapshot.roundId === action.roundId);
 }
 
-function hasMutationProjection(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
+function discardHandCount(snapshot: ChaosDomSnapshot, target: Extract<MutationProgressTarget, { field: 'cribbageDiscard' }>, isActor: boolean): number | null {
+  if (snapshot.gameType !== 'cribbage') return null;
+  return (isActor ? snapshot.cribbageSelfHandCount : snapshot.cribbageOpponentHandCounts?.[target.playerId]) ?? null;
+}
+
+function hasMutationProjection(snapshot: ChaosDomSnapshot, target: MutationProgressTarget, isActor = false): boolean {
+  if (target.field === 'cribbageDiscard') return Number.isSafeInteger(discardHandCount(snapshot, target, isActor));
   return target.field === 'decisionLocks' ? Array.isArray(snapshot.decisionLocks)
     : target.field === 'roundStatus' ? typeof snapshot.roundStatus === 'string'
     : Number.isSafeInteger(snapshot[target.field]);
 }
 
-function mutationReached(snapshot: ChaosDomSnapshot, target: MutationProgressTarget): boolean {
+function mutationReached(snapshot: ChaosDomSnapshot, target: MutationProgressTarget, isActor = false): boolean {
+  // Exact equality: a later pegged card (three remaining) cannot stand in for
+  // the missing four-card discard projection. Opponent identity is a UUID.
+  if (target.field === 'cribbageDiscard') return discardHandCount(snapshot, target, isActor) === target.value;
   return target.field === 'decisionLocks' ? snapshot.decisionLocks?.includes(target.value) === true
     : target.field === 'roundStatus' ? snapshot.roundStatus === target.value
     : typeof snapshot[target.field] === 'number' && snapshot[target.field]! >= target.value;
@@ -331,7 +360,11 @@ export function buildContinuousObserverEvidence(
       : null;
     const decisionMutation = action.actionSurface === 'holm-357-decision'
       ? rpcCandidates.find(request => /\/(holm_submit_decision|three_five_seven_submit_decision)$/.test(request.endpoint)) : null;
-    const firstRpc = ginMutation ?? decisionMutation ?? rpcCandidates[0] ?? null;
+    const discardMutation = action.actionSurface === 'cribbage-discard'
+      ? rpcCandidates.find(request => request.endpoint.endsWith('/cribbage_apply_discard')) : null;
+    const yahtzeeMutation = action.actionSurface === 'yahtzee-turn' && /^Roll [123]$/.test(action.buttonText)
+      ? rpcCandidates.find(request => request.endpoint.endsWith('/yahtzee_apply_action')) : null;
+    const firstRpc = ginMutation ?? decisionMutation ?? discardMutation ?? yahtzeeMutation ?? rpcCandidates[0] ?? null;
     // A lost response can replay the same immutable request. A separate later
     // click must not donate its commit to this action.
     const attempts = firstRpc?.mutationKey ? networkRequests.filter(request =>
@@ -340,7 +373,8 @@ export function buildContinuousObserverEvidence(
     const committedRpc = attempts.find(request => request.mutationTarget && request.outcome === 'finished');
     const rpc = committedRpc ?? firstRpc;
     const target = committedRpc?.mutationTarget ?? null;
-    const projectionAvailable = action.actionSurface.startsWith('gin-') ? Number.isSafeInteger(actorBaseline?.ginActionCount)
+    const projectionAvailable = action.actionSurface === 'cribbage-discard' ? Number.isSafeInteger(actorBaseline?.cribbageSelfHandCount)
+      : action.actionSurface.startsWith('gin-') ? Number.isSafeInteger(actorBaseline?.ginActionCount)
       : action.actionSurface === 'holm-357-decision'
         && (Number.isSafeInteger(actorBaseline?.holmTurnSequence) || Array.isArray(actorBaseline?.decisionLocks));
     const boundMutation = Boolean(firstRpc?.mutationKey) || projectionAvailable;
@@ -358,18 +392,19 @@ export function buildContinuousObserverEvidence(
       if (!baseline || baseline.gameId !== action.gameId) return null;
       return snapshots.find(snapshot => snapshot.client === client && matchingIdentity(snapshot)
         && snapshot.wallTime >= action.wallTime && snapshot.wallTime < observationEnd
-        && mutationReached(snapshot, target)) ?? null;
+        && mutationReached(snapshot, target, client === action.client)) ?? null;
     };
     const actorProgress = progressFor(action.client, actorBaseline);
     const peerProgress = progressFor(peer, peerBaseline);
     // An optimistic actor paint cannot predate its proven server acknowledgement.
     const actorProgressAt = actorProgress ? Math.max(actorProgress.wallTime,
-      target ? committedRpc?.finishedAt ?? actorProgress.wallTime : actorProgress.wallTime) : null;
+      target ? committedRpc?.finishedAt ?? actorProgress.wallTime
+        : yahtzeeMutation?.finishedAt ?? actorProgress.wallTime) : null;
     const progressExpectation = action.progressExpectation ?? 'both';
     const progressProblems: string[] = [];
     if (boundMutation && !target && progressExpectation !== 'none') progressProblems.push('mutation-commit-unproven');
     if (target && target.roundId !== action.roundId) progressProblems.push('mutation-identity-mismatch');
-    if (target && actorBaseline && matchingIdentity(actorBaseline) && mutationReached(actorBaseline, target)) {
+    if (target && actorBaseline && matchingIdentity(actorBaseline) && mutationReached(actorBaseline, target, true)) {
       progressProblems.push('mutation-target-not-new');
     }
     if (!['both', 'actor', 'none'].includes(progressExpectation)) progressProblems.push('invalid-progress-contract');
@@ -387,7 +422,7 @@ export function buildContinuousObserverEvidence(
       if (!(target ? baseline?.gameId === action.gameId : matchesActionBaseline(baseline, action))) {
         progressProblems.push(`${role}-missing-baseline`);
       } else if (target && !snapshots.some(snapshot => snapshot.client === (role === 'actor' ? action.client : peer)
-        && matchingIdentity(snapshot) && hasMutationProjection(snapshot, target))) {
+        && matchingIdentity(snapshot) && hasMutationProjection(snapshot, target, role === 'actor'))) {
         progressProblems.push(`${role}-missing-projection`);
       } else if (!progress) {
         progressProblems.push(`${role}-${observationEnd - 1 - action.wallTime >= budget ? 'no-progress' : 'incomplete'}`);
@@ -629,6 +664,21 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
     const ginActionCount = progressNumber('data-authoritative-gin-action-count');
     const locked = root?.getAttribute('data-authoritative-decision-locks');
     const decisionLocks = locked == null ? null : locked.split(',').filter(Boolean).sort();
+    const cribbageSelfHandCount = gameType === 'cribbage'
+      ? visibleNodes('[data-cribbage-hand-card-key]').length : null;
+    const cribbageOpponentHandCounts: Record<string, number> = {};
+    if (gameType === 'cribbage') {
+      for (const seat of document.querySelectorAll<HTMLElement>('[data-canonical-seat-cluster][data-player-id]')) {
+        const playerId = seat.getAttribute('data-player-id');
+        const count = opponentCardBackCountByAnchor.get(`opp-stack-${seat.getAttribute('data-seat-position')}`);
+        if (playerId && count !== undefined) cribbageOpponentHandCounts[playerId] = count;
+      }
+    }
+    const yahtzeeStrip = gameType === 'yahtzee'
+      ? visibleNodes('[data-authoritative-action-surface="yahtzee-turn"]')[0] : null;
+    const yahtzeeRollMatch = yahtzeeStrip?.textContent?.match(/\bRoll ([123])\b/);
+    const yahtzeeRollStep = yahtzeeRollMatch ? Number(yahtzeeRollMatch[1])
+      : yahtzeeStrip?.textContent?.includes('Pick a category') ? 4 : null;
     const staleArtifactKeys: string[] = [];
     if (dealerGameId) {
       const stampArtifacts = (nodes: HTMLElement[], kind: string, signatureOf: (node: HTMLElement) => string) => {
@@ -665,6 +715,9 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       holmTurnSequence,
       ginActionCount,
       decisionLocks,
+      cribbageSelfHandCount,
+      cribbageOpponentHandCounts,
+      yahtzeeRollStep,
       actionSurfaces,
       visibleFaceCardIds,
       opponentCardBackCounts,
@@ -701,6 +754,9 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
       holmTurnSequence,
       ginActionCount,
       decisionLocks,
+      cribbageSelfHandCount,
+      cribbageOpponentHandCounts,
+      yahtzeeRollStep,
       shellCount,
       feltCount,
       nestedShellCount,
@@ -901,6 +957,11 @@ export class HumanChaosContinuousObserver {
   private readonly pendingMutationReads = new Set<Promise<void>>();
 
   constructor(private readonly options: { peerBudgetMs?: number } = {}) {}
+
+  /** Read-only capture barrier for harness controls; does not seal evidence. */
+  latestSnapshot(client: ChaosClient): ChaosDomSnapshot | null {
+    return latestSnapshotBefore(this.events.filter((event): event is ChaosDomSnapshot => event.kind === 'snapshot'), client, Date.now());
+  }
 
   /** Benchmark precondition only; never substitutes for post-click progress. */
   hasCapturedRoundBaseline(gameId: string, dealerGameId: string, roundId: string): boolean {

@@ -85,6 +85,81 @@ describe('continuous human-chaos observer evidence', () => {
   });
   const baselines = () => [snapshot('host', 900, 'before'), snapshot('peer', 900, 'before')];
 
+  const discardAction = () => action({ actionSurface: 'cribbage-discard', buttonText: 'Send to Crib (2/2)' });
+  const discardFrame = (client: 'host' | 'peer', time: number, count: number, roundId = 'round-1') =>
+    snapshot(client, time, 'betting', { gameType: 'cribbage', roundId,
+      cribbageSelfHandCount: client === 'host' ? count : 4,
+      cribbageOpponentHandCounts: client === 'peer' ? { 'player-a': count } : {},
+    });
+  const discardCommit: ChaosNetworkReceipt = {
+    requestId: 'discard', client: 'host', method: 'POST', endpoint: '/rest/v1/rpc/cribbage_apply_discard',
+    startedAt: 1_010, finishedAt: 1_200, durationMs: 190, outcome: 'finished', failure: null,
+    mutationKey: 'discard-round-1-player-a-0-1',
+    mutationTarget: { field: 'cribbageDiscard', roundId: 'round-1', playerId: 'player-a', value: 4 },
+  };
+  it('keeps exact discarded-hand progress attributable after a later card click', () => {
+    const evidence = buildContinuousObserverEvidence([
+      discardFrame('host', 900, 6), discardFrame('peer', 900, 6), discardAction(),
+      discardFrame('host', 1_100, 4), action({ actionId: 'later-play', wallTime: 1_330 }),
+      discardFrame('peer', 1_381, 4),
+    ], [{ ...discardCommit, endpoint: '/rest/v1/rpc/read_session_frame', mutationKey: undefined, mutationTarget: null }, discardCommit],
+    { finishedAt: 10_000, peerBudgetMs: 6_000 });
+    expect(evidence.actionReceipts[0]).toMatchObject({ actorProgressMs: 200, peerProgressMs: 381, progressProblems: [], rpcEndpoint: discardCommit.endpoint });
+  });
+  it.each(['missing', 'other-player', 'later-play', 'wrong-round', 'wrong-dealer', 'uncommitted'])('rejects %s as discarded-hand proof', (kind) => {
+    const peerFrame = discardFrame('peer', 1_400, kind === 'later-play' ? 3 : 6);
+    if (kind === 'other-player') peerFrame.cribbageOpponentHandCounts = { 'player-a': 6, 'player-b': 4 };
+    if (kind === 'wrong-round') { peerFrame.roundId = 'other'; peerFrame.cribbageOpponentHandCounts = { 'player-a': 4 }; }
+    if (kind === 'wrong-dealer') { peerFrame.dealerGameId = 'other'; peerFrame.cribbageOpponentHandCounts = { 'player-a': 4 }; }
+    const evidence = buildContinuousObserverEvidence([
+      discardFrame('host', 900, 6), discardFrame('peer', 900, 6), discardAction(), discardFrame('host', 1_300, 4), peerFrame,
+    ], [{ ...discardCommit, mutationTarget: kind === 'uncommitted' ? null : discardCommit.mutationTarget }],
+    { finishedAt: 10_000, peerBudgetMs: 6_000 });
+    expect(evidence.actionReceipts[0].progressProblems.length).toBeGreaterThan(0);
+  });
+  it('retains real discarded-hand latency breaches and rejects already-present targets', () => {
+    const run = (baselineCount: number) => buildContinuousObserverEvidence([
+      discardFrame('host', 900, baselineCount), discardFrame('peer', 900, 6), discardAction(),
+      discardFrame('host', 1_300, 4), discardFrame('peer', 7_001, 4),
+    ], [discardCommit], { finishedAt: 10_000, peerBudgetMs: 6_000 }).actionReceipts[0];
+    expect(run(6).progressProblems).toContain('peer-latency');
+    expect(run(4).progressProblems).toContain('mutation-target-not-new');
+  });
+  const yahtzeeFrame = (time: number, step: number | null, extra: Partial<ChaosDomSnapshot> = {}) =>
+    snapshot('host', time, 'betting', { gameType: 'yahtzee', yahtzeeRollStep: step,
+      actionSurfaces: step === null ? [] : [`yahtzee-turn[Roll ${step}:disabled]`], ...extra });
+  it.each([1, 2, 3])('recognizes committed Yahtzee Roll %s progress without actor data-die nodes', (roll) => {
+    const evidence = buildContinuousObserverEvidence([
+      yahtzeeFrame(900, roll), snapshot('peer', 900, 'betting', { gameType: 'yahtzee' }),
+      action({ actionSurface: 'yahtzee-turn', buttonText: `Roll ${roll}` }),
+      yahtzeeFrame(1_040, roll), yahtzeeFrame(2_334, roll + 1),
+    ], [], { finishedAt: 20_000, peerBudgetMs: 6_000 });
+    expect(evidence.actionReceipts[0].actorProgressMs).toBe(1_334);
+  });
+  it.each(['availability', 'other-surface', 'opponent-turn', 'wrong-round', 'wrong-dealer'])('does not count Yahtzee %s as actor roll progress', (kind) => {
+    const changed = yahtzeeFrame(2_000, 1);
+    if (kind === 'availability') changed.actionSurfaces = ['yahtzee-turn[Roll 1:enabled]'];
+    if (kind === 'other-surface') changed.actionSurfaces.push('other[Roll 2:enabled]');
+    if (kind === 'opponent-turn') { changed.actionSurfaces = []; changed.yahtzeeRollStep = null; changed.visibleDice = ['0:6:false:scatter:normal']; }
+    if (kind === 'wrong-round') { changed.roundId = 'other'; changed.yahtzeeRollStep = 2; }
+    if (kind === 'wrong-dealer') { changed.dealerGameId = 'other'; changed.yahtzeeRollStep = 2; }
+    const evidence = buildContinuousObserverEvidence([
+      yahtzeeFrame(900, 1), snapshot('peer', 900, 'betting', { gameType: 'yahtzee' }),
+      action({ actionSurface: 'yahtzee-turn', buttonText: 'Roll 1' }), changed,
+    ], [], { finishedAt: 20_000, peerBudgetMs: 6_000 });
+    expect(evidence.actionReceipts[0].actorProgressMs).toBeNull();
+    expect(evidence.actionReceipts[0].progressProblems).toContain('actor-no-progress');
+  });
+  it('does not let a later Yahtzee turn repair an earlier missing roll and retains real latency', () => {
+    const run = (turnEnded: boolean) => buildContinuousObserverEvidence([
+      yahtzeeFrame(900, 1), snapshot('peer', 900, 'betting', { gameType: 'yahtzee' }),
+      action({ actionSurface: 'yahtzee-turn', buttonText: 'Roll 1' }),
+      ...(turnEnded ? [yahtzeeFrame(2_000, null)] : []), yahtzeeFrame(7_001, 2),
+    ], [], { finishedAt: 20_000, peerBudgetMs: 6_000 }).actionReceipts[0];
+    expect(run(true).actorProgressMs).toBeNull();
+    expect(run(false).progressProblems).toContain('actor-latency');
+  });
+
   const committedHolm: ChaosNetworkReceipt = {
     requestId: 'committed-holm', client: 'host', method: 'POST',
     endpoint: '/rest/v1/rpc/holm_submit_decision', startedAt: 1_010, finishedAt: 1_200,

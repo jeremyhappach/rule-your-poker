@@ -1,6 +1,7 @@
 export type MutationProgressTarget = {
   roundId: string;
 } & ({ field: 'holmTurnSequence' | 'ginActionCount'; value: number }
+  | { field: 'cribbageDiscard'; playerId: string; value: number }
   | { field: 'decisionLocks'; value: string }
   | { field: 'roundStatus'; value: 'completed' });
 
@@ -11,7 +12,7 @@ const integer = (value: unknown): value is number => typeof value === 'number'
   && Number.isSafeInteger(value) && value >= 0;
 
 export function tracksMutationProgress(endpoint: string): boolean {
-  return /\/(holm_submit_decision|three_five_seven_submit_decision|gin_rummy_apply_action)$/.test(endpoint);
+  return /\/(holm_submit_decision|three_five_seven_submit_decision|gin_rummy_apply_action|cribbage_apply_discard)$/.test(endpoint);
 }
 
 /** Keep only identity/progress receipts, never response hands or request cards. */
@@ -20,6 +21,19 @@ export function mutationProgressTarget(
 ): MutationProgressTarget | null {
   const input = record(request), result = record(response);
   if (!input || !result) return null;
+  if (endpoint.endsWith('/cribbage_apply_discard')) {
+    const player = record(result.playerStates?.[input._player_id]);
+    const indices = input._card_indices;
+    if (typeof input._round_id !== 'string' || typeof input._player_id !== 'string'
+      || result.error || !['discarding', 'pegging', 'counting', 'complete'].includes(result.phase)
+      || !player || player.playerId !== input._player_id
+      || !Array.isArray(player.hand) || player.hand.length !== 4
+      || !Array.isArray(player.discardedToCrib) || !Array.isArray(indices)
+      || ![1, 2].includes(indices.length) || player.discardedToCrib.length !== indices.length
+      || new Set(indices).size !== indices.length
+      || !indices.every(index => integer(index) && index < 4 + indices.length)) return null;
+    return { field: 'cribbageDiscard', roundId: input._round_id, playerId: input._player_id, value: 4 };
+  }
   if (endpoint.endsWith('/gin_rummy_apply_action')) {
     const state = record(result.state);
     if (typeof input._round_id !== 'string' || !integer(input._expected_action_count)

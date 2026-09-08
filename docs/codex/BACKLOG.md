@@ -4,6 +4,16 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### Resolved measurement follow-up — Cribbage/Yahtzee observer (September 8)
+
+The approved test-only correction and concurrent focused reruns pass: four
+Cribbage hands, a full Yahtzee scorecard and 68 ordinary actions without
+observer/timing failures. This resolves the queued observer-fidelity work
+recorded below, not the original user-reported stalls or unexplained earlier
+latency events. Those remain queued. Cleanup and healthy recovery were
+independently verified at 22:59:16 UTC; no product or billing change was made.
+See `TIMING_OBSERVER_CORRECTION_20260908.md` for evidence and limits.
+
 Jeremy authorized read-only root-cause investigation after quitting the
 session. The five original reports below remain as captured; statements about
 unverified identities or no investigation describe their initial capture.

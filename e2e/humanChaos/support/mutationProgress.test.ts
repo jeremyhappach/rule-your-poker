@@ -1,6 +1,22 @@
 import { expect, it } from 'vitest';
 import { mutationProgressTarget } from './mutationProgress';
 
+it('binds Cribbage discard acknowledgment to the requested player and remaining hand count', () => {
+  const input = { _round_id: 'round-a', _player_id: 'player-a', _card_indices: [0, 1] };
+  const state = { phase: 'pegging', playerStates: { 'player-a': {
+    playerId: 'player-a', hand: [{}, {}, {}, {}], discardedToCrib: [{}, {}],
+  } } };
+  expect(mutationProgressTarget('/cribbage_apply_discard', input, state)).toEqual({
+    field: 'cribbageDiscard', roundId: 'round-a', playerId: 'player-a', value: 4,
+  });
+  for (const invalid of [null, {}, { ...state, error: 'refused' },
+    { ...state, playerStates: { 'player-b': state.playerStates['player-a'] } },
+    { ...state, playerStates: { 'player-a': { ...state.playerStates['player-a'], discardedToCrib: [] } } }]) {
+    expect(mutationProgressTarget('/cribbage_apply_discard', input, invalid)).toBeNull();
+  }
+  expect(mutationProgressTarget('/cribbage_apply_discard', { ...input, _card_indices: [0, 0] }, state)).toBeNull();
+});
+
 it('requires exact round identity and excludes refused Holm decisions', () => {
   const request = { p_round_id: 'round-a' };
   expect(mutationProgressTarget('/holm_submit_decision', request, { round_id: 'round-a', turn_sequence: 2 }))

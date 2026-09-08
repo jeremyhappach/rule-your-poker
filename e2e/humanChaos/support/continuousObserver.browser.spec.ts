@@ -2,6 +2,49 @@ import { expect, test } from '@playwright/test';
 
 import { continuousObserverFailure, HumanChaosContinuousObserver } from './continuousObserver';
 
+test('captures UUID-scoped Cribbage hand counts and the final Yahtzee roll step', async ({ browser }) => {
+  const observer = new HumanChaosContinuousObserver();
+  const context = await browser.newContext();
+  try {
+    await observer.attachContext(context, 'host');
+    const page = await context.newPage();
+    const hand = (count: number) => Array.from({ length: count }, (_, i) => `<button data-cribbage-hand-card-key="${i}">card</button>`).join('');
+    const backs = (count: number) => '<div data-canonical-card-back></div>'.repeat(count);
+    await page.goto(`data:text/html,${encodeURIComponent(`<div data-lifecycle-branch="loaded-inner"
+      data-authoritative-game-id="game-1" data-authoritative-game-type="cribbage"
+      data-authoritative-dealer-game-id="dealer-1" data-authoritative-round-id="round-1">
+      <div data-canonical-shell-root><div data-canonical-felt-surface></div></div>
+      <div data-canonical-seat-cluster data-player-id="player-b" data-seat-position="2"></div>
+      <div data-card-anchor="opp-stack-2">${backs(6)}</div><div id="hand">${hand(6)}</div>
+      <div data-canonical-shell-timer-rail style="width:10px;height:10px"></div></div>`)}`);
+    await expect.poll(() => observer.latestSnapshot('host')?.cribbageSelfHandCount).toBe(6);
+    await page.evaluate(({ handHtml, backsHtml }) => {
+      document.querySelector('#hand')!.innerHTML = handHtml;
+      document.querySelector('[data-card-anchor]')!.innerHTML = backsHtml;
+    }, { handHtml: hand(4), backsHtml: backs(4) });
+    await expect.poll(() => ({ self: observer.latestSnapshot('host')?.cribbageSelfHandCount,
+      opponent: observer.latestSnapshot('host')?.cribbageOpponentHandCounts?.['player-b'] })).toEqual({ self: 4, opponent: 4 });
+    await page.evaluate(() => {
+      document.querySelector('[data-lifecycle-branch]')!.setAttribute('data-authoritative-game-type', 'yahtzee');
+      const strip = document.createElement('div');
+      strip.setAttribute('data-authoritative-action-surface', 'yahtzee-turn');
+      strip.innerHTML = '<button>Roll 3</button>';
+      document.body.append(strip);
+    });
+    await expect.poll(() => observer.latestSnapshot('host')?.yahtzeeRollStep).toBe(3);
+    await page.evaluate(() => {
+      document.querySelector('[data-authoritative-action-surface]')!.innerHTML = '<span>Pick a category</span>';
+    });
+    await expect.poll(() => observer.latestSnapshot('host')?.yahtzeeRollStep).toBe(4);
+    const evidence = observer.finish();
+    const snapshots = evidence.events.filter(event => event.kind === 'snapshot');
+    expect(snapshots).toContainEqual(expect.objectContaining({ cribbageSelfHandCount: 6, cribbageOpponentHandCounts: { 'player-b': 6 } }));
+    expect(snapshots).toContainEqual(expect.objectContaining({ cribbageSelfHandCount: 4, cribbageOpponentHandCounts: { 'player-b': 4 } }));
+    expect(snapshots).toContainEqual(expect.objectContaining({ yahtzeeRollStep: 3 }));
+    expect(evidence.finalSnapshots.host?.yahtzeeRollStep).toBe(4);
+  } finally { await context.close(); }
+});
+
 const HEALTHY_TIMED_TABLE = `
   <div
     data-lifecycle-branch="loaded-inner"
