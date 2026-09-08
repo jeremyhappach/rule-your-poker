@@ -30,7 +30,10 @@ BEGIN
      );
 
   IF v_count <> 1
-     OR v_command IS DISTINCT FROM 'SELECT private.advance_due_game_state();' THEN
+     OR (
+       v_command IS DISTINCT FROM 'SELECT private.advance_due_game_state();'
+       AND v_command IS DISTINCT FROM 'CALL private.run_game_recovery_batch();'
+     ) THEN
     RAISE EXCEPTION 'game_recovery_scheduler_proof:unexpected_active_jobs:%:%',
       v_count, v_command;
   END IF;

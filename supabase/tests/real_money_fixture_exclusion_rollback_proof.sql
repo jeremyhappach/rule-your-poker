@@ -4,6 +4,18 @@ BEGIN;
 SET LOCAL lock_timeout = '2s';
 SET LOCAL statement_timeout = '60s';
 
+-- This proof compares identical seeded deals across fixture settings. Use the
+-- same rollback-only entropy adapter as the dice boundary proof; production
+-- crypto is independently covered by secure_randomness_and_crib_rollback_proof.
+CREATE OR REPLACE FUNCTION private.secure_random_int(p_bound integer) RETURNS integer
+LANGUAGE sql VOLATILE SET search_path='' AS $test_entropy$
+  SELECT floor(random()*p_bound)::integer
+$test_entropy$;
+CREATE OR REPLACE FUNCTION private.secure_shuffle_key() RETURNS bytea
+LANGUAGE sql VOLATILE SET search_path='' AS $test_shuffle$
+  SELECT decode(md5(random()::text),'hex')
+$test_shuffle$;
+
 CREATE OR REPLACE FUNCTION pg_temp.holm_boundary_fixture(p_name text, p_tie boolean, p_end boolean)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $fixture$
 DECLARE
@@ -38,7 +50,7 @@ BEGIN
     pot,status,community_cards,community_cards_revealed,chucky_cards,current_turn_position,
     decision_deadline)
   VALUES(r,g,d,1,1,4,4,'betting',board,2,
-    '[{"rank":"Q","suit":"♣"},{"rank":"J","suit":"♥"},{"rank":"8","suit":"♠"},{"rank":"6","suit":"♦"}]'::jsonb,
+    '[{"rank":"Q","suit":"♣"},{"rank":"J","suit":"♣"},{"rank":"8","suit":"♠"},{"rank":"6","suit":"♦"}]'::jsonb,
     1,clock_timestamp()+interval '5 minutes');
   INSERT INTO public.player_cards(player_id,round_id,cards) VALUES
   (p1,r,CASE WHEN p_tie THEN
@@ -47,6 +59,7 @@ BEGIN
   (p2,r,CASE WHEN p_tie THEN
     '[{"rank":"A","suit":"♦"},{"rank":"8","suit":"♣"},{"rank":"9","suit":"♥"},{"rank":"10","suit":"♥"}]'::jsonb
     ELSE '[{"rank":"K","suit":"♥"},{"rank":"K","suit":"♦"},{"rank":"Q","suit":"♠"},{"rank":"J","suit":"♥"}]'::jsonb END);
+  PERFORM private.assert_holm_round_card_integrity(r);
   RETURN jsonb_build_object('game',g,'dealer',d,'round',r,'p1',p1,'p2',p2,'p3',p3,
     'u1',u[1],'u2',u[2],'u3',u[3]);
 END;
@@ -235,7 +248,7 @@ END;
 $proof$;
 
 DO $compat$
-DECLARE g uuid:=gen_random_uuid(); r uuid:=gen_random_uuid(); u uuid;
+DECLARE g uuid:=gen_random_uuid(); r uuid:=gen_random_uuid(); u uuid; denied boolean:=false;
 BEGIN
  SELECT id INTO u FROM auth.users ORDER BY created_at LIMIT 1;
  INSERT INTO public.games(id,name,status,game_type,real_money,current_host)
@@ -244,8 +257,13 @@ BEGIN
  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
  PERFORM set_config('request.jwt.claim.sub',u::text,true);
  EXECUTE 'SET LOCAL ROLE authenticated';
- UPDATE public.rounds SET pot=1 WHERE id=r;
- IF NOT FOUND THEN RAISE EXCEPTION 'holm_privacy:unrelated_round_blocked'; END IF;
+ -- Horses now also has an authoritative RPC boundary. Browser round writes
+ -- must remain denied; this fixture must not revive the retired write path.
+ BEGIN UPDATE public.rounds SET pot=1 WHERE id=r;
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied OR (SELECT pot FROM public.rounds WHERE id=r)<>0 THEN
+   RAISE EXCEPTION 'holm_privacy:unrelated_authority_boundary_bypassed';
+ END IF;
  EXECUTE 'RESET ROLE';
 END;
 $compat$;

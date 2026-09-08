@@ -87,6 +87,12 @@ treated as current production findings or modified in this task.
 
 ## Full-game qualification blocker
 
+Historical finding below: resolved by the subsequently approved isolated
+bootstrap repair. All 11 rollback proofs now pass before/after the candidate,
+and real cron recovered committed synthetic Gin sessions with failure isolation.
+See `RECOVERY_BOOTSTRAP_20260908.md` for parity, fixture maintenance, cleanup and
+remaining workload/cost gates. Production rollout is still excluded.
+
 Branch provisioning stops after 222 migrations at version `20260706200750`.
 The next production-history migration, `20260706213441`, begins with hard-coded
 `cron.alter_job(job_id := 7, ...)` and job 9. The fresh branch instead has jobs
