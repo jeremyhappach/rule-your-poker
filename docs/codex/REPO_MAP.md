@@ -1,5 +1,12 @@
 # Repository map
 
+Recovery scheduler backend reuse: `private.run_game_recovery_batch()` wraps
+the unchanged `private.advance_due_game_state()` in independently committed
+one-second ticks. Deployment, drain/restore helpers and contract checks are in
+`supabase/tests/prototypes/recovery_runner_*.sql` and
+`recovery_runner_rollout.test.mjs`; production versions are recorded in
+`docs/codex/RECOVERY_ROLLOUT_20260908.md`. No game or settlement owner moves.
+
 Card-face validation and transport conversion: `src/lib/cardGames/resolvedCardFace.ts`.
 Holm same-hand community cache promotion: `src/lib/holmCommunityFaces.ts`.
 The four-game owner inventory, rendering contract and acceptance steps are in

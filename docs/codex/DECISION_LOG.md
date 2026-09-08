@@ -1,5 +1,20 @@
 # Durable decision log
 
+## D-134 — Reuse recovery backends without merging transactions
+
+The canonical one-second cron job may reuse its backend for a bounded batch,
+but every recovery tick must commit independently. The existing dispatcher,
+advisory lock, per-game owners, identity checks and financial boundaries remain
+authoritative. The runner is not another progression owner.
+
+Every tick verifies the exact active canonical job command before admission.
+Disable/rollback must drain the old backend before enabling its replacement.
+Sleep is outside the committed work transaction and commits before the next
+tick. A whole-CALL timeout is not renewed by COMMIT; keep that reduced late-tick
+budget explicit. Query timing excludes intentional sleep when judging savings.
+
+See `RECOVERY_ROLLOUT_20260908.md` and the preceding isolated qualification.
+
 ## D-133 — Retired diagnostics cannot consume production request capacity
 
 Durable chat-operation telemetry is retired end to end. The database recorder

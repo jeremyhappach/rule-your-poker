@@ -2,6 +2,39 @@
 
 ## September 8 first recovery-cost correction
 
+- The approved recovery runner is deployed on production Small. Migrations
+  `20260908192845_prepare_committed_recovery_runner`,
+  `20260908193417_enable_committed_recovery_runner` and
+  `20260908194000_restore_recovery_query_tracking` install the qualified
+  postgres-only wrapper, switch the same canonical one-second job after drain,
+  and restore the temporary profiling setting. Every tick commits separately;
+  all 325 existing routine definitions and financial/gameplay owners are unchanged.
+  Before/after production windows contain 308/329 ticks over 312.292/329.689
+  seconds. Normalized execution falls 40.005→13.499 ms/tick (66.3%), buffer
+  hits fall 66.3%, and new recovery backends fall from one per tick to about
+  one per 32 ticks (97% fewer). WAL per tick is approximately unchanged.
+  No failed batches or recovery failures were observed; the installed liveness/
+  permission contract, 28 focused tests, typecheck, 1,472 application tests,
+  48 harness tests and production build pass. See `RECOVERY_ROLLOUT_20260908.md`.
+  The 80% whole-scheduler target is not met by this production comparison;
+  browser latency, lower-tier memory/capacity, egress and Free readiness remain
+  unproved. Small hardware and billing are unchanged; Jeremy's two-person
+  gameplay/terminal smoke is still pending. Whole-CALL timeout retains the
+  documented reduced budget for late ticks.
+  Prior isolated qualification remains in `RECOVERY_BOOTSTRAP_20260908.md`
+  and `RECOVERY_WORKLOAD_20260908.md`; both disposable databases were deleted.
+- Follow-up profiling is complete; see `RECOVERY_COST_PHASE2_20260908.md`.
+  Fresh cron backends lose reusable query plans. Eight checks measure
+  20.6–26.8 ms initially versus approximately 3.4 ms after repeated same-session
+  use. This is not a whole-loop saving or a proven runner. The generic-plan
+  rewrite was slower and rejected; smaller selector candidates are not shipped.
+  Jeremy subsequently approved bounded scheduler-reuse design/proof. The
+  candidate preserves one-second ticks in separate committed transactions;
+  isolated cadence/context/lock/rollback/self-cancellation proofs and 17 model
+  tests pass. Actual cron restart/handoff, whole-CALL timeout and all-game
+  qualification were subsequent gates, completed before the rollout above. See
+  `RECOVERY_RUNNER_DESIGN_PROOF_20260908.md`. Production cron, application code,
+  persistent schema, gameplay data, capacity and billing are unchanged by this phase.
 - Production migration `20260908152010_narrow_cribbage_recovery_admission`
   filters current Cribbage round identities before inspecting private state.
   The other seven admission categories, one-second scheduler, rotating safety
@@ -19,11 +52,17 @@
   cleanup but hit the same attribution cutoff (peer card arrival 0.997 s);
   its remaining two repeats did not run. Matched browser qualification is
   incomplete; do not claim a green browser suite or downgrade readiness.
-  Jeremy's production smoke is still required.
+  Jeremy reports on September 8 that he started a game and played a few
+  cards, then confirms the session ended and he returned to the lobby.
+  Two-human Cribbage, real-money admission and full terminal-flow/settlement
+  smoke remain unconfirmed.
 - Evidence, limitations and remaining gates are in
   `PERFORMANCE_COST_REDUCTION_20260908.md`. Jeremy reports 5–7 hours/week of
-  play and normally leaves the app open; sustained open-but-idle traffic is
-  the next client-cost measurement. No downgrade, transfer or resize occurred.
+  play and normally leaves the app open. A 314.591-second hidden-lobby sample
+  has two list refreshes and four presence writes, versus 310 recovery ticks
+  totaling 12.289 seconds. This sparse-background sample does not establish
+  foreground/egress cost or Free readiness; it motivated the recovery profiling
+  and rollout above. No downgrade, transfer or resize occurred.
 
 ## September 7 server stall — capacity correction applied
 
