@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 9 Yahtzee win-sequence harness — live qualification pending
+
+- The next approved healthy row uses the existing exact-game final-score
+  fixture, followed by normal browser rolls and scores. Both clients must
+  show the winner and full $10 payout before setup.
+- Run Back must start empty scorecards with the same configuration and accept
+  a legal turn from each player after the fixture is cleared. App changes
+  are passive observation metadata only. See `YAHTZEE_PRESENTATION_20260909.md`.
+
 ## September 9 Cribbage win-sequence harness — healthy short-game case passes
 
 - The approved next-game qualification now has one healthy Cribbage short-game

@@ -2,9 +2,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, isHealthyPresentation, validateHumanChaosManifest } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, isHealthyPresentation, validateHumanChaosManifest } from './manifest';
 
 describe('human chaos campaign manifest', () => {
+  it('keeps Yahtzee final-score qualification healthy and distinct from End Session', () => {
+    expect(YAHTZEE_PRESENTATION_MANIFEST).toHaveLength(1);
+    expect(YAHTZEE_PRESENTATION_MANIFEST[0]).toMatchObject({ presentationGame: 'yahtzee', requiredFaults: [], variant: 'unchanged' });
+    expect(isHealthyPresentation(YAHTZEE_PRESENTATION_MANIFEST[0])).toBe(true);
+  });
   it('keeps the short Cribbage presentation gate distinct from chaos and counting coverage', () => {
     expect(CRIBBAGE_PRESENTATION_MANIFEST).toHaveLength(1);
     expect(CRIBBAGE_PRESENTATION_MANIFEST[0]).toMatchObject({ presentationGame: 'cribbage', requiredFaults: [], variant: 'changed' });

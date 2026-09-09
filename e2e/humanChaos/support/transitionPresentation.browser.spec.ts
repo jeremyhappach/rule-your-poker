@@ -57,8 +57,9 @@ test('samples a brief premature setup and ignores hidden markers', async ({ brow
   } finally { await context.close(); }
 });
 
+for (const game of ['cribbage', 'yahtzee']) {
 for (const { cancel, shortened } of [{ cancel: false, shortened: false }, { cancel: true, shortened: false }, { cancel: false, shortened: true }]) {
-  test(`Cribbage payout CSS end precedes retirement, cancellation=${cancel}, shortened=${shortened}`, async ({ browser }) => {
+  test(`${game} payout CSS end precedes retirement, cancellation=${cancel}, shortened=${shortened}`, async ({ browser }) => {
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
@@ -66,15 +67,15 @@ for (const { cancel, shortened } of [{ cancel: false, shortened: false }, { canc
       await observer.attach(context, page);
       await page.goto('data:text/html,<div id="root"></div>');
       const origin: ChipEndpointRef = { kind: 'seat', position: 1 };
-      await page.evaluate(({ cancelEarly, originKind, shortened }) => {
+      await page.evaluate(({ cancelEarly, originKind, shortened, game }) => {
         const root = document.querySelector('#root')!;
-        root.setAttribute('data-cribbage-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
+        root.setAttribute(`data-${game}-presentation-scope`, JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
         root.innerHTML = `<style>@keyframes __chipTransport_control {from{transform:translateX(0)}to{transform:translateX(100px)}}${shortened ? '[data-chip-transport-intent]{animation-duration:100ms!important}' : ''}</style>
           <div data-canonical-announcement-type="match_win" data-canonical-announcement-id="win">Winner wins</div>
           <div data-canonical-celebration-id="win"><div style="display:none">Hidden overlay</div></div>
           <div data-chip-transport-intent="payout" data-chip-transport-from="${originKind}" data-chip-transport-completes-at="${Date.now() + 550}" style="width:30px;height:30px;background:gold;animation:__chipTransport_control 500ms linear"></div>`;
         setTimeout(() => root.querySelector('[data-chip-transport-intent]')!.remove(), cancelEarly ? 100 : 600);
-      }, { cancelEarly: cancel, originKind: origin.kind, shortened });
+      }, { cancelEarly: cancel, originKind: origin.kind, shortened, game });
       await expect.poll(() => observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout'))).toBe(true);
       await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(0);
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -83,4 +84,5 @@ for (const { cancel, shortened } of [{ cancel: false, shortened: false }, { canc
       expect(observer.samples.some(row => row.celebration)).toBe(false);
     } finally { await context.close(); }
   });
+}
 }

@@ -147,9 +147,9 @@ export function installTransitionPresentationObserver(): void {
     });
   };
   const sample = () => {
-    const root = document.querySelector('[data-357-presentation-scope], [data-cribbage-presentation-scope]');
+    const root = document.querySelector('[data-357-presentation-scope], [data-cribbage-presentation-scope], [data-yahtzee-presentation-scope]');
     let scope: PresentationScope | null = null;
-    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? root?.getAttribute('data-cribbage-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
+    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? root?.getAttribute('data-cribbage-presentation-scope') ?? root?.getAttribute('data-yahtzee-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
     const revealNode = document.querySelector('[data-357-decision-reveal]');
     const attr = (node: Element, name: string) => node.getAttribute(name) ?? '';
     const reveal = revealNode && visible(revealNode) ? {

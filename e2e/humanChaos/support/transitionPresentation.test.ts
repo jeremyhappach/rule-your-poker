@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { assertRoundPresentation, type RoundPresentationExpectation, type TransitionSample } from './transitionPresentation';
 import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
+import { assertWinnerPayoutPresentation } from './winnerPayoutPresentation';
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
 const expected: RoundPresentationExpectation = {
@@ -139,5 +140,29 @@ describe('Cribbage visible transition acceptance', () => {
     expect(() => assertCribbagePresentation(rows(), { ...cribExpected, multiplier: 3 })).toThrow('missing skunk');
     const r = rows(); r[0] = { ...r[0], celebration: eventId };
     expect(() => assertCribbagePresentation(r, { ...cribExpected, multiplier: 3 })).not.toThrow();
+  });
+});
+
+describe('Yahtzee concurrent winner and payout', () => {
+  const expected = { ...scope, startedAt: 0, announcementId: 'yahtzee-win', simultaneousAnnouncement: true,
+    transferIds: ['payout'], openingBalances: { player: '$100' }, closingBalances: { player: '$110' } };
+  const rows = (): TransitionSample[] => [
+    { ...healthy()[0], at: 100, matchWin: { id: 'yahtzee-win', text: 'Winner wins' }, stages: [{ kind: 'payout', id: 'payout', finished: false }] },
+    { ...healthy()[0], at: 300, stages: [{ kind: 'payout', id: 'payout', finished: true }], balances: { player: '$110' } },
+    { ...healthy()[0], at: 400, setup: true, balances: { player: '$110' } },
+  ];
+  it('allows the exact winner plate and payout to begin together', () => {
+    expect(assertWinnerPayoutPresentation(rows(), expected).payoutEnd).toBe(300);
+  });
+  it('preserves Cribbage dedicated announcement timing by default', () => {
+    expect(() => assertWinnerPayoutPresentation(rows(), { ...expected, simultaneousAnnouncement: false })).toThrow('preceded');
+  });
+  it('rejects a later unrelated announcement', () => {
+    const r = rows(); r[0].matchWin = null; r[1].matchWin = { id: 'yahtzee-win', text: 'Winner wins' };
+    expect(() => assertWinnerPayoutPresentation(r, expected)).toThrow('preceded');
+  });
+  it('still requires full transport completion before setup', () => {
+    const r = rows(); r[1].stages[0].finished = false;
+    expect(() => assertWinnerPayoutPresentation(r, expected)).toThrow('never finished');
   });
 });

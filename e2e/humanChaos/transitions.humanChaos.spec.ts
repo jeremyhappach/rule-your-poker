@@ -27,17 +27,18 @@ import {
   TERMINAL_EXPECTATIONS,
 } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, isHealthyPresentation, type ChaosScenario } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, isHealthyPresentation, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 import { TransitionPresentationObserver } from './support/transitionPresentation';
 import { playDecidingLegPresentation, playSuccessorDecisionPair } from './support/threeFiveSevenPresentationDriver';
 import { playCribbagePresentation, playCribbageSuccessor } from './support/cribbagePresentation';
+import { armYahtzeePresentation, clearYahtzeePresentationFixture, playYahtzeePresentation, playYahtzeeSuccessor } from './support/yahtzeePresentation';
 
 function selectedTransition(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
   if (!id) throw new Error('Set PTOWN_E2E_CAMPAIGN_SCENARIO to one human-chaos transition id.');
-  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, ...CRIBBAGE_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
+  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, ...CRIBBAGE_PRESENTATION_MANIFEST, ...YAHTZEE_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
   if (!scenario || scenario.family !== 'transition') {
     throw new Error(`Unknown human-chaos transition scenario: ${id}`);
   }
@@ -201,6 +202,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     const presentation = { host: new TransitionPresentationObserver(), peer: new TransitionPresentationObserver() };
     let primaryError: unknown = null;
     let teardownFailure: AggregateError | null = null;
+    let fixtureArmed = false;
 
     try {
       if (healthyPresentation) {
@@ -219,9 +221,14 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         expect(builds[1].browserSha).toBe(builds[0].browserSha);
         if (process.env.PTOWN_E2E_EXPECTED_BUILD_SHA) expect(builds[0].browserSha).toBe(process.env.PTOWN_E2E_EXPECTED_BUILD_SHA);
       }
+      if (scenario.presentationGame === 'yahtzee') {
+        evidence.fixtureArm = await armYahtzeePresentation(session);
+        fixtureArmed = true;
+      }
       await enterDealerGameUnderChaos(session, source, {
         networkFaults: !healthyPresentation,
         configure: async (surface) => {
+          if (scenario.presentationGame === 'yahtzee') { await surface.locator('#ante-simple').fill('10'); return; }
           if (!scenario.presentationWinner) return configureShortestTerminal(source, surface);
           await surface.locator('#legs-to-win').fill('3');
           await surface.locator('#leg-value').fill('2');
@@ -236,6 +243,10 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         await playDecidingLegPresentation(session, scenario.presentationWinner, probe, presentation, evidence);
       } else if (scenario.presentationGame === 'cribbage') {
         await playCribbagePresentation(session, sourceDealerGameId, probe, presentation, evidence);
+      } else if (scenario.presentationGame === 'yahtzee') {
+        await playYahtzeePresentation(session, sourceDealerGameId, probe, presentation, evidence);
+        evidence.fixtureClear = await clearYahtzeePresentationFixture(session);
+        fixtureArmed = false;
       } else {
         await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
       }
@@ -261,6 +272,9 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       } else if (scenario.presentationGame === 'cribbage') {
         evidence.successorCaptures = await playCribbageSuccessor(session, successorDealerGameId);
         evidence.status = 'passed';
+      } else if (scenario.presentationGame === 'yahtzee') {
+        evidence.successorCaptures = await playYahtzeeSuccessor(session, successorDealerGameId);
+        evidence.status = 'passed';
       } else {
         await requestLastHand(session, probe);
         const successorResult = await playDealerGameToTerminal(
@@ -284,6 +298,10 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       primaryError = error;
     } finally {
       const teardownErrors: unknown[] = [];
+      if (fixtureArmed) {
+        try { evidence.fixtureClear = await clearYahtzeePresentationFixture(session); }
+        catch (error) { teardownErrors.push(error); }
+      }
       if (healthyPresentation) {
         evidence.presentation = { host: [...presentation.host.samples], peer: [...presentation.peer.samples],
           overflow: presentation.host.overflow || presentation.peer.overflow };

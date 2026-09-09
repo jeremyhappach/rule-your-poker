@@ -2512,7 +2512,10 @@ export function YahtzeeGameTable({
     // MUST be transparent so the shell ellipse remains continuously
     // visible. Per-region opaque panels (bottom action panel, dialogs)
     // keep their own backgrounds.
-    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent"
+      data-yahtzee-presentation-scope={JSON.stringify({ gameId, dealerGameId,
+        roundId: currentRoundId, handNumber, phase: viewState?.gamePhase,
+        actionSequence: yahtzeeState?.actionSequence ?? 0 })}>
 
 
       {/* DEBUG: visible build verification badge + dice trace controls */}

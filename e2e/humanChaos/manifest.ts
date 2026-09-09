@@ -15,7 +15,7 @@ export type ChaosScenario = {
   requiredFaults: readonly ('long-haul' | 'offline-rejoin' | 'route-remount' | 'lost-response')[];
   assertions: readonly string[];
   presentationWinner?: 'host' | 'peer';
-  presentationGame?: 'cribbage';
+  presentationGame?: 'cribbage' | 'yahtzee';
 };
 
 /** Bounded healthy gates precede the fault/End Session rows in the acceptance plan. */
@@ -35,6 +35,14 @@ export const CRIBBAGE_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
 }];
 
 export const isHealthyPresentation = (scenario: ChaosScenario) => Boolean(scenario.presentationWinner || scenario.presentationGame);
+
+export const YAHTZEE_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
+  id: 'yahtzee-presentation-final-score', family: 'transition', source: 'yahtzee', target: 'yahtzee',
+  variant: 'unchanged', presentationGame: 'yahtzee', requiredFaults: [],
+  assertions: ['existing exact-game 12-category fixture, normal browser rolls and final scores',
+    'exact winner and full payout on both clients before setup',
+    'fixture consumed and cleared, conserved payment, unchanged successor and two legal turns'],
+}];
 
 const FAULTS = ['long-haul', 'offline-rejoin', 'route-remount', 'lost-response'] as const;
 const GAMES = ALL_REAL_MONEY_GAME_TYPES as readonly DealerGameType[];
