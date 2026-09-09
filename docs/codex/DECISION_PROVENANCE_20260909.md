@@ -3,7 +3,7 @@
 Jeremy approved this diagnostic change before further game testing, requiring
 preservation of current responsiveness. Status: database migration, rollback
 proofs, typecheck, 1,538 application tests, 106 harness tests and production
-build pass. Publication and live correlation validation are pending.
+build and published two-browser correlation/timing validation pass.
 Release tag: `357-decision-provenance-20260909`.
 
 ## Evidence gap and correction
@@ -106,3 +106,51 @@ the test now uses the repository's supported array operations.
 
 Request metadata follows PostgREST's documented transaction-scoped request
 settings: [PostgREST transactions](https://docs.postgrest.org/en/stable/references/transactions.html#request-headers-cookies-and-jwt-claims).
+
+## Published browser validation
+
+Production `d5228d16d63d844fe0f4b128bac030c1315fe8ee` was READY and independently
+verified in the public manifest and bundle `assets/index-D2butWDi.js` before
+the run. Namespace `provenance-host-20260909-2239` passed in 2.1 minutes, with
+one browser pair and zero retries. Fake session:
+`4f5712d3-99f0-4071-8199-ba66bddc3e71`; source dealer game:
+`5633e2ec-d870-423e-9200-a75a015e2387`; successor:
+`9a904655-fa59-4126-b15b-df6d99746865`.
+
+Both browsers passed the five-round buildup, full terminal presentation,
+conserved settlement, unchanged Run Back and legal successor actions. The
+continuous observer recorded 17 receipts, zero violations, zero coverage gaps
+and zero progress failures under the unchanged six-second limit. Both final
+screenshots were visually inspected and contained only successor artifacts.
+
+All 12 actual decision POSTs contained matching game/dealer/round/player/decision
+metadata and returned HTTP 200. Independent SQL captured all ten source-game
+decision records before cleanup, including the final-leg pair. Each matched
+its browser request UUID, button activation and build, while the server
+separately recorded authenticated actor, deadline and auto-fold=false. The two
+successor requests were verified from the trace; they were not included in the
+pre-cleanup SQL snapshot. Automatic, deadline and bot attribution were proved
+by the rollback tests, not by this manual-button browser row.
+
+| Same host-win scenario, decision actions only | Before logging | With logging |
+|---|---:|---:|
+| Decision actions | 12 | 12 |
+| RPC median / maximum | 119 / 162 ms | 120.5 / 140 ms |
+| Peer progress median / maximum | 986 / 1,201 ms | 639.5 / 1,023 ms |
+| Progress failures | 0 | 0 |
+
+The baseline is the final healthy host run `transition-host-20260909-2159`.
+These sequential samples show no material responsiveness regression; the lower
+peer latency is not attributed to logging. Across all 17 actions in the new
+run, maximum RPC / actor / peer times were 176 / 1,090 / 1,513 ms.
+
+Guarded cleanup succeeded. Independent SQL confirmed zero rows for this exact
+session in games, players, rounds, dealer_games, game_results,
+gameplay_transfer_batches and private.decision_provenance. Saved evidence:
+`live-summary.json`, `live-journal-before-cleanup.json`,
+`live-independent-cleanup.json`, `publication-manifest.json` and the unchanged
+run folder/log under `artifacts/decision-provenance/`. Trace SHA256:
+`E7018C2AFAF7764239D6938EEF452449B0498E0085B0D2ED7BFFCB6897C2323C`.
+
+This completes the logging prerequisite. Cribbage, then Yahtzee, remain the
+next win-sequence targets; no other game or fault branch is qualified here.

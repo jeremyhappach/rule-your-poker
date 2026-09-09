@@ -208,15 +208,17 @@ evidence of a new third incident or a confirmed unintended decision. Jeremy
 asks whether physical button activation should be recorded separately from
 automatic decision paths. Exact new session/round identities were not supplied.
 
-Current source still routes the 3-5-7 Drop button and the `auto_fold` effect
+Before this correction, the 3-5-7 Drop button and the `auto_fold` effect routed
 through `Game.tsx:handleFold` and the same decision RPC without a durable
-producer field. The existing Holm-only, armed diagnostic trace does not supply
+producer field. The prior Holm-only, armed diagnostic trace did not supply
 3-5-7 button provenance. Preserve the earlier journal evidence and historical
 sessions; do not infer a physical click from a Fold row or infer automation
 from an absent client event.
 
 Jeremy approved this separate diagnostic scope September 9. Implementation and
-rollback proofs and full build pass; live correlation validation remains.
+rollback proofs, full build and published two-browser correlation/timing
+validation pass. All exact fake-session data, including private journal rows,
+was independently verified deleted. Historical Fold origins remain unresolved.
 Evidence and storage limits: `DECISION_PROVENANCE_20260909.md`. Approved scope:
 capture browser button activation (including mouse/touch/keyboard and browser
 trust signal), exact session/dealer-game/round/player UUIDs, client build and

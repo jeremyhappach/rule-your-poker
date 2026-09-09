@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-## September 9 decision-source logging — live validation pending
+## September 9 decision-source logging — live validation passes
 
 - Jeremy approved narrow 3-5-7 input provenance before further win-sequence
   testing. Actual button activation and the automatic-fold effect now pass
@@ -18,8 +18,14 @@
   before and 3.095 ms with logging; p95 was 4.108 / 3.737 ms. The applied-schema
   repeat measured 3.071 ms median and 3.810 ms p95. No proof sessions remain.
 - Typecheck, 1,538 application tests (including nine new client controls),
-  106 harness tests and the production build pass. Production two-browser
-  timing/correlation validation remains. Release tag:
+  106 harness tests and the production build pass. The published two-browser
+  run passed all 17 actions through the deciding leg and successor. All 12
+  decision headers matched their requests; all ten source decisions correlated
+  to independently captured private records. Decision RPC median was 120.5 ms
+  versus 119 ms before logging; peer median was 639.5 ms versus 986 ms, with no
+  progress failure. Cleanup independently confirmed all seven tables empty for
+  the exact fake session. These samples show no responsiveness regression;
+  they are not a guarantee across network conditions. Release tag:
   `357-decision-provenance-20260909`. See `DECISION_PROVENANCE_20260909.md`.
 
 ## September 9 transition harness — both healthy cases pass
