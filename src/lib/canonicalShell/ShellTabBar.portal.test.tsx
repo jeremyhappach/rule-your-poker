@@ -24,7 +24,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Portal/layering checks do not persist runtime telemetry. The component's
+// lazy mount/unmount imports must not initialize browser auth after teardown.
+vi.mock('@/lib/runtimeInstrumentation/runtimeTracer', () => ({ recordRuntimeEvent: vi.fn() }));
 
 import { ShellTabBar, ShellTabBarStateContext, type ShellTabBarState } from './ShellTabBar';
 import { SHELL_Z } from './zLayers';
@@ -38,8 +42,9 @@ beforeEach(() => {
   root = createRoot(container);
 });
 
-afterEach(() => {
+afterEach(async () => {
   act(() => root.unmount());
+  await vi.dynamicImportSettled();
   container.remove();
   document.body.style.pointerEvents = '';
 });

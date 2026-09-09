@@ -34,3 +34,12 @@ typing errors in inherited probe/cleanup helpers. Test discovery selects one
 row. Artifacts are under `artifacts/cribbage-presentation/`.
 
 Published live outcome is pending. Release tag: `cribbage-presentation-20260909`.
+
+The first Vercel deployment of `94b6bbb9e` failed before publishing. All 1,538
+application assertions passed, but the existing ShellTabBar portal test left
+lazy telemetry imports running after jsdom teardown (`localStorage is not
+defined`, 28 unhandled rejections). Its fixture now mocks runtime telemetry
+and awaits dynamic imports during teardown. The nine focused tests and repeated
+full typecheck, 1,538 app tests, 121 harness tests and build pass. Production remained on the validated
+decision-provenance release and no Cribbage live session was created.
+Original Vercel logs are retained in `artifacts/cribbage-presentation/`.
