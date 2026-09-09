@@ -229,7 +229,15 @@ export function installTransitionPresentationObserver(): void {
     if (node && event.isTrusted) {
       const deadline = Number(node.getAttribute('data-leg-award-completes-at') ?? node.getAttribute('data-chip-transport-completes-at'));
       const sweepDuration = Number(node.getAttribute('data-leg-sweep-flight-duration-ms'));
-      if ((deadline > 0 && Date.now() < deadline) || (sweepDuration > 0 && animation.elapsedTime * 1000 < sweepDuration)) endedEarly.add(node);
+      // CSS timelines can finish just before the JS retirement clock. For a
+      // seat payout, validate the renderer's declared inline duration first;
+      // keep the full retirement deadline for completion on DOM removal.
+      const declared = (event.target as HTMLElement).style.animationDuration;
+      const declaredMs = parseFloat(declared) * (declared.endsWith('ms') ? 1 : 1000);
+      if (node.getAttribute('data-chip-transport-from') === 'seat' && declaredMs > 0) {
+        if (animation.elapsedTime * 1000 < declaredMs) endedEarly.add(node);
+        else if (Date.now() >= deadline && !endedEarly.has(node)) completed.add(node);
+      } else if ((deadline > 0 && Date.now() < deadline) || (sweepDuration > 0 && animation.elapsedTime * 1000 < sweepDuration)) endedEarly.add(node);
       else if (!endedEarly.has(node)) completed.add(node);
       sample();
     }

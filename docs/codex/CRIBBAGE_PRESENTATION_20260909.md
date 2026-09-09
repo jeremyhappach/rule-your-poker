@@ -75,3 +75,23 @@ The next run pins the same published app `45d3ffc25`; only local harness code
 changes, so no product redeployment is needed to exercise the correction.
 Original trace SHA256:
 `A5ABD36F80D350B5B6852FB33CD82BFB8095A3EF9D5C5B3E5F0610A5375EF4EB`.
+
+## Second live run — completion capture boundary
+
+Namespace `cribbage-win-20260909-2310`, same published app, harness `a72cfbe17`,
+captured both exact payout flights. The host recorded full completion; the peer
+reached its completed phase and setup without a recorded flight-completion
+sample, so the run remained failed before successor play. Session
+`5d195414-4b6d-41c5-8923-f4131d1b4482`, dealer game
+`40042e4d-0a54-4e2e-b360-3434ff3bfd4c`, hand 1 / round
+`af4307b7-54cd-42cc-8620-2c6e7e6fce09`. Nine receipts had no progress failures;
+RPC median 108 ms, maximum 130 ms; maximum peer progress 1,092 ms.
+
+The observer treated native CSS completion before the renderer's JS retirement
+clock as early cancellation. Its seat-payout path now validates native elapsed
+time against the renderer's inline CSS duration and still requires the full
+retirement deadline before accepting a later DOM removal. A browser control
+separates full CSS completion before retirement from truly shortened CSS and
+early removal. No application timing or callback changed. Independent cleanup
+confirmed all eight scoped relations empty. Both original failed runs remain
+retained; neither is reclassified as a pass.
