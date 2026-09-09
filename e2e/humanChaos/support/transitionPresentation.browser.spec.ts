@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { build } from 'esbuild';
 import { TransitionPresentationObserver } from './transitionPresentation';
+import type { ChipEndpointRef } from '../../../src/lib/canonicalShell/GameplaySlotContract';
 
 for (const control of [{ winning: false, cancel: false, shortened: false }, { winning: true, cancel: false, shortened: false }, { winning: false, cancel: true, shortened: false }, { winning: false, cancel: false, shortened: true }]) {
 test(`actual leg renderer: winning=${control.winning}, early cancellation=${control.cancel}, shortened=${control.shortened}`, async ({ browser }) => {
@@ -64,15 +65,16 @@ for (const cancel of [false, true]) {
       const observer = new TransitionPresentationObserver();
       await observer.attach(context, page);
       await page.goto('data:text/html,<div id="root"></div>');
-      await page.evaluate(cancelEarly => {
+      const origin: ChipEndpointRef = { kind: 'seat', position: 1 };
+      await page.evaluate(({ cancelEarly, originKind }) => {
         const root = document.querySelector('#root')!;
         root.setAttribute('data-cribbage-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
         root.innerHTML = `<style>@keyframes __chipTransport_control {from{transform:translateX(0)}to{transform:translateX(100px)}}</style>
           <div data-canonical-announcement-type="match_win" data-canonical-announcement-id="win">Winner wins</div>
           <div data-canonical-celebration-id="win"><div style="display:none">Hidden overlay</div></div>
-          <div data-chip-transport-intent="payout" data-chip-transport-from="player" data-chip-transport-completes-at="${Date.now() + 500}" style="width:30px;height:30px;background:gold;animation:__chipTransport_control 500ms linear"></div>`;
+          <div data-chip-transport-intent="payout" data-chip-transport-from="${originKind}" data-chip-transport-completes-at="${Date.now() + 500}" style="width:30px;height:30px;background:gold;animation:__chipTransport_control 500ms linear"></div>`;
         setTimeout(() => root.querySelector('[data-chip-transport-intent]')!.remove(), cancelEarly ? 100 : 550);
-      }, cancel);
+      }, { cancelEarly: cancel, originKind: origin.kind });
       await expect.poll(() => observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout'))).toBe(true);
       await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(0);
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));

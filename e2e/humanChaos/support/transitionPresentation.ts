@@ -134,7 +134,7 @@ export function installTransitionPresentationObserver(): void {
   const completed = new WeakSet<Element>();
   const endedEarly = new WeakSet<Element>();
   const observedAwards = new Map<Element, { stage: VisibleStage; scope: PresentationScope | null; end: number; lastSeen: number }>();
-  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="player"]';
+  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="seat"]';
   let previous = '';
   const visible = (node: Element) => {
     for (let parent: Element | null = node; parent; parent = parent.parentElement) {
@@ -174,7 +174,7 @@ export function installTransitionPresentationObserver(): void {
     }
     for (const node of document.querySelectorAll(selectors)) {
       if (!visible(node) && !completed.has(node)) continue;
-      const kind = node.hasAttribute('data-leg-award') ? 'award' : node.hasAttribute('data-leg-sweep-flight') ? 'sweep' : node.getAttribute('data-chip-transport-from') === 'player' ? 'payout' : 'pot';
+      const kind = node.hasAttribute('data-leg-award') ? 'award' : node.hasAttribute('data-leg-sweep-flight') ? 'sweep' : node.getAttribute('data-chip-transport-from') === 'seat' ? 'payout' : 'pot';
       const stage: VisibleStage = { kind, id: attr(node, kind === 'award' ? 'data-leg-award' : kind === 'sweep' ? 'data-leg-sweep-flight' : 'data-chip-transport-intent'),
         finished: completed.has(node), winning: kind === 'award' ? attr(node, 'data-leg-award-winning') === '1' : undefined,
         generation: kind === 'award' ? node.getAttribute('data-leg-award-generation') : undefined };
