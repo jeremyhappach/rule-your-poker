@@ -1,5 +1,16 @@
 # Durable decision log
 
+## D-136 — Keep decision provenance observational and private
+
+3-5-7 browser button activation and automatic-fold execution carry separate
+client claims on the existing decision request. The private server journal
+derives caller, exact round, deadline, accepted decision and preference state
+from server-owned context. It never treats a browser trust flag or source label
+as gameplay authority or proof of personal intent. Invalid/missing metadata is
+unknown; diagnostic failures cannot reject a valid action. No extra round trip
+or synchronous storage is added before the action response. See
+`DECISION_PROVENANCE_20260909.md` for performance evidence and retention limits.
+
 ## D-135 — Admit session dealer draws from accepted client lifecycle
 
 Completed draw presentation is derived from accepted same-session game state,

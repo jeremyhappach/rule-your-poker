@@ -1,4 +1,5 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
+import { captureDecisionInput, type DecisionInput } from "@/lib/decisionProvenance";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
@@ -1260,8 +1261,8 @@ interface MobileGameTableProps {
   isGameOver?: boolean;
   isDealer?: boolean;
   onNextGame?: () => void;
-  onStay: () => void;
-  onFold: () => void;
+  onStay: (input?: DecisionInput) => void;
+  onFold: (input?: DecisionInput) => void;
   onSelectSeat?: (position: number) => void;
   // Host player control
   isHost?: boolean;
@@ -15903,7 +15904,7 @@ export const MobileGameTable = ({
                         <Button
                           variant="destructive"
                           size="default"
-                          onClick={onFold}
+                          onClick={(event) => onFold(__is357GameType(gameType) ? captureDecisionInput(event) : undefined)}
                           className={cn(
                             "font-bold",
                             isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
@@ -15914,7 +15915,7 @@ export const MobileGameTable = ({
                         <Button
                           data-357-stay-decision-btn=""
                           size="default"
-                          onClick={onStay}
+                          onClick={(event) => onStay(__is357GameType(gameType) ? captureDecisionInput(event) : undefined)}
                           className={cn(
                             "bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
                             isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"

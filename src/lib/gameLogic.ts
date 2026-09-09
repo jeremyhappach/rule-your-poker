@@ -49,6 +49,7 @@ async function trace357InstantWin(
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
+import { withDecisionProvenance, type DecisionProvenance } from './decisionProvenance';
 import { emit357InstantWinTerminal } from "./threeFiveSeven/instantWinLifecycle";
 
 
@@ -90,6 +91,7 @@ export async function makeDecision(
   playerId: string,
   decision: 'stay' | 'fold',
   expectedRoundId?: string,
+  provenance?: DecisionProvenance,
 ) {
   const decisionTimestamp = new Date().toISOString();
   const shortGameId = gameId.slice(0, 8);
@@ -253,7 +255,7 @@ export async function makeDecision(
     if (!expectedRoundId || expectedRoundId !== currentRound.id || !game.current_game_uuid) {
       throw new Error('three_five_seven_submit_decision requires exact current identity');
     }
-    const { data, error } = await supabase.rpc('three_five_seven_submit_decision' as any, {
+    const { data, error } = await withDecisionProvenance(supabase.rpc('three_five_seven_submit_decision' as any, {
       p_game_id: gameId,
       p_round_id: currentRound.id,
       p_dealer_game_id: game.current_game_uuid,
@@ -261,7 +263,7 @@ export async function makeDecision(
       p_round_number: currentRound.round_number,
       p_player_id: playerId,
       p_decision: decision,
-    } as any);
+    } as any), provenance);
     if (error) throw error;
     return data;
   }

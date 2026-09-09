@@ -1,4 +1,5 @@
 import { createAuthoritativeRecoveryScheduler } from "@/lib/authoritativeRecoveryScheduler";
+import { createDecisionProvenance, type DecisionInput } from "@/lib/decisionProvenance";
 import { executeDiceRequest } from "@/lib/diceRequestRecovery";
 import { horsesSccTerminalWinner } from "@/lib/horsesSccTerminalPresentation";
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
@@ -7043,7 +7044,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setTimeLeft(null);
     setDecisionDeadline(null);
     
-    handleFold();
+    handleFold('live fold', { source: 'auto_fold', activatedAt: Date.now() });
   }, [
     game?.game_type,
     game?.status,
@@ -12140,7 +12141,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
-  const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
+  const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay', input?: DecisionInput) => {
     if (!gameId || !user) return;
 
     if (is357GameType && (game?.status === 'game_over' || currentRound == null)) {
@@ -12228,6 +12229,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             currentPlayer.id,
             'stay',
             is357GameType ? currentRound!.id : undefined,
+            is357GameType ? createDecisionProvenance({ gameId, dealerGameId: game!.current_game_uuid!,
+              roundId: currentRound!.id, playerId: currentPlayer.id, decision: 'stay' }, input) : undefined,
           );
       if (is357GameType) {
         admitThreeFiveSevenDecisionRevealReceipt(
@@ -12277,7 +12280,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
-  const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold') => {
+  const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold', input?: DecisionInput) => {
     if (!gameId || !user) return;
 
     if (is357GameType && (game?.status === 'game_over' || currentRound == null)) {
@@ -12356,6 +12359,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             currentPlayer.id,
             'fold',
             is357GameType ? currentRound!.id : undefined,
+            is357GameType ? createDecisionProvenance({ gameId, dealerGameId: game!.current_game_uuid!,
+              roundId: currentRound!.id, playerId: currentPlayer.id, decision: 'fold' }, input) : undefined,
           );
       if (is357GameType) {
         admitThreeFiveSevenDecisionRevealReceipt(
@@ -14709,8 +14714,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
               threeFiveSevenTerminalDescriptor={terminal357Descriptor}
-              onStay={isInProgress ? () => handleStay() : () => {}}
-              onFold={isInProgress ? () => handleFold() : () => {}}
+              onStay={isInProgress ? (input) => handleStay('live stay', input) : () => {}}
+              onFold={isInProgress ? (input) => handleFold('live fold', input) : () => {}}
 
               onSelectSeat={handleSelectSeat}
               isHost={isCreator}

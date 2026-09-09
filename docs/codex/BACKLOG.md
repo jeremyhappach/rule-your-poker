@@ -215,7 +215,9 @@ producer field. The existing Holm-only, armed diagnostic trace does not supply
 sessions; do not infer a physical click from a Fold row or infer automation
 from an absent client event.
 
-Recommended separate diagnostic scope, not yet implementation-approved:
+Jeremy approved this separate diagnostic scope September 9. Implementation and
+rollback proofs and full build pass; live correlation validation remains.
+Evidence and storage limits: `DECISION_PROVENANCE_20260909.md`. Approved scope:
 capture browser button activation (including mouse/touch/keyboard and browser
 trust signal), exact session/dealer-game/round/player UUIDs, client build and
 request correlation ID; link it to the authenticated server's accepted,
@@ -226,8 +228,8 @@ honestly. Record auto-fold preference changes as well as their execution.
 Client-reported activation is evidence of an input event, not proof of a
 person's intent. Server-derived producer metadata must remain distinct from
 client claims. Keep this observational and preserve decision rules, latency,
-deduplication and financial ownership. Confirm deployed schema and mutation
-owners before recommending the exact storage change. This remains separate
+deduplication and financial ownership. Deployed schema and mutation owners were
+checked before the private journal migration. This remains separate
 from the active win-sequence harness work.
 
 Status: Confirmed frame/receipt corrections implemented; production smoke

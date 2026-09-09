@@ -1,5 +1,27 @@
 # Current release and cutover state
 
+## September 9 decision-source logging — live validation pending
+
+- Jeremy approved narrow 3-5-7 input provenance before further win-sequence
+  testing. Actual button activation and the automatic-fold effect now pass
+  distinct client claims on the existing decision request. The server records
+  authenticated RPC, deadline and bot-recovery producers independently.
+- Migration `20260909222801_decision_provenance.sql` adds a private journal for
+  committed decisions and auto-fold preference changes. Existing RPC contracts,
+  decision rules, settlement, timers and public projections are unchanged.
+- No extra network request or synchronous storage is added to the decision
+  path. Metadata reuses the existing `x-client-info` header name. A 64-entry
+  browser recorder retains request outcomes after responses, with idle storage.
+  Client claims are not proof of a person's intent; missing evidence is unknown.
+- Full authority and provenance rollback proofs passed before and after the
+  migration. In 80 calls per condition, median database RPC time was 2.758 ms
+  before and 3.095 ms with logging; p95 was 4.108 / 3.737 ms. The applied-schema
+  repeat measured 3.071 ms median and 3.810 ms p95. No proof sessions remain.
+- Typecheck, 1,538 application tests (including nine new client controls),
+  106 harness tests and the production build pass. Production two-browser
+  timing/correlation validation remains. Release tag:
+  `357-decision-provenance-20260909`. See `DECISION_PROVENANCE_20260909.md`.
+
 ## September 9 transition harness — both healthy cases pass
 
 - The approved first harness phase adds two healthy 3-5-7 deciding-leg scenarios

@@ -1,5 +1,13 @@
 # Repository map
 
+3-5-7 decision provenance: `src/lib/decisionProvenance.ts` captures bounded
+client input/outcome evidence; the actual buttons in `MobileGameTable.tsx` and
+automatic-fold effect in `Game.tsx` supply distinct origins to the existing
+`gameLogic.ts` RPC. Migration `20260909222801_decision_provenance.sql` owns the
+private committed-decision/preference journal and server producer attribution.
+Proof: `supabase/tests/decision_provenance_rollback_proof.sql`. No gameplay owner
+moves; see `DECISION_PROVENANCE_20260909.md` for reading and interpretation.
+
 Recovery scheduler backend reuse: `private.run_game_recovery_batch()` wraps
 the unchanged `private.advance_due_game_state()` in independently committed
 one-second ticks. Deployment, drain/restore helpers and contract checks are in
