@@ -4,6 +4,31 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### P1 — Yahtzee setup interrupts the winner payout — September 9
+
+Status: Queued; read-only diagnosis complete, scoped product correction awaiting
+approval. Found by the approved healthy two-browser win-sequence harness on
+published `b6bd777e4`, not by Jeremy's production smoke. Exact fake session
+`5ea744ec-d9e6-4fae-bffb-ad05137f74ed`, dealer game
+`0c248f2b-1ac1-4409-a503-b7551bb6c9aa`, round
+`9f95086b-50b7-4f65-a337-fe511308ccfd`. Both legal final Chance scores completed;
+winner 303–21 and the conserved $10 settlement were correct. Setup appeared
+207 ms into the host payout and 1,986 ms into the peer payout, before the full
+2,400 ms animation. Expected: each connected client keeps its table and winner
+presentation until its own exact payout completes, then admits setup.
+
+Root cause: Yahtzee's callback-only `ChipTransferAnimation` still signals
+completion at 1,800 ms, ahead of the canonical ledger flight. The peer then
+advances the shared game; the route's terminal hold does not cover the outgoing
+Yahtzee presentation after `game_selection`, cutting off the slower host too.
+Proposed correction: use exact canonical batch completion and retain the local
+outgoing presentation across shared handoff, without changing scoring, money,
+animation duration, database RPCs or adding timers. Original failure retained;
+no retry or Run Back followed. All exact-session rows and fixture request were
+independently confirmed removed. See `YAHTZEE_PRESENTATION_20260909.md` for the
+timeline, proof, preserve list and acceptance plan. Gin/Holm qualification
+remains unrun in this window; Horses/SCC remain skipped at Jeremy's direction.
+
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 
 Status: Approved correction implemented and locally verified; production smoke pending. Separate from the

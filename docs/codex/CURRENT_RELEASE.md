@@ -1,13 +1,16 @@
 # Current release and cutover state
 
-## September 9 Yahtzee win-sequence harness — live qualification pending
+## September 9 Yahtzee win-sequence harness — premature setup reproduced
 
-- The next approved healthy row uses the existing exact-game final-score
-  fixture, followed by normal browser rolls and scores. Both clients must
-  show the winner and full $10 payout before setup.
-- Run Back must start empty scorecards with the same configuration and accept
-  a legal turn from each player after the fixture is cleared. App changes
-  are passive observation metadata only. See `YAHTZEE_PRESENTATION_20260909.md`.
+- Published harness `b6bd777e4` reproduced early setup on both clients after
+  legal final scores and correct $10 settlement. Setup appeared 207 ms into
+  the desktop payout and 1,986 ms into the mobile payout; full flight is
+  2,400 ms. The legacy 1,800 ms completion callback advances the shared game,
+  and the local hold does not retain the slower table through game selection.
+- Testing stopped at the first failure. Original traces are retained; exact
+  fake-session and fixture cleanup are independently verified. Run Back was
+  not reached. Product correction awaits approval; app changes in this
+  publication remain passive observation metadata. See `YAHTZEE_PRESENTATION_20260909.md`.
 
 ## September 9 Cribbage win-sequence harness — healthy short-game case passes
 
