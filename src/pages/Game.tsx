@@ -202,6 +202,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
+import { useSessionDealerDrawReceipt } from "@/hooks/useSessionDealerDrawReceipt";
 import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from "@/lib/cribbageDealerDrawTrace";
 import CribDealerDrawTraceOverlay from "@/components/debug/CribDealerDrawTraceOverlay";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
@@ -436,11 +437,9 @@ import { applyThreeFiveSevenDecisionReceipt } from "@/lib/threeFiveSeven/decisio
 import {
   advanceSessionDealerDrawPresentationFrame,
   deriveSessionDealerDrawPresentationFrames,
-  deriveSessionDealerDrawPresentationReceipt,
   getSessionDealerDrawPresentationFrameDwellMs,
   getSessionDealerDrawPresentationKey,
   type SessionDealerDrawPresentationFrame,
-  type SessionDealerDrawPresentationReceipt,
 } from "@/lib/sessionDealerDrawPresentation";
 import {
   subscribeActionSurfaceRecoveryRequests,
@@ -1456,19 +1455,14 @@ const Game = () => {
   // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
-  const [sessionDealerDrawReceiptHold, setSessionDealerDrawReceiptHold] =
-    useState<SessionDealerDrawPresentationReceipt | null>(null);
   const [sessionDealerDrawPlayback, setSessionDealerDrawPlayback] = useState<{
     receiptKey: string;
     state: DealerSelectionState;
     frameIndex: number;
   } | null>(null);
-  const sessionDealerDrawReceiptHoldRef = useRef<SessionDealerDrawPresentationReceipt | null>(null);
   const sessionDealerDrawPlaybackRef = useRef(sessionDealerDrawPlayback);
   sessionDealerDrawPlaybackRef.current = sessionDealerDrawPlayback;
-  const sessionDealerDrawCompletedReceiptKeysRef = useRef(new Set<string>());
   const sessionDealerDrawReleaseTimerRef = useRef<number | null>(null);
-  const sessionDealerDrawPreviousStatusRef = useRef<string | null>(null);
   const gameStatusRef = useRef<string | null>(null);
   gameStatusRef.current = game?.status ?? null;
   const gameTypeLiveRef = useRef<string | null>(null);
@@ -1505,6 +1499,11 @@ const Game = () => {
     setSessionDealerDrawPlayback(nextPlayback);
   }, []);
 
+  const {
+    receipt: sessionDealerDrawReceiptHold,
+    completeReceipt: completeSessionDealerDrawReceipt,
+  } = useSessionDealerDrawReceipt(gameId, game);
+
   const handleSessionDealerDrawPresentationVisible = useCallback((frameKey: string) => {
     const playback = sessionDealerDrawPlaybackRef.current;
     if (!playback || sessionDealerDrawReleaseTimerRef.current !== null) return;
@@ -1532,13 +1531,9 @@ const Game = () => {
         return;
       }
 
-      sessionDealerDrawCompletedReceiptKeysRef.current.add(current.receiptKey);
-      if (sessionDealerDrawReceiptHoldRef.current?.key === current.receiptKey) {
-        sessionDealerDrawReceiptHoldRef.current = null;
-        setSessionDealerDrawReceiptHold(null);
-      }
+      completeSessionDealerDrawReceipt(current.receiptKey);
     }, dwellMs);
-  }, []);
+  }, [completeSessionDealerDrawReceipt]);
 
   useEffect(() => () => {
     if (sessionDealerDrawReleaseTimerRef.current !== null) {
@@ -1555,32 +1550,19 @@ const Game = () => {
       window.clearTimeout(sessionDealerDrawReleaseTimerRef.current);
       sessionDealerDrawReleaseTimerRef.current = null;
     }
-    sessionDealerDrawCompletedReceiptKeysRef.current.clear();
-    sessionDealerDrawPreviousStatusRef.current = null;
-    sessionDealerDrawReceiptHoldRef.current = null;
     sessionDealerDrawPlaybackRef.current = null;
-    setSessionDealerDrawReceiptHold(null);
     setSessionDealerDrawPlayback(null);
   }, [gameId]);
 
   useLayoutEffect(() => {
+    if (game?.id !== gameId) return;
     const nextStatus = game?.status ?? null;
     const incomingState = (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined;
-    const receipt = deriveSessionDealerDrawPresentationReceipt({
-      previousStatus: sessionDealerDrawPreviousStatusRef.current,
-      nextStatus,
-      incomingState,
-      completedReceiptKeys: sessionDealerDrawCompletedReceiptKeysRef.current,
-    });
-    sessionDealerDrawPreviousStatusRef.current = nextStatus;
     if (nextStatus === 'dealer_selection' && incomingState?.isComplete) {
       beginSessionDealerDrawPlayback(incomingState);
     }
-    if (!receipt || sessionDealerDrawReceiptHoldRef.current?.key === receipt.key) return;
-    beginSessionDealerDrawPlayback(receipt.state);
-    sessionDealerDrawReceiptHoldRef.current = receipt;
-    setSessionDealerDrawReceiptHold(receipt);
-  }, [beginSessionDealerDrawPlayback, game?.status, (game as any)?.dealer_selection_state]);
+    if (sessionDealerDrawReceiptHold) beginSessionDealerDrawPlayback(sessionDealerDrawReceiptHold.state);
+  }, [beginSessionDealerDrawPlayback, gameId, game?.id, game?.status, (game as any)?.dealer_selection_state, sessionDealerDrawReceiptHold]);
 
   const liveSessionDealerDrawState = game?.status === 'dealer_selection'
     ? (game as any)?.dealer_selection_state as DealerSelectionState | null | undefined
@@ -4009,20 +3991,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
            const newData = payload.new as any;
            const oldData = payload.old as any;
            const previousGinRouting = gameRealtimeRoutingRef.current;
-           const dealerDrawReceipt = deriveSessionDealerDrawPresentationReceipt({
-             previousStatus: oldData?.status ?? gameStatusRef.current,
-             nextStatus: newData?.status ?? null,
-             incomingState: newData?.dealer_selection_state as DealerSelectionState | null | undefined,
-             completedReceiptKeys: sessionDealerDrawCompletedReceiptKeysRef.current,
-           });
-           if (
-             dealerDrawReceipt
-             && sessionDealerDrawReceiptHoldRef.current?.key !== dealerDrawReceipt.key
-           ) {
-             beginSessionDealerDrawPlayback(dealerDrawReceipt.state);
-             sessionDealerDrawReceiptHoldRef.current = dealerDrawReceipt;
-             setSessionDealerDrawReceiptHold(dealerDrawReceipt);
-           }
+           // Dealer-draw admission follows accepted game state in
+           // useSessionDealerDrawReceipt, never this event's historical old row.
            // Adopt complete games-row receipts before status-specific side
            // effects for every ordinary family and every pre-game phase.
            // Active 3-5-7 is the exception: its exact current-frame RPC owns

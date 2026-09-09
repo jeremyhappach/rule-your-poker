@@ -6,8 +6,8 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### P1 — Dealer setup selection resets when late dealer-draw presentation arrives
 
-Status: Queued; qualification blocker found September 8 on `d47417cf7` during
-Jeremy's approved bounded fake-money repeatability check. No correction approved.
+Status: Approved correction implemented and locally verified; production smoke
+and renewed paired qualification pending. Found September 8 on `d47417cf7`.
 
 - Session `320e2269-3c87-40a0-9a6e-b98b2617ffb5`, paired Yahtzee setup:
   Dice Games clicked and selected; setup disappears as two high-card draw
@@ -18,8 +18,10 @@ Jeremy's approved bounded fake-money repeatability check. No correction approved
   before-cleanup screenshots are retained in `REPEATABILITY_CHECK_20260908.md`.
   Cleanup is independently verified; no real-money session was touched.
 - Owner boundary: `Game.tsx` dealer-draw receipt hold/setup admission and
-  `DealerGameSetup.tsx` mount-local selection. Determine why setup was admitted
-  before the delayed presentation, then propose the minimal canonical fix.
+  `DealerGameSetup.tsx` mount-local selection. RCA confirmed full-frame catch-up
+  skipping the intermediate phase, then late Realtime admission using historical
+  old status. See `SETUP_ADMISSION_RCA_20260908.md` for actual-record replay and
+  the implemented shared admission correction and passing regression coverage.
   Preserve setup identity/deadline, the dealer draw, selected parameters,
   authoritative configuration/ante ownership and all game-family call sites.
 - Expected: presentation completion precedes usable setup; a late receipt

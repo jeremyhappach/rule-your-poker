@@ -1,5 +1,20 @@
 # Current release and cutover state
 
+## September 8 setup-admission correction — production smoke pending
+
+- Jeremy approved the RCA correction. Completed dealer draws now enter one
+  accepted-state presentation owner, including live waiting-to-setup catch-up.
+  Both setup mounts are blocked on the first render; delayed Realtime history
+  cannot independently reopen the draw and reset selections.
+- Typecheck, 1,485 application tests, 66 harness tests, production build and
+  three isolated browser controls pass. The actual setup form retained Dice
+  Games and the edited ante, then submitted exactly once under both arrival
+  orders and cold later mount. Independent review found no blockers.
+- No database, game-rule, financial, hardware or billing change. Browser
+  control requests were intercepted; no production sessions were created.
+  Jeremy's normal two-person setup smoke and paired live qualification remain
+  pending. See `SETUP_ADMISSION_RCA_20260908.md` for verification limits.
+
 ## September 8 repeatability check — setup-reset blocker
 
 - Approved bounded Holm/Yahtzee check ran on unchanged published `d47417cf7`.
@@ -8,7 +23,10 @@
 - Trace and DOM evidence show Dice Games selected successfully, followed by
   late high-card dealer-draw presentation removing setup; the remounted form
   reset to Card Games. No Yahtzee configuration request was sent. Stop further
-  qualification and investigate setup admission/presentation continuity.
+  qualification. Subsequent read-only RCA confirmed snapshot-first catch-up
+  skipping dealer selection, then late Realtime draw admission using historical
+  old status. The approved correction is locally verified above; production
+  smoke and renewed live qualification remain pending.
 - All four synthetic sessions and rounds are independently verified deleted
   at 23:59:54 UTC; real-money game rows unchanged, recovery healthy, no unit
   failures or lock waiters. No product, schema, billing or hardware changes.

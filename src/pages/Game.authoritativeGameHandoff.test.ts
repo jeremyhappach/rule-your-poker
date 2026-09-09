@@ -6,6 +6,12 @@ import { join } from 'node:path';
 const source = readFileSync(join(__dirname, 'Game.tsx'), 'utf8');
 
 describe('Game authoritative games-row handoffs', () => {
+  it('admits dealer draws only from accepted client state, never historical Realtime status', () => {
+    expect(source).toContain('useSessionDealerDrawReceipt(gameId, game)');
+    expect(source).not.toContain('deriveSessionDealerDrawPresentationReceipt');
+    expect(source).not.toContain('sessionDealerDrawReceiptHoldRef');
+    expect(source).toContain('completeSessionDealerDrawReceipt(current.receiptKey)');
+  });
   it('applies the family publication policy before status-specific routing', () => {
     const callbackStart = source.indexOf('handler: (payload: any) => {');
     const policyIndex = source.indexOf(

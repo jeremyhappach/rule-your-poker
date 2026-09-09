@@ -78,9 +78,12 @@ to cards for a new session. `Game.tsx` owns both setup mount sites, each gated
 by `!sessionDealerDrawPresentationPending`. That pending flag follows the
 dealer-draw receipt hold, adopted from layout-effect and Realtime paths. The
 observed boundary is late dealer-draw presentation interrupting already-admitted
-setup and resetting local selection. The exact initial read/Realtime ordering
-that admitted setup early still needs a focused diagnosis; do not infer a
-specific patch, add a timer, or hide it by retrying the tab click.
+setup and resetting local selection. The subsequent read-only RCA confirmed
+snapshot-first catch-up skipping the intermediate phase, followed by delayed
+Realtime admission using historical old status; see
+`SETUP_ADMISSION_RCA_20260908.md`. The subsequent approved correction passes
+local regression and isolated browser controls; live qualification is still
+pending. No timer, retry-click or wider gameplay limit was added.
 
 This evidence does not establish the cause of Jeremy's original "could not
 start game" report. The defect is queued for canonical setup-admission and

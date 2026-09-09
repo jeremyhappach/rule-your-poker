@@ -172,6 +172,22 @@ describe('session dealer-draw presentation receipt', () => {
     })).toBeNull();
   });
 
+  it.each(['game_selection', 'configuring'])('holds live waiting catch-up directly to %s', nextStatus => {
+    expect(deriveSessionDealerDrawPresentationReceipt({
+      previousStatus: 'waiting', nextStatus, incomingState: completedState,
+      completedReceiptKeys: new Set(),
+    })?.state).toBe(completedState);
+  });
+
+  it.each(['game_selection', 'configuring', 'in_progress', null])(
+    'does not infer a live draw from historical status when current status is %s', previousStatus => {
+      expect(deriveSessionDealerDrawPresentationReceipt({
+        previousStatus, nextStatus: 'game_selection', incomingState: completedState,
+        completedReceiptKeys: new Set(),
+      })).toBeNull();
+    },
+  );
+
   it('never replays a stale completed receipt on a cold later mount', () => {
     expect(deriveSessionDealerDrawPresentationReceipt({
       previousStatus: null,

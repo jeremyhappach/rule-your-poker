@@ -79,6 +79,10 @@ existing settlement owner. Regression proofs:
 - `DealerGameSetup` and its existing RPC client remain the live setup path.
   The unused `DealerConfig` component and unused `Game.tsx` legacy setup handlers
   are removed. `useHighCardDealerSelection` only presents server receipts.
+- `src/hooks/useSessionDealerDrawReceipt.ts` admits completed session draws
+  from accepted game state, preserving live catch-up, cold-mount and exact-key
+  semantics. `Game.tsx` retains visible-wave playback/completion and both setup
+  gates; raw Realtime history is not a separate presentation admission owner.
 
 ## Gin and shared completion boundary (WP8b)
 

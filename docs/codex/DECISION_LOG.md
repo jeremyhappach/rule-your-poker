@@ -1,5 +1,14 @@
 # Durable decision log
 
+## D-135 — Admit session dealer draws from accepted client lifecycle
+
+Completed draw presentation is derived from accepted same-session game state,
+not the historical old status of a Realtime event. A live waiting client may
+skip the intermediate dealer-selection snapshot. Its unseen receipt blocks
+setup in the first render, before mount effects. Cold later mounts do not
+replay old draws. Exact-key completion, session reset, ordered tie waves and
+DOM-visible acknowledgement remain required. Database authority is unchanged.
+
 ## D-134 — Reuse recovery backends without merging transactions
 
 The canonical one-second cron job may reuse its backend for a bounded batch,

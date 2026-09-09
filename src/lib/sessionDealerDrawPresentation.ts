@@ -120,7 +120,8 @@ export function advanceSessionDealerDrawPresentationFrame({
  * Preserve a completed session dealer draw that was co-published with the
  * lifecycle transition which unmounted its controller. If this exact result
  * already reached the real felt renderer, no hold is needed. Stale completed
- * receipts observed outside the dealer-selection transition never replay.
+ * receipts on cold later mounts never replay. A live waiting client can catch
+ * up directly to setup: observing the intermediate phase is not guaranteed.
  */
 export function deriveSessionDealerDrawPresentationReceipt({
   previousStatus,
@@ -133,7 +134,9 @@ export function deriveSessionDealerDrawPresentationReceipt({
   incomingState: DealerSelectionState | null | undefined;
   completedReceiptKeys: ReadonlySet<string>;
 }): SessionDealerDrawPresentationReceipt | null {
-  if (previousStatus !== 'dealer_selection' || nextStatus === 'dealer_selection') {
+  const liveSetupCatchup = previousStatus === 'waiting'
+    && (nextStatus === 'game_selection' || nextStatus === 'configuring');
+  if ((!liveSetupCatchup && previousStatus !== 'dealer_selection') || nextStatus === 'dealer_selection') {
     return null;
   }
   if (
