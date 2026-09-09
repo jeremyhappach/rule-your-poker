@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-## September 9 transition harness — progression corrected; live rerun pending
+## September 9 transition harness — both healthy cases pass
 
 - The approved first harness phase adds two healthy 3-5-7 deciding-leg scenarios
   using three $2 legs and two independent human browsers. Both clients must
@@ -8,7 +8,7 @@
   legal successor decisions. Neither normal-ending row requests End Session.
 - Product changes are passive observation attributes only. Gameplay ownership,
   settlement, timers, migrations, infrastructure and billing are unchanged.
-- Application typecheck, 1,529 application tests, 88 harness tests, five browser
+- Application typecheck, 1,529 application tests, 106 harness tests, five browser
   controls and the production build pass. The separate E2E typecheck retains
   ten pre-existing abortSignal typing errors in inherited probe/cleanup helpers.
 - Jeremy renewed the no-play window. The first host-win live row passed one
@@ -19,8 +19,24 @@
   progression and unique round IDs are now checked, and round numbers are
   recorded in the evidence. All 95 harness tests pass, including seven new
   regression checks. See `TRANSITION_ACCEPTANCE_LIVE_20260909.md`.
-- Terminal/successor qualification, peer-win, fault orderings, rejoin, explicit
-  End Session, instant sweep and other games remain unqualified.
+- The next peer-win attempt exposed premature successor capture closure. An
+  initial capture correction then exposed overlapping source decisions that
+  skipped an intermediate lock snapshot. Original failures remain recorded in
+  `TRANSITION_ACCEPTANCE_BATCH_20260909.md`; neither establishes a client stall.
+- Jeremy approved the harness capture correction. Every source and successor
+  decision now waits for both clients' exact mutation projection within six
+  seconds measured from the click attempt, including RPC time. Negative tests
+  reject stale, wrong-identity, missing-lock and late evidence; observer
+  requirements and product timing remain unchanged.
+- Separate final host-win and peer-win runs both passed on published
+  `9ef3e18ef66ec4f16a96f93accdc4eb920094089`, through outgoing presentation,
+  conserved settlement, unchanged/changed setup and legal successor actions.
+  Each recorded 17 action receipts with no progress failures; maximum peer
+  latency was 1,359 ms / 1,525 ms. All exact fake sessions were independently
+  verified deleted. See `TRANSITION_ACCEPTANCE_HEALTHY_20260909.md`.
+- Rapid overlapping decisions, targeted fault orderings, rejoin, explicit End
+  Session, instant sweep and other games remain unqualified. Jeremy's normal
+  production smoke remains pending. Release tag: `transition-decision-capture-20260909`.
 
 ## September 8 3-5-7 leg-charge reveal gate — production smoke pending
 

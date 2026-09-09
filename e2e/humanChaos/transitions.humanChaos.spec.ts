@@ -248,7 +248,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       await waitForPlayableTransitionAction(session, target);
 
       if (scenario.presentationWinner) {
-        await playSuccessorDecisionPair(session, successorDealerGameId);
+        evidence.successorCaptures = await playSuccessorDecisionPair(session, successorDealerGameId);
         evidence.status = 'passed';
       } else {
         await requestLastHand(session, probe);

@@ -2,11 +2,15 @@
 
 Status: Approved by Jeremy September 9; resumed after the previous task's
 platform interruption. The first healthy-scenario harness is locally verified.
-Jeremy renewed the no-play window; the first live row stopped on the driver's
-incorrect round-1 assumption after one ordinary leg passed on both browsers.
-Cleanup is independently verified. Jeremy separately approved the harness-only
-correction; it is implemented with seven passing progression regression checks.
-See `TRANSITION_ACCEPTANCE_LIVE_20260909.md` for retained evidence and rerun status.
+Jeremy approved the round-progression and capture-wait corrections and renewed
+the no-play window. Separate final host-win and peer-win runs both passed the
+complete healthy scenario, including legal successor actions. Every exact fake
+session was independently verified deleted. See
+`TRANSITION_ACCEPTANCE_HEALTHY_20260909.md` for the final evidence and remaining
+gaps. Original failures remain preserved in
+`TRANSITION_ACCEPTANCE_BATCH_20260909.md` and
+`TRANSITION_ACCEPTANCE_LIVE_20260909.md`.
+
 Purpose: close the coverage gap exposed by the September 8 3-5-7 P0/P1, then
 apply the proven assertions to other games without launching the entire seam
 campaign at once. This is a prioritized subset of `FULL_SEAM_GAUNTLET_PLAN.md`.
@@ -143,14 +147,17 @@ not authorize or claim completion of every ordered pair in the larger campaign.
   is likewise bounded by the renderer's existing deadline.
 - Independent read-only review identified missing peer-balance checks and an
   early-CSS-completion loophole. Both were corrected by the primary agent.
-- Qualification gaps remain explicit: the first healthy live row was blocked
-  before terminal qualification; the peer-winner row has not run;
+- Both healthy rows now pass after the approved harness corrections. Each
+  source and successor decision waits for both clients' exact projection within
+  the existing six-second click-relative budget before the next action.
+- Qualification gaps remain explicit: rapid overlapping decisions,
   targeted batch-first/frame-first, terminal rejoin, explicit End Session,
   instant sweep and cross-game expansion are not qualified by this checkpoint.
   The local controls do not replace Jeremy's production smoke.
 - Validation: application typecheck, 1,529 application tests, production build,
   21 transition assertions and five actual-browser controls pass. The updated
-  harness suite contains 88 tests; four focused session-helper checks also pass.
+  harness suite contains 106 tests, including progression and capture regressions;
+  four focused session-helper checks also pass.
   The preferred `tsgo` binary is absent, so the existing TypeScript compiler was
   used without installing anything. A separate E2E typecheck exposes ten existing
   `abortSignal` typing errors in the inherited settlement/cleanup helpers;

@@ -6,6 +6,8 @@ import { formatChipValue } from '../../../src/lib/utils';
 import type { TwoClientSession } from '../../liveness/support/twoClientSession';
 import type { TerminalSettlementProbe } from '../../terminal/support/terminalSettlementProbe';
 import { TransitionPresentationObserver } from './transitionPresentation';
+import { mutationProgressTarget } from './mutationProgress';
+import { waitForDecisionCapture } from './decisionCapture';
 
 type Player = Database['public']['Tables']['players']['Row'];
 type Game = Database['public']['Tables']['games']['Row'];
@@ -44,23 +46,42 @@ async function frame(session: TwoClientSession) {
   return parsed;
 }
 
-export async function playSuccessorDecisionPair(session: TwoClientSession, dealerGameId: string): Promise<void> {
+export async function playSuccessorDecisionPair(session: TwoClientSession, dealerGameId: string) {
+  if (!session.chaosObserver) throw new Error('Successor decisions require the continuous observer');
   const before = await frame(session);
   expect(before.identity.dealer_game_id).toBe(dealerGameId);
+  const hostId = before.viewerPlayerId;
+  const peerId = before.players.find(player => player.id !== hostId)?.id;
+  if (!hostId || !peerId || !before.identity.round_id) throw new Error('Missing successor player or round identity');
+  const captures = [];
   for (const page of [session.hostPage, session.peerPage]) {
     await expect(page.locator('[data-leg-award], [data-leg-sweep-flight], [data-sweep-the-legs-overlay]')).toHaveCount(0);
   }
-  for (const [page, name] of [[session.hostPage, 'Drop'], [session.peerPage, 'Stay']] as const) {
+  for (const [page, name, playerId] of [[session.hostPage, 'Drop', hostId], [session.peerPage, 'Stay', peerId]] as const) {
     const responsePromise = page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname.endsWith('/rpc/three_five_seven_submit_decision'));
+    const clickedAt = Date.now();
     await page.locator(surface).getByRole('button', { name, exact: true }).click();
     const response = await responsePromise;
     expect(response.ok()).toBe(true);
-    expect(response.request().postDataJSON()).toMatchObject({ p_dealer_game_id: dealerGameId, p_round_id: before.identity.round_id });
+    const request = response.request().postDataJSON();
+    expect(request).toMatchObject({ p_game_id: session.gameId, p_dealer_game_id: dealerGameId,
+      p_round_id: before.identity.round_id, p_hand_number: before.identity.hand_number,
+      p_round_number: before.identity.round_number, p_player_id: playerId });
+    const target = mutationProgressTarget(new URL(response.url()).pathname, request, await response.json());
+    expect(target).toEqual(name === 'Drop'
+      ? { field: 'decisionLocks', roundId: before.identity.round_id, value: playerId }
+      : { field: 'roundStatus', roundId: before.identity.round_id, value: 'completed' });
+    if (!target || (target.field !== 'decisionLocks' && target.field !== 'roundStatus')) {
+      throw new Error('Successor decision has no exact committed mutation target');
+    }
+    captures.push(await waitForDecisionCapture(session.chaosObserver,
+      { gameId: session.gameId, dealerGameId, roundId: before.identity.round_id }, target, clickedAt));
   }
   const after = await frame(session);
   expect(after.identity.dealer_game_id).toBe(dealerGameId);
   expect(after.decisionReveal?.roundId).toBe(before.identity.round_id);
+  return captures;
 }
 
 export async function playDecidingLegPresentation(
@@ -68,6 +89,8 @@ export async function playDecidingLegPresentation(
   observers: { host: TransitionPresentationObserver; peer: TransitionPresentationObserver },
   evidence: Record<string, unknown>,
 ): Promise<void> {
+  const continuousObserver = session.chaosObserver;
+  if (!continuousObserver) throw new Error('Deciding-leg actions require the continuous observer');
   const rounds: unknown[] = [];
   evidence.rounds = rounds;
   const first = await frame(session);
@@ -109,7 +132,16 @@ export async function playDecidingLegPresentation(
       expect(request).toMatchObject({ p_game_id: session.gameId, p_round_id: before.identity.round_id,
         p_dealer_game_id: dealerGameId, p_hand_number: before.identity.hand_number,
         p_round_number: before.identity.round_number, p_player_id: ids[role] });
-      return { receipt, startedAt, receivedAt, request };
+      const target = mutationProgressTarget(new URL(response.url()).pathname, request, receipt);
+      expect(target).toEqual(name === 'Drop'
+        ? { field: 'decisionLocks', roundId: before.identity.round_id, value: ids[role] }
+        : { field: 'roundStatus', roundId: before.identity.round_id, value: 'completed' });
+      if (!target || (target.field !== 'decisionLocks' && target.field !== 'roundStatus')) {
+        throw new Error('Deciding-leg action has no exact committed mutation target');
+      }
+      const capture = await waitForDecisionCapture(continuousObserver,
+        { gameId: session.gameId, dealerGameId, roundId: before.identity.round_id! }, target, startedAt);
+      return { receipt, startedAt, receivedAt, request, capture };
     };
     const losingAction = await clickDecision(losingRole, 'Drop');
     const winningAction = await clickDecision(winningRole, 'Stay');
