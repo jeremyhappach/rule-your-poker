@@ -27,16 +27,17 @@ import {
   TERMINAL_EXPECTATIONS,
 } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, type ChaosScenario } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, isHealthyPresentation, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 import { TransitionPresentationObserver } from './support/transitionPresentation';
 import { playDecidingLegPresentation, playSuccessorDecisionPair } from './support/threeFiveSevenPresentationDriver';
+import { playCribbagePresentation, playCribbageSuccessor } from './support/cribbagePresentation';
 
 function selectedTransition(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
   if (!id) throw new Error('Set PTOWN_E2E_CAMPAIGN_SCENARIO to one human-chaos transition id.');
-  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
+  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, ...CRIBBAGE_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
   if (!scenario || scenario.family !== 'transition') {
     throw new Error(`Unknown human-chaos transition scenario: ${id}`);
   }
@@ -101,6 +102,10 @@ function expectCommittedSuccessorConfig(
   if (scenario.variant !== 'changed') return;
 
   expect(successorConfig).not.toEqual(sourceConfig);
+  if (scenario.presentationGame === 'cribbage') {
+    expect(configRecord(sourceConfig)).toMatchObject({ points_to_win: 1, custom_points_to_win: 1 });
+    expect(configRecord(successorConfig)).toEqual({ ...configRecord(sourceConfig), points_to_win: 2, custom_points_to_win: 2 });
+  }
   if (scenario.target === 'gin-rummy') {
     const sourceGinConfig = configRecord(sourceConfig);
     expect(sourceGinConfig).toMatchObject({
@@ -122,13 +127,13 @@ async function startSuccessor(
   if (scenario.variant === 'unchanged') {
     const owner = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
     await owner.getByRole('button', { name: /Run Back/ }).click();
-    await submitOutstandingAnteUnderChaos(session, !scenario.presentationWinner);
+    await submitOutstandingAnteUnderChaos(session, !isHealthyPresentation(scenario));
     return;
   }
   const target = scenario.target;
   if (!target) throw new Error(`Transition has no target: ${scenario.id}`);
   await configureDealerGameUnderChaos(session, target, {
-    networkFaults: !scenario.presentationWinner,
+    networkFaults: !isHealthyPresentation(scenario),
     configure: async (surface) => {
       if (scenario.variant === 'changed') await configureChangedParameters(target, surface, sourceConfig);
       else await configureShortestTerminal(target, surface);
@@ -184,7 +189,8 @@ async function waitForPlayableTransitionAction(
 test.describe('two-human cross-country dealer-game transition campaign', () => {
   test('selected transition retains only successor state', async ({ browser }, info) => {
     const scenario = selectedTransition();
-    test.setTimeout((scenario.presentationWinner ? 15 : 45) * 60_000);
+    const healthyPresentation = isHealthyPresentation(scenario);
+    test.setTimeout((healthyPresentation ? 15 : 45) * 60_000);
     const credentials = requireTwoPlayerEnvironment();
     const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
     const runtime = await session.hostNetwork.waitForRuntimeConfig();
@@ -197,7 +203,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     let teardownFailure: AggregateError | null = null;
 
     try {
-      if (scenario.presentationWinner) {
+      if (healthyPresentation) {
         await Promise.all([
           presentation.host.attach(session.hostContext, session.hostPage),
           presentation.peer.attach(session.peerContext, session.peerPage),
@@ -214,7 +220,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         if (process.env.PTOWN_E2E_EXPECTED_BUILD_SHA) expect(builds[0].browserSha).toBe(process.env.PTOWN_E2E_EXPECTED_BUILD_SHA);
       }
       await enterDealerGameUnderChaos(session, source, {
-        networkFaults: !scenario.presentationWinner,
+        networkFaults: !healthyPresentation,
         configure: async (surface) => {
           if (!scenario.presentationWinner) return configureShortestTerminal(source, surface);
           await surface.locator('#legs-to-win').fill('3');
@@ -228,6 +234,8 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       await waitForPlayableTransitionAction(session, source);
       if (scenario.presentationWinner) {
         await playDecidingLegPresentation(session, scenario.presentationWinner, probe, presentation, evidence);
+      } else if (scenario.presentationGame === 'cribbage') {
+        await playCribbagePresentation(session, sourceDealerGameId, probe, presentation, evidence);
       } else {
         await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
       }
@@ -239,7 +247,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       const successorConfig = await probe.readDealerGameConfig(successorDealerGameId);
       evidence.successorConfig = successorConfig;
       expectCommittedSuccessorConfig(scenario, sourceConfig, successorConfig);
-      if (!scenario.presentationWinner) await runOfflineBurst(session.peerContext, 1_250);
+      if (!healthyPresentation) await runOfflineBurst(session.peerContext, 1_250);
       await Promise.all([
         expectCanonicalContinuity(session.hostPage),
         expectCanonicalContinuity(session.peerPage),
@@ -249,6 +257,9 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
 
       if (scenario.presentationWinner) {
         evidence.successorCaptures = await playSuccessorDecisionPair(session, successorDealerGameId);
+        evidence.status = 'passed';
+      } else if (scenario.presentationGame === 'cribbage') {
+        evidence.successorCaptures = await playCribbageSuccessor(session, successorDealerGameId);
         evidence.status = 'passed';
       } else {
         await requestLastHand(session, probe);
@@ -273,7 +284,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       primaryError = error;
     } finally {
       const teardownErrors: unknown[] = [];
-      if (scenario.presentationWinner) {
+      if (healthyPresentation) {
         evidence.presentation = { host: [...presentation.host.samples], peer: [...presentation.peer.samples],
           overflow: presentation.host.overflow || presentation.peer.overflow };
         if (!primaryError && (presentation.host.overflow || presentation.peer.overflow)) {
@@ -294,7 +305,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         teardownErrors.push(error);
       }
       try {
-        if (primaryError || scenario.presentationWinner) await capturePreCleanupScreenshots(info, [
+        if (primaryError || healthyPresentation) await capturePreCleanupScreenshots(info, [
           { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
         ]);
       } catch (error) {

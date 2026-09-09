@@ -169,7 +169,7 @@ async function playThreeFiveSeven(
   throw new Error('3-5-7 did not reach terminal settlement within 40 decision pairs');
 }
 
-async function discardToCrib(page: Page): Promise<void> {
+export async function discardToCrib(page: Page): Promise<void> {
   const surface = page.locator('[data-authoritative-action-surface="cribbage-discard"]');
   await expect(surface).toBeVisible({ timeout: 60_000 });
   const cards = page.locator('[data-cribbage-hand-card-key]:not(:disabled):visible');

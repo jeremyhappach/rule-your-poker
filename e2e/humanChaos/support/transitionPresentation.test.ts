@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertRoundPresentation, type RoundPresentationExpectation, type TransitionSample } from './transitionPresentation';
+import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
 const expected: RoundPresentationExpectation = {
@@ -99,5 +100,44 @@ describe('3-5-7 visible transition acceptance', () => {
     expect(assertRoundPresentation(rows, { ...expected, terminal: false, closingBalances: { player: '$98' } }).potEnd).toBeNull();
     rows[rows.length - 1].setup = true;
     expect(() => assertRoundPresentation(rows, { ...expected, terminal: false })).toThrow('setup during ordinary');
+  });
+});
+
+describe('Cribbage visible transition acceptance', () => {
+  const cribExpected: CribbagePresentationExpectation = { ...scope, startedAt: 0, winnerId: 'winner', multiplier: 1,
+    transferIds: ['payout'], openingBalances: { player: '$100' }, closingBalances: { player: '$110' } };
+  const eventId = 'game:round:match_win:winner';
+  const rows = (): TransitionSample[] => [
+    { ...healthy()[0], at: 0 },
+    { ...healthy()[0], at: 100, matchWin: { id: eventId, text: 'Winner wins' } },
+    { ...healthy()[0], at: 200, matchWin: { id: eventId, text: 'Winner wins' }, stages: [{ kind: 'payout', id: 'payout', finished: false }] },
+    { ...healthy()[0], at: 400, stages: [{ kind: 'payout', id: 'payout', finished: true }], balances: { player: '$110' } },
+    { ...healthy()[0], at: 450, setup: true, balances: { player: '$110' } },
+  ];
+  it('accepts the complete exact winner, transport, balance and setup story', () => {
+    expect(assertCribbagePresentation(rows(), cribExpected)).toEqual({ announcementAt: 100, payoutStart: 200, payoutEnd: 400, setupAt: 450 });
+  });
+  for (const [name, mutate] of [
+    ['missing announcement', (r: TransitionSample[]) => { r[1].matchWin = null; r[2].matchWin = null; }],
+    ['stale announcement', (r: TransitionSample[]) => { r[1].scope = { ...scope, roundId: 'old' }; }],
+    ['missing payout', (r: TransitionSample[]) => { r.forEach(row => { row.stages = []; }); }],
+    ['unfinished payout', (r: TransitionSample[]) => { r[3].stages[0].finished = false; }],
+    ['premature setup', (r: TransitionSample[]) => { r[1].setup = true; }],
+    ['wrong transfer', (r: TransitionSample[]) => { r[2].stages[0].id = 'other'; }],
+    ['stale payout', (r: TransitionSample[]) => { r[2].scope = { ...scope, dealerGameId: 'old' }; }],
+    ['early balance', (r: TransitionSample[]) => { r[1].balances = { player: '$110' }; }],
+    ['wrong closing balance', (r: TransitionSample[]) => { r[3].balances = {}; r[4].balances = {}; }],
+    ['hidden observation', (r: TransitionSample[]) => { r[2].documentVisible = false; }],
+    ['incomplete observation', (r: TransitionSample[]) => { r.pop(); }],
+    ['duplicate payout', (r: TransitionSample[]) => { r.splice(3, 0, { ...r[0], at: 300 }); }],
+  ] as const) {
+    it(`rejects ${name} even when settlement is correct`, () => {
+      const r = rows(); mutate(r); expect(() => assertCribbagePresentation(r, cribExpected)).toThrow();
+    });
+  }
+  it('requires the actual skunk overlay when the multiplier calls for one', () => {
+    expect(() => assertCribbagePresentation(rows(), { ...cribExpected, multiplier: 3 })).toThrow('missing skunk');
+    const r = rows(); r[0] = { ...r[0], celebration: eventId };
+    expect(() => assertCribbagePresentation(r, { ...cribExpected, multiplier: 3 })).not.toThrow();
   });
 });

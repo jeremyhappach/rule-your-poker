@@ -139,6 +139,7 @@ export function CanonicalAnnouncementLayer() {
     <div
       data-canonical-announcement-content=""
       data-canonical-announcement-type={railActive.type}
+      data-canonical-announcement-id={railActive.id}
       style={{
         display: 'flex',
         justifyContent: 'center',

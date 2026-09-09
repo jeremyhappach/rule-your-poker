@@ -15,6 +15,7 @@ export type ChaosScenario = {
   requiredFaults: readonly ('long-haul' | 'offline-rejoin' | 'route-remount' | 'lost-response')[];
   assertions: readonly string[];
   presentationWinner?: 'host' | 'peer';
+  presentationGame?: 'cribbage';
 };
 
 /** Bounded healthy gates precede the fault/End Session rows in the acceptance plan. */
@@ -24,6 +25,16 @@ export const THREE_FIVE_SEVEN_PRESENTATION_MANIFEST: readonly ChaosScenario[] = 
   assertions: ['two legs each through legal play', 'full reveal, final leg, losing legs sweep, pot and setup on both clients',
     'no early chip helper or balance', 'exact recorded settlement and playable successor'],
 }));
+
+export const CRIBBAGE_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
+  id: 'cribbage-presentation-short-win', family: 'transition', source: 'cribbage', target: 'cribbage',
+  variant: 'changed', presentationGame: 'cribbage', requiredFaults: [],
+  assertions: ['legal short-game win; record actual cut/pegging path',
+    'exact winner announcement and completed payout on both clients before setup',
+    'conserved settlement, changed successor target, fresh cards and both legal discards'],
+}];
+
+export const isHealthyPresentation = (scenario: ChaosScenario) => Boolean(scenario.presentationWinner || scenario.presentationGame);
 
 const FAULTS = ['long-haul', 'offline-rejoin', 'route-remount', 'lost-response'] as const;
 const GAMES = ALL_REAL_MONEY_GAME_TYPES as readonly DealerGameType[];

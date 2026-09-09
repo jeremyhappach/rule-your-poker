@@ -2,9 +2,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, validateHumanChaosManifest } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, isHealthyPresentation, validateHumanChaosManifest } from './manifest';
 
 describe('human chaos campaign manifest', () => {
+  it('keeps the short Cribbage presentation gate distinct from chaos and counting coverage', () => {
+    expect(CRIBBAGE_PRESENTATION_MANIFEST).toHaveLength(1);
+    expect(CRIBBAGE_PRESENTATION_MANIFEST[0]).toMatchObject({ presentationGame: 'cribbage', requiredFaults: [], variant: 'changed' });
+    expect(isHealthyPresentation(CRIBBAGE_PRESENTATION_MANIFEST[0])).toBe(true);
+  });
   it('keeps both healthy deciding-leg roles separate from the broad chaos inventory', () => {
     expect(THREE_FIVE_SEVEN_PRESENTATION_MANIFEST.map(row => row.presentationWinner)).toEqual(['host', 'peer']);
     expect(THREE_FIVE_SEVEN_PRESENTATION_MANIFEST.every(row => row.requiredFaults.length === 0)).toBe(true);

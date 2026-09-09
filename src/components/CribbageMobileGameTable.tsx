@@ -8444,7 +8444,11 @@ export const CribbageMobileGameTable = ({
           : 'PRE_DEAL'
       }
     >
-    <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
+    <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}
+      data-cribbage-presentation-scope={JSON.stringify({ gameId, dealerGameId,
+        roundId: currentRoundId, handNumber: currentHandNumber,
+        phase: winSequencePhase, winnerId: winSequenceData?.winnerId ?? null,
+        multiplier: winSequenceData?.multiplier ?? null })}>
 
       {/* Phase E: canonical `match_win` announcement owns winner UI.
           The 'skunk' win-sequence phase is retired — skunk semantics

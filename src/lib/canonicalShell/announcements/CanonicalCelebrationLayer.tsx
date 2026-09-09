@@ -102,6 +102,7 @@ export function CanonicalCelebrationLayer() {
   return (
     <div
       data-canonical-shell-celebration-layer=""
+      data-canonical-celebration-id={ctx.active.id}
       aria-hidden={false}
       style={{
         position: 'absolute',

@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 9 Cribbage win-sequence harness — live gate pending
+
+- The approved next-game qualification now has one healthy Cribbage short-game
+  row. Both clients must show the exact winner announcement and completed
+  payout before setup, then reach fresh cards and legal successor discards.
+- The row uses ordinary fake-money play, changes the successor target from 1
+  to 2, and never requests End Session. App changes are passive attributes;
+  gameplay, settlement and presentation timing are unchanged.
+- Counting, skunks, rejoin and adverse delivery remain separate gaps. See
+  `CRIBBAGE_PRESENTATION_20260909.md` for the scope and validation record.
+
 ## September 9 decision-source logging — live validation passes
 
 - Jeremy approved narrow 3-5-7 input provenance before further win-sequence

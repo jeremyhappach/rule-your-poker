@@ -5,7 +5,7 @@ export type PresentationScope = {
   transferCursor?: number; terminalGenerationId?: string | null;
 };
 export type VisibleStage = {
-  kind: 'award' | 'sweep' | 'pot'; id: string; finished: boolean;
+  kind: 'award' | 'sweep' | 'pot' | 'payout'; id: string; finished: boolean;
   winning?: boolean; generation?: string | null;
 };
 export type TransitionSample = {
@@ -18,6 +18,8 @@ export type TransitionSample = {
   balances: Record<string, string>;
   deltas: Array<{ id: string; batch: string; cursor: number; reason: string; text: string }>;
   documentVisible: boolean;
+  matchWin?: { id: string; text: string } | null;
+  celebration?: string | null;
 };
 export type RoundPresentationExpectation = PresentationScope & {
   actionAt: number;
@@ -132,7 +134,7 @@ export function installTransitionPresentationObserver(): void {
   const completed = new WeakSet<Element>();
   const endedEarly = new WeakSet<Element>();
   const observedAwards = new Map<Element, { stage: VisibleStage; scope: PresentationScope | null; end: number; lastSeen: number }>();
-  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"]';
+  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="player"]';
   let previous = '';
   const visible = (node: Element) => {
     for (let parent: Element | null = node; parent; parent = parent.parentElement) {
@@ -145,9 +147,9 @@ export function installTransitionPresentationObserver(): void {
     });
   };
   const sample = () => {
-    const root = document.querySelector('[data-357-presentation-scope]');
+    const root = document.querySelector('[data-357-presentation-scope], [data-cribbage-presentation-scope]');
     let scope: PresentationScope | null = null;
-    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
+    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? root?.getAttribute('data-cribbage-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
     const revealNode = document.querySelector('[data-357-decision-reveal]');
     const attr = (node: Element, name: string) => node.getAttribute(name) ?? '';
     const reveal = revealNode && visible(revealNode) ? {
@@ -172,12 +174,12 @@ export function installTransitionPresentationObserver(): void {
     }
     for (const node of document.querySelectorAll(selectors)) {
       if (!visible(node) && !completed.has(node)) continue;
-      const kind = node.hasAttribute('data-leg-award') ? 'award' : node.hasAttribute('data-leg-sweep-flight') ? 'sweep' : 'pot';
+      const kind = node.hasAttribute('data-leg-award') ? 'award' : node.hasAttribute('data-leg-sweep-flight') ? 'sweep' : node.getAttribute('data-chip-transport-from') === 'player' ? 'payout' : 'pot';
       const stage: VisibleStage = { kind, id: attr(node, kind === 'award' ? 'data-leg-award' : kind === 'sweep' ? 'data-leg-sweep-flight' : 'data-chip-transport-intent'),
         finished: completed.has(node), winning: kind === 'award' ? attr(node, 'data-leg-award-winning') === '1' : undefined,
         generation: kind === 'award' ? node.getAttribute('data-leg-award-generation') : undefined };
       stages.push(stage);
-      if (kind === 'award' || kind === 'pot') {
+      if (kind === 'award' || kind === 'pot' || kind === 'payout') {
         const end = Number(attr(node, kind === 'award' ? 'data-leg-award-completes-at' : 'data-chip-transport-completes-at'));
         if (end > 0) observedAwards.set(node, { stage, scope, end, lastSeen: Date.now() });
       }
@@ -193,6 +195,8 @@ export function installTransitionPresentationObserver(): void {
     for (const node of document.querySelectorAll('[data-chip-delta-anchor^="player:"]')) {
       if (visible(node)) addBalance(attr(node, 'data-chip-delta-anchor').slice(7), (node.textContent ?? '').trim());
     }
+    const matchWin = document.querySelector('[data-canonical-announcement-type="match_win"]');
+    const celebration = document.querySelector('[data-canonical-celebration-id]');
     const state: Omit<TransitionSample, 'at'> = {
       scope, reveal, stages,
       sweepOverlay: [...document.querySelectorAll('[data-sweep-the-legs-overlay]')].some(visible),
@@ -203,6 +207,8 @@ export function installTransitionPresentationObserver(): void {
         cursor: Number(attr(node, 'data-chip-balance-delta-cursor')), reason: attr(node, 'data-chip-balance-delta-reason'), text: (node.textContent ?? '').trim(),
       })),
       documentVisible: document.visibilityState === 'visible',
+      matchWin: matchWin && visible(matchWin) ? { id: attr(matchWin, 'data-canonical-announcement-id'), text: (matchWin.textContent ?? '').trim() } : null,
+      celebration: celebration && [...celebration.children].some(visible) ? attr(celebration, 'data-canonical-celebration-id') : null,
     };
     const signature = JSON.stringify(state);
     for (const exit of finishedExits) {

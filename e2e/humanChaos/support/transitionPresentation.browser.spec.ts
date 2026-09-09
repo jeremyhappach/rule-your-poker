@@ -55,3 +55,30 @@ test('samples a brief premature setup and ignores hidden markers', async ({ brow
     await expect.poll(() => observer.samples.some(row => row.setup)).toBe(true);
   } finally { await context.close(); }
 });
+
+for (const cancel of [false, true]) {
+  test(`Cribbage payout visibility and completion, cancellation=${cancel}`, async ({ browser }) => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      const observer = new TransitionPresentationObserver();
+      await observer.attach(context, page);
+      await page.goto('data:text/html,<div id="root"></div>');
+      await page.evaluate(cancelEarly => {
+        const root = document.querySelector('#root')!;
+        root.setAttribute('data-cribbage-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
+        root.innerHTML = `<style>@keyframes __chipTransport_control {from{transform:translateX(0)}to{transform:translateX(100px)}}</style>
+          <div data-canonical-announcement-type="match_win" data-canonical-announcement-id="win">Winner wins</div>
+          <div data-canonical-celebration-id="win"><div style="display:none">Hidden overlay</div></div>
+          <div data-chip-transport-intent="payout" data-chip-transport-from="player" data-chip-transport-completes-at="${Date.now() + 500}" style="width:30px;height:30px;background:gold;animation:__chipTransport_control 500ms linear"></div>`;
+        setTimeout(() => root.querySelector('[data-chip-transport-intent]')!.remove(), cancelEarly ? 100 : 550);
+      }, cancel);
+      await expect.poll(() => observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout'))).toBe(true);
+      await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(0);
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      expect(observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout' && stage.finished))).toBe(!cancel);
+      expect(observer.samples.some(row => row.matchWin?.id === 'win' && row.scope?.roundId === 'r')).toBe(true);
+      expect(observer.samples.some(row => row.celebration)).toBe(false);
+    } finally { await context.close(); }
+  });
+}
