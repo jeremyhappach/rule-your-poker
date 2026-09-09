@@ -500,6 +500,11 @@ reconciliation.
   `ThreeFiveSevenAnchoredSlot.tsx`, `ThreeFiveSevenDealOrchestrator.tsx`,
   `ThreeFiveSevenProofCardsAnimation.tsx`, and
   `ThreeFiveSevenTerminalController.tsx`.
+- Connected terminal completion: `src/hooks/useThreeFiveSevenTerminalCompletion.ts`
+  checks the exact receipt from `src/lib/threeFiveSeven/terminalCompletion.ts`
+  against the current terminal frame. `MobileGameTable` captures it at pot
+  arrival; `Game.tsx` requires it before postgame. Server recovery remains
+  authoritative; no pre-completion browser progress timer owns this handoff.
 - Route provenance and historical deal reconstruction:
   `src/lib/threeFiveSeven/routeEntryMode.ts` classifies the first hydrated
   3-5-7 identity from either the preceding persistent-route game type or

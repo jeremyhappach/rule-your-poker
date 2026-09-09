@@ -1,5 +1,21 @@
 # Current release and cutover state
 
+## September 8 3-5-7 terminal-completion correction — production smoke pending
+
+- Approved P0 correction removes browser auto-advance during decision reveal.
+  Connected postgame now requires the exact terminal presentation completion
+  receipt, captured at pot arrival and rechecked against the current identity.
+  Legacy sweep release also carries that complete immutable identity.
+- Settlement and the authoritative server recovery deadline are unchanged.
+  The incident's third leg and $32 payout were recorded correctly; no balance
+  repair or database migration was needed. Source owner, exact evidence and
+  verification limits: `THREE_FIVE_SEVEN_TERMINAL_COMPLETION_20260908.md`.
+- Validation: typecheck, 1,499 application tests, 66 harness tests, 185 focused
+  3-5-7 checks and production build pass. Review's legacy-sweep identity
+  finding was corrected and covered. Release tag: `357-terminal-completion-20260908`.
+- Real-user terminal smoke remains required. The separate early chip-helper
+  reveal leak stays queued and is not part of this correction.
+
 ## September 8 setup-admission correction — production smoke pending
 
 - Jeremy approved the RCA correction. Completed dealer draws now enter one

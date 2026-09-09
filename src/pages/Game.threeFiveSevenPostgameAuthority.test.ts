@@ -46,4 +46,27 @@ describe('Game 3-5-7 authoritative postgame handoff', () => {
     expect(started).not.toContain('setThreeFiveSevenWinTriggerId(null)');
     expect(completed).toContain('setThreeFiveSevenWinTriggerId(null)');
   });
+
+  it('requires exact presentation completion before the RPC and removes premature timer owners', () => {
+    const permission = handler.indexOf('!canAdvance357Postgame(completion357)');
+    expect(permission).toBeGreaterThan(-1);
+    expect(permission).toBeLessThan(handler.indexOf("'three_five_seven_advance_postgame' as any"));
+    expect(handler).toContain('const terminalRoundId = completion357!.roundId;');
+    expect(source).not.toContain('poll357IntervalRef');
+    expect(source).not.toContain('safety357FallbackTimerRef');
+    const callback = source.slice(source.indexOf('const handleThreeFiveSevenWinAnimationComplete'),
+      source.indexOf('// YAHTZEE game_over transition'));
+    expect(callback.indexOf('!accept357TerminalCompletion(completion)'))
+      .toBeLessThan(callback.indexOf('setIs357WinAnimationActive(false)'));
+    expect(callback).toContain('await handleGameOverComplete(completion)');
+    expect(callback).not.toContain('freshGame');
+    const table = readFileSync(join(__dirname, '..', 'components', 'MobileGameTable.tsx'), 'utf8');
+    expect(table).toContain('getTerminal357CompletionReceipt(canonicalTerminal357IdentityRef.current)');
+    expect(table).toContain('onThreeFiveSevenWinAnimationComplete?.(completion)');
+    const sweep = table.slice(table.indexOf('// SURGICAL REPAIR — sweep celebration release.'),
+      table.indexOf('// DEALER-GAME BOUNDARY: last-concrete-identity contract.'));
+    expect(sweep).toContain('getTerminal357SweepCompletionReceipt(');
+    expect(sweep).not.toContain('handNumber: null');
+    expect(sweep).not.toContain('terminalGenerationId: null');
+  });
 });

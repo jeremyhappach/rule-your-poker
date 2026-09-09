@@ -49,10 +49,6 @@ for (const __src of [
   __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL,
   __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER,
   __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR,
-  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK,
-  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION,
-  __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL,
-  __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP,
 ]) {
   __wartimeRegisterHookGame({ requirementId: 'async.owner', sourceSiteId: __src.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __src.fn });
   __wartimeRegisterEmitterGame('async.owner', __src.id);
@@ -203,6 +199,8 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { useSessionDealerDrawReceipt } from "@/hooks/useSessionDealerDrawReceipt";
+import { useThreeFiveSevenTerminalCompletion } from "@/hooks/useThreeFiveSevenTerminalCompletion";
+import type { Terminal357CompletionReceipt } from "@/lib/threeFiveSeven/terminalCompletion";
 import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from "@/lib/cribbageDealerDrawTrace";
 import CribDealerDrawTraceOverlay from "@/components/debug/CribDealerDrawTraceOverlay";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
@@ -2467,17 +2465,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       },
     });
   }, [__wartimeIdentityMatches, __wartimeLiveGameIdentity]);
-
-  // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
-  const safety357FallbackKeyRef = useRef<string | null>(null);
-  const safety357FallbackTimerRef = useRef<number | null>(null);
-  const safety357FallbackExtendTimerRef = useRef<number | null>(null);
-
-  // POLLING (357): after win animation completes, keep polling DB until we see the game leave game_over.
-  // This prevents the UI getting stuck if the animation completion callback is dropped.
-  const poll357KeyRef = useRef<string | null>(null);
-  const poll357IntervalRef = useRef<number | null>(null);
-  const poll357StopTimerRef = useRef<number | null>(null);
 
   // ── Holm Sync (Phase 3 Step 1 — turn spotlight + round status from presentationState) ──
   const holmSyncLastRoundIdRef = useRef<string | null>(null);
@@ -6108,6 +6095,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  const { acceptCompletion: accept357TerminalCompletion, canAdvance: canAdvance357Postgame } =
+    useThreeFiveSevenTerminalCompletion({
+      enabled: is357GameType,
+      gameId: gameId ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: currentRound?.id ?? null,
+      handNumber: game?.total_hands ?? null,
+      status: game?.status ?? null,
+      revealBlocked: threeFiveSevenDecisionRevealBlocksResult,
+      descriptor: terminal357Descriptor,
+    });
 
   useEffect(() => {
     if (game) {
@@ -10440,10 +10439,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
 
-  const handleGameOverComplete = useCallback(async (fresh357Identity?: {
-    dealerGameId: string | null;
-    handNumber: number | null;
-  }) => {
+  const handleGameOverComplete = useCallback(async (completion357?: Terminal357CompletionReceipt) => {
     const _gocId = () => ({
       gameId: gameId ?? null,
       dealerGameId: game?.current_game_uuid ?? null,
@@ -10480,6 +10476,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         reason: 'no-game-id',
         identity: { gameId: null, dealerGameId: game?.current_game_uuid ?? null },
         gameStatus: game?.status ?? null,
+      });
+      return;
+    }
+
+    // Every connected 3-5-7 caller must carry the exact completed presentation.
+    // In particular, false animation-active during DROP cannot admit setup.
+    if (is357GameType && !canAdvance357Postgame(completion357)) {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:357-presentation-incomplete',
+        returnReason: 'missing-or-stale-terminal-completion',
       });
       return;
     }
@@ -10764,31 +10771,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (is357GameType) {
       gameOverTransitionRef.current = true;
       try {
-        const outgoingDealerGameId = fresh357Identity
-          ? fresh357Identity.dealerGameId
-          : game?.current_game_uuid ?? null;
-        const outgoingHandNumber = fresh357Identity
-          ? fresh357Identity.handNumber
-          : game?.total_hands ?? null;
-        let terminalRoundId = (
-          currentRound?.dealer_game_id === outgoingDealerGameId
-          && currentRound?.hand_number === outgoingHandNumber
-        ) ? currentRound.id : null;
-
-        if (!terminalRoundId && outgoingDealerGameId && outgoingHandNumber != null) {
-          const { data: terminalRound, error: terminalRoundError } = await supabase
-            .from('rounds')
-            .select('id')
-            .eq('game_id', gameId)
-            .eq('dealer_game_id', outgoingDealerGameId)
-            .eq('hand_number', outgoingHandNumber)
-            .eq('status', 'completed')
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (terminalRoundError) throw terminalRoundError;
-          terminalRoundId = terminalRound?.id ?? null;
-        }
+        const outgoingDealerGameId = completion357!.dealerGameId;
+        const outgoingHandNumber = completion357!.handNumber;
+        const terminalRoundId = completion357!.roundId;
 
         if (!outgoingDealerGameId || !terminalRoundId || outgoingHandNumber == null) {
           throw new Error('3-5-7 postgame identity is incomplete; no transition was attempted.');
@@ -10864,7 +10849,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Unknown/stale game types may refresh, but cannot enter a generic writer.
     try { await fetchGameData(); }
     catch (error) { console.error('[POSTGAME] Recovery read failed:', error); }
-  }, [gameId, game, currentRound, fetchGameData, toast, user?.id, is357GameType]);
+  }, [gameId, game, currentRound, fetchGameData, toast, user?.id, is357GameType, canAdvance357Postgame]);
 
   // Dealer confirms to skip countdown and go directly to game selection
   const handleDealerConfirmGameOver = useCallback(async () => {
@@ -10902,298 +10887,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
-  // Unmount cleanup for 357 timers (don't rely on effect cleanups that run on every re-render)
-  useEffect(() => {
-    return () => {
-      if (safety357FallbackTimerRef.current) {
-        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'unmount_cleanup');
-        window.clearTimeout(safety357FallbackTimerRef.current);
-        safety357FallbackTimerRef.current = null;
-      }
-      if (safety357FallbackExtendTimerRef.current) {
-        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'unmount_cleanup');
-        window.clearTimeout(safety357FallbackExtendTimerRef.current);
-        safety357FallbackExtendTimerRef.current = null;
-      }
-      if (poll357IntervalRef.current) {
-        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'unmount_cleanup');
-        window.clearInterval(poll357IntervalRef.current);
-        poll357IntervalRef.current = null;
-      }
-      if (poll357StopTimerRef.current) {
-        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'unmount_cleanup');
-        window.clearTimeout(poll357StopTimerRef.current);
-        poll357StopTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  // SAFETY FALLBACK (357): Auto-proceed if stuck in game_over without game_over_at.
-  // IMPORTANT: We do NOT return a cleanup here, because React would run it on every re-render
-  // and repeatedly cancel the timer before it can fire.
-  useEffect(() => {
-    const lrr357 = game?.last_round_result ?? '';
-    const is357StuckGameOver =
-      game?.status === 'game_over' &&
-      game?.game_type !== 'holm-game' &&
-      !game?.game_over_at &&
-      // Controller-owned instant-357 (357_SWEEP:) drives its own
-      // callback-driven progression via enterCanonical357TerminalPresentation
-      // → PotToPlayerAnimation.onAnimationEnd → handlePotToPlayerComplete357.
-      // The bespoke ~10s safety timer must not run on that path.
-      lrr357.includes('won the game');
-
-
-    const clearFallbackTimers = () => {
-      if (safety357FallbackTimerRef.current) {
-        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'safety_fallback_rescheduled_or_cleared');
-        window.clearTimeout(safety357FallbackTimerRef.current);
-        safety357FallbackTimerRef.current = null;
-      }
-      if (safety357FallbackExtendTimerRef.current) {
-        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'safety_extension_rescheduled_or_cleared');
-        window.clearTimeout(safety357FallbackExtendTimerRef.current);
-        safety357FallbackExtendTimerRef.current = null;
-      }
-    };
-
-    if (!is357StuckGameOver) {
-      safety357FallbackKeyRef.current = null;
-      clearFallbackTimers();
-      return;
-    }
-
-    const key = `${gameId}|${game?.last_round_result}`;
-
-    // If we've already scheduled for this exact win instance, keep the existing timer alive.
-    if (safety357FallbackKeyRef.current === key && safety357FallbackTimerRef.current) {
-      return;
-    }
-
-    // New win instance (or lost timer) -> clear and reschedule.
-    clearFallbackTimers();
-    safety357FallbackKeyRef.current = key;
-
-    const legsToWin = game?.legs_to_win || 3;
-    const legsToAnimate = (cachedLegPositionsRef.current || []).reduce((sum, p) => {
-      const c = typeof p.legCount === 'number' ? p.legCount : 0;
-      return sum + Math.min(c, legsToWin);
-    }, 0);
-
-    // Match LegsToPlayerAnimation.tsx math: totalDuration = 3500 + (legCount * 100)
-    const legsToPlayerMs = 3500 + (legsToAnimate * 100);
-
-    // Approximate full sequence timing - should match actual animation callbacks:
-    // - Initial wait for leg animation: 1.8s
-    // - Legs-to-player: computed above (~3.5s base + 0.1s/leg)
-    // - Pot-to-player: 3.3s (onAnimationEnd fires at 3300ms)
-    // - Post-pot delay: 0.3s
-    // - Buffer: 1.0s
-    const computedMs = 1800 + legsToPlayerMs + 3300 + 300 + 1000;
-    // Fallback should be slightly longer than expected - min 6s, max 12s
-    const fallbackMs = Math.min(12_000, Math.max(6_000, computedMs));
-
-    console.log('[357 SAFETY FALLBACK] Scheduling auto-proceed (stable timer)', {
-      fallbackMs,
-      legsToWin,
-      legsToAnimate,
-      legsToPlayerMs,
-      key,
-    });
-
-    safety357FallbackTimerRef.current = __scheduleWartimeTimeout({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK.id,
-      ownerLabel: '3-5-7 safety fallback timeout',
-      delayMs: fallbackMs,
-      extra: {
-        key,
-        fallbackMs,
-        legsToWin,
-        legsToAnimate,
-        legsToPlayerMs,
-        winAnimationActiveGuard: is357WinAnimationActiveRef.current,
-      },
-      fn: async () => {
-      // If the win animation is still active, do NOT cut it off.
-      if (is357WinAnimationActiveRef.current) {
-        console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 5s');
-        safety357FallbackExtendTimerRef.current = __scheduleWartimeTimeout({
-          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION.id,
-          ownerLabel: '3-5-7 safety fallback extension timeout',
-          delayMs: 5000,
-          extra: {
-            key,
-            reason: 'win_animation_still_active_at_fallback',
-          },
-          fn: async () => {
-          const { data: freshGame, error: freshGameError } = await supabase
-            .from('games')
-            .select('status, game_over_at')
-            .eq('id', gameId)
-            .single();
-
-          if (freshGameError || !freshGame) {
-            console.warn('[357 SAFETY FALLBACK] Failed to verify game state during extension; forcing transition best-effort', {
-              freshGameError,
-            });
-            setIs357WinAnimationActive(false);
-            __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
-            is357WinAnimationActiveRef.current = false;
-            await handleGameOverComplete();
-            return;
-          }
-
-          if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
-            console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), forcing transition');
-            setIs357WinAnimationActive(false);
-            __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
-            is357WinAnimationActiveRef.current = false;
-            await handleGameOverComplete();
-          } else {
-            console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame);
-          }
-          },
-        });
-        return;
-      }
-
-      const { data: freshGame, error: freshGameError } = await supabase
-        .from('games')
-        .select('status, game_over_at')
-        .eq('id', gameId)
-        .single();
-
-      if (freshGameError || !freshGame) {
-        console.warn('[357 SAFETY FALLBACK] Failed to verify game state; forcing transition best-effort', {
-          freshGameError,
-        });
-        setIs357WinAnimationActive(false);
-        __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
-        is357WinAnimationActiveRef.current = false;
-        await handleGameOverComplete();
-        return;
-      }
-
-      if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
-        console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), forcing transition');
-        setIs357WinAnimationActive(false);
-        __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
-        is357WinAnimationActiveRef.current = false;
-        await handleGameOverComplete();
-      } else {
-        console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame);
-      }
-      },
-    });
-  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.legs_to_win, gameId, handleGameOverComplete]);
-
-  // POLLING (357): Once the win animation is finished, poll until the game transitions.
-  // IMPORTANT: We do NOT return a cleanup here either (same reason: avoid cancel-on-rerender).
-  useEffect(() => {
-    const lrrPoll357 = game?.last_round_result ?? '';
-    const is357GameOverNeedingProgress =
-      game?.status === 'game_over' &&
-      game?.game_type !== 'holm-game' &&
-      !game?.game_over_at &&
-      (lrrPoll357.includes('won the game') || lrrPoll357.startsWith('357_SWEEP:'));
-
-
-    const clearPollTimers = () => {
-      if (poll357IntervalRef.current) {
-        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'progress_poll_cleared');
-        window.clearInterval(poll357IntervalRef.current);
-        poll357IntervalRef.current = null;
-      }
-      if (poll357StopTimerRef.current) {
-        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'progress_poll_stop_cleared');
-        window.clearTimeout(poll357StopTimerRef.current);
-        poll357StopTimerRef.current = null;
-      }
-    };
-
-    if (safetyPollsDisabled) {
-      poll357KeyRef.current = null;
-      clearPollTimers();
-      return;
-    }
-
-    // Only start polling AFTER the win animation is done.
-    if (!is357GameOverNeedingProgress || is357WinAnimationActiveRef.current) {
-      poll357KeyRef.current = null;
-      clearPollTimers();
-      return;
-    }
-
-    const key = `${gameId}|${game?.last_round_result}`;
-
-    if (poll357KeyRef.current === key && poll357IntervalRef.current) {
-      return;
-    }
-
-    // New key (or lost interval) -> clear and start.
-    clearPollTimers();
-    poll357KeyRef.current = key;
-
-    console.log('[357 POLL] Starting post-animation polling (stable interval)', {
-      key,
-      status: game?.status,
-      gameOverAt: game?.game_over_at,
-    });
-
-    // Start polling immediately (first check) then every 800ms
-    const checkAndProceed = async () => {
-      // If animation becomes active again, pause polling.
-      if (is357WinAnimationActiveRef.current) return;
-
-      const { data: freshGame, error: pollFetchError } = await supabase
-        .from('games')
-        .select('status, game_over_at')
-        .eq('id', gameId)
-        .single();
-
-      if (pollFetchError) {
-        console.warn('[357 POLL] Failed to fetch game status; will retry', pollFetchError);
-        return;
-      }
-
-      if (!freshGame) return;
-
-      // Stop polling once we leave game_over OR game_over_at becomes set (countdown path).
-      if (freshGame.status !== 'game_over' || !!freshGame.game_over_at) {
-        console.log('[357 POLL] Game progressed, stopping polling', freshGame);
-        clearPollTimers();
-        return;
-      }
-
-      console.log('[357 POLL] Still stuck in game_over (no game_over_at) -> forcing handleGameOverComplete');
-      await handleGameOverComplete();
-    };
-
-    // Execute immediately
-    checkAndProceed();
-
-    // Then poll every 2 seconds (not 800ms which hammers DB)
-    poll357IntervalRef.current = __scheduleWartimeInterval({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL.id,
-      ownerLabel: '3-5-7 post-animation progress poll',
-      intervalMs: 2000,
-      extra: { key, initialStatus: game?.status ?? null, initialGameOverAt: game?.game_over_at ?? null },
-      fn: async () => { await checkAndProceed(); },
-    });
-
-    // Hard stop after 15 seconds (reduced from 25s)
-    poll357StopTimerRef.current = __scheduleWartimeTimeout({
-      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP.id,
-      ownerLabel: '3-5-7 post-animation poll hard-stop',
-      delayMs: 15_000,
-      extra: { key, hardStopMs: 15_000 },
-      fn: async () => {
-        console.log('[357 POLL] Hard stop reached, stopping polling');
-        clearPollTimers();
-        poll357KeyRef.current = null;
-      },
-    });
-  }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
+  // Disconnected/stalled 3-5-7 clients recover at the authoritative server
+  // deadline. No browser timer may mistake an unstarted presentation for done.
 
 
 
@@ -12189,60 +11884,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[357 WIN] Animation started, retaining trigger until completion');
   }, []);
 
-  // Handle 3-5-7 win animation complete - proceed directly to next game after delay
-  const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
-    const _gocIdentity357 = {
-      gameId: gameId ?? null,
-      dealerGameId: game?.current_game_uuid ?? null,
-      roundId: currentRound?.dealer_game_id === game?.current_game_uuid
-        && currentRound?.hand_number === game?.total_hands
-        ? currentRound.id
-        : null,
-      handNumber: game?.total_hands ?? null,
+  // Handle 3-5-7 win animation complete: only the exact presented identity.
+  const handleThreeFiveSevenWinAnimationComplete = useCallback(async (
+    completion: Terminal357CompletionReceipt,
+  ) => {
+    // A delayed callback from an old table must not clear a new animation
+    // or adopt a new identity. This guard reads the latest committed frame.
+    if (!accept357TerminalCompletion(completion)) return;
+    emit357GameOverCompleteDiag('entry', {
+      gameId: completion.gameId,
+      dealerGameId: completion.dealerGameId,
+      roundId: completion.roundId,
+      handNumber: completion.handNumber,
       viewerPlayerId: user?.id ?? null,
-      winnerPlayerId: threeFiveSevenWinnerId ?? null,
-      animationId: threeFiveSevenWinTriggerId ?? null,
-      lastRoundResult: game?.last_round_result ?? null,
-      clientKnownStatus: game?.status ?? null,
-      currentGameUuid: game?.current_game_uuid ?? null,
-      currentRound: game?.current_round ?? null,
-    };
-    emit357GameOverCompleteDiag('entry', _gocIdentity357);
-    __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
-      callback: 'handleThreeFiveSevenWinAnimationComplete',
-      entry: 'entry',
-      identity: {
-        gameId: gameId ?? null,
-        dealerGameId: game?.current_game_uuid ?? null,
-        triggerId: threeFiveSevenWinTriggerId ?? null,
-      },
-      gameStatus: game?.status ?? null,
+      clientKnownStatus: gameStatusRef.current,
     });
 
-    if (game?.game_type === 'holm-game' || !gameId) {
-      emit357GameOverCompleteDiag('returned', {
-        ..._gocIdentity357,
-        returnSite: 'handleThreeFiveSevenWinAnimationComplete:preamble',
-        returnReason: !gameId ? 'no-game-id' : 'holm-game',
-      });
-      __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
-        callback: 'handleThreeFiveSevenWinAnimationComplete',
-        entry: 'return',
-        reason: !gameId ? 'no-game-id' : 'holm-game',
-        identity: {
-          gameId: gameId ?? null,
-          dealerGameId: game?.current_game_uuid ?? null,
-          triggerId: threeFiveSevenWinTriggerId ?? null,
-        },
-        gameStatus: game?.status ?? null,
-      });
-      return;
-    }
-
-
-    // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
-    __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
     is357WinAnimationActiveRef.current = false;
     setThreeFiveSevenWinTriggerId(null);
     setThreeFiveSevenWinnerId(null);
@@ -12252,89 +11910,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cachedPotFor357WinRef.current = 0;
     setCachedLegPositions([]);
 
-    // CRITICAL: Fetch fresh game status from DB - React state may be stale
-    const { data: freshGame, error: fetchError } = await supabase
-      .from('games')
-      .select('status, game_type, current_game_uuid, current_round, total_hands, game_over_at, last_round_result')
-      .eq('id', gameId)
-      .single();
-
-    const _branchDecision =
-      !fetchError && freshGame?.status && freshGame.status !== 'game_over'
-        ? 'return_after_fetch_game_data'
-        : 'continue_to_handle_game_over_complete';
-    emit357GameOverCompleteDiag('status_refetch_result', {
-      ..._gocIdentity357,
-      returnedStatus: freshGame?.status ?? null,
-      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
-      returnedCurrentRound: freshGame?.current_round ?? null,
-      returnedGameOverAt: freshGame?.game_over_at ?? null,
-      returnedLastRoundResult: freshGame?.last_round_result ?? null,
-      fetchErrorCode: (fetchError as any)?.code ?? null,
-      fetchErrorMessage: (fetchError as any)?.message ?? null,
-      fetchErrorDetails: (fetchError as any)?.details ?? null,
-      fetchErrorHint: (fetchError as any)?.hint ?? null,
-      branchDecision: _branchDecision,
-      branchReason: fetchError
-        ? 'fetch-error-fallthrough-to-owner'
-        : freshGame?.status && freshGame.status !== 'game_over'
-          ? `status-is-${freshGame.status}-not-game_over`
-          : 'status-is-game_over-or-null',
-    });
-
-    if (!fetchError && freshGame?.status === 'session_ended') {
-      // Reaching this callback proves this mount presented the live 3-5-7
-      // terminal sequence through its canonical completion boundary.
+    if (gameStatusRef.current === 'session_ended') {
       liveTerminalPresentationObservedRef.current = true;
       markTerminalPresentationComplete(
-        `${freshGame.game_type}|winseq|${gameId}|${freshGame.current_game_uuid ?? 'no'}|${freshGame.total_hands ?? 'no'}`,
+        `${gameTypeLiveRef.current}|winseq|${completion.gameId}|${completion.dealerGameId}|${completion.handNumber}`,
       );
       await fetchGameData();
       return;
     }
 
-    if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
-      emit357GameOverCompleteDiag('returned', {
-        ..._gocIdentity357,
-        returnSite: 'handleThreeFiveSevenWinAnimationComplete:status_refetch',
-        returnReason: `fresh-status-${freshGame.status}-not-game_over`,
-        returnedStatus: freshGame.status,
-      });
-      await fetchGameData();
-      return;
-    }
-
-    emit357GameOverCompleteDiag('owner_invoking', {
-      ..._gocIdentity357,
-      statusPassedIn: freshGame?.status ?? null,
-      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
-      returnedCurrentRound: freshGame?.current_round ?? null,
-    });
-
-    try {
-      await handleGameOverComplete({
-        dealerGameId: fetchError
-          ? game?.current_game_uuid ?? null
-          : freshGame?.current_game_uuid ?? null,
-        handNumber: fetchError
-          ? game?.total_hands ?? null
-          : freshGame?.total_hands ?? null,
-      });
-    } catch (e) {
-      emit357GameOverCompleteDiag('returned', {
-        ..._gocIdentity357,
-        returnSite: 'handleThreeFiveSevenWinAnimationComplete:owner_threw',
-        returnReason: 'handleGameOverComplete-threw',
-        error: e,
-      });
-      emit357InstantWinTerminal('failed', {
-        gameId: gameId ?? undefined,
-        eventKind: 'cross_country_advance',
-        error: e,
-      });
-      throw e;
-    }
-  }, [game?.status, game?.game_type, game?.current_game_uuid, game?.current_round, game?.total_hands, game?.last_round_result, gameId, handleGameOverComplete, fetchGameData, markTerminalPresentationComplete, user?.id, threeFiveSevenWinnerId, threeFiveSevenWinTriggerId]);
+    // Do not refetch a newer game's identity and attach this old completion
+    // to it. PostgreSQL validates and dedupes this immutable settled identity.
+    await handleGameOverComplete(completion);
+  }, [accept357TerminalCompletion, user?.id,
+    markTerminalPresentationComplete, fetchGameData, handleGameOverComplete]);
 
 
   // YAHTZEE game_over transition

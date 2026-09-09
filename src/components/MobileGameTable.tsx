@@ -212,6 +212,7 @@ import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
 
 import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
+import { getTerminal357CompletionReceipt, getTerminal357SweepCompletionReceipt, type Terminal357CompletionReceipt } from "@/lib/threeFiveSeven/terminalCompletion";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
@@ -1246,7 +1247,7 @@ interface MobileGameTableProps {
   threeFiveSevenWinnerCards?: CardType[];
   threeFiveSevenCachedLegPositions?: { playerId: string; position: number; legCount: number }[];
   onThreeFiveSevenWinAnimationStarted?: () => void; // Called when animation starts to clear trigger
-  onThreeFiveSevenWinAnimationComplete?: () => void;
+  onThreeFiveSevenWinAnimationComplete?: (receipt: Terminal357CompletionReceipt) => void | Promise<void>;
   /** Slice 1 (inert): immutable terminal descriptor built by Game.tsx at
    *  authoritative 3-5-7 terminal detection. Passed through to the new
    *  ThreeFiveSevenTerminalController mounted below. Bespoke instant-win
@@ -10630,6 +10631,10 @@ export const MobileGameTable = ({
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
+    // Capture the identity that reached pot arrival, not whichever game is
+    // current when the presentation tail or a subsequent request finishes.
+    const completion = getTerminal357CompletionReceipt(canonicalTerminal357IdentityRef.current);
+    if (!completion) return;
     const animId = currentAnimationIdRef.current;
     const normalPresentation = normal357PresentationRef.current;
     const liveIdentityAtEntry = build357PresentationIdentity();
@@ -10798,7 +10803,7 @@ export const MobileGameTable = ({
           identity: __wartimeMgtIdentity,
           owner: __wartimeMgtOwner,
         });
-        await Promise.resolve(onThreeFiveSevenWinAnimationComplete?.());
+        await Promise.resolve(onThreeFiveSevenWinAnimationComplete?.(completion));
         __emitWartimeProgression({
           callback: 'onThreeFiveSevenWinAnimationComplete',
           entry: 'return',
@@ -10872,6 +10877,12 @@ export const MobileGameTable = ({
       sweepAwaitingCelebrationRef.current = null;
       return;
     }
+    // Do not consume the sweep awaiter until its immutable terminal identity
+    // is ready. Descriptor arrival reruns this effect; no timing fallback.
+    const completion = getTerminal357SweepCompletionReceipt(
+      { ...active, gameId: gameId ?? null }, threeFiveSevenTerminalDescriptor,
+    );
+    if (!completion) return;
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
     __capture357Checkpoint('sweep_wait_release_to_pot', {
       phaseBefore,
@@ -10889,13 +10900,9 @@ export const MobileGameTable = ({
       players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null;
     const sweepEntryResult = enterCanonical357TerminalPresentation({
       identity: {
-        gameId: gameId ?? null,
-        dealerGameId: active.dealerGameId,
-        roundId: active.roundId,
-        handNumber: null,
+        ...completion,
         handContextId: active.handContextId,
         terminalResultIdentity: active.terminalResultIdentity,
-        terminalGenerationId: null,
         winnerId: threeFiveSevenWinnerId ?? null,
         winnerPosition: winnerPositionForSweep,
         awardedPot: threeFiveSevenWinPotAmount ?? null,
@@ -10919,7 +10926,7 @@ export const MobileGameTable = ({
       phaseAfter: 'pot-to-player',
       generatedPotTriggerId: releasedTid,
     });
-  }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, lastRoundResult, enterCanonical357TerminalPresentation]);
+  }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, lastRoundResult, enterCanonical357TerminalPresentation, threeFiveSevenTerminalDescriptor]);
 
   // DEALER-GAME BOUNDARY: last-concrete-identity contract.
   // A transient null identity (settlement can briefly null dealerGameId
