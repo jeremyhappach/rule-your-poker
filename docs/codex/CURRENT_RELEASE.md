@@ -1,5 +1,19 @@
 # Current release and cutover state
 
+## September 8 3-5-7 leg-charge reveal gate — production smoke pending
+
+- Approved P1 correction holds leg-charge balances and signed helper text until
+  the matching accepted round's full 3-2-1-Drop/hold is complete. A missing
+  reveal clock cannot release a batch-first update; completed receipts are
+  bounded by the accepted frame's immutable transfer cursor.
+- Settlement, historical balances, shared ledger/renderer, and the P0 terminal
+  sweep/pot/completion gates are unchanged. No migration or production test
+  session was required. See `THREE_FIVE_SEVEN_LEG_REVEAL_GATE_20260908.md`.
+- Validation: 209 focused checks, typecheck, 1,529 application tests, 66 harness
+  tests and production build pass. Independent review found no blockers.
+  Release tag: `357-leg-reveal-gate-20260908`. Both players must reload from the
+  lobby before the ordinary-leg and winning-leg production smoke.
+
 ## September 8 3-5-7 terminal-completion correction — production smoke pending
 
 - Approved P0 correction removes browser auto-advance during decision reveal.
@@ -14,7 +28,7 @@
   3-5-7 checks and production build pass. Review's legacy-sweep identity
   finding was corrected and covered. Release tag: `357-terminal-completion-20260908`.
 - Real-user terminal smoke remains required. The separate early chip-helper
-  reveal leak stays queued and is not part of this correction.
+  reveal leak is addressed by the later P1 correction above.
 
 ## September 8 setup-admission correction — production smoke pending
 

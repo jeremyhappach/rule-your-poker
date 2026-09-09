@@ -4,6 +4,37 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
+
+Status: Approved correction implemented and locally verified; production smoke pending. Separate from the
+published P0 terminal-presentation correction (`7b925b886`).
+Jeremy reports the real-money session was very successful overall but signed
+chip-difference helper text appeared before decisions were revealed. Example:
+Jeremy folded, mcru81 stayed, and mcru81's -$2 leg charge showed before the
+3-2-1-Drop animation ended. Expected: decision-dependent financial helper text
+must not reveal Stay/Fold outcomes before the canonical decision reveal gate.
+Source boundary confirmed: `MobileGameTable.tsx`'s 3-5-7 financial presentation
+admission has no leg-charge gate. Zero-flight `reason: 'leg'` batches fall through
+to admission while the decision reveal is pending or active. The canonical
+`ChipPresentationLedger` immediately settles the visible closing balance and
+emits the residual signed delta; `ChipPresentationDeltaRuntime` renders it.
+This is a presentation-admission defect, not evidence of incorrect settlement.
+The exact hand for Jeremy's early-helper example remains unidentified.
+
+Implemented correction: hold the leg charge at the existing financial
+presentation admission boundary until the matching accepted round's full
+decision reveal (including DROP/hold) is complete. Bind release to accepted
+round identity and immutable transfer progress; a missing reveal clock must
+not count as completion when the batch arrives first. Preserve once-only
+balance/delta presentation, cold-entry handling, stale/duplicate rejection,
+ordinary and terminal leg awards, terminal sweep/pot gates, and other games.
+Do not merely hide the helper or change authoritative balances. Validate both
+batch-first and frame-first delivery, completed reveal, identity changes and
+terminal ordering. Implementation and verification are recorded in
+`THREE_FIVE_SEVEN_LEG_REVEAL_GATE_20260908.md`. No production state was changed.
+Reported in this task September 8 CDT, after publication of `ee56412c8`; client
+build at incident not yet independently verified. RCA followed the P0 release.
+
 ### P1 — Dealer setup selection resets when late dealer-draw presentation arrives
 
 Status: Approved correction implemented and locally verified; production smoke

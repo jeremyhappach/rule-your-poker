@@ -2,10 +2,76 @@ import type { ChipPresentationBatch } from '@/lib/canonicalShell/ChipPresentatio
 import type { ThreeFiveSevenAllFoldPresentation } from './allFoldPresentation';
 import { matchesThreeFiveSevenPresentationCursor } from './announcementPresentation';
 import type { ThreeFiveSevenRolloverPresentation } from './rolloverPresentation';
+import {
+  deriveThreeFiveSevenDecisionRevealFrame,
+  type ThreeFiveSevenDecisionRevealClock,
+} from './decisionReveal';
+
+export interface ThreeFiveSevenRevealedFinancialPresentation {
+  gameId: string;
+  dealerGameId: string;
+  roundId: string;
+  handNumber: number;
+  roundNumber: number;
+  revealId: string;
+  /** Upper bound from the same accepted atomic round frame, not a live batch. */
+  transferCursor: number;
+}
+
+/** A missing clock is unknown, never evidence that this round was revealed. */
+export function buildThreeFiveSevenRevealedFinancialPresentation({
+  gameId, dealerGameId, roundId, handNumber, roundNumber, transferCursor,
+  roundCompleted, revealClock, revealBlocked, nowMs,
+}: {
+  gameId: string | null | undefined;
+  dealerGameId: string | null | undefined;
+  roundId: string | null | undefined;
+  handNumber: number | null | undefined;
+  roundNumber: number | null | undefined;
+  transferCursor: number | null | undefined;
+  roundCompleted: boolean;
+  revealClock: ThreeFiveSevenDecisionRevealClock | null | undefined;
+  revealBlocked: boolean;
+  nowMs: number;
+}): ThreeFiveSevenRevealedFinancialPresentation | null {
+  if (!revealClock || !roundCompleted || revealBlocked
+    || !gameId || !dealerGameId || !roundId
+    || !Number.isInteger(handNumber) || handNumber! < 1
+    || !Number.isInteger(roundNumber) || roundNumber! < 1
+    || !Number.isSafeInteger(transferCursor) || transferCursor! < 1) return null;
+
+  const { window } = revealClock;
+  if (window.gameId !== gameId || window.dealerGameId !== dealerGameId
+    || window.roundId !== roundId || window.handNumber !== handNumber
+    || window.roundNumber !== roundNumber
+    || deriveThreeFiveSevenDecisionRevealFrame(revealClock, nowMs).active) return null;
+
+  return {
+    gameId, dealerGameId, roundId, handNumber: handNumber!, roundNumber: roundNumber!,
+    revealId: window.id, transferCursor: transferCursor!,
+  };
+}
+
+/**
+ * Leg purchases have no flight: admitting one immediately releases both its
+ * closing balance and signed residual helper. Only a fully revealed accepted
+ * frame may release that cursor. Retained receipts cover delayed older batches,
+ * never a newer round's charge arriving before its frame/reveal clock.
+ */
+export function getThreeFiveSevenLegChargeAdmission(
+  batch: Pick<ChipPresentationBatch, 'game_id' | 'cursor' | 'reason'>,
+  revealed: ThreeFiveSevenRevealedFinancialPresentation | null | undefined,
+): boolean | null {
+  if (batch.reason !== 'leg') return null;
+  return !!revealed && batch.game_id === revealed.gameId
+    && Number.isSafeInteger(batch.cursor) && batch.cursor > 0
+    && batch.cursor <= revealed.transferCursor;
+}
 
 export type ThreeFiveSevenFinancialPresentation =
   | ThreeFiveSevenAllFoldPresentation
-  | ThreeFiveSevenRolloverPresentation;
+  | ThreeFiveSevenRolloverPresentation
+  | ThreeFiveSevenRevealedFinancialPresentation;
 
 interface ThreeFiveSevenFinancialScope {
   gameId: string | null | undefined;

@@ -24,8 +24,11 @@ import {
   isThreeFiveSevenDedicatedResultAnnouncement,
 } from "@/lib/threeFiveSeven/announcementPresentation";
 import {
+  buildThreeFiveSevenRevealedFinancialPresentation,
+  getThreeFiveSevenLegChargeAdmission,
   getThreeFiveSevenPlayerToPotAdmission,
   retainThreeFiveSevenFinancialPresentation,
+  type ThreeFiveSevenRevealedFinancialPresentation,
 } from "@/lib/threeFiveSeven/financialPresentation";
 import {
   buildThreeFiveSevenShowdownPresentation,
@@ -2083,6 +2086,36 @@ export const MobileGameTable = ({
     retainedThreeFiveSevenAllFoldPresentation;
   retainedThreeFiveSevenRolloverPresentationRef.current =
     retainedThreeFiveSevenRolloverPresentation;
+  const threeFiveSevenRevealedFinancialPresentation = useMemo(
+    () => buildThreeFiveSevenRevealedFinancialPresentation({
+      gameId,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId,
+      roundId: threeFiveSevenViewRoundId,
+      handNumber: threeFiveSevenViewHandNumber,
+      roundNumber: threeFiveSevenViewRoundNumber,
+      transferCursor: threeFiveSevenViewTransferCursor,
+      roundCompleted: __is357GameType(gameType) && roundStatus === 'completed',
+      revealClock: threeFiveSevenDecisionRevealClock,
+      revealBlocked: threeFiveSevenDecisionRevealBlocksResult,
+      nowMs: Date.now(),
+    }),
+    [gameId, gameType, holmDealerGameId, horsesDealerGameId, roundStatus,
+      threeFiveSevenViewRoundId, threeFiveSevenViewHandNumber,
+      threeFiveSevenViewRoundNumber, threeFiveSevenViewTransferCursor,
+      threeFiveSevenDecisionRevealClock, threeFiveSevenDecisionRevealBlocksResult],
+  );
+  const retainedThreeFiveSevenRevealedFinancialPresentationRef =
+    useRef<ThreeFiveSevenRevealedFinancialPresentation | null>(null);
+  const retainedThreeFiveSevenRevealedFinancialPresentation =
+    retainThreeFiveSevenFinancialPresentation(
+      retainedThreeFiveSevenRevealedFinancialPresentationRef.current,
+      threeFiveSevenRevealedFinancialPresentation,
+      __is357GameType(gameType)
+        ? threeFiveSevenFinancialScope
+        : { gameId: null, dealerGameId: null },
+    );
+  retainedThreeFiveSevenRevealedFinancialPresentationRef.current =
+    retainedThreeFiveSevenRevealedFinancialPresentation;
   const threeFiveSevenRolloverCursor =
     retainedThreeFiveSevenRolloverPresentation?.transferCursor ?? null;
   const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
@@ -4779,6 +4812,11 @@ export const MobileGameTable = ({
     // opening balances until the sole terminal-phase owner starts the pot
     // stage (final leg -> sweep legs -> pot flight + celebration).
     if (gameType === '3-5-7') {
+      const legChargeAdmission = getThreeFiveSevenLegChargeAdmission(
+        batch,
+        retainedThreeFiveSevenRevealedFinancialPresentation,
+      );
+      if (legChargeAdmission != null) return legChargeAdmission;
       // Realtime may deliver a newly committed financial batch before the RPC
       // caller/refetch publishes its exact presentation identity. Keep tax and
       // opening/re-ante player-to-pot batches queued until their own cursor is
@@ -4833,6 +4871,7 @@ export const MobileGameTable = ({
     lastRoundResult,
     retainedThreeFiveSevenAllFoldPresentation,
     retainedThreeFiveSevenRolloverPresentation,
+    retainedThreeFiveSevenRevealedFinancialPresentation,
     threeFiveSevenShowdownPresentation,
     threeFiveSevenDelayedShowdownPresentationKey,
     normal357SweepCreditCheckpoint,
