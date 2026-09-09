@@ -18,6 +18,21 @@ type Batch = {
 const surface = '[data-authoritative-action-surface="holm-357-decision"]';
 const displayed = (amount: number) => `$${formatChipValue(Math.round(amount))}`;
 
+export function assertDecidingLegProgress(
+  identity: { hand_number: number | null; round_number: number | null; round_id: string | null },
+  index: number,
+  completedRoundIds: ReadonlySet<string>,
+): void {
+  // Five solo stays span all three rounds of hand 1 and rounds 1/2 of hand 2.
+  const handNumber = Math.floor(index / 3) + 1;
+  const roundNumber = index % 3 + 1;
+  if (index < 0 || index > 4 || !Number.isInteger(index)
+    || identity.hand_number !== handNumber || identity.round_number !== roundNumber
+    || !identity.round_id || completedRoundIds.has(identity.round_id)) {
+    throw new Error(`Unexpected deciding-leg progression at leg ${index + 1}: expected hand ${handNumber}, round ${roundNumber}, and a new round UUID`);
+  }
+}
+
 async function frame(session: TwoClientSession) {
   const { data, error } = await session.cleanupClient.rpc('three_five_seven_current_frame' as never, { p_game_id: session.gameId } as never);
   if (error) throw error;
@@ -63,6 +78,7 @@ export async function playDecidingLegPresentation(
   const dealerGameId = first.identity.dealer_game_id!;
   const expectedLegs = { [hostId]: 0, [peerId]: 0 };
   const winningRoles = ['host', 'peer', 'host', 'peer', winnerRole] as const;
+  const completedRoundIds = new Set<string>();
   for (let index = 0; index < winningRoles.length; index++) {
     const terminal = index === 4;
     const winningRole = winningRoles[index];
@@ -71,7 +87,7 @@ export async function playDecidingLegPresentation(
     await Promise.all(Object.values(pages).map(page => expect(page.locator(surface).getByRole('button', { name: 'Stay', exact: true })).toBeEnabled({ timeout: 60_000 })));
     const before = await frame(session);
     expect(before.identity.dealer_game_id).toBe(dealerGameId);
-    expect(before.identity.round_number).toBe(1);
+    assertDecidingLegProgress(before.identity, index, completedRoundIds);
     expect(before.game.legs_to_win).toBe(3);
     expect(before.game.leg_value).toBe(2);
     for (const player of before.players) expect(player.legs).toBe(expectedLegs[player.id]);
@@ -91,7 +107,8 @@ export async function playDecidingLegPresentation(
       const receivedAt = Date.now();
       const request = response.request().postDataJSON();
       expect(request).toMatchObject({ p_game_id: session.gameId, p_round_id: before.identity.round_id,
-        p_dealer_game_id: dealerGameId, p_hand_number: before.identity.hand_number, p_player_id: ids[role] });
+        p_dealer_game_id: dealerGameId, p_hand_number: before.identity.hand_number,
+        p_round_number: before.identity.round_number, p_player_id: ids[role] });
       return { receipt, startedAt, receivedAt, request };
     };
     const losingAction = await clickDecision(losingRole, 'Drop');
@@ -130,6 +147,7 @@ export async function playDecidingLegPresentation(
       evidence.terminalResult = result;
     }
     const roundEvidence: Record<string, unknown> = { index, roundId: before.identity.round_id, handNumber: before.identity.hand_number,
+      roundNumber: before.identity.round_number,
       winner: ids[winningRole], before: { players: before.players.map(({ id, chips, legs }) => ({ id, chips, legs })), pot: before.game.pot },
       after: { players: after.players.map(({ id, chips, legs }) => ({ id, chips, legs })), pot: after.game.pot },
       actions: [losingAction, winningAction], reveal: reveal.window, batches };
@@ -149,5 +167,6 @@ export async function playDecidingLegPresentation(
         potTransferIds: potTransfers.map(transfer => transfer.id), sweepFlightCount: terminal ? 2 : undefined,
       });
     }
+    completedRoundIds.add(before.identity.round_id!);
   }
 }

@@ -1,8 +1,12 @@
 # Transition acceptance plan — September 9, 2026
 
 Status: Approved by Jeremy September 9; resumed after the previous task's
-platform interruption. The first healthy-scenario harness is locally verified. Live qualification has
-not started; the earlier no-play window expired and its renewal is pending.
+platform interruption. The first healthy-scenario harness is locally verified.
+Jeremy renewed the no-play window; the first live row stopped on the driver's
+incorrect round-1 assumption after one ordinary leg passed on both browsers.
+Cleanup is independently verified. Jeremy separately approved the harness-only
+correction; it is implemented with seven passing progression regression checks.
+See `TRANSITION_ACCEPTANCE_LIVE_20260909.md` for retained evidence and rerun status.
 Purpose: close the coverage gap exposed by the September 8 3-5-7 P0/P1, then
 apply the proven assertions to other games without launching the entire seam
 campaign at once. This is a prioritized subset of `FULL_SEAM_GAUNTLET_PLAN.md`.
@@ -139,7 +143,8 @@ not authorize or claim completion of every ordered pair in the larger campaign.
   is likewise bounded by the renderer's existing deadline.
 - Independent read-only review identified missing peer-balance checks and an
   early-CSS-completion loophole. Both were corrected by the primary agent.
-- Qualification gaps remain explicit: the healthy live rows have not run;
+- Qualification gaps remain explicit: the first healthy live row was blocked
+  before terminal qualification; the peer-winner row has not run;
   targeted batch-first/frame-first, terminal rejoin, explicit End Session,
   instant sweep and cross-game expansion are not qualified by this checkpoint.
   The local controls do not replace Jeremy's production smoke.
