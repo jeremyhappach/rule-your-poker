@@ -201,6 +201,35 @@ stall cause remains open.
 
 ### 3-5-7 clients diverge after Stay with both players on two legs — 2026-09-05
 
+September 9 provenance follow-up — Queued, unresolved: Jeremy reports that
+mcru81 has twice said he did not press Fold when the game ended with Jeremy's
+final-leg win. This restates the disputed-Fold observations below; it is not
+evidence of a new third incident or a confirmed unintended decision. Jeremy
+asks whether physical button activation should be recorded separately from
+automatic decision paths. Exact new session/round identities were not supplied.
+
+Current source still routes the 3-5-7 Drop button and the `auto_fold` effect
+through `Game.tsx:handleFold` and the same decision RPC without a durable
+producer field. The existing Holm-only, armed diagnostic trace does not supply
+3-5-7 button provenance. Preserve the earlier journal evidence and historical
+sessions; do not infer a physical click from a Fold row or infer automation
+from an absent client event.
+
+Recommended separate diagnostic scope, not yet implementation-approved:
+capture browser button activation (including mouse/touch/keyboard and browser
+trust signal), exact session/dealer-game/round/player UUIDs, client build and
+request correlation ID; link it to the authenticated server's accepted,
+rejected or replayed action. Distinguish explicit button input, auto-fold
+preference, applicable pre-decision, server deadline and recovery/bot producers;
+record the relevant preference/deadline at acceptance and unknown provenance
+honestly. Record auto-fold preference changes as well as their execution.
+Client-reported activation is evidence of an input event, not proof of a
+person's intent. Server-derived producer metadata must remain distinct from
+client claims. Keep this observational and preserve decision rules, latency,
+deduplication and financial ownership. Confirm deployed schema and mutation
+owners before recommending the exact storage change. This remains separate
+from the active win-sequence harness work.
+
 Status: Confirmed frame/receipt corrections implemented; production smoke
 pending. Unexpected Fold producer remains queued and unresolved.
 

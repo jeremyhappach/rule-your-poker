@@ -91,8 +91,15 @@ on both clients. Allocation of an ID or a setup screen alone is not a pass.
 
 ## Phase 3 — apply the proven checks across games
 
-Only after the 3-5-7 gate passes, inventory Holm, Cribbage, Gin, Horses, Ship
-Captain Crew and Yahtzee against three distinct endpoints: ordinary continuation
+September 9 priority revision from Jeremy: actual play frequency is Cribbage >
+Yahtzee > Gin > Holm > 3-5-7 > Horses/SCC. The two healthy 3-5-7 cases now pass.
+For the next two-hour planning window, prioritize Cribbage then Yahtzee;
+Gin and Holm follow as separately qualified cases. Skip Horses/SCC for now.
+The remaining 3-5-7 adverse-delivery, rejoin and End Session cases remain open;
+the healthy passes do not qualify those branches. This updates the earlier
+ordering that deferred every other game until the entire 3-5-7 phase finished.
+
+Inventory each selected game against three distinct endpoints: ordinary continuation
 where applicable, normal terminal -> next-game setup, and End Session. Record
 each game's required reveal/scoring/award/transport sequence, not one generic
 "terminal tested" label. Prioritize branches with distinct terminal owners
