@@ -12551,7 +12551,16 @@ export const MobileGameTable = ({
       expectedSelfCardCount={totalAfterWaveFor357(currentRound ?? 0)}
       onAllowedChange={on357TimerAllowedChange}
     />
-    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent"
+      data-357-presentation-scope={__is357GameType(gameType) ? JSON.stringify({
+        gameId,
+        dealerGameId: threeFiveSevenDealerGameScope,
+        roundId: threeFiveSevenViewRoundId,
+        handNumber: threeFiveSevenViewHandNumber,
+        transferCursor: threeFiveSevenViewTransferCursor,
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
+      }) : undefined}
+    >
       {__is357GameType(gameType) ? (
         <ThreeFiveSevenDecisionReveal
           clock={threeFiveSevenDecisionRevealClock}

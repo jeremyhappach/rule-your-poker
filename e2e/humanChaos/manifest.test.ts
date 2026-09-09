@@ -2,9 +2,13 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { HUMAN_CHAOS_MANIFEST, validateHumanChaosManifest } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, validateHumanChaosManifest } from './manifest';
 
 describe('human chaos campaign manifest', () => {
+  it('keeps both healthy deciding-leg roles separate from the broad chaos inventory', () => {
+    expect(THREE_FIVE_SEVEN_PRESENTATION_MANIFEST.map(row => row.presentationWinner)).toEqual(['host', 'peer']);
+    expect(THREE_FIVE_SEVEN_PRESENTATION_MANIFEST.every(row => row.requiredFaults.length === 0)).toBe(true);
+  });
   it('locks the complete two-human timeout, rejoin, draw, and transition inventory', () => {
     expect(() => validateHumanChaosManifest()).not.toThrow();
     expect(HUMAN_CHAOS_MANIFEST).toHaveLength(79);

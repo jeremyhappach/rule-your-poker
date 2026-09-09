@@ -27,14 +27,16 @@ import {
   TERMINAL_EXPECTATIONS,
 } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
-import { HUMAN_CHAOS_MANIFEST, type ChaosScenario } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
+import { TransitionPresentationObserver } from './support/transitionPresentation';
+import { playDecidingLegPresentation, playSuccessorDecisionPair } from './support/threeFiveSevenPresentationDriver';
 
 function selectedTransition(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
   if (!id) throw new Error('Set PTOWN_E2E_CAMPAIGN_SCENARIO to one human-chaos transition id.');
-  const scenario = HUMAN_CHAOS_MANIFEST.find((candidate) => candidate.id === id);
+  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
   if (!scenario || scenario.family !== 'transition') {
     throw new Error(`Unknown human-chaos transition scenario: ${id}`);
   }
@@ -120,12 +122,13 @@ async function startSuccessor(
   if (scenario.variant === 'unchanged') {
     const owner = await waitForDealerGameSetupOwner(session.hostPage, session.peerPage);
     await owner.getByRole('button', { name: /Run Back/ }).click();
-    await submitOutstandingAnteUnderChaos(session);
+    await submitOutstandingAnteUnderChaos(session, !scenario.presentationWinner);
     return;
   }
   const target = scenario.target;
   if (!target) throw new Error(`Transition has no target: ${scenario.id}`);
   await configureDealerGameUnderChaos(session, target, {
+    networkFaults: !scenario.presentationWinner,
     configure: async (surface) => {
       if (scenario.variant === 'changed') await configureChangedParameters(target, surface, sourceConfig);
       else await configureShortestTerminal(target, surface);
@@ -180,8 +183,8 @@ async function waitForPlayableTransitionAction(
 
 test.describe('two-human cross-country dealer-game transition campaign', () => {
   test('selected transition retains only successor state', async ({ browser }, info) => {
-    test.setTimeout(45 * 60_000);
     const scenario = selectedTransition();
+    test.setTimeout((scenario.presentationWinner ? 15 : 45) * 60_000);
     const credentials = requireTwoPlayerEnvironment();
     const session = await createTwoClientSession(browser, credentials.player1, credentials.player2);
     const runtime = await session.hostNetwork.waitForRuntimeConfig();
@@ -189,19 +192,45 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     const source = scenario.source!;
     const target = scenario.target!;
     const evidence: Record<string, unknown> = { scenario: scenario.id, status: 'started' };
+    const presentation = { host: new TransitionPresentationObserver(), peer: new TransitionPresentationObserver() };
     let primaryError: unknown = null;
     let teardownFailure: AggregateError | null = null;
 
     try {
+      if (scenario.presentationWinner) {
+        await Promise.all([
+          presentation.host.attach(session.hostContext, session.hostPage),
+          presentation.peer.attach(session.peerContext, session.peerPage),
+        ]);
+        evidence.builds = await Promise.all([session.hostPage, session.peerPage].map(page => page.evaluate(async () => {
+          const response = await fetch('/build-manifest.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error('Missing published build identity');
+          const manifest = await response.json();
+          return { manifest, browserSha: (window as unknown as { __APP_BUILD_SHA__?: string }).__APP_BUILD_SHA__ };
+        })));
+        const builds = evidence.builds as Array<{ browserSha?: string }>;
+        expect(builds[0].browserSha).toMatch(/^[a-f0-9]{40}$/);
+        expect(builds[1].browserSha).toBe(builds[0].browserSha);
+        if (process.env.PTOWN_E2E_EXPECTED_BUILD_SHA) expect(builds[0].browserSha).toBe(process.env.PTOWN_E2E_EXPECTED_BUILD_SHA);
+      }
       await enterDealerGameUnderChaos(session, source, {
-        configure: (surface) => configureShortestTerminal(source, surface),
+        networkFaults: !scenario.presentationWinner,
+        configure: async (surface) => {
+          if (!scenario.presentationWinner) return configureShortestTerminal(source, surface);
+          await surface.locator('#legs-to-win').fill('3');
+          await surface.locator('#leg-value').fill('2');
+        },
       });
       const sourceDealerGameId = await waitForBothClientsAtDealerGame(session, source);
       evidence.sourceDealerGameId = sourceDealerGameId;
       const sourceConfig = await probe.readDealerGameConfig(sourceDealerGameId);
       evidence.sourceConfig = sourceConfig;
       await waitForPlayableTransitionAction(session, source);
-      await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
+      if (scenario.presentationWinner) {
+        await playDecidingLegPresentation(session, scenario.presentationWinner, probe, presentation, evidence);
+      } else {
+        await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
+      }
 
       await startSuccessor(scenario, session, sourceConfig);
       const successorDealerGameId = await waitForBothClientsAtDealerGame(session, target);
@@ -210,7 +239,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       const successorConfig = await probe.readDealerGameConfig(successorDealerGameId);
       evidence.successorConfig = successorConfig;
       expectCommittedSuccessorConfig(scenario, sourceConfig, successorConfig);
-      await runOfflineBurst(session.peerContext, 1_250);
+      if (!scenario.presentationWinner) await runOfflineBurst(session.peerContext, 1_250);
       await Promise.all([
         expectCanonicalContinuity(session.hostPage),
         expectCanonicalContinuity(session.peerPage),
@@ -218,36 +247,54 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       await waitForBothClientsAtDealerGame(session, target);
       await waitForPlayableTransitionAction(session, target);
 
-      await requestLastHand(session, probe);
-      const successorResult = await playDealerGameToTerminal(
-        session,
-        target,
-        probe,
-        successorDealerGameId,
-      );
-      evidence.successorResultId = successorResult.id;
-      await probe.assertTerminalProof(
-        session.gameId,
-        successorDealerGameId,
-        TERMINAL_EXPECTATIONS[target],
-        successorResult,
-      );
-      evidence.status = 'passed';
+      if (scenario.presentationWinner) {
+        await playSuccessorDecisionPair(session, successorDealerGameId);
+        evidence.status = 'passed';
+      } else {
+        await requestLastHand(session, probe);
+        const successorResult = await playDealerGameToTerminal(
+          session,
+          target,
+          probe,
+          successorDealerGameId,
+        );
+        evidence.successorResultId = successorResult.id;
+        await probe.assertTerminalProof(
+          session.gameId,
+          successorDealerGameId,
+          TERMINAL_EXPECTATIONS[target],
+          successorResult,
+        );
+        evidence.status = 'passed';
+      }
     } catch (error) {
       evidence.status = 'failed';
       evidence.error = error instanceof Error ? error.message : String(error);
       primaryError = error;
     } finally {
       const teardownErrors: unknown[] = [];
+      if (scenario.presentationWinner) {
+        evidence.presentation = { host: [...presentation.host.samples], peer: [...presentation.peer.samples],
+          overflow: presentation.host.overflow || presentation.peer.overflow };
+        if (!primaryError && (presentation.host.overflow || presentation.peer.overflow)) {
+          primaryError = new Error('Transition observation overflow; evidence is incomplete');
+          evidence.status = 'failed';
+          evidence.error = (primaryError as Error).message;
+        }
+      }
       try {
         const observation = await finalizeScenarioObserver(session, info);
         evidence.continuousObserver = observerEvidenceSummary(observation.evidence);
-        if (!primaryError && observation.failure) primaryError = observation.failure;
+        if (!primaryError && observation.failure) {
+          primaryError = observation.failure;
+          evidence.status = 'failed';
+          evidence.error = observation.failure.message;
+        }
       } catch (error) {
         teardownErrors.push(error);
       }
       try {
-        if (primaryError) await capturePreCleanupScreenshots(info, [
+        if (primaryError || scenario.presentationWinner) await capturePreCleanupScreenshots(info, [
           { label: 'host', page: session.hostPage }, { label: 'peer', page: session.peerPage },
         ]);
       } catch (error) {

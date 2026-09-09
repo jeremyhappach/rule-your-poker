@@ -230,6 +230,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         return (
           <div
             key={anim.id}
+            data-leg-sweep={triggerId ?? undefined}
+            data-leg-sweep-flight={anim.id}
+            data-leg-sweep-flight-duration-ms={3200}
             className="fixed pointer-events-none"
             style={{
               left: anim.fromX,

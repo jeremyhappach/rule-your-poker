@@ -138,6 +138,7 @@ export function CanonicalAnnouncementLayer() {
   return (
     <div
       data-canonical-announcement-content=""
+      data-canonical-announcement-type={railActive.type}
       style={{
         display: 'flex',
         justifyContent: 'center',

@@ -138,6 +138,12 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
 
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
+        data-leg-award={animationCycleIdRef.current ?? undefined}
+        data-leg-award-generation={presentationCycleId ?? undefined}
+        data-leg-award-winning={isWinningLeg ? '1' : '0'}
+        data-leg-award-completes-at={animationCycleIdRef.current && animationDurationRef.current != null
+          ? Number(animationCycleIdRef.current.slice('cycle-'.length)) + animationDurationRef.current
+          : undefined}
         className={`absolute z-50 pointer-events-none ${isWinningLeg ? 'animate-[flyToTargetWinning_1.8s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
         style={{
           // Start position - will animate to target

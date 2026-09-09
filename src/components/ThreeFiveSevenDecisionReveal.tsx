@@ -198,6 +198,12 @@ export function ThreeFiveSevenDecisionReveal({
     <div
       data-357-decision-reveal={clock.window.id}
       data-357-reveal-beat={frame.beat}
+      data-357-reveal-game={clock.window.gameId}
+      data-357-reveal-dealer-game={clock.window.dealerGameId}
+      data-357-reveal-round={clock.window.roundId}
+      data-357-reveal-hand={clock.window.handNumber}
+      data-357-reveal-local-end={clock.window.endsAtMs - clock.serverOffsetMs}
+      data-357-reveal-server-end={clock.window.endsAtMs}
       className="pointer-events-none fixed inset-0 z-50"
       aria-live="polite"
     >

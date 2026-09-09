@@ -1,5 +1,20 @@
 # Current release and cutover state
 
+## September 9 transition harness — live qualification pending
+
+- The approved first harness phase adds two healthy 3-5-7 deciding-leg scenarios
+  using three $2 legs and two independent human browsers. Both clients must
+  show the reveal, final leg, losing-leg sweep, pot award and setup, then reach
+  legal successor decisions. Neither normal-ending row requests End Session.
+- Product changes are passive observation attributes only. Gameplay ownership,
+  settlement, timers, migrations, infrastructure and billing are unchanged.
+- Application typecheck, 1,529 application tests, 88 harness tests, five browser
+  controls and the production build pass. The separate E2E typecheck retains
+  ten pre-existing abortSignal typing errors in inherited probe/cleanup helpers.
+- Live qualification has not run; a renewed no-play window is pending. Fault
+  orderings, rejoin, explicit End Session, instant sweep and other games remain
+  unqualified. See `TRANSITION_ACCEPTANCE_PLAN_20260909.md` for scope and evidence.
+
 ## September 8 3-5-7 leg-charge reveal gate — production smoke pending
 
 - Approved P1 correction holds leg-charge balances and signed helper text until

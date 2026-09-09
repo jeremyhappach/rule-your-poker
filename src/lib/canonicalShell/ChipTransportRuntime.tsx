@@ -653,6 +653,8 @@ export function ChipTransportRuntime({
         data-chip-transport-intent={chip.intent.id}
         data-chip-transport-reason={chip.intent.reason}
         data-chip-transport-variant={chip.intent.variant ?? 'default'}
+        data-chip-transport-from={chip.intent.from.kind}
+        data-chip-transport-completes-at={performance.timeOrigin + chip.startedAt + chip.totalMs}
         style={{
           position: 'absolute',
           left: chip.from.x,

@@ -176,6 +176,11 @@ export function ChipPresentationDeltaRuntime({
       {positioned.map(({ delta, left, top }) => (
         <div
           key={delta.id}
+          data-chip-balance-delta={delta.id}
+          data-chip-balance-delta-batch={delta.batchId}
+          data-chip-balance-delta-cursor={delta.cursor}
+          data-chip-balance-delta-reason={delta.reason}
+          data-chip-balance-delta-player={delta.endpoint.playerId}
           className="absolute pointer-events-none z-[81] font-bold text-[11px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
           style={{
             left,

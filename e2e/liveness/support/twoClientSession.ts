@@ -31,6 +31,8 @@ type Credentials = PlayerCredentials;
 export type DealerGameEntryOptions = {
   configure?: (configSurface: ReturnType<Page['locator']>, setupPage: Page) => Promise<void>;
   submitNonDealerAnte?: boolean;
+  /** Healthy presentation qualification must not inherit unrelated setup faults. */
+  networkFaults?: boolean;
 };
 
 export type TwoClientSession = {
@@ -199,13 +201,18 @@ export async function enterDealerGameUnderChaos(
   gameType: DealerGameType,
   options: DealerGameEntryOptions = {},
 ): Promise<void> {
-  await startSessionUnderChaos(session);
+  await startSessionUnderChaos(session, options.networkFaults);
   await configureDealerGameUnderChaos(session, gameType, options);
 }
 
 /** Starts the real session dealer draw while the peer experiences a radio loss. */
-export async function startSessionUnderChaos(session: TwoClientSession): Promise<void> {
+export async function startSessionUnderChaos(session: TwoClientSession, networkFaults = true): Promise<void> {
   const { hostPage, peerContext, peerNetwork } = session;
+  if (!networkFaults) {
+    peerNetwork.useHealthyProfile();
+    await hostPage.locator('[data-start-game-btn]').click();
+    return;
+  }
   peerNetwork.useLongHaulProfile();
   await hostPage.evaluate(() => {
     (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
@@ -232,7 +239,8 @@ export async function configureDealerGameUnderChaos(
     hostNetwork,
     peerNetwork,
   } = session;
-  peerNetwork.useLongHaulProfile();
+  if (options.networkFaults === false) peerNetwork.useHealthyProfile();
+  else peerNetwork.useLongHaulProfile();
   const setupPage = await waitForDealerGameSetupOwner(hostPage, peerPage);
   // Dealer setup persists its currently selected tab across dealer games. Pick
   // the target family explicitly so a dice-game predecessor cannot hide a
@@ -283,7 +291,7 @@ export async function configureDealerGameUnderChaos(
   }
 
   if (options.submitNonDealerAnte === false) return;
-  await submitOutstandingAnteUnderChaos(session);
+  await submitOutstandingAnteUnderChaos(session, options.networkFaults);
 }
 
 /**
@@ -291,7 +299,7 @@ export async function configureDealerGameUnderChaos(
  * Run Back. The response-loss fault is intentional: the write must commit once
  * and both browsers must reconcile from authoritative state.
  */
-export async function submitOutstandingAnteUnderChaos(session: TwoClientSession): Promise<void> {
+export async function submitOutstandingAnteUnderChaos(session: TwoClientSession, networkFaults = true): Promise<void> {
   const {
     hostPage,
     peerPage,
@@ -312,11 +320,13 @@ export async function submitOutstandingAnteUnderChaos(session: TwoClientSession)
   // Dealer configuration already commits the dealer's ante. The other human's
   // authoritative decision is committed, but that browser loses the exact RPC
   // response. Reconciliation must converge without a second write.
-  decisionNetwork.loseNextResponse(/\/rest\/v1\/rpc\/submit_ante_decision$/);
-  await decisionSurface.evaluate(() => {
-    (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
-      'ante-committed-response-deliberately-lost';
-  });
+  if (networkFaults) {
+    decisionNetwork.loseNextResponse(/\/rest\/v1\/rpc\/submit_ante_decision$/);
+    await decisionSurface.evaluate(() => {
+      (window as unknown as Record<string, unknown>).__PTOWN_CHAOS_EXPECTED_PEER_DELAY_ONCE__ =
+        'ante-committed-response-deliberately-lost';
+    });
+  }
   await decisionSurface.getByRole('button', { name: /Ante Up!/ }).click();
 }
 

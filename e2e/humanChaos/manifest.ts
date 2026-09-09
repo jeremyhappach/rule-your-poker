@@ -14,7 +14,16 @@ export type ChaosScenario = {
   deadline?: 'dealer-setup' | 'ante' | 'gameplay';
   requiredFaults: readonly ('long-haul' | 'offline-rejoin' | 'route-remount' | 'lost-response')[];
   assertions: readonly string[];
+  presentationWinner?: 'host' | 'peer';
 };
+
+/** Bounded healthy gates precede the fault/End Session rows in the acceptance plan. */
+export const THREE_FIVE_SEVEN_PRESENTATION_MANIFEST: readonly ChaosScenario[] = (['host', 'peer'] as const).map(winner => ({
+  id: `3-5-7-presentation-${winner}-wins`, family: 'transition', source: '3-5-7', target: '3-5-7',
+  variant: winner === 'host' ? 'unchanged' : 'changed', presentationWinner: winner, requiredFaults: [],
+  assertions: ['two legs each through legal play', 'full reveal, final leg, losing legs sweep, pot and setup on both clients',
+    'no early chip helper or balance', 'exact recorded settlement and playable successor'],
+}));
 
 const FAULTS = ['long-haul', 'offline-rejoin', 'route-remount', 'lost-response'] as const;
 const GAMES = ALL_REAL_MONEY_GAME_TYPES as readonly DealerGameType[];
