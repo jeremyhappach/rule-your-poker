@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-## September 9 Cribbage win-sequence harness — live gate pending
+## September 9 Cribbage win-sequence harness — healthy short-game case passes
 
 - The approved next-game qualification now has one healthy Cribbage short-game
   row. Both clients must show the exact winner announcement and completed
@@ -8,6 +8,13 @@
 - The row uses ordinary fake-money play, changes the successor target from 1
   to 2, and never requests End Session. App changes are passive attributes;
   gameplay, settlement and presentation timing are unchanged.
+- The final two-browser run passed the winner, full $10 payout, setup, fresh
+  successor hands and both legal discards. All 13 action receipts passed;
+  maximum peer progress was 949 ms. Independent SQL confirmed all test data
+  deleted. Two earlier observer failures and their traces remain recorded.
+- Validation: 1,538 app tests, 121 harness tests, eight browser controls and
+  the production build pass. An existing tab-bar test teardown race required
+  a test-only telemetry mock; production gameplay was not changed.
 - Counting, skunks, rejoin and adverse delivery remain separate gaps. See
   `CRIBBAGE_PRESENTATION_20260909.md` for the scope and validation record.
 

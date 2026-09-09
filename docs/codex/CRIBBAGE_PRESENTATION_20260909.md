@@ -1,7 +1,7 @@
 # Cribbage presentation qualification — September 9
 
-Status: Harness implemented under the approved transition plan; local checks
-and one published two-client qualification run are the release gates.
+Status: The first healthy short-game case passed on both clients, including
+changed-target successor discards. Two prior observer failures remain retained.
 
 Jeremy prioritized Cribbage before Yahtzee after decision-source logging. The
 bounded healthy row is `cribbage-presentation-short-win`: two fake-money human
@@ -33,7 +33,8 @@ E2E typecheck still reports only the ten previously recorded `abortSignal`
 typing errors in inherited probe/cleanup helpers. Test discovery selects one
 row. Artifacts are under `artifacts/cribbage-presentation/`.
 
-Published live outcome is pending. Release tag: `cribbage-presentation-20260909`.
+Published live qualification passed on `45d3ffc25` with the final observer.
+Initial harness tag: `cribbage-presentation-20260909`.
 
 The first Vercel deployment of `94b6bbb9e` failed before publishing. All 1,538
 application assertions passed, but the existing ShellTabBar portal test left
@@ -68,7 +69,7 @@ kind, with the fixture typed against `ChipEndpointRef`.
 Independent cleanup confirmed zero rows for this exact session in games,
 players, rounds, dealer_games (`session_id`), game_results, transfer batches,
 session snapshots and the private decision journal. Original trace, JSON and
-screenshots remain unchanged. Corrected live qualification remains pending.
+screenshots remain unchanged. Qualification remained pending after this run.
 
 The corrected observer passed all 121 harness tests and seven browser controls.
 The next run pins the same published app `45d3ffc25`; only local harness code
@@ -95,3 +96,31 @@ separates full CSS completion before retirement from truly shortened CSS and
 early removal. No application timing or callback changed. Independent cleanup
 confirmed all eight scoped relations empty. Both original failed runs remain
 retained; neither is reclassified as a pass.
+
+## Final healthy case — passed
+
+Namespace `cribbage-win-20260909-2313`, published app
+`45d3ffc256139bf73baad0afac84266b9ea7ad9c`, harness
+`6a69146e0ec3c09b91be0527e3f1b4a3fa3d53a2`. One desktop and one mobile browser,
+one worker, zero retries. Exact session `c5cfbd8a-cca0-4851-9d2d-70c6d5a6ccd2`;
+source dealer game `d1e9c1de-d172-43c5-a6d7-afa231a615fa`; successor
+`5d6e7bd0-e404-43b7-a334-6c85b65ce2b7`. A pegging Go point ended the source 1–0;
+winner `b5eb4283-367d-480a-8086-6c4adca9bc43`, result
+`508a4fd1-2319-45ef-842b-fe851da3ab0b`. The $10 payment and both exact balance
+changes passed, with conserved total chips.
+
+Both clients showed the exact winner plate, then the full payout flight
+(2,415 ms desktop / 2,412 ms mobile). Setup followed completion by 615 / 894 ms.
+The successor retained the $10 stake and changed only target 1 to 2; both
+clients exposed fresh hands with no outgoing win artifacts and committed legal
+discards to successor round `732efebd-0a23-4dd3-9cac-43b29fcd9bd3`.
+
+All 13 continuous action receipts passed: RPC median 106 ms, maximum 193 ms;
+maximum actor progress 1,073 ms and peer progress 949 ms. No identity, coverage,
+visibility or action-progress violations. Final screenshots were inspected.
+Independent SQL confirmed zero remaining rows across all eight scoped relations.
+Trace SHA256: `597705F77E17A6EC3BED8F8015220A59A26BD8E4D48A679DCD211051B1999ADC`.
+Artifacts: `artifacts/cribbage-presentation/live-20260909-2313/`.
+
+Counting, skunks, other winner-role qualification, rejoin, deliberate delivery
+faults and End Session remain unqualified. Jeremy's production smoke is pending.
