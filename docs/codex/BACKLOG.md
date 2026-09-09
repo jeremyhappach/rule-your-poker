@@ -4,6 +4,30 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### P1 — Dealer setup selection resets when late dealer-draw presentation arrives
+
+Status: Queued; qualification blocker found September 8 on `d47417cf7` during
+Jeremy's approved bounded fake-money repeatability check. No correction approved.
+
+- Session `320e2269-3c87-40a0-9a6e-b98b2617ffb5`, paired Yahtzee setup:
+  Dice Games clicked and selected; setup disappears as two high-card draw
+  cards appear; setup remounts with Card Games selected. Same session/status,
+  no dealer-game or round identity yet. The Yahtzee option then times out;
+  no Yahtzee defaults/configuration request was sent.
+- Exact DOM timeline, trace call `call@1082`, Radix instance change and both
+  before-cleanup screenshots are retained in `REPEATABILITY_CHECK_20260908.md`.
+  Cleanup is independently verified; no real-money session was touched.
+- Owner boundary: `Game.tsx` dealer-draw receipt hold/setup admission and
+  `DealerGameSetup.tsx` mount-local selection. Determine why setup was admitted
+  before the delayed presentation, then propose the minimal canonical fix.
+  Preserve setup identity/deadline, the dealer draw, selected parameters,
+  authoritative configuration/ante ownership and all game-family call sites.
+- Expected: presentation completion precedes usable setup; a late receipt
+  cannot silently erase an admitted dealer's selection. Add a deterministic
+  delayed-receipt regression and rerun the blocked pair after a scoped fix.
+  Do not repair with arbitrary waits, unconditional re-clicks or wider limits.
+- Not proof of the original user-reported start failure or a slow backend RPC.
+
 ### Resolved measurement follow-up — Cribbage/Yahtzee observer (September 8)
 
 The approved test-only correction and concurrent focused reruns pass: four

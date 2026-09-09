@@ -1,5 +1,20 @@
 # Current release and cutover state
 
+## September 8 repeatability check — setup-reset blocker
+
+- Approved bounded Holm/Yahtzee check ran on unchanged published `d47417cf7`.
+  Both isolated scenarios passed. Holm completed in the paired attempt;
+  Yahtzee failed before configuration, so concurrent gameplay is not qualified.
+- Trace and DOM evidence show Dice Games selected successfully, followed by
+  late high-card dealer-draw presentation removing setup; the remounted form
+  reset to Card Games. No Yahtzee configuration request was sent. Stop further
+  qualification and investigate setup admission/presentation continuity.
+- All four synthetic sessions and rounds are independently verified deleted
+  at 23:59:54 UTC; real-money game rows unchanged, recovery healthy, no unit
+  failures or lock waiters. No product, schema, billing or hardware changes.
+  See `REPEATABILITY_CHECK_20260908.md`; this supersedes any inference that
+  earlier selected passes qualify the newly observed setup boundary.
+
 ## September 8 test-only timing observer correction
 
 - Approved measurement correction is complete; no product code, gameplay,
