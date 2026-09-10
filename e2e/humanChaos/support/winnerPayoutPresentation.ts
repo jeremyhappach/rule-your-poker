@@ -1,4 +1,5 @@
 import type { PresentationScope, TransitionSample } from './transitionPresentation';
+import { assertCompletionEvidence } from './transitionPresentation';
 
 export type WinnerPayoutExpectation = PresentationScope & {
   startedAt: number; announcementId: string; simultaneousAnnouncement?: boolean;
@@ -19,6 +20,7 @@ function sameDisplayedBalance(actual: string, expected: string): boolean {
 export function assertWinnerPayoutPresentation(samples: readonly TransitionSample[], expected: WinnerPayoutExpectation) {
   const fail = (why: string): never => { throw new Error(`Winner presentation ${expected.roundId}: ${why}`); };
   const rows = samples.filter(row => row.at >= expected.startedAt);
+  assertCompletionEvidence(rows, expected);
   const eventId = expected.announcementId;
   const same = (scope: PresentationScope | null) => scope?.gameId === expected.gameId
     && scope.dealerGameId === expected.dealerGameId && scope.roundId === expected.roundId

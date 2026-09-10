@@ -1,9 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { assertRoundPresentation, type RoundPresentationExpectation, type TransitionSample } from './transitionPresentation';
+import { assertCompletionEvidence, assertRoundPresentation, type CompletionEvidence, type RoundPresentationExpectation, type TransitionSample } from './transitionPresentation';
 import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
 import { assertWinnerPayoutPresentation } from './winnerPayoutPresentation';
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
+describe('completion evidence classification', () => {
+  const sample = (reason: CompletionEvidence['reason'], eventScope = scope): TransitionSample => ({
+    at: 2600, scope, reveal: null, stages: [], sweepOverlay: false, setup: false,
+    balances: {}, deltas: [], documentVisible: true,
+    completionEvidence: [{ scope: eventScope, stageId: 'payout', kind: 'payout', reason,
+      at: 2600, deadline: 2400, lastSeen: 2300, cssCompletedAt: null }],
+  });
+  it('fails an observation gap distinctly even when setup is present', () => {
+    expect(() => assertCompletionEvidence([{ ...sample('observation-gap'), setup: true }], scope))
+      .toThrow('sampling gap 300 ms without CSS completion evidence');
+  });
+  it.each(['early-removal', 'shortened-css', 'cancelled-css'] as const)('rejects %s', reason => {
+    expect(() => assertCompletionEvidence([sample(reason)], scope)).toThrow(reason);
+  });
+  it('does not borrow completion issues from another round', () => {
+    expect(() => assertCompletionEvidence([sample('observation-gap', { ...scope, roundId: 'old' })], scope)).not.toThrow();
+  });
+});
 const expected: RoundPresentationExpectation = {
   ...scope, actionAt: 0, revealId: 'reveal', revealServerEnd: 600, terminal: true,
   openingBalances: { player: '$100' }, closingBalances: { player: '$110' },

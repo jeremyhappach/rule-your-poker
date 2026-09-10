@@ -86,3 +86,121 @@ for (const { cancel, shortened } of [{ cancel: false, shortened: false }, { canc
   });
 }
 }
+
+for (const mode of ['css-then-pause', 'pause-without-css-end', 'early-removal', 'cancelled-css', 'shortened-css'] as const) {
+  test(`payout completion evidence: ${mode}`, async ({ browser }) => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      const observer = new TransitionPresentationObserver();
+      await observer.attach(context, page);
+      await page.goto('data:text/html,<div id="root"></div>');
+      await page.evaluate(mode => {
+        const root = document.querySelector('#root')!;
+        root.setAttribute('data-cribbage-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
+        root.innerHTML = `<style>@keyframes __chipTransport_capture {from{transform:translateX(0)}to{transform:translateX(100px)}}
+          ${mode === 'shortened-css' ? '#disc{animation-duration:100ms!important}' : ''}</style>
+          <div data-chip-transport-intent="payout" data-chip-transport-from="seat" data-chip-transport-completes-at="${Date.now() + 650}" style="width:30px;height:30px">
+            <div id="disc" style="width:30px;height:30px;background:gold;animation:__chipTransport_capture 500ms linear forwards"></div></div>`;
+        const node = root.querySelector('[data-chip-transport-intent]')!;
+        const pauseAndRemove = (duration: number) => {
+          const start = performance.now();
+          while (performance.now() - start < duration) { /* Deliberate test-only main-thread stall. */ }
+          node.remove();
+        };
+        if (mode === 'css-then-pause') {
+          root.addEventListener('animationend', () => setTimeout(() => pauseAndRemove(250), 10), { once: true });
+        } else if (mode === 'pause-without-css-end') {
+          setTimeout(() => pauseAndRemove(350), 400);
+        } else if (mode === 'early-removal') {
+          setTimeout(() => pauseAndRemove(140), 200);
+        } else {
+          if (mode === 'cancelled-css') setTimeout(() => { (root.querySelector('#disc') as HTMLElement).style.animation = 'none'; }, 200);
+          setTimeout(() => node.remove(), 750);
+        }
+      }, mode);
+      await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(0);
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const events = observer.samples.flatMap(row => row.completionEvidence ?? []);
+      const finished = observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout' && stage.finished));
+      expect(finished).toBe(mode === 'css-then-pause');
+      const reason = mode === 'css-then-pause' ? 'retired-complete' : mode === 'pause-without-css-end' ? 'observation-gap' : mode;
+      expect(events.some(event => event.reason === reason)).toBe(true);
+      if (mode === 'css-then-pause') {
+        const completion = events.find(event => event.reason === 'retired-complete')!;
+        expect(completion.cssCompletedAt).not.toBeNull();
+        expect(completion.at - completion.lastSeen!).toBeGreaterThan(100);
+      }
+    } finally { await context.close(); }
+  });
+}
+
+for (const mode of ['normal', 'paused', 'cancelled', 'shortened'] as const) {
+  test(`actual canonical payout renderer: ${mode}`, async ({ browser }) => {
+    const bundle = await build({
+      stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
+        import {ChipTransportRuntime} from './src/lib/canonicalShell/ChipTransportRuntime';
+        const host = document.querySelector('#host');
+        createRoot(document.querySelector('#root')).render(<ChipTransportRuntime containerRef={{current:host}} overlayRootRef={{current:host}}/>);`,
+        resolveDir: process.cwd(), loader: 'tsx' },
+      bundle: true, write: false, format: 'iife', jsx: 'automatic',
+      plugins: [{ name: 'isolated-payout-context', setup(builder) {
+        // Use the real motion/retirement owner with local identity and endpoints;
+        // this control has no Supabase or application-session connection.
+        builder.onResolve({ filter: /\/ChipTransportProvider$/ }, args => ({ path: args.path, namespace: 'fixture-context' }));
+        builder.onResolve({ filter: /\/chipEndpoints$/ }, args => ({ path: args.path, namespace: 'fixture-endpoints' }));
+        builder.onResolve({ filter: /\/(chipTransportDbg|winnerChipEndpointDbg|destReactionDbg|visibleChipDbg)$/ }, args => ({ path: args.path, namespace: 'fixture-debug' }));
+        builder.onLoad({ filter: /.*/, namespace: 'fixture-context' }, () => ({ resolveDir: process.cwd(), contents: `
+          import React from 'react';
+          export function useChipTransportInternal() {
+            const [active,setActive] = React.useState([{id:'payout',from:{kind:'seat',position:1},to:{kind:'seat',position:2},amount:10,reason:'transfer',variant:'canonicalWinTransfer',enqueueSeq:1}]);
+            return {gameType:'cribbage',__activeIntents:active,__markDeparted(){},__markArrived(){},
+              __markSettled(id,duration){window.rendererSettlement={id,duration,at:Date.now()};setActive([])},
+              __markDropped(){throw Error('Missing fixture endpoint')}};
+          }` }));
+        builder.onLoad({ filter: /.*/, namespace: 'fixture-endpoints' }, () => ({ contents: `export const resolveChipEndpoint=({ref})=>({x:ref.position===1?900:400,y:ref.position===1?100:370});` }));
+        builder.onLoad({ filter: /.*/, namespace: 'fixture-debug' }, () => ({ contents: `export const chipTransportDbgUpsert=()=>{};export const captureWinnerChipEndpoint=()=>{};export const destReactionDbgUpsert=()=>{};export const snapshotTargetElement=()=>({});export const recordVisibleChipScan=()=>{};` }));
+      } }],
+    });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      const observer = new TransitionPresentationObserver();
+      await observer.attach(context, page);
+      await page.goto('data:text/html,<div id="host" style="position:relative;width:1200px;height:800px"><div id="root"></div></div>');
+      await page.evaluate(() => document.querySelector('#host')!.setAttribute('data-cribbage-presentation-scope',
+        JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 })));
+      await page.addScriptTag({ content: bundle.outputFiles[0].text });
+      await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(1);
+      const deadline = await page.evaluate(mode => {
+        const node = document.querySelector('[data-chip-transport-intent]')!;
+        const deadline = Number(node.getAttribute('data-chip-transport-completes-at'));
+        if (mode === 'paused') setTimeout(() => {
+          const start = performance.now();
+          while (performance.now() - start < 150) { /* Test-only pause across retirement. */ }
+        }, Math.max(0, deadline - Date.now() - 90));
+        if (mode === 'cancelled') setTimeout(() => { (node.firstElementChild as HTMLElement).style.animation = 'none'; }, 200);
+        if (mode === 'shortened') {
+          const style = document.createElement('style');
+          style.textContent = '[data-chip-transport-intent] > div {animation-duration:300ms!important}';
+          document.head.appendChild(style);
+        }
+        return deadline;
+      }, mode);
+      await expect(page.locator('[data-chip-transport-intent]')).toHaveCount(0);
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const settlement = await page.evaluate(() => (window as unknown as { rendererSettlement: { duration: number; at: number } }).rendererSettlement);
+      expect(settlement.duration).toBe(2400);
+      expect(settlement.at).toBeGreaterThanOrEqual(deadline);
+      const events = observer.samples.flatMap(row => row.completionEvidence ?? []);
+      const completed = observer.samples.some(row => row.stages.some(stage => stage.kind === 'payout' && stage.finished));
+      if (mode === 'cancelled' || mode === 'shortened') {
+        expect(completed).toBe(false);
+        expect(events.some(event => event.reason === `${mode}-css`)).toBe(true);
+      } else if (mode === 'paused' && !completed) {
+        // Missing native completion must remain a named, failing observation gap.
+        expect(events.some(event => event.reason === 'observation-gap')).toBe(true);
+      } else expect(completed).toBe(true);
+    } finally { await context.close(); }
+  });
+}

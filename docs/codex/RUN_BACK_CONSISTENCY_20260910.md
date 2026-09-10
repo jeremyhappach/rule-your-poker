@@ -1,6 +1,8 @@
 # Run Back consistency — September 10, 2026
 
-Status: Jeremy approved fixing Run Back and checking all seven games. Implementation, typecheck, production build, 1,564 app tests and 131 harness tests pass. Published product f363a6d46aeb7884f9c3f18ef8a2064034216a53 is Vercel READY and served by holm357.com. Yahtzee live qualification passed; Cribbage stopped on incomplete payout-completion evidence before Run Back.
+Current status: The later observer correction and fresh two-browser run passed custom Cribbage through exact Run Back and both successor discards. See PAYOUT_COMPLETION_OBSERVER_20260910.md. The original results below remain preserved.
+
+Original qualification: Jeremy approved fixing Run Back and checking all seven games. Implementation, typecheck, production build, 1,564 app tests and 131 harness tests pass. Published product f363a6d46aeb7884f9c3f18ef8a2064034216a53 is Vercel READY and served by holm357.com. Yahtzee live qualification passed; Cribbage stopped on incomplete payout-completion evidence before Run Back.
 
 The retained Yahtzee failure on c83fc7485 submitted $3 instead of the saved $10 stake. Jeremy also reported that a custom-target Cribbage game may have restarted at 121 points. Both are explained by the same source boundary: handleRunBack sets React form state and immediately calls a submit closure holding the previous render's values. Cribbage's Run Back path also never restored its saved mode/target. Holm, 3-5-7 and all three simple dice games used the same stale-form approach. Gin's direct exact-config submission was the accepted reference.
 

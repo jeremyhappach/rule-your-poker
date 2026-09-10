@@ -8,6 +8,12 @@ export type VisibleStage = {
   kind: 'award' | 'sweep' | 'pot' | 'payout'; id: string; finished: boolean;
   winning?: boolean; generation?: string | null;
 };
+export type CompletionEvidence = {
+  scope: PresentationScope | null; stageId: string; kind: VisibleStage['kind'];
+  reason: 'css-complete' | 'retired-complete' | 'early-removal' | 'shortened-css' | 'cancelled-css' | 'observation-gap';
+  at: number; deadline: number; lastSeen: number | null; cssCompletedAt: number | null;
+  elapsedMs?: number; declaredMs?: number;
+};
 export type TransitionSample = {
   at: number;
   scope: PresentationScope | null;
@@ -20,6 +26,7 @@ export type TransitionSample = {
   documentVisible: boolean;
   matchWin?: { id: string; text: string } | null;
   celebration?: string | null;
+  completionEvidence?: CompletionEvidence[];
 };
 export type RoundPresentationExpectation = PresentationScope & {
   actionAt: number;
@@ -38,12 +45,26 @@ const sameScope = (a: PresentationScope | null, b: PresentationScope) => !!a
   && a.gameId === b.gameId && a.dealerGameId === b.dealerGameId
   && a.roundId === b.roundId && a.handNumber === b.handNumber;
 
+export function assertCompletionEvidence(samples: readonly TransitionSample[], expected: PresentationScope): void {
+  for (const row of samples) for (const evidence of row.completionEvidence ?? []) {
+    if (!sameScope(evidence.scope, expected)) continue;
+    if (evidence.reason === 'observation-gap') {
+      throw new Error(`Inconclusive presentation observation ${expected.roundId}: ${evidence.kind} ${evidence.stageId}; `
+        + `sampling gap ${evidence.at - (evidence.lastSeen ?? evidence.at)} ms without CSS completion evidence`);
+    }
+    if (['early-removal', 'shortened-css', 'cancelled-css'].includes(evidence.reason)) {
+      throw new Error(`Presentation ${expected.roundId}: ${evidence.kind} ${evidence.stageId} ${evidence.reason}`);
+    }
+  }
+}
+
 /** Fail closed: eventual settlement/setup never supplies missing visual evidence. */
 export function assertRoundPresentation(
   samples: readonly TransitionSample[], expected: RoundPresentationExpectation,
 ): { revealEnd: number; awardEnd: number; sweepEnd: number | null; potEnd: number | null; setupAt: number | null } {
   const fail = (reason: string): never => { throw new Error(`357 presentation ${expected.roundId}: ${reason}`); };
   const rows = samples.filter(row => row.at >= expected.actionAt);
+  assertCompletionEvidence(rows, expected);
   if (rows.length < 2) fail('incomplete observation');
   if (rows.some(row => !row.documentVisible)) fail('browser was hidden during observation');
   const revealRows = rows.filter(row => row.reveal?.id === expected.revealId);
@@ -133,6 +154,11 @@ export function installTransitionPresentationObserver(): void {
   target.__transitionPresentationInstalled = true;
   const completed = new WeakSet<Element>();
   const endedEarly = new WeakSet<Element>();
+  // A trusted full CSS end can precede the renderer's retirement deadline.
+  // Keep that fact independently; a later sampling pause cannot erase it.
+  const cssCompletedAt = new WeakMap<Element, number>();
+  const declaredDurations = new WeakMap<Element, number>();
+  const pendingEvidence: CompletionEvidence[] = [];
   const observedAwards = new Map<Element, { stage: VisibleStage; scope: PresentationScope | null; end: number; lastSeen: number }>();
   const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="seat"]';
   let previous = '';
@@ -163,22 +189,34 @@ export function installTransitionPresentationObserver(): void {
     const finishedExits: Array<{ stage: VisibleStage; scope: PresentationScope | null }> = [];
     for (const [node, award] of observedAwards) {
       if (!node.isConnected) {
-        // The renderer owns this exact deadline. A removed stage is completion
-        // evidence only after its full visible lifetime, with an uninterrupted
-        // observer immediately before the exit. Early cancellation stays failed.
-        if (!completed.has(node) && !endedEarly.has(node) && Date.now() >= award.end && Date.now() - award.lastSeen < 100) {
-          finishedExits.push({ stage: { ...award.stage, finished: true }, scope: award.scope });
+        const now = Date.now();
+        if (!completed.has(node) && !endedEarly.has(node)) {
+          const reason = now < award.end ? 'early-removal'
+            : cssCompletedAt.has(node) || now - award.lastSeen < 100 ? 'retired-complete' : 'observation-gap';
+          pendingEvidence.push({ scope: award.scope, stageId: award.stage.id, kind: award.stage.kind,
+            reason, at: now, deadline: award.end, lastSeen: award.lastSeen,
+            cssCompletedAt: cssCompletedAt.get(node) ?? null });
+          if (reason === 'retired-complete') {
+            finishedExits.push({ stage: { ...award.stage, finished: true }, scope: award.scope });
+          }
         }
         observedAwards.delete(node);
       }
     }
     for (const node of document.querySelectorAll(selectors)) {
+      const observed = observedAwards.get(node);
+      if (observed && cssCompletedAt.has(node) && !endedEarly.has(node) && Date.now() >= observed.end) completed.add(node);
       if (!visible(node) && !completed.has(node)) continue;
       const kind = node.hasAttribute('data-leg-award') ? 'award' : node.hasAttribute('data-leg-sweep-flight') ? 'sweep' : node.getAttribute('data-chip-transport-from') === 'seat' ? 'payout' : 'pot';
       const stage: VisibleStage = { kind, id: attr(node, kind === 'award' ? 'data-leg-award' : kind === 'sweep' ? 'data-leg-sweep-flight' : 'data-chip-transport-intent'),
         finished: completed.has(node), winning: kind === 'award' ? attr(node, 'data-leg-award-winning') === '1' : undefined,
         generation: kind === 'award' ? node.getAttribute('data-leg-award-generation') : undefined };
       stages.push(stage);
+      if (kind === 'payout') for (const element of [node, ...node.children]) {
+        const declared = (element as HTMLElement).style?.animationDuration ?? '';
+        const duration = parseFloat(declared) * (declared.endsWith('ms') ? 1 : 1000);
+        if (duration > 0 && !declaredDurations.has(element)) declaredDurations.set(element, duration);
+      }
       if (kind === 'award' || kind === 'pot' || kind === 'payout') {
         const end = Number(attr(node, kind === 'award' ? 'data-leg-award-completes-at' : 'data-chip-transport-completes-at'));
         if (end > 0) observedAwards.set(node, { stage, scope, end, lastSeen: Date.now() });
@@ -217,15 +255,19 @@ export function installTransitionPresentationObserver(): void {
       void target.__transitionPresentationSample({ at: Date.now(), ...state, scope: exit.scope,
         setup: false, stages: [exit.stage] });
     }
+    for (const evidence of pendingEvidence.splice(0)) {
+      void target.__transitionPresentationSample({ at: evidence.at, ...state, completionEvidence: [evidence] });
+    }
     if (signature !== previous) {
       previous = signature;
       void target.__transitionPresentationSample({ at: Date.now(), ...state });
     }
   };
-  document.addEventListener('animationend', event => {
+  const captureAnimationEnd = (event: Event) => {
     const animation = event as AnimationEvent;
     if (!/^(flyToTarget|legToPlayer-|__chipTransport_)/.test(animation.animationName)) return;
     const node = (event.target as Element).closest(selectors);
+    if (event.type === 'animationcancel' && node?.getAttribute('data-chip-transport-from') !== 'seat') return;
     if (node && event.isTrusted) {
       const deadline = Number(node.getAttribute('data-leg-award-completes-at') ?? node.getAttribute('data-chip-transport-completes-at'));
       const sweepDuration = Number(node.getAttribute('data-leg-sweep-flight-duration-ms'));
@@ -233,15 +275,34 @@ export function installTransitionPresentationObserver(): void {
       // seat payout, validate the renderer's declared inline duration first;
       // keep the full retirement deadline for completion on DOM removal.
       const declared = (event.target as HTMLElement).style.animationDuration;
-      const declaredMs = parseFloat(declared) * (declared.endsWith('ms') ? 1 : 1000);
-      if (node.getAttribute('data-chip-transport-from') === 'seat' && declaredMs > 0) {
-        if (animation.elapsedTime * 1000 < declaredMs) endedEarly.add(node);
-        else if (Date.now() >= deadline && !endedEarly.has(node)) completed.add(node);
+      const declaredMs = declaredDurations.get(event.target as Element)
+        ?? parseFloat(declared) * (declared.endsWith('ms') ? 1 : 1000);
+      const observed = observedAwards.get(node);
+      const cancelled = event.type === 'animationcancel';
+      let reason: CompletionEvidence['reason'] = 'css-complete';
+      if (cancelled) {
+        endedEarly.add(node);
+        reason = 'cancelled-css';
+      } else if (node.getAttribute('data-chip-transport-from') === 'seat' && declaredMs > 0) {
+        if (animation.elapsedTime * 1000 < declaredMs) {
+          endedEarly.add(node);
+          reason = 'shortened-css';
+        } else if (!endedEarly.has(node)) {
+          cssCompletedAt.set(node, Date.now());
+          if (Date.now() >= deadline) completed.add(node);
+        }
       } else if ((deadline > 0 && Date.now() < deadline) || (sweepDuration > 0 && animation.elapsedTime * 1000 < sweepDuration)) endedEarly.add(node);
       else if (!endedEarly.has(node)) completed.add(node);
+      if (observed && node.getAttribute('data-chip-transport-from') === 'seat') {
+        pendingEvidence.push({ scope: observed.scope, stageId: observed.stage.id, kind: observed.stage.kind,
+          reason, at: Date.now(), deadline, lastSeen: observed.lastSeen,
+          cssCompletedAt: cssCompletedAt.get(node) ?? null, elapsedMs: animation.elapsedTime * 1000, declaredMs });
+      }
       sample();
     }
-  }, true);
+  };
+  document.addEventListener('animationend', captureAnimationEnd, true);
+  document.addEventListener('animationcancel', captureAnimationEnd, true);
   new MutationObserver(sample).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
   const frame = () => { sample(); requestAnimationFrame(frame); };
   requestAnimationFrame(frame);

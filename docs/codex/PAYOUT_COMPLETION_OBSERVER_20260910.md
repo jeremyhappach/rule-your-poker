@@ -1,0 +1,17 @@
+# Payout completion observer — September 10, 2026
+
+Jeremy approved the harness correction and a fresh two-browser custom-Cribbage Run Back qualification. Product timing, rendering, rules, state advancement and settlement are unchanged.
+
+The observer now retains trusted CSS completion separately from the renderer retirement deadline. A full CSS end remains valid evidence across a later sampling pause; completion still cannot precede the renderer deadline. Native cancellation and shortened CSS are rejected using the original declared duration, which is captured before styles can change. An expired stage with neither retained CSS completion nor a recent visible sample remains a failing observation gap, with exact scope, stage, deadline, last-seen time and reason recorded. It is never silently treated as a passed animation or merely labelled unfinished.
+
+The shared assertions consume these records with exact session/dealer-game/round/hand identity. Existing reveal, winner, duration, duplicate, cancellation, balance and setup-order checks remain required. This is shared test instrumentation; no production observers or gameplay delays were added.
+
+All 20 local browser controls pass. They cover full CSS completion before a pause, unproven completion classified as a failing observation gap, early removal, CSS cancellation/shortening, and the actual canonical payout renderer. An initial cancellation-reason control exposed loss of the inline declared duration when CSS is cleared; retaining the original declaration corrected that failure. Typecheck, all 1,564 app tests, 136 harness tests and the production build pass. Evidence directory: artifacts/payout-observer-fix-20260910/. Preserve the earlier failed session 5f37458b-698d-417a-aec0-3f2348429be2 and its original traces under artifacts/run-back-20260910/; they are not reclassified as passing. Detailed RCA and isolated probes remain under artifacts/cribbage-payout-rca-20260910/.
+
+## Fresh production qualification
+
+The corrected local harness ran against unchanged published app 5ec6e9dfbc0fe584adc8fc33673d70b1be973edf, one worker and zero retries. Session 7b68e093-5782-437f-9e46-a20635bfc9da; source dealer game 9b59b66a-077e-45ec-9e18-f1e7044756c5; successor 68c563bd-0bf6-4527-9534-c4b3798e56cb. Both configurations match exactly: custom mode, points_to_win/custom_points_to_win 1, ante 10, skunks disabled and thresholds 0. Both clients showed the winner and complete payout before setup; both then committed a legal discard from fresh successor hands.
+
+Host payout 2,420 ms, setup 1,040 ms after completion; peer payout 2,414 ms, setup 723 ms after completion. Completion records on both clients show a passed renderer deadline with recent visible samples (61 ms host / 11 ms peer), without a native CSS end record. This fresh pass does not retrospectively prove the missing branch in the old trace. Thirteen receipts, zero identity/coverage/progress violations, maximum peer projection 1,692 ms. Screenshots and exact action receipts are retained under artifacts/payout-observer-fix-20260910/live-cribbage/.
+
+Independent SQL confirmed zero rows for the test game, players, rounds, dealer games, results, transfer batches, snapshots and decision provenance; no harness request remains. The prior all-seven Run Back button/database proofs remain valid; Yahtzee and custom Cribbage now each have a complete live win→payout→Run Back→successor-action pass. No new full-match run for the other five games is claimed. Jeremy production smoke remains separate acceptance.

@@ -37,7 +37,7 @@ Full Run Back qualification reached a separate stake-submission defect below.
 
 ### P1 — Yahtzee Run Back submits the prior form stake — September 10
 
-Status: Run Back correction published as f363a6d46. All-seven button/database checks and live Yahtzee pass; custom-Cribbage live qualification is blocked by the separate entry below. Found during the approved animation-fix browser qualification,
+Status: Run Back correction published as f363a6d46. All-seven button/database checks and live Yahtzee pass. Fresh custom-Cribbage full payout, exact Run Back and both successor discards also pass with the observer correction documented below. Found during the approved animation-fix browser qualification,
 not Jeremy smoke. Source dealer game be78f677-34d7-4401-8398-e7404cbf663d had
 ante_amount 10; clicking the actual Run Back button committed successor
 3821c91f-9038-4465-92ef-d1fc4b5e433b with ante_amount 3. Expected: Run Back
@@ -59,9 +59,9 @@ seven games, including Horses/SCC. The same stale-form path explains the
 report; exact saved Cribbage mode/target are now included in the correction.
 See RUN_BACK_CONSISTENCY_20260910.md.
 
-### Queued — Cribbage payout completion evidence missing on one browser — September 10
+### Completed — Cribbage payout completion observer — September 10
 
-Status: Queued; observed during approved Run Back testing, before Run Back was clicked.
+Status: Harness correction implemented and fresh production qualification passed; original failure retained. Observed during approved Run Back testing, before Run Back was clicked.
 Build f363a6d46, fake session 5f37458b-698d-417a-aec0-3f2348429be2, dealer game
 9d813cc5-2c98-4f65-80b1-17c6a5d0b595, round 9114d12b-62aa-4dd2-8583-1f3468c7afab.
 Custom target 1, $10, skunks disabled; legal 1–0 win settled exactly +10/−10 once.
@@ -75,6 +75,15 @@ The test stopped, evidence is retained, and independent SQL verified deletion
 of the synthetic session and related rows. Investigate the exact chip renderer
 retirement/visibility and observer completion boundary before another qualifying
 run; do not silently relax the assertion. See RUN_BACK_CONSISTENCY_20260910.md.
+
+Follow-up: Jeremy approved the observer correction after RCA identified a
+completion-evidence race. Twenty browser controls retain early/shortened/cancelled
+payout rejection and classify missing observations explicitly. Fresh fake session
+7b68e093-5782-437f-9e46-a20635bfc9da passes both clients' full payout, exact
+$10/custom-1 Run Back and both successor discards; 13 receipts have no
+synchronization violations. Independent cleanup is complete. The earlier
+trace remains failed and does not acquire missing evidence retroactively.
+See PAYOUT_COMPLETION_OBSERVER_20260910.md.
 
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 

@@ -1,15 +1,25 @@
 # Current release and cutover state
 
+## September 10 payout completion observer correction
+
+The approved harness-only correction retains CSS completion across retirement
+and reports unproven sampling gaps explicitly. All 20 browser controls, 1,564
+app tests, 136 harness tests, typecheck and build pass. Fresh production
+custom Cribbage passes both clients' winner/full payout, exact $10/custom-1
+Run Back and both successor discards. Thirteen observed actions have no
+synchronization violations; test data was independently verified deleted.
+Gameplay timing and settlement are unchanged. See PAYOUT_COMPLETION_OBSERVER_20260910.md.
+
 ## September 10 Run Back consistency correction
 
 Published product f363a6d46 preserves exact saved settings in all seven games,
 including Cribbage custom mode/target. All seven pass rendered-button tests
 and deployed RPC rollback proofs. Typecheck, build, 1,564 app and 131 harness
 tests pass. Live Yahtzee passes winner, full payout, $10 Run Back and both
-successor turns. Cribbage stopped before Run Back on missing host payout
-completion evidence; settlement was correct. This remains an open qualification
-issue, not a claimed live pass. Both fake sessions were independently verified
-deleted. See RUN_BACK_CONSISTENCY_20260910.md.
+successor turns. The original Cribbage completion-evidence failure remains
+preserved; the corrected observer's fresh run now passes custom Run Back and
+both successor discards. All fake sessions were independently verified deleted.
+See RUN_BACK_CONSISTENCY_20260910.md and PAYOUT_COMPLETION_OBSERVER_20260910.md.
 
 ## September 10 Yahtzee payout completion correction
 
