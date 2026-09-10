@@ -1,5 +1,13 @@
 # Durable decision log
 
+## D-137 — Yahtzee local presentation survives peer progression
+
+A connected browser retains its exact terminal round and seats until its own
+canonical payout batch completes. The first valid client may advance the
+shared game independently; slow or disconnected clients never form a barrier.
+A retained snapshot controls rendering only, never actions or settlement.
+Cold terminal entry does not replay. See YAHTZEE_PAYOUT_COMPLETION_20260910.md.
+
 ## D-136 — Keep decision provenance observational and private
 
 3-5-7 browser button activation and automatic-fold execution carry separate

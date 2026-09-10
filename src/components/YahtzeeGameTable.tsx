@@ -20,8 +20,7 @@ import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3d)
-import { ChipTransferAnimation } from "./ChipTransferAnimation";
+import { isYahtzeeTerminalPayout, yahtzeeTerminalToken, type YahtzeePayoutScope } from '@/lib/yahtzeeTerminalPresentation';
 import { useChipTransferPresentationAdmission } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import confetti from "canvas-confetti";
@@ -159,6 +158,7 @@ interface YahtzeeGameTableProps {
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   onTerminalPresentationActiveChange?: (active: boolean) => void;
   onTerminalPresentationComplete?: (terminalIdentity: string) => void;
+  terminalPresentationLive?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -246,7 +246,7 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, handNumber, yahtzeeState, isRealMoney, isPaused,
   decisionTimerSeconds, onRefetch,
   isHost = false, onPlayerClick, onAutoFoldChange, onTerminalPresentationActiveChange,
-  onTerminalPresentationComplete,
+  onTerminalPresentationComplete, terminalPresentationLive = true,
 }: YahtzeeGameTableProps) {
   // SHELL LC: mount marker for comparative branch-swap evidence.
   useLifecycleMount('YahtzeeGameTable');
@@ -591,18 +591,16 @@ export function YahtzeeGameTable({
 
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
-  const [chipTransferWinnerPos, setChipTransferWinnerPos] = useState<number>(0);
-  const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
-  const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
+  const terminalPayoutScopeRef = useRef<YahtzeePayoutScope | null>(null);
   const canAdmitYahtzeeTerminalTransfer = useCallback((batch: ChipPresentationBatch) => {
     const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
       (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
     );
     // Yahtzee admits financial motion in the same frame as its match-win
     // plate and winner confetti, never on early settlement delivery.
-    return !movesPlayerToPlayer || chipTransferTriggerId !== null;
+    return !movesPlayerToPlayer || (chipTransferTriggerId !== null
+      && isYahtzeeTerminalPayout(batch, terminalPayoutScopeRef.current));
   }, [chipTransferTriggerId]);
-  useChipTransferPresentationAdmission(canAdmitYahtzeeTerminalTransfer);
 
   // Terminal presentation is client-local. The route holds a live
   // session-ending table while this identity is active, and admits Session
@@ -627,6 +625,14 @@ export function YahtzeeGameTable({
     onTerminalPresentationActiveChange?.(false);
   }, [onTerminalPresentationActiveChange, onTerminalPresentationComplete]);
 
+  const handleTerminalBatchSettled = useCallback((batch: ChipPresentationBatch) => {
+    const scope = terminalPayoutScopeRef.current;
+    if (!scope || !chipTransferTriggerId || !isYahtzeeTerminalPayout(batch, scope)
+      || terminalPresentationActiveKeyRef.current !== yahtzeeTerminalToken(scope)) return;
+    handleTerminalChipAnimationEnd();
+  }, [chipTransferTriggerId, handleTerminalChipAnimationEnd]);
+  useChipTransferPresentationAdmission(canAdmitYahtzeeTerminalTransfer, handleTerminalBatchSettled);
+
   useEffect(() => {
     return () => {
       if (!terminalPresentationActiveKeyRef.current) return;
@@ -645,6 +651,7 @@ export function YahtzeeGameTable({
   // dice on the felt.
   useEffect(() => {
     completionLatchRoundIdRef.current = null;
+    terminalPayoutScopeRef.current = null;
     prevTurnRef.current = null;
     actionInFlightRef.current = false;
     holdIntentRef.current = null;
@@ -1643,6 +1650,7 @@ export function YahtzeeGameTable({
    */
   useEffect(() => {
     if (!viewState || viewState.gamePhase !== 'complete') return;
+    if (!terminalPresentationLive) return;
     if (!currentRoundId) return;
     if (!dealerGameId || !Number.isInteger(handNumber)) return;
     if (completionLatchRoundIdRef.current === currentRoundId) return;
@@ -1659,14 +1667,10 @@ export function YahtzeeGameTable({
     // ── Presentation (all clients) ──
     if (winners.length === 1) {
       const winnerId = winners[0].pid;
-      const terminalIdentity = [
-        'yahtzee',
-        'winseq',
-        gameId,
-        dealerGameId,
-        String(handNumber),
-        winnerId,
-      ].join('|');
+      const payoutScope: YahtzeePayoutScope = { gameId, dealerGameId, roundId: currentRoundId,
+        handNumber: handNumber!, winnerId, loserIds: results.filter(result => result.pid !== winnerId).map(result => result.pid) };
+      terminalPayoutScopeRef.current = payoutScope;
+      const terminalIdentity = yahtzeeTerminalToken(payoutScope);
       const presentationRoster = Array.from(
         terminalPresentationRosterRef.current.playersById.values(),
       );
@@ -1773,9 +1777,6 @@ export function YahtzeeGameTable({
                 if (bursts >= 4) window.clearInterval(interval);
               }, 700);
             }
-            setChipTransferWinnerPos(winnerPlayer.position);
-            setChipTransferLoserPositions(losers.map(p => p.position));
-            setChipTransferLoserIds(losers.map(p => p.id));
             setChipTransferTriggerId(`yahtzee-win-${currentRoundId}`);
           };
           if (typeof requestAnimationFrame === 'function') {
@@ -1784,9 +1785,6 @@ export function YahtzeeGameTable({
             fireConfettiAndChips();
           }
         } else {
-          setChipTransferWinnerPos(winnerPlayer.position);
-          setChipTransferLoserPositions(losers.map(p => p.position));
-          setChipTransferLoserIds(losers.map(p => p.id));
           setChipTransferTriggerId(`yahtzee-win-${currentRoundId}`);
         }
       } else {
@@ -1818,6 +1816,7 @@ export function YahtzeeGameTable({
     announcements,
     beginTerminalPresentation,
     handleTerminalChipAnimationEnd,
+    terminalPresentationLive,
   ]);
 
   /* ---- Bot logic ---- */
@@ -2690,19 +2689,7 @@ export function YahtzeeGameTable({
 
         {/* Game complete — no static overlay here, WinnerOverlay handles it */}
 
-        {/* Chip transfer animation */}
-        <ChipTransferAnimation
-          presentationOwned
-          triggerId={chipTransferTriggerId}
-          amount={anteAmount}
-          winnerPosition={chipTransferWinnerPos}
-          loserPositions={chipTransferLoserPositions}
-          loserPlayerIds={chipTransferLoserIds}
-          currentPlayerPosition={myPlayer?.position ?? null}
-          getClockwiseDistance={getClockwiseDistance}
-          containerRef={tableContainerRef}
-          onAnimationEnd={handleTerminalChipAnimationEnd}
-        />
+        {/* The canonical ledger renders and completes the exact payout batch. */}
 
         {/* Canonical seat clusters — shell anchors drive all chip positioning.
             For 2P inherently-two-player games (Yahtzee), seatAnchors

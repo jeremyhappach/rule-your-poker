@@ -1,5 +1,11 @@
 # Repository map
 
+Yahtzee terminal handoff: Game.tsx consumes the presentation-only
+src/lib/canonicalShell/localTerminalPresentation.ts snapshot hold;
+src/lib/yahtzeeTerminalPresentation.ts matches the payout and completion token.
+YahtzeeGameTable.tsx uses canonical ledger batch completion. Database ownership
+and shared animation duration remain unchanged.
+
 3-5-7 decision provenance: `src/lib/decisionProvenance.ts` captures bounded
 client input/outcome evidence; the actual buttons in `MobileGameTable.tsx` and
 automatic-fold effect in `Game.tsx` supply distinct origins to the existing

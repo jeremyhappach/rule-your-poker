@@ -1,5 +1,12 @@
 # Current release and cutover state
 
+## September 10 Yahtzee payout completion correction
+
+Jeremy approved publication and fake-money testing after play ended. The old
+callback-only animator is removed; the canonical payout completion releases
+only that browser's retained table. Other clients may advance independently.
+Local and production qualification results: YAHTZEE_PAYOUT_COMPLETION_20260910.md.
+
 ## September 9 Yahtzee win-sequence harness — premature setup reproduced
 
 - Published harness `b6bd777e4` reproduced early setup on both clients after

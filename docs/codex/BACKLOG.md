@@ -6,8 +6,8 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### P1 — Yahtzee setup interrupts the winner payout — September 9
 
-Status: Queued; read-only diagnosis complete, scoped product correction awaiting
-approval. Found by the approved healthy two-browser win-sequence harness on
+Status: Approved correction implemented; validation and live qualification in progress.
+Found by the approved healthy two-browser win-sequence harness on
 published `b6bd777e4`, not by Jeremy's production smoke. Exact fake session
 `5ea744ec-d9e6-4fae-bffb-ad05137f74ed`, dealer game
 `0c248f2b-1ac1-4409-a503-b7551bb6c9aa`, round
@@ -28,6 +28,10 @@ no retry or Run Back followed. All exact-session rows and fixture request were
 independently confirmed removed. See `YAHTZEE_PRESENTATION_20260909.md` for the
 timeline, proof, preserve list and acceptance plan. Gin/Holm qualification
 remains unrun in this window; Horses/SCC remain skipped at Jeremy's direction.
+
+September 10: Jeremy reopened publication/testing after real-money play ended.
+The correction uses exact ledger completion and a local retained table, with
+no cross-client completion barrier. See YAHTZEE_PAYOUT_COMPLETION_20260910.md.
 
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 

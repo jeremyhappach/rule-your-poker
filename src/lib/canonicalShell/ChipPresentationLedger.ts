@@ -30,6 +30,8 @@ export interface ChipPresentationTransfer {
 export interface ChipPresentationBatch {
   id: string;
   game_id: string;
+  /** Authoritative owner, retained for exact game-specific completion checks. */
+  dealer_game_id?: string | null;
   cursor: number;
   reason: ChipTransportIntent['reason'];
   transfers: ChipPresentationTransfer[];
@@ -245,6 +247,7 @@ function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch |
   return {
     id: row.id,
     game_id: gameId,
+    dealer_game_id: typeof row.dealer_game_id === 'string' ? row.dealer_game_id : null,
     cursor,
     reason,
     transfers,

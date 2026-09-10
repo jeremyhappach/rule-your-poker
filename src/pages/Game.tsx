@@ -398,6 +398,8 @@ import {
 } from "@/lib/startupFlightRecorder";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { advanceYahtzeePostgame } from "@/lib/yahtzeeAuthority";
+import { getTotalScore as getYahtzeeTotalScore } from '@/lib/yahtzeeScoring';
+import { useLocalTerminalPresentation } from '@/lib/canonicalShell/localTerminalPresentation';
 import { advanceCribbagePostgame } from "@/lib/cribbageAuthority";
 import { advanceGinPostgame } from "@/lib/ginRummyRoundLogic";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
@@ -2143,30 +2145,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (completedExactScope) setSessionEndedTableAdmitted(true);
   }, [game?.status, (game as any)?.pending_session_end, liveTerminalPresentationPending]);
 
-  // Normal post-game lifecycle closure can arrive after the dealer-game
-  // presentation has already retired into setup/waiting. Keep a continuously
-  // mounted participant on the canonical Session Ended table, but never admit
-  // a fresh/reconnected terminal mount.
-  useEffect(() => {
-    if (game?.status !== 'session_ended') return;
-    if (liveSessionFlowGameIdRef.current !== game.id) return;
-    if (
-      terminalPresentationActive ||
-      holmLastHandPresentationPending ||
-      liveTerminalPresentationPending
-    ) return;
-    setSessionEndedTableAdmitted(true);
-  }, [
-    game?.id,
-    game?.status,
-    terminalPresentationActive,
-    holmLastHandPresentationPending,
-    liveTerminalPresentationPending,
-  ]);
-
-  
-
-  
   // Horses win pot animation state (when player wins the round)
   const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
   const [horsesWinPotAmount, setHorsesWinPotAmount] = useState<number>(0);
@@ -5780,52 +5758,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Session ending tracking (removed toast)
 
-  // Redirect to lobby when session ends.
-  // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
-  useEffect(() => {
-    if (game?.status !== 'session_ended') return;
-    // Atomic last-hand settlement can close the session before this client
-    // finishes its terminal win presentation. Hold the redirect while the
-    // exact live terminal scope is still presenting locally.
-    // Holm LAST HAND: the hold is owned by this route (see
-    // holmLastHandPresentationPending) precisely because the gameplay subtree
-    // that used to publish it is removed by the same `session_ended` snapshot.
-    if (
-      terminalPresentationActive ||
-      holmLastHandPresentationPending ||
-      liveTerminalPresentationPending
-    ) return;
-    // Transient Session Ended table: this client stayed through the live
-    // terminal presentation, so navigation is now user-owned (Back to Lobby).
-    // Non-admitted clients (fresh mount / reconnect) keep direct-to-lobby.
-    if (sessionEndedTableAdmitted) return;
-
-    let cancelled = false;
-    void (async () => {
-      if (cancelled) return;
-      const { data: freshGame, error } = await supabase
-        .from('games')
-        .select('status, session_ended_at')
-        .eq('id', gameId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) {
-        console.warn('[NAV-01] session_ended re-fetch failed, suppressing navigation', error.message);
-        return;
-      }
-      if (!freshGame || freshGame.status !== 'session_ended') {
-        console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
-        recordRecoveryTransition('membership-validating', { gameId, reason: 'session-ended-suppressed', freshStatus: freshGame?.status ?? null });
-        return;
-      }
-      recordTerminalRecovery('session-ended-confirmed', { gameId });
-      releaseRecoveryLease('session-ended-confirmed', { gameId });
-      navigate('/', { replace: true });
-
-    })();
-    return () => { cancelled = true; };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted]);
-
   // Ask the database for one exact check when ante state is admitted. Realtime
   // decisions use the fast path below; expiry remains owned by the scheduler.
   useEffect(() => {
@@ -6096,6 +6028,93 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  const yahtzeeRoundState = (currentRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null;
+  const yahtzeeTerminalScores = Object.values(yahtzeeRoundState?.playerStates ?? {}).map(player => getYahtzeeTotalScore(player.scorecard));
+  const yahtzeeHasUniqueWinner = yahtzeeTerminalScores.length > 1
+    && yahtzeeTerminalScores.filter(score => score === Math.max(...yahtzeeTerminalScores)).length === 1;
+  const yahtzeeTerminal = useLocalTerminalPresentation({
+    sessionId: gameId ?? null,
+    scope: game?.game_type === 'yahtzee' && currentRound?.id && currentRound.dealer_game_id
+      ? { gameId: gameId!, gameType: 'yahtzee', dealerGameId: currentRound.dealer_game_id,
+          roundId: currentRound.id, handNumber: currentRound.hand_number } : null,
+    live: game?.game_type === 'yahtzee' && game.status === 'in_progress'
+      && currentRound?.dealer_game_id === game.current_game_uuid
+      && yahtzeeRoundState?.gamePhase === 'playing',
+    terminal: game?.game_type === 'yahtzee' && yahtzeeRoundState?.gamePhase === 'complete' && yahtzeeHasUniqueWinner,
+    snapshot: game && currentRound ? { round: currentRound, players,
+      anteAmount: game.ante_amount || 1, dealerPosition: game.dealer_position || 1,
+      isRealMoney: game.real_money === true } : null,
+  });
+  const heldYahtzee = yahtzeeTerminal.pending?.snapshot ?? null;
+
+  // Normal post-game lifecycle closure can arrive after the dealer-game
+  // presentation has already retired into setup/waiting. Keep a continuously
+  // mounted participant on the canonical Session Ended table, but never admit
+  // a fresh/reconnected terminal mount.
+  useEffect(() => {
+    if (game?.status !== 'session_ended') return;
+    if (liveSessionFlowGameIdRef.current !== game.id) return;
+    if (
+      terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      liveTerminalPresentationPending || heldYahtzee
+    ) return;
+    setSessionEndedTableAdmitted(true);
+  }, [
+    game?.id,
+    game?.status,
+    terminalPresentationActive,
+    holmLastHandPresentationPending,
+    liveTerminalPresentationPending,
+    heldYahtzee,
+  ]);
+
+  // Redirect to lobby when session ends.
+  // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
+  useEffect(() => {
+    if (game?.status !== 'session_ended') return;
+    // Atomic last-hand settlement can close the session before this client
+    // finishes its terminal win presentation. Hold the redirect while the
+    // exact live terminal scope is still presenting locally.
+    // Holm LAST HAND: the hold is owned by this route (see
+    // holmLastHandPresentationPending) precisely because the gameplay subtree
+    // that used to publish it is removed by the same `session_ended` snapshot.
+    if (
+      terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      liveTerminalPresentationPending || heldYahtzee
+    ) return;
+    // Transient Session Ended table: this client stayed through the live
+    // terminal presentation, so navigation is now user-owned (Back to Lobby).
+    // Non-admitted clients (fresh mount / reconnect) keep direct-to-lobby.
+    if (sessionEndedTableAdmitted) return;
+
+    let cancelled = false;
+    void (async () => {
+      if (cancelled) return;
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('status, session_ended_at')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn('[NAV-01] session_ended re-fetch failed, suppressing navigation', error.message);
+        return;
+      }
+      if (!freshGame || freshGame.status !== 'session_ended') {
+        console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
+        recordRecoveryTransition('membership-validating', { gameId, reason: 'session-ended-suppressed', freshStatus: freshGame?.status ?? null });
+        return;
+      }
+      recordTerminalRecovery('session-ended-confirmed', { gameId });
+      releaseRecoveryLease('session-ended-confirmed', { gameId });
+      navigate('/', { replace: true });
+
+    })();
+    return () => { cancelled = true; };
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted, heldYahtzee]);
 
   const { acceptCompletion: accept357TerminalCompletion, canAdvance: canAdvance357Postgame } =
     useThreeFiveSevenTerminalCompletion({
@@ -11936,6 +11955,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   handleGameOverCompleteRef.current = handleGameOverComplete;
 
   const handleYahtzeeTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
+    const completedScope = yahtzeeTerminal.complete(terminalIdentity);
+    if (!completedScope) return;
     markTerminalPresentationComplete(terminalIdentity);
     const facts = terminalStatusFactsRef.current;
     if (facts.status !== 'game_over') return;
@@ -11945,8 +11966,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // cannot schedule a second transition in the same render.
     yahtzeeGameOverProcessedRef.current = facts.lastRoundResult || 'unknown';
     gameOverTransitionRef.current = false;
-    void handleGameOverCompleteRef.current();
-  }, [markTerminalPresentationComplete]);
+    // Submit the captured source identity, never a newer game's identity.
+    // PostgreSQL already dedupes callers; no peer-completion barrier is added.
+    void advanceYahtzeePostgame(completedScope).then(() => fetchGameData()).catch(error => {
+      console.error('[YAHTZEE] Post-presentation handoff failed', error);
+      if (terminalStatusFactsRef.current.lastRoundResult === facts.lastRoundResult) {
+        yahtzeeGameOverProcessedRef.current = null;
+      }
+      void fetchGameData();
+    });
+  }, [markTerminalPresentationComplete, yahtzeeTerminal.complete, fetchGameData]);
 
   useEffect(() => {
     if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
@@ -11957,7 +11986,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // through the real chip-animation completion boundary. The callback above
     // owns normal continuation; this effect is recovery-only while no local
     // presentation is active.
-    if (terminalPresentationActive) return;
+    if (terminalPresentationActive || heldYahtzee) return;
     const resultKey = game?.last_round_result || 'unknown';
     if (yahtzeeGameOverProcessedRef.current === resultKey) return;
     yahtzeeGameOverProcessedRef.current = resultKey;
@@ -11972,7 +12001,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // The complete scheduled recovery function owns disconnected/stuck
     // fallback. Do not add a browser poll that can race exact-identity replay.
     return () => clearTimeout(timer);
-  }, [game?.status, game?.game_type, game?.last_round_result, gameId, terminalPresentationActive]);
+  }, [game?.status, game?.game_type, game?.last_round_result, gameId, terminalPresentationActive, heldYahtzee]);
 
 
   // When high-card dealer selection finishes, transition to in_progress and create round 1
@@ -12812,7 +12841,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // gate that would otherwise release the gameplay surface at
   // either terminal status consults it. No status rewrite, no timer, no
   // duplicate surface.
-  const _terminalPresentationHold = shouldHoldTerminalSeatOwnership(
+  const _terminalPresentationHold = !!heldYahtzee || shouldHoldTerminalSeatOwnership(
     game.status,
     terminalPresentationActive,
     holmLastHandPresentationPending,
@@ -12826,7 +12855,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // the canonical terminal presentation to have already completed and this
   // predicate is only reachable after that completion token landed.
   const _sessionEndedTableActive =
-    sessionEndedTableAdmitted &&
+    sessionEndedTableAdmitted && !heldYahtzee &&
     (game.status as string) === 'session_ended' &&
     !terminalPresentationActive &&
     !holmLastHandPresentationPending &&
@@ -12869,7 +12898,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const sessionHostUserId = currentHost ?? sessionHostPlayer?.user_id ?? null;
   const sessionHostName = sessionHostPlayer?.profiles?.username ?? 'the session host';
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-  const isWaitingTableStatus = game.status === 'waiting' || game.status === 'waiting_for_players';
+  const isWaitingTableStatus = !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -12907,9 +12936,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // canonical-route by default — every game family currently selectable
   // in the setup modal is a canonical-shell family, so this is safe.
   const _routeShellGameType =
-    game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+    heldYahtzee ? 'yahtzee' : game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
   const _routeShellAnteAmount =
-    game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
+    heldYahtzee?.anteAmount ?? game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
   const _isConfiguringContext =
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
@@ -13412,7 +13441,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
+            {(!heldYahtzee && !is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -13720,6 +13749,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // within a continuously-mounted gameplay phase.
           <PlayfieldSlotController
             desiredIdentity={(() => {
+              if (yahtzeeTerminal.pending) return { gameType: 'yahtzee', dealerGameId: yahtzeeTerminal.pending.scope.dealerGameId };
               const dgid = (game as any).current_game_uuid ?? null;
               const gtype = game.game_type ?? null;
               if (dgid && gtype) {
@@ -13734,7 +13764,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
-            readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
+            readinessScope={!heldYahtzee && game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
             // ORDINARY-WIN CONTINUITY (Defect A owner). This flag makes the
             // slot controller render NeutralInterstitial *exclusively* —
@@ -13767,7 +13797,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
-            preGameOverlay={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
+            preGameOverlay={!heldYahtzee && (_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
                     selection for any persistent shell (poker-variant
@@ -13853,6 +13883,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
+              if (heldYahtzee) return true;
               // Phase 7 readiness gate (narrow scope): only answer
               // "is the intended gameplay surface ready to paint a
               // stable first frame?". Default true for statuses where
@@ -13896,13 +13927,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
           >
             {(() => {
-          const isInProgress = game.status === 'in_progress';
+          const isInProgress = !heldYahtzee && game.status === 'in_progress';
+          const renderGameType = heldYahtzee ? 'yahtzee' : game.game_type;
           const isYahtzeeGameOver =
-            game.game_type === 'yahtzee' &&
-            (game.status === 'game_over' || _terminalPresentationHold);
-          const isAnteDecision = game.status === 'ante_decision';
-          const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
-          const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
+            !!heldYahtzee || (renderGameType === 'yahtzee' &&
+            (game.status === 'game_over' || _terminalPresentationHold));
+          const isAnteDecision = !heldYahtzee && game.status === 'ante_decision';
+          const isCribbageDealerSelection = !heldYahtzee && game.status === 'cribbage_dealer_selection';
+          const isGinRummyDealerSelection = !heldYahtzee && game.status === 'dealer_selection' && renderGameType === 'gin-rummy';
           // LAST-HAND terminal presentation hold: on a final-hand win the
           // authoritative status goes straight to `session_ended` (never
           // through `game_over`), which previously dropped the cribbage
@@ -13911,11 +13943,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // seat ring, HUD stacks and chip-transfer destination stay mounted.
           // Purely a render-admission widening — no status rewrite, no timer.
           const isCribbageGameOver =
-            game.game_type === 'cribbage' &&
+            renderGameType === 'cribbage' &&
             (game.status === 'game_over' || _terminalPresentationHold);
 
           const isGinRummyGameOver =
-            game.game_type === 'gin-rummy' &&
+            renderGameType === 'gin-rummy' &&
             (game.status === 'game_over' || _terminalPresentationHold);
           const isTerminalSlotPresentation =
             game.status === 'game_over' ||
@@ -13926,12 +13958,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // `session_ended` render — before the trigger effect commits —
             // so the surface never blanks under the celebration.
             _terminalPresentationHold ||
-            (is357TerminalPresentationCurrent && game.game_type !== 'holm-game') ||
+            (is357TerminalPresentationCurrent && renderGameType !== 'holm-game') ||
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
-          const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+          const effectiveRenderGameType = renderGameType ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
           // ── FELT COMMITMENT TRACE (diagnostic-only) ────────────────────
           // Proves which lifecycle bucket the current frame falls into and
@@ -13941,7 +13973,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const _status = game.status as string;
             const _currentDealerGameId = (game as any)?.current_game_uuid ?? null;
             const _configComplete = !!(game as any)?.config_complete;
-            const _selectedGameType = game.game_type ?? null;
+            const _selectedGameType = renderGameType ?? null;
             const _selectedStakes = game.ante_amount ?? null;
             const _roundId = currentRound?.id ?? null;
             const _roundStatus = currentRound?.status ?? null;
@@ -14122,21 +14154,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // the Gin-specific delta vs Cribbage/Yahtzee at the
           // dealer_selection → ante_decision transition.
           {
-            const _isDiceGameOverProbe = (game.status === 'game_over' || _terminalPresentationHold) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
+            const _isDiceGameOverProbe = (game.status === 'game_over' || _terminalPresentationHold) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew');
             const _isGinRummyConfiguringProbe = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
             let _selectedBranch = 'fallback:MobileGameTable(main-in-progress-gated)';
-            if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
+            if (renderGameType === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
               _selectedBranch = 'cribbage:CribbageMobileGameTable';
             } else if (effectiveRenderGameType === 'gin-rummy' && (_isGinRummyConfiguringProbe || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
               _selectedBranch = 'gin:GinRummyGameTable';
-            } else if ((isInProgress || isAnteDecision || _isDiceGameOverProbe || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+            } else if ((isInProgress || isAnteDecision || _isDiceGameOverProbe || !!horsesWinPotTriggerId) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew')) {
               _selectedBranch = 'dice:MobileGameTable(cribbage-or-special)';
-            } else if (game.game_type === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
+            } else if (renderGameType === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
               _selectedBranch = 'yahtzee:YahtzeeGameTable';
             }
             _shellLogIfChanged('Game.IIFE.branch', _selectedBranch, {
               gameStatus: game.status,
-              gameType: game.game_type,
+              gameType: renderGameType,
               effectiveRenderGameType,
               lastKnownGameType: lastKnownGameTypeRef.current,
               previousConfigGameType: previousGameConfig?.game_type ?? null,
@@ -14153,7 +14185,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // CRIBBAGE — unified single instance across ALL session phases
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
-          if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
+          if (renderGameType === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
             // Authoritative dealer-game id lives on the games row (persistent
             // across the resume window). Prefer it over `currentRound.dealer_game_id`
             // so a transiently-empty rounds list on visibility/reconnect resume
@@ -14381,8 +14413,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Terminal win animation is rendered here too. Keeping it inside
           // PlayfieldSlotController prevents the shared game-over sibling branch
           // from mounting a second MobileGameTable under the active dice table.
-          const isDiceGameOver = (game.status === 'game_over' || _terminalPresentationHold) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
-          if ((isInProgress || isAnteDecision || isDiceGameOver || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+          const isDiceGameOver = (game.status === 'game_over' || _terminalPresentationHold) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew');
+          if ((isInProgress || isAnteDecision || isDiceGameOver || !!horsesWinPotTriggerId) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
             const isDiceTerminalPresentation = isDiceGameOver || (!!horsesWinPotTriggerId && !isInProgress && !isAnteDecision);
 
@@ -14408,7 +14440,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 potMaxValue={game.pot_max_value || 10}
                 pendingSessionEnd={game.pending_session_end || false}
                 awaitingNextRound={game.awaiting_next_round || false}
-                gameType={game.game_type}
+                gameType={renderGameType}
                 roundStatus={currentRound?.status}
                 isPaused={game.is_paused || false}
                 anteAmount={game.ante_amount || 1}
@@ -14474,21 +14506,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // YAHTZEE — unified single instance across ante_decision, in_progress, game_over
           // One persistent YahtzeeGameTable prevents blank "Loading Yahtzee" screen during phase transitions
-          if (game.game_type === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
-            const yahtzeeState = (isInProgress || isYahtzeeGameOver) ? ((currentRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null) : null;
+          if (renderGameType === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
+            const yahtzeeRenderRound = heldYahtzee?.round ?? currentRound;
+            const yahtzeeState = (isInProgress || isYahtzeeGameOver) ? ((yahtzeeRenderRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null) : null;
             return (
               <YahtzeeGameTable
                 gameId={gameId!}
-                players={players}
+                players={heldYahtzee?.players ?? players}
                 currentUserId={user?.id}
                 pot={(isInProgress || isYahtzeeGameOver) ? potForDisplay : 0}
-                anteAmount={game.ante_amount || 1}
-                dealerPosition={game.dealer_position || 1}
-                currentRoundId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.id || null) : null}
-                dealerGameId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.dealer_game_id || null) : null}
-                handNumber={(isInProgress || isYahtzeeGameOver) ? (currentRound?.hand_number ?? null) : null}
+                anteAmount={heldYahtzee?.anteAmount ?? game.ante_amount ?? 1}
+                dealerPosition={heldYahtzee?.dealerPosition ?? game.dealer_position ?? 1}
+                currentRoundId={(isInProgress || isYahtzeeGameOver) ? (yahtzeeRenderRound?.id || null) : null}
+                dealerGameId={(isInProgress || isYahtzeeGameOver) ? (yahtzeeRenderRound?.dealer_game_id || null) : null}
+                handNumber={(isInProgress || isYahtzeeGameOver) ? (yahtzeeRenderRound?.hand_number ?? null) : null}
                 yahtzeeState={yahtzeeState}
-                isRealMoney={game.real_money === true}
+                terminalPresentationLive={!!heldYahtzee}
+                isRealMoney={heldYahtzee?.isRealMoney ?? (game.real_money === true)}
                 isPaused={game.is_paused === true}
                 decisionTimerSeconds={decisionTimerSeconds}
                 onRefetch={fetchGameData}
@@ -14961,8 +14995,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellSeatRosterMember = (p: { status?: string | null }) =>
     p.status !== 'observer' && p.status !== 'left';
   // Stable-identity shell seat roster (see hook-rule note below).
+  const shellPresentationPlayers = heldYahtzee?.players ?? players;
+  const shellPresentationViewer = heldYahtzee
+    ? shellPresentationPlayers.find(player => player.user_id === user?.id) : currentPlayer;
   const _shellSeatRosterKey = shellAnchorEligible
-    ? players
+    ? shellPresentationPlayers
         .filter(_isShellSeatRosterMember)
         .map(p => p.position)
         .sort((a, b) => a - b)
@@ -14974,7 +15011,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (cached && cached.key === _shellSeatRosterKey) {
       shellEligibleSeats = cached.seats;
     } else {
-      shellEligibleSeats = players
+      shellEligibleSeats = shellPresentationPlayers
         .filter(_isShellSeatRosterMember)
         .map(p => ({ position: p.position, occupied: true, hidden: false }));
       __shellSeatRosterCache.set(gameId, { key: _shellSeatRosterKey, seats: shellEligibleSeats });
@@ -14984,10 +15021,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // A player remains in their active canonical seat projection while
   // sitting out. Observer projection is reserved for an actual stand-up or
   // leave, so a sit-out never causes a table-wide geometry reset.
-  const isViewerSeated = !!currentPlayer
-    && currentPlayer.status !== 'observer'
-    && currentPlayer.status !== 'left';
-  const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
+  const isViewerSeated = !!shellPresentationViewer
+    && shellPresentationViewer.status !== 'observer'
+    && shellPresentationViewer.status !== 'left';
+  const shellViewerPosition = isViewerSeated ? (shellPresentationViewer?.position ?? null) : null;
   const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellAnchorEligible
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;

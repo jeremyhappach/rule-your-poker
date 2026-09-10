@@ -81,6 +81,35 @@ afterEach(() => {
 });
 
 describe('ChipPresentationLedger lifecycle callbacks', () => {
+  it('preserves dealer-game identity and completes only after every real flight settles, once', async () => {
+    realtime.rows.players = ['a', 'b', 'winner'].map((id, index) => ({ id, chips: 10, position: index + 1, chip_transfer_cursor: 0 }));
+    const settled = vi.fn();
+    const flights: Array<() => void> = [];
+    const transport: ChipPresentationLedgerTransport = {
+      dispatch: (_intent, callbacks) => { flights.push(() => callbacks?.onSettled?.()); return true; },
+      cancel: vi.fn(),
+    };
+    function Harness() {
+      useChipPresentationLedger('game-1', transport, () => true, 0, settled, () => {}, () => {}, () => {}, true);
+      return null;
+    }
+    await act(async () => { root.render(<Harness />); });
+    const batch: ChipPresentationBatch = { id: 'payout', game_id: 'game-1', dealer_game_id: 'exact-dg', cursor: 1,
+      reason: 'transfer', opening_balances: { 'player:a': 10, 'player:b': 10, 'player:winner': 10 },
+      closing_balances: { 'player:a': 0, 'player:b': 0, 'player:winner': 30 }, transfers: ['a', 'b'].map(id => ({
+        id, amount: 10, from: { kind: 'player' as const, playerId: id }, to: { kind: 'player' as const, playerId: 'winner' },
+      })) };
+    await act(async () => { realtime.batchInsert?.({ new: batch }); });
+    expect(flights).toHaveLength(2);
+    expect(settled).not.toHaveBeenCalled();
+    await act(async () => { flights[0](); });
+    expect(settled).not.toHaveBeenCalled();
+    await act(async () => { flights[1](); });
+    expect(settled).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'payout', dealer_game_id: 'exact-dg' }));
+    await act(async () => { flights[1](); realtime.batchInsert?.({ new: batch }); });
+    expect(settled).toHaveBeenCalledTimes(1);
+  });
+
   it.each(['batch-first', 'frame-first'] as const)(
     'holds a zero-flight leg balance and helper through full DROP/hold (%s)', async (order) => {
       const delta = vi.fn();

@@ -1,5 +1,23 @@
 # Transition acceptance plan — September 9, 2026
 
+## September 10 testing window — reopened
+
+Jeremy explicitly confirmed "Play has ended; publish and test." The approved
+Yahtzee payout correction and exact fake-money qualification may proceed.
+
+## Previous September 9 window — closed for real-money play
+
+Jeremy withdrew the renewed September 9 evening test window when real-money
+play started unexpectedly. Stop live test sessions, fixture arming and releases
+until he explicitly reopens the window. The Gin preparation since the prior
+checkpoint was read-only: no Gin test session, fixture, code edit or deployment
+was started. At the stop check, no matching live test processes were running,
+all three exact-game fixture families had zero unexpired armed requests, and
+Vercel's latest deployment was READY at `91ba6ef8ff8d9dca6f49627caadf2bac79cf13a9`,
+also verified in the public manifest. The known Yahtzee presentation defect
+remains unfixed and its proposed correction still awaits approval. This local
+window note must not itself trigger publication during real-money play.
+
 Status: Approved by Jeremy September 9; resumed after the previous task's
 platform interruption. The first healthy-scenario harness is locally verified.
 Jeremy approved the round-progression and capture-wait corrections and renewed
