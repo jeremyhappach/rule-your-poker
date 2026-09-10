@@ -2,8 +2,10 @@
 
 Status: Harness published; the first live qualification failed on premature
 setup during payout. Live testing stopped, evidence and cleanup were verified,
-and the product correction below is awaiting Jeremy's approval. No gameplay
-fix was included in the harness publication.
+and no gameplay fix was included in that harness publication. The approved
+September 10 correction is published and its winner/payout/setup proof passes;
+see YAHTZEE_PAYOUT_COMPLETION_20260910.md for results and the separate Run Back
+stake defect discovered next.
 
 Local validation passed: 1,538 application tests, 126 harness unit tests, 11
 browser observation controls and the complete production build. The separate

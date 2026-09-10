@@ -2,10 +2,13 @@
 
 ## September 10 Yahtzee payout completion correction
 
-Jeremy approved publication and fake-money testing after play ended. The old
-callback-only animator is removed; the canonical payout completion releases
-only that browser's retained table. Other clients may advance independently.
-Local and production qualification results: YAHTZEE_PAYOUT_COMPLETION_20260910.md.
+Published product c83fc7485 passes both browsers' exact winner, full payout,
+balance and setup checks. The faster browser reached setup 1.735 seconds
+before the slower browser finished; there is no shared completion barrier.
+All 1,543 app tests, 131 final harness tests, 11 browser controls, typecheck
+and build pass. Full Run Back qualification stopped on a separate existing
+$10-to-$3 stake bug, now queued. Both fake sessions and fixtures were
+independently verified deleted. See YAHTZEE_PAYOUT_COMPLETION_20260910.md.
 
 ## September 9 Yahtzee win-sequence harness — premature setup reproduced
 

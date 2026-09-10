@@ -6,6 +6,15 @@ export type WinnerPayoutExpectation = PresentationScope & {
   openingBalances: Record<string, string>; closingBalances: Record<string, string>;
 };
 
+// The local HUD omits '$'; remote seat labels include it. Compare amounts,
+// while rejecting malformed text and disagreements between visible copies.
+function sameDisplayedBalance(actual: string, expected: string): boolean {
+  const amount = (text: string) => /^\$?-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(text.trim())
+    ? Number(text.trim().replace(/[$,]/g, '')) : NaN;
+  const value = amount(actual);
+  return Number.isFinite(value) && value === amount(expected);
+}
+
 /** Exact visible winner/transport proof shared by player-to-player payouts. */
 export function assertWinnerPayoutPresentation(samples: readonly TransitionSample[], expected: WinnerPayoutExpectation) {
   const fail = (why: string): never => { throw new Error(`Winner presentation ${expected.roundId}: ${why}`); };
@@ -45,10 +54,10 @@ export function assertWinnerPayoutPresentation(samples: readonly TransitionSampl
   const setup = rows.find(row => row.setup);
   if (!setup || setup.at < payoutEnd) fail('missing setup or setup before payout completion');
   for (const [player, opening] of Object.entries(expected.openingBalances)) {
-    if (rows.some(row => row.at >= announcement!.at && row.at < payoutStart && row.balances[player] != null && row.balances[player] !== opening)) fail('balance changed before payout');
+    if (rows.some(row => row.at >= announcement!.at && row.at < payoutStart && row.balances[player] != null && !sameDisplayedBalance(row.balances[player], opening))) fail('balance changed before payout');
   }
   for (const [player, closing] of Object.entries(expected.closingBalances)) {
-    if (!rows.some(row => row.at >= payoutEnd && row.balances[player] === closing)) fail('missing final balance');
+    if (!rows.some(row => row.at >= payoutEnd && row.balances[player] != null && sameDisplayedBalance(row.balances[player], closing))) fail('missing final balance');
   }
   return { announcementAt: announcement!.at, payoutStart, payoutEnd, setupAt: setup.at };
 }

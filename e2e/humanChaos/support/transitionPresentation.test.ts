@@ -154,6 +154,19 @@ describe('Yahtzee concurrent winner and payout', () => {
   it('allows the exact winner plate and payout to begin together', () => {
     expect(assertWinnerPayoutPresentation(rows(), expected).payoutEnd).toBe(300);
   });
+  it('accepts bare local HUD amounts alongside dollar-prefixed remote labels', () => {
+    const r = rows();
+    r.unshift({ ...r[0], at: 90, stages: [], balances: { player: '100' } });
+    r[2].balances = { player: '110' };
+    r[3].balances = { player: '110' };
+    expect(assertWinnerPayoutPresentation(r, expected).setupAt).toBe(400);
+  });
+  for (const balance of ['110', '100 <> 110', 'unknown', '10,0']) {
+    it(`rejects early changed or unreadable local balance: ${balance}`, () => {
+      const r = rows(); r.unshift({ ...r[0], at: 90, stages: [], balances: { player: balance } });
+      expect(() => assertWinnerPayoutPresentation(r, expected)).toThrow('balance changed before payout');
+    });
+  }
   it('preserves Cribbage dedicated announcement timing by default', () => {
     expect(() => assertWinnerPayoutPresentation(rows(), { ...expected, simultaneousAnnouncement: false })).toThrow('preceded');
   });

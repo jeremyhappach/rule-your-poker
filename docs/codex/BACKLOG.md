@@ -6,7 +6,7 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### P1 — Yahtzee setup interrupts the winner payout — September 9
 
-Status: Approved correction implemented; validation and live qualification in progress.
+Status: Animation correction published c83fc7485; winner/payout/setup verified on both browsers. Jeremy production smoke pending.
 Found by the approved healthy two-browser win-sequence harness on
 published `b6bd777e4`, not by Jeremy's production smoke. Exact fake session
 `5ea744ec-d9e6-4fae-bffb-ad05137f74ed`, dealer game
@@ -32,6 +32,26 @@ remains unrun in this window; Horses/SCC remain skipped at Jeremy's direction.
 September 10: Jeremy reopened publication/testing after real-money play ended.
 The correction uses exact ledger completion and a local retained table, with
 no cross-client completion barrier. See YAHTZEE_PAYOUT_COMPLETION_20260910.md.
+
+Full Run Back qualification reached a separate stake-submission defect below.
+
+### P1 — Yahtzee Run Back submits the prior form stake — September 10
+
+Status: Queued. Found during the approved animation-fix browser qualification,
+not Jeremy smoke. Source dealer game be78f677-34d7-4401-8398-e7404cbf663d had
+ante_amount 10; clicking the actual Run Back button committed successor
+3821c91f-9038-4465-92ef-d1fc4b5e433b with ante_amount 3. Expected: Run Back
+repeats the exact prior $10 stake. Fake session e122f50a-3192-4ed4-92a7-c4832db112fc;
+build c83fc7485; trace artifacts/yahtzee-presentation/live-20260910-2119/.
+The test stopped before successor rolls/scores and all test rows/fixtures were
+independently confirmed removed. Animation acceptance passed before this gate.
+
+The existing DealerGameSetup.tsx handleRunBack sets anteAmount from the previous
+config, then immediately invokes handleSimpleAnteGameSubmit; that function
+reads the old render's anteAmount. This source file is unchanged by the animation
+release. Recommended next investigation/correction: pass the exact saved config
+to the submit owner directly and prove Run Back preserves stakes. Other simple
+ante games share that handler but their runtime behavior was not tested.
 
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 
