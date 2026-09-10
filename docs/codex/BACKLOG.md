@@ -37,7 +37,7 @@ Full Run Back qualification reached a separate stake-submission defect below.
 
 ### P1 — Yahtzee Run Back submits the prior form stake — September 10
 
-Status: Approved all-game correction implemented; live qualification pending. Found during the approved animation-fix browser qualification,
+Status: Run Back correction published as f363a6d46. All-seven button/database checks and live Yahtzee pass; custom-Cribbage live qualification is blocked by the separate entry below. Found during the approved animation-fix browser qualification,
 not Jeremy smoke. Source dealer game be78f677-34d7-4401-8398-e7404cbf663d had
 ante_amount 10; clicking the actual Run Back button committed successor
 3821c91f-9038-4465-92ef-d1fc4b5e433b with ante_amount 3. Expected: Run Back
@@ -58,6 +58,23 @@ may have run back as 121 points, and requested consistency tests across all
 seven games, including Horses/SCC. The same stale-form path explains the
 report; exact saved Cribbage mode/target are now included in the correction.
 See RUN_BACK_CONSISTENCY_20260910.md.
+
+### Queued — Cribbage payout completion evidence missing on one browser — September 10
+
+Status: Queued; observed during approved Run Back testing, before Run Back was clicked.
+Build f363a6d46, fake session 5f37458b-698d-417a-aec0-3f2348429be2, dealer game
+9d813cc5-2c98-4f65-80b1-17c6a5d0b595, round 9114d12b-62aa-4dd2-8583-1f3468c7afab.
+Custom target 1, $10, skunks disabled; legal 1–0 win settled exactly +10/−10 once.
+Expected: exact winner, fully completed payout and final balances before setup
+on each browser. Peer captured completion. Host payout started at 1789078369972
+and was absent at 1789078372390 with local phase complete, without any observed
+finished sample; setup followed at 1789078373398. No synchronization violations.
+The evidence cannot yet distinguish an observer miss from a presentation defect.
+Trace and samples: artifacts/run-back-20260910/run-back-cribbage-20260910-2207/.
+The test stopped, evidence is retained, and independent SQL verified deletion
+of the synthetic session and related rows. Investigate the exact chip renderer
+retirement/visibility and observer completion boundary before another qualifying
+run; do not silently relax the assertion. See RUN_BACK_CONSISTENCY_20260910.md.
 
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 

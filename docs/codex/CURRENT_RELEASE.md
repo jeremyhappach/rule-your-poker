@@ -2,11 +2,14 @@
 
 ## September 10 Run Back consistency correction
 
-The approved all-game correction submits saved dealer-game settings directly,
-following Gin's existing pattern. Cribbage's exact custom mode/target and every
-stake/option are preserved. All seven pass actual-button tests and deployed
-RPC rollback checks. Typecheck, production build, 1,564 app tests and 131
-harness tests pass. Live Yahtzee/custom-Cribbage qualification is pending. See RUN_BACK_CONSISTENCY_20260910.md.
+Published product f363a6d46 preserves exact saved settings in all seven games,
+including Cribbage custom mode/target. All seven pass rendered-button tests
+and deployed RPC rollback proofs. Typecheck, build, 1,564 app and 131 harness
+tests pass. Live Yahtzee passes winner, full payout, $10 Run Back and both
+successor turns. Cribbage stopped before Run Back on missing host payout
+completion evidence; settlement was correct. This remains an open qualification
+issue, not a claimed live pass. Both fake sessions were independently verified
+deleted. See RUN_BACK_CONSISTENCY_20260910.md.
 
 ## September 10 Yahtzee payout completion correction
 

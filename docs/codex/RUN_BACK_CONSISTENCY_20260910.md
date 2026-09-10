@@ -1,6 +1,6 @@
 # Run Back consistency — September 10, 2026
 
-Status: Jeremy approved fixing Run Back and checking all seven games. Implementation, typecheck, production build, 1,564 app tests and 131 harness tests pass. Live qualification pending.
+Status: Jeremy approved fixing Run Back and checking all seven games. Implementation, typecheck, production build, 1,564 app tests and 131 harness tests pass. Published product f363a6d46aeb7884f9c3f18ef8a2064034216a53 is Vercel READY and served by holm357.com. Yahtzee live qualification passed; Cribbage stopped on incomplete payout-completion evidence before Run Back.
 
 The retained Yahtzee failure on c83fc7485 submitted $3 instead of the saved $10 stake. Jeremy also reported that a custom-target Cribbage game may have restarted at 121 points. Both are explained by the same source boundary: handleRunBack sets React form state and immediately calls a submit closure holding the previous render's values. Cribbage's Run Back path also never restored its saved mode/target. Holm, 3-5-7 and all three simple dice games used the same stale-form approach. Gin's direct exact-config submission was the accepted reference.
 
@@ -13,3 +13,11 @@ Verification levels are explicit:
 - Live two-browser qualification reuses Yahtzee's legal final scores/full payout/Run Back/two successor turns and adds cribbage-run-back-custom-win: a legal custom-target win, full payout, unchanged Run Back settings, fresh hands and both successor discards. This is not a new full-match campaign for the other five games.
 
 Keep the previous Yahtzee traces and cleanup proof under artifacts/yahtzee-presentation/. New build, tests, runtime evidence and independent cleanup belong under artifacts/run-back-20260910/. Jeremy's production smoke is separate acceptance.
+
+## Published browser results
+
+- Yahtzee: fake session 1b629b61-2a8e-477f-8b22-75d3393526e0; source 1813d50f-e7c9-43e1-b02c-efec54f92ede and successor f83f2e1a-a6df-486c-86b1-1aba9e100415 both ante_amount 10. Both clients passed exact winner/full payout/setup, then each completed one legal roll and score in the fresh successor. Nine observed actions, zero synchronization/coverage/progress violations; maximum peer projection 1,535 ms. Playwright .last-run.json and full evidence both passed. The PowerShell launcher reported a post-run NO_COLOR/FORCE_COLOR warning as a native-command error; the underlying test passed. The Cribbage launcher corrected that local output handling.
+- Cribbage: fake session 5f37458b-698d-417a-aec0-3f2348429be2; source 9d813cc5-2c98-4f65-80b1-17c6a5d0b595, round 9114d12b-62aa-4dd2-8583-1f3468c7afab. Committed custom target 1, ante 10, skunks disabled. Legal 1–0 win settled exactly +10/−10 once. The peer recorded full payout completion; the host stage disappeared without an observed finished sample after roughly 2,418 ms. Both reached setup. This could be observer loss or a presentation boundary problem; the retained evidence does not resolve that distinction. The strict test failed before clicking Run Back, so no live custom-Cribbage successor pass is claimed. Do not retry away this failure or weaken the assertion. Follow-up is queued separately.
+- Independent post-cleanup SQL found zero game, player, round, dealer-game, result, transfer, snapshot and provenance rows for both sessions; the Yahtzee postgame rows were also zero. Neither session retained a harness request.
+
+All-seven Run Back consistency is proven at the rendered-button and deployed configuration-RPC levels. Only Yahtzee has a complete live win-to-Run-Back-to-play pass in this release. Cribbage live qualification remains open, and the other five games did not receive new full-match runs.
