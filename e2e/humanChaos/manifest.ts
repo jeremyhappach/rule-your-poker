@@ -32,6 +32,11 @@ export const CRIBBAGE_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
   assertions: ['legal short-game win; record actual cut/pegging path',
     'exact winner announcement and completed payout on both clients before setup',
     'conserved settlement, changed successor target, fresh cards and both legal discards'],
+}, {
+  id: 'cribbage-run-back-custom-win', family: 'transition', source: 'cribbage', target: 'cribbage',
+  variant: 'unchanged', presentationGame: 'cribbage', requiredFaults: [],
+  assertions: ['legal custom-target win with complete payout', 'Run Back preserves the exact custom mode, target and stakes',
+    'fresh successor hands and both legal discards'],
 }];
 
 export const isHealthyPresentation = (scenario: ChaosScenario) => Boolean(scenario.presentationWinner || scenario.presentationGame);

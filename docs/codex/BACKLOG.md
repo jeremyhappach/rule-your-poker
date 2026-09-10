@@ -37,7 +37,7 @@ Full Run Back qualification reached a separate stake-submission defect below.
 
 ### P1 — Yahtzee Run Back submits the prior form stake — September 10
 
-Status: Queued. Found during the approved animation-fix browser qualification,
+Status: Approved all-game correction implemented; live qualification pending. Found during the approved animation-fix browser qualification,
 not Jeremy smoke. Source dealer game be78f677-34d7-4401-8398-e7404cbf663d had
 ante_amount 10; clicking the actual Run Back button committed successor
 3821c91f-9038-4465-92ef-d1fc4b5e433b with ante_amount 3. Expected: Run Back
@@ -52,6 +52,12 @@ reads the old render's anteAmount. This source file is unchanged by the animatio
 release. Recommended next investigation/correction: pass the exact saved config
 to the submit owner directly and prove Run Back preserves stakes. Other simple
 ante games share that handler but their runtime behavior was not tested.
+
+Jeremy additionally reported September 10 that a custom-point Cribbage game
+may have run back as 121 points, and requested consistency tests across all
+seven games, including Horses/SCC. The same stale-form path explains the
+report; exact saved Cribbage mode/target are now included in the correction.
+See RUN_BACK_CONSISTENCY_20260910.md.
 
 ### P1 — 3-5-7 signed chip helper reveals decisions before 3-2-1-Drop completes — September 8
 

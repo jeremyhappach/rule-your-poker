@@ -1,5 +1,11 @@
 # Repository map
 
+Run Back settings: Game.tsx retains the exact dealer_games.config snapshot;
+src/lib/dealerGameSetup/runBackConfig.ts validates it; DealerGameSetup.tsx
+submits it directly through configure_dealer_game. All-game button tests are
+in DealerGameSetup.runBack.test.tsx; the rollback proof is
+supabase/tests/run_back_config_rollback_proof.sql.
+
 Yahtzee terminal handoff: Game.tsx consumes the presentation-only
 src/lib/canonicalShell/localTerminalPresentation.ts snapshot hold;
 src/lib/yahtzeeTerminalPresentation.ts matches the payout and completion token.

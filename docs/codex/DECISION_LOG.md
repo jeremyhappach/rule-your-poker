@@ -1,5 +1,13 @@
 # Durable decision log
 
+## D-138 — Run Back submits the committed configuration directly
+
+Run Back is an exact repeat of dealer_games.config, identified by session and
+dealer game. It never reconstructs settings through asynchronous form setters
+or replaces missing data with defaults. Cribbage retains its stored mode and
+custom target. All seven games use the existing atomic setup owner; editable
+manual configuration and database rules are unchanged.
+
 ## D-137 — Yahtzee local presentation survives peer progression
 
 A connected browser retains its exact terminal round and seats until its own

@@ -31,6 +31,7 @@ import {
   type DealerGameType,
 } from "@/lib/dealerGameSetupAuthority";
 import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
+import { resolveExactRunBackConfig } from "@/lib/dealerGameSetup/runBackConfig";
 import {
   resolveSelectedCardGameConfig,
   type CardGameDefaults,
@@ -99,6 +100,7 @@ function logDealerGameCreated(
 type SelectionStep = 'game' | 'config';
 
 interface PreviousGameConfig {
+  run_back_config?: Record<string, unknown>;
   game_type: string | null;
   ante_amount: number;
   rollover_amount: number;
@@ -1032,75 +1034,37 @@ const DealerGameSetupInner = ({
   };
 
   const handleRunBack = async () => {
-    if (previousGameType && previousGameConfig) {
+    if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
+    const exactConfig = previousGameConfig?.game_type === previousGameType
+      ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
+    if (!exactConfig) {
+      toast.error('Previous settings are unavailable. Choose the game and settings again.');
+      return;
+    }
+    if (previousGameType === 'gin-rummy') {
+      resetStartupFlight('Gin Run It Back submit start');
+      recordStartupFlight('PHASE TIMELINE', 'Gin Run It Back exact config submit start', {
+        file: 'src/components/DealerGameSetup.tsx', function: 'handleRunBack', caller: 'Run Back button',
+        gameId, gameType: previousGameType, dealerPlayerId,
+      });
+    }
+    setIsSubmitting(true);
+    hasSubmittedRef.current = true;
+    try {
+      // Read only the saved authoritative snapshot. React form setters do not
+      // update the current handler's closure and must never prepare Run Back.
+      const result = await commitSetup(previousGameType as DealerGameType, exactConfig, 'manual-authoritative-run-back');
       if (previousGameType === 'gin-rummy') {
-        if (isSubmitting || hasSubmittedRef.current) return;
-        const exactGinConfig = resolveExactGinRummyRunBackConfig(previousGameConfig);
-        if (!exactGinConfig) {
-          toast.error('Previous Gin Rummy settings are unavailable. Choose the game and settings again.');
-          return;
-        }
-
-        resetStartupFlight('Gin Run It Back submit start');
-        recordStartupFlight('PHASE TIMELINE', 'Gin Run It Back exact config submit start', {
-          file: 'src/components/DealerGameSetup.tsx',
-          function: 'handleRunBack',
-          caller: 'Run Back button',
-          gameId,
-          gameType: previousGameType,
-          dealerPlayerId,
+        recordStartupFlight('STATUS TIMELINE', 'Gin Run It Back exact config committed', {
+          file: 'src/components/DealerGameSetup.tsx', function: 'handleRunBack', caller: 'configure_dealer_game result',
+          gameId, gameType: previousGameType, dealerGameId: result.dealer_game.id, status: result.game.status,
         });
-        setIsSubmitting(true);
-        hasSubmittedRef.current = true;
-        try {
-          const result = await commitSetup(
-            'gin-rummy',
-            exactGinConfig,
-            'manual-authoritative-run-back',
-          );
-          recordStartupFlight('STATUS TIMELINE', 'Gin Run It Back exact config committed', {
-            file: 'src/components/DealerGameSetup.tsx',
-            function: 'handleRunBack',
-            caller: 'configure_dealer_game result',
-            gameId,
-            gameType: previousGameType,
-            dealerGameId: result.dealer_game.id,
-            status: result.game.status,
-          });
-          console.log('[DEALER SETUP] ✅ Gin Run It Back atomic config complete:', result.dealer_game.id);
-        } catch (error) {
-          console.error('[DEALER SETUP] Gin Run It Back atomic setup failed:', error);
-          hasSubmittedRef.current = false;
-          setIsSubmitting(false);
-          toast.error(dealerSetupFailureMessage(error));
-        }
-        return;
       }
-
-      // Use previous config and submit immediately
-      // CRITICAL: Pass the game type directly to submit functions to avoid async state issues
-      setSelectedGameType(previousGameType);
-      setAnteAmount(String(previousGameConfig.ante_amount));
-      setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
-      
-      // Simple ante games only need ante configuration.
-      if (isSimpleAnteGame(previousGameType)) {
-        // Pass game type directly to avoid state race condition
-        handleSimpleAnteGameSubmit(previousGameType);
-      } else {
-        // Card games need full config - set state then submit with explicit game type
-        setLegValue(String(previousGameConfig.leg_value));
-        setLegsToWin(String(previousGameConfig.legs_to_win));
-        setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
-        setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
-        setPotMaxEnabled(previousGameConfig.pot_max_enabled);
-        setPotMaxValue(String(previousGameConfig.pot_max_value));
-        setChuckyCards(String(previousGameConfig.chucky_cards));
-        setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
-        setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
-        // Pass game type directly to avoid state race condition
-        handleSubmit(previousGameType);
-      }
+    } catch (error) {
+      console.error('[RUN BACK] Atomic setup failed:', error);
+      hasSubmittedRef.current = false;
+      setIsSubmitting(false);
+      toast.error(dealerSetupFailureMessage(error));
     }
   };
 

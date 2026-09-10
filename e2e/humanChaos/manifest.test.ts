@@ -11,9 +11,11 @@ describe('human chaos campaign manifest', () => {
     expect(isHealthyPresentation(YAHTZEE_PRESENTATION_MANIFEST[0])).toBe(true);
   });
   it('keeps the short Cribbage presentation gate distinct from chaos and counting coverage', () => {
-    expect(CRIBBAGE_PRESENTATION_MANIFEST).toHaveLength(1);
+    expect(CRIBBAGE_PRESENTATION_MANIFEST).toHaveLength(2);
     expect(CRIBBAGE_PRESENTATION_MANIFEST[0]).toMatchObject({ presentationGame: 'cribbage', requiredFaults: [], variant: 'changed' });
     expect(isHealthyPresentation(CRIBBAGE_PRESENTATION_MANIFEST[0])).toBe(true);
+    expect(CRIBBAGE_PRESENTATION_MANIFEST[1]).toMatchObject({ id: 'cribbage-run-back-custom-win',
+      presentationGame: 'cribbage', requiredFaults: [], variant: 'unchanged' });
   });
   it('keeps both healthy deciding-leg roles separate from the broad chaos inventory', () => {
     expect(THREE_FIVE_SEVEN_PRESENTATION_MANIFEST.map(row => row.presentationWinner)).toEqual(['host', 'peer']);

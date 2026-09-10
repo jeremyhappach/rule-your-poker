@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 10 Run Back consistency correction
+
+The approved all-game correction submits saved dealer-game settings directly,
+following Gin's existing pattern. Cribbage's exact custom mode/target and every
+stake/option are preserved. All seven pass actual-button tests and deployed
+RPC rollback checks. Typecheck, production build, 1,564 app tests and 131
+harness tests pass. Live Yahtzee/custom-Cribbage qualification is pending. See RUN_BACK_CONSISTENCY_20260910.md.
+
 ## September 10 Yahtzee payout completion correction
 
 Published product c83fc7485 passes both browsers' exact winner, full payout,

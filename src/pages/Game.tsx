@@ -384,7 +384,7 @@ import { getHolmPhysicalBuckPosition } from "@/lib/holmBuckOwnership";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { beginCribbageDealerSelection } from "@/lib/cribbageAuthority";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
-import { resolveExactGinRummyRunBackConfig } from "@/lib/ginRummyRunBackConfig";
+import { resolveExactRunBackConfig } from "@/lib/dealerGameSetup/runBackConfig";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
 import {
   buildGinGamesRealtimeRoutingSnapshot,
@@ -1419,6 +1419,7 @@ const Game = () => {
   
   // Track previous game config for "Running it Back" detection
   interface PreviousGameConfig {
+    run_back_config?: Record<string, unknown>;
     game_type: string | null;
     ante_amount: number;
     rollover_amount: number;
@@ -1712,69 +1713,29 @@ const Game = () => {
       double_skunk_threshold: game.double_skunk_threshold ?? undefined,
     };
 
-    // For cribbage, derive game_mode from points_to_win
-    if (gameType === 'cribbage' && game.points_to_win) {
-      if (game.points_to_win === 121) cfg.cribbage_game_mode = 'full';
-      else if (game.points_to_win === 61) cfg.cribbage_game_mode = 'half';
-      else if (game.points_to_win === 45) cfg.cribbage_game_mode = 'super_quick';
-      else if (game.points_to_win === 31) cfg.cribbage_game_mode = 'sprint';
-      else {
-        // Non-standard points = custom mode
-        cfg.cribbage_game_mode = 'custom';
-        cfg.custom_points_to_win = game.points_to_win;
-      }
-    }
-
-    const captureConfig = (exactConfig: PreviousGameConfig) => {
+    if (!dealerGameId) return;
+    const captureKey = [game.id, dealerGameId, gameType].join(':');
+    if (lastCapturedConfigKeyRef.current === captureKey) return;
+    // A new dealer game must not inherit an older same-game Run Back snapshot.
+    setPreviousGameConfig(null);
+    const captureExactConfig = async () => {
+      const { data, error } = await supabase.from('dealer_games')
+        .select('id, game_type, config').eq('id', dealerGameId).eq('session_id', game.id).maybeSingle();
       if (cancelled) return;
-      const key = `${game.id}:${dealerGameId ?? 'no-dealer-game'}:${gameType}:${JSON.stringify(exactConfig)}`;
-      if (lastCapturedConfigKeyRef.current === key) return;
-      lastCapturedConfigKeyRef.current = key;
-
-      setPreviousGameConfig(exactConfig);
-      setPreviousGameConfigGameId(game.id);
-      setSessionGameConfigs((prev) => ({ ...prev, [gameType]: exactConfig }));
-    };
-
-    if (gameType === 'gin-rummy') {
-      if (!dealerGameId) {
-        console.error('[RUN BACK] Cannot capture Gin config without an authoritative dealer-game id');
+      const exactConfig = data?.game_type === gameType ? resolveExactRunBackConfig(gameType, data.config) : null;
+      if (error || !exactConfig) {
+        console.error('[RUN BACK] Committed dealer-game settings are unavailable', { dealerGameId, gameType, error });
         return;
       }
-
-      const captureExactGinConfig = async () => {
-        const { data, error } = await supabase
-          .from('dealer_games')
-          .select('id, config')
-          .eq('id', dealerGameId)
-          .eq('session_id', game.id)
-          .maybeSingle();
-        if (cancelled) return;
-        if (error || !data) {
-          console.error('[RUN BACK] Failed to read the committed Gin dealer-game config:', error);
-          return;
-        }
-
-        const exactGinConfig = resolveExactGinRummyRunBackConfig(data.config);
-        if (!exactGinConfig) {
-          console.error('[RUN BACK] Committed Gin dealer-game config is incomplete:', {
-            dealerGameId,
-          });
-          return;
-        }
-        captureConfig({ ...cfg, ...exactGinConfig });
-      };
-
-      void captureExactGinConfig();
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    captureConfig(cfg);
-    return () => {
-      cancelled = true;
+      const snapshot: PreviousGameConfig = { ...cfg, ...exactConfig, run_back_config: exactConfig };
+      if (gameType === 'cribbage') snapshot.cribbage_game_mode = String(exactConfig.game_mode);
+      lastCapturedConfigKeyRef.current = captureKey;
+      setPreviousGameConfig(snapshot);
+      setPreviousGameConfigGameId(game.id);
+      setSessionGameConfigs(prev => ({ ...prev, [gameType]: snapshot }));
     };
+    void captureExactConfig();
+    return () => { cancelled = true; };
   }, [
     game?.id,
     game?.current_game_uuid,
