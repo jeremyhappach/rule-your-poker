@@ -91,3 +91,46 @@ Jeremy's report and ended session rows establish that the previous real-money
 play has ended. The diagnostic-import correction remains proposed and has not
 been approved or implemented. This usage request authorizes no publication,
 resize, downgrade, migration, production mutation or new scheduled monitor.
+
+## Unfinished lobby sessions and next optimization candidates
+
+Read-only follow-up at 16:54-16:55 UTC September 11 finds six unfinished
+real-money sessions among the latest 50 records fetched by the lobby. Five
+are paused; the unpaused Sep 3 - Jefferson Avenue Cribbage session is in
+human discarding with no scheduled timer. No presence rows are fresh within
+two minutes. Across all historical unfinished real-money sessions, the six
+remaining scheduled timers belong to paused games; none is due and unpaused.
+The broader status-not-session-ended query returns 42 rows, including waiting,
+game-selection and game-over records. This is not a connected-player or
+displayed-lobby count; the earlier 29-row figure is not used for this assessment
+because its exact predicate was not re-established.
+
+The deployed read-only recovery admission function reports false for all
+eight tasks. There are no abandonment watches, task failures or unit failures,
+and no slow-task records in the preceding hour (logging threshold 500 ms).
+Two dispatcher samples took 4 ms and 15 ms. Rotating safety checks still run;
+these observations rule out a currently due-work loop, not every possible
+historical cost or smaller-instance pressure. Ending old sessions is not an
+evidenced performance fix and does not remove them from the newest-50 query.
+No historical session or balance was changed.
+
+The clearest next source-backed candidate is
+`src/lib/runtimeInstrumentation/voicePresenceHeartbeat.ts:writeHeartbeat`:
+every nominal four-second heartbeat first calls network-backed `auth.getUser`,
+then upserts the presence lease. Reusing current auth identity safely could
+remove approximately 900 identity lookups per foreground tab-hour, or 4,500
+for five tabs. These are cadence estimates, not measured savings; browser
+throttling and the existing single-flight guard reduce actual counts. Preserve
+the four-second server-stamped lease, auth changes/sign-out, RLS, route context,
+and existing in-flight coalescing. This remains a proposed correction.
+
+The next measurement candidate is `GameLobby.tsx`: ten-second periodic list
+refresh plus games/players realtime refreshes. `lobbyFetch.ts` loads up to 50
+games, their players, and snapshots for ended games. Potential savings are
+coalescing redundant refreshes and avoiding repeated unchanged history reads,
+while preserving fresh lobby admission, reconnect catch-up and current results.
+The earlier quiet hidden-tab sample does not establish a large overnight cost.
+No additional RAM saving or Free readiness is claimed from these candidates.
+
+Evidence: artifacts/usage-check-20260911/unfinished-session-cost.json.
+Official API behavior: https://supabase.com/docs/reference/javascript/auth-getuser.
