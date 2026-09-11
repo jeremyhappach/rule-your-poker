@@ -2,6 +2,12 @@
 
 ## September 10 Gin payout banner correction
 
+Production build 63786ce94 passes the strict two-browser rerun: both banners
+show +106, both full payout flights complete before setup, exact custom
+settings survive Run Back, and both players complete successor turns.
+Twelve action receipts have zero violations; independent cleanup is complete.
+See GIN_PAYOUT_BANNER_20260910.md.
+
 The approved correction uses payoutAmount from the existing settlement
 response for Gin's winner banner and matching presentation metadata. The
 $10 stake plus per-point winnings now share the database-owned amount;

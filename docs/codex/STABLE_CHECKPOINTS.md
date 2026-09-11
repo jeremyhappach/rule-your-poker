@@ -2,6 +2,15 @@
 
 ## Platform
 
+- September 10 automated Gin banner regression passes on
+  `63786ce94ed42e6190351a921b3fe59ebfdef4cc` (tag
+  `checkpoint/gin-settled-payout-banner-20260910`). Both browsers show the
+  settled +106, complete the full payout before setup, preserve custom Run
+  Back settings and complete both successor turns. Twelve action receipts,
+  zero violations; synthetic data and fixture independently cleaned up.
+  See GIN_PAYOUT_BANNER_20260910.md. This is automated qualification, not
+  Jeremy's smoke or fault/reconnect coverage.
+
 - Harness detector controls (2026-09-05): 34 unit/manifest checks and eight
   isolated two-context browser checks pass. Broken peer/cosmetic/wrong-session/
   blocked-control cases are deliberately rejected; valid retry/local-only and

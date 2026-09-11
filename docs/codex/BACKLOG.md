@@ -6,7 +6,8 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### P2 — Gin winner banner omits per-point winnings — September 10
 
-Status: Approved display correction implemented; published browser rerun pending.
+Status: Resolved; build 63786ce94 passes both published-browser banners, full payout,
+exact Run Back and both successor turns. Independent cleanup verified.
 Originally reproduced on both clients during approved fake-money Gin
 win/payout/Run Back qualification, build 57904bf5338d7a0ccecbdb03799af0c90d9a4c2d.
 
