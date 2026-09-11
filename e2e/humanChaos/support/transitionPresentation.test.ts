@@ -3,6 +3,7 @@ import { assertCompletionEvidence, assertRoundPresentation, type CompletionEvide
 import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
 import { assertWinnerPayoutPresentation } from './winnerPayoutPresentation';
 import { ginWinnerLabelEvidence } from './ginPresentation';
+import { assertHolmReveals } from './holmPresentation';
 
 describe('Gin winner payout label', () => {
   it('rejects the observed stake-only banner when the settled payout includes points', () => {
@@ -18,6 +19,41 @@ describe('Gin winner payout label', () => {
 });
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
+describe('Holm card reveal qualification', () => {
+  const rows = (): TransitionSample[] => [0, 600].map((at, index) => ({
+    at, scope, reveal: null, stages: [], sweepOverlay: false, setup: false, balances: {}, deltas: [], documentVisible: true,
+    holmCards: {
+      community: Array.from({ length: 4 }, (_, i) => ({ id: `round#community-${i}`, face: 'face', flipping: false })),
+      chucky: Array.from({ length: 4 }, (_, i) => ({ id: `round#chucky-${i}`, state: index ? 'revealed' : 'flipping', durationMs: index ? 0 : 600 })),
+    },
+  }));
+  it('accepts four completed normal flips before the exact winner', () => {
+    expect(assertHolmReveals(rows(), scope, 0, 700).flips.map(flip => flip.durationMs)).toEqual([600, 600, 600, 600]);
+  });
+  it('rejects a winner before the last Chucky flip finishes', () => {
+    expect(() => assertHolmReveals(rows(), scope, 0, 500)).toThrow('preceded');
+  });
+  it('rejects shortened flips even when all faces eventually appear', () => {
+    const r = rows(); r[1].at = 100;
+    expect(() => assertHolmReveals(r, scope, 0, 700)).toThrow('shortened');
+  });
+  it('rejects missing community completion', () => {
+    const r = rows(); r[1].holmCards!.community[3].flipping = true;
+    expect(() => assertHolmReveals(r, scope, 0, 700)).toThrow('preceded');
+  });
+  it('rejects a CSS-shortened flip despite an unchanged completion timer', () => {
+    const r = rows(); r[0].holmCards!.chucky[0].durationMs = 100;
+    expect(() => assertHolmReveals(r, scope, 0, 700)).toThrow('shortened');
+  });
+  it('rejects stale hand or card identities', () => {
+    const r = rows(); r[1].holmCards!.chucky[3].id = 'old#chucky-3';
+    expect(() => assertHolmReveals(r, scope, 0, 700)).toThrow('preceded');
+  });
+  it('rejects duplicate card identities', () => {
+    const r = rows(); r[1].holmCards!.chucky[3].id = r[1].holmCards!.chucky[2].id;
+    expect(() => assertHolmReveals(r, scope, 0, 700)).toThrow('Duplicate');
+  });
+});
 describe('completion evidence classification', () => {
   const sample = (reason: CompletionEvidence['reason'], eventScope = scope): TransitionSample => ({
     at: 2600, scope, reveal: null, stages: [], sweepOverlay: false, setup: false,
@@ -185,6 +221,13 @@ describe('Yahtzee concurrent winner and payout', () => {
   ];
   it('allows the exact winner plate and payout to begin together', () => {
     expect(assertWinnerPayoutPresentation(rows(), expected).payoutEnd).toBe(300);
+  });
+  it('requires the exact pot flight for Holm without accepting a seat payout', () => {
+    const r = rows();
+    expect(() => assertWinnerPayoutPresentation(r, { ...expected, payoutKind: 'pot' })).toThrow('missing payout');
+    for (const row of r) for (const stage of row.stages) stage.kind = 'pot';
+    expect(assertWinnerPayoutPresentation(r, { ...expected, payoutKind: 'pot' }).payoutEnd).toBe(300);
+    expect(() => assertWinnerPayoutPresentation(r, expected)).toThrow('missing payout');
   });
   it('accepts bare local HUD amounts alongside dollar-prefixed remote labels', () => {
     const r = rows();

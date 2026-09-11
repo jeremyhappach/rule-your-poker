@@ -27,7 +27,7 @@ import {
   TERMINAL_EXPECTATIONS,
 } from '../terminal/support/terminalActors';
 import { TerminalSettlementProbe } from '../terminal/support/terminalSettlementProbe';
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, GIN_PRESENTATION_MANIFEST, isHealthyPresentation, type ChaosScenario } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, GIN_PRESENTATION_MANIFEST, HOLM_PRESENTATION_MANIFEST, isHealthyPresentation, type ChaosScenario } from './manifest';
 import { finalizeScenarioObserver, observerEvidenceSummary } from './support/scenarioObserver';
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 import { TransitionPresentationObserver } from './support/transitionPresentation';
@@ -35,11 +35,12 @@ import { playDecidingLegPresentation, playSuccessorDecisionPair } from './suppor
 import { playCribbagePresentation, playCribbageSuccessor } from './support/cribbagePresentation';
 import { armYahtzeePresentation, clearYahtzeePresentationFixture, playYahtzeePresentation, playYahtzeeSuccessor } from './support/yahtzeePresentation';
 import { armGinPresentation, clearGinPresentationFixture, playGinPresentation, playGinSuccessor } from './support/ginPresentation';
+import { armHolmPresentation, clearHolmPresentationFixture, configureHolmPresentation, playHolmPresentation, playHolmSuccessor } from './support/holmPresentation';
 
 function selectedTransition(): ChaosScenario {
   const id = process.env.PTOWN_E2E_CAMPAIGN_SCENARIO?.trim();
   if (!id) throw new Error('Set PTOWN_E2E_CAMPAIGN_SCENARIO to one human-chaos transition id.');
-  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, ...CRIBBAGE_PRESENTATION_MANIFEST, ...YAHTZEE_PRESENTATION_MANIFEST, ...GIN_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
+  const scenario = [...HUMAN_CHAOS_MANIFEST, ...THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, ...CRIBBAGE_PRESENTATION_MANIFEST, ...YAHTZEE_PRESENTATION_MANIFEST, ...GIN_PRESENTATION_MANIFEST, ...HOLM_PRESENTATION_MANIFEST].find((candidate) => candidate.id === id);
   if (!scenario || scenario.family !== 'transition') {
     throw new Error(`Unknown human-chaos transition scenario: ${id}`);
   }
@@ -205,6 +206,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     let teardownFailure: AggregateError | null = null;
     let fixtureArmed = false;
     let ginFixtureArmed = false;
+    let holmFixtureArmed = false;
 
     try {
       if (healthyPresentation) {
@@ -231,9 +233,14 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         evidence.fixtureArm = await armGinPresentation(session);
         ginFixtureArmed = true;
       }
+      if (scenario.presentationGame === 'holm-game') {
+        evidence.fixtureArm = await armHolmPresentation(session);
+        holmFixtureArmed = true;
+      }
       await enterDealerGameUnderChaos(session, source, {
         networkFaults: !healthyPresentation,
         configure: async (surface) => {
+          if (scenario.presentationGame === 'holm-game') return configureHolmPresentation(surface);
           if (scenario.presentationGame === 'yahtzee') { await surface.locator('#ante-simple').fill('10'); return; }
           if (scenario.presentationGame === 'gin-rummy') {
             await configureShortestTerminal(source, surface);
@@ -263,6 +270,10 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         await playGinPresentation(session, sourceDealerGameId, probe, presentation, evidence);
         evidence.fixtureClear = await clearGinPresentationFixture(session);
         ginFixtureArmed = false;
+      } else if (scenario.presentationGame === 'holm-game') {
+        await playHolmPresentation(session, sourceDealerGameId, probe, presentation, evidence);
+        evidence.fixtureClear = await clearHolmPresentationFixture(session);
+        holmFixtureArmed = false;
       } else {
         await playDealerGameToTerminal(session, source, probe, sourceDealerGameId);
       }
@@ -299,6 +310,9 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
           expect(evidence[`${role}GinWinnerLabel`], 'Gin winner banner must display the full recorded payout').toMatchObject({ matches: true });
         }
         evidence.status = 'passed';
+      } else if (scenario.presentationGame === 'holm-game') {
+        evidence.successorCaptures = await playHolmSuccessor(session, successorDealerGameId, evidence);
+        evidence.status = 'passed';
       } else {
         await requestLastHand(session, probe);
         const successorResult = await playDealerGameToTerminal(
@@ -322,6 +336,10 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
       primaryError = error;
     } finally {
       const teardownErrors: unknown[] = [];
+      if (holmFixtureArmed) {
+        try { evidence.fixtureClear = await clearHolmPresentationFixture(session); }
+        catch (error) { teardownErrors.push(error); }
+      }
       if (ginFixtureArmed) {
         try { evidence.fixtureClear = await clearGinPresentationFixture(session); }
         catch (error) { teardownErrors.push(error); }

@@ -27,6 +27,8 @@ export type TransitionSample = {
   matchWin?: { id: string; text: string } | null;
   celebration?: string | null;
   completionEvidence?: CompletionEvidence[];
+  holmCards?: { community: Array<{ id: string; face: string; flipping: boolean }>;
+    chucky: Array<{ id: string; state: string; durationMs: number }> };
 };
 export type RoundPresentationExpectation = PresentationScope & {
   actionAt: number;
@@ -173,9 +175,9 @@ export function installTransitionPresentationObserver(): void {
     });
   };
   const sample = () => {
-    const root = document.querySelector('[data-357-presentation-scope], [data-cribbage-presentation-scope], [data-yahtzee-presentation-scope], [data-gin-presentation-scope]');
+    const root = document.querySelector('[data-357-presentation-scope], [data-cribbage-presentation-scope], [data-yahtzee-presentation-scope], [data-gin-presentation-scope], [data-holm-presentation-scope]');
     let scope: PresentationScope | null = null;
-    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? root?.getAttribute('data-cribbage-presentation-scope') ?? root?.getAttribute('data-yahtzee-presentation-scope') ?? root?.getAttribute('data-gin-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
+    try { scope = JSON.parse(root?.getAttribute('data-357-presentation-scope') ?? root?.getAttribute('data-cribbage-presentation-scope') ?? root?.getAttribute('data-yahtzee-presentation-scope') ?? root?.getAttribute('data-gin-presentation-scope') ?? root?.getAttribute('data-holm-presentation-scope') ?? 'null'); } catch { /* malformed identity remains missing */ }
     const revealNode = document.querySelector('[data-357-decision-reveal]');
     const attr = (node: Element, name: string) => node.getAttribute(name) ?? '';
     const reveal = revealNode && visible(revealNode) ? {
@@ -212,7 +214,7 @@ export function installTransitionPresentationObserver(): void {
         finished: completed.has(node), winning: kind === 'award' ? attr(node, 'data-leg-award-winning') === '1' : undefined,
         generation: kind === 'award' ? node.getAttribute('data-leg-award-generation') : undefined };
       stages.push(stage);
-      if (kind === 'payout') for (const element of [node, ...node.children]) {
+      if (kind === 'payout' || kind === 'pot') for (const element of [node, ...node.children]) {
         const declared = (element as HTMLElement).style?.animationDuration ?? '';
         const duration = parseFloat(declared) * (declared.endsWith('ms') ? 1 : 1000);
         if (duration > 0 && !declaredDurations.has(element)) declaredDurations.set(element, duration);
@@ -237,6 +239,16 @@ export function installTransitionPresentationObserver(): void {
     const celebration = document.querySelector('[data-canonical-celebration-id]');
     const state: Omit<TransitionSample, 'at'> = {
       scope, reveal, stages,
+      holmCards: root?.hasAttribute('data-holm-presentation-scope') ? {
+        community: [...document.querySelectorAll('[data-holm-card-presentation]')].filter(visible).map(node => ({
+          id: attr(node, 'data-holm-card-id'), face: attr(node, 'data-holm-card-presentation'),
+          flipping: attr(node, 'data-holm-card-flipping') === '1',
+        })),
+        chucky: [...document.querySelectorAll('[data-holm-chucky-flip-card]')].filter(visible).map(node => ({
+          id: node.closest('[data-holm-card-id]')?.getAttribute('data-holm-card-id') ?? '', state: attr(node, 'data-holm-chucky-flip-state'),
+          durationMs: node.firstElementChild ? parseFloat(getComputedStyle(node.firstElementChild).transitionDuration) * 1000 : 0,
+        })),
+      } : undefined,
       sweepOverlay: [...document.querySelectorAll('[data-sweep-the-legs-overlay]')].some(visible),
       setup: [...document.querySelectorAll('[data-dealer-game-setup-step], [data-canonical-announcement-type="dealer_configuring"]')].some(visible),
       balances,
@@ -267,12 +279,12 @@ export function installTransitionPresentationObserver(): void {
     const animation = event as AnimationEvent;
     if (!/^(flyToTarget|legToPlayer-|__chipTransport_)/.test(animation.animationName)) return;
     const node = (event.target as Element).closest(selectors);
-    if (event.type === 'animationcancel' && node?.getAttribute('data-chip-transport-from') !== 'seat') return;
+    if (event.type === 'animationcancel' && !node?.hasAttribute('data-chip-transport-intent')) return;
     if (node && event.isTrusted) {
       const deadline = Number(node.getAttribute('data-leg-award-completes-at') ?? node.getAttribute('data-chip-transport-completes-at'));
       const sweepDuration = Number(node.getAttribute('data-leg-sweep-flight-duration-ms'));
       // CSS timelines can finish just before the JS retirement clock. For a
-      // seat payout, validate the renderer's declared inline duration first;
+      // chip payout, validate the renderer's declared inline duration first;
       // keep the full retirement deadline for completion on DOM removal.
       const declared = (event.target as HTMLElement).style.animationDuration;
       const declaredMs = declaredDurations.get(event.target as Element)
@@ -283,7 +295,7 @@ export function installTransitionPresentationObserver(): void {
       if (cancelled) {
         endedEarly.add(node);
         reason = 'cancelled-css';
-      } else if (node.getAttribute('data-chip-transport-from') === 'seat' && declaredMs > 0) {
+      } else if (node.hasAttribute('data-chip-transport-intent') && declaredMs > 0) {
         if (animation.elapsedTime * 1000 < declaredMs) {
           endedEarly.add(node);
           reason = 'shortened-css';
@@ -293,7 +305,7 @@ export function installTransitionPresentationObserver(): void {
         }
       } else if ((deadline > 0 && Date.now() < deadline) || (sweepDuration > 0 && animation.elapsedTime * 1000 < sweepDuration)) endedEarly.add(node);
       else if (!endedEarly.has(node)) completed.add(node);
-      if (observed && node.getAttribute('data-chip-transport-from') === 'seat') {
+      if (observed && node.hasAttribute('data-chip-transport-intent')) {
         pendingEvidence.push({ scope: observed.scope, stageId: observed.stage.id, kind: observed.stage.kind,
           reason, at: Date.now(), deadline, lastSeen: observed.lastSeen,
           cssCompletedAt: cssCompletedAt.get(node) ?? null, elapsedMs: animation.elapsedTime * 1000, declaredMs });

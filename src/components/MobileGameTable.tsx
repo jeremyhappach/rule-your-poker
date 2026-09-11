@@ -12553,6 +12553,8 @@ export const MobileGameTable = ({
       onAllowedChange={on357TimerAllowedChange}
     />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent"
+      data-holm-presentation-scope={gameType === 'holm-game' && holmPresentationIdentity
+        ? JSON.stringify({ gameId, ...holmPresentationIdentity }) : undefined}
       data-357-presentation-scope={__is357GameType(gameType) ? JSON.stringify({
         gameId,
         dealerGameId: threeFiveSevenDealerGameScope,

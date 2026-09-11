@@ -15,7 +15,7 @@ export type ChaosScenario = {
   requiredFaults: readonly ('long-haul' | 'offline-rejoin' | 'route-remount' | 'lost-response')[];
   assertions: readonly string[];
   presentationWinner?: 'host' | 'peer';
-  presentationGame?: 'cribbage' | 'yahtzee' | 'gin-rummy';
+  presentationGame?: 'cribbage' | 'yahtzee' | 'gin-rummy' | 'holm-game';
 };
 
 /** Bounded healthy gates precede the fault/End Session rows in the acceptance plan. */
@@ -40,6 +40,14 @@ export const CRIBBAGE_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
 }];
 
 export const isHealthyPresentation = (scenario: ChaosScenario) => Boolean(scenario.presentationWinner || scenario.presentationGame);
+
+export const HOLM_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
+  id: 'holm-presentation-chucky-win-run-back', family: 'transition', source: 'holm-game', target: 'holm-game',
+  variant: 'unchanged', presentationGame: 'holm-game', requiredFaults: [],
+  assertions: ['existing exact-game solo Chucky win fixture and legal Stay/Fold decisions',
+    'complete community and Chucky reveals, exact winner and full pot payout before setup on both clients',
+    'consumed fixture removed, exact Run Back settings, fresh hand identity and both successor decisions'],
+}];
 
 export const GIN_PRESENTATION_MANIFEST: readonly ChaosScenario[] = [{
   id: 'gin-presentation-win-run-back', family: 'transition', source: 'gin-rummy', target: 'gin-rummy',

@@ -350,6 +350,8 @@ export function HolmCanonicalCommunityRow({
                 data-holm-component="COMMUNITY"
                 data-holm-card-id={cardId}
                 data-holm-renderer="HolmCanonicalCommunityRow"
+                data-holm-card-presentation={renderedAs}
+                data-holm-card-flipping={isFlippingThisCard ? '1' : '0'}
                 style={{
                   position: 'relative',
                   width: layout.cardWidth,

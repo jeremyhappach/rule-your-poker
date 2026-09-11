@@ -2,9 +2,15 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, GIN_PRESENTATION_MANIFEST, isHealthyPresentation, validateHumanChaosManifest } from './manifest';
+import { HUMAN_CHAOS_MANIFEST, THREE_FIVE_SEVEN_PRESENTATION_MANIFEST, CRIBBAGE_PRESENTATION_MANIFEST, YAHTZEE_PRESENTATION_MANIFEST, GIN_PRESENTATION_MANIFEST, HOLM_PRESENTATION_MANIFEST, isHealthyPresentation, validateHumanChaosManifest } from './manifest';
 
 describe('human chaos campaign manifest', () => {
+  it('keeps Holm Chucky win and exact Run Back separate from End Session and faults', () => {
+    expect(HOLM_PRESENTATION_MANIFEST).toHaveLength(1);
+    expect(HOLM_PRESENTATION_MANIFEST[0]).toMatchObject({ source: 'holm-game', target: 'holm-game',
+      presentationGame: 'holm-game', requiredFaults: [], variant: 'unchanged' });
+    expect(isHealthyPresentation(HOLM_PRESENTATION_MANIFEST[0])).toBe(true);
+  });
   it('keeps Gin full payout and exact Run Back separate from End Session and faults', () => {
     expect(GIN_PRESENTATION_MANIFEST).toHaveLength(1);
     expect(GIN_PRESENTATION_MANIFEST[0]).toMatchObject({ source: 'gin-rummy', target: 'gin-rummy',

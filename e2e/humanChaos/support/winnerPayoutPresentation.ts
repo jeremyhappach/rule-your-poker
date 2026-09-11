@@ -4,6 +4,7 @@ import { assertCompletionEvidence } from './transitionPresentation';
 export type WinnerPayoutExpectation = PresentationScope & {
   startedAt: number; announcementId: string; simultaneousAnnouncement?: boolean;
   requireCelebration?: boolean; transferIds: string[];
+  payoutKind?: 'payout' | 'pot';
   openingBalances: Record<string, string>; closingBalances: Record<string, string>;
 };
 
@@ -16,7 +17,7 @@ function sameDisplayedBalance(actual: string, expected: string): boolean {
   return Number.isFinite(value) && value === amount(expected);
 }
 
-/** Exact visible winner/transport proof shared by player-to-player payouts. */
+/** Exact visible winner/transport proof for player and pot payouts. */
 export function assertWinnerPayoutPresentation(samples: readonly TransitionSample[], expected: WinnerPayoutExpectation) {
   const fail = (why: string): never => { throw new Error(`Winner presentation ${expected.roundId}: ${why}`); };
   const rows = samples.filter(row => row.at >= expected.startedAt);
@@ -33,7 +34,7 @@ export function assertWinnerPayoutPresentation(samples: readonly TransitionSampl
   let previous = new Set<string>();
   for (const row of rows) {
     const current = new Set<string>();
-    for (const stage of row.stages.filter(stage => stage.kind === 'payout')) {
+    for (const stage of row.stages.filter(stage => stage.kind === (expected.payoutKind ?? 'payout'))) {
       if (!same(row.scope) || !expected.transferIds.includes(stage.id)) fail('stale or unrelated payout');
       current.add(stage.id);
       const entry = flights.get(stage.id);

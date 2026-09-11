@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 10 Holm full-ending qualification
+
+The approved healthy harness covers the existing solo win against Chucky,
+community/Chucky reveals, exact winner, full pot transfer, unchanged Run Back
+and both successor decisions. Product changes are passive DOM markers only;
+rules, settlement and timing are preserved. Local and published evidence is
+recorded in HOLM_PRESENTATION_20260910.md.
+
 ## September 10 Gin payout banner correction
 
 Production build 63786ce94 passes the strict two-browser rerun: both banners
