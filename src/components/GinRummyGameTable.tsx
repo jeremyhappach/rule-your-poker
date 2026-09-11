@@ -2085,15 +2085,17 @@ export const GinRummyGameTable = ({
           handNumber,
         });
         const isTerminalMatch = Boolean(viewState.winnerPlayerId);
+        let terminalPayoutAmount = 0;
 
         if (isTerminalMatch) {
           onTerminalPresentationActiveChange?.(true);
-          await settleGinRummyGame({
+          const settlement = await settleGinRummyGame({
             gameId,
             roundId,
             dealerGameId,
             handNumber,
           });
+          terminalPayoutAmount = settlement.payoutAmount;
         }
 
         // ---- Canonical HAND-RESULT announcement ----
@@ -2178,7 +2180,7 @@ export const GinRummyGameTable = ({
               winnerName,
               winnerScore,
               loserScore,
-              amount: anteAmount,
+              amount: terminalPayoutAmount,
             });
             announcements.emit({
               id: matchWinId,
@@ -2187,7 +2189,7 @@ export const GinRummyGameTable = ({
               payload: {
                 winnerName,
                 score: { winner: winnerScore, loser: loserScore },
-                amount: anteAmount,
+                amount: terminalPayoutAmount,
               },
               // Keep the rail plate alive across the full chip-transfer
               // sequence (~4500ms + teardown). Scope boundary teardown
@@ -2242,14 +2244,14 @@ export const GinRummyGameTable = ({
             const loserIsLocal = loserPlayer.user_id === currentUserId;
             const winnerPos = resolveSeat(winnerPlayer.position, winnerIsLocal);
             const loserPos = resolveSeat(loserPlayer.position, loserIsLocal);
-            setChipAnimAmount(anteAmount);
+            setChipAnimAmount(terminalPayoutAmount);
             setStoredChipPositions({
               winner: winnerPos,
               losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
             });
             traceGinAnnouncement('chip-transfer:start', {
               triggerId: `gin-win-${dealerGameId}-${winnerId}`,
-              amount: anteAmount,
+              amount: terminalPayoutAmount,
             });
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }

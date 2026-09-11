@@ -6,7 +6,8 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### P2 — Gin winner banner omits per-point winnings — September 10
 
-Status: Queued; reproduced on both clients during approved fake-money Gin
+Status: Approved display correction implemented; published browser rerun pending.
+Originally reproduced on both clients during approved fake-money Gin
 win/payout/Run Back qualification, build 57904bf5338d7a0ccecbdb03799af0c90d9a4c2d.
 
 - Observed: a 96–0 win with ante 10 and per_point_value 1 displays
@@ -22,7 +23,7 @@ win/payout/Run Back qualification, build 57904bf5338d7a0ccecbdb03799af0c90d9a4c2
   The second run independently passes exact Run Back and both successor turns;
   its overall strict test remains failed on this banner mismatch.
 - Provenance and evidence: GIN_PRESENTATION_20260910.md;
-  artifacts/gin-presentation-20260910/live/. Product correction not yet approved.
+  artifacts/gin-presentation-20260910/live/. Approved correction: GIN_PAYOUT_BANNER_20260910.md.
 
 ### P1 — Yahtzee setup interrupts the winner payout — September 9
 

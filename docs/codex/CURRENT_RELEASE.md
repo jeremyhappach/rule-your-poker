@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 10 Gin payout banner correction
+
+The approved correction uses payoutAmount from the existing settlement
+response for Gin's winner banner and matching presentation metadata. The
+$10 stake plus per-point winnings now share the database-owned amount;
+there is no extra request or timing change. Local validation and the strict
+two-browser rerun are recorded in GIN_PAYOUT_BANNER_20260910.md.
+
 ## September 10 Gin full-ending qualification
 
 Published 57904bf53 passes both clients' exact winner, full $106 payout,
