@@ -1,5 +1,15 @@
 # Current release and cutover state
 
+## September 11 early-balance RCA
+
+The balance was released after the active reveal deadline on both clients.
+A late clock update briefly revived an expired reveal from a cached animation
+timestamp; the observer used its revised deadline retroactively and mislabeled
+the prior leg charge as early. Actual-renderer local browser reproduction and
+frozen-evidence controls confirm this. See EARLY_BALANCE_RCA_20260911.md.
+A narrow renderer correction is proposed; no application change or deployment
+was made for this RCA. The original production campaign remains failed.
+
 ## September 11 optional diagnostic toast-storm correction
 
 Published e9c9a831c is Vercel READY and its live manifest matched. The scoped

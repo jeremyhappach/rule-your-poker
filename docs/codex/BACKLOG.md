@@ -21,7 +21,17 @@ idle/runtime cost before proposing a separate correction. No product change
 is included in the toast fix. Provenance: TOAST_STORM_FIX_20260911.md and
 failed fake session 29c4a5e6-be55-48d8-81e0-f729a8f54bfe (cleanup verified).
 
-## Queued — 3-5-7 terminal balance before reveal completion — September 11
+## RCA complete — expired 3-5-7 reveal replay — September 11
+
+Approval pending for a narrow renderer correction. The recorded balance was
+34 ms after the host reveal deadline and 45 ms after the peer deadline. A late
+clock estimate revived an expired reveal using a cached frame timestamp; the
+observer then moved the deadline retroactively. Local Chrome reproduces the
+exact owner defect with zero backend requests. See EARLY_BALANCE_RCA_20260911.md
+for evidence, controls, preserve list and acceptance plan. No balance/settlement
+correction is indicated. Original report retained below.
+
+### Original observation — terminal balance assertion
 
 Priority: presentation correctness; next read-only RCA. The approved toast
 qualification reached the fifth legal solo-stay round and its unchanged
