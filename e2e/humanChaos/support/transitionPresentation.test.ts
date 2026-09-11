@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { assertCompletionEvidence, assertRoundPresentation, type CompletionEvidence, type RoundPresentationExpectation, type TransitionSample } from './transitionPresentation';
 import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
 import { assertWinnerPayoutPresentation } from './winnerPayoutPresentation';
+import { ginWinnerLabelEvidence } from './ginPresentation';
+
+describe('Gin winner payout label', () => {
+  it('rejects the observed stake-only banner when the settled payout includes points', () => {
+    expect(ginWinnerLabelEvidence('Winner wins96 — 0 · +10', 106)).toMatchObject({ displayedAmount: 10, matches: false });
+  });
+  it('accepts the full payment independently of the displayed scores', () => {
+    expect(ginWinnerLabelEvidence('Winner wins96 — 0 · +106', 106).matches).toBe(true);
+  });
+  it('rejects missing or unreadable amounts', () => {
+    expect(ginWinnerLabelEvidence('Winner wins96 — 0', 106).matches).toBe(false);
+    expect(ginWinnerLabelEvidence('Winner wins96 — 0 · +unknown', 106).matches).toBe(false);
+  });
+});
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
 describe('completion evidence classification', () => {

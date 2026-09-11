@@ -10,6 +10,11 @@ import type { TransitionPresentationObserver } from './transitionPresentation';
 
 const surface = (phase: string) => `[data-authoritative-action-surface="gin-human-turn:${phase}"]:visible`;
 
+export function ginWinnerLabelEvidence(text: string, expectedAmount: number) {
+  const displayedAmount = Number(text.match(/·\s*\+\$?([\d,]+(?:\.\d+)?)\s*$/)?.[1]?.replaceAll(',', ''));
+  return { text, expectedAmount, displayedAmount, matches: displayedAmount === expectedAmount };
+}
+
 export async function armGinPresentation(session: TwoClientSession) {
   const { data, error } = await session.cleanupClient.rpc('arm_gin_rule_branch_harness' as never,
     { p_game_id: session.gameId, p_profile: 'gin', p_ttl_seconds: 600 } as never);
@@ -142,10 +147,13 @@ export async function playGinPresentation(session: TwoClientSession, dealerGameI
       announcementId: `${session.gameId}:${dealerGameId}:match_win:${winner}`, transferIds: [transfer.id],
       openingBalances: display(batch.opening_balances), closingBalances: display(batch.closing_balances),
     });
+    const label = observers[role].samples.find(row => row.at >= startedAt
+      && row.matchWin?.id === `${session.gameId}:${dealerGameId}:match_win:${winner}`)?.matchWin?.text ?? '';
+    evidence[`${role}GinWinnerLabel`] = ginWinnerLabelEvidence(label, amount);
   }
 }
 
-export async function playGinSuccessor(session: TwoClientSession, dealerGameId: string) {
+export async function playGinSuccessor(session: TwoClientSession, dealerGameId: string, evidence: Record<string, unknown>) {
   const before = await readRound(session, dealerGameId);
   expect(before.hand_number).toBe(1);
   expect(Object.values(before.state.matchScores)).toEqual([0, 0]);
@@ -157,13 +165,24 @@ export async function playGinSuccessor(session: TwoClientSession, dealerGameId: 
     await expect(page.locator('[data-artifact-id="gin.knockDisplay"]:visible')).toHaveCount(0);
   }
   const actions = [];
+  evidence.ginSuccessorActions = actions;
   for (let pass = 0; pass < 2; pass++) {
     const first = await actor(session, 'first-draw');
     actions.push(await act(session, dealerGameId, first.getByRole('button', { name: 'Pass', exact: true })));
   }
+  // The second pass already draws from stock for the nondealer. Prove that
+  // committed opening instead of waiting for an extra, illegal draw control.
+  const opening = await readRound(session, dealerGameId);
+  expect(opening.id).toBe(before.id);
+  expect(opening.state).toMatchObject({ phase: 'playing', turnPhase: 'discard', drawSource: 'stock',
+    currentTurnPlayerId: opening.state.nonDealerPlayerId, lastAction: { type: 'draw_stock', playerId: opening.state.nonDealerPlayerId } });
+  expect(opening.state.playerStates[opening.state.nonDealerPlayerId].hand).toHaveLength(11);
+  evidence.ginSuccessorOpening = opening;
   for (let turn = 0; turn < 2; turn++) {
-    const draw = await actor(session, 'draw');
-    actions.push(await act(session, dealerGameId, draw.page().locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]')));
+    if (turn > 0) {
+      const draw = await actor(session, 'draw');
+      actions.push(await act(session, dealerGameId, draw.page().locator('[data-gin-pile="stock"][data-gin-pile-layer="button"]')));
+    }
     const select = await actor(session, 'select');
     await expect(select.page().locator('[data-gin-hand-card-key]:visible')).toHaveCount(11);
     await select.page().locator('[data-gin-hand-card-key]:not(:disabled):visible').first().click();

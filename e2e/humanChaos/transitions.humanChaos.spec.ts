@@ -292,7 +292,12 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         evidence.successorCaptures = await playYahtzeeSuccessor(session, successorDealerGameId);
         evidence.status = 'passed';
       } else if (scenario.presentationGame === 'gin-rummy') {
-        evidence.successorCaptures = await playGinSuccessor(session, successorDealerGameId);
+        evidence.successorCaptures = await playGinSuccessor(session, successorDealerGameId, evidence);
+        // Finish independent successor checks before reporting a banner-only
+        // mismatch; neither correct settlement nor continuation conceals it.
+        for (const role of ['host', 'peer'] as const) {
+          expect(evidence[`${role}GinWinnerLabel`], 'Gin winner banner must display the full recorded payout').toMatchObject({ matches: true });
+        }
         evidence.status = 'passed';
       } else {
         await requestLastHand(session, probe);

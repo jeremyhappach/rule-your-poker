@@ -4,6 +4,26 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### P2 — Gin winner banner omits per-point winnings — September 10
+
+Status: Queued; reproduced on both clients during approved fake-money Gin
+win/payout/Run Back qualification, build 57904bf5338d7a0ccecbdb03799af0c90d9a4c2d.
+
+- Observed: a 96–0 win with ante 10 and per_point_value 1 displays
+  "96 — 0 · +10" in both canonical winner banners. The exact result, transfer
+  and balances correctly record +106/−106; full payout animation also passes.
+- Expected: the winner banner displays the full authoritative payout, 106.
+- Owner/boundary: GinRummyGameTable.tsx supplies anteAmount to the canonical
+  match_win payload instead of the completed match payout. Recommend using
+  the committed payout for this presentation amount, preserving settlement,
+  transfer ownership, timing and independent per-client completion.
+- Reproduced in sessions dbc1af2e-2f1d-4cca-97b9-ff8ab0b9e6e9 and
+  2928b2f0-d876-45a3-9978-4cc94c507e3b. Both sessions/fixtures were cleaned up.
+  The second run independently passes exact Run Back and both successor turns;
+  its overall strict test remains failed on this banner mismatch.
+- Provenance and evidence: GIN_PRESENTATION_20260910.md;
+  artifacts/gin-presentation-20260910/live/. Product correction not yet approved.
+
 ### P1 — Yahtzee setup interrupts the winner payout — September 9
 
 Status: Animation correction published c83fc7485; winner/payout/setup verified on both browsers. Jeremy production smoke pending.

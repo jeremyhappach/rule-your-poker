@@ -2,12 +2,14 @@
 
 ## September 10 Gin full-ending qualification
 
-The approved healthy Gin row now checks the exact winner, full stake plus
-per-point payout on both browsers, exact Run Back settings and two legal
-successor turns. The existing one-shot fake-money fixture supplies the opening;
-the only app change is an invisible presentation identity attribute. Gameplay,
-settlement and timing are unchanged. Local verification and live qualification
-are recorded in GIN_PRESENTATION_20260910.md.
+Published 57904bf53 passes both clients' exact winner, full $106 payout,
+saved $10/50-point/$1-per-point Run Back settings and two legal successor turns.
+The overall scenario fails on a separate banner discrepancy: both winner
+plates show +10 while settlement and balances correctly show 106. That product
+correction is queued. The initial harness assumption about drawing after two
+passes is corrected; 23 browser controls, 1,564 app tests, 140 final harness
+tests, app typecheck and build pass. Both fake sessions and fixture requests
+are independently verified deleted. See GIN_PRESENTATION_20260910.md.
 
 ## September 10 payout completion observer correction
 
