@@ -9,6 +9,34 @@ Run Back and successor play. Exact results and cleanup evidence are in
 TOAST_STORM_FIX_20260911.md. General old-asset continuity remains a separate
 queued release-hardening item.
 
+## Queued — shared tracing re-enables disabled admin capture — September 11
+
+Discovered during the approved toast-storm browser qualification. Its peer
+requested the optional seam module after the harness disabled capture.
+holmFullForensics.ts:ffRecord calls ensureFullHolmForensicsArmed after manual
+or storage-event disable; shared timer/deal owners call this adapter outside
+Holm. Expected: an explicit recording-off choice should remain off unless
+the accepted tracing policy requires otherwise. Review that policy and its
+idle/runtime cost before proposing a separate correction. No product change
+is included in the toast fix. Provenance: TOAST_STORM_FIX_20260911.md and
+failed fake session 29c4a5e6-be55-48d8-81e0-f729a8f54bfe (cleanup verified).
+
+## Queued — 3-5-7 terminal balance before reveal completion — September 11
+
+Priority: presentation correctness; next read-only RCA. The approved toast
+qualification reached the fifth legal solo-stay round and its unchanged
+observer rejected an early winner balance before reveal completion. Session
+40c5a462-e9a6-4537-90e4-51491d772b87; dealer game
+ba0ed990-acdf-4574-be10-4ccc397eea6a; round
+6225c654-1de6-4d50-aed1-fe8c53a9e471. Expected: displayed balances retain the
+opening amount through the reveal's local completion boundary. The receipt
+records an 18-chip settlement; source ownership and the exact failure boundary
+still need RCA before any correction. The preceding full sequence passed
+these assertions on the same product build, so do not assume deterministic
+failure or financial corruption. Preserve failed traces/screenshots in
+artifacts/toast-storm-20260911/published-qualified/. Guarded fake-money cleanup
+and independent absence checks passed. No timing fix is included in this task.
+
 ## September 11 lobby refresh optimization
 
 Completed and published 1d42d7df8 following Jeremy's request.
