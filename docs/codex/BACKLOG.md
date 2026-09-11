@@ -7,8 +7,9 @@ Priority is ordered. Re-rank only for a current production blocker.
 ### Repeated failure toasts during real-money play — September 10
 
 Status: RCA complete; correction proposed, awaiting approval. Jeremy authorized
-read-only RCA after the 20:26 CDT report; active real-money play remains
-undisturbed. See FAILURE_TOAST_RCA_20260910.md.
+read-only RCA after the 20:26 CDT report. Jeremy subsequently reports both
+nightly sessions ended cleanly with the lobby left open; ended state is
+confirmed. See FAILURE_TOAST_RCA_20260910.md and USAGE_CHECK_20260911.md.
 
 Confirmed: session 41a5f045-b797-4032-82ea-f0c152e36d2c, 3-5-7 dealer game
 187f6896-24e9-4ef4-8a47-38b4c335b46b. Older open build 33c69e736861 requested
@@ -35,8 +36,8 @@ Evidence: artifacts/live-toast-incident-20260910/. The initial passive capture
 was already in successor Yahtzee; direct error rows had null session IDs and
 were recovered by browser correlation and route. No browser interaction,
 testing, deployment, instrumentation change or production mutation occurred.
-Documentation/evidence remain local; publication stays on hold until Jeremy
-says play has ended.
+Documentation/evidence remain local. Play has ended; the proposed correction
+still awaits approval. The usage check does not authorize publication.
 
 ### P2 — Gin winner banner omits per-point winnings — September 10
 

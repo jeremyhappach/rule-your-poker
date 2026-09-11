@@ -1,20 +1,28 @@
 # Current release and cutover state
 
-## September 10 active real-money play — publication/testing hold
+## September 11 interim usage check — prior play ended
 
-Jeremy reported repeated failure toasts at approximately 20:26 CDT
-(01:26 UTC, September 11), said "don't disturb", then authorized read-only RCA.
-Cause established: obsolete 3-5-7 diagnostic asset after publication, with
-uncaught render-time imports repeatedly reaching the generic error toast.
-See FAILURE_TOAST_RCA_20260910.md and the corresponding BACKLOG.md entry.
-Correction is proposed, not implemented. Saved evidence is under
-artifacts/live-toast-incident-20260910/.
+Jeremy reports clean cross-country play on both preceding nights and leaving
+the lobby open afterward. Both matching real-money sessions are now ended.
+Read-only usage shows 0.438 GB poker / 0.450 GB organization egress in the
+current cycle, healthy recovery, and a quiet one-minute presence sample.
+The short-window rate is roughly 3.9 GB/month against the existing 4 GB safety
+target; Free and smaller compute remain unqualified. Supabase projects
+$41.98 for both apps. See USAGE_CHECK_20260911.md.
 
-Do not deploy, run browser tests, change instrumentation or mutate the live
-session while this hold is active. Jeremy's RCA request authorizes read-only
-investigation; it does not lift the live-play hold. Resume disruptive work
-only after Jeremy says play has ended. Previous publication/testing approvals
-do not override this newer instruction.
+The previous live-play hold is resolved by Jeremy's report and ended session
+state. This usage request does not approve the pending diagnostic-import fix,
+publication, tests against production, or a billing/compute change.
+
+## September 10 failure-toast RCA — correction awaiting approval
+
+Jeremy reported repeated failure toasts during real-money play, requested
+no disturbance, then authorized read-only RCA. Cause: an obsolete 3-5-7
+diagnostic asset after publication, with uncaught render-time imports
+repeatedly reaching the generic error toast. See FAILURE_TOAST_RCA_20260910.md
+and BACKLOG.md. Correction is proposed, not implemented. Evidence is under
+artifacts/live-toast-incident-20260910/. Investigation and documentation did
+not change the live game.
 
 ## September 10 Holm full-ending qualification
 
