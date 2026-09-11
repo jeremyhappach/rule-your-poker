@@ -63,7 +63,17 @@ rejected. Exact presence cleanup passed. Candidate screenshots were inspected.
 The candidate embeds the pre-commit base SHA `e2eaebb8911d54c49a71c85f0e30b360948d2768`
 with the approved working-tree change; this is not a published build claim.
 
-Production verification remains pending the approved push.
+Production build `b98d25dfa987d8f3ece28462deb6f15c2f5c8ac0` is published:
+Vercel deployment `dpl_7isVbDJAKtzszb9giwJkWcJtuiLf` is READY and the live
+manifest matches. Local checkpoint tag: `checkpoint/presence-session-20260911`.
+The production rerun passed in 1.1 minutes with both browsers on the exact
+commit and owned backend. Across its 44.049-second window, all 22 heartbeat
+writes succeeded, zero Auth user lookups occurred, and both clients had zero
+presence HTTP failures and page errors. Intervals were 3,967-4,060 ms.
+Cross-user/unauthenticated rejection checks and exact presence-row cleanup
+passed. Both published screenshots were inspected; no game was created,
+joined or changed. This is automated presence/lobby qualification, not a new
+full-game or smaller-compute capacity certification.
 Evidence is under `artifacts/presence-session-20260911/`.
 
 ## Remaining lobby candidate
@@ -72,6 +82,8 @@ The baseline confirms 12 foreground lobby reads per browser in 44 seconds,
 consistent with four refreshes of games, players and ended-session snapshots.
 The source also refreshes on games/players realtime events and focus/resume.
 The lobby already bounds the list to 50 and coalesces in-flight requests.
+The published window captured 14 reads per client; request windows may include
+partial refresh batches. This count alone does not establish duplicate work.
 Further work must distinguish redundant refreshes or unchanged history reads
 from necessary fresh admission/results data. This measurement does not prove
 the same rate for an overnight hidden tab. Lobby behavior remains unchanged.

@@ -2,6 +2,11 @@
 
 ## September 11 presence cost follow-up
 
+Published `b98d25dfa` passes the production two-browser check: 22 recurring
+Auth lookups become zero, all 22 heartbeat writes succeed at the unchanged
+four-second cadence, and authorization/cleanup checks pass. Vercel is READY
+and the live manifest matches. This does not certify Free capacity.
+
 September 11: Jeremy approved the heartbeat identity request reduction and
 measurement before assessing lobby refreshes. Implementation and matched
 browser evidence are recorded in PRESENCE_SESSION_IDENTITY_20260911.md.

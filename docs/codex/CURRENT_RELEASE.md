@@ -2,6 +2,11 @@
 
 ## September 11 presence identity request reduction
 
+Published `b98d25dfa` passes the production two-browser check: 22 recurring
+Auth lookups become zero, all 22 heartbeat writes succeed at the unchanged
+four-second cadence, and authorization/cleanup checks pass. Vercel is READY
+and the live manifest matches. This does not certify Free capacity.
+
 The approved heartbeat change reads the current SDK-managed browser session
 instead of making an Auth user lookup before each upsert. Four-second leases,
 server authorization and gameplay timing are preserved. App typecheck,
