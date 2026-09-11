@@ -11,6 +11,13 @@ queued release-hardening item.
 
 ## Queued — final winning-animation completion evidence — September 11
 
+Read-only investigation started September 11. The actual winning-leg
+renderer calls onComplete from its elapsed-time timer while native CSS is
+still running (local probes: 1,735.9/1,782.8 ms of 1,800 ms). Its sole table
+consumer advances the next stage from that callback. A bounded native-flight
+completion correction is recommended; sweep/pot evidence remains unresolved.
+See WINNING_COMPLETION_RCA_20260911.md. No product change approved yet.
+
 Next verification RCA. Two fresh published 3-5-7 runs on 728844859 passed
 both clients through four rounds and showed correct reveal retirement/leg
 balance timing in the terminal round, but could not prove the full ending.
