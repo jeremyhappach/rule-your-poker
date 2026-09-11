@@ -3,7 +3,7 @@ import { assertCompletionEvidence, assertRoundPresentation, type CompletionEvide
 import { assertCribbagePresentation, type CribbagePresentationExpectation } from './cribbagePresentation';
 import { assertWinnerPayoutPresentation } from './winnerPayoutPresentation';
 import { ginWinnerLabelEvidence } from './ginPresentation';
-import { assertHolmReveals } from './holmPresentation';
+import { assertHolmReveals, holmPayoutBalances } from './holmPresentation';
 
 describe('Gin winner payout label', () => {
   it('rejects the observed stake-only banner when the settled payout includes points', () => {
@@ -20,6 +20,14 @@ describe('Gin winner payout label', () => {
 
 const scope = { gameId: 'game', dealerGameId: 'dealer', roundId: 'round', handNumber: 5, terminalGenerationId: 'generation' };
 describe('Holm card reveal qualification', () => {
+  it('preserves the unaffected player while checking the pot journal against authority', () => {
+    const players = [{ id: 'winner', chips: -10 }, { id: 'loser', chips: -10 }];
+    const batch = { opening_balances: { pot: 20, 'player:winner': -10 }, closing_balances: { pot: 0, 'player:winner': 10 } };
+    expect(holmPayoutBalances(players, batch)).toEqual({
+      opening: { pot: 20, 'player:winner': -10, 'player:loser': -10 }, closing: { pot: 0, 'player:winner': 10, 'player:loser': -10 },
+    });
+    expect(() => holmPayoutBalances([{ id: 'winner', chips: 0 }, players[1]], batch)).toThrow('disagrees');
+  });
   const rows = (): TransitionSample[] => [0, 600].map((at, index) => ({
     at, scope, reveal: null, stages: [], sweepOverlay: false, setup: false, balances: {}, deltas: [], documentVisible: true,
     holmCards: {

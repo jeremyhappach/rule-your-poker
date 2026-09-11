@@ -101,10 +101,22 @@ type Batch = { id: string; opening_balances: Record<string, number>; closing_bal
 const display = (balances: Record<string, number>) => Object.fromEntries(Object.entries(balances)
   .filter(([id]) => id.startsWith('player:')).map(([id, value]) => [id.slice(7), `$${formatChipValue(Math.round(value))}`]));
 
+export function holmPayoutBalances(players: Array<{ id: string; chips: number }>, batch: Pick<Batch, 'opening_balances' | 'closing_balances'>) {
+  const opening = Object.fromEntries(players.map(player => [`player:${player.id}`, player.chips]));
+  if (players.length !== 2 || Object.keys(opening).length !== 2) throw new Error('Holm requires two exact pre-decision player balances');
+  for (const [key, value] of Object.entries(batch.opening_balances)) {
+    if (key.startsWith('player:') && opening[key] !== value) throw new Error('Holm payout opening disagrees with pre-decision balance');
+  }
+  return { opening: { ...opening, ...batch.opening_balances }, closing: { ...opening, ...batch.closing_balances } };
+}
+
 export async function playHolmPresentation(session: TwoClientSession, dealerGameId: string, probe: TerminalSettlementProbe,
   observers: Record<'host' | 'peer', TransitionPresentationObserver>, evidence: Record<string, unknown>) {
   const startedAt = Date.now();
   const before = await readRound(session, dealerGameId);
+  const playersBefore = await session.cleanupClient.from('players').select('id,chips').eq('game_id', session.gameId);
+  if (playersBefore.error) throw playersBefore.error;
+  evidence.holmPlayersBefore = playersBefore.data;
   expect(before.community_cards).toHaveLength(4);
   expect(before.chucky_cards).toHaveLength(4);
   const actions = [];
@@ -115,13 +127,15 @@ export async function playHolmPresentation(session: TwoClientSession, dealerGame
   evidence.terminalResult = result;
   expect(result.winner_player_id).toBe(actions.find(action => action.role === 'host')!.request.p_player_id);
   expect(result.pot_won).toBe(20);
-  const [transfers, game, fixture] = await Promise.all([
+  const [transfers, game, fixture, playersAfter] = await Promise.all([
     session.cleanupClient.from('gameplay_transfer_batches' as never).select('id,opening_balances,closing_balances,transfers')
       .eq('game_id', session.gameId).eq('dealer_game_id', dealerGameId),
     session.cleanupClient.from('games').select('real_money,pending_session_end,status,last_round_result').eq('id', session.gameId).single(),
     session.cleanupClient.rpc('get_target_rule_branch_harness' as never, { p_game_id: session.gameId } as never),
+    session.cleanupClient.from('players').select('id,chips').eq('game_id', session.gameId),
   ]);
-  for (const query of [transfers, game, fixture]) if (query.error) throw query.error;
+  for (const query of [transfers, game, fixture, playersAfter]) if (query.error) throw query.error;
+  evidence.holmPlayersAfter = playersAfter.data;
   expect(game.data).toMatchObject({ real_money: false, pending_session_end: false });
   expect(game.data!.status).not.toBe('session_ended');
   expect(fixture.data as unknown).toMatchObject({ outcome: 'ok', armed: false, profile: 'holm:solo:win', consumedDealerGameId: dealerGameId });
@@ -138,7 +152,13 @@ export async function playHolmPresentation(session: TwoClientSession, dealerGame
   expect(batch.closing_balances[`player:${result.winner_player_id}`] - batch.opening_balances[`player:${result.winner_player_id}`]).toBe(20);
   const sum = (balances: Record<string, number>) => Object.values(balances).reduce((a, b) => a + b, 0);
   expect(sum(batch.closing_balances)).toBeCloseTo(sum(batch.opening_balances), 8);
-  expect(Object.keys(display(batch.opening_balances))).toHaveLength(2);
+  // A pot payout journals only affected endpoints (pot and winner). Carry
+  // the unchanged player's independently read balance through the proof.
+  expect(Object.keys(batch.opening_balances).sort()).toEqual([`player:${result.winner_player_id}`, 'pot'].sort());
+  const balances = holmPayoutBalances(playersBefore.data!, batch);
+  expect(playersAfter.data).toHaveLength(2);
+  for (const player of playersAfter.data!) expect(player.chips).toBe(balances.closing[`player:${player.id}`]);
+  evidence.holmFullBalances = balances;
   const announcementId = `match_win:${session.gameId}:match:${game.data!.last_round_result!.split('|||')[0]}`;
   evidence.holmAnnouncementId = announcementId;
   const scope = { gameId: session.gameId, dealerGameId, roundId: before.id, handNumber: before.hand_number };
@@ -146,7 +166,9 @@ export async function playHolmPresentation(session: TwoClientSession, dealerGame
     await expect.poll(() => observers[role].samples.some(row => row.at >= startedAt && row.setup), { timeout: 60_000 }).toBe(true);
     if (observers[role].overflow) throw new Error('Incomplete Holm presentation observation');
     const presentation = assertWinnerPayoutPresentation(observers[role].samples, { ...scope, startedAt, announcementId,
-      payoutKind: 'pot', requireCelebration: true, transferIds: [transfer.id], openingBalances: display(batch.opening_balances), closingBalances: display(batch.closing_balances) });
+      // Holm releases its winner plate and ledger flight together after the
+      // final reveal. The canonical skunk overlay is Cribbage-only.
+      payoutKind: 'pot', simultaneousAnnouncement: true, transferIds: [transfer.id], openingBalances: display(balances.opening), closingBalances: display(balances.closing) });
     evidence[`${role}HolmPresentation`] = presentation;
     evidence[`${role}HolmReveals`] = assertHolmReveals(observers[role].samples, scope, startedAt, presentation.announcementAt);
   }

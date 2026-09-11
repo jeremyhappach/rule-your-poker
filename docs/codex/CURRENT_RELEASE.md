@@ -2,6 +2,13 @@
 
 ## September 10 Holm full-ending qualification
 
+Published build 33c69e736 passes the fresh two-browser Chucky win and
+Run Back: complete community/Chucky reveals, conserved $20 pot, full payout,
+all eleven saved settings and both successor decisions. Nine action receipts
+have zero violations. All three test sessions/fixtures are independently
+cleaned up; earlier harness failures remain preserved. See
+HOLM_PRESENTATION_20260910.md.
+
 The approved healthy harness covers the existing solo win against Chucky,
 community/Chucky reveals, exact winner, full pot transfer, unchanged Run Back
 and both successor decisions. Product changes are passive DOM markers only;

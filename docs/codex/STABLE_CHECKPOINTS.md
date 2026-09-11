@@ -2,6 +2,15 @@
 
 ## Platform
 
+- September 10 automated Holm healthy ending passes on
+  `33c69e736861a022f812b339d3d2353570332042` (tag
+  `checkpoint/holm-presentation-20260910`). Both browsers finish community
+  and Chucky reveals before the winner, complete the full $20 pot payout,
+  preserve all eleven Run Back settings and record both successor decisions.
+  Nine action receipts, zero violations; all synthetic sessions and fixtures
+  independently cleaned up. See HOLM_PRESENTATION_20260910.md. Earlier adapter
+  failures remain failed; fault/reconnect and Jeremy's smoke remain separate.
+
 - September 10 automated Gin banner regression passes on
   `63786ce94ed42e6190351a921b3fe59ebfdef4cc` (tag
   `checkpoint/gin-settled-payout-banner-20260910`). Both browsers show the
