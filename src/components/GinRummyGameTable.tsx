@@ -2900,7 +2900,8 @@ export const GinRummyGameTable = ({
 
 
   return (
-    <div className="h-full flex flex-col bg-transparent relative">
+    <div className="h-full flex flex-col bg-transparent relative"
+      data-gin-presentation-scope={JSON.stringify({ gameId, dealerGameId, roundId: currentRoundId, handNumber })}>
     <DealRuntimeMaybe
       handContextId={handContextId}
       /* Contract A (refresh/rejoin) — Approved authoritative gate.

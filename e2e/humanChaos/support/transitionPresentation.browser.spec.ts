@@ -57,7 +57,7 @@ test('samples a brief premature setup and ignores hidden markers', async ({ brow
   } finally { await context.close(); }
 });
 
-for (const game of ['cribbage', 'yahtzee']) {
+for (const game of ['cribbage', 'yahtzee', 'gin']) {
 for (const { cancel, shortened } of [{ cancel: false, shortened: false }, { cancel: true, shortened: false }, { cancel: false, shortened: true }]) {
   test(`${game} payout CSS end precedes retirement, cancellation=${cancel}, shortened=${shortened}`, async ({ browser }) => {
     const context = await browser.newContext();

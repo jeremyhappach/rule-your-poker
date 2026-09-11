@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 10 Gin full-ending qualification
+
+The approved healthy Gin row now checks the exact winner, full stake plus
+per-point payout on both browsers, exact Run Back settings and two legal
+successor turns. The existing one-shot fake-money fixture supplies the opening;
+the only app change is an invisible presentation identity attribute. Gameplay,
+settlement and timing are unchanged. Local verification and live qualification
+are recorded in GIN_PRESENTATION_20260910.md.
+
 ## September 10 payout completion observer correction
 
 The approved harness-only correction retains CSS completion across retirement
