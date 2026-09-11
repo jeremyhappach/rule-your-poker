@@ -23,7 +23,8 @@ failed fake session 29c4a5e6-be55-48d8-81e0-f729a8f54bfe (cleanup verified).
 
 ## RCA complete — expired 3-5-7 reveal replay — September 11
 
-Approval pending for a narrow renderer correction. The recorded balance was
+Jeremy approved the narrow renderer correction; implementation and local
+validation pass. Publication/qualification: REVEAL_CLOCK_FIX_20260911.md. The recorded balance was
 34 ms after the host reveal deadline and 45 ms after the peer deadline. A late
 clock estimate revived an expired reveal using a cached frame timestamp; the
 observer then moved the deadline retroactively. Local Chrome reproduces the

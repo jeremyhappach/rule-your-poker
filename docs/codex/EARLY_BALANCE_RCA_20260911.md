@@ -1,6 +1,7 @@
 # September 11 early-balance assertion RCA
 
-Status: RCA complete; correction proposed, not implemented. Jeremy requested
+Status: RCA complete; Jeremy subsequently approved the correction. Current
+implementation and validation are in REVEAL_CLOCK_FIX_20260911.md. Jeremy requested
 read-only RCA after the toast-storm qualification. No application source,
 database rows or deployment were changed during this investigation.
 
@@ -108,5 +109,5 @@ unchanged-offset control, genuinely extended server-window/pause coverage,
 new identity and late-mount coverage, and a genuine early-balance negative
 control. Then run the normal local checks and a fresh two-client fake-money
 3-5-7 reveal/leg/winner/payout/Run Back sequence with guarded cleanup.
-The proposed delivery includes publication after validation; it awaits Jeremy's
-approval under the existing workflow.
+Jeremy subsequently approved this delivery, including publication after
+validation and the fresh guarded fake-money browser qualification.

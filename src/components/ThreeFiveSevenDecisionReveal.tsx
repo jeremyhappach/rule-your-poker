@@ -59,7 +59,7 @@ export function ThreeFiveSevenDecisionReveal({
   dealerPosition,
   cardCount,
 }: Props) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [, setNowMs] = useState(() => Date.now());
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [bubble, setBubble] = useState<BubblePlacement | null>(null);
 
@@ -189,7 +189,9 @@ export function ThreeFiveSevenDecisionReveal({
   }, [clock, currentUserId, dealerPosition, eligiblePlayers, signature]);
 
   if (!clock || typeof document === 'undefined') return null;
-  const frame = deriveThreeFiveSevenDecisionRevealFrame(clock, nowMs);
+  // The animation loop stops at expiry, but updated clocks still render.
+  // Use current time so a cached frame cannot revive an expired reveal.
+  const frame = deriveThreeFiveSevenDecisionRevealFrame(clock, Date.now());
   if (!frame.active || placements.length === 0) return null;
   const stackDepth = revealStackDepthPx(cardCount);
   const bubbleText = frame.beat === 'hold' || frame.beat === 'locked' ? null : frame.beat;

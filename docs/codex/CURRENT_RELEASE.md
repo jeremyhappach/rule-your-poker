@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 11 expired reveal clock correction
+
+Jeremy approved the narrow renderer correction. Local typecheck, 1,592 app
+tests, 150 harness tests, six browser clock controls and the production build
+pass. Financial owners, strict balance checks and animation timing are
+unchanged. Publication and the fresh two-client winner/payout/Run Back
+qualification are recorded in REVEAL_CLOCK_FIX_20260911.md.
+
 ## September 11 early-balance RCA
 
 The balance was released after the active reveal deadline on both clients.
