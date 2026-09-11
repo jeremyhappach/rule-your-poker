@@ -2,7 +2,8 @@
 
 ## September 11 lobby refresh optimization
 
-In delivery following Jeremy's explicit request to optimize lobby refreshes.
+Completed and published 1d42d7df8 following Jeremy's request.
+Production two-browser idle and recovery checks pass.
 The mounted lobby now uses realtime invalidation for every contributing table,
 join/resume catch-up, visible 60-second reconciliation and 10-second failure
 fallback. Build and focused validation pass; browser/publication evidence is
@@ -18,7 +19,7 @@ and the live manifest matches. This does not certify Free capacity.
 September 11: Jeremy approved the heartbeat identity request reduction and
 measurement before assessing lobby refreshes. Implementation and matched
 browser evidence are recorded in PRESENCE_SESSION_IDENTITY_20260911.md.
-The lobby candidate entered delivery on September 11; see the lobby refresh
+The lobby candidate was published and verified on September 11; see the lobby refresh
 entry above and LOBBY_REFRESH_20260911.md for scope and verification.
 No billing change, historical money-session cleanup or diagnostic-import
 correction is included.

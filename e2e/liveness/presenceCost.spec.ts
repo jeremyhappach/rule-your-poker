@@ -127,11 +127,11 @@ test('presence request cost with two authenticated lobby clients', async ({ brow
     }
     if (verifyLobby) {
       const page = pages[0];
-      const waitForList = () => page.waitForResponse(response => {
+      const waitForList = (afterJoin = 0, timeout = 20_000) => page.waitForResponse(response => {
         const url = new URL(response.url());
         return url.pathname === '/rest/v1/players' && url.searchParams.get('game_id')?.startsWith('in.') === true
-          && response.request().method() === 'GET' && response.ok();
-      }, { timeout: 20_000 });
+          && response.request().method() === 'GET' && response.ok() && lobbyJoins > afterJoin;
+      }, { timeout });
       expect([...lobbyBindings.keys()].sort()).toEqual(['games', 'players', 'profiles', 'session_player_snapshots']);
       // Synthetic invalidations exercise the actual subscribed browser handler.
       // Each response comes from the live read-only DB; no game rows are changed.
@@ -155,9 +155,11 @@ test('presence request cost with two authenticated lobby clients', async ({ brow
       await fallback;
       lobbyProofs.push('disconnected realtime retains HTTP fallback');
       const joinsBefore = lobbyJoins;
-      const rejoined = waitForList();
+      const rejoined = waitForList(joinsBefore, 65_000);
       blockRealtime = false;
-      await expect.poll(() => lobbyJoins, { timeout: 20_000 }).toBeGreaterThan(joinsBefore);
+      // A refused connection can consume the SDK's connection timeout before
+      // its next backoff attempt. Observe the rejoin itself, then a fresh read.
+      await expect.poll(() => lobbyJoins, { timeout: 60_000 }).toBeGreaterThan(joinsBefore);
       await rejoined;
       lobbyProofs.push('rejoin catches up');
       await testInfo.attach('lobby-refresh-proofs', { body: JSON.stringify(lobbyProofs, null, 2), contentType: 'application/json' });

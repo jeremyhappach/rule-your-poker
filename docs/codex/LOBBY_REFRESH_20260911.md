@@ -46,7 +46,18 @@ zero page errors. All four server-confirmed table bindings triggered live DB
 reads after synthetic invalidation. Focus catch-up, a browser-only realtime
 interruption with HTTP fallback, and rejoin catch-up passed. Exact test-tab
 presence rows were removed and absence verified. No game rows were mutated.
-Publication verification is pending.
+Published 1d42d7df8409993416c745d769291eb6e70479de is Vercel READY and the holm357.com manifest matches.
+The production browser verification passes; see the published benchmark log
+in artifacts/lobby-refresh-20260911/. Test-owned presence cleanup and both
+lobby screenshots passed inspection. No production game rows were changed.
 The expected steady idle periodic-read reduction is about 83% (six refreshes
 per minute become one). This is not a reduction estimate for realtime-active
 lobbies or proof that Supabase Free has sufficient memory or capacity.
+
+The production sample had zero lobby reads per browser over 44.012 seconds,
+22/22 presence writes, zero Auth lookups and zero page errors. The first
+forced-disconnect check exceeded its 20-second rejoin assertion. A rerun
+allowing the SDK 60 seconds to reconnect passed all paths in 1.7 minutes;
+the 10-second HTTP fallback remained available during the interruption.
+The harness now observes the post-rejoin read without racing the reply.
+No product code changed after the first validated candidate.

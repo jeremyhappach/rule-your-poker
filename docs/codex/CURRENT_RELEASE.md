@@ -2,6 +2,10 @@
 
 ## September 11 lobby refresh optimization
 
+Published 1d42d7df8 is Vercel READY and the live build manifest matches.
+The production two-browser check passes idle savings, all four invalidation
+paths, focus, realtime interruption/fallback and rejoin catch-up.
+
 The requested lobby optimization is locally validated: 1,580 app tests,
 150 harness tests and the production build pass. Healthy visible idle
 reconciliation is once a minute; realtime events, subscription/rejoin and
