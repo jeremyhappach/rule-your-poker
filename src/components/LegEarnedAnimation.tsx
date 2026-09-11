@@ -17,14 +17,16 @@ interface LegEarnedAnimationProps {
 }
 
 export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, presentationCycleId = null, onComplete }: LegEarnedAnimationProps) => {
-  const [visible, setVisible] = useState(false);
+  const [cycle, setCycle] = useState<{
+    id: string; key: number; generation: string | null; winning: boolean; startedAt: number;
+  } | null>(null);
+  const cycleSequenceRef = useRef(0);
   const onCompleteRef = useRef(onComplete);
   const isWinningLegRef = useRef(isWinningLeg);
   // Track the UNIQUE animation cycle - keyed by a timestamp set when animation starts
   const animationCycleIdRef = useRef<string | null>(null);
   // Track if the current cycle has completed (prevents restart on prop flicker)
   const cycleCompletedRef = useRef(false);
-  const activeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A descriptor-owned terminal award may be cancelled/unmounted while the
   // surrounding table changes phase. Remember that immutable generation so a
   // later raw `show=true` cannot create a second visual/complete callback.
@@ -37,9 +39,6 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
 
   // Default target if not provided
   const finalTarget = targetPosition || { top: '85%', left: '65%' };
-
-  // Animation duration - lock at cycle start to prevent mid-flight changes
-  const animationDurationRef = useRef<number | null>(null);
 
   // Format leg value for display
   const formattedValue = legValue > 0 ? `$${legValue}` : 'L';
@@ -69,53 +68,21 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       }
       
       // Start a NEW animation cycle
-      const cycleId = `cycle-${Date.now()}`;
+      const startedAt = Date.now();
+      const cycleId = `cycle-${startedAt}`;
       animationCycleIdRef.current = cycleId;
       activePresentationCycleIdRef.current = presentationCycleId;
       cycleCompletedRef.current = false;
       
-      // Lock duration at cycle start
-      animationDurationRef.current = isWinningLegRef.current ? 1800 : 1500;
-      const animationDuration = animationDurationRef.current;
-      
-      setVisible(true);
-      
-      // Clear any existing timer to prevent double-fires
-      if (activeTimerRef.current) {
-        clearTimeout(activeTimerRef.current);
-      }
-      
-      // Hide after fly-in completes
-      activeTimerRef.current = setTimeout(() => {
-        // Validate this is still the same animation cycle
-        if (animationCycleIdRef.current !== cycleId) {
-          return;
-        }
-        
-        activeTimerRef.current = null;
-        cycleCompletedRef.current = true; // Mark cycle as complete BEFORE any state changes
-        if (presentationCycleId) {
-          consumedPresentationCycleIdRef.current = presentationCycleId;
-        }
-        setVisible(false);
-        onCompleteRef.current?.();
-      }, animationDuration);
-      
-      return () => {
-        if (activeTimerRef.current) {
-          clearTimeout(activeTimerRef.current);
-          activeTimerRef.current = null;
-        }
-      };
+      // Lock the flight and remount its node for each new generation, even
+      // when show remains true. CSS completion owns the local handoff.
+      setCycle({ id: cycleId, key: ++cycleSequenceRef.current,
+        generation: presentationCycleId, winning: isWinningLegRef.current, startedAt });
     } else {
       // A dealer-game boundary may cancel an in-flight award. Treat that as
       // a completed local presentation lifecycle: clear the private cycle
       // lock so the next concrete dealer game can start exactly one new
       // award rather than being permanently rejected as an old cycle.
-      if (activeTimerRef.current) {
-        clearTimeout(activeTimerRef.current);
-        activeTimerRef.current = null;
-      }
       if (presentationCycleId) {
         // Cancellation is terminal for this immutable presentation generation.
         // A new dealer game supplies a different generation id.
@@ -124,27 +91,42 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       animationCycleIdRef.current = null;
       activePresentationCycleIdRef.current = null;
       cycleCompletedRef.current = false;
-      animationDurationRef.current = null;
-      setVisible(false);
+      setCycle(null);
     }
     // `isWinningLeg` is intentionally sampled at the show=true boundary:
     // the duration is locked for that cycle and must not restart mid-flight.
   }, [show, presentationCycleId]);
 
-  if (!visible) return null;
+  if (!cycle) return null;
+  const winning = cycle.winning;
 
   return (
     <>
 
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
-        data-leg-award={animationCycleIdRef.current ?? undefined}
-        data-leg-award-generation={presentationCycleId ?? undefined}
-        data-leg-award-winning={isWinningLeg ? '1' : '0'}
-        data-leg-award-completes-at={animationCycleIdRef.current && animationDurationRef.current != null
-          ? Number(animationCycleIdRef.current.slice('cycle-'.length)) + animationDurationRef.current
-          : undefined}
-        className={`absolute z-50 pointer-events-none ${isWinningLeg ? 'animate-[flyToTargetWinning_1.8s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
+        key={cycle.key}
+        data-leg-award={cycle.id}
+        data-leg-award-generation={cycle.generation ?? undefined}
+        data-leg-award-winning={winning ? '1' : '0'}
+        data-leg-award-completes-at={cycle.startedAt + (winning ? 1800 : 1500)}
+        onAnimationEnd={event => {
+          // Ignore decoration events, cancelled/superseded generations and
+          // synthetic events. Elapsed JS time cannot prove a visible flight ended.
+          if (event.target !== event.currentTarget || !event.nativeEvent.isTrusted ||
+              event.animationName !== (winning ? 'flyToTargetWinning' : 'flyToTarget') ||
+              event.nativeEvent.pseudoElement || !show ||
+              cycle.key !== cycleSequenceRef.current || cycleCompletedRef.current ||
+              animationCycleIdRef.current !== cycle.id ||
+              presentationCycleId !== cycle.generation ||
+              activePresentationCycleIdRef.current !== cycle.generation) return;
+
+          cycleCompletedRef.current = true;
+          if (cycle.generation) consumedPresentationCycleIdRef.current = cycle.generation;
+          setCycle(null);
+          onCompleteRef.current?.();
+        }}
+        className={`absolute z-50 pointer-events-none ${winning ? 'animate-[flyToTargetWinning_1.8s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
         style={{
           // Start position - will animate to target
           top: '40%',
@@ -154,13 +136,13 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       >
         {/* Glow effect during flight - more dramatic for winning leg */}
         <div className={`absolute inset-0 rounded-full blur-lg animate-pulse ${
-          isWinningLeg 
+          winning
             ? 'bg-yellow-400 opacity-90 scale-[2.5]' 
             : 'bg-amber-400 opacity-60 scale-150'
         }`} />
         
         {/* Extra glow rings for winning leg */}
-        {isWinningLeg && (
+        {winning && (
           <>
             <div className="absolute inset-0 bg-orange-400 rounded-full blur-xl opacity-50 scale-[3] animate-ping" />
             <div className="absolute inset-0 bg-yellow-300 rounded-full blur-2xl opacity-40 scale-[4]" />
@@ -169,18 +151,18 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
         
         {/* L chip - bigger for winning leg, shows value if available */}
         <div className={`relative rounded-full bg-white flex items-center justify-center ${
-          isWinningLeg 
+          winning
             ? 'w-14 h-14 border-4 border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.9)]' 
             : 'w-10 h-10 border-3 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.8)]'
         }`}>
-          <span className={`text-slate-800 font-black ${isWinningLeg ? (legValue > 0 ? 'text-lg' : 'text-2xl') : (legValue > 0 ? 'text-xs' : 'text-xl')}`}>
+          <span className={`text-slate-800 font-black ${winning ? (legValue > 0 ? 'text-lg' : 'text-2xl') : (legValue > 0 ? 'text-xs' : 'text-xl')}`}>
             {formattedValue}
           </span>
         </div>
         
         {/* Sparkles during flight - more for winning leg */}
         <div className="absolute -top-1 -right-1 text-sm animate-ping">✨</div>
-        {isWinningLeg && !suppressWinnerOverlay && (
+        {winning && !suppressWinnerOverlay && (
           <>
             <div className="absolute -top-2 -left-1 text-lg animate-ping" style={{ animationDelay: '0.1s' }}>⭐</div>
             <div className="absolute top-0 left-0 text-sm animate-ping" style={{ animationDelay: '0.3s' }}>✨</div>
@@ -189,7 +171,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       </div>
       
       {/* Winner text overlay for winning leg (suppress for 3-5-7 which has its own win animation) */}
-      {isWinningLeg && !suppressWinnerOverlay && (
+      {winning && !suppressWinnerOverlay && (
         <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none animate-[fadeInScale_0.5s_ease-out_0.5s_forwards] opacity-0">
           <div className="bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-500 text-white font-black text-2xl px-6 py-3 rounded-xl shadow-2xl animate-pulse">
             🏆 WINNER! 🏆

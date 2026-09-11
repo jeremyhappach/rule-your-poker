@@ -1,6 +1,8 @@
 # Winning-animation completion investigation — September 11
 
-Status: read-only investigation started when Jeremy asked what is next.
+Status: correction approved September 11; implementation and qualification
+are recorded in WINNING_COMPLETION_FIX_20260911.md. Read-only investigation
+started when Jeremy asked what is next.
 The final-animation completion entry is the highest-priority actionable
 verification blocker. No application or production state was changed.
 
@@ -63,4 +65,5 @@ remaining sweep/pot evidence gap on its own exact owner before changing it.
 The preserved production captures do not contain the native animation's
 currentTime at removal, so this local proof is not presented as a retrospective
 measurement of their exact missing milliseconds. It establishes a concrete
-reachable defect in the same completion owner. Correction awaits approval.
+reachable defect in the same completion owner. Jeremy subsequently approved
+the bounded correction and full published verification.

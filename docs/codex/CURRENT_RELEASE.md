@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 11 leg-award native completion correction
+
+Approved correction replaces the leg award's elapsed-time callback with its
+own native CSS completion. Nine renderer controls, typecheck, 1,592 app tests,
+150 harness tests and the production build pass. Durations and per-client
+progression are preserved. Full published winner/payout/Run Back verification
+is pending. See WINNING_COMPLETION_FIX_20260911.md.
+
 ## September 11 expired reveal clock correction
 
 Published 728844859 is Vercel READY and its public manifest matched. Local
