@@ -9,7 +9,17 @@ Run Back and successor play. Exact results and cleanup evidence are in
 TOAST_STORM_FIX_20260911.md. General old-asset continuity remains a separate
 queued release-hardening item.
 
-## Queued — final winning-animation completion evidence — September 11
+## Completed — native leg-award completion and healthy ending — September 11
+
+Published 70133cc14 passes both clients' full award, sweep, payout, unchanged
+Run Back settings and successor decisions with the strict observer unchanged.
+Seventeen receipts have zero violations; the optional-module fault produces
+zero error toasts. Exact fake-session cleanup is independently verified.
+See WINNING_COMPLETION_FIX_20260911.md. Earlier sweep/pot gaps remain preserved
+as inconclusive historical captures; this pass does not establish their exact
+cause. Adverse delivery/reconnect and Jeremy's smoke remain separate coverage.
+
+### Original investigation and failed captures
 
 Read-only investigation started September 11. The actual winning-leg
 renderer calls onComplete from its elapsed-time timer while native CSS is

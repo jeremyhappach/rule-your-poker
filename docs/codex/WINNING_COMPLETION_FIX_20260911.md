@@ -31,6 +31,42 @@ requests. The original RCA's before-fix truncation evidence is preserved.
 
 Typecheck, all 1,592 app tests, 150 harness tests and the production build pass.
 Published winner/payout/Run Back verification and independent fake-session
-cleanup will be recorded below after publication.
+cleanup pass, as recorded below.
 
 Evidence: artifacts/winning-completion-fix-20260911/.
+
+## Published verification
+
+Product commit 70133cc140be1682ede000f4b2411514a4c99fe4 is Vercel READY
+(dpl_9mb6VJxKL8Qn1QKEZUfd2eZiAUVG). The public manifest and both qualification
+browsers report that exact commit. Local tag:
+checkpoint/leg-award-native-completion-20260911.
+
+The unchanged strict two-browser host-win scenario passes in 1.9 minutes.
+Fake session 80c3272d-9385-4f19-b387-65122526b30b completed five legal rounds.
+Both clients prove reveal completion, the final leg, both losing-leg flights,
+the pot transfer, appropriately released balances, and setup after presentation.
+The terminal result records an $18 payout ($10 leg sweep plus $8 pot), with
+closing balances +$8/-$8. Both Run Back configurations match exactly, including
+three $2 legs, $3 ante, $15 pot maximum, $1 pussy tax and $1 rollover. Both
+clients then complete legal decisions in the new dealer game.
+
+The continuous observer records 17 action receipts, zero violations, zero
+progress failures and no coverage problems. RPC median/p95 is 109/194 ms;
+peer progress median/max is 752/1,226 ms. These bounded measurements do not
+certify all network conditions or smaller database capacity.
+
+The host-only optional module fault (HTTP 200 text/html) makes one request;
+the healthy enabled peer makes one successful request. Both clients record
+zero error toasts and no optional-loader errors through successor play.
+
+Guarded cleanup passed. Independent read-only SQL confirms zero remaining
+games, players, rounds, dealer games and session snapshots for the exact fake
+session. Both pre-cleanup screenshots show fresh successor cards and locked
+decisions; all browser contexts are closed. No historical session was changed.
+
+This run qualifies the healthy host-win path. The earlier failed captures
+remain preserved; their missing sweep/pot evidence is not retroactively called
+a pass or attributed conclusively to the leg timer. No sweep/pot owner or
+observer change was needed for this fresh pass. Adverse delivery, reconnect,
+other winner paths and Jeremy's normal smoke remain separate coverage.

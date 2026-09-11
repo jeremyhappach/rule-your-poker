@@ -5,8 +5,11 @@
 Approved correction replaces the leg award's elapsed-time callback with its
 own native CSS completion. Nine renderer controls, typecheck, 1,592 app tests,
 150 harness tests and the production build pass. Durations and per-client
-progression are preserved. Full published winner/payout/Run Back verification
-is pending. See WINNING_COMPLETION_FIX_20260911.md.
+progression are preserved. Published 70133cc14 is Vercel READY and passes
+both browsers' full final award, sweep, payout, exact Run Back settings and
+successor decisions. Seventeen action receipts have zero violations; the
+optional-module fault produces zero error toasts. Independent cleanup is
+complete. See WINNING_COMPLETION_FIX_20260911.md.
 
 ## September 11 expired reveal clock correction
 

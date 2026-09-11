@@ -2,6 +2,16 @@
 
 ## Platform
 
+- September 11 automated 3-5-7 healthy host-win ending passes on
+  70133cc140be1682ede000f4b2411514a4c99fe4 (tag
+  checkpoint/leg-award-native-completion-20260911). Both browsers complete
+  the final leg, losing-leg sweep and payout, preserve all saved Run Back
+  settings and make successor decisions. Seventeen receipts have zero
+  violations; a host-only diagnostic-module fault produces zero error toasts.
+  Independent fake-session cleanup passes. Earlier failed captures are retained;
+  fault/reconnect coverage and Jeremy's smoke remain separate. See
+  WINNING_COMPLETION_FIX_20260911.md.
+
 - September 10 automated Holm healthy ending passes on
   `33c69e736861a022f812b339d3d2353570332042` (tag
   `checkpoint/holm-presentation-20260910`). Both browsers finish community
