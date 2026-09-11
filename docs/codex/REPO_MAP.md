@@ -231,7 +231,8 @@ the authority over generated declarations.
 
 | Owner | Responsibility |
 |---|---|
-| `src/components/GameLobby.tsx` | Lobby listing, create/join navigation, lobby realtime, admin/settings entry, and completed-session results access. |
+| `src/components/GameLobby.tsx` | Lobby listing, create/join navigation, admin/settings entry, and completed-session results access. |
+| `src/hooks/useLobbyGames.ts` | Mounted lobby request lifecycle, four-table realtime invalidation, join/resume catch-up, visible 60-second reconciliation and 10-second failure fallback. |
 | `src/lib/lobbyFetch.ts:fetchLobbyGames` | Bounded lobby query, player/profile projection, ended-session snapshot lookup, and abort handling. |
 | `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config presentation, ante intent, game startup, game-over continuation, and local Session Ended admission. Waiting-table Start Game calls only `public.begin_session_dealer_selection`; that RPC owns the roster, exact two-player normalization, and `waiting → dealer_selection` transition, while the canonical timer trigger owns the draw. Full snapshots run through `src/lib/serializedAuthoritativeFetch.ts`; burst triggers coalesce and recovery stays armed until a snapshot succeeds. Expiring phase mutations are submitted through `src/lib/gameTimerAuthority.ts`; `src/hooks/useDeadlineEnforcer.ts` is a compatibility no-op rather than a client scheduler. Fresh admission suppresses expired setup/ante UI and sends already-ended or confirmed-missing sessions directly to the lobby. `src/lib/sharedPlayerCards.ts` limits shared `player_cards` reads and empty-hand recovery to Holm and 3-5-7; dedicated-state and dice games never enter that recovery path. |
 | `src/components/PreGameLobby.tsx`, `src/components/WaitingForPlayersTable.tsx` | Pregame and waiting-room presentation inside the persistent table shell. |
@@ -661,7 +662,7 @@ Canonical snapshot identity is
 | `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. Both perform exact authoritative catch-up on every `SUBSCRIBED` edge and central recovery receipt. |
 | `GinRummyGameTable.tsx` | `gin-rummy-${roundId}` watches the current `rounds` row and refetches caller-specific authority on every `SUBSCRIBED` edge and central recovery receipt. |
 | `SessionEndedTablePhase.tsx` | `session-ended-results-${gameId}` watches snapshot INSERTs. |
-| `GameLobby.tsx` | Separate all-event `games` and `players` lobby channels, plus bounded refresh on focus/visibility and every five seconds. |
+| `useLobbyGames.ts` | One channel watches `games`, `players`, `profiles`, and `session_player_snapshots`; immediate invalidation/join/resume catch-up, visible 60-second reconciliation, and 10-second failure fallback. |
 | `ReleaseVersionGate.tsx` | Watches the `system_settings.release_publication` UPDATE, then rechecks the public build manifest. Realtime is lobby-update UX only; the keyed game-route entry boundary independently verifies the manifest before game admission. |
 | Peripheral channels | `useGameChat.ts`, `useChipStackEmoticons.ts`, voice witness/report mounts, maintenance/make-it-take-it settings, debug harness cache, canonical layout config, and Geometry Lab stores. |
 
@@ -768,7 +769,7 @@ Legacy id `opponent_instant_knock` resolves read-only to
   `src/lib/yahtzeeGameLogic.test.ts`,
   `src/lib/yahtzeeSettleGame.test.ts`, and Yahtzee terminal-scope cases in
   `src/lib/canonicalShell/liveTerminalPresentationHold.test.ts`.
-- Lobby: `src/lib/lobbyFetch.test.ts`.
+- Lobby: `src/lib/lobbyFetch.test.ts` and `src/hooks/useLobbyGames.test.ts`.
 - No focused Holm financial-RPC, Gin terminal, Horses rule/terminal, or SCC
   rule/terminal test exists in this checkout. Cribbage and Yahtzee have
   focused client RPC-boundary tests; direct SQL/deployed behavior remains a

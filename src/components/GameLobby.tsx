@@ -1,6 +1,6 @@
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchLobbyGames, LobbyFetchAbortedError } from "@/lib/lobbyFetch";
+import { useState } from "react";
+import { useLobbyGames } from "@/hooks/useLobbyGames";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,17 +86,11 @@ interface GameLobbyProps {
   isMaintenanceMode: boolean;
 }
 
-// A lobby query is presentation data only, but it must not hold the lobby
-// surface forever when a browser transport wedges during a publish/reconnect.
-const LOBBY_FETCH_TIMEOUT_MS = 12_000;
-
 export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
   // Prevent screen from dimming in the lobby
   useWakeLock(true);
   
-  // Always start with empty array - never use cached/restored state
-  const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { games, loading, refresh: fetchGames } = useLobbyGames(userId);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
@@ -110,159 +104,6 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
   const { isTablet } = useDeviceSize();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // A refresh signal may arrive from focus, realtime, or the bounded refresh
-  // interval while a query is already in flight. Keep one authoritative
-  // browser request and coalesce every extra signal into one follow-up fetch;
-  // cancelling the active request can otherwise leave the initial spinner
-  // latched forever during a reconnect burst.
-  const activeAbortRef = useRef<AbortController | null>(null);
-  const refreshQueuedRef = useRef(false);
-  const mountedRef = useRef(false);
-  const lastErrorToastKeyRef = useRef<string | null>(null);
-
-  const fetchGames = useCallback(() => {
-    if (!mountedRef.current) return;
-
-    if (activeAbortRef.current) {
-      refreshQueuedRef.current = true;
-      return;
-    }
-
-    const controller = new AbortController();
-    activeAbortRef.current = controller;
-    let timedOut = false;
-    const timeoutId = window.setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, LOBBY_FETCH_TIMEOUT_MS);
-    const perf = new PerfSession("GameLobby.fetchGames", 300);
-
-    void (async () => {
-      try {
-        const result = await perf.step("lobby.fetch", () =>
-          fetchLobbyGames({ userId, signal: controller.signal }),
-        );
-        if (activeAbortRef.current !== controller || !mountedRef.current) return;
-
-        setGames(result);
-        lastErrorToastKeyRef.current = null;
-        perf.done({ gameCount: result.length });
-      } catch (err) {
-        if (activeAbortRef.current !== controller || !mountedRef.current) return;
-
-        if (timedOut) {
-          const errKey = "lobby-fetch-timeout";
-          if (lastErrorToastKeyRef.current !== errKey) {
-            lastErrorToastKeyRef.current = errKey;
-            toast({
-              title: "Lobby connection timed out",
-              description: "Trying to refresh games again shortly.",
-              variant: "destructive",
-            });
-          }
-          perf.done({ timedOut: true });
-          return;
-        }
-
-        // Abort is only expected while this component is being retired.
-        if (err instanceof LobbyFetchAbortedError || controller.signal.aborted) {
-          perf.done({ aborted: true });
-          return;
-        }
-
-        // Preserve the last successful list on transient failure.
-        const errKey = (err as any)?.code || (err as any)?.message || "unknown";
-        if (lastErrorToastKeyRef.current !== errKey) {
-          lastErrorToastKeyRef.current = errKey;
-          toast({
-            title: "Error",
-            description: "Failed to fetch games",
-            variant: "destructive",
-          });
-        }
-        perf.done({ error: String((err as any)?.message ?? err) });
-      } finally {
-        window.clearTimeout(timeoutId);
-        if (activeAbortRef.current !== controller) return;
-
-        activeAbortRef.current = null;
-        if (!mountedRef.current) return;
-
-        // The lobby is no longer allowed to remain behind a terminal request.
-        setLoading(false);
-        if (refreshQueuedRef.current) {
-          refreshQueuedRef.current = false;
-          fetchGames();
-        }
-      }
-    })();
-  }, [toast, userId]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    setGames([]);
-    setLoading(true);
-
-    fetchGames();
-    checkSuperuser();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchGames();
-        checkSuperuser();
-      }
-    };
-
-    const handleWindowFocus = () => {
-      fetchGames();
-      checkSuperuser();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleWindowFocus);
-
-    const pollingInterval = setInterval(() => {
-      fetchGames();
-    }, 10000);
-
-    const gamesChannel = supabase
-      .channel('games-lobby-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'games' },
-        () => { fetchGames(); },
-      )
-      .subscribe();
-
-    const playersChannel = supabase
-      .channel('players-lobby-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'players' },
-        () => { fetchGames(); },
-      )
-      .subscribe();
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleWindowFocus);
-      clearInterval(pollingInterval);
-      supabase.removeChannel(gamesChannel);
-      supabase.removeChannel(playersChannel);
-      // Cancel any in-flight lobby request when the component unmounts
-      // so a late reply cannot try to setState on an unmounted tree.
-      mountedRef.current = false;
-      refreshQueuedRef.current = false;
-      activeAbortRef.current?.abort();
-      activeAbortRef.current = null;
-    };
-  }, [fetchGames, userId]);
-
-  const checkSuperuser = async () => {
-    // Admin role now sourced from canonical user_roles via useIsAdmin.
-    // Kept as a no-op to preserve existing call sites (visibility/focus refresh).
-  };
 
   const createGame = async () => {
     // Prevent double-clicks

@@ -1,5 +1,13 @@
 # Backlog
 
+## September 11 lobby refresh optimization
+
+In delivery following Jeremy's explicit request to optimize lobby refreshes.
+The mounted lobby now uses realtime invalidation for every contributing table,
+join/resume catch-up, visible 60-second reconciliation and 10-second failure
+fallback. Build and focused validation pass; browser/publication evidence is
+recorded in LOBBY_REFRESH_20260911.md. No game cleanup or billing change.
+
 ## September 11 presence cost follow-up
 
 Published `b98d25dfa` passes the production two-browser check: 22 recurring
@@ -10,9 +18,8 @@ and the live manifest matches. This does not certify Free capacity.
 September 11: Jeremy approved the heartbeat identity request reduction and
 measurement before assessing lobby refreshes. Implementation and matched
 browser evidence are recorded in PRESENCE_SESSION_IDENTITY_20260911.md.
-The lobby candidate remains Queued: foreground baseline has 12 data reads
-per browser in 44 seconds; investigate redundant refreshes/unchanged history
-reads without weakening resume, admission, results or the presence lease.
+The lobby candidate entered delivery on September 11; see the lobby refresh
+entry above and LOBBY_REFRESH_20260911.md for scope and verification.
 No billing change, historical money-session cleanup or diagnostic-import
 correction is included.
 

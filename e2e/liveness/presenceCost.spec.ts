@@ -1,11 +1,12 @@
-import { expect, test, type Page, type Request } from '@playwright/test';
+import { expect, test, type Page, type Request, type WebSocketRoute } from '@playwright/test';
 import { e2eEnvironment } from './support/env';
 import { acquireIdentityLease } from './support/runIsolation';
 
 // Passive lobby-only comparison. No game is created, joined or changed.
 // Use separate output namespaces for the published baseline and candidate.
 test('presence request cost with two authenticated lobby clients', async ({ browser }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
+  const verifyLobby = process.env.PTOWN_E2E_EXPECT_LOBBY_OPTIMIZATION === '1';
   const { player1, player2 } = e2eEnvironment;
   if (!player1 || !player2) throw new Error('Two configured test identities are required.');
   const lease = acquireIdentityLease({ player1, player2 }, {
@@ -19,6 +20,13 @@ test('presence request cost with two authenticated lobby clients', async ({ brow
   }));
   let measuring = false;
   const pendingHeartbeats = new Set<Request>();
+  let lobbySocket: WebSocketRoute | undefined;
+  let blockRealtime = false;
+  let lobbyJoins = 0;
+  let arrayProtocol = false;
+  let lobbyJoinRef: string | null = null;
+  const lobbyBindings = new Map<string, number>();
+  const lobbyProofs: string[] = [];
   // Keep authentication headers only in memory for deleting these tabs' own
   // synthetic presence rows. Never attach headers, tokens or passwords.
   const cleanup = new Map<number, { url: string; headers: Record<string, string>; userId: string; tabId: string }>();
@@ -56,6 +64,29 @@ test('presence request cost with two authenticated lobby clients', async ({ brow
     });
   };
   try {
+    if (verifyLobby) {
+      await pages[0].routeWebSocket(url => url.pathname === '/realtime/v1/websocket', socket => {
+        if (blockRealtime) { void socket.close(); return; }
+        lobbySocket = socket;
+        const server = socket.connectToServer();
+        server.onMessage(message => {
+          // Inspect only binding acknowledgements; never retain auth frames.
+          const raw = JSON.parse(String(message));
+          arrayProtocol = Array.isArray(raw);
+          const frame = arrayProtocol ? { join_ref: raw[0], topic: raw[2], event: raw[3], payload: raw[4] } : raw;
+          if (frame.topic === 'realtime:games-lobby-channel' && frame.event === 'phx_reply') {
+            const bindings = frame.payload?.response?.postgres_changes;
+            if (Array.isArray(bindings)) {
+              lobbyJoins++;
+              lobbyJoinRef = frame.join_ref ?? null;
+              lobbyBindings.clear();
+              for (const binding of bindings) lobbyBindings.set(binding.table, binding.id);
+            }
+          }
+          socket.send(message);
+        });
+      });
+    }
     pages.forEach(capture);
     await Promise.all(pages.map(async (page, index) => {
       const credentials = index === 0 ? player1 : player2;
@@ -92,6 +123,46 @@ test('presence request cost with two authenticated lobby clients', async ({ brow
       expect(observation.errors).toEqual([]);
       expect(observation.pageErrors).toEqual([]);
       if (process.env.PTOWN_E2E_EXPECT_SESSION_HEARTBEAT === '1') expect(observation.authUserRequests).toBe(0);
+      if (verifyLobby) expect(observation.lobbyReads, 'healthy idle has at most one reconciliation batch').toBeLessThanOrEqual(3);
+    }
+    if (verifyLobby) {
+      const page = pages[0];
+      const waitForList = () => page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.pathname === '/rest/v1/players' && url.searchParams.get('game_id')?.startsWith('in.') === true
+          && response.request().method() === 'GET' && response.ok();
+      }, { timeout: 20_000 });
+      expect([...lobbyBindings.keys()].sort()).toEqual(['games', 'players', 'profiles', 'session_player_snapshots']);
+      // Synthetic invalidations exercise the actual subscribed browser handler.
+      // Each response comes from the live read-only DB; no game rows are changed.
+      for (const [table, id] of lobbyBindings) {
+        const refreshed = waitForList();
+        const frame = { topic: 'realtime:games-lobby-channel', event: 'postgres_changes', ref: null,
+          payload: { ids: [id], data: { schema: 'public', table, type: 'UPDATE',
+            commit_timestamp: new Date().toISOString(), columns: [], record: {}, old_record: {} } } };
+        lobbySocket!.send(JSON.stringify(arrayProtocol
+          ? [lobbyJoinRef, null, frame.topic, frame.event, frame.payload] : frame));
+        await refreshed;
+        lobbyProofs.push(`${table} invalidation rereads live DB`);
+      }
+      const focused = waitForList();
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await focused;
+      lobbyProofs.push('focus catches up');
+      blockRealtime = true;
+      const fallback = waitForList();
+      await lobbySocket!.close();
+      await fallback;
+      lobbyProofs.push('disconnected realtime retains HTTP fallback');
+      const joinsBefore = lobbyJoins;
+      const rejoined = waitForList();
+      blockRealtime = false;
+      await expect.poll(() => lobbyJoins, { timeout: 20_000 }).toBeGreaterThan(joinsBefore);
+      await rejoined;
+      lobbyProofs.push('rejoin catches up');
+      await testInfo.attach('lobby-refresh-proofs', { body: JSON.stringify(lobbyProofs, null, 2), contentType: 'application/json' });
+      console.log(JSON.stringify({ lobbyProofs }));
+      expect(observations[0].pageErrors).toEqual([]);
     }
     // A session's client-provided identity must never grant cross-user writes.
     const first = cleanup.get(0)!;

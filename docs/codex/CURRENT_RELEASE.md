@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 11 lobby refresh optimization
+
+The requested lobby optimization is locally validated: 1,580 app tests,
+150 harness tests and the production build pass. Healthy visible idle
+reconciliation is once a minute; realtime events, subscription/rejoin and
+resume still refresh immediately. Failed connections retain the 10-second
+fallback. Hidden lobbies stop list reads. See LOBBY_REFRESH_20260911.md for
+matched browser evidence and publication status.
+
 ## September 11 presence identity request reduction
 
 Published `b98d25dfa` passes the production two-browser check: 22 recurring
@@ -12,7 +21,7 @@ instead of making an Auth user lookup before each upsert. Four-second leases,
 server authorization and gameplay timing are preserved. App typecheck,
 1,570 app tests, 150 harness tests and the production build pass. The matched
 two-browser lobby comparison and publication status are recorded in
-PRESENCE_SESSION_IDENTITY_20260911.md. Lobby optimization remains queued;
+PRESENCE_SESSION_IDENTITY_20260911.md. Lobby optimization is tracked above;
 Free capacity and monthly savings are not certified by this request change.
 
 ## September 11 interim usage check — prior play ended
