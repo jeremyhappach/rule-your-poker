@@ -4,6 +4,33 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation
 
+### Repeated failure toasts during real-money play — September 10
+
+Status: Queued for investigation after play; active real-money session must
+remain undisturbed. Jeremy reported at approximately 20:26 CDT (01:26 UTC,
+September 11): "just encountered spasm failure toasts in this real money
+game. still playing don't disturb". Expected: ordinary play should not produce
+bursts of failure notifications. No stuck play, incorrect balance or exact
+toast wording was reported, so those effects and the cause are unconfirmed.
+
+Two bounded read-only database captures preserved current session metadata
+and existing diagnostic rows without enabling instrumentation. The recent
+real-money session containing Jeremy's authenticated user UUID is
+41a5f045-b797-4032-82ea-f0c152e36d2c. At 01:26:59 UTC it was in Yahtzee,
+dealer game 22e38a0e-ed2a-4fad-abce-0a1da6d121e5, round
+b2f714f0-a50c-410d-a062-50fae963cb41. The preceding 3-5-7 dealer game was
+187f6896-24e9-4ef4-8a47-38b4c335b46b. This identifies investigation context,
+not the game/round that emitted the reported toasts. Existing sampled client
+diagnostics identify build 33c69e736861; do not infer a deployment cause.
+
+Evidence: artifacts/live-toast-incident-20260910/passive-capture.json.
+The bounded sample contains lifecycle/timer diagnostics, not an identified
+toast error. Exact notification text, originating action, event time and
+owner remain to establish. No browser interaction/reload, test session,
+deployment, instrumentation change or production-data mutation was performed.
+Local documentation only; publication stays on hold until Jeremy says play
+has ended. Preserve the real session and existing evidence for RCA.
+
 ### P2 — Gin winner banner omits per-point winnings — September 10
 
 Status: Resolved; build 63786ce94 passes both published-browser banners, full payout,

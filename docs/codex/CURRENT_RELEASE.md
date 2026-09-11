@@ -1,5 +1,17 @@
 # Current release and cutover state
 
+## September 10 active real-money play — publication/testing hold
+
+At approximately 20:26 CDT (01:26 UTC, September 11), Jeremy reported a burst
+of failure toasts while still playing and explicitly said "don't disturb".
+Record: BACKLOG.md, repeated failure toasts during real-money play.
+Existing diagnostics were captured read-only in
+artifacts/live-toast-incident-20260910/passive-capture.json. No cause is
+established. Do not deploy, run browser tests, change instrumentation or mutate
+the live session while this hold is active. Resume active work only after
+Jeremy says play has ended; previous testing/publication approvals do not
+override this newer instruction.
+
 ## September 10 Holm full-ending qualification
 
 Published build 33c69e736 passes the fresh two-browser Chucky win and
