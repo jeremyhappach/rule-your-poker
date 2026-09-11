@@ -4,6 +4,24 @@ import { TransitionPresentationObserver } from './transitionPresentation';
 import { assertHolmReveals } from './holmPresentation';
 import type { ChipEndpointRef } from '../../../src/lib/canonicalShell/GameplaySlotContract';
 
+test('a new hand ante is not classified as a winner payout', async ({ browser }) => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const observer = new TransitionPresentationObserver();
+    await observer.attach(context, page);
+    await page.goto('data:text/html,<div id="root"></div>');
+    await page.evaluate(() => {
+      const root = document.querySelector('#root')!;
+      root.setAttribute('data-357-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'next', handNumber: 2 }));
+      root.innerHTML = `<div data-chip-transport-intent="new-hand-ante" data-chip-transport-from="seat" data-chip-transport-reason="ante" data-chip-transport-variant="default" style="width:30px;height:30px;background:gold"></div>
+        <div data-chip-transport-intent="winner-payout" data-chip-transport-from="seat" data-chip-transport-variant="canonicalWinTransfer" style="width:30px;height:30px;background:gold"></div>`;
+    });
+    await expect.poll(() => observer.samples.some(row => row.stages.some(stage => stage.id === 'winner-payout'))).toBe(true);
+    expect(observer.samples.some(row => row.stages.some(stage => stage.id === 'new-hand-ante'))).toBe(false);
+  } finally { await context.close(); }
+});
+
 for (const shortened of [false, true]) {
 test(`actual Holm Chucky flip renderer: shortened CSS=${shortened}`, async ({ browser }) => {
   const bundle = await build({
@@ -141,7 +159,7 @@ for (const mode of ['css-then-pause', 'pause-without-css-end', 'early-removal', 
         root.setAttribute('data-cribbage-presentation-scope', JSON.stringify({ gameId: 'g', dealerGameId: 'd', roundId: 'r', handNumber: 1 }));
         root.innerHTML = `<style>@keyframes __chipTransport_capture {from{transform:translateX(0)}to{transform:translateX(100px)}}
           ${mode === 'shortened-css' ? '#disc{animation-duration:100ms!important}' : ''}</style>
-          <div data-chip-transport-intent="payout" data-chip-transport-from="seat" data-chip-transport-completes-at="${Date.now() + 650}" style="width:30px;height:30px">
+          <div data-chip-transport-intent="payout" data-chip-transport-from="seat" data-chip-transport-variant="canonicalWinTransfer" data-chip-transport-completes-at="${Date.now() + 650}" style="width:30px;height:30px">
             <div id="disc" style="width:30px;height:30px;background:gold;animation:__chipTransport_capture 500ms linear forwards"></div></div>`;
         const node = root.querySelector('[data-chip-transport-intent]')!;
         const pauseAndRemove = (duration: number) => {

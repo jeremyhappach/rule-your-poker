@@ -2,11 +2,12 @@
 
 ## September 11 toast-storm correction
 
-Approved and implemented; release verification in progress. The five optional
-diagnostic sites no longer allow rejected imports to reach the generic error
-toast or retry every render. Local tests and browser HTML-response regression
-pass; see TOAST_STORM_FIX_20260911.md for release and two-human qualification.
-General old-asset continuity remains a separate queued release-hardening item.
+Implemented and published e9c9a831c. Focused loader/browser regressions pass;
+full production presentation qualification remains incomplete because the
+last run caught an early terminal balance. The prior run reached winner,
+Run Back and successor play. Exact results and cleanup evidence are in
+TOAST_STORM_FIX_20260911.md. General old-asset continuity remains a separate
+queued release-hardening item.
 
 ## September 11 lobby refresh optimization
 

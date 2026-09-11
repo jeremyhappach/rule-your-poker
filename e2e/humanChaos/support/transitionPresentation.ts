@@ -162,7 +162,7 @@ export function installTransitionPresentationObserver(): void {
   const declaredDurations = new WeakMap<Element, number>();
   const pendingEvidence: CompletionEvidence[] = [];
   const observedAwards = new Map<Element, { stage: VisibleStage; scope: PresentationScope | null; end: number; lastSeen: number }>();
-  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="seat"]';
+  const selectors = '[data-leg-award], [data-leg-sweep-flight], [data-chip-transport-intent][data-chip-transport-from="pot"][data-chip-transport-variant="canonicalWinTransfer"], [data-chip-transport-intent][data-chip-transport-from="seat"][data-chip-transport-variant="canonicalWinTransfer"]';
   let previous = '';
   const visible = (node: Element) => {
     for (let parent: Element | null = node; parent; parent = parent.parentElement) {

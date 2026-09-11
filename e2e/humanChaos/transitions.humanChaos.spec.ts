@@ -334,7 +334,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         );
         evidence.status = 'passed';
       }
-      if (diagnosticFault) evidence.optionalDiagnosticFault = await diagnosticFault.verify();
+      if (diagnosticFault) await diagnosticFault.verify(result => { evidence.optionalDiagnosticFault = result; });
     } catch (error) {
       evidence.status = 'failed';
       evidence.error = error instanceof Error ? error.message : String(error);

@@ -2,10 +2,12 @@
 
 ## September 11 optional diagnostic toast-storm correction
 
-Jeremy approved the scoped fix. All five diagnostic sites use one gated,
-failure-contained loader. Local typecheck, 1,592 app tests, 150 harness tests
-and the browser HTML-module regression pass. Publication and healthy
-two-client 3-5-7 qualification are recorded in TOAST_STORM_FIX_20260911.md.
+Published e9c9a831c is Vercel READY and its live manifest matched. The scoped
+optional-loader regression, typecheck, 1,592 app tests and 150 harness tests
+pass. Full production presentation qualification remains incomplete: one
+run reached winner/Run Back/successor play, and a later run caught an early
+terminal balance before reveal completion. All fake sessions were cleaned up.
+See TOAST_STORM_FIX_20260911.md for exact evidence and queued follow-ups.
 Gameplay timing and genuine action errors are unchanged.
 
 ## September 11 lobby refresh optimization

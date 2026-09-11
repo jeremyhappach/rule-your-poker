@@ -25,17 +25,25 @@ export async function armOptionalDiagnosticFault(session: TwoClientSession) {
           .some(node => node.textContent?.includes('An error occurred. Please try again.'))) state.errorToasts++;
       });
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    }, role === 'host');
+    // Shared full-forensics currently re-arms admin capture. Exercise enabled
+    // failure + enabled success here; the isolated browser fixture proves OFF.
+    }, true);
   }
   return {
-    async verify() {
+    async verify(record: (evidence: unknown) => void) {
+      const browserState = await Promise.all([session.hostPage, session.peerPage].map((page: Page) => page.evaluate(() => ({
+        errorToasts: (window as unknown as { __optionalDiagnosticFault: { errorToasts: number } }).__optionalDiagnosticFault.errorToasts,
+        captureEnabled: localStorage.getItem('ptp_wartime_debug_enabled'),
+      }))));
+      const toastCounts = browserState.map(state => state.errorToasts);
+      const result = { requests, errors, toastCounts, browserState, fault: 'host-only HTTP 200 text/html optional module; healthy enabled peer' };
+      record(result);
       expect(requests.host, 'enabled host attempts the unavailable module once across both hands and successor').toBe(1);
-      expect(requests.peer, 'disabled peer never loads optional diagnostics').toBe(0);
+      expect(requests.peer, 'healthy enabled peer loads optional diagnostics once').toBe(1);
+      expect(browserState.map(state => state.captureEnabled)).toEqual(['1', '1']);
       expect(errors, 'optional loading never reaches unhandled page errors').toEqual([]);
-      const toastCounts = await Promise.all([session.hostPage, session.peerPage].map((page: Page) => page.evaluate(() =>
-        (window as unknown as { __optionalDiagnosticFault: { errorToasts: number } }).__optionalDiagnosticFault.errorToasts)));
       expect(toastCounts, 'no generic failure toast during render/deal/round transitions').toEqual([0, 0]);
-      return { requests, errors, toastCounts, fault: 'host-only HTTP 200 text/html optional module' };
+      return result;
     },
   };
 }
