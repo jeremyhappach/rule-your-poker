@@ -32,6 +32,7 @@ import { finalizeScenarioObserver, observerEvidenceSummary } from './support/sce
 import { capturePreCleanupScreenshots, persistScenarioEvidence } from '../liveness/support/scenarioArtifacts';
 import { TransitionPresentationObserver } from './support/transitionPresentation';
 import { playDecidingLegPresentation, playSuccessorDecisionPair } from './support/threeFiveSevenPresentationDriver';
+import { armOptionalDiagnosticFault } from './support/optionalDiagnosticFault';
 import { playCribbagePresentation, playCribbageSuccessor } from './support/cribbagePresentation';
 import { armYahtzeePresentation, clearYahtzeePresentationFixture, playYahtzeePresentation, playYahtzeeSuccessor } from './support/yahtzeePresentation';
 import { armGinPresentation, clearGinPresentationFixture, playGinPresentation, playGinSuccessor } from './support/ginPresentation';
@@ -192,6 +193,8 @@ async function waitForPlayableTransitionAction(
 test.describe('two-human cross-country dealer-game transition campaign', () => {
   test('selected transition retains only successor state', async ({ browser }, info) => {
     const scenario = selectedTransition();
+    const optionalDiagnosticFault = process.env.PTOWN_E2E_OPTIONAL_DIAGNOSTIC_FAULT === 'html';
+    if (optionalDiagnosticFault && !scenario.presentationWinner) throw new Error('Optional diagnostic fault requires the bounded 3-5-7 presentation scenario.');
     const healthyPresentation = isHealthyPresentation(scenario);
     test.setTimeout((healthyPresentation ? 15 : 45) * 60_000);
     const credentials = requireTwoPlayerEnvironment();
@@ -209,6 +212,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
     let holmFixtureArmed = false;
 
     try {
+      const diagnosticFault = optionalDiagnosticFault ? await armOptionalDiagnosticFault(session) : null;
       if (healthyPresentation) {
         await Promise.all([
           presentation.host.attach(session.hostContext, session.hostPage),
@@ -330,6 +334,7 @@ test.describe('two-human cross-country dealer-game transition campaign', () => {
         );
         evidence.status = 'passed';
       }
+      if (diagnosticFault) evidence.optionalDiagnosticFault = await diagnosticFault.verify();
     } catch (error) {
       evidence.status = 'failed';
       evidence.error = error instanceof Error ? error.message : String(error);

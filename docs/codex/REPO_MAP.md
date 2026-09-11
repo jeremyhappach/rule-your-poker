@@ -735,6 +735,10 @@ The separate database-backed 3-5-7 wartime stream is gated by
 enabled, the mounted route must currently own a 3-5-7 game, and scoped events
 must match that game id. `Game.tsx` publishes that route context and keeps its
 diagnostic timer wrappers stable across ordinary renders.
+The five H1/R3-to-H2/R1 optional diagnostic sites share
+`src/lib/threeFiveSeven/wartime/optionalSeamDiagnostics.ts`: gate before load,
+one page-local attempt, contained failures, and a post-load game/dealer scope
+check. Failed optional loads never retry or reach the gameplay error toast.
 
 | Game | Profiles excluding `none` |
 |---|---|

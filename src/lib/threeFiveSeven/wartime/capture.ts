@@ -31,8 +31,9 @@ export function setWartimeActiveGameContext(context: WartimeActiveGameContext | 
   activeGameContext = context;
 }
 
-export function isWartimeCaptureEnabled(eventGameId?: string | null): boolean {
+export function isWartimeCaptureEnabled(eventGameId?: string | null, eventDealerGameId?: string | null): boolean {
   if (typeof window === 'undefined' || !activeGameContext) return false;
+  if (eventDealerGameId && eventDealerGameId !== activeGameContext.dealerGameId) return false;
   return shouldCaptureWartime({
     explicitlyEnabled: activeGameContext.enabled,
     activeGameId: activeGameContext.gameId,

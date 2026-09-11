@@ -1,3 +1,4 @@
+import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { createAuthoritativeRecoveryScheduler } from "@/lib/authoritativeRecoveryScheduler";
 import { createDecisionProvenance, type DecisionInput } from "@/lib/decisionProvenance";
 import { executeDiceRequest } from "@/lib/diceRequestRecovery";
@@ -4260,9 +4261,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 const nextHand = (newData as any)?.total_hands ?? prevHand;
                 const nextRoundNum = (newData as any)?.next_round_number ?? null;
                 if (isThreeFiveSeven && prevHand === 1 && prevRound === 3) {
-                  void (async () => {
-                    const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-                    const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+                  withH1r3H2r1Diagnostics({ gameId: game?.id, dealerGameId: game?.current_game_uuid }, (mod, sites) => {
                     mod.noteH1r3CompletionObserved((game as any)?.current_game_uuid ?? null);
                     mod.emitH1r3ToH2r1({
                       eventName: 'h1r3.completion_observed',
@@ -4284,7 +4283,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       },
                       forceEmit: true,
                     });
-                  })();
+                  });
                 }
               } catch { /* fire-and-forget */ }
             } else {

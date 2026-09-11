@@ -1,3 +1,4 @@
+import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { resolveTransportCardFace } from '@/lib/cardGames/resolvedCardFace';
 /**
  * ThreeFiveSevenDealOrchestrator — Wave 3 canonical staged deal for 3-5-7.
@@ -523,9 +524,7 @@ export function ThreeFiveSevenDealOrchestrator({
       const hNum = handNumberStr ? Number(handNumberStr) : null;
       const rNum = roundStr ? Number(roundStr) : null;
       if (hNum !== null && hNum >= 2 && rNum === 1) {
-        void (async () => {
-          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+        withH1r3H2r1Diagnostics({ dealerGameId }, (mod, sites) => {
           mod.emitH1r3ToH2r1({
             eventName: 'h2r1.deal_transport_armed',
             sourceSiteId: sites.SRC.H2R1_DEAL_TRANSPORT_ARMED.id,
@@ -547,7 +546,7 @@ export function ThreeFiveSevenDealOrchestrator({
             },
             forceEmit: true,
           });
-        })();
+        });
       }
     } catch { /* fire-and-forget */ }
 
@@ -1180,9 +1179,7 @@ export function Use357SelfHand<T>({
           const rNumMatch = baseHandContextId?.match(/#r(\d+)$/);
           const rNum = rNumMatch ? Number(rNumMatch[1]) : null;
           if (hNum !== null && hNum >= 2 && rNum === 1) {
-            void (async () => {
-              const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-              const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+            withH1r3H2r1Diagnostics({ dealerGameId }, (mod, sites) => {
               mod.noteH2r1DealTransportSettled(dealerGameId ?? null);
               mod.emitH1r3ToH2r1({
                 eventName: 'h2r1.deal_transport_settled',
@@ -1199,7 +1196,7 @@ export function Use357SelfHand<T>({
                 },
                 forceEmit: true,
               });
-            })();
+            });
           }
         } catch { /* fire-and-forget */ }
       }

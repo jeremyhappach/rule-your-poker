@@ -1,5 +1,13 @@
 # Backlog
 
+## September 11 toast-storm correction
+
+Approved and implemented; release verification in progress. The five optional
+diagnostic sites no longer allow rejected imports to reach the generic error
+toast or retry every render. Local tests and browser HTML-response regression
+pass; see TOAST_STORM_FIX_20260911.md for release and two-human qualification.
+General old-asset continuity remains a separate queued release-hardening item.
+
 ## September 11 lobby refresh optimization
 
 Completed and published 1d42d7df8 following Jeremy's request.
@@ -30,7 +38,7 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### Repeated failure toasts during real-money play — September 10
 
-Status: RCA complete; correction proposed, awaiting approval. Jeremy authorized
+Status: correction approved September 11; see the current toast-storm entry above. Jeremy authorized
 read-only RCA after the 20:26 CDT report. Jeremy subsequently reports both
 nightly sessions ended cleanly with the lobby left open; ended state is
 confirmed. See FAILURE_TOAST_RCA_20260910.md and USAGE_CHECK_20260911.md.
@@ -60,8 +68,7 @@ Evidence: artifacts/live-toast-incident-20260910/. The initial passive capture
 was already in successor Yahtzee; direct error rows had null session IDs and
 were recovered by browser correlation and route. No browser interaction,
 testing, deployment, instrumentation change or production mutation occurred.
-Documentation/evidence remain local. Play has ended; the proposed correction
-still awaits approval. The usage check does not authorize publication.
+Documentation/evidence remain local. Play has ended; Jeremy approved the correction September 11. The usage check does not authorize publication.
 
 ### P2 — Gin winner banner omits per-point winnings — September 10
 

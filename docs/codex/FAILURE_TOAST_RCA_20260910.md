@@ -1,8 +1,8 @@
 # September 10 real-money failure-toast RCA
 
-Status: cause established read-only September 10 CDT / September 11 UTC.
-Correction is proposed, not implemented. The live-play publication/testing
-hold remains active. Jeremy requested RCA after reporting the toast burst.
+Status: original read-only RCA retained below. Play has ended and Jeremy
+explicitly approved the correction September 11. Implementation and current
+verification are recorded in TOAST_STORM_FIX_20260911.md.
 
 ## Conclusion
 

@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 11 optional diagnostic toast-storm correction
+
+Jeremy approved the scoped fix. All five diagnostic sites use one gated,
+failure-contained loader. Local typecheck, 1,592 app tests, 150 harness tests
+and the browser HTML-module regression pass. Publication and healthy
+two-client 3-5-7 qualification are recorded in TOAST_STORM_FIX_20260911.md.
+Gameplay timing and genuine action errors are unchanged.
+
 ## September 11 lobby refresh optimization
 
 Published 1d42d7df8 is Vercel READY and the live build manifest matches.
@@ -42,13 +50,13 @@ The previous live-play hold is resolved by Jeremy's report and ended session
 state. This usage request does not approve the pending diagnostic-import fix,
 publication, tests against production, or a billing/compute change.
 
-## September 10 failure-toast RCA — correction awaiting approval
+## September 10 failure-toast RCA — approved September 11
 
 Jeremy reported repeated failure toasts during real-money play, requested
 no disturbance, then authorized read-only RCA. Cause: an obsolete 3-5-7
 diagnostic asset after publication, with uncaught render-time imports
 repeatedly reaching the generic error toast. See FAILURE_TOAST_RCA_20260910.md
-and BACKLOG.md. Correction is proposed, not implemented. Evidence is under
+and BACKLOG.md. Correction was approved September 11; see the current release entry above. Evidence is under
 artifacts/live-toast-incident-20260910/. Investigation and documentation did
 not change the live game.
 

@@ -1,3 +1,4 @@
+import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { captureDecisionInput, type DecisionInput } from "@/lib/decisionProvenance";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
@@ -6508,9 +6509,7 @@ export const MobileGameTable = ({
       ) {
         const fp = chosen.cards.map(c => `${c.rank}${c.suit}`).join('|');
         const dedupKey = `local_hand:${handContextId ?? 'none'}:${currentPlayer?.id ?? 'none'}`;
-        void (async () => {
-          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+        withH1r3H2r1Diagnostics({ gameId, dealerGameId: threeFiveSevenDealerGameScope }, (mod, sites) => {
           if (!mod.shouldEmitOnFingerprintChange(dedupKey, fp)) return;
           mod.emitH1r3ToH2r1({
             eventName: 'h2r1.local_hand_derived',
@@ -6563,7 +6562,7 @@ export const MobileGameTable = ({
               forceEmit: true,
             });
           }
-        })();
+        });
       }
     } catch { /* fire-and-forget */ }
     if (gameType === 'holm-game') {
@@ -11800,9 +11799,7 @@ export const MobileGameTable = ({
       ) {
         const fp = `${cards.length}|${cardCountToShow}|${expectedCardCount}`;
         const dedupKey = `opp_back:${handContextId ?? 'none'}:${player.id}`;
-        void (async () => {
-          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+        withH1r3H2r1Diagnostics({ gameId, dealerGameId: threeFiveSevenDealerGameScope }, (mod, sites) => {
           if (!mod.shouldEmitOnFingerprintChange(dedupKey, fp)) return;
           mod.emitH1r3ToH2r1({
             eventName: 'h2r1.opponent_back_count_derived',
@@ -11825,7 +11822,7 @@ export const MobileGameTable = ({
               selectedBranch: cards.length > 0 ? 'cards.length' : 'expectedCardCount',
             },
           });
-        })();
+        });
       }
     } catch { /* fire-and-forget */ }
 
