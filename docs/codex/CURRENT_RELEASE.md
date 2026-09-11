@@ -1,5 +1,15 @@
 # Current release and cutover state
 
+## September 11 presence identity request reduction
+
+The approved heartbeat change reads the current SDK-managed browser session
+instead of making an Auth user lookup before each upsert. Four-second leases,
+server authorization and gameplay timing are preserved. App typecheck,
+1,570 app tests, 150 harness tests and the production build pass. The matched
+two-browser lobby comparison and publication status are recorded in
+PRESENCE_SESSION_IDENTITY_20260911.md. Lobby optimization remains queued;
+Free capacity and monthly savings are not certified by this request change.
+
 ## September 11 interim usage check — prior play ended
 
 Jeremy reports clean cross-country play on both preceding nights and leaving

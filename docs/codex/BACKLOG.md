@@ -1,5 +1,16 @@
 # Backlog
 
+## September 11 presence cost follow-up
+
+September 11: Jeremy approved the heartbeat identity request reduction and
+measurement before assessing lobby refreshes. Implementation and matched
+browser evidence are recorded in PRESENCE_SESSION_IDENTITY_20260911.md.
+The lobby candidate remains Queued: foreground baseline has 12 data reads
+per browser in 44 seconds; investigate redundant refreshes/unchanged history
+reads without weakening resume, admission, results or the presence lease.
+No billing change, historical money-session cleanup or diagnostic-import
+correction is included.
+
 Priority is ordered. Re-rank only for a current production blocker.
 
 ## New observations — September 5 incident investigation

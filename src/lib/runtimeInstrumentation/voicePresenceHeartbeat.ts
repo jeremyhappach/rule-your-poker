@@ -42,9 +42,12 @@ function getTabId(): string {
 
 async function writeHeartbeat(status: VoicePresenceStatus): Promise<void> {
   try {
-    const { data } = await supabase.auth.getUser();
-    const user_id = data.user?.id;
-    if (!user_id) return;
+    // Read the current browser session without a per-heartbeat Auth request.
+    // The SDK still refreshes expired tokens; the database authorizes the
+    // write with auth.uid() and stamps the presence lease itself.
+    const { data, error } = await supabase.auth.getSession();
+    const user_id = data.session?.user?.id;
+    if (error || !user_id) return;
     const payload = {
       user_id,
       tab_id: getTabId(),
