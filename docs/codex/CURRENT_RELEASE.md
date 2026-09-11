@@ -2,11 +2,13 @@
 
 ## September 11 expired reveal clock correction
 
-Jeremy approved the narrow renderer correction. Local typecheck, 1,592 app
-tests, 150 harness tests, six browser clock controls and the production build
-pass. Financial owners, strict balance checks and animation timing are
-unchanged. Publication and the fresh two-client winner/payout/Run Back
-qualification are recorded in REVEAL_CLOCK_FIX_20260911.md.
+Published 728844859 is Vercel READY and its public manifest matched. Local
+typecheck, 1,592 app tests, 150 harness tests, six renderer browser controls
+and the production build pass. Neither client replayed an expired reveal in
+either published run; terminal leg charges followed reveal completion. Full
+ending/Run Back qualification remains incomplete because terminal animation
+completion evidence was missing. Both fake sessions are independently verified
+cleaned up. See REVEAL_CLOCK_FIX_20260911.md for the preserved results.
 
 ## September 11 early-balance RCA
 

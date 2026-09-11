@@ -9,6 +9,24 @@ Run Back and successor play. Exact results and cleanup evidence are in
 TOAST_STORM_FIX_20260911.md. General old-asset continuity remains a separate
 queued release-hardening item.
 
+## Queued — final winning-animation completion evidence — September 11
+
+Next verification RCA. Two fresh published 3-5-7 runs on 728844859 passed
+both clients through four rounds and showed correct reveal retirement/leg
+balance timing in the terminal round, but could not prove the full ending.
+Run one missed a host sweep-finished sample and reported peer award/pot
+observation gaps; run two reported a 110 ms terminal award sampling gap
+without CSS completion evidence. Identify whether the capture or animation
+completion boundary is responsible before changing either. Keep strict
+duration/completion checks and preserve failed traces; eventual setup is
+not completion proof. Run Back and final diagnostic counters were not reached.
+
+Provenance: REVEAL_CLOCK_FIX_20260911.md; fake sessions
+971e0b05-ef43-4529-af77-05d5671fed52 and
+1b4085dd-1289-4592-b9bd-01f40b14ea0b, both independently cleaned up.
+Evidence: artifacts/reveal-clock-fix-20260911/published/ and published-final/.
+This capture investigation is not included in the completed clock correction.
+
 ## Queued — shared tracing re-enables disabled admin capture — September 11
 
 Discovered during the approved toast-storm browser qualification. Its peer
@@ -21,10 +39,13 @@ idle/runtime cost before proposing a separate correction. No product change
 is included in the toast fix. Provenance: TOAST_STORM_FIX_20260911.md and
 failed fake session 29c4a5e6-be55-48d8-81e0-f729a8f54bfe (cleanup verified).
 
-## RCA complete — expired 3-5-7 reveal replay — September 11
+## Completed — expired 3-5-7 reveal replay — September 11
 
-Jeremy approved the narrow renderer correction; implementation and local
-validation pass. Publication/qualification: REVEAL_CLOCK_FIX_20260911.md. The recorded balance was
+Published 728844859; local renderer regressions and scoped live checks pass.
+Both clients in both published runs show no expired reveal replay and release
+the terminal leg charge after reveal completion. Full-ending qualification
+remains incomplete on missing animation completion evidence, queued below.
+See REVEAL_CLOCK_FIX_20260911.md. The recorded balance was
 34 ms after the host reveal deadline and 45 ms after the peer deadline. A late
 clock estimate revived an expired reveal using a cached frame timestamp; the
 observer then moved the deadline retroactively. Local Chrome reproduces the
