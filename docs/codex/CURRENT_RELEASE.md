@@ -2,15 +2,19 @@
 
 ## September 10 active real-money play — publication/testing hold
 
-At approximately 20:26 CDT (01:26 UTC, September 11), Jeremy reported a burst
-of failure toasts while still playing and explicitly said "don't disturb".
-Record: BACKLOG.md, repeated failure toasts during real-money play.
-Existing diagnostics were captured read-only in
-artifacts/live-toast-incident-20260910/passive-capture.json. No cause is
-established. Do not deploy, run browser tests, change instrumentation or mutate
-the live session while this hold is active. Resume active work only after
-Jeremy says play has ended; previous testing/publication approvals do not
-override this newer instruction.
+Jeremy reported repeated failure toasts at approximately 20:26 CDT
+(01:26 UTC, September 11), said "don't disturb", then authorized read-only RCA.
+Cause established: obsolete 3-5-7 diagnostic asset after publication, with
+uncaught render-time imports repeatedly reaching the generic error toast.
+See FAILURE_TOAST_RCA_20260910.md and the corresponding BACKLOG.md entry.
+Correction is proposed, not implemented. Saved evidence is under
+artifacts/live-toast-incident-20260910/.
+
+Do not deploy, run browser tests, change instrumentation or mutate the live
+session while this hold is active. Jeremy's RCA request authorizes read-only
+investigation; it does not lift the live-play hold. Resume disruptive work
+only after Jeremy says play has ended. Previous publication/testing approvals
+do not override this newer instruction.
 
 ## September 10 Holm full-ending qualification
 

@@ -6,30 +6,37 @@ Priority is ordered. Re-rank only for a current production blocker.
 
 ### Repeated failure toasts during real-money play — September 10
 
-Status: Queued for investigation after play; active real-money session must
-remain undisturbed. Jeremy reported at approximately 20:26 CDT (01:26 UTC,
-September 11): "just encountered spasm failure toasts in this real money
-game. still playing don't disturb". Expected: ordinary play should not produce
-bursts of failure notifications. No stuck play, incorrect balance or exact
-toast wording was reported, so those effects and the cause are unconfirmed.
+Status: RCA complete; correction proposed, awaiting approval. Jeremy authorized
+read-only RCA after the 20:26 CDT report; active real-money play remains
+undisturbed. See FAILURE_TOAST_RCA_20260910.md.
 
-Two bounded read-only database captures preserved current session metadata
-and existing diagnostic rows without enabling instrumentation. The recent
-real-money session containing Jeremy's authenticated user UUID is
-41a5f045-b797-4032-82ea-f0c152e36d2c. At 01:26:59 UTC it was in Yahtzee,
-dealer game 22e38a0e-ed2a-4fad-abce-0a1da6d121e5, round
-b2f714f0-a50c-410d-a062-50fae963cb41. The preceding 3-5-7 dealer game was
-187f6896-24e9-4ef4-8a47-38b4c335b46b. This identifies investigation context,
-not the game/round that emitted the reported toasts. Existing sampled client
-diagnostics identify build 33c69e736861; do not infer a deployment cause.
+Confirmed: session 41a5f045-b797-4032-82ea-f0c152e36d2c, 3-5-7 dealer game
+187f6896-24e9-4ef4-8a47-38b4c335b46b. Older open build 33c69e736861 requested
+h1r3ToH2r1-LjauNsX2.js after production moved to 2eb3cc29dfcf. The obsolete
+asset returns app HTML. Uncaught optional diagnostic imports produced 588
+toast-handler invocations on Jeremy's browser and 648 on the other browser
+between 01:23:38 and 01:25:12 UTC. Render-time calls retry before their
+fingerprint guard; synchronous catches do not contain rejected imports.
 
-Evidence: artifacts/live-toast-incident-20260910/passive-capture.json.
-The bounded sample contains lifecycle/timer diagnostics, not an identified
-toast error. Exact notification text, originating action, event time and
-owner remain to establish. No browser interaction/reload, test session,
-deployment, instrumentation change or production-data mutation was performed.
-Local documentation only; publication stays on hold until Jeremy says play
-has ended. Preserve the real session and existing evidence for RCA.
+Recommended: gate the five optional diagnostic sites before loading, share
+one failure-contained load attempt, and stop optional retries after failure.
+Preserve gameplay, settlement, timing, genuine action errors and the mounted
+live table. No migration or data correction is indicated by these exceptions.
+The record does not constitute a full balance/gameplay audit.
+
+Acceptance after approval and play ending: rejected/HTML module load plus
+repeated render regression, enabled/disabled diagnostic cases, and healthy
+two-client 3-5-7 hand/win/successor checks. Prior fixed-build gameplay tests
+did not cover an older open page across deployment. Separately queue general
+asset continuity across deployments; this diagnostic fix alone cannot qualify
+arbitrary mid-session publication.
+
+Evidence: artifacts/live-toast-incident-20260910/. The initial passive capture
+was already in successor Yahtzee; direct error rows had null session IDs and
+were recovered by browser correlation and route. No browser interaction,
+testing, deployment, instrumentation change or production mutation occurred.
+Documentation/evidence remain local; publication stays on hold until Jeremy
+says play has ended.
 
 ### P2 — Gin winner banner omits per-point winnings — September 10
 
