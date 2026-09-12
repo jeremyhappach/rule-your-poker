@@ -46,16 +46,16 @@ Provenance: REVEAL_CLOCK_FIX_20260911.md; fake sessions
 Evidence: artifacts/reveal-clock-fix-20260911/published/ and published-final/.
 This capture investigation is not included in the completed clock correction.
 
-## Queued — passive memory attribution during ordinary play — September 12
+## In progress — passive memory attribution during ordinary play — September 12
 
-The clean two-player game's temporary 1,037 MB Used peak fell below its
-pre-game baseline about 33 minutes after play. Historical process ownership
-is unresolved. Proposed next evidence: one-minute existing Metrics API
-capture, available service memory and connection/query deltas on unchanged
-Small compute. No collector setup or downgrade is authorized by the completed
-investigation. Keep the existing September 15 clean-week review. See
-MEMORY_INVESTIGATION_20260912.md; do not infer Free capacity by subtracting
-Small's buffer settings from its peak.
+Collector setup is approved and complete. Live one-minute reads, six focused
+tests, duplicate prevention and stop/restart checks pass. The current local
+capture runs through September 15 at 18:00 Central while this computer is
+awake and online; no app or hosting change was made. Normal-play evidence
+review remains pending. Keep the September 15 clean-week quota review and
+include collector traffic (about 20 KB/sample at setup) in the comparison.
+See METRICS_CAPTURE_20260912.md and .codex/metrics/README.md. Exact process
+attribution and Free performance remain unproved; no downgrade is authorized.
 
 ## Queued — rejected diagnostic and boundary reads during clean play — September 12
 

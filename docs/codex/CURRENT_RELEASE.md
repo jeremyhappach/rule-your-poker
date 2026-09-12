@@ -1,5 +1,15 @@
 # Current release and cutover state
 
+## September 12 local metrics capture running
+
+Following Jeremy's approval, a standalone local collector is recording the
+existing Supabase Metrics API every minute until September 15 at 18:00
+Central. Encrypted Windows-user access, six focused tests, actual cadence,
+duplicate prevention and stop/restart checks pass. Desktop controls are in
+P-Town Poker Metrics. Keep this computer awake through play and 45 minutes
+afterward; start again after a reboot. About 20 KB transfers per sample.
+No poker deployment or hosting change was made. See METRICS_CAPTURE_20260912.md.
+
 ## September 12 transient memory investigation
 
 Read-only extended history shows used RAM peaking around 1,037 chart MB,
