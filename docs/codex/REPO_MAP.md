@@ -1,5 +1,15 @@
 # Repository map
 
+Canonical Hand History: `private.history_hands`, `private.history_events` and
+`public.get_hand_history` are defined in migration
+`20260912192636_canonical_hand_history.sql`. `HandHistory.tsx` mounts the shared
+`hand-history/useCanonicalHistory.ts` reader and `CanonicalHistoryView.tsx`;
+`canonicalHistory.ts` owns the response contract and identity/money helpers.
+Game-specific scoring/card details live inside the common hierarchy. Direct
+database proof: `supabase/tests/canonical_history_rollback_proof.sql`; renderer
+tests: `src/components/hand-history/canonicalHistory.test.tsx`. Old browser
+Cribbage event callbacks remain inert compatibility adapters.
+
 Run Back settings: Game.tsx retains the exact dealer_games.config snapshot;
 src/lib/dealerGameSetup/runBackConfig.ts validates it; DealerGameSetup.tsx
 submits it directly through configure_dealer_game. All-game button tests are

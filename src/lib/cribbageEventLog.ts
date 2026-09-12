@@ -1,11 +1,8 @@
 /**
- * Cribbage event logging - fire-and-forget inserts for hand history.
- * 
- * Retention policy: Real-money games are kept forever; fake-money games
- * are eligible for purge after 30 days (same as player_cards).
+ * Compatibility adapters for existing presentation callbacks. Canonical
+ * history is captured by the database; clients no longer write event rows.
  */
 
-import { supabase } from '@/integrations/supabase/client';
 import type { CribbageCard, CribbageState } from './cribbageTypes';
 
 export type CribbageEventType = 
@@ -37,63 +34,13 @@ export interface LogCribbageEventParams {
   sequenceNumber?: number;
 }
 
-// Track sequence number per round for ordering events
-const sequenceCounters: Map<string, number> = new Map();
-
-function getNextSequence(roundId: string): number {
-  const current = sequenceCounters.get(roundId) ?? 0;
-  const next = current + 1;
-  sequenceCounters.set(roundId, next);
-  return next;
-}
+export function resetCribbageEventSequence(_roundId: string): void {}
 
 /**
- * Reset sequence counter for a new round
+ * Retained while presentation callbacks migrate; intentionally has no writes.
  */
-export function resetCribbageEventSequence(roundId: string): void {
-  sequenceCounters.set(roundId, 0);
-}
-
-/**
- * Fire-and-forget insert of a cribbage event.
- * Uses upsert with ON CONFLICT DO NOTHING for atomic deduplication.
- * All clients can safely call this - only the first insert wins.
- * Does NOT await - returns immediately.
- */
-export function logCribbageEvent(params: LogCribbageEventParams): void {
-  const sequenceNumber = params.sequenceNumber ?? getNextSequence(params.roundId);
-  // IMPORTANT: event_subtype is NOT NULL in the database (default ''), so normalize here.
-  // This also ensures our ON CONFLICT target matches the real unique key.
-  const normalizedSubtype = params.eventSubtype ?? '';
-
-  // Fire and forget with upsert - duplicate inserts are silently ignored
-  supabase
-    .from('cribbage_events')
-    .upsert({
-      round_id: params.roundId,
-      dealer_game_id: params.dealerGameId,
-      hand_number: params.handNumber,
-      player_id: params.playerId,
-      event_type: params.eventType,
-      event_subtype: normalizedSubtype,
-      card_played: params.cardPlayed as any,
-      cards_involved: params.cardsInvolved as any,
-      cards_on_table: params.cardsOnTable as any ?? null,
-      running_count: params.runningCount ?? null,
-      points: params.points,
-      scores_after: params.scoresAfter as any,
-      sequence_number: sequenceNumber,
-    }, {
-      // Must match the DB unique index: (round_id, hand_number, event_type, event_subtype, player_id, sequence_number)
-      onConflict: 'round_id,hand_number,event_type,event_subtype,player_id,sequence_number',
-      ignoreDuplicates: true,
-    })
-    .then(({ error }) => {
-      // Ignore duplicate key errors (expected with atomic guard)
-      if (error && !error.message.includes('duplicate key')) {
-        console.error('[CRIBBAGE_EVENT] Failed to log event:', error.message, params.eventType);
-      }
-    });
+export function logCribbageEvent(_params: LogCribbageEventParams): void {
+  // Compatibility only: history is written by the authoritative database transaction.
 }
 
 /**

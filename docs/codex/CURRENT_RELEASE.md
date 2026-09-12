@@ -1,5 +1,17 @@
 # Current release and cutover state
 
+## September 12 canonical Hand History
+
+Approved database-owned history is applied in migration
+`20260912192636_canonical_hand_history`. One viewer-scoped reader and shared
+renderer replace the game-specific reconstruction paths. The retained September
+11 session projects Cribbage's final 123–110 and Gin's 111–63 correctly. Hidden
+opponent cards no longer become readable merely because a round completed or
+the session switched games. Legacy details without retained evidence remain
+unavailable. Full local validation, rollback proofs before and after migration,
+and phone/desktop browser checks pass. Client publication follows this commit;
+Jeremy's production smoke is pending. See `HAND_HISTORY_20260912.md`.
+
 ## September 12 local metrics capture running
 
 Following Jeremy's approval, a standalone local collector is recording the

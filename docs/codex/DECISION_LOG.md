@@ -1,5 +1,18 @@
 # Durable decision log
 
+## D-139 — Hand History is a database-owned, viewer-scoped projection
+
+Private history hands and ordered events are downstream of authoritative
+transactions. Source IDs deduplicate writes; session/dealer-game/hand/round UUIDs
+scope them. Explicit exposure grants govern stored card faces and reader
+redaction; showdown status and later game configuration do not grant visibility.
+Financial snapshots attach through same-transaction hand/action/result identity
+and committed transfer batches. The shared reader and renderer serve every
+history entry point, with only rule-specific detail adapters. Historical actors
+use player UUIDs and snapshotted names; authenticated user identity determines
+the viewer's signed change. Legacy sources remain untouched and incomplete
+evidence stays unavailable. See `HAND_HISTORY_20260912.md`.
+
 ## D-138 — Run Back submits the committed configuration directly
 
 Run Back is an exact repeat of dealer_games.config, identified by session and

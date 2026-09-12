@@ -84,9 +84,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     setChatLoading(false);
   }, [session.id]);
 
-  // Find current user's player ID from the session players
-  const currentPlayer = session.players.find(p => !p.is_bot);
-  const currentPlayerId = currentPlayer?.id;
 
   // Fetch all players who participated using snapshots
   useEffect(() => {
@@ -309,7 +306,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
             <HandHistory 
               gameId={session.id}
               currentUserId={currentUserId}
-              currentPlayerId={currentPlayerId}
               gameType={session.game_type}
             />
           </div>
