@@ -2,6 +2,13 @@
 
 ## Platform
 
+- September 12 Jeremy reports zero issues during the prior evening's
+  cross-country real-money session 8b683d7c-fd57-4a28-a339-710860b35b0f,
+  two humans and six dealer games across Cribbage, Yahtzee, Gin, Holm and
+  3-5-7. It ended normally at 21:56 Central. This is a session-level smoke
+  pass; runtime telemetry labels its build dev and does not identify a
+  specific immutable commit. See USAGE_CHECK_20260912.md.
+
 - September 11 automated 3-5-7 healthy host-win ending passes on
   70133cc140be1682ede000f4b2411514a4c99fe4 (tag
   checkpoint/leg-award-native-completion-20260911). Both browsers complete

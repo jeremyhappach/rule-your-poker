@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 12 clean cross-country smoke and usage
+
+Jeremy reports zero issues in the September 11 evening real-money session:
+two humans, six dealer games, normal end. Read-only usage finds light CPU
+(about 5.3% average / 12.9% peak), healthy recovery and 93 MB additional poker
+egress since yesterday. Organization pace is provisionally 2.8 GB/month;
+used RAM peaks around 1 GB, so Free remains unqualified. No runtime or hosting
+change was made. See USAGE_CHECK_20260912.md for scope and chart limitations.
+
 ## September 11 leg-award native completion correction
 
 Approved correction replaces the leg award's elapsed-time callback with its
