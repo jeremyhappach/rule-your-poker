@@ -46,6 +46,29 @@ Provenance: REVEAL_CLOCK_FIX_20260911.md; fake sessions
 Evidence: artifacts/reveal-clock-fix-20260911/published/ and published-final/.
 This capture investigation is not included in the completed clock correction.
 
+## Queued — passive memory attribution during ordinary play — September 12
+
+The clean two-player game's temporary 1,037 MB Used peak fell below its
+pre-game baseline about 33 minutes after play. Historical process ownership
+is unresolved. Proposed next evidence: one-minute existing Metrics API
+capture, available service memory and connection/query deltas on unchanged
+Small compute. No collector setup or downgrade is authorized by the completed
+investigation. Keep the existing September 15 clean-week review. See
+MEMORY_INVESTIGATION_20260912.md; do not infer Free capacity by subtracting
+Small's buffer settings from its peak.
+
+## Queued — rejected diagnostic and boundary reads during clean play — September 12
+
+Read-only memory investigation of real-money session
+8b683d7c-fd57-4a28-a339-710860b35b0f found 11 PostgreSQL RLS rejections for
+chat_message_delivery_trace at 02:37:55–02:38:31 UTC September 12, two
+account_balances:not_authorized entries at 02:13:55 and 02:56:54, and one
+three_five_seven_current_frame:not_357_game at 02:25:07. Jeremy reports zero
+visible issues. Review exact request identities, authorization and stale
+boundary admission before proposing any correction; do not weaken RLS or
+infer financial impact. No RAM causation is established. Provenance:
+MEMORY_INVESTIGATION_20260912.md and the exact-window Supabase Unified Logs.
+
 ## Queued — shared tracing re-enables disabled admin capture — September 11
 
 Discovered during the approved toast-storm browser qualification. Its peer

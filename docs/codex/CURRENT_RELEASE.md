@@ -1,12 +1,22 @@
 # Current release and cutover state
 
+## September 12 transient memory investigation
+
+Read-only extended history shows used RAM peaking around 1,037 chart MB,
+then returning below the pre-game baseline to about 354 MB by 22:30 Central.
+No persistent increase is demonstrated after leaving the lobby open. Exact
+process ownership and Free capacity remain unproved; no memory-setting or
+hosting change is justified by the peak alone. Passive metrics capture during
+normal play is proposed. See MEMORY_INVESTIGATION_20260912.md. Product and
+hosting remain unchanged; the evidence commit is local only.
+
 ## September 12 clean cross-country smoke and usage
 
 Jeremy reports zero issues in the September 11 evening real-money session:
 two humans, six dealer games, normal end. Read-only usage finds light CPU
 (about 5.3% average / 12.9% peak), healthy recovery and 93 MB additional poker
 egress since yesterday. Organization pace is provisionally 2.8 GB/month;
-used RAM peaks around 1 GB, so Free remains unqualified. No runtime or hosting
+used RAM temporarily peaks around 1 GB; Free performance remains unqualified. No runtime or hosting
 change was made. See USAGE_CHECK_20260912.md for scope and chart limitations.
 
 ## September 11 leg-award native completion correction
