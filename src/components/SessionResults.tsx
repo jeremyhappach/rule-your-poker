@@ -282,7 +282,9 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       }
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={showHistory
+        ? "max-w-md max-h-[calc(100%-2rem)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
+        : "max-w-md"}>
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             {(showHistory || showChat) && (
@@ -302,7 +304,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
 
 
         {showHistory ? (
-          <div className="min-h-[300px]">
+          <div className="min-h-0">
             <HandHistory 
               gameId={session.id}
               currentUserId={currentUserId}

@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 13 expanded history scrolling
+
+Jeremy's lobby history smoke exposed a layout regression: expanded hands made
+the Session Results dialog taller than the screen, with no bounded scrollbar.
+The dialog now constrains its history row and preserves the existing history
+scroll owner. The actual dialog reproduces the old failure and passes wheel,
+touch, final-hand reachability and visible header/Close checks at three sizes.
+See `HAND_HISTORY_SCROLL_20260913.md`. Production smoke is pending.
+
 ## September 12 canonical Hand History
 
 Approved database-owned history is applied in migration
