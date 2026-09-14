@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 14 Gin waiting lifecycle capture
+
+Migration `20260914214838_gin_replay_waiting_lifecycle` preserves replay capture
+through Gin waiting, setup decline/timeout, ante sit-out/timeout, and subsequent
+shared session events. Waiting does not require a session-end timestamp.
+New openings carry `gin-lifecycle/2`; older missing boundaries are not backfilled.
+Fifty offline database exports and the final interleaved RPC-plus-COMMIT latency
+gate pass, as does non-destructive recovery. No other-game recording or replay
+UI is included. Fresh production smoke is pending. See
+`GIN_REPLAY_WAITING_20260914.md` for proof, limitations and measurements.
+
 ## September 14 Gin replay capture
 
 Qualified Gin replay capture is deployed in `20260914192806_gin_replay_v1`.

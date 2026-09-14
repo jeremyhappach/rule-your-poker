@@ -1,0 +1,85 @@
+{
+  "method": "80 interleaved samples per arm/category, authoritative RPC plus real COMMIT, fsync and synchronous_commit on; idle database final run, samples 81-160",
+  "rows": [
+    {
+      "category": "compound",
+      "enabled": false,
+      "n": 80,
+      "p50": 6.227,
+      "p95": 7.50645,
+      "maximum": "10.748000"
+    },
+    {
+      "category": "compound",
+      "enabled": true,
+      "n": 80,
+      "p50": 8.691,
+      "p95": 10.008,
+      "maximum": "13.055000"
+    },
+    {
+      "category": "ordinary",
+      "enabled": false,
+      "n": 80,
+      "p50": 5.643,
+      "p95": 7.00925,
+      "maximum": "11.714000"
+    },
+    {
+      "category": "ordinary",
+      "enabled": true,
+      "n": 80,
+      "p50": 6.7735,
+      "p95": 8.6224,
+      "maximum": "10.212000"
+    },
+    {
+      "category": "reveal_void",
+      "enabled": false,
+      "n": 80,
+      "p50": 6.2385,
+      "p95": 7.49245,
+      "maximum": "9.815000"
+    },
+    {
+      "category": "reveal_void",
+      "enabled": true,
+      "n": 80,
+      "p50": 10.378,
+      "p95": 12.808,
+      "maximum": "15.816000"
+    },
+    {
+      "category": "scoring",
+      "enabled": false,
+      "n": 80,
+      "p50": 124.159,
+      "p95": 135.9714,
+      "maximum": "188.567000"
+    },
+    {
+      "category": "scoring",
+      "enabled": true,
+      "n": 80,
+      "p50": 127.9675,
+      "p95": 138.80915,
+      "maximum": "438.413000"
+    },
+    {
+      "category": "settlement_terminal",
+      "enabled": false,
+      "n": 80,
+      "p50": 134.0275,
+      "p95": 149.89885,
+      "maximum": "266.090000"
+    },
+    {
+      "category": "settlement_terminal",
+      "enabled": true,
+      "n": 80,
+      "p50": 137.8055,
+      "p95": 153.8337,
+      "maximum": "313.383000"
+    }
+  ]
+}
