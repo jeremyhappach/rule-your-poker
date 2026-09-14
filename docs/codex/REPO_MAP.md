@@ -1,5 +1,12 @@
 # Repository map
 
+Gin replay/1: migration `20260914192806_gin_replay_v1.sql` owns the private
+append-only journal, Gin authority hooks and `public.export_gin_replay_v1`.
+`src/lib/replay/contractV1.ts` reconstructs offline; `visibilityV1.ts` owns the
+headless visibility contract. Focused SQL proofs and the non-destructive
+recovery script are under `supabase/tests/replay/`. See
+`GIN_REPLAY_DEPLOYMENT_20260914.md`. No replay UI or other-game capture exists.
+
 Canonical Hand History: `private.history_hands`, `private.history_events` and
 `public.get_hand_history` are defined in migration
 `20260912192636_canonical_hand_history.sql`. `HandHistory.tsx` mounts the shared

@@ -1,0 +1,14 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+let s=readFileSync('supabase/tests/replay/gin-commit-benchmark.draft.sql','utf8');
+s=s.slice(s.indexOf('CREATE FUNCTION private.replay_gin_benchmark_prepare'),s.indexOf('CREATE OR REPLACE PROCEDURE'));
+s=s.replace('CREATE FUNCTION private.replay_gin_benchmark_prepare(_enabled boolean,_category text)','CREATE OR REPLACE FUNCTION private.replay_gin_rule_prepare(_category text,_harness text,_bot boolean DEFAULT false)');
+s=s.replace("DECLARE\n","DECLARE\n _enabled boolean:=true;\n").replace(/v_mode text:=[^;]+;/,"v_mode text:=_harness;");
+s=s.replace("_category='settlement_terminal' THEN 1","_category IN ('settlement_terminal','postgame_terminal') THEN 1");
+s=s.replace('(p2,u2,g,2,1000,false,','(p2,u2,g,2,1000,_bot,');
+const start=s.indexOf(" IF _category='ordinary' THEN");const end=s.indexOf(" RETURN jsonb_build_object",start);
+s=s.slice(0,start)+` RETURN jsonb_build_object('game',g,'round',r,'dealerGame',dg,'players',jsonb_build_array(p1,p2),'users',jsonb_build_array(u1,u2));
+END;
+$fn$;
+REVOKE ALL ON FUNCTION private.replay_gin_rule_prepare(text,text,boolean) FROM PUBLIC,anon,authenticated,service_role;
+`;
+writeFileSync('supabase/tests/replay/gin-rule-fixtures.draft.sql',s);

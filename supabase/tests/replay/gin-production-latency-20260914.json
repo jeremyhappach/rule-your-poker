@@ -1,0 +1,77 @@
+{
+  "samplesPerArmPerCategory": 80,
+  "interleaved": true,
+  "measurement": "authoritative authenticated RPC plus real COMMIT; fixture setup excluded; synchronous_commit=on; fsync=on",
+  "results": [
+    {
+      "category": "compound",
+      "baseline_n": 80,
+      "replay_n": 80,
+      "baseline_p50": "9.253",
+      "replay_p50": "12.115",
+      "added_p50": "2.862",
+      "baseline_p95": "15.847",
+      "replay_p95": "21.021",
+      "added_p95": "5.174",
+      "pct_p95": "32.65",
+      "baseline_max": "31.764000",
+      "replay_max": "32.765000"
+    },
+    {
+      "category": "ordinary",
+      "baseline_n": 80,
+      "replay_n": 80,
+      "baseline_p50": "8.749",
+      "replay_p50": "9.918",
+      "added_p50": "1.169",
+      "baseline_p95": "15.893",
+      "replay_p95": "15.655",
+      "added_p95": "-0.238",
+      "pct_p95": "-1.50",
+      "baseline_max": "28.960000",
+      "replay_max": "31.560000"
+    },
+    {
+      "category": "reveal_void",
+      "baseline_n": 80,
+      "replay_n": 80,
+      "baseline_p50": "9.505",
+      "replay_p50": "13.715",
+      "added_p50": "4.210",
+      "baseline_p95": "16.661",
+      "replay_p95": "22.036",
+      "added_p95": "5.375",
+      "pct_p95": "32.26",
+      "baseline_max": "18.707000",
+      "replay_max": "44.609000"
+    },
+    {
+      "category": "scoring",
+      "baseline_n": 80,
+      "replay_n": 80,
+      "baseline_p50": "131.312",
+      "replay_p50": "134.866",
+      "added_p50": "3.554",
+      "baseline_p95": "219.683",
+      "replay_p95": "217.426",
+      "added_p95": "-2.257",
+      "pct_p95": "-1.03",
+      "baseline_max": "288.420000",
+      "replay_max": "485.396000"
+    },
+    {
+      "category": "settlement_terminal",
+      "baseline_n": 80,
+      "replay_n": 80,
+      "baseline_p50": "148.942",
+      "replay_p50": "152.465",
+      "added_p50": "3.523",
+      "baseline_p95": "265.504",
+      "replay_p95": "254.555",
+      "added_p95": "-10.949",
+      "pct_p95": "-4.12",
+      "baseline_max": "388.625000",
+      "replay_max": "383.126000"
+    }
+  ]
+}

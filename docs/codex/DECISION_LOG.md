@@ -1,5 +1,16 @@
 # Durable decision log
 
+## D-140 — Gin replay/1 records authoritative transitions atomically
+
+New Gin hands enroll at their authoritative opening. Private append-only
+records retain ordered lossless substeps, recorded visibility grants, exact
+score/transfer changes and full opening/closing checkpoints. The exporter uses
+only the journal and a versioned headless contract. A complete hand seal does
+not claim missing session genesis or legacy history. Shared hooks require Gin;
+the other six games remain deferred. Human-readable history keeps its existing
+owner. Recovery preserves records and marks capture gaps partial. See
+`GIN_REPLAY_DEPLOYMENT_20260914.md` and `GIN_REPLAY_QUALIFICATION_20260914.md`.
+
 ## D-139 — Hand History is a database-owned, viewer-scoped projection
 
 Private history hands and ordered events are downstream of authoritative

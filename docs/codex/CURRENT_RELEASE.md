@@ -1,5 +1,17 @@
 # Current release and cutover state
 
+## September 14 Gin replay capture
+
+Qualified Gin replay capture is deployed in `20260914192806_gin_replay_v1`.
+Only newly opened Gin hands enroll. Opening/closing checkpoints, compact
+ordered deltas, historical visibility and exact score/financial facts commit
+with gameplay; the safe exporter reconstructs without live rows. Forty database
+exports, thirteen focused tests, typecheck/build and an interleaved 800-action
+RPC-plus-COMMIT benchmark pass. Recovery is rollback-proved, including paused
+tables. The existing canonical history model is preserved. Other games and
+replay UI are out of scope; Jeremy's fresh Gin smoke is pending. See
+`GIN_REPLAY_DEPLOYMENT_20260914.md` for measurements and recovery details.
+
 ## September 13 expanded history scrolling
 
 Jeremy's lobby history smoke exposed a layout regression: expanded hands made
