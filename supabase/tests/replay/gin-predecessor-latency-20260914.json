@@ -1,0 +1,161 @@
+{
+  "method": "80 interleaved samples per arm/category, RPC plus actual COMMIT, fsync/synchronous_commit on, fixture work excluded; 960 timed actions",
+  "mixed": [
+    {
+      "category": "compound",
+      "enabled": false,
+      "n": 80,
+      "p50": 11.6605,
+      "p95": 17.1793,
+      "maximum": "17.609000"
+    },
+    {
+      "category": "compound",
+      "enabled": true,
+      "n": 80,
+      "p50": 14.2425,
+      "p95": 19.8879,
+      "maximum": "20.592000"
+    },
+    {
+      "category": "continuation",
+      "enabled": false,
+      "n": 80,
+      "p50": 29.7835,
+      "p95": 43.0471,
+      "maximum": "53.043000"
+    },
+    {
+      "category": "continuation",
+      "enabled": true,
+      "n": 80,
+      "p50": 34.5035,
+      "p95": 48.3843,
+      "maximum": "52.019000"
+    },
+    {
+      "category": "ordinary",
+      "enabled": false,
+      "n": 80,
+      "p50": 10.675,
+      "p95": 15.54435,
+      "maximum": "18.964000"
+    },
+    {
+      "category": "ordinary",
+      "enabled": true,
+      "n": 80,
+      "p50": 11.943,
+      "p95": 16.7353,
+      "maximum": "33.105000"
+    },
+    {
+      "category": "reveal_void",
+      "enabled": false,
+      "n": 80,
+      "p50": 11.8115,
+      "p95": 17.44735,
+      "maximum": "19.248000"
+    },
+    {
+      "category": "reveal_void",
+      "enabled": true,
+      "n": 80,
+      "p50": 22.5405,
+      "p95": 33.9358,
+      "maximum": "35.192000"
+    },
+    {
+      "category": "scoring",
+      "enabled": false,
+      "n": 80,
+      "p50": 150.691,
+      "p95": 161.0432,
+      "maximum": "172.732000"
+    },
+    {
+      "category": "scoring",
+      "enabled": true,
+      "n": 80,
+      "p50": 162.571,
+      "p95": 175.66495,
+      "maximum": "193.405000"
+    },
+    {
+      "category": "settlement_terminal",
+      "enabled": false,
+      "n": 80,
+      "p50": 171.2635,
+      "p95": 191.0729,
+      "maximum": "194.848000"
+    },
+    {
+      "category": "settlement_terminal",
+      "enabled": true,
+      "n": 80,
+      "p50": 184.7095,
+      "p95": 207.26405,
+      "maximum": "214.275000"
+    }
+  ],
+  "gate": [
+    {
+      "category": "compound",
+      "p95Added": 2.708599999999997,
+      "budget": 10,
+      "pass": true
+    },
+    {
+      "category": "continuation",
+      "p95Added": 5.337200000000003,
+      "budget": 10,
+      "pass": true
+    },
+    {
+      "category": "ordinary",
+      "p95Added": 1.190949999999999,
+      "budget": 10,
+      "pass": true
+    },
+    {
+      "category": "reveal_void",
+      "p95Added": 16.48845,
+      "budget": 10,
+      "pass": false
+    },
+    {
+      "category": "scoring",
+      "p95Added": 14.621749999999992,
+      "budget": 50,
+      "pass": true
+    },
+    {
+      "category": "settlement_terminal",
+      "p95Added": 16.191149999999993,
+      "budget": 50,
+      "pass": true
+    }
+  ],
+  "isolatedReveal": {
+    "method": "one bounded diagnostic, 80 interleaved samples per arm, otherwise same RPC/commit path",
+    "rows": [
+      {
+        "category": "reveal_void",
+        "enabled": false,
+        "n": 80,
+        "p50": 6.5365,
+        "p95": 7.1038,
+        "maximum": "9.655000"
+      },
+      {
+        "category": "reveal_void",
+        "enabled": true,
+        "n": 80,
+        "p50": 10.8315,
+        "p95": 11.5338,
+        "maximum": "12.116000"
+      }
+    ]
+  },
+  "status": "BLOCKED: mixed-workload reveal/void p95 regression exceeds 10ms; isolated recheck passes but does not supersede failed mixed gate"
+}

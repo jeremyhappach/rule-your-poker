@@ -37,10 +37,10 @@ BEGIN
       RAISE EXCEPTION 'proof:duplicate_settlement_journaled'; END IF;
    ELSE
     v_result:=public.gin_rummy_start_next_hand(v_round.id);v_next:=(v_result->>'round_id')::uuid;
-    IF v_result->>'outcome' IS DISTINCT FROM 'started' OR (SELECT count(*) FROM private.replay_steps WHERE session_id=v_game.id)<>v_steps_before+1 THEN
+    IF v_result->>'outcome' IS DISTINCT FROM 'started' OR (SELECT count(*) FROM private.replay_steps WHERE session_id=v_game.id)<>v_steps_before+2 THEN
      RAISE EXCEPTION 'proof:continuation_opening_missing'; END IF;
     v_result:=public.gin_rummy_start_next_hand(v_round.id);
-    IF v_result->>'outcome' IS DISTINCT FROM 'already_started' OR (SELECT count(*) FROM private.replay_steps WHERE session_id=v_game.id)<>v_steps_before+1 THEN
+    IF v_result->>'outcome' IS DISTINCT FROM 'already_started' OR (SELECT count(*) FROM private.replay_steps WHERE session_id=v_game.id)<>v_steps_before+2 THEN
      RAISE EXCEPTION 'proof:duplicate_continuation'; END IF;
    END IF;
    -- Remove all mutable gameplay tables' rows for this synthetic session. The

@@ -1,5 +1,20 @@
 # Backlog
 
+## Queued — Gin mixed-workload reveal/void latency gate — September 14
+
+The approved predecessor-completion fix is implemented on
+`codex/gin-replay-predecessor`, with 74 database exports, nine combined
+two-hand reconstructions and recovery passing. Production deployment is held:
+80 interleaved pairs per action measured reveal/void added p95 16.488ms in a
+mixed workload, over the 10ms budget. One isolated 80-pair diagnostic measured
+4.430ms; it does not supersede the failed mixed gate. The reveal writer is
+unchanged by the handoff fix, and the timing difference has no established
+cause. Investigate that bounded performance boundary before deploying; do
+not broaden into other games or unrelated scoring refactors. Source:
+`GIN_REPLAY_PREDECESSOR_20260914.md` and the retained latency JSON. The Addison
+Russell production smoke remains unmodified. Reported during the approved
+Gin predecessor correction on September 14, 2026.
+
 ## September 11 toast-storm correction
 
 Implemented and published e9c9a831c. Focused loader/browser regressions pass;

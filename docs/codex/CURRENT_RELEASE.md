@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 14 Gin predecessor completion candidate — deployment held
+
+The Addison Russell smoke verified waiting capture but exposed a missing
+predecessor round-status update when the next Gin hand begins. A one-owner
+candidate now captures that transition atomically. Seventy-four exports and
+nine combined two-hand packages reconstruct offline with exact ending rounds,
+privacy and reconciliation; focused tests, typecheck/build and recovery pass.
+Continuation added p95 is 5.337ms. The mixed-workload reveal/void check exceeded
+its 10ms budget at 16.488ms; an isolated 4.430ms diagnostic does not override
+that failure. Production is unchanged. See `GIN_REPLAY_PREDECESSOR_20260914.md`.
+
 ## September 14 Gin waiting lifecycle capture
 
 Migration `20260914214838_gin_replay_waiting_lifecycle` preserves replay capture
