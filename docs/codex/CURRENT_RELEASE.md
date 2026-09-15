@@ -1,14 +1,16 @@
 # Current release and cutover state
 
-## September 15 missing-card diagnostics — deployment held
+## September 15 automatic missing-card diagnostics
 
-The approved Holm/3-5-7 diagnostics implementation is preserved locally on
-`codex/card-visibility-incidents`. Actual fault capture and the isolated browser
-suite pass, but the final Holm HUD responsiveness comparison fails the +5 ms
-added-p95 gate (80.5 ms baseline versus 95.6 ms candidate). No deployment or
-schema change was made. The original Hand 2 disappearance remains unresolved.
-See [CARD_VISIBILITY_CHECKPOINT_20260915.md](CARD_VISIBILITY_CHECKPOINT_20260915.md)
-for evidence, exact coverage, limitations and the bounded profiling follow-up.
+The Holm/3-5-7 client release is qualified for publication under Jeremy's
+approved +20 ms added-p95 budget. Final added p95 is -13.7 ms / -7.6 ms; this
+shows no measured regression, not a proven speedup. All application/harness
+tests, eight mobile-engine fixture tests and four real-table tests pass.
+Bounded observation records privacy-safe incidents without debug UI; changing
+card admission now invalidates pending confirmation. No gameplay or schema
+change is included. The original Hand 2 disappearance remains unresolved.
+See [CARD_VISIBILITY_RELEASE_20260915.md](CARD_VISIBILITY_RELEASE_20260915.md)
+for qualification, exact coverage, limitations and recovery.
 
 ## September 15 Holm solo showdown reveal grant
 

@@ -1,5 +1,9 @@
 # Missing-card diagnostics checkpoint — September 15, 2026
 
+Follow-up: Jeremy approved a +20 ms added-p95 budget and the bounded final
+qualification. See [the subsequent release record](CARD_VISIBILITY_RELEASE_20260915.md).
+The original held checkpoint and its measurements below remain preserved.
+
 Status: **deployment held; local implementation is not release-qualified**.
 Jeremy approved automatic Holm/3-5-7 diagnostics with a tight responsiveness
 guardrail. The bounded phase stopped after the final actual-table Holm

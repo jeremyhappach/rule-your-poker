@@ -80,6 +80,7 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
   measured?: (duration: number) => void) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastAt = 0, candidate = '', lastScope = '', reason = 'mount', stopped = false;
+  let candidateSample: CardVisibilitySample | null = null;
   let history: CardVisibilitySample[] = [];
   const reported = new Set<string>();
   const relevant = `${SELF}, ${COMMUNITY}`;
@@ -110,9 +111,9 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
     timer = undefined;
     if (stopped || document.visibilityState !== 'visible') return;
     const contract = read();
-    if (!contract.active) { candidate = ''; return; }
+    if (!contract.active) { candidate = ''; candidateSample = null; return; }
     const scope = `${contract.gameId}:${contract.handContextId}:${contract.roundNumber}`;
-    if (scope !== lastScope) { candidate = ''; lastScope = scope; }
+    if (scope !== lastScope) { candidate = ''; candidateSample = null; lastScope = scope; }
     const start = performance.now();
     bindGeometry();
     const sample = sampleCardVisibility(root, contract, reason);
@@ -123,12 +124,12 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
       reported.add(key);
       if (reported.size > 64) reported.delete(reported.values().next().value!);
       // Copy the first failing sample, not a later recovered screen.
-      const first = history.at(-1)?.failures.length ? history.at(-1)! : sample;
-      incident(first, history.slice(-12));
+      incident(candidateSample ?? sample, history.slice(-12));
     }
     const changed = !history.length || JSON.stringify(sample.contract) !== JSON.stringify(history.at(-1)!.contract)
       || JSON.stringify([sample.self, sample.community, sample.failures]) !== JSON.stringify([history.at(-1)!.self, history.at(-1)!.community, history.at(-1)!.failures]);
     if (changed) history = [...history, sample].slice(-16);
+    if (key !== candidate) candidateSample = sample.failures.length ? sample : null;
     candidate = sample.failures.length ? key : '';
     // One confirmation only; no recurring scan of an unchanged failure.
     if (sample.failures.length && !reported.has(key)) schedule('confirm');
@@ -148,13 +149,17 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
   });
   // The shell contains timers/chips/other seats. Their animation attributes are not card evidence.
   mutation.observe(root, { subtree: true, childList: true });
-  const lifecycle = () => { candidate = ''; schedule('browser-return'); };
+  const lifecycle = () => { candidate = ''; candidateSample = null; schedule('browser-return'); };
   const animation = (event: Event) => { if (event.target instanceof Element && event.target.closest(relevant)) schedule('animation-end'); };
   document.addEventListener('visibilitychange', lifecycle);
   window.addEventListener('pageshow', lifecycle); window.addEventListener('online', lifecycle);
   root.addEventListener('transitionend', animation); root.addEventListener('animationend', animation);
   bindGeometry(); schedule();
-  return { update: schedule, stop() {
+  return { update(nextReason = 'commit') {
+    // A changed admission invalidates the pending confirmation even if the
+    // intermediate Cards-tab/phase state is coalesced out of the next scan.
+    candidate = ''; candidateSample = null; schedule(nextReason);
+  }, stop() {
     stopped = true; clearTimeout(timer); resize.disconnect(); mutation.disconnect(); ancestors.disconnect(); cardStyles.disconnect();
     document.removeEventListener('visibilitychange', lifecycle);
     window.removeEventListener('pageshow', lifecycle); window.removeEventListener('online', lifecycle);
