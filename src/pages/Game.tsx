@@ -448,6 +448,7 @@ import {
   type ActionSurfaceRecoveryRequest,
 } from "@/lib/actionSurfaceRecovery";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
+import { recordCardVisibilityBoundary } from '@/lib/cardVisibilityMonitor';
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
 
@@ -8407,6 +8408,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchStartedAt = Date.now();
     const traceGameFetch = isGameFreezeTraceForGame(gameId);
     let gameFetchOutcome = 'completed';
+    const traceCardVisibility = game?.game_type === 'holm-game' || game?.game_type === '3-5-7' || game?.game_type === '357';
+    if (traceCardVisibility && gameId) recordCardVisibilityBoundary({ gameId, kind: 'fetch-start', sequence: fetchSeq,
+      roundId: currentRound?.id ?? null, outcome: fetchTrigger, durationMs: 0 });
     if (traceGameFetch) {
       recordGameFreezeTrace('game.authoritative_fetch.started', {
         source: fetchTrigger,
@@ -10219,6 +10223,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.warn('[FETCH] Authoritative snapshot failed; recovery remains armed', error);
       return false;
     } finally {
+      if (traceCardVisibility && gameId) recordCardVisibilityBoundary({ gameId, kind: 'fetch-finish', sequence: fetchSeq,
+        roundId: currentRound?.id ?? null, outcome: isStale() ? 'superseded' : gameFetchOutcome, durationMs: Date.now() - fetchStartedAt });
       if (traceGameFetch) {
         recordGameFreezeTrace('game.authoritative_fetch.finished', {
           source: fetchTrigger,

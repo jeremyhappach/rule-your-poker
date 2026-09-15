@@ -136,6 +136,7 @@ import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 // CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
 // is now the single stable instance across DEALING → READY → GAMEPLAY.
 import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
+import { CardVisibilityMonitor } from "./CardVisibilityMonitor";
 import { useHolmCommunityFaces } from '@/lib/holmCommunityFaces';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { HolmChuckyRevealCard } from "./HolmChuckyRevealCard";
@@ -12561,6 +12562,28 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
       }) : undefined}
     >
+      {(gameType === 'holm-game' || __is357GameType(gameType)) && gameId && currentUserId && (
+        <CardVisibilityMonitor contract={{
+          gameId, viewerId: currentUserId, playerId: currentPlayer?.id ?? null,
+          gameType: gameType === 'holm-game' ? 'holm-game' : '3-5-7',
+          dealerGameId: gameType === 'holm-game' ? holmPresentationIdentity?.dealerGameId ?? null : threeFiveSevenDealerGameScope ?? null,
+          roundId: gameType === 'holm-game' ? holmPresentationIdentity?.roundId ?? null : threeFiveSevenViewRoundId ?? null,
+          handNumber: gameType === 'holm-game' ? holmPresentationIdentity?.handNumber ?? 0 : threeFiveSevenViewHandNumber ?? 0,
+          roundNumber: currentRound ?? 0,
+          handContextId: (gameType === 'holm-game' ? handContextId : threeFiveSevenHandContextId) ?? '',
+          runtimeHandContextId: null, phase: roundStatus ?? '',
+          active: gameStatus === 'in_progress' && !isGameOver && !isHandTransitioning && !dealerSelectionPresentationActive
+            && (roundStatus === 'betting' || roundStatus === 'processing' || roundStatus === 'showdown'),
+          selfExpected: activeTab === 'cards' && !!currentPlayer && !currentPlayer.sitting_out
+            && !isCurrentPlayerSoloVsChucky && !(gameType === 'holm-game' && isHolmMultiPlayerShowdown && currentPlayer.current_decision === 'stay')
+            && !(winner357StageVisible && effectiveNormalDescriptor?.winnerId === currentPlayer.id)
+              ? (gameType === 'holm-game' ? 4 : totalAfterWaveFor357(currentRound ?? 0)) : 0,
+          communityExpected: gameType === 'holm-game' ? 4 : 0,
+          communityFaces: gameType === 'holm-game' ? Math.min(communityCardsRevealed || 2, holmCommunityRevealAdmission) : 0,
+          selfDataCount: currentPlayerCards.length, communityDataCount: communityCards?.length ?? 0,
+          settledCount: 0, pendingIntents: 0, paused: !!isPaused, canAct: !!canDecide,
+        }} />
+      )}
       {__is357GameType(gameType) ? (
         <ThreeFiveSevenDecisionReveal
           clock={threeFiveSevenDecisionRevealClock}
