@@ -8,8 +8,9 @@
  *     endpoints BEFORE the community wave dispatches. This is the fix
  *     for the "missing endpoint → fake settle" trap that left
  *     launchAt/arrivalAt/claimAt = null in the timeline.
- *   - The actual card DOM (face for i<2, back for i>=2) mounts ONLY
- *     when `deal.isSettled(`${handContextId}#community-${i}`)` is true.
+ *   - During the live deal, card DOM mounts only after its transport settles.
+ *     A same-hand GAMEPLAY entry displays persisted cards without replaying
+ *     historical flights or requiring their absent local receipts.
  *   - The normal deal remains a pure projection of DealRuntime settled ids.
  *   - The late authoritative 2 -> 4 community reveal is represented by a
  *     hand-scoped visual flip queue. It never writes game state and only
@@ -271,9 +272,11 @@ export function HolmCanonicalCommunityRow({
       : null;
 
   // Per-slot presentation rule (stable across DealRuntime READY→GAMEPLAY):
-  //   - If DealRuntime is mounted and the slot's cardId is NOT settled,
-  //     render an empty anchor (no card content) regardless of `revealed`.
-  //   - Otherwise (settled OR no DealRuntime ancestor / post-deal path):
+  //   - Before GAMEPLAY, each slot requires its exact transport receipt.
+  //   - GAMEPLAY also covers historical entry, which deliberately skips the
+  //     deal and has no local receipts. Admit persisted slots for that exact
+  //     hand; face resolution and reveal admission still control visibility.
+  //   - Otherwise (settled, same-hand GAMEPLAY, or no DealRuntime ancestor):
   //       i < 2          → face-up
   //       i >= 2         → face-up iff revealed > i, else card back
   //   The slot <div> node and its stable key=cardId DO NOT change across
@@ -286,7 +289,10 @@ export function HolmCanonicalCommunityRow({
   const renderKeysForRecord: string[] = [];
   for (let i = 0; i < count; i++) {
     const cardId = `${handContextId}#community-${i}`;
-    const settled = deal ? deal.isSettled(cardId) : true;
+    const settled = !deal || (
+      deal.handContextId === handContextId &&
+      (deal.phase === 'GAMEPLAY' || deal.isSettled(cardId))
+    );
     const card = cards[i];
     const samePresentationHand = presentationHandRef.current === handContextId;
     const isFlippingThisCard = samePresentationHand && activeFlip?.index === i;

@@ -1,5 +1,26 @@
 # Current release and cutover state
 
+## September 14 Holm community cards after reconnect
+
+The live Jason Heyward report was traced to Holm's historical-entry renderer:
+`HolmDealRuntimeMaybe` correctly skips old flights by starting in `GAMEPLAY`,
+but `HolmCanonicalCommunityRow` required local settle receipts for all four
+slots. A refreshed client therefore rendered four empty anchors despite the
+server returning two resolved opening faces and two masked slots. Production
+session `295f501b-3e6b-495a-bb2d-29a4f46877cb`, dealer game
+`840cb959-a679-4819-a088-56607369e993`, hand 2
+`d08133fc-0763-43ec-a3d5-fa3029a9054d` established the data boundary.
+
+The row now admits persisted cards for the exact hand in `GAMEPLAY`. Live
+`PRE_DEAL`/`DEALING`/`READY` still require per-card receipts; face validation,
+hidden-card grants, sequential reveals and hand identity remain enforced.
+No database, money, game rules, other games or replay capture changes.
+The real runtime/provider regression failed before the correction; all 24
+focused checks, TypeScript validation and the production build pass. Production smoke remains
+pending: refresh the affected Holm hand and verify two opening faces/two backs,
+then the normal reveal and next live deal. Rollback is a revert of this client
+release; there is no schema or data recovery step.
+
 ## September 14 Gin waiting lifecycle capture
 
 Migration `20260914214838_gin_replay_waiting_lifecycle` preserves replay capture

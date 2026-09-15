@@ -14,10 +14,6 @@ vi.mock('./canonicalShell/CanonicalCardBack', () => ({
   CanonicalCardBack: () => <div data-testid="card-back" />,
 }));
 
-vi.mock('@/lib/canonicalShell/cardTransport/DealRuntime', () => ({
-  useDealRuntime: () => null,
-}));
-
 vi.mock('@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics', () => ({
   armCommunityLandingSampler: vi.fn(),
   recordCommunityDomLifecycle: vi.fn(),
@@ -37,6 +33,14 @@ vi.mock('@/lib/geometryLab/cardArtifactOverlap', () => ({
 }));
 
 import { HolmCanonicalCommunityRow } from './HolmCanonicalCommunityRow';
+import { HolmDealRuntimeMaybe } from './HolmDealOrchestrator';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { CardTransportProvider } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
+
+function DealProbe() {
+  const deal = useDealRuntime();
+  return <output data-testid="deal-state">{deal?.phase}:{deal?.settledCardIds.size}</output>;
+}
 
 const cards = [
   { rank: '2', suit: 'clubs' },
@@ -75,6 +79,85 @@ describe('HolmCanonicalCommunityRow late community reveal', () => {
     cleanup();
     boundingBoxSpy.mockRestore();
     vi.useRealTimers();
+  });
+
+  it.each([{ persistedCards: maskedCards }, { persistedCards: cards }])('shows historical opening cards while preserving hidden slots and absent receipts (%#)', ({ persistedCards }) => {
+    render(
+      <CardTransportProvider>
+        <HolmDealRuntimeMaybe gameType="holm-game" handContextId="round-1:h1" entryMode="historical-entry">
+          <DealProbe />
+          <HolmCanonicalCommunityRow handContextId="round-1:h1" cards={persistedCards} revealed={2} />
+        </HolmDealRuntimeMaybe>
+      </CardTransportProvider>,
+    );
+    expect(screen.getByTestId('deal-state').textContent).toBe('GAMEPLAY:0');
+    expect(screen.getByTestId('face-2')).not.toBeNull();
+    expect(screen.getByTestId('face-3')).not.toBeNull();
+    expect(screen.getAllByTestId('card-back')).toHaveLength(2);
+    expect(screen.queryByTestId('face-Q')).toBeNull();
+    expect(screen.queryByTestId('face-J')).toBeNull();
+  });
+
+  it('runs the recorded reveal after reconnect and acknowledges its final face once', () => {
+    const complete = vi.fn();
+    const view = (incoming: typeof cards, revealed: number) => (
+      <CardTransportProvider>
+        <HolmDealRuntimeMaybe gameType="holm-game" handContextId="round-1:h1" entryMode="historical-entry">
+          <CachedCommunity incoming={incoming} revealed={revealed} complete={complete} />
+        </HolmDealRuntimeMaybe>
+      </CardTransportProvider>
+    );
+    const { rerender } = render(view(maskedCards, 2));
+    rerender(view(maskedCards, 4));
+    act(() => vi.advanceTimersByTime(2000));
+    expect(complete).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId('card-back')).toHaveLength(2);
+    rerender(view(cards, 4));
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.getByTestId('face-Q')).not.toBeNull();
+    expect(screen.queryByTestId('face-J')).toBeNull();
+    act(() => vi.advanceTimersByTime(1020));
+    expect(screen.getByTestId('face-J')).not.toBeNull();
+    expect(complete).toHaveBeenCalledExactlyOnceWith('round-1:h1');
+    rerender(view(maskedCards, 4));
+    expect(screen.getByTestId('face-J')).not.toBeNull();
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['DEALING', 'READY'] as const)('requires live receipts during %s', (phase) => {
+    const { container } = render(
+      <CardTransportProvider>
+        <DealRuntime handContextId="round-1:h1" gameType="holm-game" initialPhase={phase}>
+          <HolmCanonicalCommunityRow handContextId="round-1:h1" cards={cards} revealed={4} />
+        </DealRuntime>
+      </CardTransportProvider>,
+    );
+    expect(container.querySelectorAll('[data-holm-card-presentation="empty-anchor"]')).toHaveLength(4);
+  });
+
+  it('keeps live, unsettled slots empty even when all faces have arrived', () => {
+    const { container } = render(
+      <CardTransportProvider>
+        <HolmDealRuntimeMaybe gameType="holm-game" handContextId="round-1:h1" entryMode="live-transition">
+          <HolmCanonicalCommunityRow handContextId="round-1:h1" cards={cards} revealed={4} />
+        </HolmDealRuntimeMaybe>
+      </CardTransportProvider>,
+    );
+    expect(container.querySelectorAll('[data-holm-card-presentation="empty-anchor"]')).toHaveLength(4);
+    expect(screen.queryByTestId('face-2')).toBeNull();
+    expect(screen.queryByTestId('card-back')).toBeNull();
+  });
+
+  it('does not admit a different hand through a historical runtime', () => {
+    const { container } = render(
+      <CardTransportProvider>
+        <DealRuntime handContextId="old-hand" gameType="holm-game" initialPhase="GAMEPLAY">
+          <HolmCanonicalCommunityRow handContextId="new-hand" cards={cards} revealed={4} />
+        </DealRuntime>
+      </CardTransportProvider>,
+    );
+    expect(container.querySelectorAll('[data-holm-card-presentation="empty-anchor"]')).toHaveLength(4);
+    expect(screen.queryByTestId('face-2')).toBeNull();
   });
 
   it('refreshes the opening parent cache before revealing a multiplayer showdown', () => {
