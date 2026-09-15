@@ -1,5 +1,25 @@
 # Current release and cutover state
 
+## September 15 Holm solo showdown reveal grant
+
+Migration `20260915161215_holm_solo_card_exposure` is deployed. The solo
+resolver now publishes the stayer's tabled hand at authoritative resolution,
+with the existing history exposure recorded atomically. This corrects the
+reproduced folded-viewer freeze at 12/16 card receipts. Folded hands stay
+private; settlement, game rules, historical sessions and other games are
+unchanged.
+
+Seven rollback-safe database cases pass before and after deployment. Two
+production practice runs pass both viewers' reveals, winner presentation,
+privacy, Run Back, successor actions and the following hand. The unchanged
+boundary stress harness also passes seven hand openings with repeated pause,
+reload and disconnect faults and no sustained card loss or page errors. The
+strict payout recorder remains inconclusive on the host's final animation
+frame. The separately reported later disappearance of all live-hand cards
+remains unproven, and Jeremy's fresh smoke is pending. See
+[HOLM_SOLO_REVEAL_FIX_20260915.md](HOLM_SOLO_REVEAL_FIX_20260915.md) for exact
+coverage, recovery and remaining limitations.
+
 ## September 14 Holm community cards after reconnect
 
 The live Jason Heyward report was traced to Holm's historical-entry renderer:
