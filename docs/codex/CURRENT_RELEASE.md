@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 16 temporary live timing capture
+
+Approved for tonight's Gin replay and Holm/3-5-7 diagnostics. Production
+migration `20260917001256` adds optional timing to six Gin replay boundaries;
+all journal and financial behavior is preserved. The client records bounded
+timing batches and per-browser coverage. Observation expires September 17 at
+07:00 Central; replay and missing-card diagnostics continue. Database rollback,
+offline/privacy proofs, application/harness tests and production-bundle browser
+delivery checks pass. See `LIVE_TIMING_20260916.md` for scope, exact measurement
+limits, release evidence and recovery. Both players must reload after publication.
+
 ## September 15 automatic missing-card diagnostics
 
 The Holm/3-5-7 client release is qualified for publication under Jeremy's

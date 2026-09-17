@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { observeCardVisibility, type CardVisibilityContract } from '@/lib/cardVisibilityMonitor';
 import { retainCardVisibilityIncident, resumeCardVisibilityDelivery } from '@/lib/cardVisibilityIncident';
+import { recordCardScan, setLiveTimingContext, clearLiveTimingContext } from '@/lib/livePlayTiming';
 
 type Props = { contract: CardVisibilityContract };
 /** Remains mounted even when a card subtree disappears. Produces no visible UI. */
@@ -31,10 +32,14 @@ function CardVisibilityMonitorImpl({ contract }: Props) {
     // Felt artifacts are portalled beside the game subtree inside the persistent shell.
     const root = marker.current?.closest<HTMLElement>('[data-canonical-shell-root]') ?? marker.current?.parentElement;
     if (!root) return;
-    try { monitor.current = observeCardVisibility(root, () => current.current, retainCardVisibilityIncident); }
+    try {
+      setLiveTimingContext(current.current);
+      monitor.current = observeCardVisibility(root, () => current.current, retainCardVisibilityIncident,
+        duration => recordCardScan(current.current, duration));
+    }
     catch { /* A diagnostic observer must never crash the table. */ }
     const stopDelivery = resumeCardVisibilityDelivery();
-    return () => { monitor.current?.stop(); stopDelivery(); };
+    return () => { monitor.current?.stop(); stopDelivery(); clearLiveTimingContext(current.current); };
   }, []);
   return <span ref={marker} hidden data-card-visibility-monitor="v1" />;
 }

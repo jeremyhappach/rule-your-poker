@@ -6,6 +6,7 @@ import {
   subscribeChaosStatus,
 } from './networkSimChaos';
 import { getNetworkSimRuntime } from './networkSimRuntime';
+import { withLiveTiming } from './livePlayTiming';
 
 const CONTROL_PATHS = ['/rest/v1/network_sim_events', '/rest/v1/profiles'];
 
@@ -44,7 +45,7 @@ function offlineError(): TypeError {
   return new TypeError('Cross-Country Chaos simulated request failure before send');
 }
 
-export const simulatedSupabaseFetch: typeof fetch = async (input, init) => {
+export const simulatedSupabaseFetch: typeof fetch = withLiveTiming(async (input, init) => {
   const nativeFetch = globalThis.fetch.bind(globalThis);
   const url = requestUrl(input);
   if (getNetworkSimRuntime().mode !== 'cross_country_chaos' || bypassSimulation(url)) {
@@ -80,7 +81,7 @@ export const simulatedSupabaseFetch: typeof fetch = async (input, init) => {
     throw new TypeError('Cross-Country Chaos simulated response loss after send');
   }
   return response;
-};
+});
 
 type SocketEventName = 'open' | 'message' | 'close' | 'error';
 type SocketListener = EventListenerOrEventListenerObject;

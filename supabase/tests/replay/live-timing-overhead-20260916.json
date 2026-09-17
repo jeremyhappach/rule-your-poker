@@ -1,0 +1,85 @@
+{
+  "description": "Profiler instrumentation disabled/enabled; replay remains enabled in both arms. Authoritative call and forced deferred checks inside a rolled-back transaction; excludes actual COMMIT and network. Two warmups excluded, interleaved.",
+  "stats": [
+    {
+      "n": 14,
+      "p50": 9.928,
+      "p95": 11.85335,
+      "enabled": false,
+      "maximum": 11.997,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 10.364,
+      "p95": 12.47515,
+      "enabled": true,
+      "maximum": 12.728,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 7.4725,
+      "p95": 8.5941,
+      "enabled": false,
+      "maximum": 8.858,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 7.6145,
+      "p95": 9.17435,
+      "enabled": true,
+      "maximum": 9.383,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 12.881,
+      "p95": 15.0223,
+      "enabled": false,
+      "maximum": 15.047,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 12.7825,
+      "p95": 16.88675,
+      "enabled": true,
+      "maximum": 17.657,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 234.6075,
+      "p95": 252.99475,
+      "enabled": false,
+      "maximum": 257.015,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 236.235,
+      "p95": 282.751,
+      "enabled": true,
+      "maximum": 287.886,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 250.5525,
+      "p95": 277.1467,
+      "enabled": false,
+      "maximum": 281.906,
+      "category": "settlement_terminal"
+    },
+    {
+      "n": 14,
+      "p50": 248.8115,
+      "p95": 278.19445,
+      "enabled": true,
+      "maximum": 295.359,
+      "category": "settlement_terminal"
+    }
+  ]
+}

@@ -118,7 +118,6 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
     bindGeometry();
     const sample = sampleCardVisibility(root, contract, reason);
     lastAt = performance.now();
-    measured?.(lastAt - start);
     const key = `${scope}:${sample.failures.join(',')}`;
     if (sample.failures.length && key === candidate && !reported.has(key)) {
       reported.add(key);
@@ -133,6 +132,8 @@ export function observeCardVisibility(root: HTMLElement, read: () => CardVisibil
     candidate = sample.failures.length ? key : '';
     // One confirmation only; no recurring scan of an unchanged failure.
     if (sample.failures.length && !reported.has(key)) schedule('confirm');
+    // Include geometry binding, scan, comparison and local history maintenance.
+    measured?.(performance.now() - start);
   }
   function schedule(nextReason = 'commit') {
     if (stopped) return;

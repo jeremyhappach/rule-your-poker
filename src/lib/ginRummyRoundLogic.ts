@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { GinRummyCard, GinRummyState } from './ginRummyTypes';
+import { recordGinResponse } from './livePlayTiming';
 
 export async function advanceGinPostgame(identity: {
   gameId: string; roundId: string; dealerGameId: string; handNumber: number;
@@ -131,6 +132,7 @@ export async function applyGinRummyAction(args: {
   if (result?.outcome === 'stale_identity') {
     throw new Error('Gin action targeted a stale hand identity');
   }
+  recordGinResponse(args.roundId, result?.state?.actionCount ?? -1, result?.outcome ?? 'missing');
   return {
     outcome: result?.outcome ?? 'missing',
     state: requireState(result, 'Gin action'),

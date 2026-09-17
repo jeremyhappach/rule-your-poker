@@ -29,6 +29,7 @@ import {
   logGinResultDisplay,
 } from '@/lib/ginRummySyncDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
+import { recordGinTableCommit, clearLiveTimingContext } from '@/lib/livePlayTiming';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
@@ -702,6 +703,13 @@ export const GinRummyGameTable = ({
   const acceptedPresentationMatches = ginIdentityEqual(renderAcceptedPresentation?.identity ?? null, renderCommittedIdentity);
   const viewState = acceptedPresentationMatches ? renderAcceptedPresentation?.state ?? null : null;
   const ginState = viewState;
+  useEffect(() => () => clearLiveTimingContext({ gameId, roundId, viewerId: currentUserId,
+    gameType: 'gin-rummy', handNumber }), [gameId, roundId, currentUserId, handNumber]);
+  useEffect(() => {
+    if (roundId && ginState) recordGinTableCommit({ gameId, roundId, viewerId: currentUserId,
+      gameType: 'gin-rummy', handNumber }, ginState.actionCount ?? -1);
+  // A confirmed RPC can replace an optimistic projection at the same count.
+  }, [gameId, roundId, currentUserId, handNumber, ginState]);
   const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
   const visiblePlayable = isPlayable;
   const setGinState = useCallback((state: GinRummyState | null) => {
