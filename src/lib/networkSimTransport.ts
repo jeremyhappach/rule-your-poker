@@ -6,7 +6,7 @@ import {
   subscribeChaosStatus,
 } from './networkSimChaos';
 import { getNetworkSimRuntime } from './networkSimRuntime';
-import { withLiveTiming } from './livePlayTiming';
+import { withLiveTiming, type LiveFetchTiming } from './livePlayTiming';
 
 const CONTROL_PATHS = ['/rest/v1/network_sim_events', '/rest/v1/profiles'];
 
@@ -45,25 +45,42 @@ function offlineError(): TypeError {
   return new TypeError('Cross-Country Chaos simulated request failure before send');
 }
 
-export const simulatedSupabaseFetch: typeof fetch = withLiveTiming(async (input, init) => {
+/** Measures only the native request, including failures, without a second send. */
+async function measuredNativeFetch(nativeFetch: typeof fetch, input: RequestInfo | URL, init: RequestInit | undefined, timing: LiveFetchTiming): Promise<Response> {
+  const start = performance.now();
+  try { return await nativeFetch(input, init); }
+  finally { timing.nativeFetchMs = performance.now() - start; }
+}
+
+export const simulatedSupabaseFetch: typeof fetch = withLiveTiming(async (input, init, timing) => {
   const nativeFetch = globalThis.fetch.bind(globalThis);
   const url = requestUrl(input);
-  if (getNetworkSimRuntime().mode !== 'cross_country_chaos' || bypassSimulation(url)) {
-    return nativeFetch(input, init);
+  const mode = getNetworkSimRuntime().mode;
+  if (timing) timing.networkSimMode = mode;
+  if (mode !== 'cross_country_chaos' || bypassSimulation(url)) {
+    return timing ? measuredNativeFetch(nativeFetch, input, init, timing) : nativeFetch(input, init);
   }
 
   const method = (init?.method ?? (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
   const kind = method === 'GET' || method === 'HEAD' || method === 'OPTIONS' ? 'read' : 'write';
   const decision = getChaosRequestDecision(kind);
+  if (timing) {
+    timing.chaosPhase = decision.phaseKind;
+    timing.injectedDelayPlannedMs = decision.delayMs;
+  }
   if (decision.failBeforeSend) {
+    if (timing) timing.simulationFailure = 'before-send';
     recordChaosTransportEvent('http_failed_before_send', method, { kind, phase: decision.phaseKind, url: new URL(url).pathname });
     throw offlineError();
   }
   if (decision.delayMs > 0) {
     recordChaosTransportEvent('http_delayed', method, { kind, phase: decision.phaseKind, delayMs: decision.delayMs, url: new URL(url).pathname });
-    await waitFor(decision.delayMs, requestSignal(input, init));
+    const waitStarted = timing ? performance.now() : 0;
+    try { await waitFor(decision.delayMs, requestSignal(input, init)); }
+    finally { if (timing) timing.injectedDelayMs = performance.now() - waitStarted; }
   }
   if (getChaosStatus().disconnected) {
+    if (timing) timing.simulationFailure = 'before-send';
     recordChaosTransportEvent('http_failed_before_send', method, { kind, phase: 'offline', url: new URL(url).pathname });
     throw offlineError();
   }
@@ -71,8 +88,9 @@ export const simulatedSupabaseFetch: typeof fetch = withLiveTiming(async (input,
   // A request is delegated exactly once. Writes are never retried by the
   // harness. In the response-loss phase the server response is intentionally
   // discarded after that one delegation, reproducing an ambiguous commit.
-  const response = await nativeFetch(input, init);
+  const response = await (timing ? measuredNativeFetch(nativeFetch, input, init, timing) : nativeFetch(input, init));
   if (decision.loseResponseAfterSend) {
+    if (timing) timing.simulationFailure = 'response-loss';
     recordChaosTransportEvent('http_response_lost_after_send', method, {
       kind,
       phase: decision.phaseKind,

@@ -1,11 +1,28 @@
 /** Temporary, count-only observation. Never awaited by a gameplay owner. */
 import { buildMetaPayload } from './buildMeta';
 import { getClientId } from './clientContext';
+import type { NetworkSimMode } from './networkSimRuntime';
+import type { ChaosPhaseKind } from './networkSimChaos';
 
-export const LIVE_TIMING_UNTIL = Date.parse('2026-09-17T12:00:00Z');
+export const LIVE_TIMING_UNTIL = Date.parse('2026-09-18T12:00:00Z');
 export const LIVE_TIMING_KEY = 'ptp:live-timing:v1';
 export interface TimingContext { gameId: string; roundId: string | null; viewerId: string; gameType: string; handNumber: number }
 type Metric = Record<string, string | number | boolean | null>;
+/** One request-local observation; never passed to fetch or retained with operands. */
+export interface LiveFetchTiming {
+  networkSimMode: NetworkSimMode | null;
+  chaosPhase: ChaosPhaseKind | null;
+  injectedDelayPlannedMs: number;
+  injectedDelayMs: number;
+  nativeFetchMs: number | null;
+  simulationFailure: 'before-send' | 'response-loss' | null;
+}
+type ObservedFetch = (input: RequestInfo | URL, init?: RequestInit, timing?: LiveFetchTiming) => Promise<Response>;
+const transportFields = (timing: LiveFetchTiming): Metric => ({
+  transportTimingVersion: 1, networkSimMode: timing.networkSimMode, chaosPhase: timing.chaosPhase,
+  injectedDelayPlannedMs: timing.injectedDelayPlannedMs, injectedDelayMs: timing.injectedDelayMs,
+  nativeFetchMs: timing.nativeFetchMs, simulationFailure: timing.simulationFailure,
+});
 type Batch = { id: string; at: number; context: TimingContext; samples: Metric[]; dropped: number; attempts: number; build: Record<string, string>; clientId: string; browser: string };
 let context: TimingContext | null = null;
 let batchContext: TimingContext | null = null;
@@ -93,7 +110,7 @@ export function parseReplayTiming(headers: Headers) {
   const value = headers.get('x-ptown-replay-ms');
   return value !== null && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
 }
-export function withLiveTiming(fetcher: typeof fetch): typeof fetch {
+export function withLiveTiming(fetcher: ObservedFetch): typeof fetch {
   return async (input, init) => {
     if (!liveTimingEnabled() || !context || context.gameType !== 'gin-rummy') return fetcher(input, init);
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -105,18 +122,21 @@ export function withLiveTiming(fetcher: typeof fetch): typeof fetch {
     const roundId = String(args._round_id ?? args.p_round_id ?? args._predecessor_round_id ?? identity.roundId ?? '');
     const action = typeof args._action === 'string' && /^[a-z_]{1,40}$/.test(args._action) ? args._action : rpc;
     const start = performance.now(); const id = crypto.randomUUID();
+    const timing: LiveFetchTiming = { networkSimMode: null, chaosPhase: null, injectedDelayPlannedMs: 0,
+      injectedDelayMs: 0, nativeFetchMs: null, simulationFailure: null };
     const item: Pending = { id, context: identity, roundId, expected: Number(args._expected_action_count ?? -1), start, background: document.visibilityState !== 'visible', received: false };
     pending = [...pending.filter(p => start - p.start < 60_000), item].slice(-16);
     try {
-      const response = await fetcher(input, init);
+      const response = await fetcher(input, init, timing);
       item.received = true;
       record({ kind: 'gin-rpc', id, rpc, action, roundId, expectedActionCount: item.expected,
+        ...transportFields(timing),
         responseHeadersMs: performance.now() - start, replayMs: parseReplayTiming(response.headers), status: response.status,
         foreground: !item.background && document.visibilityState === 'visible' }, identity);
       if (!response.ok) pending = pending.filter(p => p !== item);
       return response;
     } catch (error) {
-      record({ kind: 'gin-rpc', id, rpc, action, roundId, responseHeadersMs: performance.now() - start, failed: true, foreground: !item.background }, identity);
+      record({ kind: 'gin-rpc', id, rpc, action, roundId, ...transportFields(timing), responseHeadersMs: performance.now() - start, failed: true, foreground: !item.background }, identity);
       pending = pending.filter(p => p !== item); throw error;
     }
   };

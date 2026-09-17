@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 17 transport timing attribution
+
+Approved client correction records simulation mode, Chaos phase, planned/actual
+injected wait and native fetch duration on the same Gin request identity.
+Existing total elapsed timing is retained. Focused tests, typecheck and build
+pass. Client capture runs through September 18 at 07:00 Central; the earlier
+server replay-timing window remains expired. No database or gameplay changes.
+See `LIVE_TIMING_TRANSPORT_20260917.md` for fields, validation and recovery.
+
 ## September 16 temporary live timing capture
 
 Approved for tonight's Gin replay and Holm/3-5-7 diagnostics. Production
