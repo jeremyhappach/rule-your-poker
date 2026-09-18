@@ -17,6 +17,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 beforeEach(() => {
   vi.resetModules(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-17T21:00:00Z'));
   vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+  vi.spyOn(Math, 'random').mockReturnValue(0);
   localStorage.clear(); mocks.send.mockReset().mockReturnValue({ abortSignal: async () => ({ error: null }) });
   mocks.status.mockReturnValue({ disconnected: false });
   mocks.decision.mockReturnValue({ delayMs: 5000, phaseKind: 'radio-stall', failBeforeSend: false, loseResponseAfterSend: false });
@@ -29,7 +30,7 @@ async function setup(mode: 'off' | 'cross_country_chaos' = 'cross_country_chaos'
   return { timing, runtime, fetch: (await import('./networkSimTransport')).simulatedSupabaseFetch };
 }
 async function sample() {
-  await vi.advanceTimersByTimeAsync(15_001);
+  await vi.advanceTimersByTimeAsync(60_001);
   return mocks.send.mock.calls.flatMap(c => c[0].payload.samples).filter(s => s.kind === 'gin-rpc');
 }
 it('separates a five-second injected wait from a 100 ms native fetch and freezes the dispatch mode', async () => {
@@ -87,9 +88,9 @@ it('records actual elapsed wait when aborted, preserves the abort, and never sen
   await vi.advanceTimersByTimeAsync(40); abort.abort(error); await assertion; expect(native).not.toHaveBeenCalled();
   expect((await sample())[0]).toMatchObject({ failed: true, injectedDelayPlannedMs: 5000, injectedDelayMs: 40, nativeFetchMs: null });
 });
-it('stops observation after expiry while still delegating the gameplay request once', async () => {
-  const t = await setup('off'); vi.setSystemTime(t.timing.LIVE_TIMING_UNTIL + 1);
+it('continues observation after the old expiry while delegating the gameplay request once', async () => {
+  const t = await setup('off'); vi.setSystemTime(new Date('2027-01-01'));
   const response = new Response('{}'); const native = vi.fn().mockResolvedValue(response); vi.stubGlobal('fetch', native);
   expect(await t.fetch(url, init)).toBe(response); expect(native).toHaveBeenCalledExactlyOnceWith(url, init);
-  expect(await sample()).toHaveLength(0);
+  expect(await sample()).toHaveLength(1);
 });

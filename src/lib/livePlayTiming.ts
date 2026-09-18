@@ -1,11 +1,12 @@
-/** Temporary, count-only observation. Never awaited by a gameplay owner. */
+/** Bounded, sampled observation. Never awaited by a gameplay owner. */
 import { buildMetaPayload } from './buildMeta';
 import { getClientId } from './clientContext';
 import type { NetworkSimMode } from './networkSimRuntime';
 import type { ChaosPhaseKind } from './networkSimChaos';
 
-export const LIVE_TIMING_UNTIL = Date.parse('2026-09-18T12:00:00Z');
 export const LIVE_TIMING_KEY = 'ptp:live-timing:v1';
+export const LIVE_TIMING_SAMPLE_RATE = 0.25;
+export const LIVE_TIMING_FLUSH_MS = 60_000;
 export interface TimingContext { gameId: string; roundId: string | null; viewerId: string; gameType: string; handNumber: number }
 type Metric = Record<string, string | number | boolean | null>;
 /** One request-local observation; never passed to fetch or retained with operands. */
@@ -29,21 +30,27 @@ let batchContext: TimingContext | null = null;
 let samples: Metric[] = [], dropped = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let sending = false, installed = false;
+let observer: PerformanceObserver | undefined;
+let ready: Batch[] = [];
+let lastScanSample = -Infinity;
 const seen = new Set<string>();
-type Pending = { id: string; context: TimingContext; roundId: string; expected: number; start: number; background: boolean; received: boolean };
+type Pending = { id: string; context: TimingContext; roundId: string; expected: number; start: number; background: boolean; received: boolean; retain: boolean };
 let pending: Pending[] = [];
-export const liveTimingEnabled = () => Date.now() < LIVE_TIMING_UNTIL;
+export const liveTimingEnabled = () => true;
 const readQueue = (): Batch[] => { try { const value = JSON.parse(localStorage.getItem(LIVE_TIMING_KEY) ?? '[]'); return Array.isArray(value) ? value.filter(b => b?.context && Date.now() - b.at < 86_400_000).slice(-8) : []; } catch { return []; } };
 const writeQueue = (q: Batch[]) => { try { localStorage.setItem(LIVE_TIMING_KEY, JSON.stringify(q.slice(-8))); } catch { /* best effort telemetry */ } };
 function seal() {
   if (!samples.length || !batchContext) return;
   const batch: Batch = { id: crypto.randomUUID(), at: Date.now(), context: { ...batchContext }, samples, dropped, attempts: 0,
     build: buildMetaPayload(), clientId: getClientId(), browser: navigator.userAgent.slice(0, 180) };
-  samples = []; dropped = 0; writeQueue([...readQueue(), batch]);
+  samples = []; dropped = 0; ready = [...ready, batch].slice(-8);
 }
+// Storage serialization happens only on a scheduled flush or page exit, never
+// on an action response, React commit, or hand identity change.
+function persist() { if (ready.length) { writeQueue([...readQueue(), ...ready]); ready = []; } }
 function schedule() {
   if (timer !== undefined) return;
-  timer = setTimeout(() => { timer = undefined; try { seal(); void deliverLiveTiming(); } catch { /* cannot affect play */ } }, 15_000);
+  timer = setTimeout(() => { timer = undefined; try { seal(); persist(); void deliverLiveTiming(); } catch { /* cannot affect play */ } }, LIVE_TIMING_FLUSH_MS);
 }
 function record(metric: Metric, identity = context) {
   if (!liveTimingEnabled() || !identity) return;
@@ -66,7 +73,7 @@ export async function deliverLiveTiming() {
       try {
         const { error } = await supabase.from('debug_events').upsert({ id: batch.id, game_id: batch.context.gameId,
           round_id: batch.context.roundId, user_id: viewer, client_role: 'live-timing', event_type: 'live-play-timing-v1',
-          payload: JSON.parse(JSON.stringify({ version: 1, expiresAt: LIVE_TIMING_UNTIL, ...batch })) }, { onConflict: 'id', ignoreDuplicates: true }).abortSignal(abort.signal);
+          payload: JSON.parse(JSON.stringify({ version: 2, policy: 'sampled-continuous/1', sampleRate: LIVE_TIMING_SAMPLE_RATE, retentionDays: 7, ...batch })) }, { onConflict: 'id', ignoreDuplicates: true }).abortSignal(abort.signal);
         if (!error) writeQueue(readQueue().filter(b => b.id !== batch.id));
       } catch { /* next bounded batch/lifecycle may retry */ } finally { clearTimeout(timeout); }
     }
@@ -75,7 +82,7 @@ export async function deliverLiveTiming() {
 export function setLiveTimingContext(next: TimingContext) {
   if (!liveTimingEnabled()) return;
   try {
-    if (!context || next.roundId !== context.roundId || next.gameId !== context.gameId || next.viewerId !== context.viewerId) { seal(); context = { ...next }; }
+    if (!context || next.roundId !== context.roundId || next.gameId !== context.gameId || next.viewerId !== context.viewerId || next.gameType !== context.gameType) { seal(); context = { ...next }; lastScanSample = -Infinity; }
     const key = `${next.viewerId}:${next.gameId}:${next.roundId}:${next.gameType}`;
     if (!seen.has(key)) {
       seen.add(key); if (seen.size > 64) seen.delete(seen.values().next().value!);
@@ -83,26 +90,29 @@ export function setLiveTimingContext(next: TimingContext) {
     }
     if (!installed) {
       installed = true;
-      const flush = () => { try { seal(); void deliverLiveTiming(); } catch { /* cannot affect play */ } };
+      const flush = () => { try { seal(); persist(); void deliverLiveTiming(); } catch { /* cannot affect play */ } };
       window.addEventListener('pagehide', flush); window.addEventListener('online', flush);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') pending.forEach(p => { p.background = true; }); flush(); });
-      if (typeof PerformanceObserver !== 'undefined' && PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
-        const observer = new PerformanceObserver(list => { for (const entry of list.getEntries()) record({ kind: 'longtask', durationMs: entry.duration, foreground: document.visibilityState === 'visible' }); });
-        observer.observe({ type: 'longtask' });
-        setTimeout(() => observer.disconnect(), Math.max(0, LIVE_TIMING_UNTIL - Date.now()));
-      }
       void deliverLiveTiming();
+    }
+    if (!observer && typeof PerformanceObserver !== 'undefined' && PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
+      observer = new PerformanceObserver(list => { for (const entry of list.getEntries()) record({ kind: 'longtask', durationMs: entry.duration, foreground: document.visibilityState === 'visible' }); });
+      observer.observe({ type: 'longtask' });
     }
   } catch { /* cannot affect play */ }
 }
 export function recordCardScan(identity: TimingContext, durationMs: number) {
   setLiveTimingContext(identity);
-  record({ kind: 'card-scan', durationMs, foreground: document.visibilityState === 'visible' }, identity);
+  // At most one ordinary scan sample per five seconds, plus slow scans.
+  const periodic = performance.now() - lastScanSample >= 5_000;
+  if (durationMs < 10 && !periodic) return;
+  lastScanSample = performance.now();
+  record({ kind: 'card-scan', sampleClass: periodic ? 'periodic' : 'slow', durationMs, foreground: document.visibilityState === 'visible' }, identity);
 }
 export function clearLiveTimingContext(identity: TimingContext) {
   try {
     if (context?.gameId === identity.gameId && context?.roundId === identity.roundId && context?.viewerId === identity.viewerId) {
-      seal(); context = null;
+      seal(); context = null; observer?.disconnect(); observer = undefined;
     }
   } catch { /* cannot affect unmount */ }
 }
@@ -124,19 +134,24 @@ export function withLiveTiming(fetcher: ObservedFetch): typeof fetch {
     const start = performance.now(); const id = crypto.randomUUID();
     const timing: LiveFetchTiming = { networkSimMode: null, chaosPhase: null, injectedDelayPlannedMs: 0,
       injectedDelayMs: 0, nativeFetchMs: null, simulationFailure: null };
-    const item: Pending = { id, context: identity, roundId, expected: Number(args._expected_action_count ?? -1), start, background: document.visibilityState !== 'visible', received: false };
+    const sampled = Math.random() < LIVE_TIMING_SAMPLE_RATE;
+    const lifecycle = !['draw_stock', 'draw_discard', 'discard', 'pass_first_draw', 'take_first_draw', 'lay_off'].includes(action);
+    const item: Pending = { id, context: identity, roundId, expected: Number(args._expected_action_count ?? -1), start, background: document.visibilityState !== 'visible', received: false, retain: sampled || lifecycle };
     pending = [...pending.filter(p => start - p.start < 60_000), item].slice(-16);
     try {
       const response = await fetcher(input, init, timing);
       item.received = true;
-      record({ kind: 'gin-rpc', id, rpc, action, roundId, expectedActionCount: item.expected,
+      const elapsed = performance.now() - start;
+      item.retain ||= elapsed >= 1_000 || !response.ok;
+      if (item.retain) record({ kind: 'gin-rpc', id, rpc, action, roundId, expectedActionCount: item.expected,
+        sampleClass: sampled ? 'random' : !response.ok ? 'error' : lifecycle ? 'lifecycle' : 'slow',
         ...transportFields(timing),
-        responseHeadersMs: performance.now() - start, replayMs: parseReplayTiming(response.headers), status: response.status,
+        responseHeadersMs: elapsed, replayMs: parseReplayTiming(response.headers), status: response.status,
         foreground: !item.background && document.visibilityState === 'visible' }, identity);
-      if (!response.ok) pending = pending.filter(p => p !== item);
+      if (!response.ok || !item.retain) pending = pending.filter(p => p !== item);
       return response;
     } catch (error) {
-      record({ kind: 'gin-rpc', id, rpc, action, roundId, ...transportFields(timing), responseHeadersMs: performance.now() - start, failed: true, foreground: !item.background }, identity);
+      record({ kind: 'gin-rpc', id, rpc, action, roundId, sampleClass: sampled ? 'random' : 'error', ...transportFields(timing), responseHeadersMs: performance.now() - start, failed: true, foreground: !item.background && document.visibilityState === 'visible' }, identity);
       pending = pending.filter(p => p !== item); throw error;
     }
   };

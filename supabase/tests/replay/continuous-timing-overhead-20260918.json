@@ -1,0 +1,167 @@
+{
+  "boundary": "Authoritative RPC plus forced deferred constraints inside rollback; excludes COMMIT/network. Replay remains enabled in both arms. Enabled forces timing on for every measured call; production samples 25%.",
+  "preflight": [
+    {
+      "n": 14,
+      "p50": 11.296,
+      "p95": 13.38,
+      "enabled": false,
+      "maximum": 14.375,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 12.543,
+      "p95": 14.4,
+      "enabled": true,
+      "maximum": 14.944,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 8.761,
+      "p95": 10.589,
+      "enabled": false,
+      "maximum": 10.756,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 8.994,
+      "p95": 11.162,
+      "enabled": true,
+      "maximum": 11.217,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 14.004,
+      "p95": 17.415,
+      "enabled": false,
+      "maximum": 17.811,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 14.282,
+      "p95": 16.996,
+      "enabled": true,
+      "maximum": 17.125,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 237.529,
+      "p95": 271.165,
+      "enabled": false,
+      "maximum": 281.555,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 236.788,
+      "p95": 276.481,
+      "enabled": true,
+      "maximum": 279.182,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 254.813,
+      "p95": 311.212,
+      "enabled": false,
+      "maximum": 329.236,
+      "category": "settlement_terminal"
+    },
+    {
+      "n": 14,
+      "p50": 252.209,
+      "p95": 294.643,
+      "enabled": true,
+      "maximum": 307.148,
+      "category": "settlement_terminal"
+    }
+  ],
+  "production": [
+    {
+      "n": 14,
+      "p50": 10.147,
+      "p95": 13.511,
+      "enabled": false,
+      "maximum": 13.624,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 10.537,
+      "p95": 13.666,
+      "enabled": true,
+      "maximum": 15.198,
+      "category": "compound"
+    },
+    {
+      "n": 14,
+      "p50": 7.812,
+      "p95": 9.155,
+      "enabled": false,
+      "maximum": 9.717,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 8.198,
+      "p95": 9.304,
+      "enabled": true,
+      "maximum": 9.414,
+      "category": "ordinary"
+    },
+    {
+      "n": 14,
+      "p50": 13.738,
+      "p95": 16.865,
+      "enabled": false,
+      "maximum": 18.202,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 13.404,
+      "p95": 17.324,
+      "enabled": true,
+      "maximum": 17.929,
+      "category": "reveal_void"
+    },
+    {
+      "n": 14,
+      "p50": 238.969,
+      "p95": 254.018,
+      "enabled": false,
+      "maximum": 264.725,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 234.503,
+      "p95": 269.194,
+      "enabled": true,
+      "maximum": 286.985,
+      "category": "scoring"
+    },
+    {
+      "n": 14,
+      "p50": 249.455,
+      "p95": 266.605,
+      "enabled": false,
+      "maximum": 267.668,
+      "category": "settlement_terminal"
+    },
+    {
+      "n": 14,
+      "p50": 251.757,
+      "p95": 283.787,
+      "enabled": true,
+      "maximum": 300.015,
+      "category": "settlement_terminal"
+    }
+  ]
+}

@@ -1,5 +1,18 @@
 # Current release and cutover state
 
+## September 18 continuous sampled play timing
+
+Approved replacement for expiring observation: ordinary Gin requests are
+sampled at 25%, with slow/error/scoring/lifecycle observations labeled separately.
+Native request time, injected simulation delay, parsed response and paint
+opportunity remain distinguishable. Six existing Gin replay boundaries sample
+server helper time per transaction; no replay facts or gameplay rules change.
+Timing and missing-card records retain seven days; ordinary diagnostic retention
+stays unchanged. Browser batches are bounded and uploaded outside gameplay.
+Production migration `20260918162031` and rollback/offline proofs pass. Client
+publication is pending. See `CONTINUOUS_PLAY_TIMING_20260918.md` for evidence,
+recovery, measurement limits, and the mandatory gate before another game.
+
 ## September 17 transport timing attribution
 
 Approved client correction records simulation mode, Chaos phase, planned/actual

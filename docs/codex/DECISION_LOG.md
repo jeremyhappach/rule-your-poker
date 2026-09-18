@@ -1,5 +1,20 @@
 # Durable decision log
 
+## D-141 — Persistent timing supports, but does not replace, replay qualification
+
+Normal play records bounded, sampled observations without a calendar expiry.
+Keep random latency samples distinct from deliberately retained slow/error and
+lifecycle observations. Server replay helper time is diagnostic: it excludes
+commit and is not a replay-disabled/enabled comparison. Seven-day retention
+applies only to timing and missing-card evidence; durable history is unaffected.
+Replay remains Gin-only. Each additional game must independently pass offline
+reconstruction/privacy/reconciliation and an interleaved authoritative RPC plus
+COMMIT benchmark: added p95 <=10 ms for ordinary/compound/reveal, <=50 ms for
+scoring/settlement/terminal, without pathological tails, contention or growth.
+Live evidence must support responsiveness before advancing the rollout; no
+finite test can guarantee every future network or device condition. See
+`CONTINUOUS_PLAY_TIMING_20260918.md`.
+
 ## D-140 — Gin replay/1 records authoritative transitions atomically
 
 New Gin hands enroll at their authoritative opening. Private append-only
