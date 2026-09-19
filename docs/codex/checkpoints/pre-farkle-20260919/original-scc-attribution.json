@@ -1,0 +1,409 @@
+{
+  "baselineSha": "530194483f338a83dc8d1d60a870f34c037a7566",
+  "traceSha256": "ef052ce8b54df4ae3ddbaefc4bc9f11c0704484fe4af9f0ca36080688dd4f431",
+  "failedReceipt": {
+    "actionId": "host-1789844164596-3",
+    "actor": "host",
+    "actionSurface": "horses-scc-turn",
+    "buttonText": "Roll 1",
+    "expectedPeerDelayReason": null,
+    "clickedAt": 1789844164596,
+    "gameId": "bbecebb0-5259-4d79-a17b-e5935587b3e9",
+    "dealerGameId": "a0851e81-5a97-4982-a93a-5635c10ff1ec",
+    "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+    "rpcEndpoint": "/rest/v1/rpc/horses_scc_apply_action",
+    "rpcStartedAt": 1789844164704,
+    "rpcFinishedAt": 1789844164840,
+    "rpcDurationMs": 136,
+    "rpcOutcome": "finished",
+    "actorProgressAt": 1789844164912,
+    "actorProgressMs": 316,
+    "peerProgressAt": null,
+    "peerProgressMs": null,
+    "progressExpectation": "both",
+    "progressExemptionReason": null,
+    "progressProblems": [
+      "peer-incomplete"
+    ],
+    "mutationTarget": null
+  },
+  "rolls": [
+    {
+      "startedAt": "2026-09-19T18:56:04.631Z",
+      "request": {
+        "_round_id": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+        "_player_id": "6ce30fb5-93b2-42cd-9ab5-49e59a49089c",
+        "_action": "roll",
+        "_expected_action_sequence": 4,
+        "_hold_mask": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "outcome": "applied",
+      "sequence": 5,
+      "authorityScope": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "player": {
+        "dice": [
+          {
+            "isSCC": false,
+            "value": 5,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 1,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 1,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 3,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 5,
+            "isHeld": false
+          }
+        ],
+        "holdSeq": 0,
+        "rollKey": 1789844164862,
+        "isComplete": false,
+        "rollStartedAt": "2026-09-19T13:56:04.862224-05:00",
+        "rollsRemaining": 2,
+        "rollAnimationMinEndAt": "2026-09-19T13:56:06.162224-05:00",
+        "heldMaskBeforeComplete": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "heldCountBeforeComplete": 0
+      }
+    },
+    {
+      "startedAt": "2026-09-19T18:56:06.386Z",
+      "request": {
+        "_round_id": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+        "_player_id": "6ce30fb5-93b2-42cd-9ab5-49e59a49089c",
+        "_action": "roll",
+        "_expected_action_sequence": 5,
+        "_hold_mask": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "outcome": "applied",
+      "sequence": 6,
+      "authorityScope": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "player": {
+        "dice": [
+          {
+            "isSCC": false,
+            "value": 5,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 1,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 5,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 3,
+            "isHeld": false
+          },
+          {
+            "isSCC": false,
+            "value": 4,
+            "isHeld": false
+          }
+        ],
+        "holdSeq": 0,
+        "rollKey": 1789844166689,
+        "isComplete": false,
+        "rollStartedAt": "2026-09-19T13:56:06.689589-05:00",
+        "rollsRemaining": 1,
+        "rollAnimationMinEndAt": "2026-09-19T13:56:08.489589-05:00",
+        "heldMaskBeforeComplete": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "heldCountBeforeComplete": 0
+      }
+    },
+    {
+      "startedAt": "2026-09-19T18:56:08.924Z",
+      "request": {
+        "_round_id": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+        "_player_id": "6ce30fb5-93b2-42cd-9ab5-49e59a49089c",
+        "_action": "roll",
+        "_expected_action_sequence": 6,
+        "_hold_mask": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "outcome": "applied",
+      "sequence": 7,
+      "authorityScope": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "player": {
+        "dice": [
+          {
+            "isSCC": false,
+            "value": 4,
+            "isHeld": true
+          },
+          {
+            "isSCC": false,
+            "value": 1,
+            "isHeld": true
+          },
+          {
+            "isSCC": false,
+            "value": 2,
+            "isHeld": true
+          },
+          {
+            "isSCC": true,
+            "value": 6,
+            "isHeld": true,
+            "sccType": "ship"
+          },
+          {
+            "isSCC": false,
+            "value": 4,
+            "isHeld": true
+          }
+        ],
+        "result": {
+          "rank": 0,
+          "cargoSum": 0,
+          "description": "NQ",
+          "isQualified": false
+        },
+        "holdSeq": 0,
+        "rollKey": 1789844169218,
+        "isComplete": true,
+        "rollStartedAt": "2026-09-19T13:56:09.21877-05:00",
+        "rollsRemaining": 0,
+        "rollAnimationMinEndAt": "2026-09-19T13:56:11.01877-05:00",
+        "heldMaskBeforeComplete": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "heldCountBeforeComplete": 0
+      }
+    }
+  ],
+  "peerTimeline": [
+    {
+      "elapsedMs": 2256,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:2:false:animating:<unknown-phase>",
+        "1:1:false:animating:<unknown-phase>",
+        "2:6:false:animating:<unknown-phase>",
+        "3:3:false:animating:<unknown-phase>",
+        "4:2:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 2342,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:false:animating:<unknown-phase>",
+        "1:5:false:animating:<unknown-phase>",
+        "2:1:false:animating:<unknown-phase>",
+        "3:3:false:animating:<unknown-phase>",
+        "4:6:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 2569,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:5:false:animating:<unknown-phase>",
+        "1:1:false:animating:<unknown-phase>",
+        "2:1:false:animating:<unknown-phase>",
+        "3:3:false:animating:<unknown-phase>",
+        "4:5:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 3287,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:5:false:animating:<unknown-phase>",
+        "1:6:false:animating:<unknown-phase>",
+        "2:2:false:animating:<unknown-phase>",
+        "3:3:false:animating:<unknown-phase>",
+        "4:4:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 3364,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:3:false:animating:<unknown-phase>",
+        "1:2:false:animating:<unknown-phase>",
+        "2:5:false:animating:<unknown-phase>",
+        "3:1:false:animating:<unknown-phase>",
+        "4:2:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 3469,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:false:animating:<unknown-phase>",
+        "1:1:false:animating:<unknown-phase>",
+        "2:5:false:animating:<unknown-phase>",
+        "3:5:false:animating:<unknown-phase>",
+        "4:3:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 3561,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:6:false:animating:<unknown-phase>",
+        "1:4:false:animating:<unknown-phase>",
+        "2:3:false:animating:<unknown-phase>",
+        "3:1:false:animating:<unknown-phase>",
+        "4:1:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 3680,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:5:false:animating:<unknown-phase>",
+        "1:1:false:animating:<unknown-phase>",
+        "2:5:false:animating:<unknown-phase>",
+        "3:3:false:animating:<unknown-phase>",
+        "4:4:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 4378,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:5:false:scatter:normal",
+        "1:1:false:scatter:normal",
+        "2:5:false:scatter:normal",
+        "3:3:false:scatter:normal",
+        "4:4:false:scatter:normal"
+      ]
+    },
+    {
+      "elapsedMs": 5197,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:3:false:animating:<unknown-phase>",
+        "1:2:false:animating:<unknown-phase>",
+        "2:1:false:animating:<unknown-phase>",
+        "3:5:false:animating:<unknown-phase>",
+        "4:6:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 5262,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:3:false:animating:<unknown-phase>",
+        "1:6:false:animating:<unknown-phase>",
+        "2:5:false:animating:<unknown-phase>",
+        "3:1:false:animating:<unknown-phase>",
+        "4:3:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 5347,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:3:false:animating:<unknown-phase>",
+        "1:6:false:animating:<unknown-phase>",
+        "2:4:false:animating:<unknown-phase>",
+        "3:4:false:animating:<unknown-phase>",
+        "4:4:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 5467,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:false:animating:<unknown-phase>",
+        "1:4:false:animating:<unknown-phase>",
+        "2:4:false:animating:<unknown-phase>",
+        "3:4:false:animating:<unknown-phase>",
+        "4:4:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 5541,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:false:animating:<unknown-phase>",
+        "1:1:false:animating:<unknown-phase>",
+        "2:2:false:animating:<unknown-phase>",
+        "3:6:false:animating:<unknown-phase>",
+        "4:4:false:animating:<unknown-phase>"
+      ]
+    },
+    {
+      "elapsedMs": 6240,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:true:frozen:freeze",
+        "1:1:true:frozen:freeze",
+        "2:2:true:frozen:freeze",
+        "3:6:true:frozen:freeze",
+        "4:4:true:frozen:freeze"
+      ]
+    },
+    {
+      "elapsedMs": 6457,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": [
+        "0:4:true:frozen:freeze",
+        "1:1:true:frozen:freeze",
+        "2:2:true:frozen:freeze",
+        "3:6:true:frozen:freeze",
+        "4:4:true:frozen:freeze"
+      ]
+    },
+    {
+      "elapsedMs": 6991,
+      "roundId": "8bd27abd-c93d-4104-9455-0078c385c0cf",
+      "visibleDice": []
+    }
+  ],
+  "cleanupVerified": true
+}

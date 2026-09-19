@@ -963,6 +963,12 @@ export class HumanChaosContinuousObserver {
     return latestSnapshotBefore(this.events.filter((event): event is ChaosDomSnapshot => event.kind === 'snapshot'), client, Date.now());
   }
 
+  /** Retain intermediate peer paints for bounded qualification-driver barriers. */
+  snapshotsSince(client: ChaosClient, since: number): ChaosDomSnapshot[] {
+    return this.events.filter((event): event is ChaosDomSnapshot => event.kind === 'snapshot'
+      && event.client === client && event.wallTime >= since);
+  }
+
   /** Benchmark precondition only; never substitutes for post-click progress. */
   hasCapturedRoundBaseline(gameId: string, dealerGameId: string, roundId: string): boolean {
     const snapshots = this.events

@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { diceRollTarget, waitForDiceRollCapture } from '../../humanChaos/support/diceRollCapture';
 import { findOptimalMelds } from '../../../src/lib/ginRummyScoring';
 import type { GinRummyCard } from '../../../src/lib/ginRummyTypes';
 import type { DealerGameType, TwoClientSession } from '../../liveness/support/twoClientSession';
@@ -528,7 +529,32 @@ async function playDice(
       // guessing whether SCC has qualified for an early lock, and every click
       // must be followed by a server-observed state change before the actor
       // can touch the next control.
-      await clickAction(roll);
+      if (session.chaosObserver) {
+        const actor = page === session.hostPage ? 'host' : 'peer';
+        await roll.click({ trial: true });
+        const roundId = session.chaosObserver.latestSnapshot(actor)?.roundId;
+        if (!roundId) throw new Error('Dice qualification requires a captured round baseline');
+        const clickedAt = Date.now();
+        const [response] = await Promise.all([
+          page.waitForResponse(response => response.url().endsWith('/rpc/horses_scc_apply_action')
+            && response.request().method() === 'POST'
+            && response.request().postDataJSON()?._action === 'roll'
+            && response.request().postDataJSON()?._round_id === roundId, { timeout: 15_000 }),
+          clickAction(roll),
+        ]);
+        if (!response.ok()) throw new Error(`Dice action returned HTTP ${response.status()}`);
+        const target = diceRollTarget({ gameId: session.gameId, dealerGameId, roundId },
+          response.request().postDataJSON(), await response.json());
+        const configuredBudget = Number(process.env.PTOWN_E2E_MAX_ACTION_TO_PEER_MS);
+        const capture = await waitForDiceRollCapture(session.chaosObserver,
+          actor === 'host' ? 'peer' : 'host', target, clickedAt,
+          Number.isFinite(configuredBudget) && configuredBudget > 0 ? configuredBudget : 15_000);
+        await test.info().attach(`dice-roll-${roundId}-${target.actionSequence}`, {
+          body: JSON.stringify(capture, null, 2), contentType: 'application/json',
+        });
+      } else {
+        await clickAction(roll);
+      }
       lastProgress = await waitForCommittedAction(beforeAction);
       lastProgressAt = Date.now();
       acted = true;
