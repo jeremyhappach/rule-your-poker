@@ -90,6 +90,31 @@ campaigns and their raw local traces remain preserved.
 
 ### Qualification and permanent checkpoint
 
+The third full campaign at `ec09d1615` remains failed (18/1/2), with all
+19 fixtures deleted. Horses tied at rank 36 / "3 6s" and validly entered
+the successor round without a separately sampled settled-dice frame. The
+ordinary observer had no violations. This is another qualification assumption,
+not evidence of a product defect. SCC and Yahtzee terminal were unrun.
+
+The shared tie proof now recomputes Horses wild-dice scores or SCC role/cargo
+scores from the accepted completed roll. It verifies the completed old round,
+action sequence and roll key, tied leaders, unchanged participant order, exactly
+one successor at hand/round +1, reset hands and the first player's turn. It
+requires the persisted tie and re-ante records, no winner award or terminal
+settlement, and an in-progress game pointing to that successor. UUID-bound
+fixture identities establish the exact roll-result caption the peer must have
+shown before displaying that same successor round. Every detected completed
+tie uses this proof, even if settled dice were also visible. Database reads and
+peer frames remain inside the existing 15-second click budget.
+
+The frozen rank-36 dice vectors are a harness regression case. Negative controls
+reject wrong scoring, changed dice/roll identity, unrelated or duplicate rounds,
+wrong next actor/order, unreset hands, absent/duplicate tie results, incorrect
+re-antes, awarded winners, ambiguous captions, and stale/late peer evidence.
+SCC ties, including all-unqualified outcomes, use the same continuation proof.
+The existing unique-winner SCC terminal proof and all terminal/reconnect and
+continuous-observer gates remain mandatory. Product source and SQL are unchanged.
+
 Commit the harness correction and qualify that exact commit from a clean
 worktree against its matching deployed build. Run all 21 mandatory browser
 cases in one fresh campaign (all seven games: entry/reconnect, pause/resume,

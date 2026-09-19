@@ -549,7 +549,8 @@ async function playDice(
         const capture = await waitForDiceRollCapture(session.chaosObserver,
           actor === 'host' ? 'peer' : 'host', target, clickedAt,
           Number.isFinite(configuredBudget) && configuredBudget > 0 ? configuredBudget : 15_000,
-          deadline => probe.readSccTerminalCapture(target, deadline));
+          deadline => probe.readSccTerminalCapture(target, deadline),
+          deadline => probe.readDiceTieCapture(target, deadline));
         await test.info().attach(`dice-roll-${roundId}-${target.actionSequence}`, {
           body: JSON.stringify(capture, null, 2), contentType: 'application/json',
         });

@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../../src/integrations/supabase/types';
 import type { PlayerCredentials } from '../../liveness/support/env';
 import type { SccCaptureTarget, SccTerminalEvidence } from '../../humanChaos/support/sccTerminalCapture';
+import type { DiceTieTarget, DiceTieEvidence } from '../../humanChaos/support/diceTieCapture';
 
 export type TerminalExpectation = {
   gameType: string;
@@ -357,6 +358,27 @@ export class TerminalSettlementProbe {
       'Yahtzee progress query',
     );
     return { stateSignature: JSON.stringify(data?.yahtzee_state ?? null) };
+  }
+
+  async readDiceTieCapture(target: DiceTieTarget, deadline: number): Promise<DiceTieEvidence> {
+    return withProbeDeadline(async signal => {
+      const round = await this.client.from('rounds').select('id,game_id,dealer_game_id,hand_number,round_number,status,horses_state')
+        .eq('id', target.roundId).eq('game_id', target.gameId).eq('dealer_game_id', target.dealerGameId).single().abortSignal(signal);
+      if (round.error) throw new Error(`Dice tie round query failed: ${round.error.message}`);
+      const [game, successors, results, players] = await Promise.all([
+        this.client.from('games').select('id,current_game_uuid,game_type,status,session_ended_at,current_round,total_hands,ante_amount,pot')
+          .eq('id', target.gameId).single().abortSignal(signal),
+        this.client.from('rounds').select('id,game_id,dealer_game_id,hand_number,round_number,status,horses_state,pot')
+          .eq('game_id', target.gameId).eq('dealer_game_id', target.dealerGameId)
+          .eq('hand_number', round.data.hand_number + 1).abortSignal(signal),
+        this.client.from('game_results').select('*').eq('game_id', target.gameId).eq('dealer_game_id', target.dealerGameId)
+          .in('hand_number', [round.data.hand_number, round.data.hand_number + 1]).abortSignal(signal),
+        this.client.from('players').select('id,game_id,user_id,is_bot,profiles(username)')
+          .eq('game_id', target.gameId).in('id', target.tie!.turnOrder).abortSignal(signal),
+      ]);
+      for (const response of [game, successors, results, players]) if (response.error) throw new Error(`Dice tie evidence query failed: ${response.error.message}`);
+      return { game: game.data, round: round.data, successors: successors.data!, results: results.data!, players: players.data! };
+    }, 'Dice tie proof', Math.max(1, deadline - Date.now()), 1);
   }
 
   async readSccTerminalCapture(target: SccCaptureTarget, deadline: number): Promise<SccTerminalEvidence> {

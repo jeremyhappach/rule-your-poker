@@ -6,7 +6,7 @@ export type SccTerminalExpectation = {
   dice: Record<string, unknown>;
 };
 
-function completedScores(players: Record<string, any>): SccTerminalExpectation | null {
+export function completedSccScores(players: Record<string, any>) {
   const entries = Object.entries(players);
   if (entries.length < 2 || entries.some(([, p]) => p?.isComplete !== true)) return null;
   const scores: Record<string, number> = {}, dice: Record<string, unknown> = {};
@@ -38,7 +38,13 @@ function completedScores(players: Record<string, any>): SccTerminalExpectation |
   }
   const high = Math.max(...Object.values(scores));
   const winners = Object.keys(scores).filter(id => scores[id] === high);
-  return winners.length === 1 && high > 0 ? { winnerPlayerId: winners[0], winnerScore: high, scores, dice } : null;
+  return { winners, high, scores, dice };
+}
+
+function completedScores(players: Record<string, any>): SccTerminalExpectation | null {
+  const result = completedSccScores(players);
+  return result && result.winners.length === 1 && result.high > 0
+    ? { winnerPlayerId: result.winners[0], winnerScore: result.high, scores: result.scores, dice: result.dice } : null;
 }
 
 export function sccTerminalExpectation(gameType: string | undefined, state: any, playerId: string) {
