@@ -543,12 +543,13 @@ async function playDice(
           clickAction(roll),
         ]);
         if (!response.ok()) throw new Error(`Dice action returned HTTP ${response.status()}`);
-        const target = diceRollTarget({ gameId: session.gameId, dealerGameId, roundId },
+        const target = diceRollTarget({ gameId: session.gameId, dealerGameId, roundId, gameType: expected.gameType },
           response.request().postDataJSON(), await response.json());
         const configuredBudget = Number(process.env.PTOWN_E2E_MAX_ACTION_TO_PEER_MS);
         const capture = await waitForDiceRollCapture(session.chaosObserver,
           actor === 'host' ? 'peer' : 'host', target, clickedAt,
-          Number.isFinite(configuredBudget) && configuredBudget > 0 ? configuredBudget : 15_000);
+          Number.isFinite(configuredBudget) && configuredBudget > 0 ? configuredBudget : 15_000,
+          deadline => probe.readSccTerminalCapture(target, deadline));
         await test.info().attach(`dice-roll-${roundId}-${target.actionSequence}`, {
           body: JSON.stringify(capture, null, 2), contentType: 'application/json',
         });

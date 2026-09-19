@@ -1,9 +1,11 @@
 import type { ChaosClient, ChaosDomSnapshot, HumanChaosContinuousObserver } from './continuousObserver';
+import { sccTerminalExpectation, validateSccTerminalEvidence, type SccTerminalEvidence, type SccTerminalExpectation } from './sccTerminalCapture';
 
-type Scope = { gameId: string; dealerGameId: string; roundId: string };
+type Scope = { gameId: string; dealerGameId: string; roundId: string; gameType?: string };
 type Die = { value: number; isHeld: boolean };
 export type DiceRollTarget = Scope & {
   playerId: string; actionSequence: number; rollKey: number; dice: Die[];
+  sccTerminal: SccTerminalExpectation | null;
 };
 const object = (value: unknown): Record<string, any> | null => value !== null
   && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : null;
@@ -24,6 +26,7 @@ export function diceRollTarget(scope: Scope, request: unknown, response: unknown
       return d && Number.isInteger(d.value) && d.value >= 1 && d.value <= 6 && typeof d.isHeld === 'boolean';
     })) throw new Error('Dice roll capture requires the exact accepted roll response');
   return { ...scope, playerId: input._player_id, actionSequence: result.action_sequence,
+    sccTerminal: sccTerminalExpectation(scope.gameType, state, input._player_id),
     rollKey: player.rollKey, dice: player.dice.map((die: Die) => ({ value: die.value, isHeld: die.isHeld })) };
 }
 
@@ -51,11 +54,13 @@ function settledRoll(snapshot: ChaosDomSnapshot, target: DiceRollTarget): boolea
 export async function waitForDiceRollCapture(
   observer: Pick<HumanChaosContinuousObserver, 'snapshotsSince'>,
   peer: ChaosClient, target: DiceRollTarget, clickedAt: number, budgetMs = 15_000,
+  readTerminalEvidence?: (deadline: number) => Promise<SccTerminalEvidence>,
 ) {
   if (!Number.isFinite(clickedAt) || !Number.isFinite(budgetMs) || budgetMs <= 0) {
     throw new Error('Invalid dice capture clock or budget');
   }
   const deadline = clickedAt + budgetMs;
+  let terminalProof: ReturnType<typeof validateSccTerminalEvidence> | null = null;
   for (;;) {
     const frames = observer.snapshotsSince(peer, clickedAt)
       .filter(frame => frame.client === peer && matchingRound(frame, target)
@@ -63,8 +68,17 @@ export async function waitForDiceRollCapture(
       .sort((a, b) => a.wallTime - b.wallTime);
     const animation = frames.find(frame => frame.visibleDice.some(die => die.split(':')[3] === 'animating'));
     const settled = animation && frames.find(frame => frame.wallTime > animation.wallTime && settledRoll(frame, target));
-    if (animation && settled) return { ...target, peer, clickedAt, deadline, animationAt: animation.wallTime,
+    if (animation && settled) return { ...target, mode: 'settled-dice', peer, clickedAt, deadline, animationAt: animation.wallTime,
       observedAt: settled.wallTime, progressMs: settled.wallTime - clickedAt };
+    const ended = animation && frames.filter(frame => frame.wallTime > animation.wallTime
+      && frame.gameType === 'ship-captain-crew' && frame.gameStatus === 'session_ended' && frame.roundStatus === 'completed');
+    if (ended?.length && target.sccTerminal && readTerminalEvidence && Date.now() < deadline) {
+      terminalProof ??= validateSccTerminalEvidence(target, await readTerminalEvidence(deadline));
+      const presented = ended.find(frame => frame.announcement === terminalProof!.winnerAnnouncement);
+      if (presented && Date.now() <= deadline) return { ...target, mode: 'terminal-result', terminalProof,
+        peer, clickedAt, deadline, animationAt: animation!.wallTime,
+        observedAt: presented.wallTime, progressMs: presented.wallTime - clickedAt };
+    }
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error(`Dice roll ${target.actionSequence} peer capture did not complete within ${budgetMs} ms of the click`);
     await new Promise(resolve => setTimeout(resolve, Math.min(25, remaining)));

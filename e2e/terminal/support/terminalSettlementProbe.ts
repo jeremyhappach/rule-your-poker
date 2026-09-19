@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../../src/integrations/supabase/types';
 import type { PlayerCredentials } from '../../liveness/support/env';
+import type { SccCaptureTarget, SccTerminalEvidence } from '../../humanChaos/support/sccTerminalCapture';
 
 export type TerminalExpectation = {
   gameType: string;
@@ -356,6 +357,28 @@ export class TerminalSettlementProbe {
       'Yahtzee progress query',
     );
     return { stateSignature: JSON.stringify(data?.yahtzee_state ?? null) };
+  }
+
+  async readSccTerminalCapture(target: SccCaptureTarget, deadline: number): Promise<SccTerminalEvidence> {
+    return withProbeDeadline(async signal => {
+      const round = await this.client.from('rounds').select('id,game_id,dealer_game_id,hand_number,status,horses_state')
+        .eq('id', target.roundId).eq('game_id', target.gameId).eq('dealer_game_id', target.dealerGameId)
+        .single().abortSignal(signal);
+      if (round.error) throw new Error(`SCC terminal round query failed: ${round.error.message}`);
+      const [game, results, snapshots] = await Promise.all([
+        this.client.from('games').select('id,current_game_uuid,status,pending_session_end,session_ended_at')
+          .eq('id', target.gameId).single().abortSignal(signal),
+        this.client.from('game_results').select('*').eq('game_id', target.gameId)
+          .eq('dealer_game_id', target.dealerGameId).eq('game_type', 'ship-captain-crew')
+          .eq('settlement_key', 'horses_terminal').limit(2).abortSignal(signal),
+        this.client.from('session_player_snapshots').select('*').eq('game_id', target.gameId)
+          .eq('dealer_game_id', target.dealerGameId).eq('hand_number', round.data.hand_number).abortSignal(signal),
+      ]);
+      for (const response of [game, results, snapshots]) {
+        if (response.error) throw new Error(`SCC terminal evidence query failed: ${response.error.message}`);
+      }
+      return { game: game.data, round: round.data, results: results.data!, snapshots: snapshots.data! };
+    }, 'SCC final-roll proof', Math.max(1, deadline - Date.now()), 1);
   }
 
   async assertTerminalProof(

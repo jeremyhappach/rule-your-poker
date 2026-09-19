@@ -60,6 +60,36 @@ replace a coherent full baseline.
 
 ## Required final gate
 
+### Final-turn proof correction
+
+The second complete campaign at `69d541651` also remains failed (19/1/1),
+with all 20 fixtures deleted. Its new failure is the proof's settled-frame
+assumption: SCC sequence 7 in round `2c5f65c6-348c-4b7d-b85e-a9333bffd147`
+committed cargo 5 and proceeded through the matching winner presentation to
+Session Ended without a separate observed settled-dice frame. The normal
+observer reported no progress, coverage or latency failures. No SCC product
+defect is demonstrated; do not change gameplay timing to satisfy this proof.
+
+The additional harness correction admits that existing path only for an SCC
+final roll with every participant complete and a unique qualified winner.
+It recomputes scores from the committed role/cargo dice, validates the exact
+completed database round and roll key, requires one matching terminal result
+with the expected winner UUID/score, and validates the terminal snapshots.
+Within the original click-to-peer budget it also requires the peer's exact
+winner caption in the same ended session/dealer-game/completed round. Names
+are display checks after UUID identity validation; duplicate fixture names
+are rejected. Generic Session Ended text, ties, unfinished turns, unrelated
+identities, stale/changed dice, duplicate results and late evidence cannot
+satisfy this path. Ordinary rolls keep the exact settled-dice requirement.
+Existing terminal settlement/reconnect and continuous-observer assertions
+still run after this barrier; no case or observer check is waived.
+
+The database evidence is read-only and stays inside the original deadline.
+Only qualification code and this documentation change. The frozen failed
+campaigns and their raw local traces remain preserved.
+
+### Qualification and permanent checkpoint
+
 Commit the harness correction and qualify that exact commit from a clean
 worktree against its matching deployed build. Run all 21 mandatory browser
 cases in one fresh campaign (all seven games: entry/reconnect, pause/resume,
