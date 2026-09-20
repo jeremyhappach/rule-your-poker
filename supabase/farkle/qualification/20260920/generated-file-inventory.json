@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "leftUntouched": [
+    {
+      "path": "src/lib/cribbage/__snapshots__/cribbageArtifactDescriptors.test.ts.snap",
+      "kind": "Generated test snapshot; newline-only difference",
+      "normalizedContentsEqual": true,
+      "productSource": false,
+      "commit": false
+    },
+    {
+      "path": "supabase/.temp/cli-latest",
+      "kind": "Supabase CLI version cache",
+      "productSource": false,
+      "commit": false
+    }
+  ],
+  "cleanQualificationWorktree": "C:/Users/jerem/Desktop/poker/farkle-wave1-qualification"
+}

@@ -1,0 +1,20 @@
+{
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "integration": "fast-forward",
+  "implementationChanges": 0,
+  "conflicts": 0,
+  "remoteMainVerified": true,
+  "deploymentId": "dpl_34ddQKhGVd9mZcodCweeHMXzVsKb",
+  "deploymentState": "READY",
+  "productionUrl": "https://holm357.com",
+  "rootStatus": 200,
+  "manifestBuildId": "e80200300ee81597f8ac11447a2aa15069107644",
+  "manifestPublishedAt": "2026-09-20T17:11:01.048Z",
+  "productionMigration": "20260920155333_farkle_wave1_authority",
+  "creationEnabled": false,
+  "adminOnly": true,
+  "productionDefaultsApproved": false,
+  "productionDefaultsSeeded": 0,
+  "qualifiedStateEvidence": "qualification/20260920/qualification.json",
+  "pushMethod": ".codex/scripts/push-origin-main.cmd"
+}

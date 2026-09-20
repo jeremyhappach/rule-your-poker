@@ -1,3 +1,4 @@
+import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/farkle/FarkleDealerFields';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { createPortal } from "react-dom";
@@ -129,6 +130,7 @@ interface PreviousGameConfig {
 type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
 
 interface DealerGameSetupProps {
+  isAdmin?: boolean;
   gameId: string;
   dealerUsername: string;
   isBot: boolean;
@@ -159,6 +161,7 @@ const dealerSetupFailureMessage = (error: unknown): string => {
 };
 
 const DealerGameSetupInner = ({
+  isAdmin = false,
   gameId,
   dealerUsername,
   isBot,
@@ -209,6 +212,7 @@ const DealerGameSetupInner = ({
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
+  const [farkleDraft, setFarkleDraft] = useState<FarkleDealerFieldsValue>({ stake: '', target: '', endgame: 'one_last_turn' });
   // Timer settings are passed as props (cached at session start)
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -831,6 +835,10 @@ const DealerGameSetupInner = ({
   };
 
   const handleGameSelect = async (gameType: string) => {
+    if (gameType === 'farkle') {
+      if (!isAdmin) return;
+      setSelectedGameType(gameType); setSelectionStep('config'); return;
+    }
     // Check player count restrictions
     const gameInfo = allGames.find(g => g.id === gameType);
     if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
@@ -930,6 +938,7 @@ const DealerGameSetupInner = ({
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
+    { id: 'farkle', name: 'Farkle', description: isAdmin ? 'Development preview' : 'Coming Soon', category: 'dice', enabled: isAdmin },
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -1183,6 +1192,7 @@ const DealerGameSetupInner = ({
                     <button
                       key={game.id}
                       data-dealer-game-option={game.id}
+                      disabled={!game.enabled}
                       onClick={() => handleGameSelect(game.id)}
                       className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center gap-3 border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
@@ -1255,6 +1265,16 @@ const DealerGameSetupInner = ({
   }
 
   // Config step - show config UI based on selected game type
+  if (selectionStep === 'config' && selectedGameType === 'farkle') {
+    return <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
+      <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
+        <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
+        <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
+        <p className="text-sm text-amber-200">Development preview. Game creation is disabled while production scoring defaults await approval.</p>
+        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled>Coming Soon</Button></div>
+      </CardContent></Card>
+    </div>;
+  }
   if (selectionStep === 'config') {
     // Simple ante games only need ante configuration.
     if (isSimpleAnteGame(selectedGameType)) {

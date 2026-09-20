@@ -13474,6 +13474,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {hasLiveConfigDeadline && !sessionDealerDrawPresentationPending &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
+                    isAdmin={isAdmin}
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
                     isBot={dealerPlayer?.is_bot || false}
@@ -13806,6 +13807,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   hasLiveConfigDeadline &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
+                    isAdmin={isAdmin}
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
                     isBot={dealerPlayer?.is_bot || false}

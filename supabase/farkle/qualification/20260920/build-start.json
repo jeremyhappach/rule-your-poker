@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-20T16:13:35.300Z",
+  "sha": "e80200300ee81597f8ac11447a2aa15069107644",
+  "command": "npm run build",
+  "concurrentBrowserCampaign": false,
+  "sourceChanges": "",
+  "priorTestProcesses": "No Vitest or Playwright runner present at qualification start; unrelated existing dev server preserved."
+}

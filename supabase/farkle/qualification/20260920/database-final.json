@@ -1,0 +1,51 @@
+{
+  "shared": [
+    {
+      "name": "configure_dealer_game",
+      "matches": true
+    },
+    {
+      "name": "consume_automatic_play_stop",
+      "matches": true
+    },
+    {
+      "name": "advance_ante_phase_exact",
+      "matches": true
+    },
+    {
+      "name": "read_session_frame",
+      "matches": true
+    },
+    {
+      "name": "advance_due_canonical_game_timers",
+      "matches": true
+    },
+    {
+      "name": "set_automatic_play",
+      "matches": true
+    },
+    {
+      "name": "set_game_paused",
+      "matches": true
+    }
+  ],
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "migration": {
+    "name": "farkle_wave1_authority",
+    "version": "20260920155333"
+  },
+  "fixture_residue": {
+    "games": 0,
+    "rounds": 0,
+    "players": 0,
+    "dealer_games": 0,
+    "game_results": 0,
+    "session_player_snapshots": 0
+  },
+  "production_defaults": 0
+}

@@ -150,6 +150,7 @@ const TRACE_GAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   'three-five-seven': '3-5-7',
   horses: 'HORSES',
   'ship-captain-crew': 'SHIP',
+  farkle: 'FARKLE',
   yahtzee: 'YAHTZEE',
   'gin-rummy': 'GIN RUMMY',
   cribbage: 'CRIBBAGE',

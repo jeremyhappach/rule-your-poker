@@ -1,4 +1,19 @@
-# Farkle Wave 1 — draft, not released
+# Farkle Wave 1 — applied, qualified and integrated
+
+## Final qualification — September 20, 2026
+
+Qualified SHA: `e80200300ee81597f8ac11447a2aa15069107644`. Applied migration:
+`20260920155333_farkle_wave1_authority`. All 21 fresh browser cases, 1,639
+application tests, 226 harness tests, 282 required regression tests, typecheck,
+build, and 110 authority SQL assertions pass. Final shared metadata matches and
+all fixtures are cleaned. Creation is disabled, admin-only enabled, production
+defaults approval false, and no production defaults are seeded. Main is integrated at the qualified SHA; Wave 2 has begun on a separate branch. See [qualification record](../../docs/codex/FARKLE_WAVE1_QUALIFICATION_20260920.md)
+and [machine-readable evidence](qualification/20260920/qualification.json).
+
+## Historical pre-apply record
+
+The following draft/hardening statements describe the earlier pre-apply state;
+the final qualification above supersedes their unapplied/unpublished status.
 
 September 19, 2026. Authorized scope: isolated Farkle authority and proof.
 Permanent baseline: `512ce60825c06d355f6854062a20195cc3c2965e`, tagged

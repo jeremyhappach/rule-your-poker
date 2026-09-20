@@ -107,7 +107,7 @@ export interface GameplayOpponentSeatPresentation {
 
 export interface GameplayOpponentSeatLayerProps {
   /** Game family used in ownerLabel + diagnostics. */
-  family: 'cribbage' | 'gin-rummy' | 'yahtzee';
+  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle';
   /** Opponents to project (caller filters self / observers as needed). */
   participants: GameplayOpponentSeatParticipant[];
   /** Typed presentation accessors. All fields optional. */

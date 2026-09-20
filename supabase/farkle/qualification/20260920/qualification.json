@@ -1,0 +1,453 @@
+{
+  "recordedAt": "2026-09-20T16:55:41.142Z",
+  "qualified": true,
+  "problems": [],
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "deployedFrontendCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "productionMigration": "20260920155333",
+  "deploymentUrl": "https://ptown-poker-bishxycfs-jeremy-8e2b.vercel.app",
+  "cases": [
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "holm-game: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 25495
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "3-5-7: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 27376
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "cribbage: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 28921
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "gin-rummy: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 26305
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "horses: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 29400
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "ship-captain-crew: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 30555
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "title": "yahtzee: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 34380
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "holm-game: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 37642
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "3-5-7: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 34217
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "horses: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 45271
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "ship-captain-crew: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 35302
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "cribbage: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 34651
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "gin-rummy: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 33359
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "liveness/pauseResume.spec.ts",
+      "title": "yahtzee: host pause survives peer reconnect and resumes the same round",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 34409
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "holm-game: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 71979
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "3-5-7: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 82395
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "cribbage: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 41790
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "gin-rummy: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 600778
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "horses: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 58235
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "ship-captain-crew: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 111257
+        }
+      ],
+      "errorCount": 0
+    },
+    {
+      "file": "terminal/allGames.terminal.spec.ts",
+      "title": "yahtzee: plays through exact settlement and ended-session reconnect",
+      "expected": true,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 209495
+        }
+      ],
+      "errorCount": 0
+    }
+  ],
+  "terminalProofs": [
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    },
+    {
+      "status": "passed",
+      "cleanupVerified": true,
+      "violations": 0,
+      "progressProblems": 0
+    }
+  ],
+  "createdGameIds": [
+    "aade5d17-c441-409b-ab7f-c5a914ea5120",
+    "1bd88df5-c12a-498c-b6ec-99cd5ec26371",
+    "f5e1bf38-ff8d-40b2-bae5-57532935f34b",
+    "57f5a862-32aa-4417-b7c3-67464c356b87",
+    "d8f079ed-a02e-4e90-965e-666a87d960ad",
+    "15e3e264-bbdb-44d4-a96a-e2589290afc7",
+    "e59cdf1d-89ab-4e44-85f6-bd808ce85fba",
+    "bdadb7e5-92c1-4c66-b84c-4b300e634d72",
+    "950748d1-8d06-4b87-b6d3-58fbd2cb67f0",
+    "e635a9dc-ca0d-4122-a6d9-9baf78b4fe41",
+    "a4f7d910-2353-499a-9083-22f1e928def6",
+    "46142724-19b6-4258-8ce8-f59f1e0f65f5",
+    "29417bcc-b577-48f7-a3fd-51f9cebecd9c",
+    "9584fdbd-bf20-4b8a-b2a9-671fc19e0581",
+    "47169969-6ed3-4143-9a07-827f6da3ea3e",
+    "e7d4e173-a488-4746-a48b-6357e0da196b",
+    "ab3e371b-9740-421c-8057-1ac9ee59936d",
+    "87e37a2e-af80-40a1-b875-64650509dd07",
+    "06ff2897-d061-4d26-9616-4c9ea1adaccd",
+    "b4e49038-5a02-495c-bdbe-898de5b082c6",
+    "b4f9fd24-c00f-42c4-9fd9-223bed5dd7f8"
+  ],
+  "cleanedGameIds": [
+    "aade5d17-c441-409b-ab7f-c5a914ea5120",
+    "1bd88df5-c12a-498c-b6ec-99cd5ec26371",
+    "f5e1bf38-ff8d-40b2-bae5-57532935f34b",
+    "57f5a862-32aa-4417-b7c3-67464c356b87",
+    "d8f079ed-a02e-4e90-965e-666a87d960ad",
+    "15e3e264-bbdb-44d4-a96a-e2589290afc7",
+    "e59cdf1d-89ab-4e44-85f6-bd808ce85fba",
+    "bdadb7e5-92c1-4c66-b84c-4b300e634d72",
+    "950748d1-8d06-4b87-b6d3-58fbd2cb67f0",
+    "e635a9dc-ca0d-4122-a6d9-9baf78b4fe41",
+    "a4f7d910-2353-499a-9083-22f1e928def6",
+    "46142724-19b6-4258-8ce8-f59f1e0f65f5",
+    "29417bcc-b577-48f7-a3fd-51f9cebecd9c",
+    "9584fdbd-bf20-4b8a-b2a9-671fc19e0581",
+    "47169969-6ed3-4143-9a07-827f6da3ea3e",
+    "e7d4e173-a488-4746-a48b-6357e0da196b",
+    "ab3e371b-9740-421c-8057-1ac9ee59936d",
+    "87e37a2e-af80-40a1-b875-64650509dd07",
+    "06ff2897-d061-4d26-9616-4c9ea1adaccd",
+    "b4e49038-5a02-495c-bdbe-898de5b082c6",
+    "b4f9fd24-c00f-42c4-9fd9-223bed5dd7f8"
+  ],
+  "applicationTests": 1639,
+  "harnessTests": 226,
+  "mandatoryRegressionTests": 282,
+  "authorityAssertions": 110,
+  "typecheck": "passed",
+  "build": "passed",
+  "finalDatabase": {
+    "shared": [
+      {
+        "name": "configure_dealer_game",
+        "matches": true
+      },
+      {
+        "name": "consume_automatic_play_stop",
+        "matches": true
+      },
+      {
+        "name": "advance_ante_phase_exact",
+        "matches": true
+      },
+      {
+        "name": "read_session_frame",
+        "matches": true
+      },
+      {
+        "name": "advance_due_canonical_game_timers",
+        "matches": true
+      },
+      {
+        "name": "set_automatic_play",
+        "matches": true
+      },
+      {
+        "name": "set_game_paused",
+        "matches": true
+      }
+    ],
+    "release": {
+      "singleton": true,
+      "admin_only": true,
+      "creation_enabled": false,
+      "production_defaults_approved": false
+    },
+    "migration": {
+      "name": "farkle_wave1_authority",
+      "version": "20260920155333"
+    },
+    "fixture_residue": {
+      "games": 0,
+      "rounds": 0,
+      "players": 0,
+      "dealer_games": 0,
+      "game_results": 0,
+      "session_player_snapshots": 0
+    },
+    "production_defaults": 0
+  },
+  "evidenceHashManifestSha256": "c9904537203f43b8bc58216fb76ed42d4fbd70cf3def8833d316a678ed3514a6"
+}

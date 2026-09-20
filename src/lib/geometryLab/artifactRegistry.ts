@@ -28,6 +28,9 @@ export interface ArtifactPresentationEntry {
 }
 
 const ENTRIES: ArtifactPresentationEntry[] = [
+  { artifactId: "farkle.remoteDice", label: "Farkle Remote Dice", category: "central", sortOrder: 10 },
+  { artifactId: "farkle.thisTurn", label: "Farkle THIS TURN", category: "central", sortOrder: 20 },
+  { artifactId: "farkle.turnStatus", label: "Farkle Final / Tiebreak Status", category: "overlay", sortOrder: 30 },
   // Cribbage
   { artifactId: "cribbage.pegboard", label: "Pegboard", category: "central", sortOrder: 10 },
   { artifactId: "cribbage.cribCutGroup", label: "Crib + Cut Group", category: "central", sortOrder: 20 },

@@ -1,0 +1,11 @@
+{
+  "startedAt": "2026-09-20T16:20:23.325Z",
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "frontendBuild": "e80200300ee81597f8ac11447a2aa15069107644",
+  "productionMigration": "20260920155333",
+  "baseUrl": "https://ptown-poker-bishxycfs-jeremy-8e2b.vercel.app",
+  "command": "node_modules/@playwright/test/cli.js test -c test-results/wave1-qualification-20260920/preview.config.ts e2e/liveness/allGames.twoClient.spec.ts e2e/liveness/pauseResume.spec.ts e2e/terminal/allGames.terminal.spec.ts --workers=1 --retries=0 --max-failures=1 --reporter=line,json",
+  "continuousObserver": true,
+  "concurrentBuildOrUnitRunner": false,
+  "authentication": "Vercel connector-authorized preview access; cookie held in process memory; no protection settings changed"
+}

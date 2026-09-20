@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-09-20T17:40:53.862Z",
+  "wave2Qualified": false,
+  "baseCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "typecheck": "passed",
+  "build": "passed",
+  "applicationTests": 1649,
+  "harnessTests": 226,
+  "focusedTests": 20,
+  "browser": {
+    "passed": true,
+    "mobileViewport": "390x844",
+    "desktopViewport": "1280x900",
+    "errors": [],
+    "horizontalOverflow": false,
+    "holdRequest": [
+      0,
+      1
+    ],
+    "previewStates": [
+      "cluster",
+      "row"
+    ],
+    "limitation": "Isolated component fixture; not live gameplay or canonical-shell qualification."
+  },
+  "sqlChanges": 0,
+  "existingHorsesSccChanges": 0,
+  "generatedSnapshot": "Newline-only; untouched and excluded from commit",
+  "remaining": "See docs/codex/FARKLE_WAVE2_20260920.md"
+}

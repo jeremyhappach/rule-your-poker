@@ -1,26 +1,22 @@
 # Current release and cutover state
 
-## September 19 Farkle Wave 1 — isolated draft, not released
+## September 20 Farkle Wave 1 — qualified and integrated; Wave 2 draft
 
-Implementation began from permanent checkpoint
-`512ce60825c06d355f6854062a20195cc3c2965e` on `codex/farkle-authority`.
-September 20 hardening corrects lower-seat turn order, serialized recovery,
-permanent test-config authorization, exact scoped write claims, scoring proofs,
-and Balanced-only policy. The combined transactional proof passes 110 assertions,
-including two explicit definition/owner/grant restoration checks and existing
-seven-game configuration/pause, ante and participant authority proofs before and
-after recovery. Typecheck/build, 1,639 application tests, 226 harness tests and
-41-file/282-test mandatory regression pass. No persistent Farkle migration,
-publication, or numeric production scoring seed/enablement occurred.
-The live two-session concurrency proof also passes: independently spawned
-Supabase CLI processes used existing authorization to establish distinct,
-overlapping PostgreSQL backends through the Management API. Both lock directions
-reject conflicting ownership, both transactions roll back, and zero proof locks
-remain. The earlier serialized connector attempt remains recorded as inconclusive.
-All listed Wave 1 hardening gates are complete; the draft remains unapplied and
-unpublished under Jeremy's latest instruction. No credentials were created or
-exposed, and no tools were installed.
-See [Wave 1 draft status](../../supabase/farkle/WAVE1_STATUS.md).
+Main fast-forwarded without implementation changes or conflicts to qualified
+SHA `e80200300ee81597f8ac11447a2aa15069107644`. Production deployment
+`dpl_34ddQKhGVd9mZcodCweeHMXzVsKb` is READY; the served manifest matches
+and the production root returns 200. Applied migration is
+`20260920155333_farkle_wave1_authority`. All 21 browser cases, 1,639
+application tests, 226 harness tests, mandatory regressions, typecheck/build,
+110 authority assertions, shared metadata and fixture cleanup qualified that SHA.
+Creation remains disabled, admin-only enabled, numeric defaults unapproved
+and unseeded. See [qualification](FARKLE_WAVE1_QUALIFICATION_20260920.md).
+
+Wave 2 has begun separately on `codex/farkle-playable`. Its isolated components
+and gated development surfaces remain an unfinished draft; they are not on main
+and have not received end-to-end playable qualification. No Wave 1 SQL or
+Horses/SCC controller, layout, scoring, or geometry values were changed.
+See [Wave 2 status](FARKLE_WAVE2_20260920.md).
 
 ## September 18 continuous sampled play timing
 

@@ -1,3 +1,4 @@
+import { getFarkleArtifactDescriptors } from '@/lib/farkle/artifactDescriptors';
 /**
  * Wave 6 — Geometry Lab descriptor index (single-source refactor).
  *
@@ -61,6 +62,7 @@ import type { SizeMode } from "./store";
 // ---------------------------------------------------------------------------
 
 export type GameKey =
+  | "farkle"
   | "cribbage"
   | "holm"
   | "threeFiveSeven"
@@ -70,6 +72,7 @@ export type GameKey =
   | "ship-captain-crew";
 
 export const GAME_LABELS: Record<GameKey, string> = {
+  farkle: "Farkle",
   cribbage: "Cribbage",
   holm: "Holm",
   threeFiveSeven: "3-5-7",
@@ -199,6 +202,7 @@ export const ARTIFACT_DESCRIPTOR_FACTORIES: Record<GameKey, FactoryEntry> = {
     enumerate: () =>
       dedupeById(SCC_CONTEXTS.map((c) => getDiceArtifactDescriptors(c))),
   },
+  farkle: { game: "farkle", enumerate: getFarkleArtifactDescriptors },
 };
 
 export const GAME_KEYS: GameKey[] = Object.keys(

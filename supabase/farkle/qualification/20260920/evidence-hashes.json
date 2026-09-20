@@ -1,0 +1,202 @@
+[
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/.last-run.json",
+    "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-3-5-7-a1583--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "2281fb37a4dfa69912b0c1902a68005a2d3a4e83f407a1b244c11dd3b04c4729"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-cribb-b1f78--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "d275530081dd0aee826273540c831883dc3fa5b6bd8aed36a09bc3b2e80b260b"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-gin-r-e20bd--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "80c3762d9c4b814f9e85f8a55306ecc523e7a21374fdabed2973559fad14f33e"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-holm--b8d42--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "17c44c3cc65488ea2dd3d0c93f463cd277300a1d9dfcbc667ad47bf7d4b1ff21"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-horse-c018a--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "74a5bcde659af2649813d0e8bf80a15e13248e7cf553badb5ca0cd1a166770c2"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-ship--7ae71--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "e47abc076cf7f0d89ecfcb7a0a444231650e775e8ee59e7658492b73aa6e16ed"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/liveness-pauseResume-yahtz-aaa47--and-resumes-the-same-round/paused-reconnect.png",
+    "sha256": "315c08f67dfc44543ff83ebdbeede1d1f1a614e922cb78bfcfa1a419c81cbc81"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-06ed3-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-1d855719fda2292c95a8b48e87ef52a5244bb00c.json",
+    "sha256": "0e618ed5959c171c269196a4620caf1b53aba81c22a9f19c46f1faf2d9a41c60"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-06ed3-and-ended-session-reconnect/attachments/terminal-evidence-json-e235b6e84c858afcff04ecdfc69487cebf9a67e5.json",
+    "sha256": "71365d5943ad79a8a639eb05f02d6b6134c4416142d14703bbc248f3a959b14f"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-06ed3-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "0e618ed5959c171c269196a4620caf1b53aba81c22a9f19c46f1faf2d9a41c60"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-06ed3-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "71365d5943ad79a8a639eb05f02d6b6134c4416142d14703bbc248f3a959b14f"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-0cbab-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-df8cd87566039f121528fd50f42c7b8a75c0c5b5.json",
+    "sha256": "491ceaf5fc9bfa05c0bd32bdb9bdb419a42b3a93ee77f8472bf66755a9bffa31"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-0cbab-and-ended-session-reconnect/attachments/terminal-evidence-json-45e25492cef9e68fb55e718d6ceb1a8fbd076221.json",
+    "sha256": "3e51899831f490d3fbf53fc0d28765561b0d4ff16b51a1ff30774f9bdd680b42"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-0cbab-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "491ceaf5fc9bfa05c0bd32bdb9bdb419a42b3a93ee77f8472bf66755a9bffa31"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-0cbab-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "3e51899831f490d3fbf53fc0d28765561b0d4ff16b51a1ff30774f9bdd680b42"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-1cdb1-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-5f2eaff72a57d117f9e72f739e8f24e1ee162c01.json",
+    "sha256": "04a254770facb9ac51fdc75ef810c1d3d4c7bb3c2e441560b09d5e754954db64"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-1cdb1-and-ended-session-reconnect/attachments/terminal-evidence-json-2f93d671497f866d00da7b7e22c4713f67e74a9e.json",
+    "sha256": "644d05884fbb103a0bd80985725e4bf5d4a5ad7e3211bb1765273e519c09fa42"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-1cdb1-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "04a254770facb9ac51fdc75ef810c1d3d4c7bb3c2e441560b09d5e754954db64"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-1cdb1-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "644d05884fbb103a0bd80985725e4bf5d4a5ad7e3211bb1765273e519c09fa42"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-73439-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-968fa10031ab9ef61b95772a0982f8273b92d1c6.json",
+    "sha256": "ec7139587d93755422ab760bb95a83a76f54bb7854df477dc928ca781eb07b60"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-73439-and-ended-session-reconnect/attachments/terminal-evidence-json-d8ce550335ea0c24d37b4fecafeb63d2624b894d.json",
+    "sha256": "75fc82b80712b2b6a41ff983513f0be4bde5ba424a4e75855954972f41bb7b00"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-73439-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "ec7139587d93755422ab760bb95a83a76f54bb7854df477dc928ca781eb07b60"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-73439-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "75fc82b80712b2b6a41ff983513f0be4bde5ba424a4e75855954972f41bb7b00"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-8a0aa-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-a240e1f06766a73e8b8846603b1310b8545bb24e.json",
+    "sha256": "5706af09a38da40603ea9327a1f5e43ed8a214044f3347ad2321e75e49f35980"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-8a0aa-and-ended-session-reconnect/attachments/terminal-evidence-json-81bed04217bede362281f4f3c8bc551d614ca059.json",
+    "sha256": "f79a2ebd36844866d878c34cd76bfdd8e51dc9f63ba331daf4c3f533efcb3316"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-8a0aa-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "5706af09a38da40603ea9327a1f5e43ed8a214044f3347ad2321e75e49f35980"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-8a0aa-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "f79a2ebd36844866d878c34cd76bfdd8e51dc9f63ba331daf4c3f533efcb3316"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-b4c2c-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-b76a6fb6dae154c47b1044c0d0fcb9ee14247db8.json",
+    "sha256": "79ddd32a1256f9bdbf494954fa5e14758540398d51ef38cd4fbb9a9e39fa62d3"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-b4c2c-and-ended-session-reconnect/attachments/terminal-evidence-json-fd24ebdc5ed29aa844977d81cb828e14f9aa91db.json",
+    "sha256": "248df8edadacb72ac048810cf928077866deae2baba01e01947072b4bd953a6f"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-b4c2c-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "79ddd32a1256f9bdbf494954fa5e14758540398d51ef38cd4fbb9a9e39fa62d3"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-b4c2c-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "248df8edadacb72ac048810cf928077866deae2baba01e01947072b4bd953a6f"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-c9151-and-ended-session-reconnect/attachments/human-chaos-continuous-observer-json-f75969590fa5a7bbb96260aab0d580c23eeb6b05.json",
+    "sha256": "b045058ef3f51388c464692b8d9c8019f82e90d78c981ec455be2a7cab38cb76"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-c9151-and-ended-session-reconnect/attachments/terminal-evidence-json-888c9f5c7bfb13f27afb8d53651c3f5a805c6d04.json",
+    "sha256": "40cf486706437b559adbc2a699267ec0eea46776acafc3249487c690aefe2021"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-c9151-and-ended-session-reconnect/human-chaos-continuous-observer.json",
+    "sha256": "b045058ef3f51388c464692b8d9c8019f82e90d78c981ec455be2a7cab38cb76"
+  },
+  {
+    "path": "browser/farkle-wave1-qualified-20260920/terminal-allGames.terminal-c9151-and-ended-session-reconnect/terminal-evidence.json",
+    "sha256": "40cf486706437b559adbc2a699267ec0eea46776acafc3249487c690aefe2021"
+  },
+  {
+    "path": "campaign-start.json",
+    "sha256": "d161dd0468f37a7482a1068168e0e80f83452f0419f21be25022d9546e7ae913"
+  },
+  {
+    "path": "campaign-end.json",
+    "sha256": "2fc218a8b36d85fc065dd2d6e7f7b9c5cc3c0755311c2d70b85bf7eff17b28d2"
+  },
+  {
+    "path": "browser-report.json",
+    "sha256": "2ad4bd02410b3caa9492a353a9e71a4778bf30279b535692df1e0785278fc65b"
+  },
+  {
+    "path": "browser-run.log",
+    "sha256": "8c437e28358304d7f389ea0f1c9251f1c4ab3dd99767b2c664ce265b996addcb"
+  },
+  {
+    "path": "build-start.json",
+    "sha256": "cddc556040b999619d52776d776e80f4e5df926b96d3124d30efcf0c4b5431ad"
+  },
+  {
+    "path": "build-end.json",
+    "sha256": "2b59a0af5fdfcc852671cc7b85fd040eb43fd7a65f514c6d21a1d22e48a6c3b7"
+  },
+  {
+    "path": "build.log",
+    "sha256": "b389e4316f29710b8cb2040ffb00a37791fcde0bba9449acb76645fcd687abfd"
+  },
+  {
+    "path": "focused-1.json",
+    "sha256": "bbaef85767c3fbaa84768fffc00575ebac4bd35cf34000d8625df44e87a5e5e3"
+  },
+  {
+    "path": "regression-coverage.json",
+    "sha256": "e1c81b27d049f3ff838d6d26eb92033344b5831f17efbaaea5dbaacc49da6789"
+  },
+  {
+    "path": "authority-proof.json",
+    "sha256": "783f4ebf2af7d10cfd85024a18cb439bbf3452d7bfd1944b0f0a113a9a9e3635"
+  },
+  {
+    "path": "database-final.json",
+    "sha256": "e474e17b01bb1ff5a931a16290041b6ac3310502fbfce1cf2167812f6e623947"
+  },
+  {
+    "path": "preview-manifest.json",
+    "sha256": "188af73706e37d1b1b591faf73b030eb78310e008115e223198ecec55772e62c"
+  },
+  {
+    "path": "timeout-finding.md",
+    "sha256": "ebbbe5e6b66572584a39917bf74891fae7d62ffdd6042d37f7960a2af96b6096"
+  },
+  {
+    "path": "generated-file-inventory.json",
+    "sha256": "46aa592f149358f14dbd0ea82841f47fdd6c6b0426e645c55d0b27823a71b6ff"
+  }
+]

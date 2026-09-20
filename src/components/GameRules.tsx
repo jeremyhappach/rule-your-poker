@@ -1,3 +1,4 @@
+import { FarkleInstructions } from '@/components/farkle/FarkleRules';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
         </DialogHeader>
         
         <Tabs defaultValue="357" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="357" className="text-[10px] sm:text-sm px-0.5 sm:px-2">3-5-7</TabsTrigger>
             <TabsTrigger value="holm" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Holm</TabsTrigger>
             <TabsTrigger value="horses" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Horses</TabsTrigger>
@@ -29,6 +30,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
             <TabsTrigger value="cribbage" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Crib</TabsTrigger>
             <TabsTrigger value="gin-rummy" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Gin</TabsTrigger>
             <TabsTrigger value="yahtzee" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Yahtzee</TabsTrigger>
+            <TabsTrigger value="farkle" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Farkle</TabsTrigger>
           </TabsList>
           
           <ScrollArea className="h-[60vh] mt-4">
@@ -470,6 +472,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 </ul>
               </div>
             </TabsContent>
+            <TabsContent value="farkle" className="mt-0 space-y-4 pr-4"><h3 className="font-bold text-lg">Farkle — Coming Soon</h3><FarkleInstructions /><p className="text-sm">Scoring values appear in the frozen rules for each game.</p></TabsContent>
           </ScrollArea>
         </Tabs>
       </DialogContent>

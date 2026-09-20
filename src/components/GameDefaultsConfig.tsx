@@ -1,3 +1,4 @@
+import { FarkleDefaultsEditor } from '@/components/farkle/FarkleDefaultsEditor';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -72,6 +73,7 @@ const GAME_TYPES = [
   { value: 'horses', label: 'Horses', icon: Dice5, category: 'dice' },
   { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
   { value: 'yahtzee', label: 'Yahtzee', icon: Dice5, category: 'dice' },
+  { value: 'farkle', label: 'Farkle (development)', icon: Dice5, category: 'dice' },
 ];
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
@@ -1145,6 +1147,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const renderSettingsForGameType = () => {
     const inner = (() => {
       switch (selectedGameType) {
+        case 'farkle': return <FarkleDefaultsEditor />;
         case 'holm':
           return renderHolmSettings();
         case '3-5-7':
@@ -1166,7 +1169,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     return (
       <>
         {inner}
-        {renderDebugHarness(selectedGameType)}
+        {selectedGameType !== 'farkle' && renderDebugHarness(selectedGameType)}
       </>
     );
   };
@@ -1277,7 +1280,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={validateAndSave} disabled={saving || loading}>
+          <Button onClick={validateAndSave} disabled={saving || loading || selectedGameType === 'farkle'}>
             {saving ? 'Saving...' : 'Save Defaults'}
           </Button>
         </div>

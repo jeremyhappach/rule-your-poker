@@ -1,0 +1,9 @@
+{
+  "id": "dpl_ncS7teDyJmhidxEPw3kBGYQqbjV5",
+  "url": "ptown-poker-bishxycfs-jeremy-8e2b.vercel.app",
+  "state": "READY",
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "branch": "codex/farkle-authority",
+  "target": "preview; main and production frontend untouched",
+  "productionDatabaseMigration": "20260920155333"
+}

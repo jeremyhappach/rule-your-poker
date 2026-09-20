@@ -1,0 +1,214 @@
+{
+  "sourceCommit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "method": "All mandatory regression files executed inside the successful complete application suite; no parallel or partial rerun",
+  "files": 41,
+  "tests": 282,
+  "passed": true,
+  "cases": [
+    {
+      "file": "src/lib/realMoneyLivenessContract.test.ts",
+      "passed": true,
+      "tests": 5
+    },
+    {
+      "file": "src/lib/actionSurfaceRecovery.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/crossCountryRouteGauntlet.test.ts",
+      "passed": true,
+      "tests": 5
+    },
+    {
+      "file": "src/lib/dg1LiveEntryGauntlet.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/authoritativeGameState.test.ts",
+      "passed": true,
+      "tests": 9
+    },
+    {
+      "file": "src/lib/sessionDealerDrawPresentation.test.ts",
+      "passed": true,
+      "tests": 15
+    },
+    {
+      "file": "src/lib/sessionDealerDrawTieHarness.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/pages/Game.authoritativeGameHandoff.test.ts",
+      "passed": true,
+      "tests": 8
+    },
+    {
+      "file": "src/components/DealerGameSetup.zLayer.test.ts",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/components/MobileGameTable.dealerSelectionReceipt.test.ts",
+      "passed": true,
+      "tests": 1
+    },
+    {
+      "file": "src/lib/threeFiveSeven/decisionReceipt.test.ts",
+      "passed": true,
+      "tests": 4
+    },
+    {
+      "file": "src/lib/threeFiveSeven/terminalSweepCredit.test.ts",
+      "passed": true,
+      "tests": 13
+    },
+    {
+      "file": "src/lib/threeFiveSeven/terminalDescriptor.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/components/MobileGameTable.normalSweepOverlay.test.ts",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/components/SweepTheLegsAnimation.portal.test.tsx",
+      "passed": true,
+      "tests": 1
+    },
+    {
+      "file": "src/components/ThreeFiveSevenDealOrchestrator.waveAdmission.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/threeFiveSeven/routeEntryMode.test.ts",
+      "passed": true,
+      "tests": 6
+    },
+    {
+      "file": "src/lib/threeFiveSeven/presentationReadiness.test.ts",
+      "passed": true,
+      "tests": 24
+    },
+    {
+      "file": "src/lib/canonicalShell/cardTransport/CardTransportProvider.holmManifest.test.tsx",
+      "passed": true,
+      "tests": 6
+    },
+    {
+      "file": "src/lib/serializedAuthoritativeFetch.test.ts",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/lib/realtimeAuthoritativeCatchup.test.ts",
+      "passed": true,
+      "tests": 7
+    },
+    {
+      "file": "src/lib/realtimeAuthoritativeCatchupWiring.test.ts",
+      "passed": true,
+      "tests": 4
+    },
+    {
+      "file": "src/pages/Game.realtimePlayerCatchup.test.ts",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/lib/releaseVersion/releaseManifest.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/networkSimChaos.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/networkSimTransport.test.ts",
+      "passed": true,
+      "tests": 5
+    },
+    {
+      "file": "src/lib/horsesSccDatabaseAuthority.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/freezeHardeningMigration.test.ts",
+      "passed": true,
+      "tests": 4
+    },
+    {
+      "file": "src/lib/canonicalShell/timerEligibility.test.ts",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/lib/canonicalShell/ShellTimerRail.test.tsx",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "file": "src/lib/holmDatabaseResolutionOwnership.test.ts",
+      "passed": true,
+      "tests": 9
+    },
+    {
+      "file": "src/lib/holmChuckyWinPresentation.test.ts",
+      "passed": true,
+      "tests": 12
+    },
+    {
+      "file": "src/lib/canonicalShell/holmTransferPresentationStage.test.ts",
+      "passed": true,
+      "tests": 22
+    },
+    {
+      "file": "src/lib/threeFiveSeven/currentFrame.test.ts",
+      "passed": true,
+      "tests": 23
+    },
+    {
+      "file": "src/lib/cribbageSettleGame.test.ts",
+      "passed": true,
+      "tests": 4
+    },
+    {
+      "file": "src/lib/gameStateSync/cribbageProgress.test.ts",
+      "passed": true,
+      "tests": 22
+    },
+    {
+      "file": "src/lib/cribbage/peggingLiveness.test.ts",
+      "passed": true,
+      "tests": 3
+    },
+    {
+      "file": "src/lib/ginRummyGameLogic.test.ts",
+      "passed": true,
+      "tests": 11
+    },
+    {
+      "file": "src/lib/gameStateSync/ginRummyProgress.test.ts",
+      "passed": true,
+      "tests": 5
+    },
+    {
+      "file": "src/lib/horsesSccAuthority.test.ts",
+      "passed": true,
+      "tests": 6
+    },
+    {
+      "file": "src/lib/yahtzeeAuthority.test.ts",
+      "passed": true,
+      "tests": 12
+    }
+  ]
+}

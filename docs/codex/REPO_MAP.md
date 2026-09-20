@@ -821,3 +821,12 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - `private.cribbage_finish_discard` selects the three-player fourth crib card and
   starter atomically; `secure_randomness_and_crib_rollback_proof.sql` covers the
   actual source, full crib, privacy-preserving card uniqueness and replay.
+
+## Farkle playable integration (Wave 2 draft)
+
+- `src/lib/farkle/`: typed authority transport, snapshot/receipt presentation,
+  frozen configuration contracts and Farkle-only geometry descriptors.
+- `src/components/farkle/`: isolated table consumer, local dice controls, remote
+  stages, frozen help, semantic history, admin drafts and geometry previews.
+- `docs/codex/FARKLE_WAVE2_20260920.md`: unfinished integration and proof gates.
+  The table consumer is not yet connected to the live gameplay route.

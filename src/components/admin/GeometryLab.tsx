@@ -1,3 +1,4 @@
+import { FarkleGeometryPreview } from '@/components/farkle/FarkleGeometryPreview';
 /**
  * Wave 6 — Geometry Lab (single-source refactor).
  *
@@ -491,6 +492,7 @@ export function GeometryLab({ userId }: { userId: string }) {
         </Select>
       </div>
 
+      {!isShell && game === "farkle" && <FarkleGeometryPreview />}
       {isShell ? (
         <ShellGlobalSections />
       ) : (
