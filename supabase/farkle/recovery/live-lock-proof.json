@@ -1,0 +1,12 @@
+{
+  "status": "Passed with two independent, overlapping PostgreSQL backend sessions via existing CLI Management API authorization. See live-lock-results.json for executed SQL and results.",
+  "instructions": "For each phase, start holder on connection A. Start contender on connection B while A is sleeping. Each query rolls back and changes no rows. The contender explicitly rejects absent overlap. Retain backend IDs/timestamps and both results. This validates live lock exclusion; the rollback proof and lock model bind that exclusion to creation gating and active-game checks.",
+  "creator_blocks_recovery": {
+    "holder": "BEGIN; SELECT pg_advisory_xact_lock_shared(19092026,1); SELECT pg_backend_pid() AS holder_pid,clock_timestamp() AS acquired_at; SELECT pg_sleep(10); ROLLBACK;",
+    "contender": "BEGIN; DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ShareLock' AND granted AND pid<>pg_backend_pid()) THEN RAISE EXCEPTION 'INCONCLUSIVE:no_overlapping_creator'; END IF; IF pg_try_advisory_xact_lock(19092026,1) THEN RAISE EXCEPTION 'FAILED:recovery_acquired_during_creation'; END IF; END $$; SELECT pg_backend_pid() AS contender_pid,clock_timestamp() AS observed_at,'passed' AS result; ROLLBACK;"
+  },
+  "recovery_blocks_creator": {
+    "holder": "BEGIN; SELECT pg_advisory_xact_lock(19092026,1); SELECT pg_backend_pid() AS holder_pid,clock_timestamp() AS acquired_at; SELECT pg_sleep(10); ROLLBACK;",
+    "contender": "BEGIN; DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ExclusiveLock' AND granted AND pid<>pg_backend_pid()) THEN RAISE EXCEPTION 'INCONCLUSIVE:no_overlapping_recovery'; END IF; IF pg_try_advisory_xact_lock_shared(19092026,1) THEN RAISE EXCEPTION 'FAILED:creator_acquired_during_recovery'; END IF; END $$; SELECT pg_backend_pid() AS contender_pid,clock_timestamp() AS observed_at,'passed' AS result; ROLLBACK;"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "completedAt": "2026-09-20T15:01:25.208Z",
+  "transport": "Two independently spawned Supabase CLI 2.115.0 db query processes using existing CLI authorization via the linked-project Management API; distinct concurrent PostgreSQL backends verified.",
+  "scope": "Advisory transaction locks and read-only pg_locks/backend/timestamp queries only. All transactions rolled back; no schema, fixture, configuration or credential mutations. No migration or release.",
+  "phases": [
+    {
+      "phase": "creator_blocks_recovery",
+      "status": "passed",
+      "startedAt": "2026-09-20T15:00:45.246Z",
+      "holderPid": 1447118,
+      "contenderPid": 1447121,
+      "observedHolderPid": 1447118,
+      "observedAt": "2026-09-20 15:00:52.280437+00",
+      "holderFinishedAt": "2026-09-20 15:01:02.654426+00",
+      "conflictingLockBlocked": true,
+      "holderSql": "BEGIN; SELECT pg_advisory_xact_lock_shared(19092026,1); DO $$ BEGIN PERFORM pg_sleep(14); END $$; SELECT pg_backend_pid() AS holder_pid,clock_timestamp() AS holder_finished_at; ROLLBACK;",
+      "contenderSql": "BEGIN; DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ShareLock' AND granted AND pid<>pg_backend_pid()) THEN RAISE EXCEPTION 'INCONCLUSIVE:no_overlapping_holder'; END IF; IF pg_try_advisory_xact_lock(19092026,1) THEN RAISE EXCEPTION 'FAILED:conflicting_lock_acquired'; END IF; END $$; SELECT pg_backend_pid() AS contender_pid,(SELECT pid FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ShareLock' AND granted AND pid<>pg_backend_pid() LIMIT 1) AS observed_holder_pid,clock_timestamp() AS observed_at,true AS conflicting_lock_blocked; ROLLBACK;"
+    },
+    {
+      "phase": "recovery_blocks_creator",
+      "status": "passed",
+      "startedAt": "2026-09-20T15:01:03.765Z",
+      "holderPid": 1447139,
+      "contenderPid": 1447142,
+      "observedHolderPid": 1447139,
+      "observedAt": "2026-09-20 15:01:11.023585+00",
+      "holderFinishedAt": "2026-09-20 15:01:20.924735+00",
+      "conflictingLockBlocked": true,
+      "holderSql": "BEGIN; SELECT pg_advisory_xact_lock(19092026,1); DO $$ BEGIN PERFORM pg_sleep(14); END $$; SELECT pg_backend_pid() AS holder_pid,clock_timestamp() AS holder_finished_at; ROLLBACK;",
+      "contenderSql": "BEGIN; DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ExclusiveLock' AND granted AND pid<>pg_backend_pid()) THEN RAISE EXCEPTION 'INCONCLUSIVE:no_overlapping_holder'; END IF; IF pg_try_advisory_xact_lock_shared(19092026,1) THEN RAISE EXCEPTION 'FAILED:conflicting_lock_acquired'; END IF; END $$; SELECT pg_backend_pid() AS contender_pid,(SELECT pid FROM pg_locks WHERE locktype='advisory' AND classid=19092026 AND objid=1 AND objsubid=2 AND mode='ExclusiveLock' AND granted AND pid<>pg_backend_pid() LIMIT 1) AS observed_holder_pid,clock_timestamp() AS observed_at,true AS conflicting_lock_blocked; ROLLBACK;"
+    }
+  ],
+  "cleanup": {
+    "residualLocks": 0
+  },
+  "previousInconclusiveAttempt": "overlap-attempt.json retained unchanged"
+}

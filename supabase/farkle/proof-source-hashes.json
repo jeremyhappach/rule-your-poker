@@ -1,0 +1,5 @@
+{
+  "candidate.sql": "c6a971f55b79765ef7659d7803e0408925df86b9d9b7d2a2cd8379863c5771d7",
+  "rollback-proof.sql": "b100b9cb1ca05be925cc4ab39ed2e155ce784e3c11496ef6c9abda52aa9d3174",
+  "recovery/restore-shared.sql": "7afbbbf12be2d324aba39ae1c3e7059a84123fe027d7f3123ca2006466fb13a5"
+}

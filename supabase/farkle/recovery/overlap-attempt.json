@@ -1,0 +1,16 @@
+{
+  "status": "INCONCLUSIVE: requests did not overlap; not a passing race proof",
+  "observations": [
+    {
+      "holder_pid": 1403557,
+      "acquired_at": "2026-09-20 04:50:40.994247+00",
+      "releasing_at": "2026-09-20 04:50:46.000296+00"
+    },
+    {
+      "contender_pid": 1403558,
+      "attempted_at": "2026-09-20 04:50:48.116338+00",
+      "exclusive_acquired": true
+    }
+  ],
+  "requires": "Two independent direct PostgreSQL connections; no credential or driver installation performed."
+}

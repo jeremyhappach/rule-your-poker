@@ -1,5 +1,27 @@
 # Current release and cutover state
 
+## September 19 Farkle Wave 1 — isolated draft, not released
+
+Implementation began from permanent checkpoint
+`512ce60825c06d355f6854062a20195cc3c2965e` on `codex/farkle-authority`.
+September 20 hardening corrects lower-seat turn order, serialized recovery,
+permanent test-config authorization, exact scoped write claims, scoring proofs,
+and Balanced-only policy. The combined transactional proof passes 110 assertions,
+including two explicit definition/owner/grant restoration checks and existing
+seven-game configuration/pause, ante and participant authority proofs before and
+after recovery. Typecheck/build, 1,639 application tests, 226 harness tests and
+41-file/282-test mandatory regression pass. No persistent Farkle migration,
+publication, or numeric production scoring seed/enablement occurred.
+The live two-session concurrency proof also passes: independently spawned
+Supabase CLI processes used existing authorization to establish distinct,
+overlapping PostgreSQL backends through the Management API. Both lock directions
+reject conflicting ownership, both transactions roll back, and zero proof locks
+remain. The earlier serialized connector attempt remains recorded as inconclusive.
+All listed Wave 1 hardening gates are complete; the draft remains unapplied and
+unpublished under Jeremy's latest instruction. No credentials were created or
+exposed, and no tools were installed.
+See [Wave 1 draft status](../../supabase/farkle/WAVE1_STATUS.md).
+
 ## September 18 continuous sampled play timing
 
 Approved replacement for expiring observation: ordinary Gin requests are

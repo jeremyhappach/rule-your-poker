@@ -1,0 +1,3 @@
+# Captured function bodies contain significant original CRLF/LF bytes. Keep
+# executable recovery fingerprints stable across Windows/Linux checkouts.
+*.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

@@ -1,0 +1,215 @@
+{
+  "baseSha": "512ce60825c06d355f6854062a20195cc3c2965e",
+  "branch": "codex/farkle-authority",
+  "capturedAtUtc": "2026-09-20 05:01:05 UTC",
+  "productionApplied": false,
+  "published": false,
+  "proof": {
+    "cases": [
+      "action authority claim cannot leak to next RPC",
+      "active turn reclaim is persisted and deferred",
+      "bank completes deferred reclaim",
+      "best four interpretation",
+      "best six interpretation",
+      "candidate: ante_decision_authority_boundary_rollback_proof.sql",
+      "candidate: definition owner grants advance_ante_phase_exact",
+      "candidate: definition owner grants advance_due_canonical_game_timers",
+      "candidate: definition owner grants configure_dealer_game",
+      "candidate: definition owner grants consume_automatic_play_stop",
+      "candidate: definition owner grants read_session_frame",
+      "candidate: definition owner grants set_automatic_play",
+      "candidate: definition owner grants set_game_paused",
+      "candidate: final_player_authority_rollback_proof.sql",
+      "candidate: rule_configuration_authority_rollback_proof.sql",
+      "candidate: seven_game_pause_rollback_proof.sql",
+      "configuration claim restored after return",
+      "creation disabled before client release",
+      "creator after recovery sees disabled gate",
+      "duplicate roll never rerolls",
+      "equal tiebreak exact lifetime counts",
+      "every selected die must score",
+      "exact final counts equal_turns",
+      "exact final counts one_last_turn",
+      "fake timeout uses authoritative hold path",
+      "farkle loses whole accumulated turn only",
+      "final queue equal_turns",
+      "final queue one_last_turn",
+      "fixed stake winner paid once",
+      "fixture cascade removes configuration actions events and receipts",
+      "four plus pair",
+      "frozen rules cannot change",
+      "future generic definer rejected for delete_game",
+      "future generic definer rejected for delete_player",
+      "future generic definer rejected for game",
+      "future generic definer rejected for player",
+      "future generic definer rejected for result",
+      "future generic definer rejected for round",
+      "future generic definer rejected for round_insert",
+      "future generic definer rejected for snapshot",
+      "game type cannot bypass immutable rules",
+      "generic decrement definer cannot move Farkle chips",
+      "generic increment definer cannot move Farkle chips",
+      "hot dice across rolls",
+      "idempotent configuration",
+      "immediate terminal",
+      "independent scoring partition",
+      "initial bot policy deadline uses bot delay",
+      "late replay after game transition",
+      "left of dealer across empty seat",
+      "middle dealer lower occupied seats clockwise with gaps 3 5 4",
+      "no chip ante for fixed stake",
+      "nonadmin direct setup rejected",
+      "one hold per roll",
+      "one last turn clockwise wrap",
+      "ones across rolls cannot become a triple",
+      "out of turn reclaim is immediate",
+      "outsider cannot act",
+      "owner role without claim cannot clear Farkle state",
+      "owner role without claim cannot switch Farkle game",
+      "partial hold",
+      "pending session end settles once and conserves chips",
+      "previous roll indexes cannot join a later hold",
+      "private authority not publicly executable",
+      "public dealer RPC rejects nonadmin test scoring after release gate opens",
+      "real money rejects test scoring",
+      "real timeout pauses without scoring decisions",
+      "reconnect does not reclaim",
+      "recovery 1: definition owner grants advance_ante_phase_exact",
+      "recovery 1: definition owner grants advance_due_canonical_game_timers",
+      "recovery 1: definition owner grants configure_dealer_game",
+      "recovery 1: definition owner grants consume_automatic_play_stop",
+      "recovery 1: definition owner grants read_session_frame",
+      "recovery 1: definition owner grants set_automatic_play",
+      "recovery 1: definition owner grants set_game_paused",
+      "recovery 2: definition owner grants advance_ante_phase_exact",
+      "recovery 2: definition owner grants advance_due_canonical_game_timers",
+      "recovery 2: definition owner grants configure_dealer_game",
+      "recovery 2: definition owner grants consume_automatic_play_stop",
+      "recovery 2: definition owner grants read_session_frame",
+      "recovery 2: definition owner grants set_automatic_play",
+      "recovery 2: definition owner grants set_game_paused",
+      "recovery aborts atomically while an active Farkle exists",
+      "repeat equal tiebreak cycle",
+      "request id payload binding",
+      "restored: ante_decision_authority_boundary_rollback_proof.sql",
+      "restored: final_player_authority_rollback_proof.sql",
+      "restored: rule_configuration_authority_rollback_proof.sql",
+      "restored: seven_game_pause_rollback_proof.sql",
+      "resume gives human decision window",
+      "roll does not commit scoring",
+      "run back uses exact frozen snapshot",
+      "selected triple only",
+      "semantic replay retains frozen rules and events",
+      "settlement replay cannot move chips",
+      "shared consume respects active Farkle turn",
+      "stale sequence rejected",
+      "straight",
+      "terminal action replay receipt",
+      "terminal snapshots and lifecycle",
+      "test configuration stays admin only with public release gate",
+      "three pairs",
+      "tiebreak leader cannot finish early",
+      "tiebreak winner excludes prior nonleaders",
+      "triple plus single beats four kind",
+      "two triplets",
+      "unapproved defaults never resolve",
+      "unimplemented aggressive policy rejected",
+      "unimplemented conservative policy rejected",
+      "wrong game authority claim cannot mutate round"
+    ],
+    "passed": true,
+    "recovery_restored_twice": true
+  },
+  "databaseAfterRollback": {
+    "release_table": null,
+    "farkle_columns": 0,
+    "shared_functions": [
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "md5": "9fc99d2870622c8bb0aebe5a78e7f00f",
+        "owner": "postgres",
+        "signature": "configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "md5": "011e5fbde8d7e98badd420ea448c841e",
+        "owner": "postgres",
+        "signature": "private.advance_ante_phase_exact(uuid,uuid,timestamp with time zone,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "md5": "edd034879df909e97dca92c715a4ab3a",
+        "owner": "postgres",
+        "signature": "private.advance_due_canonical_game_timers(integer)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "md5": "aae98932bd835c45f9d3761c912266bd",
+        "owner": "postgres",
+        "signature": "set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "md5": "9a9044ce522cd73b9980f0b7e87f774b",
+        "owner": "postgres",
+        "signature": "private.consume_automatic_play_stop()"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "md5": "7a8472b77a2805bf1d6e562b3166cfb7",
+        "owner": "postgres",
+        "signature": "set_game_paused(uuid,boolean,uuid,bigint)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "md5": "78597533f2f3e4870b47d1c5b1e5fbd9",
+        "owner": "postgres",
+        "signature": "read_session_frame(uuid)"
+      }
+    ],
+    "test_fixture_games": 0,
+    "production_defaults": 0
+  },
+  "validation": {
+    "typecheck": "passed",
+    "build": "passed",
+    "applicationTests": 1639,
+    "harnessTests": 226,
+    "mandatoryRegressionTests": 282,
+    "mandatoryRegressionFiles": 41,
+    "lockModelTests": 2,
+    "lockModelStates": 60,
+    "diffReview": "Completed: Farkle SQL/proof/evidence plus CURRENT_RELEASE only; shared patch reversal verified; no existing-game source or migration edits.",
+    "liveTwoSessionRace": {
+      "status": "passed",
+      "completedAt": "2026-09-20T15:01:25.208Z",
+      "phases": 2,
+      "evidence": "recovery/live-lock-results.json",
+      "transport": "Two independently spawned Supabase CLI 2.115.0 db query processes using existing CLI authorization via the linked-project Management API; distinct concurrent PostgreSQL backends verified.",
+      "residualLocks": 0
+    }
+  },
+  "remainingGate": null,
+  "scope": "Farkle drafts and proof runner only. Seven shared function extensions are generated but unapplied. Existing-game source, test files and migrations unchanged.",
+  "releaseDisposition": "All listed Wave 1 hardening gates complete. Draft remains unapplied and unpublished under the user instruction; numeric production defaults remain unapproved."
+}
