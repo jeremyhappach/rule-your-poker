@@ -1,5 +1,13 @@
 # Repository map
 
+Farkle terminal COMMIT handoff (applied as `20260921172016`):
+`supabase/farkle/commit-boundary/authority.sql` owns the private transaction-bound
+handoff and exact deferred-trigger validator. `build.mjs` adds its creation to
+Farkle settlement and one cursor-write branch to the shared transfer finalizer;
+it also generates drift-guarded migration and exact forward recovery. The real
+COMMIT/fresh-session proof is `qualify-local.mjs`; focused browser evidence is in
+`browser/`. Existing Farkle guards and applied migration history remain immutable.
+
 Farkle Wave 2 postgame (applied as `20260921155336`):
 `supabase/farkle/wave2-postgame/authority.sql` owns exact terminal continuation and
 private idempotent receipts. `build.mjs` generates the additive migration, one

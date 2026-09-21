@@ -1,0 +1,12 @@
+{
+  "reviewed": true,
+  "findings": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "detail": "Table \\`private.farkle_terminal_transfers_v2\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    }
+  ],
+  "disposition": "Intentional private authority table with RLS and no client policies; all client/service grants revoked. No exposed helper finding."
+}

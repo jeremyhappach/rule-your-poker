@@ -1965,3 +1965,14 @@ is mapped by actual body/name, not assumed equivalent from counts or timestamps.
 Anonymous privileged functions are closed while effective authenticated/service
 grants remain unchanged; five read-only RLS predicates are the explicit exception.
 The historical -$6 discrepancy is preserved and is not considered repaired.
+
+## September 21 — Farkle deferred settlement authority
+
+Terminal proof must cross COMMIT and read the result from a fresh session. A
+rollback-only proof cannot establish that deferred transfer triggers succeed.
+Use a private, consumed, transaction-bound Farkle settlement handoff for the
+exact cursor-write path. Preserve and immediately restore the existing claim;
+never leave broad authority active until commit or trust arbitrary definers.
+Keep shared transfer calculations/timing unchanged and capture exact executable
+forward recovery before applying a new additive migration. See
+[terminal correction evidence](FARKLE_TERMINAL_COMMIT_20260921.md).

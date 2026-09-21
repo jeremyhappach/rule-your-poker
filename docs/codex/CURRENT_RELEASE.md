@@ -15,6 +15,12 @@ proof, fingerprints/owners/grants and production fixture cleanup pass. Remaining
 Wave 2 live qualification is pending; creation stays disabled, admin-only enabled
 and production defaults unapproved and unseeded.
 
+Four focused live browser cases now pass at
+`4d01916afdf7365e06b55e268de16634c88dba87`, including all three endgames,
+canonical continuation, refresh and an observed equal-turn tiebreak. Full Wave 2
+and seven-game browser qualification remains outstanding. See
+[completed correction and remaining gate](FARKLE_TERMINAL_COMMIT_20260921.md).
+
 ### Prior live blocker
 
 Isolated local actual-client setup/play/Bank/refresh passes, but target-reaching
