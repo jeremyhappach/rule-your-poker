@@ -936,7 +936,19 @@ function buildThreeFiveSevenSnapshot(
 ): ThreeFiveSevenAuthoritativeSnapshot | null {
   if (!currentRound) return null;
   if (gameData.game_type !== '3-5-7' && gameData.game_type !== '357' && gameData.game_type !== '3-5-7-game') return null;
-  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
+  if (gameData.status === 'session_ended') {
+    // Atomic terminal settlement can end the session without a game_over
+    // frame. Admit only its exact completed round so the existing reveal and
+    // chip-credit gates can finish; never reconstruct a stale terminal round.
+    if (currentRound.status !== 'completed'
+      || !gameData.session_ended_at || gameData.pending_session_end === true
+      || !gameData.current_game_uuid || !currentRound.id
+      || currentRound.game_id !== gameData.id
+      || currentRound.dealer_game_id !== gameData.current_game_uuid
+      || !Number.isInteger(currentRound.hand_number) || currentRound.hand_number! < 1
+      || currentRound.hand_number !== gameData.total_hands
+      || currentRound.round_number !== gameData.current_round) return null;
+  } else if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
 
   const roundStatus = (currentRound.status === 'completed' ? 'completed' : 'betting') as 'betting' | 'completed';
 

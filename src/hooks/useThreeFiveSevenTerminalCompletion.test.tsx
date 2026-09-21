@@ -97,6 +97,20 @@ describe('3-5-7 exact terminal completion permission', () => {
     expect(result.current.canAdvance(receipt)).toBe(false);
   });
 
+  it('consumes atomic session-ended normal-win completion once and rejects stale callbacks', () => {
+    const ended = { ...terminal, status: 'session_ended' };
+    const { result, rerender } = renderHook(useThreeFiveSevenTerminalCompletion, { initialProps: ended });
+    expect(result.current.canAdvance(receipt)).toBe(false);
+    expect(result.current.acceptCompletion({ ...receipt, roundId: 'stale-round' })).toBe(false);
+    expect(result.current.acceptCompletion(receipt)).toBe(true);
+    rerender({ ...ended });
+    expect(result.current.acceptCompletion(receipt)).toBe(false);
+    expect(result.current.canAdvance(receipt)).toBe(true);
+    rerender({ ...ended, enabled: false });
+    expect(result.current.acceptCompletion(receipt)).toBe(false);
+    expect(result.current.canAdvance(receipt)).toBe(false);
+  });
+
   it('does not authorize cold mount or unmounted callbacks; server recovery remains independent', () => {
     const { result, unmount } = renderHook(useThreeFiveSevenTerminalCompletion, { initialProps: terminal });
     const completion = result.current.acceptCompletion;

@@ -87,6 +87,24 @@ test.describe('two-human cross-country terminal settlement gauntlet', () => {
           ),
         ]);
         await expect(session.peerPage.getByText('Game Lobby', { exact: true }).first()).toBeVisible();
+        if (gameType === '3-5-7') {
+          const balances = await probe.readThreeFiveSevenTerminalBalances(session.gameId, dealerGameId, result.hand_number);
+          const panel = session.hostPage.locator('[data-session-ended-panel]');
+          await expect(panel).toHaveCount(1);
+          for (const balance of balances) {
+            const row = panel.getByRole('listitem').filter({ has: session.hostPage.getByLabel(balance.username!, { exact: true }) });
+            await expect(row).toHaveCount(1);
+            await expect(row).toContainText(`${balance.chips! > 0 ? '+' : ''}${balance.chips}`);
+          }
+          evidence.terminalBalances = balances;
+          // A fresh host mount must not replay the completed terminal presentation.
+          await session.hostPage.reload({ waitUntil: 'domcontentloaded' });
+          await expect(session.hostPage).toHaveURL(/\/$/, { timeout: 30_000 });
+          await expect(session.hostPage.locator('[data-session-ended-panel]')).toHaveCount(0);
+          await probe.assertTerminalProof(session.gameId, dealerGameId, TERMINAL_EXPECTATIONS[gameType], result);
+          expect(await probe.readThreeFiveSevenTerminalBalances(session.gameId, dealerGameId, result.hand_number)).toEqual(balances);
+          evidence.hostFreshMountDidNotReplay = true;
+        }
         console.log(`[terminal] ${gameType} client and database proof complete`);
         evidence.status = 'passed';
       } catch (error) {

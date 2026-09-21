@@ -454,6 +454,32 @@ export class TerminalSettlementProbe {
 
   }
 
+  async readThreeFiveSevenTerminalBalances(gameId: string, dealerGameId: string, handNumber: number) {
+    return withProbeDeadline(async signal => {
+      const [players, snapshots, results] = await Promise.all([
+        this.client.from('players').select('id,chips').eq('game_id', gameId).abortSignal(signal),
+        this.client.from('session_player_snapshots').select('*').eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId).eq('hand_number', handNumber).abortSignal(signal),
+        this.client.from('game_results').select('player_chip_changes').eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId).abortSignal(signal),
+      ]);
+      for (const response of [players, snapshots, results]) {
+        if (response.error) throw new Error(`3-5-7 terminal balance query failed: ${response.error.message}`);
+      }
+      this.assertTwoHumanSnapshots(snapshots.data!);
+      return snapshots.data!.map(snapshot => {
+        const player = players.data!.find(row => row.id === snapshot.player_id);
+        const resultTotal = results.data!.reduce((sum, row) => sum
+          + Number((row.player_chip_changes as Record<string, number> | null)?.[snapshot.player_id] ?? 0), 0);
+        // This scenario starts both humans at zero and plays one dealer game.
+        if (!player || player.chips !== snapshot.chips || player.chips !== resultTotal) {
+          throw new Error(`3-5-7 terminal player, snapshot and accounting disagree: ${snapshot.player_id}`);
+        }
+        return { playerId: snapshot.player_id, username: snapshot.username, chips: snapshot.chips };
+      });
+    }, '3-5-7 terminal balance proof');
+  }
+
   private assertTwoHumanSnapshots(snapshots: SessionSnapshot[]): void {
     if (snapshots.length !== 2) {
       throw new Error(`Expected two human terminal snapshots, found ${snapshots.length}`);

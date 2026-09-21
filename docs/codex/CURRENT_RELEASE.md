@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## September 21 approved 3-5-7 terminal snapshot correction — qualification pending
+
+The 3-5-7 builder now admits an atomic `session_ended` frame only with its
+completed, exactly matching game/dealer-game/hand/round identity and finished
+session marker. Existing reveal, transfer ordering, sync and completion owners
+are unchanged. Focused executable builder/financial-gate and duplicate/stale
+completion proofs cover this boundary; the terminal browser case additionally
+compares panel balances with authoritative snapshots/accounting and verifies
+fresh-host remount does not replay presentation.
+
+Qualification follows the approved risk-based scope: affected 3-5-7 cases,
+five remaining terminal cases, reuse of unaffected passes, then one final
+deterministic/SQL/metadata/cleanup gate. No settlement, migrations, Farkle,
+other-game behavior or shared lifecycle changes. Wave 2 remains unqualified
+and unmerged until the complete evidence is green; production creation remains
+disabled, admin-only enabled, defaults unapproved and unseeded.
+
 ## September 21 3-5-7 terminal blocker — product boundary identified, no patch
 
 The focused reproduction confirms a real connected-host presentation failure.
