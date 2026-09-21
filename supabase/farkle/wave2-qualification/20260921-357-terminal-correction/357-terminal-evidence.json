@@ -1,0 +1,63 @@
+{
+  "gameType": "3-5-7",
+  "status": "passed",
+  "terminalBalances": [
+    {
+      "playerId": "4249cafd-145a-432f-b481-8f82dc39289b",
+      "username": "Farkle Test 2",
+      "chips": -3
+    },
+    {
+      "playerId": "8f726826-05a0-4677-9c90-73157c7bdc05",
+      "username": "Farkle Test 1",
+      "chips": 3
+    }
+  ],
+  "hostFreshMountDidNotReplay": true,
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 89,
+    "snapshotCount": 71,
+    "networkRequestCount": 694,
+    "violationCount": 0,
+    "identityTransitionCount": 10,
+    "actionReceiptCount": 5,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 5,
+        "minMs": 332,
+        "p50Ms": 630,
+        "p95Ms": 1233,
+        "maxMs": 1233
+      },
+      "actorProgress": {
+        "count": 5,
+        "minMs": 82,
+        "p50Ms": 2528,
+        "p95Ms": 2639,
+        "maxMs": 2639
+      },
+      "peerProgress": {
+        "count": 5,
+        "minMs": 1458,
+        "p50Ms": 3035,
+        "p95Ms": 3919,
+        "maxMs": 3919
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790029490205-1",
+        "peer-1790029512396-1"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "d7087a66-3f7c-42d1-b7a6-82b7704829c1",
+    "outcome": "deleted",
+    "verified": true
+  }
+}

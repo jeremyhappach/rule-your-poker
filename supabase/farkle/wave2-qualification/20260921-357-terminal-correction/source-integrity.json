@@ -1,0 +1,13 @@
+{
+  "before": "9e006d2ee579313f697f38e951bb58a59b709fac",
+  "candidate": "bb9b9ea3ff8fb4e7b385f2eaa108afd730ffbea6",
+  "changed": [
+    "src/hooks/useThreeFiveSevenTerminalCompletion.test.tsx",
+    "src/pages/Game.threeFiveSevenTerminalSnapshot.test.ts",
+    "src/pages/Game.tsx"
+  ],
+  "runtime": [
+    "src/pages/Game.tsx"
+  ],
+  "unchangedMigrationTree": "3589b69d93054117c5fd9220bcd15399c27c2f1f"
+}

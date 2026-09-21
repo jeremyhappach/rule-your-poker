@@ -1,0 +1,16 @@
+ ❯ src/lib/cardGames/cardFaceContract.test.ts (2 tests | 1 failed) 39702ms
+   × cross-game card face contract > requires review of any new direct rank/suit renderer 38672ms
+     → Test timed out in 15000ms.
+ ❯ src/components/AnteUpDialog.test.tsx (5 tests | 1 failed) 12526ms
+   × AnteUpDialog authoritative Sit Out submission > submits the exact admitted player and closes after Sit Out is accepted 6011ms
+     → Test timed out in 5000ms.
+ ❯ src/components/DealerGameSetup.runBack.test.tsx (21 tests | 2 failed) 15144ms
+   × the actual Run Back button across all seven games > submits the exact yahtzee snapshot despite conflicting form defaults: {"ante_amount":10} 10315ms
+     → Test timed out in 5000ms.
+   × the actual Run Back button across all seven games > submits the exact horses snapshot despite conflicting form defaults: {"ante_amount":11} 154ms
+     → expected undefined to be truthy
+ ❯ src/components/AddTransactionDialog.account.test.tsx (2 tests | 2 failed) 17481ms
+   × retries a lost response after remount with the original amount and request ID 12681ms
+     → Test timed out in 5000ms.
+   × rejects fractional cents before sending a command 4788ms
+     → Unable to find an accessible element with the role "button" and name "Add Transaction"

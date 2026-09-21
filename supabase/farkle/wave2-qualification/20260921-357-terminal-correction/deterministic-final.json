@@ -1,0 +1,25 @@
+{
+  "sha": "bb9b9ea3ff8fb4e7b385f2eaa108afd730ffbea6",
+  "command": "npm run build",
+  "exitCode": 1,
+  "typecheck": "passed",
+  "application": {
+    "passed": 1679,
+    "failed": 6,
+    "total": 1685,
+    "filesPassed": 245,
+    "filesFailed": 4,
+    "filesTotal": 249,
+    "durationSeconds": 622.97
+  },
+  "harness": "not reached",
+  "build": "not reached",
+  "qualification": "blocked",
+  "remainingBrowserCases": [
+    "cribbage terminal",
+    "gin-rummy terminal",
+    "horses terminal",
+    "ship-captain-crew terminal",
+    "yahtzee terminal"
+  ]
+}

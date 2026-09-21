@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-## September 21 approved 3-5-7 terminal snapshot correction — qualification pending
+## September 21 3-5-7 correction verified; final application gate blocked
 
 The 3-5-7 builder now admits an atomic `session_ended` frame only with its
 completed, exactly matching game/dealer-game/hand/round identity and finished
@@ -10,12 +10,28 @@ completion proofs cover this boundary; the terminal browser case additionally
 compares panel balances with authoritative snapshots/accounting and verifies
 fresh-host remount does not replay presentation.
 
-Qualification follows the approved risk-based scope: affected 3-5-7 cases,
-five remaining terminal cases, reuse of unaffected passes, then one final
-deterministic/SQL/metadata/cleanup gate. No settlement, migrations, Farkle,
-other-game behavior or shared lifecycle changes. Wave 2 remains unqualified
-and unmerged until the complete evidence is green; production creation remains
-disabled, admin-only enabled, defaults unapproved and unseeded.
+Candidate `bb9b9ea3ff8fb4e7b385f2eaa108afd730ffbea6` passed 114 focused tests
+and the corrected Session Ended browser case (panel, accounting/snapshot balances,
+fresh-host no-replay, continuous observer and fixture cleanup). Its initial cold
+`/auth` navigation timed out before game creation; the one focused retry passed.
+The previously passed live-entry/pause cases exercise unchanged builder branches
+and are retained under the approved risk-based reuse rule.
+
+The single final deterministic command passed typecheck, then completed with
+**1,679 application tests passed and six failed in four unchanged test files**:
+card-face contract, Ante Up, Run Back, and Add Transaction. Four failures were
+timeouts; two were assertion failures. Their causes have not been established.
+Harness/build stages were not reached after the application failure. No unrelated
+test/product changes or further full-suite run were attempted. The five unrun
+terminal browser cases remain held; no failed gate is waived.
+
+All 158 SQL authority/recovery assertions, both restoration metadata checks,
+seven-game SQL regressions and all 384 production function metadata comparisons
+passed. Final cleanup removed every fixture and verified all 384 local functions
+unchanged. Services are stopped. Production creation remains disabled, admin-only
+enabled, defaults unapproved/unseeded; no migrations or main integration occurred.
+Wave 2 remains **unqualified and unmerged**. See
+[correction and final-gate evidence](THREE_FIVE_SEVEN_TERMINAL_CORRECTION_20260921.md).
 
 ## September 21 3-5-7 terminal blocker — product boundary identified, no patch
 

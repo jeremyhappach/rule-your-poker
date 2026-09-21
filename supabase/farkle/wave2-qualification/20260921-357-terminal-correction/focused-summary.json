@@ -1,0 +1,22 @@
+{
+  "candidate": "bb9b9ea3ff8fb4e7b385f2eaa108afd730ffbea6",
+  "focusedUnitTests": 114,
+  "terminal": {
+    "startTime": "2026-09-21T22:23:41.607Z",
+    "duration": 214325.878,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "sourceProvenance": "Focused browser started with the reviewed uncommitted fix; those unchanged product/proof bytes were committed as the candidate during the run. The browser namespace retains its initial parent SHA.",
+  "startupFailure": {
+    "phase": "page.goto /auth before game creation",
+    "timeoutMs": 30000,
+    "classification": "cold-start timing flake",
+    "focusedRetryPassed": true
+  },
+  "productionFunctionsVerified": 384,
+  "productionFunctionDrift": [],
+  "qualification": "blocked: final application gate failed; five terminal browser cases still unrun"
+}

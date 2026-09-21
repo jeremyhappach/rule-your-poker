@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "remainingTables": [
+    "private.farkle_release|1",
+    "private.farkle_postgame_control_v2|1",
+    "private.game_timer_cutover|1",
+    "public.game_defaults|7"
+  ],
+  "authUsers": 0,
+  "profiles": 0,
+  "functionCount": 384,
+  "functionDrift": [],
+  "localCreationEnabled": false
+}
