@@ -1,6 +1,18 @@
 # Current release and cutover state
 
-## September 21 Wave 2 live gate — terminal authority blocker
+## September 21 Wave 2 — terminal COMMIT correction
+
+The additive terminal transfer handoff passes real authenticated Bank COMMIT for
+both game-over and pending-session-end settlement, fresh-session verification,
+identical-request replay, stale deferred work and authority negatives. Two exact
+recovery/restoration cycles pass the 158 authority assertions and seven-game SQL
+regressions. Full validation passes: 1,657 application tests, 226 harness tests,
+typecheck and build. Production pre-apply rollback verification is green.
+See [correction and recovery evidence](../../supabase/farkle/commit-boundary/README.md).
+Production apply and remaining Wave 2 live qualification are still pending;
+creation stays disabled, admin-only enabled and production defaults unapproved.
+
+### Prior live blocker
 
 Isolated local actual-client setup/play/Bank/refresh passes, but target-reaching
 Bank rolls back at the deferred shared chip-transfer cursor write because the

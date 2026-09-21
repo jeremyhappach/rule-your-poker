@@ -1,0 +1,13 @@
+{
+  "applicationTests": 1657,
+  "applicationFiles": 247,
+  "harnessTests": 226,
+  "harnessFiles": 11,
+  "typecheck": true,
+  "build": true,
+  "buildSeconds": 20.43,
+  "logSha256": "99c46bd3c482aeefbb5cc954afe32b814f878e04d863d438a0a498c374e87d17",
+  "preapplyRollback": true,
+  "productionApplied": false,
+  "browserQualificationPending": true
+}

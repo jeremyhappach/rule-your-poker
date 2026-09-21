@@ -1,0 +1,29 @@
+{
+  "migration": "20260921170500_farkle_terminal_transfer_handoff.sql",
+  "baselineSha": "4230f07c3705d73419e1042e2394e6293b3fedec",
+  "owners": [
+    {
+      "signature": "private.farkle_settle_v1(uuid)",
+      "baselineMd5": "a5963592039a14b110b251a2305652a9",
+      "candidateMd5": "e4b72f5ee9376b4791e83be0db15ab9f",
+      "owner": "postgres",
+      "securityDefiner": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "acl": "{postgres=X/postgres}"
+    },
+    {
+      "signature": "finalize_gameplay_transfer_batch()",
+      "baselineMd5": "5459fd01314cee7fe3fff421ce5e11b4",
+      "candidateMd5": "5d1c8703caee40ce7392d4eb6de1aaf9",
+      "owner": "postgres",
+      "securityDefiner": true,
+      "config": [
+        "search_path=public"
+      ],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+    }
+  ],
+  "scope": "Farkle-only deferred terminal transfer claim; unchanged guards and non-Farkle calculations"
+}
