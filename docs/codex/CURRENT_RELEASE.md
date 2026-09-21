@@ -1,5 +1,13 @@
 # Current release and cutover state
 
+## September 21 Farkle notice correction — qualification in progress
+
+The approved Farkle-only producer now supplies canonical `payload.title` for
+HOT DICE and FARKLE. Component coverage and an actual two-client browser proof
+pass; all four observed notice lifetimes were approximately 1600 ms. The shared
+renderer, existing games and authority are unchanged. Full Wave 2 qualification
+and main integration remain held. See [correction evidence](FARKLE_NOTICE_FIX_20260921.md).
+
 ## September 21 resumed Wave 2 — Farkle notice product defect
 
 At exact source `9bc4e37092bc344b20059a1bcfbb48aee1d18bf5`, the remaining matrix

@@ -88,7 +88,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       if (event.type === 'farkle' || event.type === 'hot_dice') emit({
         id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
         scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
-        payload: { text: event.type === 'farkle' ? 'FARKLE' : 'HOT DICE' }, ttlMs: 1600, behavior: 'enqueue',
+        payload: { title: event.type === 'farkle' ? 'FARKLE' : 'HOT DICE' }, ttlMs: 1600, behavior: 'enqueue',
       });
     }
   }, [scopeKey, state.actionSequence, emit]);

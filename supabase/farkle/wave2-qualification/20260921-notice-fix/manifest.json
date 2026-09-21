@@ -1,0 +1,67 @@
+{
+  "baseSha": "547a9319b95c918687c32dafedd85507a732bc92",
+  "validationContext": "Pre-commit source hashes below; final exact-SHA Wave 2 gates pending.",
+  "productChange": "Farkle notice payload.text → payload.title only",
+  "focusedBrowser": {
+    "passed": true,
+    "seconds": 35.7,
+    "notices": [
+      {
+        "type": "hot_dice",
+        "clients": [
+          {
+            "role": "peer",
+            "visibleMs": 1619.10009765625
+          },
+          {
+            "role": "actor",
+            "visibleMs": 1626.800048828125
+          }
+        ]
+      },
+      {
+        "type": "farkle",
+        "clients": [
+          {
+            "role": "peer",
+            "visibleMs": 1599.300048828125
+          },
+          {
+            "role": "actor",
+            "visibleMs": 1596.199951171875
+          }
+        ]
+      }
+    ]
+  },
+  "componentTests": 2,
+  "applicationTests": 1659,
+  "harnessTests": 226,
+  "typecheck": true,
+  "build": true,
+  "sharedRendererChanged": false,
+  "productionMutations": false,
+  "wave2Qualified": false,
+  "files": [
+    {
+      "file": "src/components/farkle/FarkleGameTable.tsx",
+      "normalizedSha256": "e07d9c0156554e46d2f84ca43b11883f20175901cb6141593d182065050d3df4"
+    },
+    {
+      "file": "src/components/farkle/FarkleNotices.test.tsx",
+      "normalizedSha256": "69c76ec0d44b00e58aa51cda6482c5e217a49508f760da4c2c4ed7d864de7426"
+    },
+    {
+      "file": "e2e/farkle/notices.local.spec.ts",
+      "normalizedSha256": "c92cc7d406a5af15a1e61eebde3a7930184c0068829f4f765b0cc2a6a278bcfa"
+    },
+    {
+      "file": "src/lib/canonicalShell/announcements/renderers.tsx",
+      "normalizedSha256": "42ca5ecfdf993988abc7fb65df4af4bd4926fc6b6283762e519b0d194b7c21ea"
+    }
+  ],
+  "buildLog": {
+    "path": "runtime-farkle.local/notice-fix-build.log",
+    "sha256": "81c9abc735a7bfa79e9761d0f14c96e0a1764f83d1fa0f73a0be256b4ed6638f"
+  }
+}
