@@ -1,0 +1,52 @@
+{
+  "gameType": "gin-rummy",
+  "status": "passed",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 1257,
+    "snapshotCount": 1087,
+    "networkRequestCount": 938,
+    "violationCount": 0,
+    "identityTransitionCount": 13,
+    "actionReceiptCount": 159,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 159,
+        "minMs": 61,
+        "p50Ms": 451,
+        "p95Ms": 1293,
+        "maxMs": 2793
+      },
+      "actorProgress": {
+        "count": 159,
+        "minMs": 22,
+        "p50Ms": 1874,
+        "p95Ms": 3642,
+        "maxMs": 14899
+      },
+      "peerProgress": {
+        "count": 159,
+        "minMs": 740,
+        "p50Ms": 1751,
+        "p95Ms": 3518,
+        "maxMs": 11995
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790032058161-1",
+        "peer-1790032078186-1",
+        "peer-1790032100035-3",
+        "host-1790032101812-4"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "64fdfae4-38ba-45fe-9371-887c5418a014",
+    "outcome": "deleted",
+    "verified": true
+  }
+}

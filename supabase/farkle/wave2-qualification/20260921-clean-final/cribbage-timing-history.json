@@ -1,0 +1,107 @@
+{
+  "startup": {
+    "failure": "page.goto /auth exceeded 30000 ms before game creation",
+    "reachedGameplay": false
+  },
+  "firstLiveAttempt": {
+    "authoritativeTerminalAndRenderedEndChecks": "passed",
+    "observer": {
+      "version": 2,
+      "eventCount": 92,
+      "snapshotCount": 73,
+      "networkRequestCount": 429,
+      "violationCount": 0,
+      "identityTransitionCount": 7,
+      "actionReceiptCount": 8,
+      "progressProblemCount": 1,
+      "exemptActionCount": 0,
+      "coverageProblems": [],
+      "latency": {
+        "rpc": {
+          "count": 8,
+          "minMs": 167,
+          "p50Ms": 244,
+          "p95Ms": 936,
+          "maxMs": 936
+        },
+        "actorProgress": {
+          "count": 8,
+          "minMs": 56,
+          "p50Ms": 121,
+          "p95Ms": 4839,
+          "maxMs": 4839
+        },
+        "peerProgress": {
+          "count": 8,
+          "minMs": 346,
+          "p50Ms": 1692,
+          "p95Ms": 18610,
+          "maxMs": 18610
+        },
+        "peerBudgetMs": 15000,
+        "expectedPeerDelayActionIds": [
+          "host-1790031737188-1",
+          "peer-1790031753454-1"
+        ],
+        "peerBudgetBreaches": [
+          "host-1790031777250-5"
+        ]
+      }
+    },
+    "cleanup": {
+      "gameId": "8b44a520-7f24-4cb4-8c6f-754c053a1ec1",
+      "outcome": "deleted",
+      "verified": true
+    }
+  },
+  "oneLatencyRetry": {
+    "passed": true,
+    "observer": {
+      "version": 2,
+      "eventCount": 102,
+      "snapshotCount": 82,
+      "networkRequestCount": 431,
+      "violationCount": 0,
+      "identityTransitionCount": 7,
+      "actionReceiptCount": 9,
+      "progressProblemCount": 0,
+      "exemptActionCount": 0,
+      "coverageProblems": [],
+      "latency": {
+        "rpc": {
+          "count": 9,
+          "minMs": 117,
+          "p50Ms": 318,
+          "p95Ms": 837,
+          "maxMs": 837
+        },
+        "actorProgress": {
+          "count": 9,
+          "minMs": 33,
+          "p50Ms": 119,
+          "p95Ms": 1399,
+          "maxMs": 1399
+        },
+        "peerProgress": {
+          "count": 9,
+          "minMs": 549,
+          "p50Ms": 1262,
+          "p95Ms": 3912,
+          "maxMs": 3912
+        },
+        "peerBudgetMs": 15000,
+        "expectedPeerDelayActionIds": [
+          "host-1790031926643-1",
+          "peer-1790031937891-1"
+        ],
+        "peerBudgetBreaches": []
+      }
+    },
+    "cleanup": {
+      "gameId": "30b11b4b-6751-4a55-8f7d-ae69de690dc6",
+      "outcome": "deleted",
+      "verified": true
+    }
+  },
+  "classification": "Browser timing flake accepted after one focused retry of the reached-live peer-latency failure, with healthy terminal authority and unchanged assertions."
+}

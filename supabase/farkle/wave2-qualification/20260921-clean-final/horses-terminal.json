@@ -1,0 +1,50 @@
+{
+  "gameType": "horses",
+  "status": "passed",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 116,
+    "snapshotCount": 96,
+    "networkRequestCount": 411,
+    "violationCount": 0,
+    "identityTransitionCount": 7,
+    "actionReceiptCount": 9,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 9,
+        "minMs": 98,
+        "p50Ms": 389,
+        "p95Ms": 1038,
+        "maxMs": 1038
+      },
+      "actorProgress": {
+        "count": 9,
+        "minMs": 11,
+        "p50Ms": 703,
+        "p95Ms": 1087,
+        "maxMs": 1087
+      },
+      "peerProgress": {
+        "count": 9,
+        "minMs": 749,
+        "p50Ms": 1483,
+        "p95Ms": 3443,
+        "maxMs": 3443
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790032803477-1",
+        "host-1790032814663-2"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "b7131799-624f-42eb-95fd-530adf49ddc7",
+    "outcome": "deleted",
+    "verified": true
+  }
+}

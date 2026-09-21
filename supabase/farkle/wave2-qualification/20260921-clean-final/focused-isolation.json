@@ -1,0 +1,35 @@
+{
+  "sha": "3d8a5f3db22f3e865fec9386840b9b90bf082199",
+  "focused": [
+    {
+      "file": "cardFaceContract.test.ts",
+      "tests": 2,
+      "durationSeconds": 13.2
+    },
+    {
+      "file": "AnteUpDialog.test.tsx",
+      "tests": 5,
+      "durationSeconds": 33.81
+    },
+    {
+      "file": "DealerGameSetup.runBack.test.tsx",
+      "tests": 21,
+      "durationSeconds": 32.57
+    },
+    {
+      "file": "AddTransactionDialog.account.test.tsx",
+      "tests": 2,
+      "durationSeconds": 19.62
+    }
+  ],
+  "classification": "Prior six failures are likely suite-level contention/leakage; every failing file passed once in a fresh isolated test process.",
+  "runtime": {
+    "node": "v24.19.0",
+    "vitest": "3.2.4",
+    "availableParallelism": 8,
+    "logicalCpus": 8,
+    "totalMemoryGB": 16,
+    "freeMemoryGB": 3
+  },
+  "retry": "One complete application run, fresh process, unchanged runner configuration and timeouts."
+}

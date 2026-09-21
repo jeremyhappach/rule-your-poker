@@ -1,0 +1,61 @@
+{
+  "qualified": true,
+  "qualifiedSha": "3d8a5f3db22f3e865fec9386840b9b90bf082199",
+  "implementationSha": "bb9b9ea3ff8fb4e7b385f2eaa108afd730ffbea6",
+  "qualifiedAt": "2026-09-21T23:31:59.690Z",
+  "mainIntegrated": false,
+  "sourceTrees": {
+    "src": "15f5fbc17466a65e94843aa86ccd33c7ad3df23c",
+    "e2e": "eb739cc4e855931dadb34cce790bebcf7173b940",
+    "migrations": "3589b69d93054117c5fd9220bcd15399c27c2f1f"
+  },
+  "applicationTests": 1685,
+  "harnessTests": 241,
+  "typecheck": "passed",
+  "build": "passed",
+  "sqlAssertions": 158,
+  "restorationMetadataChecks": 2,
+  "sevenGameSqlRegressions": "passed",
+  "productionFunctionsVerified": 384,
+  "productionMetadataDrift": [],
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "productionFarkleDefaults": 0,
+  "fixturesRemaining": 0,
+  "browserCoverage": {
+    "farkle": {
+      "cases": 13,
+      "reused": [
+        "10 cases at 852c22349",
+        "3 timeout/reclaim cases at 51ce9ffab"
+      ]
+    },
+    "sevenGame": {
+      "cases": 21,
+      "reused": [
+        "15 unaffected cases at 51ce9ffab",
+        "3-5-7 corrected terminal proof on unchanged bb9b9ea3f product/proof bytes"
+      ],
+      "completedHere": [
+        "cribbage terminal",
+        "gin-rummy terminal",
+        "horses terminal",
+        "ship-captain-crew terminal",
+        "yahtzee terminal"
+      ]
+    }
+  },
+  "policy": "Explicit approved risk-based reuse and one focused retry for browser timing/observation failures with healthy authoritative evidence. No assertions or product behavior changed in this qualification pass.",
+  "caveats": [
+    "Prior full-suite failures classified as likely suite contention/leakage after all four files passed isolated and the one clean full application run passed.",
+    "Cribbage startup navigation timeout and separate first-live peer-latency failure retained in timing history; unchanged focused retry passed.",
+    "Horses exact dice capture timeout retained in timing history; unchanged focused retry passed."
+  ],
+  "cleanup": "cleanup.json",
+  "productionMetadata": "production-final.json",
+  "sqlProof": "sql-final.json"
+}

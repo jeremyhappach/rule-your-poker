@@ -1,0 +1,55 @@
+{
+  "firstAttempt": {
+    "gameType": "horses",
+    "status": "failed",
+    "error": "Dice roll 7 peer capture did not complete within 15000 ms of the click",
+    "continuousObserver": {
+      "version": 2,
+      "eventCount": 107,
+      "snapshotCount": 90,
+      "networkRequestCount": 364,
+      "violationCount": 0,
+      "identityTransitionCount": 4,
+      "actionReceiptCount": 9,
+      "progressProblemCount": 0,
+      "exemptActionCount": 0,
+      "coverageProblems": [],
+      "latency": {
+        "rpc": {
+          "count": 9,
+          "minMs": 129,
+          "p50Ms": 279,
+          "p95Ms": 866,
+          "maxMs": 866
+        },
+        "actorProgress": {
+          "count": 9,
+          "minMs": 85,
+          "p50Ms": 649,
+          "p95Ms": 1479,
+          "maxMs": 1479
+        },
+        "peerProgress": {
+          "count": 9,
+          "minMs": 1260,
+          "p50Ms": 1659,
+          "p95Ms": 2771,
+          "maxMs": 2771
+        },
+        "peerBudgetMs": 15000,
+        "expectedPeerDelayActionIds": [
+          "host-1790032643176-1",
+          "peer-1790032653454-1"
+        ],
+        "peerBudgetBreaches": []
+      }
+    },
+    "cleanup": {
+      "gameId": "6615b556-5acf-4b3c-8dbe-385d83c5e2bb",
+      "outcome": "deleted",
+      "verified": true
+    }
+  },
+  "oneFocusedRetry": "passed with unchanged dice-capture, terminal, observer and cleanup assertions",
+  "classification": "Presentation-observation flake accepted under the approved one-retry policy; no contradictory authoritative evidence."
+}

@@ -1,0 +1,26 @@
+{
+  "sha": "3d8a5f3db22f3e865fec9386840b9b90bf082199",
+  "application": {
+    "tests": 1685,
+    "files": 249,
+    "passed": true,
+    "durationSeconds": 191.1
+  },
+  "harness": {
+    "tests": 241,
+    "files": 12,
+    "passed": true,
+    "durationSeconds": 7.08
+  },
+  "typecheck": {
+    "passed": true,
+    "command": "npm run typecheck"
+  },
+  "build": {
+    "passed": true,
+    "command": "node node_modules/vite/bin/vite.js build",
+    "durationSeconds": 35.93
+  },
+  "executableChangesSinceCorrection": [],
+  "browserQualification": "All five remaining terminal cases passed under the approved retry/reuse policy."
+}

@@ -1,5 +1,35 @@
 # Current release and cutover state
 
+## September 21 Wave 2 qualified — main integration held
+
+Wave 2 is qualified at **`3d8a5f3db22f3e865fec9386840b9b90bf082199`** on
+`codex/farkle-playable`, under Jeremy's explicit risk-based retry/reuse policy.
+No product or qualification-assertion changes were made in this final pass.
+
+All four previously failing application files passed once in separate fresh
+processes (30 tests). The single clean full retry then passed all **1,685 tests
+in 249 files**. The prior failures are classified as likely suite-level
+contention/leakage. The full harness suite passed **241 tests in 12 files**;
+typecheck and production build also passed at the exact qualified SHA.
+
+All five remaining terminal browser cases passed: Cribbage, Gin, Horses, SCC,
+and Yahtzee. Cribbage and Horses timing/observation failures passed their focused
+retries with unchanged assertions and healthy authoritative evidence. This
+completes seven-game coverage (21 cases), using the explicitly approved reuse of
+15 unaffected passes and the corrected 3-5-7 terminal proof. The 13-case Farkle
+matrix remains covered by its approved prior passes; no campaigns were restarted.
+
+The final SQL proof passed all 158 assertions, seven-game regressions and both
+restoration metadata checks. All 384 production function fingerprints, owners,
+security attributes and grants match. Final cleanup confirms zero fixtures and
+all 384 local functions unchanged; frontend/scheduler services are stopped.
+
+Production creation remains **disabled**, admin-only **enabled**, and defaults
+**unapproved/unseeded**. No migrations, main integration, public enablement or
+production data writes occurred. Only final evidence/documentation is committed
+after the qualified SHA. See [final qualification](FARKLE_WAVE2_CLEAN_FINAL_20260921.md)
+and its machine-readable manifest.
+
 ## September 21 3-5-7 correction verified; final application gate blocked
 
 The 3-5-7 builder now admits an atomic `session_ended` frame only with its

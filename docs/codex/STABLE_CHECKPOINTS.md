@@ -2,6 +2,15 @@
 
 ## Platform
 
+- September 21 automated Farkle Wave 2 pre-merge qualification passes at
+  `3d8a5f3db22f3e865fec9386840b9b90bf082199`: 1,685 application tests,
+  241 harness tests, typecheck/build, 158 SQL assertions, restoration checks,
+  production metadata, and fixture cleanup. The 13 Farkle / 21 seven-game browser
+  cases are covered under Jeremy's explicit retry/reuse policy, with the final
+  five terminal cases completed here. This is isolated-environment qualification,
+  not production UI smoke or main integration. Creation remains disabled and
+  scoring defaults unapproved/unseeded. See FARKLE_WAVE2_CLEAN_FINAL_20260921.md.
+
 - September 12 Jeremy reports zero issues during the prior evening's
   cross-country real-money session 8b683d7c-fd57-4a28-a339-710860b35b0f,
   two humans and six dealer games across Cribbage, Yahtzee, Gin, Holm and

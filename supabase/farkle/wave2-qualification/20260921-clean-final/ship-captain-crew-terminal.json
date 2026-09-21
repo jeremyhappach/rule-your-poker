@@ -1,0 +1,50 @@
+{
+  "gameType": "ship-captain-crew",
+  "status": "passed",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 111,
+    "snapshotCount": 91,
+    "networkRequestCount": 412,
+    "violationCount": 0,
+    "identityTransitionCount": 7,
+    "actionReceiptCount": 9,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 9,
+        "minMs": 70,
+        "p50Ms": 202,
+        "p95Ms": 932,
+        "maxMs": 932
+      },
+      "actorProgress": {
+        "count": 9,
+        "minMs": 41,
+        "p50Ms": 651,
+        "p95Ms": 2091,
+        "maxMs": 2091
+      },
+      "peerProgress": {
+        "count": 9,
+        "minMs": 771,
+        "p50Ms": 1397,
+        "p95Ms": 2551,
+        "maxMs": 2551
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790032940310-1",
+        "peer-1790032950934-1"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "ed6da359-fed3-4b0b-b44c-408b4e81ac26",
+    "outcome": "deleted",
+    "verified": true
+  }
+}

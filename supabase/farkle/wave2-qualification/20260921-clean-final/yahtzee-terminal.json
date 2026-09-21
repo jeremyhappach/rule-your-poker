@@ -1,0 +1,50 @@
+{
+  "gameType": "yahtzee",
+  "status": "passed",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 427,
+    "snapshotCount": 387,
+    "networkRequestCount": 725,
+    "violationCount": 0,
+    "identityTransitionCount": 7,
+    "actionReceiptCount": 29,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 29,
+        "minMs": 98,
+        "p50Ms": 503,
+        "p95Ms": 1093,
+        "maxMs": 1288
+      },
+      "actorProgress": {
+        "count": 29,
+        "minMs": 68,
+        "p50Ms": 775,
+        "p95Ms": 1384,
+        "maxMs": 2118
+      },
+      "peerProgress": {
+        "count": 29,
+        "minMs": 1063,
+        "p50Ms": 1810,
+        "p95Ms": 3186,
+        "maxMs": 3685
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790033048707-1",
+        "peer-1790033059873-1"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "6f5d5d9b-807a-43e4-bed8-7d2673584b2a",
+    "outcome": "deleted",
+    "verified": true
+  }
+}
