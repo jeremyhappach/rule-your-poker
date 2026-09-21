@@ -1,0 +1,9 @@
+{
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "defaults": 0
+}

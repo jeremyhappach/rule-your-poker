@@ -1,0 +1,9 @@
+{
+  "executedUnmodifiedSource": true,
+  "source": "src/pages/Game.tsx:932",
+  "gameStatus": "session_ended",
+  "roundStatus": "completed",
+  "chipTransferCursor": 4,
+  "result": null,
+  "reason": "Builder excludes session_ended before constructing the terminal presentation snapshot"
+}

@@ -1,0 +1,472 @@
+{
+  "candidate": "d1bd879085c82458df0a8403e416b76998540a2f",
+  "failure": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-session-ended-panel]')\nExpected: visible\nTimeout: 120000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 120000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-session-ended-panel]')\u001b[22m\n",
+  "cleanup": {
+    "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "outcome": "deleted",
+    "verified": true
+  },
+  "capturedAt": 1790027434982,
+  "captureLabel": "settlement",
+  "authority": {
+    "games": [
+      {
+        "id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "status": "session_ended",
+        "current_round": 1,
+        "pot": 0,
+        "buy_in": 100,
+        "created_at": "2026-09-21T21:48:34.884414+00:00",
+        "updated_at": "2026-09-21T21:49:50.636263+00:00",
+        "dealer_position": 6,
+        "all_decisions_in": false,
+        "last_round_result": "🏆 Farkle Test 1 won the game!",
+        "awaiting_next_round": false,
+        "next_round_number": null,
+        "pussy_tax": 1,
+        "ante_amount": 3,
+        "leg_value": 2,
+        "pussy_tax_enabled": true,
+        "pussy_tax_value": 1,
+        "legs_to_win": 1,
+        "pot_max_enabled": true,
+        "pot_max_value": 15,
+        "config_complete": true,
+        "ante_decision_deadline": null,
+        "session_ended_at": "2026-09-21T21:49:50.636263+00:00",
+        "total_hands": 1,
+        "pending_session_end": false,
+        "game_type": "3-5-7",
+        "name": "Sep 21 - SW Ranch",
+        "game_over_at": "2026-09-21T21:49:50.636263+00:00",
+        "buck_position": null,
+        "chucky_cards": 4,
+        "is_paused": false,
+        "paused_time_remaining": null,
+        "config_deadline": null,
+        "current_host": "ac1f92e9-6c56-4264-8c03-e405d49a6ccc",
+        "real_money": false,
+        "rabbit_hunt": false,
+        "reveal_at_showdown": true,
+        "is_first_hand": false,
+        "dealer_selection_state": {
+          "cards": [
+            {
+              "card": {
+                "rank": "K",
+                "suit": "♥"
+              },
+              "isDimmed": true,
+              "isWinner": false,
+              "playerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+              "position": 3,
+              "isRevealed": true,
+              "roundNumber": 1
+            },
+            {
+              "card": {
+                "rank": "A",
+                "suit": "♠"
+              },
+              "isDimmed": false,
+              "isWinner": true,
+              "playerId": "7377e643-262c-42a8-b5d8-e9ea994978ff",
+              "position": 6,
+              "isRevealed": true,
+              "roundNumber": 1
+            }
+          ],
+          "isComplete": true,
+          "preparedAt": "2026-09-21T21:49:17.438386+00:00",
+          "announcement": "Seat 6 wins the deal!",
+          "winnerPosition": 6
+        },
+        "current_game_uuid": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "game_setup_timer_seconds": 300,
+        "ante_decision_timer_seconds": 60,
+        "points_to_win": 121,
+        "skunk_enabled": true,
+        "skunk_threshold": 91,
+        "double_skunk_enabled": true,
+        "double_skunk_threshold": 61,
+        "timeout_enforcement_enabled": null,
+        "timeout_action": null,
+        "all_decisions_in_round_id": null,
+        "buck_transfer_presentation": null,
+        "bot_alias_seq": 0,
+        "chip_transfer_cursor": 4,
+        "pot_transfer_cursor": 4,
+        "rollover_amount": 1,
+        "timer_generation": 5,
+        "timer_paused_at": null,
+        "host_version": 0,
+        "pause_version": 0,
+        "authority_revision": 16,
+        "replay_contract_version": null
+      }
+    ],
+    "rounds": [
+      {
+        "id": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "hand_number": 1,
+        "status": "completed",
+        "round_number": 1
+      }
+    ],
+    "game_results": [
+      {
+        "id": "99931e03-71aa-43af-825d-25221e90d2b3",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "hand_number": 1,
+        "winner_player_id": null,
+        "winner_username": "2 players ante $3",
+        "winning_hand_description": "Ante",
+        "pot_won": 0,
+        "player_chip_changes": {
+          "7377e643-262c-42a8-b5d8-e9ea994978ff": -3,
+          "853be260-fdd3-4e3e-92d8-5ebe6011646b": -3
+        },
+        "is_chopped": false,
+        "created_at": "2026-09-21T21:49:30.783593+00:00",
+        "game_type": "357",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "event_kind": null,
+        "settlement_key": "three_five_seven_charge:98fe488e-b1b2-4971-8745-5faf3554b17b"
+      },
+      {
+        "id": "b24230bb-8402-4ab9-925e-fce1d1a41c31",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "hand_number": 1,
+        "winner_player_id": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "winner_username": "Farkle Test 1",
+        "winning_hand_description": "1 legs",
+        "pot_won": 8,
+        "player_chip_changes": {
+          "7377e643-262c-42a8-b5d8-e9ea994978ff": 0,
+          "853be260-fdd3-4e3e-92d8-5ebe6011646b": 8
+        },
+        "is_chopped": false,
+        "created_at": "2026-09-21T21:49:50.636263+00:00",
+        "game_type": "3-5-7",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "event_kind": null,
+        "settlement_key": "three_five_seven_terminal"
+      },
+      {
+        "id": "49988182-cc2b-4833-af2a-f3aae3f5563f",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "hand_number": 1,
+        "winner_player_id": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "winner_username": "Farkle Test 1",
+        "winning_hand_description": "Farkle Test 1 stayed alone and earned leg 1",
+        "pot_won": 0,
+        "player_chip_changes": {
+          "853be260-fdd3-4e3e-92d8-5ebe6011646b": -2
+        },
+        "is_chopped": false,
+        "created_at": "2026-09-21T21:49:50.636263+00:00",
+        "game_type": "357",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "event_kind": null,
+        "settlement_key": "three_five_seven_round:98fe488e-b1b2-4971-8745-5faf3554b17b"
+      }
+    ],
+    "session_player_snapshots": [
+      {
+        "id": "c63dd74d-e86d-4a2d-9655-7e2ad5795665",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "player_id": "7377e643-262c-42a8-b5d8-e9ea994978ff",
+        "user_id": "c305b90d-8a5a-4b99-b120-a569917394d3",
+        "username": "Farkle Test 2",
+        "chips": -3,
+        "is_bot": false,
+        "hand_number": 1,
+        "created_at": "2026-09-21T21:49:50.636263+00:00",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287"
+      },
+      {
+        "id": "966a21a8-e816-4b33-b365-bb17f2d89683",
+        "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "player_id": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "user_id": "ac1f92e9-6c56-4264-8c03-e405d49a6ccc",
+        "username": "Farkle Test 1",
+        "chips": 3,
+        "is_bot": false,
+        "hand_number": 1,
+        "created_at": "2026-09-21T21:49:50.636263+00:00",
+        "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287"
+      }
+    ],
+    "players": [
+      {
+        "id": "7377e643-262c-42a8-b5d8-e9ea994978ff",
+        "user_id": "c305b90d-8a5a-4b99-b120-a569917394d3",
+        "position": 6,
+        "chips": -3,
+        "legs": 0,
+        "status": "active"
+      },
+      {
+        "id": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "user_id": "ac1f92e9-6c56-4264-8c03-e405d49a6ccc",
+        "position": 3,
+        "chips": 3,
+        "legs": 0,
+        "status": "active"
+      }
+    ]
+  },
+  "host": {
+    "url": "http://127.0.0.1:5177/game/2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "panel": false,
+    "text": "PPL\nSep 21 - SW Ranch\nP-TOWN POKER\nFarkle Test 2\nD\n$-3\n6\n♦\n7\n♥\nA\n♦\nShow Cards\n\nFarkle Test 1(active)\n\n$-3",
+    "route": {
+      "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+      "gameType": "3-5-7",
+      "status": "session_ended",
+      "lastRoundResult": "🏆 Farkle Test 1 won the game!",
+      "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+      "roundStatus": "completed",
+      "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+      "handNumber": 1,
+      "sessionEndedTableAdmitted": false,
+      "_sessionEndedTableActive": false,
+      "_terminalPresentationHold": true,
+      "terminalPresentationActive": false,
+      "liveTerminalPresentationPending": true,
+      "holmLastHandPresentationPending": false,
+      "heldYahtzee": false,
+      "heldFarkle": false,
+      "observed": false,
+      "completed": [],
+      "scope": {
+        "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "gameType": "3-5-7",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "handNumber": 1
+      },
+      "liveSessionFlow": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+      "terminal357Descriptor": {
+        "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "handNumber": 1,
+        "handContextId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "terminalResultIdentity": "🏆 Farkle Test 1 won the game!",
+        "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+        "source": "normal-win",
+        "winnerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "winnerName": "Farkle Test 1",
+        "winnerPosition": 3,
+        "targetLegs": 1,
+        "proofCards": null,
+        "hadAuthoritativeLegs": true
+      },
+      "is357WinAnimationActive": true,
+      "threeFiveSevenWinTriggerId": "357-win-1790027396104",
+      "threeFiveSevenDecisionRevealBlocksResult": false
+    },
+    "table": {
+      "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+      "gameType": "3-5-7",
+      "gameStatus": "session_ended",
+      "sessionEndedPhase": false,
+      "handContextId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+      "threeFiveSevenWinPhase": "sweep-credit",
+      "threeFiveSevenWinnerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+      "threeFiveSevenTerminalDescriptor": {
+        "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "handNumber": 1,
+        "handContextId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "terminalResultIdentity": "🏆 Farkle Test 1 won the game!",
+        "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+        "source": "normal-win",
+        "winnerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "winnerName": "Farkle Test 1",
+        "winnerPosition": 3,
+        "targetLegs": 1,
+        "proofCards": null,
+        "hadAuthoritativeLegs": true
+      },
+      "normal357SweepDescriptor": {
+        "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "handNumber": 1,
+        "handContextId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "terminalResultIdentity": "🏆 Farkle Test 1 won the game!",
+        "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+        "source": "normal-win",
+        "winnerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "winnerName": "Farkle Test 1",
+        "winnerPosition": 3,
+        "targetLegs": 1,
+        "proofCards": null,
+        "hadAuthoritativeLegs": true
+      },
+      "pendingCredit": {
+        "gameId": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "roundId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "handNumber": 1,
+        "handContextId": "98fe488e-b1b2-4971-8745-5faf3554b17b",
+        "terminalResultIdentity": "🏆 Farkle Test 1 won the game!",
+        "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+        "winnerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b",
+        "completionGate": {
+          "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+          "creditSettled": false,
+          "overlayComplete": true
+        },
+        "transferCursor": null,
+        "creditSource": null
+      },
+      "presentation": {
+        "generationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+        "dealerGameId": "82298c3d-1470-465c-a53c-d2dfc0622287",
+        "stage": "sweep-credit"
+      }
+    },
+    "completions": [],
+    "transitions": [
+      {
+        "at": 1790027347938,
+        "kind": "route",
+        "status": "waiting",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027354411,
+        "kind": "route",
+        "status": "dealer_selection",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027354581,
+        "kind": "table",
+        "status": "dealer_selection",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027361024,
+        "kind": "route",
+        "status": "game_selection",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027361033,
+        "kind": "table",
+        "status": "game_selection",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027365511,
+        "kind": "route",
+        "status": "ante_decision",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027365529,
+        "kind": "table",
+        "status": "ante_decision",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027372327,
+        "kind": "route",
+        "status": "in_progress",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027372359,
+        "kind": "table",
+        "status": "in_progress",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027392447,
+        "kind": "route",
+        "status": "in_progress",
+        "admitted": false,
+        "pending": false
+      },
+      {
+        "at": 1790027392871,
+        "kind": "route",
+        "status": "session_ended",
+        "admitted": false,
+        "pending": true
+      },
+      {
+        "at": 1790027392882,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027396076,
+        "kind": "route",
+        "status": "session_ended",
+        "admitted": false,
+        "pending": true
+      },
+      {
+        "at": 1790027396116,
+        "kind": "route",
+        "status": "session_ended",
+        "admitted": false,
+        "pending": true
+      },
+      {
+        "at": 1790027396127,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "idle"
+      },
+      {
+        "at": 1790027396152,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "waiting"
+      },
+      {
+        "at": 1790027398596,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "legs-to-player"
+      },
+      {
+        "at": 1790027398634,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "sweep-credit",
+        "credit": {
+          "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+          "creditSettled": false,
+          "overlayComplete": false
+        }
+      },
+      {
+        "at": 1790027402968,
+        "kind": "table",
+        "status": "session_ended",
+        "phase": "sweep-credit",
+        "credit": {
+          "terminalGenerationId": "t357:2077fd5a-5aaa-45f1-8b72-e2c7d43d2615|82298c3d-1470-465c-a53c-d2dfc0622287|98fe488e-b1b2-4971-8745-5faf3554b17b|1|98fe488e-b1b2-4971-8745-5faf3554b17b|🏆 Farkle Test 1 won the game!",
+          "creditSettled": false,
+          "overlayComplete": true
+        }
+      }
+    ]
+  }
+}

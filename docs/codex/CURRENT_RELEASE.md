@@ -1,5 +1,23 @@
 # Current release and cutover state
 
+## September 21 3-5-7 terminal blocker — product boundary identified, no patch
+
+The focused reproduction confirms a real connected-host presentation failure.
+Authority has one terminal settlement, completed round, correct +3/-3 balances,
+two snapshots, and `session_ended`. The host waits at `sweep-credit` with its
+overlay complete but credit unsettled; no completion token reaches Session Ended.
+
+`buildThreeFiveSevenSnapshot` rejects `session_ended`, so the atomic terminal
+frame never reaches the 3-5-7 presentation snapshot/financial admission path.
+That builder is unchanged from qualified Wave 1. The smallest proposed correction
+is to admit the exact terminal frame through the existing 3-5-7 sync/identity
+guards. No settlement, shared panel, database or product code was changed.
+
+Stopped before implementation as requested. Full suites/campaign and the five
+unrun terminal cases remain held. Fixtures are cleaned, local services stopped,
+and production creation/admin/defaults gates are unchanged. Wave 2 remains
+**unqualified and unmerged**. See [focused evidence and proposed correction](THREE_FIVE_SEVEN_SESSION_ENDED_BOUNDARY_20260921.md).
+
 ## September 21 risk-based qualification — reproduced 3-5-7 terminal blocker
 
 Candidate `51ce9ffab7d2521f342f58f244237a22ae031611` is published. The synchronized

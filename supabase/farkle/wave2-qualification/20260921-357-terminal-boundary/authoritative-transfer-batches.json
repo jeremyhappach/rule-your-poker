@@ -1,0 +1,111 @@
+[
+  {
+    "id": "5c879174-37bc-47c8-bc04-f205d0968c1a",
+    "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+    "cursor": 1,
+    "reason": "ante",
+    "transfers": [
+      {
+        "id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615:1:1",
+        "to": {
+          "kind": "pot"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "7377e643-262c-42a8-b5d8-e9ea994978ff"
+        },
+        "amount": 3
+      },
+      {
+        "id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615:1:2",
+        "to": {
+          "kind": "pot"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b"
+        },
+        "amount": 3
+      }
+    ],
+    "opening_balances": {
+      "pot": 0,
+      "player:7377e643-262c-42a8-b5d8-e9ea994978ff": 0,
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": 0
+    },
+    "closing_balances": {
+      "pot": 6,
+      "player:7377e643-262c-42a8-b5d8-e9ea994978ff": -3,
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -3
+    },
+    "unmatched_deltas": {},
+    "created_at": "2026-09-21T16:49:30.783593-05:00"
+  },
+  {
+    "id": "002bf95e-1d0a-4b23-9a15-6d7f43efc20a",
+    "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+    "cursor": 3,
+    "reason": "sweep",
+    "transfers": [],
+    "opening_balances": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -5
+    },
+    "closing_balances": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -3
+    },
+    "unmatched_deltas": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": 2
+    },
+    "created_at": "2026-09-21T16:49:50.636263-05:00"
+  },
+  {
+    "id": "7b26ee71-34c8-47b1-b79b-e0c2e3cd5dc4",
+    "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+    "cursor": 4,
+    "reason": "transfer",
+    "transfers": [
+      {
+        "id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615:4:1",
+        "to": {
+          "kind": "player",
+          "playerId": "853be260-fdd3-4e3e-92d8-5ebe6011646b"
+        },
+        "from": {
+          "kind": "pot"
+        },
+        "amount": 6
+      }
+    ],
+    "opening_balances": {
+      "pot": 6,
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -3
+    },
+    "closing_balances": {
+      "pot": 0,
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": 3
+    },
+    "unmatched_deltas": {},
+    "created_at": "2026-09-21T16:49:50.636263-05:00"
+  },
+  {
+    "id": "5fbb74b3-3fa0-4ee8-b79f-c236ccf3e0a1",
+    "game_id": "2077fd5a-5aaa-45f1-8b72-e2c7d43d2615",
+    "dealer_game_id": "82298c3d-1470-465c-a53c-d2dfc0622287",
+    "cursor": 2,
+    "reason": "leg",
+    "transfers": [],
+    "opening_balances": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -3
+    },
+    "closing_balances": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -5
+    },
+    "unmatched_deltas": {
+      "player:853be260-fdd3-4e3e-92d8-5ebe6011646b": -2
+    },
+    "created_at": "2026-09-21T16:49:50.636263-05:00"
+  }
+]
