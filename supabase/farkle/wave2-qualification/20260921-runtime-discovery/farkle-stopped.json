@@ -1,0 +1,172 @@
+{
+  "sha": "852c22349b39d7cc83ededce98b330cda69cfaef",
+  "stats": {
+    "startTime": "2026-09-21T20:31:25.866Z",
+    "duration": 567468.6610000001,
+    "expected": 10,
+    "skipped": 2,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "fresh client reconstructs committed holds after Roll N",
+      "file": "e2e/farkle/heldDiceReconnect.local.spec.ts",
+      "line": 10,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 66984,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "HOT DICE and FARKLE are visible for their canonical lifetime on both clients",
+      "file": "e2e/farkle/notices.local.spec.ts",
+      "line": 9,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 44311,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "peer roll waits for the complete ordered phase sequence",
+      "file": "e2e/farkle/peerRoll.local.spec.ts",
+      "line": 8,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 34391,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "actual admin setup, ante, roll, selection, hold, bank and refresh",
+      "file": "e2e/farkle/playable.local.spec.ts",
+      "line": 7,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 50969,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "partial holds, Roll N, Hot Dice, Farkle, remote stages, refresh and frozen replay",
+      "file": "e2e/farkle/remainingPlayable.local.spec.ts",
+      "line": 9,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 87724,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "immediate: live settlement and canonical next setup",
+      "file": "e2e/farkle/terminal.local.spec.ts",
+      "line": 7,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 41980,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "equal_turns: live settlement and canonical next setup",
+      "file": "e2e/farkle/terminal.local.spec.ts",
+      "line": 7,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 60222,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "one_last_turn: live settlement and canonical next setup",
+      "file": "e2e/farkle/terminal.local.spec.ts",
+      "line": 7,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 59607,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "Farkle unsaved Admin Defaults and isolated Geometry Lab phases",
+      "file": "runtime-farkle.local/admin-surfaces.spec.ts",
+      "line": 4,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 9455,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "immediate: terminal settlement through next setup and actual setup timeout",
+      "file": "runtime-farkle.local/setup-timeout.spec.ts",
+      "line": 8,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 50065,
+          "retry": 0,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "fake_deferred: existing timeout takeover/reclaim or pause through actual client",
+      "file": "runtime-farkle.local/timeout-proof.spec.ts",
+      "line": 10,
+      "results": [
+        {
+          "status": "failed",
+          "duration": 56892,
+          "retry": 0,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m\n\n  77 |    const response=actor.waitForResponse(r=>r.url().endsWith('/rpc/set_automatic_play')&&r.request().method()==='POST');\n  78 |    await actor.getByRole('button',{name:'Rejoin',exact:true}).click();const receipt=await(await response).json();\n> 79 |    expect(receipt.deferred).toBe(mode==='fake_deferred');\n     |                             ^\n  80 |    if(mode==='fake_deferred'){\n  81 |     await expect(actor.getByRole('button',{name:'Rejoining after this turn',exact:true})).toBeVisible();\n  82 |     expect((await player(id)).auto_play_stop_round_id).toBe(snap.round.id);\n    at C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\runtime-farkle.local\\timeout-proof.spec.ts:79:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "fake_immediate: existing timeout takeover/reclaim or pause through actual client",
+      "file": "runtime-farkle.local/timeout-proof.spec.ts",
+      "line": 10,
+      "results": []
+    },
+    {
+      "title": "real_pause: existing timeout takeover/reclaim or pause through actual client",
+      "file": "runtime-farkle.local/timeout-proof.spec.ts",
+      "line": 10,
+      "results": []
+    }
+  ],
+  "classification": "Reclaim timing/proof issue suspected; screenshots show actor turn completed and next actor active, but authoritative state at RPC entry was not captured. No product defect established. Assertion unchanged.",
+  "sevenGameCampaign": "not started after this failed release gate"
+}

@@ -1,0 +1,55 @@
+{
+  "sha": "852c22349b39d7cc83ededce98b330cda69cfaef",
+  "qualified": false,
+  "mainIntegrated": false,
+  "runtimeDiscovery": {
+    "cause": "Hosted-only hostname predicate excluded explicit loopback API",
+    "beforeFreshContexts": 2,
+    "afterFreshContexts": 2,
+    "focusedHolmPasses": 2,
+    "assertionsUnchanged": true
+  },
+  "deterministic": {
+    "applicationTests": 1659,
+    "applicationFiles": 248,
+    "harnessTests": 241,
+    "harnessFiles": 12,
+    "typecheck": "passed",
+    "build": "passed",
+    "buildSeconds": 36.23,
+    "logSha256": "7505ac42f2a556549ce50f470a9fc2c814b1ba5ed1c29c660bd363bfa68a6850"
+  },
+  "farkleBrowser": {
+    "passed": 10,
+    "failed": 1,
+    "unrun": 2,
+    "blocker": "fake_deferred received deferred=false after refresh; authoritative request-entry state not captured"
+  },
+  "sevenGameCampaign": {
+    "runAtThisSha": false,
+    "mandatoryCases": 21
+  },
+  "authority": {
+    "previousSqlAssertions": 158,
+    "sqlRerunAtThisSha": false,
+    "productionFunctions": 384,
+    "metadataDrift": [],
+    "sourceAndMigrationTreesUnchanged": true
+  },
+  "production": {
+    "creationEnabled": false,
+    "adminOnly": true,
+    "productionDefaultsApproved": false,
+    "farkleDefaultRows": 0,
+    "farkleGames": 0,
+    "pendingHandoffs": 0
+  },
+  "fixtures": {
+    "cleaned": true,
+    "users": 0,
+    "profiles": 0,
+    "games": 0,
+    "localCreationEnabled": false,
+    "servicesStopped": true
+  }
+}

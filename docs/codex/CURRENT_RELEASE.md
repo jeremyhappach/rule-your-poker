@@ -1,5 +1,29 @@
 # Current release and cutover state
 
+## September 21 runtime-discovery fix published — separate reclaim proof blocked
+
+Harness correction `852c22349b39d7cc83ededce98b330cda69cfaef` is published on
+`codex/farkle-playable`. Two fresh-context discovery probes and both unchanged
+focused Holm liveness runs passed. Application and migration Git trees are
+identical to `6493c590c`; no product behavior changed.
+The exact-SHA deterministic run passed 1,659 application tests, 241 harness tests,
+typecheck and the production build.
+
+The additional exact-SHA Farkle rerun stopped with **10 passed, 1 failed, 2 unrun**.
+`fake_deferred` expected `set_automatic_play.deferred=true` after refresh but got
+`false`. Both failure screenshots show the original actor had banked 50 points,
+completed one turn, and the other player was active. That is consistent with
+legitimate immediate reclaim after the bot finishes during refresh, but the proof
+did not capture authoritative state at RPC entry. Classification: suspected
+proof/timing race, not a demonstrated product defect. No assertion or product
+change was made. The full 21-case campaign was not started after this failed gate.
+
+All isolated fixtures are cleaned, local services stopped, and all 384 production
+function definitions/security metadata still match. Production creation remains
+disabled, admin-only enabled, defaults unapproved/unseeded. Wave 2 is **unqualified
+and unmerged**. Next: capture authority immediately around the Rejoin request and
+resolve the proof boundary before resuming the full browser campaign.
+
 ## September 21 isolated runtime discovery — harness correction proved
 
 The seven-game blocker was a harness hostname filter, not a demonstrated product
