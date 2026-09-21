@@ -1,5 +1,5 @@
 {
-  "migration": "20260921170500_farkle_terminal_transfer_handoff.sql",
+  "migration": "20260921172016_farkle_terminal_transfer_handoff.sql",
   "baselineSha": "4230f07c3705d73419e1042e2394e6293b3fedec",
   "owners": [
     {

@@ -46,7 +46,7 @@ END $quiesce$;
 fs.writeFileSync(path.join(dir,'candidate.sql'),candidate);
 fs.writeFileSync(path.join(dir,'restore-body.sql'),recover);
 fs.writeFileSync(path.join(dir,'restore-shared.sql'),'BEGIN;\n'+recover+'COMMIT;\n');
-const migration='20260921170500_farkle_terminal_transfer_handoff.sql';
+const migration='20260921172016_farkle_terminal_transfer_handoff.sql';
 fs.writeFileSync(path.join(dir,'../../migrations',migration),candidate);
 fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify({migration,baselineSha:'4230f07c3705d73419e1042e2394e6293b3fedec',owners:owners.map(([f,b])=>({signature:f.signature,baselineMd5:f.md5,candidateMd5:md5(b),owner:f.owner,securityDefiner:f.securityDefiner,config:f.config,acl:f.acl})),scope:'Farkle-only deferred terminal transfer claim; unchanged guards and non-Farkle calculations'},null,2)+'\n');
 console.log('Generated additive candidate, guarded recovery and metadata manifest.');

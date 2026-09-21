@@ -1,0 +1,21 @@
+{
+  "deployedSha": "9d0bad4d3402ed75b42531c89e8959a567287f3d",
+  "games": 0,
+  "events": 0,
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "tickets": 0,
+  "defaults": 0,
+  "receipts": 0,
+  "migration": {
+    "name": "farkle_terminal_transfer_handoff",
+    "version": "20260921172016"
+  },
+  "farkleRounds": 0,
+  "farkleResults": 0,
+  "postgameReceipts": 0
+}

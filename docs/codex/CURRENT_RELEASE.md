@@ -9,8 +9,11 @@ recovery/restoration cycles pass the 158 authority assertions and seven-game SQL
 regressions. Full validation passes: 1,657 application tests, 226 harness tests,
 typecheck and build. Production pre-apply rollback verification is green.
 See [correction and recovery evidence](../../supabase/farkle/commit-boundary/README.md).
-Production apply and remaining Wave 2 live qualification are still pending;
-creation stays disabled, admin-only enabled and production defaults unapproved.
+Applied as `20260921172016_farkle_terminal_transfer_handoff` from correction SHA
+`9d0bad4d3402ed75b42531c89e8959a567287f3d`. Post-apply rollback authority/recovery
+proof, fingerprints/owners/grants and production fixture cleanup pass. Remaining
+Wave 2 live qualification is pending; creation stays disabled, admin-only enabled
+and production defaults unapproved and unseeded.
 
 ### Prior live blocker
 

@@ -8,6 +8,10 @@
   "buildSeconds": 20.43,
   "logSha256": "99c46bd3c482aeefbb5cc954afe32b814f878e04d863d438a0a498c374e87d17",
   "preapplyRollback": true,
-  "productionApplied": false,
-  "browserQualificationPending": true
+  "productionApplied": true,
+  "browserQualificationPending": true,
+  "productionMigration": "20260921172016",
+  "deployedSha": "9d0bad4d3402ed75b42531c89e8959a567287f3d",
+  "postapplyAuthorityRecovery": true,
+  "productionCleanup": true
 }
