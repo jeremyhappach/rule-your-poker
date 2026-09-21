@@ -1,0 +1,15 @@
+{
+  "verifiedAt": "2026-09-21T21:35:31.400Z",
+  "readOnly": true,
+  "functionCount": 384,
+  "drift": [],
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "farkleDefaults": 0,
+  "farkleGames": 0,
+  "handoffs": 0
+}

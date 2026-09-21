@@ -1,0 +1,216 @@
+{
+  "sha": "51ce9ffab7d2521f342f58f244237a22ae031611",
+  "stats": {
+    "startTime": "2026-09-21T21:11:00.236Z",
+    "duration": 1275067.184,
+    "expected": 15,
+    "skipped": 5,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "holm-game: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 69294,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "3-5-7: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 53576,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cribbage: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 51277,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "gin-rummy: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 51941,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "horses: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 58339,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "ship-captain-crew: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 57876,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "yahtzee: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 59882,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "holm-game: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 56746,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "3-5-7: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 49610,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "horses: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 57489,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "ship-captain-crew: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 56539,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cribbage: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 53749,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "gin-rummy: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 78033,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "yahtzee: host pause survives peer reconnect and resumes the same round",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 75242,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "holm-game: plays through exact settlement and ended-session reconnect",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 161987,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "3-5-7: plays through exact settlement and ended-session reconnect",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "duration": 272478,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-session-ended-panel]')\nExpected: visible\nTimeout: 120000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 120000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-session-ended-panel]')\u001b[22m\n\n\n  78 |\n  79 |         await Promise.all([\n> 80 |           expect(session.hostPage.locator('[data-session-ended-panel]')).toBeVisible({ timeout: 120_000 }),\n     |                                                                          ^\n  81 |           expect(session.peerPage).toHaveURL(/\\/$/, { timeout: 120_000 }),\n  82 |           probe.assertTerminalProof(\n  83 |             session.gameId,\n    at C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\e2e\\terminal\\allGames.terminal.spec.ts:80:74"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "cribbage: plays through exact settlement and ended-session reconnect",
+      "status": "skipped",
+      "results": []
+    },
+    {
+      "title": "gin-rummy: plays through exact settlement and ended-session reconnect",
+      "status": "skipped",
+      "results": []
+    },
+    {
+      "title": "horses: plays through exact settlement and ended-session reconnect",
+      "status": "skipped",
+      "results": []
+    },
+    {
+      "title": "ship-captain-crew: plays through exact settlement and ended-session reconnect",
+      "status": "skipped",
+      "results": []
+    },
+    {
+      "title": "yahtzee: plays through exact settlement and ended-session reconnect",
+      "status": "skipped",
+      "results": []
+    }
+  ]
+}

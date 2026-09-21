@@ -1,0 +1,83 @@
+{
+  "gameType": "3-5-7",
+  "status": "failed",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-session-ended-panel]')\nExpected: visible\nTimeout: 120000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 120000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-session-ended-panel]')\u001b[22m\n",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 75,
+    "snapshotCount": 59,
+    "networkRequestCount": 2716,
+    "violationCount": 0,
+    "identityTransitionCount": 7,
+    "actionReceiptCount": 5,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 5,
+        "minMs": 117,
+        "p50Ms": 385,
+        "p95Ms": 1104,
+        "maxMs": 1104
+      },
+      "actorProgress": {
+        "count": 5,
+        "minMs": 90,
+        "p50Ms": 1847,
+        "p95Ms": 4034,
+        "maxMs": 4034
+      },
+      "peerProgress": {
+        "count": 5,
+        "minMs": 1436,
+        "p50Ms": 2644,
+        "p95Ms": 5531,
+        "maxMs": 5531
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790026106459-1",
+        "peer-1790026120746-1"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "17bacf1b-bda6-4bbc-becd-0eb1947c423d",
+    "outcome": "deleted",
+    "verified": true
+  },
+  "finalSnapshots": {
+    "host": {
+      "wallTime": 1790026147110,
+      "url": "http://127.0.0.1:5177/game/17bacf1b-bda6-4bbc-becd-0eb1947c423d",
+      "gameId": "17bacf1b-bda6-4bbc-becd-0eb1947c423d",
+      "gameStatus": "session_ended",
+      "gameType": "3-5-7",
+      "dealerGameId": "836cf247-d75d-49a4-83f0-923a848f3756",
+      "roundId": "80c86dad-88ac-4172-af10-2d56540f7096",
+      "roundStatus": "completed",
+      "actionSurfaces": [],
+      "visibleFaceCardIds": [
+        "5-♣",
+        "9-♦",
+        "J-♥"
+      ],
+      "announcement": null
+    },
+    "peer": {
+      "wallTime": 1790026200544,
+      "url": "http://127.0.0.1:5177/",
+      "gameId": null,
+      "gameStatus": null,
+      "gameType": null,
+      "dealerGameId": null,
+      "roundId": null,
+      "roundStatus": null,
+      "actionSurfaces": [],
+      "visibleFaceCardIds": [],
+      "announcement": null
+    }
+  }
+}

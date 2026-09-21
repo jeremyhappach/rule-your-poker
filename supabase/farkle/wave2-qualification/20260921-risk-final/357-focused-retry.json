@@ -1,0 +1,26 @@
+{
+  "sha": "51ce9ffab7d2521f342f58f244237a22ae031611",
+  "stats": {
+    "startTime": "2026-09-21T21:33:21.207Z",
+    "duration": 238996.175,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "3-5-7: plays through exact settlement and ended-session reconnect",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "duration": 228019,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-session-ended-panel]')\nExpected: visible\nTimeout: 120000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 120000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-session-ended-panel]')\u001b[22m\n\n\n  78 |\n  79 |         await Promise.all([\n> 80 |           expect(session.hostPage.locator('[data-session-ended-panel]')).toBeVisible({ timeout: 120_000 }),\n     |                                                                          ^\n  81 |           expect(session.peerPage).toHaveURL(/\\/$/, { timeout: 120_000 }),\n  82 |           probe.assertTerminalProof(\n  83 |             session.gameId,\n    at C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\e2e\\terminal\\allGames.terminal.spec.ts:80:74"
+          ]
+        }
+      ]
+    }
+  ]
+}

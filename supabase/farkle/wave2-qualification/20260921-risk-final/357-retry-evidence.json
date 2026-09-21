@@ -1,0 +1,83 @@
+{
+  "gameType": "3-5-7",
+  "status": "failed",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-session-ended-panel]')\nExpected: visible\nTimeout: 120000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 120000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-session-ended-panel]')\u001b[22m\n",
+  "continuousObserver": {
+    "version": 2,
+    "eventCount": 76,
+    "snapshotCount": 60,
+    "networkRequestCount": 2606,
+    "violationCount": 0,
+    "identityTransitionCount": 7,
+    "actionReceiptCount": 5,
+    "progressProblemCount": 0,
+    "exemptActionCount": 0,
+    "coverageProblems": [],
+    "latency": {
+      "rpc": {
+        "count": 5,
+        "minMs": 96,
+        "p50Ms": 261,
+        "p95Ms": 586,
+        "maxMs": 586
+      },
+      "actorProgress": {
+        "count": 5,
+        "minMs": 61,
+        "p50Ms": 594,
+        "p95Ms": 2341,
+        "maxMs": 2341
+      },
+      "peerProgress": {
+        "count": 5,
+        "minMs": 973,
+        "p50Ms": 1453,
+        "p95Ms": 2667,
+        "maxMs": 2667
+      },
+      "peerBudgetMs": 15000,
+      "expectedPeerDelayActionIds": [
+        "host-1790026430705-1",
+        "host-1790026439521-2"
+      ],
+      "peerBudgetBreaches": []
+    }
+  },
+  "cleanup": {
+    "gameId": "e22371e1-9df9-4504-a288-718c55c2d867",
+    "outcome": "deleted",
+    "verified": true
+  },
+  "finalSnapshots": {
+    "peer": {
+      "wallTime": 1790026501893,
+      "url": "http://127.0.0.1:5177/",
+      "gameId": null,
+      "gameStatus": null,
+      "gameType": null,
+      "dealerGameId": null,
+      "roundId": null,
+      "roundStatus": null,
+      "actionSurfaces": [],
+      "visibleFaceCardIds": [],
+      "announcement": null
+    },
+    "host": {
+      "wallTime": 1790026459904,
+      "url": "http://127.0.0.1:5177/game/e22371e1-9df9-4504-a288-718c55c2d867",
+      "gameId": "e22371e1-9df9-4504-a288-718c55c2d867",
+      "gameStatus": "session_ended",
+      "gameType": "3-5-7",
+      "dealerGameId": "a0b43c9e-f5a1-49f6-9b2f-3d814808300d",
+      "roundId": "93532e39-e627-46d1-aba7-4daa0bd5c696",
+      "roundStatus": "completed",
+      "actionSurfaces": [],
+      "visibleFaceCardIds": [
+        "5-♠",
+        "6-♣",
+        "A-♠"
+      ],
+      "announcement": null
+    }
+  }
+}

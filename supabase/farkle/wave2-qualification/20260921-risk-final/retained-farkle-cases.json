@@ -1,0 +1,46 @@
+{
+  "sha": "852c22349b39d7cc83ededce98b330cda69cfaef",
+  "policy": "User-authorized reuse after proof-only changes; product and migration trees identical",
+  "cases": [
+    {
+      "title": "fresh client reconstructs committed holds after Roll N",
+      "status": "passed"
+    },
+    {
+      "title": "HOT DICE and FARKLE are visible for their canonical lifetime on both clients",
+      "status": "passed"
+    },
+    {
+      "title": "peer roll waits for the complete ordered phase sequence",
+      "status": "passed"
+    },
+    {
+      "title": "actual admin setup, ante, roll, selection, hold, bank and refresh",
+      "status": "passed"
+    },
+    {
+      "title": "partial holds, Roll N, Hot Dice, Farkle, remote stages, refresh and frozen replay",
+      "status": "passed"
+    },
+    {
+      "title": "immediate: live settlement and canonical next setup",
+      "status": "passed"
+    },
+    {
+      "title": "equal_turns: live settlement and canonical next setup",
+      "status": "passed"
+    },
+    {
+      "title": "one_last_turn: live settlement and canonical next setup",
+      "status": "passed"
+    },
+    {
+      "title": "Farkle unsaved Admin Defaults and isolated Geometry Lab phases",
+      "status": "passed"
+    },
+    {
+      "title": "immediate: terminal settlement through next setup and actual setup timeout",
+      "status": "passed"
+    }
+  ]
+}

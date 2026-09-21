@@ -1,0 +1,33 @@
+{
+  "candidateSha": "51ce9ffab7d2521f342f58f244237a22ae031611",
+  "qualified": false,
+  "merged": false,
+  "productChanged": false,
+  "farkleBrowser": {
+    "passed": 13,
+    "retained": 10,
+    "focused": 3,
+    "policy": "User-authorized reuse and single timing retry"
+  },
+  "sevenGameBrowser": {
+    "passed": 15,
+    "failed": 1,
+    "unrun": 5,
+    "retry": {
+      "case": "3-5-7 terminal",
+      "passed": false,
+      "sameFailure": true
+    }
+  },
+  "deterministic": {
+    "application": 1659,
+    "harness": 241,
+    "typecheck": true,
+    "build": true,
+    "fullRuns": 1
+  },
+  "sqlAssertions": 158,
+  "productionMetadata": true,
+  "fixtureCleanup": true,
+  "blocker": "Reproduced connected-host Session Ended presentation failure; root cause unresolved"
+}

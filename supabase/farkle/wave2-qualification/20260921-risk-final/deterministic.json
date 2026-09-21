@@ -1,0 +1,19 @@
+{
+  "sha": "51ce9ffab7d2521f342f58f244237a22ae031611",
+  "command": "npm run build",
+  "exitCode": 0,
+  "typecheck": true,
+  "application": {
+    "files": 248,
+    "tests": 1659
+  },
+  "harness": {
+    "files": 12,
+    "tests": 241
+  },
+  "productionBuild": {
+    "passed": true,
+    "seconds": 33.54
+  },
+  "fullSuiteRunsAtCandidate": 1
+}

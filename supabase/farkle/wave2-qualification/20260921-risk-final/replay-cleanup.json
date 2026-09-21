@@ -1,0 +1,14 @@
+{
+  "localOnly": true,
+  "verifiedFixtureRoster": true,
+  "streams": [
+    "5b987c6b-b766-4c60-bb2b-c82ca40f455f",
+    "0708c783-11e5-4445-943e-d010d2ca5b37"
+  ],
+  "deletedSteps": 4,
+  "method": "Exact owned sessions, exclusive table locks, immutable triggers restored and asserted in same transaction",
+  "triggersRestored": [
+    "replay_steps_immutable",
+    "replay_streams_immutable"
+  ]
+}

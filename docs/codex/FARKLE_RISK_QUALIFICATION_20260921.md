@@ -26,3 +26,50 @@ One final deterministic run and all SQL/metadata/cleanup gates remain required.
 
 Production creation remains disabled, admin-only enabled, scoring defaults
 unapproved and unseeded. This evidence does not authorize main integration.
+
+## Candidate results and stop
+
+Candidate: `51ce9ffab7d2521f342f58f244237a22ae031611`. The single final
+`npm run build` completed successfully: typecheck, 1,659 application tests in
+248 files, 241 harness tests in 12 files, and production build (33.54 seconds).
+All 158 SQL assertions passed, including seven-game regressions and restoration
+metadata assertions. Both commit-boundary metadata checks passed. No migration
+or product source changed; tree identities are recorded in `source-integrity.json`.
+
+The fresh seven-game campaign passed 15 cases in its 21.3-minute run: all seven
+lifecycle/reconnect cases, all seven pause/resume cases, and Holm terminal.
+3-5-7 terminal failed at `e2e/terminal/allGames.terminal.spec.ts:80` because the
+connected host never rendered `[data-session-ended-panel]` within 120 seconds.
+The one focused retry ran the same test without changing assertions and
+reproduced that failure (239 seconds total). It is not accepted as a flake.
+
+Both attempts observed a terminal settlement. Their host snapshots report
+`gameStatus=session_ended` and `roundStatus=completed`, with cards still visible;
+their fresh peers reached `/`. The concurrent database proof reported no failure.
+Both observer summaries and cleanup receipts are preserved. This narrows the
+remaining investigation to the connected-host terminal presentation boundary;
+it does not establish a Wave 2 product regression or justify changing 3-5-7.
+Root cause remains unresolved. No deeper debugging followed the reproduced retry.
+
+Unrun terminal cases: Cribbage, Gin, Horses, SCC, Yahtzee. No additional campaign
+or implementation work occurred under the qualification-only budget extension.
+The current result is **unqualified; main integration remains held**.
+
+Read-only production verification matched all 384 function fingerprints, owners,
+security attributes and grants. Creation is false, admin-only true, defaults
+approval false, and Farkle defaults/games/terminal handoffs are all zero.
+
+Final cleanup verified zero synthetic users/profiles and no fixture tables beyond
+the three expected private control rows and seven existing-game defaults. Two Gin
+replay streams survived canonical game deletion because replay is append-only.
+Their opening frames were verified against the exact two local test accounts,
+fake-money mode, run times and session identities. Only those two streams/four
+steps were removed in the isolated Docker database in one locked transaction;
+the two immutable triggers were re-enabled and asserted before commit. All 384
+local function fingerprints/security metadata match afterward. The task's local
+frontend and scheduler were stopped. Production was queried read-only throughout.
+
+Evidence-only recording after the candidate does not alter its implementation
+or require repeating deterministic suites. Raw traces remain local because they
+contain authentication traffic. Preserved generated snapshot/cache files remain
+unstaged and uncommitted.

@@ -1,5 +1,30 @@
 # Current release and cutover state
 
+## September 21 risk-based qualification — reproduced 3-5-7 terminal blocker
+
+Candidate `51ce9ffab7d2521f342f58f244237a22ae031611` is published. The synchronized
+Farkle deferred-reclaim retry, immediate reclaim and real-money pause passed;
+the previous deferred failure is accepted as a timing flake. The Farkle matrix
+is complete under the approved reuse policy. Final candidate validation passed
+1,659 application tests, 241 harness tests, typecheck/build, and 158 SQL
+authority/recovery assertions, including seven-game SQL proofs and restoration checks.
+
+The fresh seven-game browser campaign passed 15 cases, then failed 3-5-7's
+connected-host Session Ended panel assertion. Its one unchanged focused retry
+reproduced the same 120-second failure. Both runs observed settlement, completed
+round/session-ended state, and a fresh peer at the lobby. No authority failure
+was reported, but the presentation failure cannot be accepted as a flake.
+Product versus harness/timing root cause remains unresolved. Five terminal cases
+remain unrun. The qualification-only budget was not used for deeper debugging.
+
+All isolated fixtures, including two owned Gin replay streams, are cleaned;
+frontend/scheduler stopped. All 384 production function fingerprints/owners/
+security settings/grants match. Creation remains disabled, admin-only enabled,
+defaults unapproved/unseeded. Wave 2 is **unqualified and unmerged**. Next is a
+fresh-budget focused investigation of the reproduced 3-5-7 host terminal boundary,
+with no product change authorized by the failure alone. See
+[record and receipts](FARKLE_RISK_QUALIFICATION_20260921.md).
+
 ## September 21 synchronized reclaim passed — final qualification in progress
 
 Under the approved risk-based browser policy, the one synchronized deferred-reclaim
