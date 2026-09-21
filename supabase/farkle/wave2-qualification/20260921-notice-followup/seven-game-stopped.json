@@ -1,0 +1,24 @@
+{
+  "sha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "stats": {
+    "startTime": "2026-09-21T19:57:10.913Z",
+    "duration": 35824.123,
+    "expected": 0,
+    "skipped": 20,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "failures": [
+    {
+      "title": "holm-game: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "file": "liveness/allGames.twoClient.spec.ts",
+      "line": 29,
+      "duration": 30593,
+      "errors": [
+        "Error: No Supabase runtime request was observed\n\n   at liveness\\support\\crossCountryNetwork.ts:128\n\n  126 |     const deadline = Date.now() + timeoutMs;\n  127 |     while (!this.runtimeConfig && Date.now() < deadline) await wait(25);\n> 128 |     if (!this.runtimeConfig) throw new Error('No Supabase runtime request was observed');\n      |                                    ^\n  129 |     return this.runtimeConfig;\n  130 |   }\n  131 |\n    at CrossCountryNetwork.waitForRuntimeConfig (C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\e2e\\liveness\\support\\crossCountryNetwork.ts:128:36)\n    at createTwoClientSession (C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\e2e\\liveness\\support\\twoClientSession.ts:127:21)\n    at C:\\Users\\jerem\\Desktop\\poker\\farkle-playable\\e2e\\liveness\\allGames.twoClient.spec.ts:31:23"
+      ]
+    }
+  ],
+  "classification": "Harness runtime-discovery precondition failure; cause not investigated under execution-budget exception. No product regression established.",
+  "rerun": false
+}

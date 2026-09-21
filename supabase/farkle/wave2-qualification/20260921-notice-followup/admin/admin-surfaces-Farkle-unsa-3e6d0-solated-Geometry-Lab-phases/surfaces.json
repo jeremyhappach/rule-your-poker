@@ -1,0 +1,12 @@
+{
+  "sha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "phases": [
+    "cluster",
+    "rumble",
+    "reveal",
+    "row"
+  ],
+  "defaultCount": 0,
+  "saveDisabled": true,
+  "geometryUnchanged": true
+}

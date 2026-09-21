@@ -1,0 +1,610 @@
+{
+  "sha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "stages": [
+    {
+      "kind": "visible-canonical-notice",
+      "type": "farkle",
+      "eventId": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/5/farkle",
+      "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+      "actionSequence": 5,
+      "state": {
+        "dice": [],
+        "stage": "roll",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+          "botDelayMs": 1000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 30,
+          "botBankThreshold": 300
+        },
+        "events": [
+          {
+            "dice": [
+              {
+                "index": 5,
+                "value": 4
+              }
+            ],
+            "type": "dice_rolled",
+            "playerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+            "rollNumber": 3,
+            "scoringCycle": 1
+          },
+          {
+            "lost": 400,
+            "type": "farkle",
+            "playerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87"
+          },
+          {
+            "type": "turn_completed",
+            "banked": 0,
+            "playerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+            "completedTurns": 1
+          },
+          {
+            "type": "turn_started",
+            "playerId": "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78",
+            "finalQueue": null,
+            "turnNumber": 1,
+            "tiebreakTurn": 0
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "finalQueue": null,
+        "legalHolds": [],
+        "rollNumber": 0,
+        "playerStates": {
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78": {
+            "banked": 0,
+            "completedTurns": 0
+          },
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87": {
+            "banked": 0,
+            "completedTurns": 1
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T19:33:41.123006+00:00",
+        "actionSequence": 5,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+      },
+      "clients": [
+        {
+          "client": 0,
+          "role": "actor",
+          "active": {
+            "utc": "2026-09-21T19:33:11.176Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/5/farkle",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "FARKLE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/5/farkle",
+            "text": "FARKLE",
+            "firstMs": 1790019191176.5,
+            "firstUtc": "2026-09-21T19:33:11.176Z",
+            "samples": 48,
+            "lastMs": 1790019192741.2,
+            "lastUtc": "2026-09-21T19:33:12.741Z",
+            "endedMs": 1790019192774.9,
+            "endedUtc": "2026-09-21T19:33:12.774Z",
+            "durationMs": 1598.39990234375
+          }
+        },
+        {
+          "client": 1,
+          "role": "peer",
+          "active": {
+            "utc": "2026-09-21T19:33:11.228Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/5/farkle",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "FARKLE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/5/farkle",
+            "text": "FARKLE",
+            "firstMs": 1790019191228.9,
+            "firstUtc": "2026-09-21T19:33:11.228Z",
+            "samples": 48,
+            "lastMs": 1790019192790.2,
+            "lastUtc": "2026-09-21T19:33:12.790Z",
+            "endedMs": 1790019192825.8,
+            "endedUtc": "2026-09-21T19:33:12.825Z",
+            "durationMs": 1596.900146484375
+          }
+        }
+      ]
+    },
+    {
+      "kind": "visible-canonical-notice",
+      "type": "farkle",
+      "eventId": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/12/farkle",
+      "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+      "actionSequence": 12,
+      "state": {
+        "dice": [],
+        "stage": "roll",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+          "botDelayMs": 1000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 30,
+          "botBankThreshold": 300
+        },
+        "events": [
+          {
+            "dice": [
+              {
+                "index": 2,
+                "value": 4
+              }
+            ],
+            "type": "dice_rolled",
+            "playerId": "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78",
+            "rollNumber": 4,
+            "scoringCycle": 1
+          },
+          {
+            "lost": 450,
+            "type": "farkle",
+            "playerId": "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+          },
+          {
+            "type": "turn_completed",
+            "banked": 0,
+            "playerId": "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78",
+            "completedTurns": 1
+          },
+          {
+            "type": "turn_started",
+            "playerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+            "finalQueue": null,
+            "turnNumber": 2,
+            "tiebreakTurn": 0
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "finalQueue": null,
+        "legalHolds": [],
+        "rollNumber": 0,
+        "playerStates": {
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78": {
+            "banked": 0,
+            "completedTurns": 1
+          },
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87": {
+            "banked": 0,
+            "completedTurns": 1
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T19:33:45.392406+00:00",
+        "actionSequence": 12,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87"
+      },
+      "clients": [
+        {
+          "client": 0,
+          "role": "peer",
+          "active": {
+            "utc": "2026-09-21T19:33:15.607Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/12/farkle",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "FARKLE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/12/farkle",
+            "text": "FARKLE",
+            "firstMs": 1790019195607.7,
+            "firstUtc": "2026-09-21T19:33:15.607Z",
+            "samples": 48,
+            "lastMs": 1790019197172.5,
+            "lastUtc": "2026-09-21T19:33:17.172Z",
+            "endedMs": 1790019197206,
+            "endedUtc": "2026-09-21T19:33:17.205Z",
+            "durationMs": 1598.300048828125
+          }
+        },
+        {
+          "client": 1,
+          "role": "actor",
+          "active": {
+            "utc": "2026-09-21T19:33:15.431Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/12/farkle",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "FARKLE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/12/farkle",
+            "text": "FARKLE",
+            "firstMs": 1790019195431.6,
+            "firstUtc": "2026-09-21T19:33:15.431Z",
+            "samples": 46,
+            "lastMs": 1790019196989.1,
+            "lastUtc": "2026-09-21T19:33:16.989Z",
+            "endedMs": 1790019197028.7,
+            "endedUtc": "2026-09-21T19:33:17.028Z",
+            "durationMs": 1597.099853515625
+          }
+        }
+      ]
+    },
+    {
+      "kind": "visible-canonical-notice",
+      "type": "hot_dice",
+      "eventId": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/18/hot_dice",
+      "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+      "actionSequence": 18,
+      "state": {
+        "dice": [
+          {
+            "index": 3,
+            "value": 5
+          }
+        ],
+        "stage": "bank_or_roll",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+          "botDelayMs": 1000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 30,
+          "botBankThreshold": 300
+        },
+        "events": [
+          {
+            "type": "dice_held",
+            "points": 50,
+            "indexes": [
+              3
+            ],
+            "playerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+            "thisTurn": 800,
+            "rollNumber": 3
+          },
+          {
+            "type": "hot_dice",
+            "thisTurn": 800,
+            "scoringCycle": 2
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "thisTurn": 800,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87",
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78"
+        ],
+        "finalQueue": null,
+        "legalHolds": [],
+        "rollNumber": 3,
+        "playerStates": {
+          "5bb2a914-e4c3-4f3a-8761-e4c117f9ff78": {
+            "banked": 0,
+            "completedTurns": 1
+          },
+          "b28af433-26b8-4acd-81b9-bf1de91f6f87": {
+            "banked": 0,
+            "completedTurns": 1
+          }
+        },
+        "scoringCycle": 2,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T19:33:49.342878+00:00",
+        "actionSequence": 18,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "162d4519-c1b8-4b4a-81f9-4093958a7d4d",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "b28af433-26b8-4acd-81b9-bf1de91f6f87"
+      },
+      "clients": [
+        {
+          "client": 0,
+          "role": "actor",
+          "active": {
+            "utc": "2026-09-21T19:33:19.415Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/18/hot_dice",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "HOT DICE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/18/hot_dice",
+            "text": "HOT DICE",
+            "firstMs": 1790019199415.5999,
+            "firstUtc": "2026-09-21T19:33:19.415Z",
+            "samples": 48,
+            "lastMs": 1790019200970.8,
+            "lastUtc": "2026-09-21T19:33:20.970Z",
+            "endedMs": 1790019201014.5,
+            "endedUtc": "2026-09-21T19:33:21.014Z",
+            "durationMs": 1598.900146484375
+          }
+        },
+        {
+          "client": 1,
+          "role": "peer",
+          "active": {
+            "utc": "2026-09-21T19:33:19.490Z",
+            "event": {
+              "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/18/hot_dice",
+              "type": "gameplay_notice",
+              "payload": {
+                "title": "HOT DICE"
+              },
+              "ttlMs": 1600,
+              "scope": {
+                "dealerGameId": "f345624a-8680-4fe6-b919-0d55f8369780",
+                "roundId": "162d4519-c1b8-4b4a-81f9-4093958a7d4d"
+              }
+            }
+          },
+          "visible": {
+            "id": "farkle/f345624a-8680-4fe6-b919-0d55f8369780/96948b09-2e2f-4fc0-b165-916cc6326b66/1/162d4519-c1b8-4b4a-81f9-4093958a7d4d/18/hot_dice",
+            "text": "HOT DICE",
+            "firstMs": 1790019199490.6,
+            "firstUtc": "2026-09-21T19:33:19.490Z",
+            "samples": 48,
+            "lastMs": 1790019201054.8,
+            "lastUtc": "2026-09-21T19:33:21.054Z",
+            "endedMs": 1790019201088,
+            "endedUtc": "2026-09-21T19:33:21.087Z",
+            "durationMs": 1597.39990234375
+          }
+        }
+      ]
+    }
+  ]
+}

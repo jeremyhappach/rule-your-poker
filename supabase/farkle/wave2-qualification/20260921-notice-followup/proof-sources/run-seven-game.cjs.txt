@@ -1,0 +1,6 @@
+const fs=require('fs'),{spawnSync}=require('child_process');
+const cfg=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json'));if(cfg.API_URL!=='http://127.0.0.1:57321')throw Error('Isolated API required');
+const a=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json'));
+const env={...process.env,PTOWN_E2E_BASE_URL:'http://127.0.0.1:5177',PTOWN_E2E_RUN_NAMESPACE:'farkle-wave2-6493c590c-seven',PTOWN_E2E_OUTPUT_DIR:'test-results',PTOWN_E2E_IDENTITY_SLOT:'',PTOWN_E2E_PLAYER1_EMAIL:a[0].email,PTOWN_E2E_PLAYER1_PASSWORD:a[0].password,PTOWN_E2E_PLAYER2_EMAIL:a[1].email,PTOWN_E2E_PLAYER2_PASSWORD:a[1].password,PTOWN_E2E_PLAYER1_CAN_BLAST:'1',PTOWN_E2E_ALLOW_FAKE_MONEY_WRITES:'1',PTOWN_E2E_CONTINUOUS_OBSERVER:'1',PTOWN_E2E_EXPECTED_SUPABASE_PROJECT_REF:'',PTOWN_E2E_PREVIEW_ACCESS_URL:'',PLAYWRIGHT_JSON_OUTPUT_NAME:'runtime-farkle.local/seven-game-6493c590c.json'};
+delete env.CI;
+const r=spawnSync(process.execPath,['node_modules/@playwright/test/cli.js','test','--config','playwright.config.ts','e2e/liveness/allGames.twoClient.spec.ts','e2e/liveness/pauseResume.spec.ts','e2e/terminal/allGames.terminal.spec.ts','--retries','0','--max-failures','1','--reporter=line,json'],{env,stdio:'inherit'});process.exit(r.status??1);

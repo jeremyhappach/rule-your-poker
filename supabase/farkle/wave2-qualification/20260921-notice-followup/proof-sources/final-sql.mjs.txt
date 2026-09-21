@@ -1,0 +1,12 @@
+import fs from 'node:fs';import {spawnSync} from 'node:child_process';import {randomUUID} from 'node:crypto';import {createClient} from '@supabase/supabase-js';
+const s=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json'));if(s.API_URL!=='http://127.0.0.1:57321')throw Error('Local only');
+const api=createClient(s.API_URL,s.SERVICE_ROLE_KEY,{auth:{persistSession:false}});const users=[];
+function sql(input){const r=spawnSync('docker',['exec','-i','supabase_db_farkle-wave2-local','psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-At'],{input,encoding:'utf8',maxBuffer:30e6});if(r.status)throw Error(r.stderr);return r.stdout;}
+try{
+ for(let i=0;i<3;i++){const {data,error}=await api.auth.admin.createUser({email:`farkle-final-sql-${randomUUID()}@local.test`,password:randomUUID(),email_confirm:true,user_metadata:{username:`SQL proof ${i}`}});if(error)throw error;users.push(data.user.id);}
+ const log=sql(fs.readFileSync('runtime-farkle.local/commit-boundary-postapply.sql','utf8'));fs.writeFileSync('runtime-farkle.local/final-sql-complete-6493c590c.log',log);
+ const results=log.split('\n').filter(l=>l.includes('"assertions"')||l.includes('"commitBoundaryVerified"')).map(l=>JSON.parse(l));
+ if(!results.some(x=>x.assertions===158)||!results.some(x=>x.commitBoundaryVerified))throw Error('Missing proof result');
+ fs.writeFileSync('runtime-farkle.local/final-sql-6493c590c.json',JSON.stringify({sha:'6493c590cd7aa50c4a37709988c6cfc4bfb87f77',results},null,2));
+ console.log(JSON.stringify(results.map(o=>({...o,cases:o.cases?.length,functions:o.functions?.length}))));
+}finally{for(const id of users){const {error}=await api.auth.admin.deleteUser(id);if(error)throw error;sql(`DELETE FROM public.profiles WHERE id='${id}';`);}console.log(sql("SELECT json_build_object('games',(SELECT count(*) FROM public.games),'users',(SELECT count(*) FROM auth.users),'defaults',(SELECT count(*) FROM public.game_defaults WHERE game_type='farkle'),'release',(SELECT row_to_json(r) FROM private.farkle_release r));"));}

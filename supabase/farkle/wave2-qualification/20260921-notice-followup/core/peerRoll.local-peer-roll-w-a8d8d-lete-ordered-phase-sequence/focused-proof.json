@@ -1,0 +1,271 @@
+{
+  "sha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "coverage": {
+    "partial": false,
+    "rollN": false,
+    "hot": false,
+    "farkle": false,
+    "remote": true,
+    "history": false
+  },
+  "stages": [
+    {
+      "kind": "ordered-peer-roll",
+      "armedAt": "2026-09-21T19:33:43.566Z",
+      "roundId": "777b6f86-c704-49bf-8196-f73116d7cd89",
+      "actionSequence": 1,
+      "phases": [
+        {
+          "phase": "row",
+          "utc": "2026-09-21T19:33:43.748Z",
+          "epochMs": 1790019223749.0999
+        },
+        {
+          "phase": "cluster",
+          "utc": "2026-09-21T19:33:44.250Z",
+          "epochMs": 1790019224250.9
+        },
+        {
+          "phase": "rumble",
+          "utc": "2026-09-21T19:33:44.418Z",
+          "epochMs": 1790019224418.9
+        },
+        {
+          "phase": "reveal",
+          "utc": "2026-09-21T19:33:44.842Z",
+          "epochMs": 1790019224842.5999
+        },
+        {
+          "phase": "row",
+          "utc": "2026-09-21T19:33:45.098Z",
+          "epochMs": 1790019225098.9
+        }
+      ],
+      "row": [
+        0,
+        2,
+        3,
+        1,
+        4,
+        5
+      ],
+      "state": {
+        "dice": [
+          {
+            "index": 0,
+            "value": 4
+          },
+          {
+            "index": 1,
+            "value": 5
+          },
+          {
+            "index": 2,
+            "value": 4
+          },
+          {
+            "index": 3,
+            "value": 4
+          },
+          {
+            "index": 4,
+            "value": 5
+          },
+          {
+            "index": 5,
+            "value": 6
+          }
+        ],
+        "stage": "hold",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+          "botDelayMs": 1000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 30,
+          "botBankThreshold": 300
+        },
+        "events": [
+          {
+            "dice": [
+              {
+                "index": 0,
+                "value": 4
+              },
+              {
+                "index": 1,
+                "value": 5
+              },
+              {
+                "index": 2,
+                "value": 4
+              },
+              {
+                "index": 3,
+                "value": 4
+              },
+              {
+                "index": 4,
+                "value": 5
+              },
+              {
+                "index": 5,
+                "value": 6
+              }
+            ],
+            "type": "dice_rolled",
+            "playerId": "8a21aa1e-bfde-4543-97b8-c173b0296eea",
+            "rollNumber": 1,
+            "scoringCycle": 1
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "8a21aa1e-bfde-4543-97b8-c173b0296eea",
+          "219d133f-c825-420b-99cc-3cbd0d703f32"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "8a21aa1e-bfde-4543-97b8-c173b0296eea",
+          "219d133f-c825-420b-99cc-3cbd0d703f32"
+        ],
+        "finalQueue": null,
+        "legalHolds": [
+          {
+            "points": 50,
+            "indexes": [
+              1
+            ]
+          },
+          {
+            "points": 400,
+            "indexes": [
+              0,
+              2,
+              3
+            ]
+          },
+          {
+            "points": 450,
+            "indexes": [
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "points": 50,
+            "indexes": [
+              4
+            ]
+          },
+          {
+            "points": 100,
+            "indexes": [
+              1,
+              4
+            ]
+          },
+          {
+            "points": 450,
+            "indexes": [
+              0,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "points": 500,
+            "indexes": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          }
+        ],
+        "rollNumber": 1,
+        "playerStates": {
+          "219d133f-c825-420b-99cc-3cbd0d703f32": {
+            "banked": 0,
+            "completedTurns": 0
+          },
+          "8a21aa1e-bfde-4543-97b8-c173b0296eea": {
+            "banked": 0,
+            "completedTurns": 0
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T19:34:13.6862+00:00",
+        "actionSequence": 1,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "777b6f86-c704-49bf-8196-f73116d7cd89",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "8a21aa1e-bfde-4543-97b8-c173b0296eea"
+      }
+    }
+  ]
+}

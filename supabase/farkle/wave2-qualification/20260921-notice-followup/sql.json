@@ -1,0 +1,295 @@
+{
+  "sha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "results": [
+    {
+      "cases": [
+        "action authority claim cannot leak to next RPC",
+        "active turn reclaim is persisted and deferred",
+        "already ended terminal frame preserved",
+        "bank completes deferred reclaim",
+        "best four interpretation",
+        "best six interpretation",
+        "candidate: ante_decision_authority_boundary_rollback_proof.sql",
+        "candidate: canonical_game_timer_rollback_proof.sql",
+        "candidate: definition owner security attributes grants",
+        "candidate: final_player_authority_rollback_proof.sql",
+        "candidate: rule_configuration_authority_rollback_proof.sql",
+        "candidate: seven_game_pause_rollback_proof.sql",
+        "canonical timer dispatches isolated Farkle continuation",
+        "configuration claim restored after return",
+        "creation disabled before client release",
+        "duplicate roll never rerolls",
+        "equal tiebreak exact lifetime counts",
+        "every selected die must score",
+        "exact final counts equal_turns",
+        "exact final counts one_last_turn",
+        "fake timeout uses authoritative hold path",
+        "farkle loses whole accumulated turn only",
+        "final candidate: definition owner security attributes grants",
+        "final queue equal_turns",
+        "final queue one_last_turn",
+        "fixed stake winner paid once",
+        "fixture cascade removes configuration actions events and receipts",
+        "four plus pair",
+        "frozen rules cannot change",
+        "future generic definer rejected for delete_game",
+        "future generic definer rejected for delete_player",
+        "future generic definer rejected for game",
+        "future generic definer rejected for player",
+        "future generic definer rejected for result",
+        "future generic definer rejected for round",
+        "future generic definer rejected for round_insert",
+        "future generic definer rejected for snapshot",
+        "game type cannot bypass immutable rules",
+        "generic decrement definer cannot move Farkle chips",
+        "generic increment definer cannot move Farkle chips",
+        "handoff admits canonical neutral setup",
+        "handoff authenticated write rejected after_timeout chips",
+        "handoff authenticated write rejected after_timeout config",
+        "handoff authenticated write rejected after_timeout generic_rpc",
+        "handoff authenticated write rejected after_timeout pot",
+        "handoff authenticated write rejected after_timeout round",
+        "handoff authenticated write rejected after_timeout status",
+        "handoff authenticated write rejected setup chips",
+        "handoff authenticated write rejected setup config",
+        "handoff authenticated write rejected setup generic_rpc",
+        "handoff authenticated write rejected setup pot",
+        "handoff authenticated write rejected setup round",
+        "handoff authenticated write rejected setup status",
+        "handoff complete chain uses canonical setup timeout authority",
+        "handoff duplicate continuation after timeout is harmless",
+        "handoff duplicate timeout cannot rotate again",
+        "handoff fixture cleanup",
+        "handoff generic definer cannot edit Farkle history after_timeout",
+        "handoff generic definer cannot edit Farkle history setup",
+        "handoff next Farkle setup reinstates exact player write guard",
+        "handoff recovery has no unrelated legacy actor writes",
+        "handoff retains Farkle through terminal settlement",
+        "handoff Run Back restores Farkle from frozen snapshot",
+        "handoff stale continuation cannot cross identity",
+        "handoff stale dealer timeout cannot cross identity",
+        "handoff stale timeout is read only",
+        "handoff timeout preserves balances scores config and semantic replay",
+        "hot dice across rolls",
+        "idempotent configuration",
+        "immediate terminal",
+        "independent scoring partition",
+        "initial bot policy deadline uses bot delay",
+        "late replay after game transition",
+        "left of dealer across empty seat",
+        "middle dealer lower occupied seats clockwise with gaps 3 5 4",
+        "no chip ante for fixed stake",
+        "nonadmin direct setup rejected",
+        "one hold per roll",
+        "one last turn clockwise wrap",
+        "ones across rolls cannot become a triple",
+        "out of turn reclaim is immediate",
+        "outsider cannot act",
+        "owner role without claim cannot clear Farkle state",
+        "owner role without claim cannot switch Farkle game",
+        "partial hold",
+        "pending session end settles once and conserves chips",
+        "postgame cannot advance an unresolved tie",
+        "postgame continues clockwise to lower occupied dealer",
+        "postgame duplicate receipt is read only",
+        "postgame exact dealer identity",
+        "postgame exact durable recovery registration",
+        "postgame exact hand identity",
+        "postgame fixture cascade cleanup",
+        "postgame late replay cannot change subsequent dealer game",
+        "postgame never resettles chips",
+        "postgame outsider rejected",
+        "postgame participation disposition already_ended",
+        "postgame participation disposition no_humans",
+        "postgame participation disposition pending_end",
+        "postgame participation disposition waiting",
+        "postgame preserves frozen config score and completed turns",
+        "postgame rejects live gameplay",
+        "postgame replay keeps original immutable rules",
+        "postgame respects real pause owner",
+        "postgame restores exact authority context",
+        "postgame RPC and receipt grants",
+        "previous roll indexes cannot join a later hold",
+        "private authority not publicly executable",
+        "public dealer RPC rejects nonadmin test scoring after release gate opens",
+        "real money rejects test scoring",
+        "real timeout pauses without scoring decisions",
+        "receipt cascade cleanup already_ended",
+        "receipt cascade cleanup no_humans",
+        "receipt cascade cleanup pending_end",
+        "receipt cascade cleanup recovery",
+        "receipt cascade cleanup waiting",
+        "reconnect does not reclaim",
+        "recovery 1: definition owner security attributes grants",
+        "recovery 2: definition owner security attributes grants",
+        "recovery preserves additive receipt history",
+        "recovery proof has no unrelated legacy actor writes",
+        "recovery restores JWT and Farkle authority",
+        "recovery: ante_decision_authority_boundary_rollback_proof.sql",
+        "recovery: canonical_game_timer_rollback_proof.sql",
+        "recovery: final_player_authority_rollback_proof.sql",
+        "recovery: rule_configuration_authority_rollback_proof.sql",
+        "recovery: seven_game_pause_rollback_proof.sql",
+        "reinstalled candidate: definition owner security attributes grants",
+        "repeat equal tiebreak cycle",
+        "request id payload binding",
+        "resume gives human decision window",
+        "roll does not commit scoring",
+        "run back uses exact frozen snapshot",
+        "selected triple only",
+        "semantic replay retains frozen rules and events",
+        "settlement replay cannot move chips",
+        "shared consume respects active Farkle turn",
+        "stale sequence rejected",
+        "straight",
+        "terminal action replay receipt",
+        "terminal snapshots and lifecycle",
+        "test configuration stays admin only with public release gate",
+        "three pairs",
+        "tiebreak leader cannot finish early",
+        "tiebreak winner excludes prior nonleaders",
+        "triple plus single beats four kind",
+        "two triplets",
+        "unapproved defaults never resolve",
+        "unimplemented aggressive policy rejected",
+        "unimplemented conservative policy rejected",
+        "Wave1 unchanged: advance_ante_phase_exact",
+        "Wave1 unchanged: configure_dealer_game",
+        "Wave1 unchanged: consume_automatic_play_stop",
+        "Wave1 unchanged: read_session_frame",
+        "Wave1 unchanged: set_automatic_play",
+        "Wave1 unchanged: set_game_paused",
+        "Wave2 recovery blocks active game atomically",
+        "wrong game authority claim cannot mutate round"
+      ],
+      "passed": true,
+      "assertions": 158
+    },
+    {
+      "release": {
+        "singleton": true,
+        "admin_only": true,
+        "creation_enabled": false,
+        "production_defaults_approved": false
+      },
+      "handoffs": 0,
+      "functions": [
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "a1a357505f83fbe26d1c534bc8799886",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_require_claim_v1(uuid,uuid,uuid)",
+          "securityDefiner": false
+        },
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "e4b72f5ee9376b4791e83be0db15ab9f",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_settle_v1(uuid)",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+          "md5": "44e9c9b5dbda2c5415fbdec19d2d3289",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "farkle_apply_action(uuid,uuid,text,bigint,uuid,jsonb)",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+          "md5": "5d1c8703caee40ce7392d4eb6de1aaf9",
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "finalize_gameplay_transfer_batch()",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "efccf63654170d70f4d088cba2ba365d",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_begin_terminal_transfer_v2(uuid,bigint,jsonb,jsonb)",
+          "securityDefiner": true
+        }
+      ],
+      "productionDefaults": 0,
+      "commitBoundaryVerified": true
+    },
+    {
+      "release": {
+        "singleton": true,
+        "admin_only": true,
+        "creation_enabled": false,
+        "production_defaults_approved": false
+      },
+      "handoffs": 0,
+      "functions": [
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "a1a357505f83fbe26d1c534bc8799886",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_require_claim_v1(uuid,uuid,uuid)",
+          "securityDefiner": false
+        },
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "e4b72f5ee9376b4791e83be0db15ab9f",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_settle_v1(uuid)",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+          "md5": "44e9c9b5dbda2c5415fbdec19d2d3289",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "farkle_apply_action(uuid,uuid,text,bigint,uuid,jsonb)",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+          "md5": "5d1c8703caee40ce7392d4eb6de1aaf9",
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "finalize_gameplay_transfer_batch()",
+          "securityDefiner": true
+        },
+        {
+          "acl": "{postgres=X/postgres}",
+          "md5": "efccf63654170d70f4d088cba2ba365d",
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "signature": "private.farkle_begin_terminal_transfer_v2(uuid,bigint,jsonb,jsonb)",
+          "securityDefiner": true
+        }
+      ],
+      "productionDefaults": 0,
+      "commitBoundaryVerified": true
+    }
+  ]
+}

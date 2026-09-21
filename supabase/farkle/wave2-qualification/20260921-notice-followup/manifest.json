@@ -1,0 +1,212 @@
+{
+  "implementationSha": "6493c590cd7aa50c4a37709988c6cfc4bfb87f77",
+  "qualified": false,
+  "mainIntegrated": false,
+  "productChange": "Farkle notice payload.text -> payload.title only; canonical renderer unchanged",
+  "farkleBrowser": {
+    "passed": 13,
+    "groups": {
+      "core": 7,
+      "remaining": 1,
+      "timeouts": 3,
+      "setupTimeout": 1,
+      "admin": 1
+    }
+  },
+  "deterministic": {
+    "applicationTests": 1659,
+    "applicationFiles": 248,
+    "harnessTests": 226,
+    "harnessFiles": 11,
+    "typecheck": "passed",
+    "build": "passed",
+    "buildSeconds": 56.94,
+    "buildLogSha256": "a52ac245cd2984013ca5237d886a2fb0693fad849fb9d0a4cfa0380b283c454c"
+  },
+  "sql": {
+    "assertions": 158,
+    "restorationChecks": 2,
+    "sevenGameRegression": "passed"
+  },
+  "production": {
+    "functions": 384,
+    "drift": [],
+    "creationEnabled": false,
+    "adminOnly": true,
+    "productionDefaultsApproved": false,
+    "scoringDefaultRows": 0,
+    "farkleGames": 0
+  },
+  "sevenGameBrowser": {
+    "passed": 0,
+    "failed": 1,
+    "unrun": 20
+  },
+  "cleanup": {
+    "passed": true,
+    "users": 0,
+    "profiles": 0,
+    "games": 0,
+    "fixtures": 0
+  },
+  "preservedFailedAttempts": [
+    "real timeout proof incorrectly compared the renewed deadline and its cleanup attempted deletion while real/paused; corrected only proof and cleanup",
+    "admin proof used an ambiguous combo selector, then omitted the tab icon from its exact accessible name; corrected selectors only",
+    "initial SQL fixture precondition had no non-admin peers; rerun with three isolated proof identities passed"
+  ],
+  "remaining": "Diagnose seven-game CrossCountryNetwork runtime discovery against isolated loopback environment on fresh execution budget, then rerun entire 21-case campaign without waiving cases.",
+  "files": [
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\.last-run.json",
+      "artifact": "core\\.last-run.json",
+      "sourceSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "artifactSha256": "fff6299efb51ba9ef550e500ecc967e972c83e86be387042c360caea7fdbae29"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\heldDiceReconnect.local-fr-234b3-ommitted-holds-after-Roll-N\\hold-reconnect.json",
+      "artifact": "core\\heldDiceReconnect.local-fr-234b3-ommitted-holds-after-Roll-N\\hold-reconnect.json",
+      "sourceSha256": "244c081c3980a22c7cdb01c0643ae73a5d4ced04defafba2cee13f75bb005990",
+      "artifactSha256": "f1578a5157e9f98932d92bf23a4837d35f2c6c4779fba88b555bf054ed2c7a0e"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\notices.local-HOT-DICE-and-55220-al-lifetime-on-both-clients\\notice-proof.json",
+      "artifact": "core\\notices.local-HOT-DICE-and-55220-al-lifetime-on-both-clients\\notice-proof.json",
+      "sourceSha256": "dc8b4d4ae32cfe9848eb1958ed201081c0cb2d056852b58a890cb913b6896cd3",
+      "artifactSha256": "bdb18da1a6ef89bf55f9a593f506b55bd91363246f146dca716042c2674c883b"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\peerRoll.local-peer-roll-w-a8d8d-lete-ordered-phase-sequence\\focused-proof.json",
+      "artifact": "core\\peerRoll.local-peer-roll-w-a8d8d-lete-ordered-phase-sequence\\focused-proof.json",
+      "sourceSha256": "0e626cfb051d2ec72e538640afcfed93dbf34890b5308e1968820eeba993de0c",
+      "artifactSha256": "07452cf402421d64f7866e92cd9706bd43416ec5b6b8618540ad384fa2664f74"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\playable.local-actual-admi-91552-ction-hold-bank-and-refresh\\authoritative-stages.json",
+      "artifact": "core\\playable.local-actual-admi-91552-ction-hold-bank-and-refresh\\authoritative-stages.json",
+      "sourceSha256": "e502517a6ef8e8c18037fa435881923331421e093568aebc5a01852d5b866445",
+      "artifactSha256": "8b10dc13cdf51c6010d9365c374e6bfe194e6d0f0a673041070fd5191ea1e518"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\terminal.local-equal-turns-cbfcd-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "artifact": "core\\terminal.local-equal-turns-cbfcd-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "sourceSha256": "a4084eaf6a2d7fb8deadc658d2eb53b73446b648d6236c43d4d993dd2d2b98d2",
+      "artifactSha256": "15ba8b8bf3d1e149d8bd884d719f3229cbfedfb8eb622e7689d7b1378f16bfa9"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\terminal.local-immediate-l-84909-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "artifact": "core\\terminal.local-immediate-l-84909-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "sourceSha256": "ae7fa3defd5e4beb3d2c762995727e599f165172603defca94cb37563d492a83",
+      "artifactSha256": "263437d4c0c000fc5a9f93f7b2493f62436625903b3d60e1c80f7def69b81a6a"
+    },
+    {
+      "source": "test-results\\farkle-6493c590c-suite\\terminal.local-one-last-tu-5063a-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "artifact": "core\\terminal.local-one-last-tu-5063a-nt-and-canonical-next-setup\\authoritative-stages.json",
+      "sourceSha256": "8bba4afbb2c6a9ef1b7fe2a57b960e97b1331d3bb9dbbcfaedf7438c5b19524f",
+      "artifactSha256": "6b895162db40f109d1e2e4bbae2d3d60896692bc81bd6798ecc5e3e1dd04ee9d"
+    },
+    {
+      "source": "test-results\\farkle-notice-fixed-remaining\\.last-run.json",
+      "artifact": "remaining\\.last-run.json",
+      "sourceSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "artifactSha256": "fff6299efb51ba9ef550e500ecc967e972c83e86be387042c360caea7fdbae29"
+    },
+    {
+      "source": "test-results\\farkle-notice-fixed-remaining\\remainingPlayable.local-pa-fcb56-s-refresh-and-frozen-replay\\qualification.json",
+      "artifact": "remaining\\remainingPlayable.local-pa-fcb56-s-refresh-and-frozen-replay\\qualification.json",
+      "sourceSha256": "46d9a29d75b42b34145c5541af7a29a670e51e1e53ccbae33459f4489b2c6d1c",
+      "artifactSha256": "8436038a08b08050e37e2729ee091f205855ab5dca4e6a864f7c5b084755b490"
+    },
+    {
+      "source": "test-results\\farkle-timeouts-final-6493c590c\\.last-run.json",
+      "artifact": "timeouts\\.last-run.json",
+      "sourceSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "artifactSha256": "fff6299efb51ba9ef550e500ecc967e972c83e86be387042c360caea7fdbae29"
+    },
+    {
+      "source": "test-results\\farkle-timeouts-final-6493c590c\\timeout-proof-fake-deferre-6a211-pause-through-actual-client\\timeout-proof.json",
+      "artifact": "timeouts\\timeout-proof-fake-deferre-6a211-pause-through-actual-client\\timeout-proof.json",
+      "sourceSha256": "1da8e3397568087516b9b5677cb812196c4e8814f36c8b14c6adb674489f4005",
+      "artifactSha256": "a7698ec6ce2faf724df6dbe827eecb3f14fe888525141dce4cc679bd677acf72"
+    },
+    {
+      "source": "test-results\\farkle-timeouts-final-6493c590c\\timeout-proof-fake-immedia-9bc17-pause-through-actual-client\\timeout-proof.json",
+      "artifact": "timeouts\\timeout-proof-fake-immedia-9bc17-pause-through-actual-client\\timeout-proof.json",
+      "sourceSha256": "6114db0a5154da53ddf84c4e05a6aaeb0919cdaaf1564de3b8a5dd232c690266",
+      "artifactSha256": "d1e5f4823d5a623c72df55485f4cf195f139251503b561acf5f8d6dc5baacb1e"
+    },
+    {
+      "source": "test-results\\farkle-timeouts-final-6493c590c\\timeout-proof-real-pause-e-502f2-pause-through-actual-client\\timeout-proof.json",
+      "artifact": "timeouts\\timeout-proof-real-pause-e-502f2-pause-through-actual-client\\timeout-proof.json",
+      "sourceSha256": "1010a0d4cdda4ec34d8af6436d39e3e27f5769e5e4deb53b2afa456012918f93",
+      "artifactSha256": "8a00ba22f88f534d968ce6a058a4ab822fffb8e0f4fdb0d85715670313c65b6c"
+    },
+    {
+      "source": "test-results\\farkle-setup-timeout-6493c590c\\.last-run.json",
+      "artifact": "setup-timeout\\.last-run.json",
+      "sourceSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "artifactSha256": "fff6299efb51ba9ef550e500ecc967e972c83e86be387042c360caea7fdbae29"
+    },
+    {
+      "source": "test-results\\farkle-setup-timeout-6493c590c\\setup-timeout-immediate-te-f800a-up-and-actual-setup-timeout\\authoritative-stages.json",
+      "artifact": "setup-timeout\\setup-timeout-immediate-te-f800a-up-and-actual-setup-timeout\\authoritative-stages.json",
+      "sourceSha256": "eed068197ca5bbcbc7a6868e24657467b7ce1f6b16c576cf20e893a73d70fae0",
+      "artifactSha256": "9fddf14827bdbe9ee7741305e2f0d3cc0094b6f1b517edca40d6559f5023bb59"
+    },
+    {
+      "source": "test-results\\farkle-admin-surfaces-final-6493c590c\\.last-run.json",
+      "artifact": "admin\\.last-run.json",
+      "sourceSha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "artifactSha256": "fff6299efb51ba9ef550e500ecc967e972c83e86be387042c360caea7fdbae29"
+    },
+    {
+      "source": "test-results\\farkle-admin-surfaces-final-6493c590c\\admin-surfaces-Farkle-unsa-3e6d0-solated-Geometry-Lab-phases\\surfaces.json",
+      "artifact": "admin\\admin-surfaces-Farkle-unsa-3e6d0-solated-Geometry-Lab-phases\\surfaces.json",
+      "sourceSha256": "dab8696a536559c6b2f3ce3984a65a4c535f2470484795050060092680c044e9",
+      "artifactSha256": "1f2d4f8524f314d11c30871be466a870a81397a28c7448dea713d1ae1f24ea9c"
+    },
+    {
+      "source": "runtime-farkle.local/final-sql-6493c590c.json",
+      "artifact": "sql.json",
+      "sourceSha256": "b78b3231b1fc2b9af715c5b6f327a98ff77eacb431e8182e8c1333b66ee1d42d",
+      "artifactSha256": "7b39119b35800daf4d1166175cb25a68e39bae0cf80fdf55888c0294dc4efeb3"
+    },
+    {
+      "source": "runtime-farkle.local/production-final-6493c590c.json",
+      "artifact": "production.json",
+      "sourceSha256": "938a08fb5432a9e8b1a54be51a210db57540e70620288feb66f8f2c7ca24a62f",
+      "artifactSha256": "b065fdbc10dd41e9c08b6ec91f941a64db929542be4c097b43ac2d8736d8dff5"
+    },
+    {
+      "source": "runtime-farkle.local/timeout-proof.spec.ts",
+      "sha256": "67dac57ace7e802bb8c2e4bb63fd3d99fb95ff7b4f4e040ec00d5607fe043c1c"
+    },
+    {
+      "source": "runtime-farkle.local/timeout-proof.config.ts",
+      "sha256": "58ff7cd3ed6c234246859e466dd33dbc6c36486e85e43f07db9668802c7a315a"
+    },
+    {
+      "source": "runtime-farkle.local/setup-timeout.spec.ts",
+      "sha256": "130592ca99758039666351958a03797bfb3d85e78d9237c54d89aafef4479ed4"
+    },
+    {
+      "source": "runtime-farkle.local/setup-timeout.config.ts",
+      "sha256": "e241d7e12690347e6b3fbfa5be073d488c80223e5471e8702a3c8084737482e2"
+    },
+    {
+      "source": "runtime-farkle.local/admin-surfaces.spec.ts",
+      "sha256": "1a6ddd90212b13abae380f3557020d44d33a108f42b07eb7812bfe4c8f711692"
+    },
+    {
+      "source": "runtime-farkle.local/admin-surfaces.config.ts",
+      "sha256": "edd40882dd5333a5695c52b59baf7407b9f47c3cc10da9c159e70b25ffee61c5"
+    },
+    {
+      "source": "runtime-farkle.local/final-sql.mjs",
+      "sha256": "f2e72a62775643e49cf7483016944446302d24a47a19183a4c1fe33a608fc51d"
+    },
+    {
+      "source": "runtime-farkle.local/run-seven-game.cjs",
+      "sha256": "cddd2c926431edf8e617175d754becaffcadea3f36cefd12f416e08423406911"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {createClient} from '@supabase/supabase-js';
+test('Farkle unsaved Admin Defaults and isolated Geometry Lab phases',async({page},info)=>{
+  const s=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json','utf8'));
+  if(s.API_URL!=='http://127.0.0.1:57321')throw Error('Local only');
+  const a=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json','utf8'))[0];
+  const api=createClient(s.API_URL,s.SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+  const initial=await api.from('geometry_overrides').select('*');expect(initial.error).toBeNull();
+  await page.goto('/auth');await page.locator('#login-email').fill(a.email);await page.locator('#login-password').fill(a.password);
+  await page.getByRole('button',{name:'Login',exact:true}).click();await expect(page.getByText('Game Lobby',{exact:true}).first()).toBeVisible();
+  await page.getByRole('button',{name:'Defaults',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Game Defaults Configuration'});
+  await dialog.getByRole('combobox').filter({hasText:'Holm'}).click();await page.getByRole('option',{name:'Farkle (development)',exact:true}).click();
+  const editor=page.getByRole('region',{name:'Farkle Admin Defaults draft'});await expect(editor).toBeVisible();
+  for(const input of await editor.locator('input').all())await expect(input).toHaveValue('');
+  await editor.getByLabel('Single 1',{exact:true}).fill('777');await expect(dialog.getByRole('button',{name:'Save Defaults',exact:true})).toBeDisabled();
+  await page.screenshot({path:info.outputPath('defaults.png')});await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.locator('[title="Profile Settings"]').click();await page.getByRole('tab',{name:/Geometry Lab/}).click();
+  const panel=page.getByRole('tabpanel',{name:'Geometry Lab'});await panel.getByRole('combobox').first().click();await page.getByRole('option',{name:'Farkle',exact:true}).click();
+  const preview=page.getByRole('region',{name:'Farkle geometry preview'});await expect(preview).toBeVisible();
+  const phases=[];
+  for(const phase of ['cluster','rumble','reveal','row']){await preview.getByLabel('Preview state').selectOption(phase);await expect(preview.locator('[data-farkle-roll-phase]')).toHaveAttribute('data-farkle-roll-phase',phase);phases.push(phase);}
+  await page.screenshot({path:info.outputPath('geometry.png')});
+  const defaults=await api.from('game_defaults').select('game_type').eq('game_type','farkle');expect(defaults.error).toBeNull();expect(defaults.data).toEqual([]);
+  const after=await api.from('geometry_overrides').select('*');expect(after.error).toBeNull();expect(after.data).toEqual(initial.data);
+  fs.writeFileSync(info.outputPath('surfaces.json'),JSON.stringify({sha:'6493c590cd7aa50c4a37709988c6cfc4bfb87f77',phases,defaultCount:0,saveDisabled:true,geometryUnchanged:true},null,2));
+});

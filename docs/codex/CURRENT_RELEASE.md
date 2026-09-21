@@ -1,5 +1,26 @@
 # Current release and cutover state
 
+## September 21 notice correction — Farkle gates green; seven-game campaign stopped
+
+Published implementation `6493c590cd7aa50c4a37709988c6cfc4bfb87f77` changes only
+the Farkle notice payload from `text` to `title`. All 13 focused/full Farkle
+browser cases passed at that SHA, including both notice lifetimes, reconnect,
+three endgames/tiebreaks, fake takeover/reclaim, real pause/resume, setup timeout,
+Admin Defaults and Geometry Lab. Final validation passed 1,659 application tests,
+226 harness tests, typecheck/build and 158 SQL authority/recovery assertions.
+All 384 production function fingerprints, owners, security settings and grants
+match the applied capture. Creation remains disabled, admin-only enabled and
+scoring defaults unapproved/unseeded. All isolated fixtures were cleaned.
+
+The required 21-case seven-game browser campaign stopped on its first Holm case:
+`CrossCountryNetwork.waitForRuntimeConfig` observed no Supabase runtime request.
+Result: **0 passed, 1 failed, 20 unrun**. This is a harness runtime-discovery
+precondition failure; its cause has not been investigated and no gameplay
+regression is established. The qualification-only budget exception was not used
+to debug or retry it. Wave 2 is **not qualified** and has **not merged to main**.
+Next: diagnose isolated-loopback runtime discovery with a fresh execution budget,
+then rerun the complete campaign. See [recorded evidence](FARKLE_NOTICE_QUALIFICATION_20260921.md).
+
 ## September 21 Farkle notice correction — qualification in progress
 
 The approved Farkle-only producer now supplies canonical `payload.title` for
