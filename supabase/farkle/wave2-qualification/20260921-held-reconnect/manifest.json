@@ -1,0 +1,59 @@
+{
+  "productSha": "7167e21b8309349ec46fe65bbeb3fc40b2633345",
+  "classification": "qualification assertion defect",
+  "durableSource": "private.farkle_events (events + state_after), exposed by authenticated farkle_read_replay",
+  "freshClientReads": [
+    "read_session_frame",
+    "farkle_read_replay"
+  ],
+  "runs": [
+    {
+      "file": "diagnostic.json",
+      "seconds": 26.5,
+      "passed": true
+    },
+    {
+      "file": "durable-proof.json",
+      "seconds": 24.3,
+      "passed": true
+    }
+  ],
+  "proofCorrection": "Check committed groups in durable receipts and rendered scoring row, not in current-roll state.dice.",
+  "productionMutations": false,
+  "productChanges": false,
+  "wave2Qualified": false,
+  "fullCampaignResumed": false,
+  "cleanup": {
+    "passed": true,
+    "remainingTables": [
+      "private.farkle_release|1",
+      "private.farkle_postgame_control_v2|1",
+      "private.game_timer_cutover|1",
+      "public.game_defaults|7"
+    ],
+    "authUsers": 0,
+    "profiles": 0,
+    "functionCount": 384,
+    "functionDrift": [],
+    "localCreationEnabled": false,
+    "comparison": "Previously recorded applied production metadata; no fresh production query."
+  },
+  "artifacts": [
+    {
+      "file": "diagnostic.json",
+      "sha256": "fb1aadd0d3e0d0e42c210f01f6edafe945adc457845d201839c08abdad1b5c76"
+    },
+    {
+      "file": "diagnostic.png",
+      "sha256": "50df808024bc4ee71db490fcd9789a60d77cb73c0dba24a958fa05c1daa39857"
+    },
+    {
+      "file": "durable-proof.json",
+      "sha256": "6e92685a76ed90169a1e4f6008acc9e34d1751694408d974d4d3b373981314ef"
+    },
+    {
+      "file": "durable-proof.png",
+      "sha256": "fba83e1f71b6c84e16f7886ad543c1631f761a95682f84e7f20cee8e1fc108f4"
+    }
+  ]
+}

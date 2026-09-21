@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 21 held-dice reconnect contract proved
+
+The Roll N failure was an incorrect current-roll-array assertion. Committed Hold
+dice and points persist in authoritative event/state receipts. Two actual-client
+proofs closed all original contexts and reconstructed the exact held row from a
+fresh session frame plus authenticated replay RPC. The proof-only correction uses
+those durable receipts and checks the rendered row; product and authority remain
+unchanged. Fixtures are clean. Full remaining/seven-game campaigns were not resumed;
+Wave 2 remains unqualified and unmerged. See
+[focused reconnect evidence](FARKLE_HELD_DICE_RECONNECT_20260921.md).
+
 ## September 21 peer proof corrected — next qualification failure held
 
 Timestamped DOM and rendered-frame evidence proves the peer performed every
