@@ -1,0 +1,48 @@
+{
+  "testedSha": "bb7ba16b52972043b1ed5a487b336bf1fb21b8a7",
+  "status": "stopped_on_first_browser_failure",
+  "attempts": 1,
+  "retries": 0,
+  "failedCase": "partial holds, Roll N, Hot Dice, Farkle, remote stages, refresh and frozen replay",
+  "failedAssertion": {
+    "file": "runtime-farkle.local/wave2-remaining.spec.ts",
+    "line": 89,
+    "expected": [
+      "cluster",
+      "rumble",
+      "reveal",
+      "row"
+    ],
+    "received": [
+      "row"
+    ]
+  },
+  "rootCause": "Not investigated under the execution-budget exception; product versus observer attribution remains unestablished.",
+  "sevenGameBrowserCampaign": "not started",
+  "remainingCases": "not executed after failure",
+  "wave2Qualified": false,
+  "mainMerged": false,
+  "productChanges": false,
+  "productionMutations": false,
+  "finalProductionVerification": "not run after stop",
+  "cleanup": {
+    "passed": true,
+    "remainingTables": [
+      "private.farkle_release|1",
+      "private.farkle_postgame_control_v2|1",
+      "private.game_timer_cutover|1",
+      "public.game_defaults|7"
+    ],
+    "authUsers": 0,
+    "profiles": 0,
+    "localCreationEnabled": false,
+    "functionCount": 384,
+    "functionDrift": [],
+    "comparison": "recorded applied metadata; no fresh production query"
+  },
+  "rawTrace": {
+    "path": "test-results/wave2-remaining-bb7ba16b5/wave2-remaining-partial-ho-91b8d-s-refresh-and-frozen-replay/trace.zip",
+    "sha256": "41ee4699be4364d5bd353af96e79f0d12b2c0f6cbb2b09eb2bd8804645c17067",
+    "handling": "Retained only in ignored local output; not copied to durable evidence because traces may contain test credentials."
+  }
+}

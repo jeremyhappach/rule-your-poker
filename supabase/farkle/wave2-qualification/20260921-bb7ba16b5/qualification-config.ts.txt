@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'.',testMatch:'wave2-remaining.spec.ts',workers:1,fullyParallel:false,retries:0,maxFailures:1,timeout:600_000,expect:{timeout:20_000},reporter:[['line'],['json',{outputFile:'runtime-farkle.local/wave2-remaining-results.json'}]],outputDir:'../test-results/wave2-remaining-bb7ba16b5',use:{baseURL:'http://127.0.0.1:5177',channel:'chrome',screenshot:'only-on-failure',trace:'retain-on-failure'}});

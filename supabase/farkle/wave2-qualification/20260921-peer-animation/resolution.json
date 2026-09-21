@@ -1,0 +1,107 @@
+{
+  "productSha": "bb7ba16b52972043b1ed5a487b336bf1fb21b8a7",
+  "classification": "proof/harness defect",
+  "rootCause": "The old row-completion check accepted the pre-roll row for receipt 0 after a separate database reader confirmed receipt 1; it sampled 533 ms before the peer began the required sequence.",
+  "roundId": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+  "actionSequence": 1,
+  "requestId": "80566e48-2180-4b97-af8d-2cc17fd59f5b",
+  "actorReceipt": "applied",
+  "oldSample": {
+    "utc": "2026-09-21T18:32:42.299Z",
+    "phases": [
+      "row"
+    ],
+    "receipts": [
+      "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0"
+    ]
+  },
+  "domWrites": [
+    {
+      "phase": "cluster",
+      "utc": "2026-09-21T18:32:42.832Z",
+      "epochMs": 1790015562832,
+      "node": 1
+    },
+    {
+      "phase": "rumble",
+      "utc": "2026-09-21T18:32:43.002Z",
+      "epochMs": 1790015563002.2,
+      "node": 1
+    },
+    {
+      "phase": "reveal",
+      "utc": "2026-09-21T18:32:43.423Z",
+      "epochMs": 1790015563423.5999,
+      "node": 1
+    },
+    {
+      "phase": "row",
+      "utc": "2026-09-21T18:32:43.673Z",
+      "epochMs": 1790015563673.3,
+      "node": 1
+    }
+  ],
+  "renderedFrames": [
+    {
+      "phase": "cluster",
+      "utc": "2026-09-21T18:32:42.838Z",
+      "epochMs": 1790015562838.2,
+      "node": 1
+    },
+    {
+      "phase": "rumble",
+      "utc": "2026-09-21T18:32:43.004Z",
+      "epochMs": 1790015563004.0999,
+      "node": 1
+    },
+    {
+      "phase": "reveal",
+      "utc": "2026-09-21T18:32:43.437Z",
+      "epochMs": 1790015563437.9,
+      "node": 1
+    },
+    {
+      "phase": "row",
+      "utc": "2026-09-21T18:32:43.688Z",
+      "epochMs": 1790015563688.3,
+      "node": 1
+    }
+  ],
+  "focusedProof": "passed; exact ordered sequence and authoritative straight row retained",
+  "productChanges": false,
+  "resumedMatrix": {
+    "status": "stopped at next failure without retry or diagnosis",
+    "file": "runtime-farkle.local/wave2-remaining.spec.ts",
+    "line": 86,
+    "expectedHeldDie": {
+      "index": 0,
+      "value": 5
+    },
+    "actual": "undefined",
+    "assertion": "held die remains in next state.dice after Roll N",
+    "sevenGameCampaign": "not started"
+  },
+  "wave2Qualified": false,
+  "mainMerged": false,
+  "productionMutations": false,
+  "cleanup": {
+    "passed": true,
+    "remainingTables": [
+      "private.farkle_release|1",
+      "private.farkle_postgame_control_v2|1",
+      "private.game_timer_cutover|1",
+      "public.game_defaults|7"
+    ],
+    "authUsers": 0,
+    "profiles": 0,
+    "localCreationEnabled": false,
+    "functionCount": 384,
+    "functionDrift": [],
+    "comparison": "previously recorded applied metadata"
+  },
+  "rawTrace": {
+    "path": "test-results/wave2-remaining-bb7ba16b5/wave2-remaining-partial-ho-91b8d-s-refresh-and-frozen-replay/trace.zip",
+    "sha256": "c323dbcf97e87df8f3e279e43728e4adaecc6279613379b819caadaae7334789",
+    "handling": "ignored local file only; not inspected or published"
+  }
+}

@@ -1,0 +1,1583 @@
+{
+  "sha": "bb7ba16b52972043b1ed5a487b336bf1fb21b8a7",
+  "stages": [
+    {
+      "kind": "remote-roll-diagnosis",
+      "roundId": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+      "dealerGameId": "31004220-9bb5-47a4-9d02-871482af286c",
+      "actorPlayerId": "fea11d42-83d6-458b-a411-7a1584ac081e",
+      "actorIndex": 0,
+      "request": {
+        "p_round_id": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+        "p_player_id": "fea11d42-83d6-458b-a411-7a1584ac081e",
+        "p_action": "roll",
+        "p_expected_sequence": 0,
+        "p_request_id": "80566e48-2180-4b97-af8d-2cc17fd59f5b",
+        "p_selection": []
+      },
+      "actorResponseUtc": "2026-09-21T18:32:42.232Z",
+      "receipt": {
+        "state": {
+          "dice": [
+            {
+              "index": 0,
+              "value": 1
+            },
+            {
+              "index": 1,
+              "value": 1
+            },
+            {
+              "index": 2,
+              "value": 3
+            },
+            {
+              "index": 3,
+              "value": 2
+            },
+            {
+              "index": 4,
+              "value": 3
+            },
+            {
+              "index": 5,
+              "value": 4
+            }
+          ],
+          "stage": "hold",
+          "config": {
+            "rules": {
+              "ofAKind": {
+                "3": [
+                  1000,
+                  200,
+                  300,
+                  400,
+                  500,
+                  600
+                ],
+                "4": [
+                  1000,
+                  1000,
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "5": [
+                  2000,
+                  2000,
+                  2000,
+                  2000,
+                  2000,
+                  2000
+                ],
+                "6": [
+                  3000,
+                  3000,
+                  3000,
+                  3000,
+                  3000,
+                  3000
+                ]
+              },
+              "singles": {
+                "1": 100,
+                "5": 50
+              },
+              "version": 1,
+              "straight": 1500,
+              "threePairs": 1500,
+              "twoTriplets": 2500,
+              "fourPlusPair": 1500
+            },
+            "endgame": "one_last_turn",
+            "version": 1,
+            "testOnly": true,
+            "botPolicy": "balanced",
+            "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+            "botDelayMs": 1000,
+            "ante_amount": 2,
+            "targetScore": 10000,
+            "turnSeconds": 30,
+            "botBankThreshold": 300
+          },
+          "events": [
+            {
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "type": "dice_rolled",
+              "playerId": "fea11d42-83d6-458b-a411-7a1584ac081e",
+              "rollNumber": 1,
+              "scoringCycle": 1
+            }
+          ],
+          "version": 1,
+          "eligible": [
+            "fea11d42-83d6-458b-a411-7a1584ac081e",
+            "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51"
+          ],
+          "thisTurn": 0,
+          "available": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "gamePhase": "playing",
+          "turnOrder": [
+            "fea11d42-83d6-458b-a411-7a1584ac081e",
+            "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51"
+          ],
+          "finalQueue": null,
+          "legalHolds": [
+            {
+              "points": 100,
+              "indexes": [
+                0
+              ]
+            },
+            {
+              "points": 100,
+              "indexes": [
+                1
+              ]
+            },
+            {
+              "points": 200,
+              "indexes": [
+                0,
+                1
+              ]
+            }
+          ],
+          "rollNumber": 1,
+          "playerStates": {
+            "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51": {
+              "banked": 0,
+              "completedTurns": 0
+            },
+            "fea11d42-83d6-458b-a411-7a1584ac081e": {
+              "banked": 0,
+              "completedTurns": 0
+            }
+          },
+          "scoringCycle": 1,
+          "tiebreakTurn": 0,
+          "turnDeadline": "2026-09-21T18:33:12.207845+00:00",
+          "actionSequence": 1,
+          "scoringVersion": 1,
+          "winnerPlayerId": null,
+          "_authorityScope": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+          "targetReachedBy": null,
+          "currentTurnPlayerId": "fea11d42-83d6-458b-a411-7a1584ac081e"
+        },
+        "deduped": false,
+        "outcome": "applied",
+        "settlement": null,
+        "action_sequence": 1
+      },
+      "stateAfter": {
+        "dice": [
+          {
+            "index": 0,
+            "value": 1
+          },
+          {
+            "index": 1,
+            "value": 1
+          },
+          {
+            "index": 2,
+            "value": 3
+          },
+          {
+            "index": 3,
+            "value": 2
+          },
+          {
+            "index": 4,
+            "value": 3
+          },
+          {
+            "index": 5,
+            "value": 4
+          }
+        ],
+        "stage": "hold",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated Wave 2 browser qualification",
+          "botDelayMs": 1000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 30,
+          "botBankThreshold": 300
+        },
+        "events": [
+          {
+            "dice": [
+              {
+                "index": 0,
+                "value": 1
+              },
+              {
+                "index": 1,
+                "value": 1
+              },
+              {
+                "index": 2,
+                "value": 3
+              },
+              {
+                "index": 3,
+                "value": 2
+              },
+              {
+                "index": 4,
+                "value": 3
+              },
+              {
+                "index": 5,
+                "value": 4
+              }
+            ],
+            "type": "dice_rolled",
+            "playerId": "fea11d42-83d6-458b-a411-7a1584ac081e",
+            "rollNumber": 1,
+            "scoringCycle": 1
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "fea11d42-83d6-458b-a411-7a1584ac081e",
+          "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "fea11d42-83d6-458b-a411-7a1584ac081e",
+          "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51"
+        ],
+        "finalQueue": null,
+        "legalHolds": [
+          {
+            "points": 100,
+            "indexes": [
+              0
+            ]
+          },
+          {
+            "points": 100,
+            "indexes": [
+              1
+            ]
+          },
+          {
+            "points": 200,
+            "indexes": [
+              0,
+              1
+            ]
+          }
+        ],
+        "rollNumber": 1,
+        "playerStates": {
+          "ae5dd839-ca21-44d6-b5d5-aeb9fa7a6e51": {
+            "banked": 0,
+            "completedTurns": 0
+          },
+          "fea11d42-83d6-458b-a411-7a1584ac081e": {
+            "banked": 0,
+            "completedTurns": 0
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T18:33:12.207845+00:00",
+        "actionSequence": 1,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "fea11d42-83d6-458b-a411-7a1584ac081e"
+      },
+      "peerRoundResponses": [],
+      "trace": [
+        {
+          "kind": "before-actor-roll",
+          "utc": "2026-09-21T18:32:42.096Z",
+          "epochMs": 1790015562096.4,
+          "performanceMs": 12137.20000000298,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            }
+          ],
+          "roundId": "f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1",
+          "beforeSequence": 0,
+          "expectedSequence": 1
+        },
+        {
+          "kind": "authoritative-roll-confirmed",
+          "utc": "2026-09-21T18:32:42.280Z",
+          "epochMs": 1790015562280.7,
+          "performanceMs": 12321.5,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            }
+          ],
+          "sequence": 1,
+          "actorResponseUtc": "2026-09-21T18:32:42.232Z"
+        },
+        {
+          "kind": "original-proof-sampled",
+          "utc": "2026-09-21T18:32:42.299Z",
+          "epochMs": 1790015562299.0999,
+          "performanceMs": 12339.89999999106,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            }
+          ],
+          "phases": [
+            "row"
+          ]
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:42.829Z",
+          "epochMs": 1790015562829.0999,
+          "performanceMs": 12869.89999999106,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/0",
+              "animate": false,
+              "previewPhase": null,
+              "dice": [],
+              "hookPhase": "row"
+            }
+          ]
+        },
+        {
+          "kind": "attribute-write",
+          "utc": "2026-09-21T18:32:42.832Z",
+          "epochMs": 1790015562832,
+          "performanceMs": 12872.79999999702,
+          "node": 1,
+          "connected": true,
+          "phase": "cluster",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            }
+          ],
+          "old": "row"
+        },
+        {
+          "kind": "attribute-observed",
+          "utc": "2026-09-21T18:32:42.832Z",
+          "epochMs": 1790015562832.2,
+          "performanceMs": 12873,
+          "node": 1,
+          "connected": true,
+          "phase": "cluster",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            }
+          ],
+          "old": "row"
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:42.838Z",
+          "epochMs": 1790015562838.2,
+          "performanceMs": 12879,
+          "node": 1,
+          "connected": true,
+          "phase": "cluster",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            }
+          ]
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:42.853Z",
+          "epochMs": 1790015562853.3,
+          "performanceMs": 12894.09999999404,
+          "node": 1,
+          "connected": true,
+          "phase": "cluster",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            }
+          ]
+        },
+        {
+          "kind": "attribute-write",
+          "utc": "2026-09-21T18:32:43.002Z",
+          "epochMs": 1790015563002.2,
+          "performanceMs": 13043,
+          "node": 1,
+          "connected": true,
+          "phase": "rumble",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ],
+          "old": "cluster"
+        },
+        {
+          "kind": "attribute-observed",
+          "utc": "2026-09-21T18:32:43.002Z",
+          "epochMs": 1790015563002.3,
+          "performanceMs": 13043.09999999404,
+          "node": 1,
+          "connected": true,
+          "phase": "rumble",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ],
+          "old": "cluster"
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:43.004Z",
+          "epochMs": 1790015563004.0999,
+          "performanceMs": 13044.89999999106,
+          "node": 1,
+          "connected": true,
+          "phase": "rumble",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "cluster"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ]
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:43.125Z",
+          "epochMs": 1790015563125.9,
+          "performanceMs": 13166.70000000298,
+          "node": 1,
+          "connected": true,
+          "phase": "rumble",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ]
+        },
+        {
+          "kind": "attribute-write",
+          "utc": "2026-09-21T18:32:43.423Z",
+          "epochMs": 1790015563423.5999,
+          "performanceMs": 13464.39999999106,
+          "node": 1,
+          "connected": true,
+          "phase": "reveal",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "reveal"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ],
+          "old": "rumble"
+        },
+        {
+          "kind": "attribute-observed",
+          "utc": "2026-09-21T18:32:43.423Z",
+          "epochMs": 1790015563423.8,
+          "performanceMs": 13464.59999999404,
+          "node": 1,
+          "connected": true,
+          "phase": "reveal",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "reveal"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ],
+          "old": "rumble"
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:43.437Z",
+          "epochMs": 1790015563437.9,
+          "performanceMs": 13478.70000000298,
+          "node": 1,
+          "connected": true,
+          "phase": "reveal",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "reveal"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "rumble"
+            }
+          ]
+        },
+        {
+          "kind": "attribute-write",
+          "utc": "2026-09-21T18:32:43.673Z",
+          "epochMs": 1790015563673.3,
+          "performanceMs": 13714.09999999404,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "reveal"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            }
+          ],
+          "old": "reveal"
+        },
+        {
+          "kind": "attribute-observed",
+          "utc": "2026-09-21T18:32:43.673Z",
+          "epochMs": 1790015563673.5,
+          "performanceMs": 13714.29999999702,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "reveal"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            }
+          ],
+          "old": "reveal"
+        },
+        {
+          "kind": "animation-frame",
+          "utc": "2026-09-21T18:32:43.688Z",
+          "epochMs": 1790015563688.3,
+          "performanceMs": 13729.09999999404,
+          "node": 1,
+          "connected": true,
+          "phase": "row",
+          "owners": [
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            },
+            {
+              "receiptKey": "7ad82d6a-bcaf-4b52-83e0-f5ac5d8344f1/31004220-9bb5-47a4-9d02-871482af286c/1/f0a83ea6-4ada-4f04-a227-e1cf93ad1ff1/1",
+              "animate": true,
+              "previewPhase": null,
+              "dice": [
+                {
+                  "index": 0,
+                  "value": 1
+                },
+                {
+                  "index": 1,
+                  "value": 1
+                },
+                {
+                  "index": 2,
+                  "value": 3
+                },
+                {
+                  "index": 3,
+                  "value": 2
+                },
+                {
+                  "index": 4,
+                  "value": 3
+                },
+                {
+                  "index": 5,
+                  "value": 4
+                }
+              ],
+              "hookPhase": "row"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

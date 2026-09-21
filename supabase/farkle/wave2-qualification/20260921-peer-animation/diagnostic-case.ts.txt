@@ -1,0 +1,102 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {createClient} from '@supabase/supabase-js';
+import {cleanLocalFarkleGame} from '../e2e/farkle/localDatabase';
+
+
+function instrumentPeer(){
+ const w=window as any; const nodes=new WeakMap<Element,number>();let next=0;
+ w.peerRollTrace=[];
+ const owner=(el:Element)=>{
+  const key=Object.keys(el).find(k=>k.startsWith('__reactFiber$'));let f=key?(el as any)[key]:null;const result:any[]=[];
+  while(f){if(f.type?.name==='FarkleRemoteStage')for(const candidate of [f,f.alternate])if(candidate?.memoizedProps){const p=candidate.memoizedProps;result.push({receiptKey:p.receiptKey,animate:p.animate,previewPhase:p.previewPhase??null,dice:p.dice,hookPhase:candidate.memoizedState?.memoizedState});}f=f.return;}return result;
+ };
+ const record=(kind:string,el:Element|null,phase:string|null,extra:any={})=>{
+  if(el&&!nodes.has(el))nodes.set(el,++next);
+  w.peerRollTrace.push({kind,utc:new Date().toISOString(),epochMs:performance.timeOrigin+performance.now(),performanceMs:performance.now(),node:el?nodes.get(el):null,connected:el?.isConnected??false,phase,owners:el?owner(el):[],...extra});
+ };
+ w.markPeerRoll=(label:string,extra:any={})=>record(label,document.querySelector('[data-farkle-roll-phase]'),document.querySelector('[data-farkle-roll-phase]')?.getAttribute('data-farkle-roll-phase')??null,extra);
+ const setAttribute=Element.prototype.setAttribute;
+ Element.prototype.setAttribute=function(name:string,value:string){
+  const old=name==='data-farkle-roll-phase'?this.getAttribute(name):null;
+  const result=setAttribute.call(this,name,value);
+  if(name==='data-farkle-roll-phase')record('attribute-write',this,value,{old});return result;
+ };
+ new MutationObserver(records=>{
+  for(const m of records)if(m.type==='attributes'&&m.target instanceof Element)record('attribute-observed',m.target,m.target.getAttribute('data-farkle-roll-phase'),{old:m.oldValue});
+  for(const m of records)if(m.type==='childList'){
+   for(const n of m.addedNodes)if(n instanceof Element)for(const el of [n,...n.querySelectorAll('[data-farkle-roll-phase]')])if(el.hasAttribute('data-farkle-roll-phase'))record('mounted',el,el.getAttribute('data-farkle-roll-phase'));
+   for(const n of m.removedNodes)if(n instanceof Element)for(const el of [n,...n.querySelectorAll('[data-farkle-roll-phase]')])if(el.hasAttribute('data-farkle-roll-phase'))record('removed',el,el.getAttribute('data-farkle-roll-phase'));
+  }
+ }).observe(document,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['data-farkle-roll-phase']});
+ let last='';const paint=()=>{const el=document.querySelector('[data-farkle-roll-phase]');const phase=el?.getAttribute('data-farkle-roll-phase')??null;const props=el?owner(el):[];const key=JSON.stringify([el?nodes.get(el):null,phase,props]);if(key!==last){last=key;record('animation-frame',el,phase);}requestAnimationFrame(paint);};requestAnimationFrame(paint);
+}
+
+// Qualification-only harness. Uses the actual client and normal authoritative RPCs.
+test('one authoritative peer roll: timestamped presentation diagnosis',async({browser},info)=>{
+ const cfg=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json','utf8'));
+ if(cfg.API_URL!=='http://127.0.0.1:57321')throw Error('Isolated API required');
+ const accounts=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json','utf8'));
+ const api=createClient(cfg.API_URL,cfg.SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+ const contexts=await Promise.all([browser.newContext({viewport:{width:1280,height:900}}),browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true})]);
+ await Promise.all(contexts.map(c=>c.addInitScript(instrumentPeer)));
+ const pages=await Promise.all(contexts.map(c=>c.newPage()));let gameId:string|undefined;
+ const stages:any[]=[];const coverage={partial:false,rollN:false,hot:false,farkle:false,remote:false,history:false};
+ try{
+  for(const [i,p] of pages.entries()){
+   await p.goto('/auth');await p.locator('#login-email').fill(accounts[i].email);await p.locator('#login-password').fill(accounts[i].password);
+   await p.getByRole('button',{name:'Login',exact:true}).click();await expect(p.getByText('Game Lobby',{exact:true}).first()).toBeVisible();
+  }
+  await pages[0].getByRole('button',{name:'Create New Game',exact:true}).click();
+  await pages[0].getByRole('dialog',{name:'Create New Game'}).getByRole('button',{name:'Create Game',exact:true}).click();
+  await expect(pages[0]).toHaveURL(/\/game\/[0-9a-f-]{36}$/);gameId=pages[0].url().split('/game/')[1];
+  await pages[1].goto(`/game/${gameId}`);await pages[1].locator('[data-waiting-seat-open] button').first().click();
+  await pages[0].locator('[data-start-game-btn]').click();let dealer=pages[0];
+  await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=p;return true;}return false;},{timeout:75_000}).toBe(true);
+  await dealer.getByRole('tab',{name:'Dice Games',exact:true}).click();await dealer.locator('[data-dealer-game-option="farkle"]').click();
+  await dealer.getByLabel('Stake',{exact:true}).fill('2');await dealer.getByLabel('Target Score',{exact:true}).fill('10000');await dealer.getByLabel('Endgame',{exact:true}).selectOption('one_last_turn');
+  await dealer.getByRole('button',{name:'Start TEST ONLY Game',exact:true}).click();
+  await pages.find(p=>p!==dealer)!.locator('[data-authoritative-action-surface="ante-decision"]').getByRole('button',{name:/Ante Up!/}).click();
+  for(const p of pages)await expect(p.locator('[data-farkle-scope]')).toBeVisible();
+  const read=async()=>{
+   const r=await api.from('rounds').select('id,dealer_game_id,hand_number,farkle_state').eq('game_id',gameId!).order('created_at',{ascending:false}).limit(1).single();if(r.error)throw r.error;
+   const p=await api.from('players').select('id,user_id,position,chips').eq('game_id',gameId!);if(p.error)throw p.error;
+   return {round:r.data,state:r.data.farkle_state as any,players:p.data};
+  };
+
+  let snap=await read();
+  for(let attempt=0;attempt<3;attempt++){
+   const before=snap.state;const actorIndex=accounts.findIndex((a:any)=>a.id===snap.players.find(p=>p.id===before.currentTurnPlayerId)?.user_id);
+   const actor=pages[actorIndex];const peer=pages[1-actorIndex];const inbound:any[]=[];
+   peer.on('response',async r=>{if(r.request().method()==='GET'&&r.url().includes('/rest/v1/rounds')){const data=await r.json().catch(()=>null);for(const x of Array.isArray(data)?data:[])if(x.farkle_state)inbound.push({utc:new Date().toISOString(),roundId:x.id,sequence:x.farkle_state.actionSequence,stage:x.farkle_state.stage});}});
+   await peer.evaluate(()=>{
+    const w=window as any;w.originalPhaseLog=[];
+    new MutationObserver(()=>{const phase=document.querySelector('[data-farkle-roll-phase]')?.getAttribute('data-farkle-roll-phase');if(phase&&w.originalPhaseLog.at(-1)!==phase)w.originalPhaseLog.push(phase);}).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['data-farkle-roll-phase']});
+    w.markPeerRoll('observer-ready');
+   });
+   await peer.evaluate(x=>(window as any).markPeerRoll('before-actor-roll',x),{roundId:snap.round.id,beforeSequence:before.actionSequence,expectedSequence:before.actionSequence+1});
+   const response=actor.waitForResponse(r=>r.url().endsWith('/rpc/farkle_apply_action')&&r.request().method()==='POST');
+   await actor.getByRole('button',{name:'Roll '+before.available.length,exact:true}).click();
+   const applied=await response;const action=await applied.json();const receiptUtc=new Date().toISOString();
+   await expect.poll(async()=>(await read()).state.actionSequence).toBe(before.actionSequence+1);snap=await read();
+   await peer.evaluate(x=>(window as any).markPeerRoll('authoritative-roll-confirmed',x),{sequence:snap.state.actionSequence,actorResponseUtc:receiptUtc});
+   // Reproduce the old measurement boundary without terminating the diagnostic.
+   if(snap.state.stage==='hold'){
+    await expect(peer.locator('[data-farkle-roll-phase]')).toHaveAttribute('data-farkle-roll-phase','row');
+    await peer.evaluate(()=>(window as any).markPeerRoll('original-proof-sampled',{phases:[...(window as any).originalPhaseLog]}));
+   }
+   // Diagnostic observation window only. No product timer or state is changed.
+   await peer.waitForTimeout(2200);
+   const trace=await peer.evaluate(()=>(window as any).peerRollTrace);
+   const after=await read();expect(after.state).toEqual(snap.state);
+   const point=trace.findLast((e:any)=>e.kind==='before-actor-roll');
+   const focused=trace.filter((e:any)=>e.epochMs>=point.epochMs);
+   stages.push({kind:'remote-roll-diagnosis',roundId:snap.round.id,dealerGameId:snap.round.dealer_game_id,actorPlayerId:before.currentTurnPlayerId,actorIndex,request:applied.request().postDataJSON(),actorResponseUtc:receiptUtc,receipt:action,stateAfter:snap.state,peerRoundResponses:inbound,trace:focused});
+   await peer.screenshot({path:info.outputPath('peer-roll-'+attempt+'.png')});
+   if(snap.state.stage==='hold')break;
+  }
+ }finally{
+  fs.writeFileSync(info.outputPath('diagnosis.json'),JSON.stringify({sha:'bb7ba16b52972043b1ed5a487b336bf1fb21b8a7',stages},null,2));
+  try{if(gameId)cleanLocalFarkleGame(gameId);}finally{await Promise.all(contexts.map(c=>c.close()));}
+ }
+});

@@ -1,0 +1,12 @@
+{
+  "sha": "bb7ba16b52972043b1ed5a487b336bf1fb21b8a7",
+  "coverage": {
+    "partial": false,
+    "rollN": false,
+    "hot": false,
+    "farkle": false,
+    "remote": false,
+    "history": false
+  },
+  "stages": []
+}

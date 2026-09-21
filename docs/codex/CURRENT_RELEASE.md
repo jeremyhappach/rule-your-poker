@@ -1,5 +1,25 @@
 # Current release and cutover state
 
+## September 21 peer proof corrected — next qualification failure held
+
+Timestamped DOM and rendered-frame evidence proves the peer performed every
+required phase. The old proof accepted receipt 0's pre-roll `row` before receipt 1
+arrived. The corrected exact ordered-sequence proof passes; no product change.
+The resumed matrix then failed a separate held-die-in-`state.dice` assertion after
+Roll N and stopped without retry or diagnosis. Fixtures are clean, production is
+untouched, and the seven-game campaign remains unrun. Wave 2 is not qualified.
+See [root cause, passing proof and next stop](FARKLE_PEER_ANIMATION_PROOF_20260921.md).
+
+## September 21 Wave 2 qualification exception — stopped
+
+At exact SHA `bb7ba16b52972043b1ed5a487b336bf1fb21b8a7`, the first remaining
+browser case recorded only peer phase `row` and failed its expected
+cluster/rumble/reveal/row assertion. The campaign stopped immediately with no retry
+or debugging. No product defect is established. Local fixtures and services are
+cleaned; no production change or main integration occurred. The seven-game browser
+campaign was not started. Wave 2 remains unqualified. See
+[failure and stop evidence](FARKLE_WAVE2_EXCEPTION_STOP_20260921.md).
+
 ## September 21 Wave 2 — terminal COMMIT correction
 
 The additive terminal transfer handoff passes real authenticated Bank COMMIT for
