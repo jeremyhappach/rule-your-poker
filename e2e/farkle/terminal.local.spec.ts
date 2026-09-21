@@ -1,0 +1,68 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {createClient} from '@supabase/supabase-js';
+import {cleanLocalFarkleGame} from './localDatabase';
+
+for(const endgame of ['immediate','equal_turns','one_last_turn']) {
+  test(`${endgame}: live settlement and canonical next setup`,async({browser},info)=>{
+    const settings=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json','utf8'));
+    if(settings.API_URL!=='http://127.0.0.1:57321')throw Error('Only isolated local API admitted');
+    const accounts=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json','utf8'));
+    const api=createClient(settings.API_URL,settings.SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+    const contexts=await Promise.all([browser.newContext(),browser.newContext()]);
+    const pages=await Promise.all(contexts.map(c=>c.newPage()));
+    let gameId:string|undefined;
+    const stages:unknown[]=[];
+    try {
+      for(const [i,p] of pages.entries()){
+        await p.goto('/auth');await p.locator('#login-email').fill(accounts[i].email);await p.locator('#login-password').fill(accounts[i].password);
+        await p.getByRole('button',{name:'Login',exact:true}).click();await expect(p.getByText('Game Lobby',{exact:true}).first()).toBeVisible();
+      }
+      await pages[0].getByRole('button',{name:'Create New Game',exact:true}).click();
+      await pages[0].getByRole('dialog',{name:'Create New Game'}).getByRole('button',{name:'Create Game',exact:true}).click();
+      await expect(pages[0]).toHaveURL(/\/game\/[0-9a-f-]{36}$/);gameId=pages[0].url().split('/game/')[1];
+      await pages[1].goto(`/game/${gameId}`);await pages[1].locator('[data-waiting-seat-open] button').first().click();
+      await pages[0].locator('[data-start-game-btn]').click();
+      let dealer=pages[0];
+      await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=p;return true;}return false;},{timeout:75_000}).toBe(true);
+      await dealer.getByRole('tab',{name:'Dice Games',exact:true}).click();await dealer.locator('[data-dealer-game-option="farkle"]').click();
+      await dealer.getByLabel('Stake',{exact:true}).fill('2');await dealer.getByLabel('Target Score',{exact:true}).fill('50');await dealer.getByLabel('Endgame',{exact:true}).selectOption(endgame);
+      await dealer.getByRole('button',{name:'Start TEST ONLY Game',exact:true}).click();
+      await pages.find(p=>p!==dealer)!.locator('[data-authoritative-action-surface="ante-decision"]').getByRole('button',{name:/Ante Up!/}).click();
+      for(const p of pages)await expect(p.locator('[data-farkle-scope]')).toBeVisible();
+      const read=async()=>{
+        const r=await api.from('rounds').select('id,dealer_game_id,hand_number,farkle_state').eq('game_id',gameId!).order('created_at',{ascending:false}).limit(1).single();if(r.error)throw r.error;
+        const p=await api.from('players').select('id,user_id,chips,position').eq('game_id',gameId!);if(p.error)throw p.error;
+        return {...r.data,state:r.data.farkle_state,players:p.data};
+      };
+      let snap=await read();const initialBalances=Object.fromEntries(snap.players.map(p=>[p.id,p.chips]));
+      for(let n=0;n<60&&snap.state.gamePhase!=='complete';n++){
+        const actor=pages[accounts.findIndex((a:{id:string})=>a.id===snap.players.find(p=>p.id===snap.state.currentTurnPlayerId)?.user_id)];
+        const seq=snap.state.actionSequence;
+        if(snap.state.finalQueue || snap.state.tiebreakTurn>0){
+          const before=snap.state;await actor.reload();await expect(actor.locator('[data-farkle-scope]')).toBeVisible();expect((await read()).state).toEqual(before);
+          stages.push({kind:snap.state.tiebreakTurn>0?'tiebreak-refresh':'final-turn-refresh',state:before});
+        }
+        if(snap.state.stage==='hold'){
+          for(const i of snap.state.legalHolds[0].indexes)await actor.locator(`[data-farkle-active-area] button[data-farkle-die-index="${i}"]`).click();
+          await actor.getByRole('button',{name:/^Hold Dice/}).click();
+        }else if(snap.state.stage==='bank_or_roll')await actor.getByRole('button',{name:'Bank',exact:true}).click();
+        else await actor.getByRole('button',{name:/^Roll \d/}).click();
+        await expect.poll(async()=>(await read()).state.actionSequence).toBeGreaterThan(seq);snap=await read();stages.push({kind:'action',state:snap.state});
+      }
+      expect(snap.state.gamePhase).toBe('complete');expect(snap.state.winnerPlayerId).toBeTruthy();
+      for(const p of snap.players)expect(p.chips-initialBalances[p.id]).toBe(p.id===snap.state.winnerPlayerId?2:-2);
+      const terminal=snap.state;
+      await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible())return true;return false;},{timeout:30_000}).toBe(true);
+      const g=await api.from('games').select('game_type,current_game_uuid,status').eq('id',gameId!).single();
+      expect(g.data).toMatchObject({game_type:null,current_game_uuid:null,status:'game_selection'});
+      await pages[0].reload();await expect(pages[0].locator('[data-lifecycle-branch="loaded-inner"]')).toBeVisible();
+      expect((await read()).state).toEqual(terminal);
+      for(const p of (await read()).players)expect(p.chips-initialBalances[p.id]).toBe(p.id===terminal.winnerPlayerId?2:-2);
+      stages.push({kind:'terminal-continuation-refresh',state:terminal});
+    }finally{
+      fs.writeFileSync(info.outputPath('authoritative-stages.json'),JSON.stringify(stages,null,2));
+      try{if(gameId)cleanLocalFarkleGame(gameId);}finally{await Promise.all(contexts.map(c=>c.close()));}
+    }
+  });
+}

@@ -1,0 +1,32 @@
+{
+  "removedAuthUsers": 6,
+  "cleanup": {
+    "games": 0,
+    "players": 0,
+    "rounds": 0,
+    "dealerGames": 0,
+    "results": 0,
+    "snapshots": 0,
+    "receipts": 0,
+    "events": 0,
+    "postgameReceipts": 0,
+    "pendingTransfers": 0,
+    "batches": 0,
+    "profiles": 0,
+    "authUsers": 0,
+    "creationEnabled": false,
+    "adminOnly": true,
+    "productionDefaultsApproved": false,
+    "farkleDefaults": 0
+  },
+  "functionCount": 383,
+  "functionDifferences": [],
+  "removedProfiles": 6,
+  "remainingNonemptyTables": [
+    "private.farkle_release|1",
+    "private.farkle_postgame_control_v2|1",
+    "private.game_timer_cutover|1",
+    "public.game_defaults|7"
+  ],
+  "fixtureTelemetryCleaned": true
+}

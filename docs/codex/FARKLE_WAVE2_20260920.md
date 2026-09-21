@@ -39,6 +39,14 @@ transition: the Wave 1 write-claim guards must remain intact, and the client mus
 never author the authoritative transition. Stop if that requires material shared-owner
 restructuring or changing existing-game behavior.
 
+## September 21 live qualification stop
+
+The isolated environment and local admin TEST ONLY setup path now work. The core
+actual-client play/refresh scenario passed. Immediate terminal Bank demonstrated
+a deferred chip-transfer authority-claim defect; the remaining browser gate is
+blocked. Applied authority SQL and shared owners remain unchanged. See
+[the exact failure, proof limitation, and remaining gate](FARKLE_WAVE2_LIVE_20260921.md).
+
 ## September 21 client routing draft after database apply
 
 The canonical Game route now selects Farkle by exact dealer-game/hand/round identity

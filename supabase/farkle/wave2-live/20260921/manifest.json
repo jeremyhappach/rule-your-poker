@@ -1,0 +1,47 @@
+{
+  "status": "blocked-not-qualified",
+  "baseSha": "fc430c6bf78345c0183f18f645ce12c5b601131d",
+  "productionMigration": "20260921155336_farkle_wave2_postgame",
+  "authorityModified": false,
+  "validation": {
+    "typecheck": true,
+    "applicationTests": 1657,
+    "applicationFiles": 247,
+    "harnessTests": 226,
+    "harnessFiles": 11,
+    "build": true,
+    "buildSeconds": 33.3,
+    "transactionalSqlAssertions": 158,
+    "transactionalProofLimit": "Does not force deferred transfer finalization before cleanup or rollback",
+    "localFunctionMetadataMatches": 383,
+    "browserCore": {
+      "passed": 1,
+      "seconds": 30
+    },
+    "browserTerminal": {
+      "failed": 1,
+      "notRun": 2
+    },
+    "completeBrowserGate": false
+  },
+  "sourceHashes": {
+    "src/components/DealerGameSetup.tsx": "299c1086d69e00e5ee8cb1d30a910963abb64fbd20f70e4ebfc17ccc356220fc",
+    "src/lib/dealerGameSetupAuthority.ts": "5c00ebadf2ec99898db1ba5e257a4862e495e893192d6681e136f92242f8a105",
+    "src/lib/farkle/localQualification.ts": "bfc7a02f2e231c7a8d478fad75fd90a68dd44191cfdde353372cb0ed77d09971",
+    "src/lib/farkle/localQualification.test.ts": "2e088ed362be95b36b4309a2702f32a6100451e281d7a3c785f2424ec1b2d45e",
+    "e2e/farkle/playable.local.spec.ts": "808a964680c4eef84c49f594fc58d4a73b64b801d4747adb117c8b8a90404b79",
+    "e2e/farkle/terminal.local.spec.ts": "e7f9370c693174a28509d4173fe04fb71496fe8b63186a9998a90ee6f31107e1",
+    "e2e/farkle/localDatabase.ts": "c49503bf0631910a4fd999d3e90b50c3579d82856afdc2e86890c5bb1c4eee6d",
+    "playwright.farkle-local.config.ts": "e384f7abb598d573c7e8ab1de2163ba6395a0b209bddb6fdecb4acdb6ab2bdde"
+  },
+  "buildLogSha256": "a4fbdab00397fbd0398b33250be490eb9dcea13ea83980a3ff2e725b4dd6a750",
+  "sqlProofLogSha256": "28c1b9056b3ab43dbd9bd09883bad5d79b1565a5452e6fdccdd57748e467065c",
+  "evidenceHashes": {
+    "authoritative-stages.json": "1ea7175c522650e1439750b9c996b5a0f23823b8cca3e0464beadc0e9cb83556",
+    "cleanup.json": "7a1a4b49ccca6bbfe9e95cc8d3f1d96870179e0c26f9514011de00582d9d3576",
+    "error-context.md": "0633a8adcffedf055f08589bb260c7b51898f75d224e009504832c4369f05c96",
+    "production-verification.json": "0f9e3ae5134db485d9bbefe06e720bbeedffe0aad251a70fe92e7b44149ec4a6",
+    "terminal-error.txt": "7ebda34ac317999d6cf8b7eeae7abbfae7f3085dfc68a1a4420b91c915886166",
+    "test-failed-1.png": "93e366dd18adfe032abf32145cdcc0425ef42922b1f45735af5f4a0d15bee528"
+  }
+}

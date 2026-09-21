@@ -1,0 +1,10 @@
+ERROR:  farkle:authority_claim_required
+172.22.0.6 2026-09-21 16:48:19.104 UTC [3476] authenticator@postgres CONTEXT:  PL/pgSQL function private.farkle_require_claim_v1(uuid,uuid,uuid) line 9 at RAISE
+	SQL statement "SELECT private.farkle_require_claim_v1((row_new->>'id')::uuid)"
+	PL/pgSQL function private.farkle_guard_shared_v1() line 13 at PERFORM
+	SQL statement "UPDATE public.games
+	         SET chip_transfer_cursor = chip_transfer_cursor + 1
+	       WHERE id = v_game_id
+	       RETURNING current_game_uuid, chip_transfer_cursor"
+	PL/pgSQL function finalize_gameplay_transfer_batch() line 119 at SQL statement
+172.22.0.6 2026-09-21 16:48:19.104 UTC [3476] authenticator@postgres

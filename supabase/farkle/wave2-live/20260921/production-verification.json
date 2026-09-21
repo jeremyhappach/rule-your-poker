@@ -1,0 +1,27 @@
+{
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "transferFunction": {
+    "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "md5": "5459fd01314cee7fe3fff421ce5e11b4",
+    "owner": "postgres",
+    "config": [
+      "search_path=public"
+    ],
+    "signature": "finalize_gameplay_transfer_batch()",
+    "securityDefiner": true
+  },
+  "transferTriggers": [
+    {
+      "name": "gameplay_transfer_pending_finalize",
+      "deferrable": true,
+      "definition": "CREATE CONSTRAINT TRIGGER gameplay_transfer_pending_finalize AFTER INSERT ON public.gameplay_transfer_pending_changes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION finalize_gameplay_transfer_batch()",
+      "initiallyDeferred": true
+    }
+  ],
+  "productionDefaults": 0
+}

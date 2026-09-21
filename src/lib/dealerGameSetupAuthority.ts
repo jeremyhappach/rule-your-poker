@@ -41,7 +41,7 @@ interface ConfigureDealerGameParams {
   dealerPlayerId: string;
   expectedDealerPosition: number;
   expectedConfigDeadline: string | null | undefined;
-  gameType: DealerGameType;
+  gameType: DealerGameType | 'farkle';
   config: Record<string, unknown>;
 }
 

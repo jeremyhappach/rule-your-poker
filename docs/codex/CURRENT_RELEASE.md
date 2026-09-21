@@ -1,5 +1,15 @@
 # Current release and cutover state
 
+## September 21 Wave 2 live gate — terminal authority blocker
+
+Isolated local actual-client setup/play/Bank/refresh passes, but target-reaching
+Bank rolls back at the deferred shared chip-transfer cursor write because the
+Farkle authority claim has already been restored. The production trigger and
+function metadata match the local reproduction. No authority correction, production
+mutation, or main integration was made. The transactional 158-assertion proof passes
+but missed this deferred commit boundary; Wave 2 remains unqualified.
+See [live qualification evidence and next bounded correction](FARKLE_WAVE2_LIVE_20260921.md).
+
 ## September 20 Farkle Wave 1 — qualified and integrated; Wave 2 draft
 
 Main fast-forwarded without implementation changes or conflicts to qualified

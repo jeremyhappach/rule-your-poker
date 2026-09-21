@@ -1,4 +1,5 @@
 import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/farkle/FarkleDealerFields';
+import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/localQualification';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { createPortal } from "react-dom";
@@ -221,7 +222,7 @@ const DealerGameSetupInner = ({
   const configTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const commitSetup = useCallback(async (
-    gameType: DealerGameType,
+    gameType: DealerGameType | 'farkle',
     config: Record<string, unknown>,
     reason: string,
   ) => {
@@ -1268,12 +1269,26 @@ const DealerGameSetupInner = ({
 
   // Config step - show config UI based on selected game type
   if (selectionStep === 'config' && selectedGameType === 'farkle') {
+    const localTest = isAdmin && isFarkleLocalQualification(import.meta.env, window.location.hostname);
+    const submitTestSetup = async () => {
+      if (!localTest || hasSubmittedRef.current) return;
+      try {
+        const config = farkleLocalSetup(farkleDraft.stake, farkleDraft.target, farkleDraft.endgame);
+        hasSubmittedRef.current = true;
+        setIsSubmitting(true);
+        await commitSetup('farkle', config, 'isolated-test-only-setup');
+      } catch (error) {
+        hasSubmittedRef.current = false;
+        setIsSubmitting(false);
+        toast.error(error instanceof Error ? error.message : dealerSetupFailureMessage(error));
+      }
+    };
     return <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
         <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
         <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
-        <p className="text-sm text-amber-200">Development preview. Game creation is disabled while production scoring defaults await approval.</p>
-        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled>Coming Soon</Button></div>
+        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration. Production rules remain unapproved.' : 'Development preview. Game creation is disabled while production scoring defaults await approval.'}</p>
+        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={!localTest} onClick={submitTestSetup}>{localTest ? 'Start TEST ONLY Game' : 'Coming Soon'}</Button></div>
       </CardContent></Card>
     </div>;
   }
