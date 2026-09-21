@@ -1,0 +1,32 @@
+{
+  "sourceBase": "b9e49cf36ee915711e2a766e5ac43eace4327f0e",
+  "scope": "Unreleased Wave 2 client routing and terminal draft",
+  "typecheck": true,
+  "applicationFiles": 246,
+  "applicationTests": 1655,
+  "harnessFiles": 11,
+  "harnessTests": 226,
+  "build": true,
+  "buildSeconds": 33.58,
+  "sourceSha256": {
+    "src/components/DealerGameSetup.tsx": "d9cdbb1d8e2ed84f8a869359e39a981453623d5fdf0ea4d492c84c7b941601d0",
+    "src/components/farkle/FarkleGameTable.tsx": "501b7fe8e6d623b1497481432f8d17fe030ccb5458c4adfd08549bf3e219439b",
+    "src/components/farkle/FarkleTerminalPresentation.tsx": "2fc656fa88fe68a0d768928a1d356e035e40e58f9b779ddea8eb00bf6522a401",
+    "src/lib/dealerGameSetup/runBackConfig.ts": "7ab6fa282307ea3484db7ee3f9c731ec9157f1886215a037590d40914831b3ef",
+    "src/lib/farkle/authority.ts": "e9bc808fece421ae0fb6b3514d0e39ad2f371af18e60f1499ffa3394928ecad5",
+    "src/lib/farkle/terminalPresentation.ts": "75ed86b6cfcf020c8d8487485f5b38f962d08137027c93cdf15be681392f10f2",
+    "src/pages/Game.tsx": "0dca17c3b557f31da8f0e2f6eea38caedce5efa1d1e2498f37fbe45a1076c4e4"
+  },
+  "logSha256": "69b6445c191b1b7bab2e741cb45105bfa81643960320c5414dbd54ef780f0305",
+  "browserQualification": false,
+  "mainIntegration": false,
+  "productionClientPublished": false,
+  "productionDatabaseMigration": "20260921155336",
+  "remaining": [
+    "Dedicated isolated local Supabase stack with qualified schema and labeled test-only configurations",
+    "Admin-authorized live setup/admission",
+    "Farkle live play, terminal, reconnect and takeover/reclaim browser qualification",
+    "Seven-game browser qualification for touched shared surfaces and complete Wave 2 end-to-end gate"
+  ],
+  "budgetBoundary": "Pre-apply proof, apply and post-apply proof completed. Further local database setup/live qualification needs a fresh bounded execution budget."
+}

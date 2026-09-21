@@ -10,7 +10,8 @@ import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { useGameChatContext } from '@/hooks/GameChatContext';
 import { MobileChatPanel } from '@/components/MobileChatPanel';
 import { setAutomaticPlay } from '@/lib/sessionPlayerIntent';
-import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
+import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
+import { getBotAlias } from '@/lib/botAlias';
 import { applyFarkleAction, createFarkleActionRequest, readFarkleReplay } from '@/lib/farkle/authority';
 import { admitFarkleSnapshot, farkleCommittedHolds, farkleScopeKey, farkleTurnStatus } from '@/lib/farkle/presentation';
 import { FarkleGameplayGeometryProvider } from '@/lib/farkle/FarkleGameplayGeometryProvider';
@@ -20,6 +21,7 @@ import { FarkleAnchoredSlot } from './FarkleAnchoredSlot';
 import { FarkleRemoteStage } from './FarkleRemoteStage';
 import { FarkleRules } from './FarkleRules';
 import { FarkleHistory } from './FarkleHistory';
+import { FarkleTerminalPresentation } from './FarkleTerminalPresentation';
 
 export interface FarkleParticipant {
   id: string; user_id: string; position: number; chips: number; is_bot: boolean;
@@ -28,6 +30,10 @@ export interface FarkleParticipant {
 export interface FarkleGameTableProps {
   scope: FarkleScope; incoming: FarkleState; revision: number; players: FarkleParticipant[];
   currentUserId?: string; isPaused: boolean; isRealMoney: boolean; onRefetch: () => void;
+  activeTab?: ShellTabId; onActiveTabChange?: (tab: ShellTabId) => void;
+  terminalPresentationLive?: boolean;
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
+  onTerminalPresentationComplete?: (token: string) => void;
 }
 
 /** Isolated consumer of server facts. No bots, random rolls, score calculator or settlement writer. */
@@ -41,12 +47,15 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const actionInFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
-  const [tab, setTab] = useState<ShellTabId>('cards');
+  const [localTab, setLocalTab] = useState<ShellTabId>('cards');
+  const tab = props.activeTab ?? localTab;
+  const setTab = props.onActiveTabChange ?? setLocalTab;
   const chat = useGameChatContext();
   const { emit } = useAnnouncements();
   const state = accepted.scopeKey === scopeKey ? accepted.state : incoming;
   const self = players.find(p => p.user_id === currentUserId && !p.is_bot);
-  const nameFor = (id: string) => players.find(p => p.id === id)?.profiles?.username ?? 'Player';
+  const nameFor = (id: string) => { const player = players.find(p => p.id === id);
+    return player?.is_bot ? getBotAlias(players, player.user_id) : player?.profiles?.username ?? 'Player'; };
   const controlled = !!self && self.id === state.currentTurnPlayerId && !self.auto_fold && !isPaused && state.gamePhase === 'playing';
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 500); return () => clearInterval(timer); }, []);
@@ -78,7 +87,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     for (const event of state.events ?? []) {
       if (event.type === 'farkle' || event.type === 'hot_dice') emit({
         id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
-        scope: { dealerGameId: scope.dealerGameId, roundId: scope.roundId },
+        scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
         payload: { text: event.type === 'farkle' ? 'FARKLE' : 'HOT DICE' }, ttlMs: 1600, behavior: 'enqueue',
       });
     }
@@ -110,6 +119,9 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const roll = state.events?.find(event => event.type === 'dice_rolled');
   const remoteDice = roll?.dice ?? state.dice;
   return <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent" data-farkle-scope={scopeKey}>
+    <FarkleTerminalPresentation scope={scope} state={state} live={props.terminalPresentationLive === true}
+      winnerName={nameFor(state.winnerPlayerId ?? '')} winnerIsSelf={self?.id === state.winnerPlayerId}
+      onActive={props.onTerminalPresentationActiveChange} onComplete={props.onTerminalPresentationComplete} />
     <div style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
       <FarkleGameplayGeometryProvider>
         {!controlled && <FarkleAnchoredSlot artifactId="farkle.remoteDice"><FarkleRemoteStage dice={remoteDice}
@@ -129,10 +141,10 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     </div>} pane={error ? <div role="alert" className="p-2 text-sm text-amber-200">{error}<Button size="sm" onClick={() => { setError(null); onRefetch(); }}>Reconnect</Button></div>
       : tab === 'history' ? <FarkleHistory replay={currentReplay} nameFor={nameFor} />
       : tab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={currentUserId} diagnosticGameId={scope.gameId} diagnosticDealerGameId={scope.dealerGameId} />
-      : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · {formatChipBalance(p.chips)}</p>)}</div>
+      : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · <PresentationChipBalance playerId={p.id} rawBalance={p.chips} /></p>)}</div>
       : <FarkleActiveArea state={state} controllable={controlled} pending={pending} committed={farkleCommittedHolds(currentReplay?.events ?? [], state)} onAction={act} />}
       identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-amber-100">
-        {self ? <><span>{nameFor(self.id)} · {formatChipBalance(self.chips)} · {state.playerStates[self.id]?.banked ?? 0} points · {state.playerStates[self.id]?.completedTurns ?? 0} turns</span>
+        {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {state.playerStates[self.id]?.banked ?? 0} points · {state.playerStates[self.id]?.completedTurns ?? 0} turns</span>
           {!isRealMoney && self.auto_fold && <><Bot className="h-4 w-4" aria-label="Bot control" /><Button size="sm" disabled={pending || !!self.auto_play_stop_round_id} onClick={reclaim}>{self.auto_play_stop_round_id ? 'Rejoining after this turn' : 'Rejoin'}</Button></>}</> : <span>Observing</span>}
       </div>} />
     <Dialog open={help} onOpenChange={setHelp}><DialogContent className="max-h-full overflow-auto"><DialogHeader><DialogTitle>Farkle rules</DialogTitle></DialogHeader><FarkleRules config={state.config} /></DialogContent></Dialog>

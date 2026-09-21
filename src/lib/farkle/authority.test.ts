@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '@/integrations/supabase/client';
-import { applyFarkleAction, createFarkleActionRequest } from './authority';
+import { advanceFarklePostgame, applyFarkleAction, createFarkleActionRequest } from './authority';
 import { farkleTestState } from './__fixtures__/testState';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
@@ -8,6 +8,15 @@ const rpc = vi.mocked(supabase.rpc);
 beforeEach(() => rpc.mockReset());
 
 describe('Farkle action transport', () => {
+  it('retries postgame with only the original settled identity', async () => {
+    const scope = { gameId: 'session', dealerGameId: 'dealer', roundId: 'round', handNumber: 1 };
+    let attempt = 0;
+    rpc.mockImplementation((() => ({ abortSignal: () => ++attempt === 1 ? Promise.reject(new Error('network failed'))
+      : Promise.resolve({ data: { outcome: 'already_advanced', status: 'game_selection' }, error: null }) })) as never);
+    expect((await advanceFarklePostgame(scope)).outcome).toBe('already_advanced');
+    expect(rpc.mock.calls[0]).toEqual(rpc.mock.calls[1]);
+    expect(rpc.mock.calls[0][1]).toEqual({ p_game_id: 'session', p_dealer_game_id: 'dealer', p_round_id: 'round', p_hand_number: 1 });
+  });
   it('reuses the exact receipt identity and payload after an uncertain network response', async () => {
     const state = farkleTestState();
     const selected = [1, 0];

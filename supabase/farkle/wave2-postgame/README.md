@@ -1,8 +1,12 @@
-# Wave 2 isolated postgame — pre-apply candidate
+# Wave 2 isolated postgame — applied and authority-qualified
 
-Approved September 21. No production migration has been applied for this phase.
-**Production apply remains held as requested.** The setup-timeout authority handoff
-is now proved in the complete 158-assertion rollback run described below.
+Applied September 21 as `20260921155336_farkle_wave2_postgame`, using the exact
+implementation at `b9e49cf36ee915711e2a766e5ac43eace4327f0e` after all deterministic
+gates passed: 1,649 application tests, 226 harness tests, typecheck, build and the
+158-assertion SQL/recovery proof. The full post-apply proof also passed all 158
+assertions. `release-qualification.json` records actual migration metadata,
+fingerprints/owners/grants, cleanup and locked release gates. The migration filename
+was aligned to the actual service-assigned version without changing SQL bytes.
 The applied Wave 1 migration `20260920155333` and qualified commit
 `e80200300ee81597f8ac11447a2aa15069107644` are unchanged.
 
@@ -68,14 +72,8 @@ and canonical timer proofs, two exact recoveries and three candidate installatio
 The prior unchanged-client build passed 1,649 application and 226 harness tests;
 it was not repeated for this SQL-only correction.
 
-Production apply remains held as requested. Subsequent release work must use the
-supported Supabase migration path, record its actual migration version and align
-this new, previously unapplied migration's filename/manifest if the service assigns
-another version. Do not rename, replace, edit or reapply Wave 1's applied migration.
-Verify installed bytes before accepting an actual-version filename adjustment.
-
-After apply, run the complete post-apply proof and verify exact metadata, cleanup
-and release state: creation disabled, admin-only enabled, defaults approval false
-and no Farkle production default row. No main integration before the full Wave 2
-client/browser/end-to-end and shared-surface regression gate. Browser qualification
-was not run in this database-only handoff phase.
+Production release state is verified: creation disabled, admin-only enabled,
+defaults approval false and no Farkle production default row. Installed function
+bodies match the qualified candidate, and both recovery executions restore the
+qualified shared definition/metadata exactly. No main integration before the full
+Wave 2 client/browser/end-to-end and shared-surface regression gate.

@@ -1,12 +1,18 @@
 import { resolveExactGinRummyRunBackConfig } from '../ginRummyRunBackConfig';
 
 /** Validate the committed snapshot; never fill missing values from form defaults. */
-export function resolveExactRunBackConfig(gameType: string, value: unknown): Record<string, unknown> | null {
+export function resolveExactRunBackConfig(gameType: string, value: unknown, dealerGameId?: string): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const config = value as Record<string, unknown>;
   const integer = (key: string, min: number) => Number.isInteger(config[key]) && Number(config[key]) >= min;
   const bool = (key: string) => typeof config[key] === 'boolean';
   if (!integer('ante_amount', 1)) return null;
+  if (gameType === 'farkle') {
+    // The server reads the immutable snapshot. Never resubmit scoring values.
+    const id = dealerGameId ?? config.runBackDealerGameId;
+    if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+    return { ante_amount: config.ante_amount, runBackDealerGameId: id };
+  }
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
   if (['horses', 'ship-captain-crew', 'yahtzee'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {

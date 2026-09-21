@@ -1,11 +1,11 @@
 # Repository map
 
-Farkle Wave 2 postgame (candidate, not applied):
+Farkle Wave 2 postgame (applied as `20260921155336`):
 `supabase/farkle/wave2-postgame/authority.sql` owns exact terminal continuation and
 private idempotent receipts. `build.mjs` generates the additive migration, one
 canonical timer dispatch branch, executable forward recovery and rollback proofs
-from `capture.json`. `qualification.json` distinguishes pre-apply evidence from
-deployment and full playable qualification. Wave 1 source/migration files remain
+from `capture.json`. `release-qualification.json` records exact-SHA deterministic
+qualification and deployed metadata; full playable qualification is separate. Wave 1 source/migration files remain
 unchanged; the Farkle owner never calls Horses/SCC postgame logic.
 
 Gin replay/1: migration `20260914192806_gin_replay_v1.sql` owns the private
@@ -837,4 +837,7 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - `src/components/farkle/`: isolated table consumer, local dice controls, remote
   stages, frozen help, semantic history, admin drafts and geometry previews.
 - `docs/codex/FARKLE_WAVE2_20260920.md`: unfinished integration and proof gates.
-  The table consumer is not yet connected to the live gameplay route.
+  `Game.tsx` now registers the isolated table, exact realtime round admission and
+  canonical local terminal hold. `FarkleTerminalPresentation` admits only the
+  exact committed chip batch and reports its completion to the route; the
+  isolated `advanceFarklePostgame` transport calls the applied server owner.

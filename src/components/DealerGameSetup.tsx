@@ -1044,6 +1044,8 @@ const DealerGameSetupInner = ({
 
   const handleRunBack = async () => {
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
+    // Farkle remains unavailable for creation during the admin development gate.
+    if (previousGameType === 'farkle') return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
     if (!exactConfig) {
@@ -1211,11 +1213,11 @@ const DealerGameSetupInner = ({
             </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (
+            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'farkle' || isAdmin) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || previousGameType === 'farkle'}
                   className="w-full py-3 px-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="w-5 h-5 text-amber-400" />

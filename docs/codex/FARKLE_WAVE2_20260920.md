@@ -17,7 +17,8 @@ Worktree: `C:/Users/jerem/Desktop/poker/farkle-playable`; branch:
 - Six-die self controls, committed-receipt row reconstruction, independent remote
   cluster/rumble/reveal/row animation, THIS TURN, final/tiebreak status and frozen help.
 - An isolated table consumer uses canonical felt, HUD, tabs, opponent seats and
-  announcements. It is intentionally not yet routed into live Game.tsx gameplay.
+  announcements. The September 21 routing draft connects it to Game.tsx gameplay;
+  live browser qualification is still pending.
 - Recorded-action history/replay presentation and explicit Horses-style reclaim
   calls through the existing versioned `setAutomaticPlay` owner.
 - Farkle-only geometry descriptors, registered Lab controls and visual preview.
@@ -28,8 +29,8 @@ Worktree: `C:/Users/jerem/Desktop/poker/farkle-playable`; branch:
 
 ## Remaining before playable qualification
 
-Complete live route/realtime wiring; canonical terminal hold, chip presentation and
-postgame continuation; session-ended admission; exact Run Back configuration;
+Qualify live route/realtime wiring, canonical terminal hold, chip presentation and
+postgame continuation, session-ended admission and exact Run Back configuration;
 shared history entry points; full reconnect/refresh and bot takeover/reclaim browser
 proofs; responsive canonical-shell visual validation; and complete Wave 2 regression
 qualification. The isolated components alone do not establish these behaviors.
@@ -37,6 +38,35 @@ Inspect the exact Farkle postgame continuation owner before wiring a generic
 transition: the Wave 1 write-claim guards must remain intact, and the client must
 never author the authoritative transition. Stop if that requires material shared-owner
 restructuring or changing existing-game behavior.
+
+## September 21 client routing draft after database apply
+
+The canonical Game route now selects Farkle by exact dealer-game/hand/round identity
+and rejects regressive Farkle realtime snapshots. It mounts only the isolated Farkle
+table and uses the existing local terminal snapshot primitive to retain its roster,
+felt, HUD and tab identity through server continuation. Canonical setup/Session Ended
+use the existing neutral surface after gameplay retirement.
+
+`FarkleTerminalPresentation` queues the committed payout until the route owns the
+live terminal hold, emits the canonical win announcement at transfer start and
+reports completion only for the exact settled chip batch. The route submits only
+the captured identity to `farkle_advance_postgame`; the existing server fallback
+remains authoritative. No client scoring, settlement, gameplay timer or bot policy
+was added. Raw HUD balances now consume canonical presentation balances.
+
+Run Back captures only the immutable dealer-game UUID and stake. The server resolves
+the frozen rules. Both setup and Run Back creation controls remain disabled during
+the development gate; public users cannot access the Farkle Run Back affordance.
+Admin-authorized live setup remains an outstanding playable-integration gate.
+
+The next live qualification needs a separate local Supabase stack populated with
+the qualified schema and labeled test configurations. The running
+`run21-app-test-local` stack belongs to other work and was not changed. Production
+creation must remain disabled; do not enable it to obtain browser fixtures.
+No live browser/end-to-end or seven-game browser result is claimed for this draft.
+Final local validation passes: typecheck, 1,655 application tests, 226 harness tests
+and production build (33.58 seconds). See `supabase/farkle/wave2-routing-validation.json`
+for source hashes and the next bounded qualification steps. No main integration.
 
 No Wave 1 SQL, migration, scoring defaults, release flags, or Horses/SCC controllers,
 layouts, scoring, state, or geometry values were changed. No new DB fixtures were
@@ -86,7 +116,7 @@ the other task's stack.
 The initial read-only inspection made no product/database changes. Its record is
 `supabase/farkle/wave2-boundary-inspection-20260921.json`.
 
-## Additive postgame — setup handoff proved, production apply held
+## Additive postgame — applied and authority-qualified
 
 `public.farkle_advance_postgame` validates game/dealer-game/round/hand identity,
 terminal frozen state and the existing Wave 1 settlement. Durable private receipts
@@ -122,12 +152,15 @@ seven-game SQL and canonical timer checks, two exact recoveries and fixture clea
 All 282 mandatory regressions and typecheck pass. Client source is unchanged from
 the prior successful 1,649-application/226-harness-test build.
 
-Production apply remains held as requested. The three database operations in this
-pass were deployed inspection, a rollback diagnostic and the complete acceptance
-proof; nothing persisted. Next release work must record the actual additive
-migration version, run the full post-apply proof and verify metadata, cleanup and
-release gates. Live client routing, presentation and complete Wave 2 browser/end-to-
-end qualification remain pending. No main integration before that full gate.
+The subsequent release pass qualified exact SHA
+`b9e49cf36ee915711e2a766e5ac43eace4327f0e` with all 1,649 application tests,
+226 harness tests, typecheck, build and the 158-assertion SQL proof. Supabase applied
+the unchanged SQL as `20260921155336_farkle_wave2_postgame`. The complete post-apply
+proof passed all 158 assertions, with exact deployed bodies/owners/grants, recovery
+restoration and cleanup. Creation remains disabled, admin-only enabled and defaults
+unapproved/unseeded. See `supabase/farkle/wave2-postgame/release-qualification.json`.
+Live client routing, presentation and complete Wave 2 browser/end-to-end qualification
+remain pending. No main integration before that full gate.
 
 Artifacts: `supabase/farkle/wave2-postgame/README.md`, `qualification.json`,
 `handoff-proof.sql`, `handoff-inspection.json`, `rollback-proof.sql`,

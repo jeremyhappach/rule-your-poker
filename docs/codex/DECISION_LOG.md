@@ -15,8 +15,10 @@ retain Farkle in terminal frames, then retire only the live family discriminator
 when there is no committed dealer game in canonical setup/waiting. No guard/grant
 changes or persistent authority claims are needed. Actual authenticated-role
 negatives, historical Farkle artifact guards, exact timer dispatch and frozen Run
-Back pass in the 158-assertion proof. Production apply remains held and full Wave 2
-playable qualification is pending. Creation stays disabled and defaults unapproved.
+Back pass in the 158-assertion proof. Exact commit `b9e49cf36ee915711e2a766e5ac43eace4327f0e`
+passed the complete deterministic gate, then applied as migration `20260921155336`.
+All 158 post-apply assertions and deployed metadata checks pass. Full Wave 2 playable
+qualification is pending. Creation stays disabled and defaults unapproved.
 
 ## D-141 — Persistent timing supports, but does not replace, replay qualification
 

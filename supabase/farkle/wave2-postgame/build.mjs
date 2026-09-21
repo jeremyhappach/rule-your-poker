@@ -35,8 +35,8 @@ for(const g of f.grants){
 const restore=guard+quiesce+f.definition+';\n'+grants+`DO $verify$ BEGIN IF NOT ${condition([f.md5])} THEN RAISE EXCEPTION 'farkle_wave2:restoration_metadata_mismatch'; END IF; END $verify$;\n`;
 write('restore-body.sql',restore);
 write('restore-shared.sql',`BEGIN ISOLATION LEVEL READ COMMITTED;\nSET LOCAL lock_timeout='5s';\n${restore}COMMIT;\n`);
-write('manifest.json',JSON.stringify({qualifiedWave1Commit:capture.qualifiedWave1Commit,appliedWave1Migration:capture.appliedWave1Migration,sharedFunction:f.signature,baselineMd5:f.md5,candidateMd5:candidateHash,existingBranchesTextPreserved:true,owner:f.owner,securityDefiner:f.security_definer,config:f.config,grants:f.grants,migration:'20260921143129_farkle_wave2_postgame.sql'},null,2)+'\n');
-write('../../migrations/20260921143129_farkle_wave2_postgame.sql',candidate);
+write('manifest.json',JSON.stringify({qualifiedWave1Commit:capture.qualifiedWave1Commit,appliedWave1Migration:capture.appliedWave1Migration,sharedFunction:f.signature,baselineMd5:f.md5,candidateMd5:candidateHash,existingBranchesTextPreserved:true,owner:f.owner,securityDefiner:f.security_definer,config:f.config,grants:f.grants,migration:'20260921155336_farkle_wave2_postgame.sql'},null,2)+'\n');
+write('../../migrations/20260921155336_farkle_wave2_postgame.sql',candidate);
 const regressionFiles=['seven_game_pause_rollback_proof.sql','rule_configuration_authority_rollback_proof.sql','ante_decision_authority_boundary_rollback_proof.sql','final_player_authority_rollback_proof.sql','canonical_game_timer_rollback_proof.sql'];
 const regression=phase=>regressionFiles.map(file=>`SAVEPOINT existing_games;\n${file.startsWith('ante_')?"SELECT set_config('app.three_five_seven_test_no_sweep','on',true);":''}\n${read('../../tests/'+file).replace(/^BEGIN;\s*/,'').replace(/ROLLBACK;\s*$/,'')}\nROLLBACK TO existing_games;\nRELEASE existing_games;\nSELECT pg_temp.farkle_assert(true,${lit(phase+': '+file)});\n`).join('\n');
 const metadata=(hash,phase)=>`SELECT pg_temp.farkle_assert(${condition([hash])},${lit(phase+': definition owner security attributes grants')});\n`;

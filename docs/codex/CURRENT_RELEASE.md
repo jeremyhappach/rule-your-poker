@@ -26,9 +26,18 @@ including actual authenticated-role negatives, canonical setup timeout, duplicat
 stale work, frozen replay/Run Back, two exact recoveries and candidate/restored
 seven-game/canonical timer proofs. All 282 mandatory regressions and typecheck pass.
 The prior unchanged-client build passed 1,649 application and 226 harness tests.
-Production apply remains held as requested; full playable qualification is pending.
-Production gates and Wave 1 history are unchanged. See
+The exact `b9e49cf36ee915711e2a766e5ac43eace4327f0e` implementation subsequently
+passed all 1,649 application and 226 harness tests, typecheck/build and the complete
+SQL proof. Applied as `20260921155336_farkle_wave2_postgame`; all 158 post-apply
+assertions, deployed metadata and locked release gates pass. Full playable
+qualification remains pending. Production gates and Wave 1 history are unchanged. See
+`supabase/farkle/wave2-postgame/release-qualification.json`,
 `supabase/farkle/wave2-postgame/qualification.json` and the [Wave 2 status](FARKLE_WAVE2_20260920.md).
+
+The subsequent isolated client routing/terminal draft passes typecheck, all 1,655
+application tests, 226 harness tests and build. It remains off main. Live setup,
+reconnect/terminal/takeover browser proof and the full seven-game browser gate still
+require an isolated test database; the other task's local Supabase stack was untouched.
 
 ## September 18 continuous sampled play timing
 
