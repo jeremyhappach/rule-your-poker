@@ -1,0 +1,342 @@
+{
+  "sha": "390bf925e3f59740518605f44ac805221cea01a0",
+  "mode": "fake_immediate",
+  "stages": [
+    {
+      "kind": "fake_immediate",
+      "before": {
+        "dice": [
+          {
+            "index": 0,
+            "value": 4
+          },
+          {
+            "index": 1,
+            "value": 2
+          },
+          {
+            "index": 2,
+            "value": 4
+          },
+          {
+            "index": 3,
+            "value": 3
+          },
+          {
+            "index": 4,
+            "value": 2
+          },
+          {
+            "index": 5,
+            "value": 2
+          }
+        ],
+        "stage": "hold",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated timeout qualification",
+          "botDelayMs": 5000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 15,
+          "botBankThreshold": 1
+        },
+        "events": [
+          {
+            "dice": [
+              {
+                "index": 0,
+                "value": 4
+              },
+              {
+                "index": 1,
+                "value": 2
+              },
+              {
+                "index": 2,
+                "value": 4
+              },
+              {
+                "index": 3,
+                "value": 3
+              },
+              {
+                "index": 4,
+                "value": 2
+              },
+              {
+                "index": 5,
+                "value": 2
+              }
+            ],
+            "type": "dice_rolled",
+            "playerId": "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+            "rollNumber": 1,
+            "scoringCycle": 1
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b"
+        ],
+        "finalQueue": null,
+        "legalHolds": [
+          {
+            "points": 200,
+            "indexes": [
+              1,
+              4,
+              5
+            ]
+          }
+        ],
+        "rollNumber": 1,
+        "playerStates": {
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1": {
+            "banked": 0,
+            "completedTurns": 0
+          },
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b": {
+            "banked": 0,
+            "completedTurns": 0
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T21:02:59.219379+00:00",
+        "actionSequence": 1,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "ed47f4e6-a890-4657-a316-b97138d24a6b",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "007b3fa3-fa96-41bd-8f8c-23af39343bd1"
+      },
+      "after": {
+        "dice": [],
+        "stage": "roll",
+        "config": {
+          "rules": {
+            "ofAKind": {
+              "3": [
+                1000,
+                200,
+                300,
+                400,
+                500,
+                600
+              ],
+              "4": [
+                1000,
+                1000,
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "5": [
+                2000,
+                2000,
+                2000,
+                2000,
+                2000,
+                2000
+              ],
+              "6": [
+                3000,
+                3000,
+                3000,
+                3000,
+                3000,
+                3000
+              ]
+            },
+            "singles": {
+              "1": 100,
+              "5": 50
+            },
+            "version": 1,
+            "straight": 1500,
+            "threePairs": 1500,
+            "twoTriplets": 2500,
+            "fourPlusPair": 1500
+          },
+          "endgame": "one_last_turn",
+          "version": 1,
+          "testOnly": true,
+          "botPolicy": "balanced",
+          "testLabel": "TEST ONLY: isolated timeout qualification",
+          "botDelayMs": 5000,
+          "ante_amount": 2,
+          "targetScore": 10000,
+          "turnSeconds": 15,
+          "botBankThreshold": 1
+        },
+        "events": [
+          {
+            "type": "banked",
+            "points": 200,
+            "playerId": "007b3fa3-fa96-41bd-8f8c-23af39343bd1"
+          },
+          {
+            "type": "turn_completed",
+            "banked": 200,
+            "playerId": "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+            "completedTurns": 1
+          },
+          {
+            "type": "turn_started",
+            "playerId": "438d7a33-ac43-4ae0-a74c-c4aa1574561b",
+            "finalQueue": null,
+            "turnNumber": 1,
+            "tiebreakTurn": 0
+          }
+        ],
+        "version": 1,
+        "eligible": [
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b"
+        ],
+        "thisTurn": 0,
+        "available": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "gamePhase": "playing",
+        "turnOrder": [
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b"
+        ],
+        "finalQueue": null,
+        "legalHolds": [],
+        "rollNumber": 0,
+        "playerStates": {
+          "007b3fa3-fa96-41bd-8f8c-23af39343bd1": {
+            "banked": 200,
+            "completedTurns": 1
+          },
+          "438d7a33-ac43-4ae0-a74c-c4aa1574561b": {
+            "banked": 0,
+            "completedTurns": 0
+          }
+        },
+        "scoringCycle": 1,
+        "tiebreakTurn": 0,
+        "turnDeadline": "2026-09-21T21:03:20.121043+00:00",
+        "actionSequence": 3,
+        "scoringVersion": 1,
+        "winnerPlayerId": null,
+        "_authorityScope": "ed47f4e6-a890-4657-a316-b97138d24a6b",
+        "targetReachedBy": null,
+        "currentTurnPlayerId": "438d7a33-ac43-4ae0-a74c-c4aa1574561b"
+      },
+      "receipt": {
+        "player": {
+          "id": "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+          "legs": 0,
+          "chips": 0,
+          "is_bot": false,
+          "status": "active",
+          "game_id": "9297cdea-f6d3-479e-a3d7-76be6fff733c",
+          "user_id": "d1aa3f9d-87cc-4eee-9cc7-8250e4a33c39",
+          "waiting": false,
+          "position": 6,
+          "pre_fold": false,
+          "pre_stay": false,
+          "auto_ante": false,
+          "auto_fold": false,
+          "created_at": "2026-09-21T21:02:27.698988+00:00",
+          "mobile_view": null,
+          "sitting_out": false,
+          "ante_decision": "ante_up",
+          "intent_version": 3,
+          "decision_locked": false,
+          "deck_color_mode": "two_color",
+          "current_decision": null,
+          "auto_ante_runback": false,
+          "sit_out_next_hand": false,
+          "sitting_out_hands": 0,
+          "authority_revision": 7,
+          "stand_up_next_hand": false,
+          "chip_transfer_cursor": null,
+          "participation_version": 0,
+          "auto_play_stop_round_id": null
+        },
+        "outcome": "accepted",
+        "deferred": false
+      },
+      "player": {
+        "id": "007b3fa3-fa96-41bd-8f8c-23af39343bd1",
+        "auto_fold": false,
+        "auto_play_stop_round_id": null,
+        "sit_out_next_hand": false
+      }
+    }
+  ]
+}

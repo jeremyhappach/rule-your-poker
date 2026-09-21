@@ -1,0 +1,45 @@
+{
+  "stats": {
+    "startTime": "2026-09-21T21:00:37.942Z",
+    "duration": 200896.42599999998,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "fake_deferred: existing timeout takeover/reclaim or pause through actual client",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 95456,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "fake_immediate: existing timeout takeover/reclaim or pause through actual client",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 52318,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "real_pause: existing timeout takeover/reclaim or pause through actual client",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 50388,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

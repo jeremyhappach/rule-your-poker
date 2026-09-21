@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 21 synchronized reclaim passed — final qualification in progress
+
+Under the approved risk-based browser policy, the one synchronized deferred-reclaim
+retry passed with authoritative active-actor confirmation, `deferred=true`, and
+handback after exactly one completed turn. Immediate reclaim and real-money pause
+also passed. The previous failure is recorded as a timing flake; no product code
+changed. Together with the ten retained passing Farkle cases, the matrix is complete.
+The fresh seven-game campaign and final deterministic/SQL/metadata/cleanup gates
+are next. Wave 2 remains unqualified and unmerged. See
+[final qualification record](FARKLE_RISK_QUALIFICATION_20260921.md).
+
 ## September 21 runtime-discovery fix published — separate reclaim proof blocked
 
 Harness correction `852c22349b39d7cc83ededce98b330cda69cfaef` is published on

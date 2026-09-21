@@ -1,0 +1,104 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createClient} from '@supabase/supabase-js';
+import {cleanLocalFarkleGame} from './localDatabase';
+
+// Qualification-only harness. Uses the actual client and normal authoritative RPCs.
+for(const mode of ['fake_deferred','fake_immediate','real_pause']) {
+test(mode+': existing timeout takeover/reclaim or pause through actual client',async({browser},info)=>{
+ test.setTimeout(150_000);
+ const cfg=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json','utf8'));
+ if(cfg.API_URL!=='http://127.0.0.1:57321')throw Error('Isolated API required');
+ const accounts=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json','utf8'));
+ const api=createClient(cfg.API_URL,cfg.SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+ const contexts=await Promise.all([browser.newContext({viewport:{width:1280,height:900}}),browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true})]);
+ const pages=await Promise.all(contexts.map(c=>c.newPage()));let gameId:string|undefined;
+ const stages:any[]=[];
+ try{
+  for(const p of pages)await p.route('**/rpc/configure_dealer_game',async route=>{const body=route.request().postDataJSON();if(body.p_game_type==='farkle'){if(!body.p_config.testConfiguration?.testOnly)throw Error('Test-only configuration required');Object.assign(body.p_config.testConfiguration,{turnSeconds:15,botDelayMs:mode==='fake_deferred'?30000:5000,botBankThreshold:1,label:'TEST ONLY: isolated timeout qualification'});}await route.continue({postData:JSON.stringify(body)});});
+  for(const [i,p] of pages.entries()){
+   await p.goto('/auth');await p.locator('#login-email').fill(accounts[i].email);await p.locator('#login-password').fill(accounts[i].password);
+   await p.getByRole('button',{name:'Login',exact:true}).click();await expect(p.getByText('Game Lobby',{exact:true}).first()).toBeVisible();
+  }
+  await pages[0].getByRole('button',{name:'Create New Game',exact:true}).click();
+  await pages[0].getByRole('dialog',{name:'Create New Game'}).getByRole('button',{name:'Create Game',exact:true}).click();
+  await expect(pages[0]).toHaveURL(/\/game\/[0-9a-f-]{36}$/);gameId=pages[0].url().split('/game/')[1];
+  await pages[1].goto(`/game/${gameId}`);await pages[1].locator('[data-waiting-seat-open] button').first().click();
+  await pages[0].locator('[data-start-game-btn]').click();let dealer=pages[0];
+  await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=p;return true;}return false;},{timeout:75_000}).toBe(true);
+  await dealer.getByRole('tab',{name:'Dice Games',exact:true}).click();await dealer.locator('[data-dealer-game-option="farkle"]').click();
+  await dealer.getByLabel('Stake',{exact:true}).fill('2');await dealer.getByLabel('Target Score',{exact:true}).fill('10000');await dealer.getByLabel('Endgame',{exact:true}).selectOption('one_last_turn');
+  await dealer.getByRole('button',{name:'Start TEST ONLY Game',exact:true}).click();
+  await pages.find(p=>p!==dealer)!.locator('[data-authoritative-action-surface="ante-decision"]').getByRole('button',{name:/Ante Up!/}).click();
+  for(const p of pages)await expect(p.locator('[data-farkle-scope]')).toBeVisible();
+  const read=async()=>{
+   const r=await api.from('rounds').select('id,dealer_game_id,hand_number,farkle_state').eq('game_id',gameId!).order('created_at',{ascending:false}).limit(1).single();if(r.error)throw r.error;
+   const p=await api.from('players').select('id,user_id,position,chips').eq('game_id',gameId!);if(p.error)throw p.error;
+   return {round:r.data,state:r.data.farkle_state as any,players:p.data};
+  };
+  let snap=await read();
+  const game=async()=>{const q=await api.from('games').select('is_paused,real_money,status,pause_version').eq('id',gameId!).single();if(q.error)throw q.error;return q.data;};
+  const player=async(id:string)=>{const q=await api.from('players').select('id,auto_fold,auto_play_stop_round_id,sit_out_next_hand').eq('id',id).single();if(q.error)throw q.error;return q.data;};
+  const pageFor=(id:string)=>pages[accounts.findIndex((a:any)=>a.id===snap.players.find(p=>p.id===id)?.user_id)];
+  // Test-host-only mode fixture, matching the existing SQL timeout proof.
+  // It changes no frozen rules and cannot reach production (loopback/container guards).
+  if(mode==='real_pause')execFileSync('docker',['exec','-i','supabase_db_farkle-wave2-local','psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`BEGIN;SELECT private.farkle_claim_v1('${gameId}','${snap.round.dealer_game_id}','${snap.round.id}','configure');UPDATE public.games SET real_money=true WHERE id='${gameId}';COMMIT;`,encoding:'utf8'});
+  for(let n=0;n<8&&snap.state.stage!=='hold';n++){
+   const sequence=snap.state.actionSequence;await pageFor(snap.state.currentTurnPlayerId).getByRole('button',{name:'Roll 6',exact:true}).click();
+   await expect.poll(async()=>(await read()).state.actionSequence).toBe(sequence+1);snap=await read();
+  }
+  expect(snap.state.stage).toBe('hold');const before=structuredClone(snap.state),id=before.currentTurnPlayerId;
+  const actor=pageFor(id),peer=pages.find(p=>p!==actor)!;
+  if(mode==='real_pause'){
+   await expect.poll(async()=>(await game()).is_paused,{timeout:30_000}).toBe(true);
+   const pausedState=(await read()).state;const {turnDeadline:priorDeadline,...priorFacts}=before;const {turnDeadline:pausedDeadline,...pausedFacts}=pausedState;
+   expect(pausedFacts).toEqual(priorFacts);expect(Date.parse(pausedDeadline)).toBeGreaterThan(Date.parse(priorDeadline));expect((await player(id)).auto_fold).toBe(false);
+   for(const p of pages)await expect(p.getByText(/Game is paused/i).first()).toBeVisible();
+   await actor.reload();await expect(actor.getByText(/Game is paused/i).first()).toBeVisible();
+   expect((await read()).state).toEqual(pausedState);
+   await pages[0].getByRole('button',{name:'Player options',exact:true}).click();
+   await pages[0].getByRole('menuitem',{name:/Resume Game/}).click();
+   await expect.poll(async()=>(await game()).is_paused).toBe(false);
+   const resumed=(await read()).state;const{turnDeadline:a,...factsBefore}=before,{turnDeadline:b,...factsAfter}=resumed;
+   expect(factsAfter).toEqual(factsBefore);expect(Date.parse(b)).toBeGreaterThan(Date.parse(a));
+   stages.push({kind:'real-money-timeout-pause-client',before,resumed,player:await player(id)});
+  }else{
+   await expect.poll(async()=>(await player(id)).auto_fold,{timeout:30_000}).toBe(true);
+   await expect(actor.getByLabel('Bot control',{exact:true})).toBeVisible();
+   await expect(peer.locator('svg.lucide-bot')).toBeVisible();
+   if(mode==='fake_deferred'){
+    await actor.reload();await expect(actor.getByLabel('Bot control',{exact:true})).toBeVisible();
+    expect((await player(id)).auto_fold).toBe(true);
+   }else{
+    await expect.poll(async()=>(await read()).state.playerStates[id].completedTurns,{timeout:20_000}).toBe(before.playerStates[id].completedTurns+1);
+    expect((await read()).state.currentTurnPlayerId).not.toBe(id);expect((await player(id)).auto_fold).toBe(true);
+   }
+   if(mode==='fake_deferred'){
+    const atReclaim=await read();const controlling=await player(id);
+    expect(atReclaim.state.currentTurnPlayerId).toBe(id);expect(controlling.auto_fold).toBe(true);
+    expect(Date.parse(atReclaim.state.turnDeadline)-Date.now()).toBeGreaterThan(10_000);
+    stages.push({kind:'synchronized-reclaim',at:Date.now(),state:atReclaim.state,player:controlling});
+   }
+   const response=actor.waitForResponse(r=>r.url().endsWith('/rpc/set_automatic_play')&&r.request().method()==='POST');
+   await actor.getByRole('button',{name:'Rejoin',exact:true}).click();const receipt=await(await response).json();
+   expect(receipt.deferred).toBe(mode==='fake_deferred');
+   if(mode==='fake_deferred'){
+    await expect(actor.getByRole('button',{name:'Rejoining after this turn',exact:true})).toBeVisible();
+    expect((await player(id)).auto_play_stop_round_id).toBe(snap.round.id);
+    await expect.poll(async()=>(await player(id)).auto_fold,{timeout:45_000}).toBe(false);
+   }else await expect.poll(async()=>(await player(id)).auto_fold).toBe(false);
+   expect((await player(id)).auto_play_stop_round_id).toBeNull();
+   expect((await read()).state.playerStates[id].completedTurns).toBe(before.playerStates[id].completedTurns+1);
+   await expect(actor.getByLabel('Bot control',{exact:true})).toHaveCount(0);
+   stages.push({kind:mode,before,after:(await read()).state,receipt,player:await player(id)});
+  }
+ }catch(error){stages.push({kind:'proof-error',message:error instanceof Error?error.message:String(error)});throw error;}finally{
+  fs.writeFileSync(info.outputPath('timeout-proof.json'),JSON.stringify({sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),mode,stages},null,2));
+  try{if(gameId){
+   if(mode==='real_pause')execFileSync('docker',['exec','-i','supabase_db_farkle-wave2-local','psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`BEGIN;SELECT set_config('request.jwt.claim.sub',current_host::text,true),set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claims',json_build_object('sub',current_host,'role','authenticated')::text,true) FROM public.games WHERE id='${gameId}';SELECT public.set_game_paused(id,false,current_game_uuid,pause_version) FROM public.games WHERE id='${gameId}' AND is_paused;SELECT private.farkle_claim_v1('${gameId}',NULL,NULL,'cleanup');UPDATE public.games SET real_money=false WHERE id='${gameId}';COMMIT;`,encoding:'utf8'});
+   cleanLocalFarkleGame(gameId);
+  }}finally{await Promise.all(contexts.map(c=>c.close()));}
+ }
+});
+}
