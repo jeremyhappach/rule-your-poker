@@ -1,5 +1,6 @@
 import type { BrowserContext, Page, Request } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { createSupabaseRuntimeMatcher } from '../../liveness/support/supabaseRuntime';
 import { mutationProgressTarget, tracksMutationProgress, type MutationProgressTarget } from './mutationProgress';
 
 export type ChaosClient = 'host' | 'peer';
@@ -929,10 +930,10 @@ function browserObserverInit(config: { client: ChaosClient; bindingName: string 
   start();
 }
 
-function isSupabaseRestRequest(request: Request): boolean {
+function isSupabaseRestRequest(request: Request, matchesRuntime: (url: string) => boolean): boolean {
   try {
     const url = new URL(request.url());
-    return url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/');
+    return matchesRuntime(url.toString()) && url.pathname.startsWith('/rest/v1/');
   } catch {
     return false;
   }
@@ -947,6 +948,7 @@ function safeEndpoint(request: Request): string {
 }
 
 export class HumanChaosContinuousObserver {
+  private readonly matchesRuntime = createSupabaseRuntimeMatcher();
   private readonly events: ChaosObserverEvent[] = [];
   private readonly networkRequests: ChaosNetworkReceipt[] = [];
   private readonly requestStarts = new Map<Request, ChaosNetworkReceipt>();
@@ -1001,7 +1003,7 @@ export class HumanChaosContinuousObserver {
     await context.addInitScript(browserObserverInit, { client, bindingName: BINDING_NAME });
     context.on('page', (page) => this.attachPage(page, client));
     context.on('request', (request) => {
-      if (this.sealed || !isSupabaseRestRequest(request)) return;
+      if (this.sealed || !isSupabaseRestRequest(request, this.matchesRuntime)) return;
       this.requestSequence += 1;
       const receipt: ChaosNetworkReceipt = {
         requestId: `${client}-request-${this.requestSequence}`,

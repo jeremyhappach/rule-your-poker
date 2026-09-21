@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import type { BrowserContext } from '@playwright/test';
+import { describe, expect, it, vi } from 'vitest';
+import type { BrowserContext, Request } from '@playwright/test';
 
 import {
   buildContinuousObserverEvidence,
@@ -54,6 +54,26 @@ function snapshot(
 }
 
 describe('continuous human-chaos observer evidence', () => {
+  it('captures REST receipts for the explicit local runtime without admitting the frontend or hosted traffic', async () => {
+    vi.stubEnv('PTOWN_E2E_LOCAL_SUPABASE_ORIGIN', 'http://127.0.0.1:57321');
+    try {
+      const observer = new HumanChaosContinuousObserver();
+      const listeners = new Map<string, (request: Request) => void>();
+      const context = { exposeBinding: async () => {}, addInitScript: async () => {},
+        on: (event: string, fn: (request: Request) => void) => { listeners.set(event, fn); },
+      } as unknown as BrowserContext;
+      await observer.attachContext(context, 'host');
+      for (const url of ['http://127.0.0.1:57321/rest/v1/games', 'http://127.0.0.1:5177/rest/v1/games',
+        'https://project.supabase.co/rest/v1/games', 'http://127.0.0.1:57321/auth/v1/user']) {
+        const request = { url: () => url, method: () => 'GET' } as unknown as Request;
+        listeners.get('request')!(request); listeners.get('requestfinished')!(request);
+      }
+      const captured = observer.finish().networkRequests;
+      expect(captured).toHaveLength(1);
+      expect(captured[0]).toMatchObject({ client: 'host', method: 'GET', endpoint: '/rest/v1/games', outcome: 'finished' });
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it('requires captured matching frames on both clients before an ordinary benchmark action', async () => {
     const observer = new HumanChaosContinuousObserver();
     let capture: (_source: unknown, event: ChaosObserverEvent) => void = () => {};

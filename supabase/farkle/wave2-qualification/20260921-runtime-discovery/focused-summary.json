@@ -1,0 +1,39 @@
+{
+  "baseSha": "729e248a2fc08dc3dcebef7736b530e6e429b1cb",
+  "stage": "precommit harness correction; application unchanged",
+  "stats": {
+    "startTime": "2026-09-21T20:24:24.061Z",
+    "duration": 256599.352,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "holm-game: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 117910,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "title": "holm-game: recovers across dealer draw, ambiguous ante commit, and live remount",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 117956,
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "units": {
+    "passed": 59,
+    "files": 2
+  },
+  "fullQualification": false
+}

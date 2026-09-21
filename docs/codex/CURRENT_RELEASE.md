@@ -1,5 +1,21 @@
 # Current release and cutover state
 
+## September 21 isolated runtime discovery — harness correction proved
+
+The seven-game blocker was a harness hostname filter, not a demonstrated product
+defect: `CrossCountryNetwork` and the continuous observer recognized only
+`*.supabase.co`, excluding the isolated `http://127.0.0.1:57321` API. Two fresh
+contexts captured 29/28 API requests after attachment and successful login while
+the old harness reported zero auth requests. With an explicit exact loopback
+origin, both contexts discovered the real browser request credentials.
+
+Only test infrastructure changed: HTTP/WebSocket matching and continuous REST
+observation now share the explicit local-origin matcher; hosted defaults and all
+qualification assertions remain unchanged. Both focused Holm liveness runs passed
+and cleaned their fixtures. Full exact-SHA deterministic/Farkle gates and a fresh
+21-case campaign remain required. Wave 2 remains unqualified and unmerged.
+See [diagnosis and proof](FARKLE_RUNTIME_DISCOVERY_20260921.md).
+
 ## September 21 notice correction — Farkle gates green; seven-game campaign stopped
 
 Published implementation `6493c590cd7aa50c4a37709988c6cfc4bfb87f77` changes only

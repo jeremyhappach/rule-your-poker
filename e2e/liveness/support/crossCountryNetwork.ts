@@ -1,4 +1,5 @@
 import type { BrowserContext, Route, WebSocketRoute } from '@playwright/test';
+import { createSupabaseRuntimeMatcher } from './supabaseRuntime';
 
 type NetworkProfile = {
   httpBaseMs: number;
@@ -20,14 +21,6 @@ const LONG_HAUL: NetworkProfile = {
   websocketBaseMs: 260,
   websocketJitterMs: 1_250,
 };
-
-function isSupabaseUrl(rawUrl: string): boolean {
-  try {
-    return new URL(rawUrl).hostname.endsWith('.supabase.co');
-  } catch {
-    return false;
-  }
-}
 
 function wait(milliseconds: number): Promise<void> {
   return milliseconds <= 0
@@ -76,6 +69,7 @@ export class OrderedDeliveryQueue {
  * after the server has processed it, reproducing an ambiguous commit.
  */
 export class CrossCountryNetwork {
+  private readonly isSupabaseUrl = createSupabaseRuntimeMatcher();
   private profile: NetworkProfile = HEALTHY;
   private sequence = 0;
   private loseResponseFor: RegExp | null = null;
@@ -87,7 +81,7 @@ export class CrossCountryNetwork {
   async attach(context: BrowserContext): Promise<void> {
     await context.route('**/*', async (route) => this.handleHttp(route));
     await context.routeWebSocket(
-      (url) => isSupabaseUrl(url.toString()),
+      (url) => this.isSupabaseUrl(url.toString()),
       (socket) => this.handleWebSocket(socket),
     );
   }
@@ -138,7 +132,7 @@ export class CrossCountryNetwork {
   private async handleHttp(route: Route): Promise<void> {
     const request = route.request();
     const url = request.url();
-    if (!isSupabaseUrl(url)) {
+    if (!this.isSupabaseUrl(url)) {
       await route.continue();
       return;
     }

@@ -1,0 +1,762 @@
+{
+  "runs": [
+    {
+      "attachedAt": 1790022010385,
+      "navigationAt": 1790022011001,
+      "requests": [
+        {
+          "at": 1790022019528,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/client_runtime_instances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019535,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/client_runtime_instances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019540,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/game_defaults",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019545,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019557,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019562,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019570,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019823,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/geometry_overrides",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019832,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022019844,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021198,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/auth/v1/token",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021878,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021883,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021910,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021915,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021922,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021930,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/account_statement",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021935,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "PATCH",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021946,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021954,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022021997,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022005,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/account_statement",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022009,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/admin_account_balances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022014,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022149,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/game_defaults",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022165,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022323,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022022456,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022023613,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/voice_presence_heartbeats",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        }
+      ],
+      "responses": [
+        {
+          "at": 1790022020259,
+          "path": "/rest/v1/client_runtime_instances",
+          "status": 201
+        },
+        {
+          "at": 1790022020263,
+          "path": "/rest/v1/game_defaults",
+          "status": 200
+        },
+        {
+          "at": 1790022020265,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020266,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020266,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020296,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020300,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020313,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022020314,
+          "path": "/rest/v1/geometry_overrides",
+          "status": 200
+        },
+        {
+          "at": 1790022020315,
+          "path": "/rest/v1/client_runtime_instances",
+          "status": 200
+        },
+        {
+          "at": 1790022021823,
+          "path": "/auth/v1/token",
+          "status": 200
+        },
+        {
+          "at": 1790022022083,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022022116,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022022118,
+          "path": "/rest/v1/profiles",
+          "status": 204
+        },
+        {
+          "at": 1790022022141,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022022171,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022022171,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022022199,
+          "path": "/rest/v1/rpc/account_statement",
+          "status": 200
+        },
+        {
+          "at": 1790022022233,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022022233,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022022254,
+          "path": "/rest/v1/rpc/admin_account_balances",
+          "status": 200
+        },
+        {
+          "at": 1790022022307,
+          "path": "/rest/v1/rpc/account_statement",
+          "status": 200
+        },
+        {
+          "at": 1790022022309,
+          "path": "/rest/v1/games",
+          "status": 200
+        },
+        {
+          "at": 1790022022309,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022022310,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022022310,
+          "path": "/rest/v1/game_defaults",
+          "status": 200
+        },
+        {
+          "at": 1790022022391,
+          "path": "/rest/v1/games",
+          "status": 200
+        },
+        {
+          "at": 1790022022481,
+          "path": "/rest/v1/games",
+          "status": 200
+        }
+      ],
+      "discovered": false,
+      "failure": "Error: No Supabase runtime request was observed",
+      "observedAuthRequests": 0
+    },
+    {
+      "attachedAt": 1790022023760,
+      "navigationAt": 1790022024265,
+      "requests": [
+        {
+          "at": 1790022034061,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/game_defaults",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034069,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034074,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/client_runtime_instances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034080,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/client_runtime_instances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034091,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034096,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034107,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034422,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/geometry_overrides",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034428,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022034470,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022035345,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/auth/v1/token",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036210,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036251,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036271,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036284,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036292,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036299,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/account_statement",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036314,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "PATCH",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036323,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036333,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/profiles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036388,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/user_roles",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036393,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/account_statement",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036401,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/rpc/admin_account_balances",
+          "method": "POST",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036408,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036652,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/game_defaults",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036662,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/system_settings",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036723,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        },
+        {
+          "at": 1790022036908,
+          "origin": "http://127.0.0.1:57321",
+          "path": "/rest/v1/games",
+          "method": "GET",
+          "apiKeyPresent": true,
+          "legacyHostnameMatch": false
+        }
+      ],
+      "responses": [
+        {
+          "at": 1790022034679,
+          "path": "/rest/v1/game_defaults",
+          "status": 200
+        },
+        {
+          "at": 1790022034681,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034682,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034684,
+          "path": "/rest/v1/client_runtime_instances",
+          "status": 200
+        },
+        {
+          "at": 1790022034684,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034685,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034690,
+          "path": "/rest/v1/geometry_overrides",
+          "status": 200
+        },
+        {
+          "at": 1790022034691,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034691,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022034700,
+          "path": "/rest/v1/client_runtime_instances",
+          "status": 201
+        },
+        {
+          "at": 1790022036059,
+          "path": "/auth/v1/token",
+          "status": 200
+        },
+        {
+          "at": 1790022036589,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022036589,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022036610,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022036626,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022036678,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022036678,
+          "path": "/rest/v1/profiles",
+          "status": 204
+        },
+        {
+          "at": 1790022036683,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022036684,
+          "path": "/rest/v1/rpc/account_statement",
+          "status": 200
+        },
+        {
+          "at": 1790022036684,
+          "path": "/rest/v1/user_roles",
+          "status": 200
+        },
+        {
+          "at": 1790022036685,
+          "path": "/rest/v1/profiles",
+          "status": 200
+        },
+        {
+          "at": 1790022036685,
+          "path": "/rest/v1/rpc/account_statement",
+          "status": 200
+        },
+        {
+          "at": 1790022036705,
+          "path": "/rest/v1/games",
+          "status": 200
+        },
+        {
+          "at": 1790022036706,
+          "path": "/rest/v1/game_defaults",
+          "status": 200
+        },
+        {
+          "at": 1790022036706,
+          "path": "/rest/v1/rpc/admin_account_balances",
+          "status": 200
+        },
+        {
+          "at": 1790022036712,
+          "path": "/rest/v1/system_settings",
+          "status": 200
+        },
+        {
+          "at": 1790022036874,
+          "path": "/rest/v1/games",
+          "status": 200
+        },
+        {
+          "at": 1790022036938,
+          "path": "/rest/v1/games",
+          "status": 200
+        }
+      ],
+      "discovered": false,
+      "failure": "Error: No Supabase runtime request was observed",
+      "observedAuthRequests": 0
+    }
+  ]
+}
