@@ -1,0 +1,61 @@
+{
+  "sourceSha": "9bc4e37092bc344b20059a1bcfbb48aee1d18bf5",
+  "classification": "product presentation defect",
+  "owner": "src/components/farkle/FarkleGameTable.tsx:91",
+  "failureBoundary": "Farkle gameplay_notice payload.text is incompatible with canonical payload.title renderer",
+  "failedBrowserCase": "remainingPlayable.local.spec.ts:72",
+  "qualificationRetryCount": 0,
+  "diagnostic": {
+    "passed": true,
+    "seconds": 36.7,
+    "meaning": "Confirmed the failure; does not qualify the browser case."
+  },
+  "productChanges": false,
+  "assertionChanges": false,
+  "productionMutations": false,
+  "wave2Qualified": false,
+  "sevenGameCampaign": "not started",
+  "finalDeterministicGates": "not run after browser failure",
+  "finalProductionVerification": "not run after browser failure",
+  "cleanup": {
+    "passed": true,
+    "remainingTables": [
+      "private.farkle_release|1",
+      "private.farkle_postgame_control_v2|1",
+      "private.game_timer_cutover|1",
+      "public.game_defaults|7"
+    ],
+    "authUsers": 0,
+    "profiles": 0,
+    "functionCount": 384,
+    "functionDrift": [],
+    "localCreationEnabled": false,
+    "comparison": "Previously recorded applied production metadata; not a fresh production query."
+  },
+  "artifacts": [
+    {
+      "file": "diagnosis.json",
+      "sha256": "a0bdcb8141b47d11b7bb549045fa05564c521741c8e6406b288d5d79e4e7ef47"
+    },
+    {
+      "file": "diagnostic-case.ts.txt",
+      "sha256": "0ce5dd2a98eafb180053cf550126231fac52d4b77bc699169a9000b05935df98"
+    },
+    {
+      "file": "failed-attempt/error-context.md",
+      "sha256": "768b3a6a7bb364b744abebc850245fdd164cd7db4ae23feafdcf268128aff088"
+    },
+    {
+      "file": "failed-attempt/qualification.json",
+      "sha256": "f7bb9c17261b4a495566819dde6573f2121e615f50a0546179967fd1eb46aeec"
+    },
+    {
+      "file": "failed-attempt/test-failed-1.png",
+      "sha256": "fd28d12a75201c897b14c3b7311d552d2c796a36793ceecce72e2c677342cde5"
+    },
+    {
+      "file": "failed-attempt/test-failed-2.png",
+      "sha256": "f101849821ad3f64ab13bcdec4fa6a1ae98d89b8c5d88558da8274fd4eaa78b0"
+    }
+  ]
+}

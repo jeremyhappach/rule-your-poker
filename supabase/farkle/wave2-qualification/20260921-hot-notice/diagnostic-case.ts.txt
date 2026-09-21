@@ -1,0 +1,93 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {farkleCommittedHolds} from '../src/lib/farkle/presentation';
+import {createClient} from '@supabase/supabase-js';
+import {cleanLocalFarkleGame} from '../e2e/farkle/localDatabase';
+
+// Qualification-only harness. Uses the actual client and normal authoritative RPCs.
+test('diagnose actual Hot Dice announcement payload and renderer',async({browser},info)=>{
+ const cfg=JSON.parse(fs.readFileSync('runtime-farkle.local/status.json','utf8'));
+ if(cfg.API_URL!=='http://127.0.0.1:57321')throw Error('Isolated API required');
+ const accounts=JSON.parse(fs.readFileSync('runtime-farkle.local/accounts.json','utf8'));
+ const api=createClient(cfg.API_URL,cfg.SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+ const contexts=await Promise.all([browser.newContext({viewport:{width:1280,height:900}}),browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true})]);
+ const pages=await Promise.all(contexts.map(c=>c.newPage()));let gameId:string|undefined;
+ const stages:any[]=[];const coverage={partial:false,rollN:false,hot:false,farkle:false,remote:false,history:false};
+ try{
+  for(const [i,p] of pages.entries()){
+   await p.goto('/auth');await p.locator('#login-email').fill(accounts[i].email);await p.locator('#login-password').fill(accounts[i].password);
+   await p.getByRole('button',{name:'Login',exact:true}).click();await expect(p.getByText('Game Lobby',{exact:true}).first()).toBeVisible();
+  }
+  await pages[0].getByRole('button',{name:'Create New Game',exact:true}).click();
+  await pages[0].getByRole('dialog',{name:'Create New Game'}).getByRole('button',{name:'Create Game',exact:true}).click();
+  await expect(pages[0]).toHaveURL(/\/game\/[0-9a-f-]{36}$/);gameId=pages[0].url().split('/game/')[1];
+  await pages[1].goto(`/game/${gameId}`);await pages[1].locator('[data-waiting-seat-open] button').first().click();
+  await pages[0].locator('[data-start-game-btn]').click();let dealer=pages[0];
+  await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=p;return true;}return false;},{timeout:75_000}).toBe(true);
+  await dealer.getByRole('tab',{name:'Dice Games',exact:true}).click();await dealer.locator('[data-dealer-game-option="farkle"]').click();
+  await dealer.getByLabel('Stake',{exact:true}).fill('2');await dealer.getByLabel('Target Score',{exact:true}).fill('10000');await dealer.getByLabel('Endgame',{exact:true}).selectOption('one_last_turn');
+  await dealer.getByRole('button',{name:'Start TEST ONLY Game',exact:true}).click();
+  await pages.find(p=>p!==dealer)!.locator('[data-authoritative-action-surface="ante-decision"]').getByRole('button',{name:/Ante Up!/}).click();
+  for(const p of pages)await expect(p.locator('[data-farkle-scope]')).toBeVisible();
+  const read=async()=>{
+   const r=await api.from('rounds').select('id,dealer_game_id,hand_number,farkle_state').eq('game_id',gameId!).order('created_at',{ascending:false}).limit(1).single();if(r.error)throw r.error;
+   const p=await api.from('players').select('id,user_id,position,chips').eq('game_id',gameId!);if(p.error)throw p.error;
+   return {round:r.data,state:r.data.farkle_state as any,players:p.data};
+  };
+  for(const page of pages)await page.evaluate(()=>{
+   const w=window as any;w.hotNoticeDiagnostic={active:[],rails:[],latestId:null};
+   const sample=()=>{
+    const root=document.querySelector('[data-farkle-scope]') as any;
+    let fiber=root&&root[Object.keys(root).find(k=>k.startsWith('__reactFiber'))!];
+    let active:any=null;
+    for(let n=0;fiber&&n<100;n++,fiber=fiber.return){
+     const value=fiber.memoizedProps?.value;
+     if(value&&typeof value.emit==='function'&&'transient' in value){active=value.active;break;}
+    }
+    const out=w.hotNoticeDiagnostic;out.latestId=active?.id??null;
+    if(active?.type==='gameplay_notice'&&active.id.startsWith('farkle/')&&!out.active.some((x:any)=>x.event.id===active.id))
+     out.active.push({utc:new Date().toISOString(),epochMs:performance.timeOrigin+performance.now(),event:{id:active.id,type:active.type,payload:active.payload,scope:active.scope,ttlMs:active.ttlMs}});
+    const rail=[...document.querySelectorAll('[data-canonical-announcement-content]')].map(n=>({id:n.getAttribute('data-canonical-announcement-id'),type:n.getAttribute('data-canonical-announcement-type'),text:n.textContent}));
+    if(JSON.stringify(out.rails.at(-1)?.rail)!==JSON.stringify(rail))out.rails.push({utc:new Date().toISOString(),rail});
+    requestAnimationFrame(sample);
+   };requestAnimationFrame(sample);
+  });
+  let snap=await read();let diagnosed=false;
+  const pageFor=(id:string)=>pages[accounts.findIndex((a:any)=>a.id===snap.players.find(p=>p.id===id)?.user_id)];
+  for(let n=0;n<120&&!diagnosed;n++){
+   const before=snap.state,actor=pageFor(before.currentTurnPlayerId);
+   if(before.stage==='hold'){
+    const hold=[...before.legalHolds].sort((a:any,b:any)=>b.indexes.length-a.indexes.length||b.points-a.points)[0];
+    for(const index of hold.indexes)await actor.locator(`[data-farkle-active-area] button[data-farkle-die-index="${index}"]`).click();
+    await actor.getByRole('button',{name:/^Hold Dice/}).click();
+   }else await actor.getByRole('button',{name:'Roll '+before.available.length,exact:true}).click();
+   await expect.poll(async()=>(await read()).state.actionSequence).toBe(before.actionSequence+1);snap=await read();
+   stages.push({kind:'authoritative-action',state:snap.state});
+   if(!snap.state.events.some((e:any)=>e.type==='hot_dice'))continue;
+   expect(snap.state.available).toEqual([0,1,2,3,4,5]);
+   const id=`farkle/${gameId}/${snap.round.dealer_game_id}/${snap.round.hand_number}/${snap.round.id}/${snap.state.actionSequence}/hot_dice`;
+   for(const [client,page]of pages.entries()){
+    await expect.poll(()=>page.evaluate(id=>(window as any).hotNoticeDiagnostic.active.some((x:any)=>x.event.id===id),id)).toBe(true);
+    // Observe the full existing TTL; this is diagnostic evidence, not a weaker qualification.
+    await expect.poll(()=>page.evaluate(id=>(window as any).hotNoticeDiagnostic.latestId!==id,id)).toBe(true);
+    const evidence=await page.evaluate(async id=>{
+     const captured=(window as any).hotNoticeDiagnostic;const event=captured.active.find((x:any)=>x.event.id===id).event;
+     const rendererPath='/src/lib/canonicalShell/announcements/renderers.tsx';const {renderAnnouncement}=await import(rendererPath);
+     const debugPath='/src/lib/canonicalShell/announcements/announcementDebugLog.ts';const {getAnnouncementDebugEvents}=await import(debugPath);
+     return {...captured,rendererReturnedNull:renderAnnouncement(event)===null,
+      titlePayloadWouldRender:renderAnnouncement({...event,payload:{title:event.payload.text}})!==null,
+      lifecycle:getAnnouncementDebugEvents().filter((x:any)=>x.detail?.id===id||x.detail?.eventId===id)};
+    },id);
+    expect(evidence.rendererReturnedNull).toBe(true);expect(evidence.titlePayloadWouldRender).toBe(true);
+    expect(evidence.rails.some((x:any)=>x.rail.some((r:any)=>r.id===id))).toBe(false);
+    stages.push({kind:'actual-client-hot-dice-renderer-diagnosis',client,eventId:id,evidence});
+   }
+   diagnosed=true;
+  }
+  expect(diagnosed).toBe(true);
+ }finally{
+  fs.writeFileSync(info.outputPath('hot-notice-diagnosis.json'),JSON.stringify({sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),stages},null,2));
+  try{if(gameId)cleanLocalFarkleGame(gameId);}finally{await Promise.all(contexts.map(c=>c.close()));}
+ }
+});

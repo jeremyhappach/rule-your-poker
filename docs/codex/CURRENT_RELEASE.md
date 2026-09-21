@@ -1,5 +1,16 @@
 # Current release and cutover state
 
+## September 21 resumed Wave 2 — Farkle notice product defect
+
+At exact source `9bc4e37092bc344b20059a1bcfbb48aee1d18bf5`, the remaining matrix
+passed partial holds/Roll N/committed-row and peer-sequence checks, then failed
+HOT DICE presentation. Actual-client diagnosis proves both announcement providers
+accepted and promoted the event, but the renderer returns null: Farkle sends
+`payload.text` while the canonical notice contract requires `payload.title`.
+No product or assertion change was made. Fixtures are clean; seven-game and final
+release gates remain unrun. Wave 2 remains unqualified and unmerged. See
+[root cause and smallest proposed Farkle-only correction](FARKLE_NOTICE_BLOCKER_20260921.md).
+
 ## September 21 held-dice reconnect contract proved
 
 The Roll N failure was an incorrect current-roll-array assertion. Committed Hold
