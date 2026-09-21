@@ -1,5 +1,13 @@
 # Repository map
 
+Farkle Wave 2 postgame (candidate, not applied):
+`supabase/farkle/wave2-postgame/authority.sql` owns exact terminal continuation and
+private idempotent receipts. `build.mjs` generates the additive migration, one
+canonical timer dispatch branch, executable forward recovery and rollback proofs
+from `capture.json`. `qualification.json` distinguishes pre-apply evidence from
+deployment and full playable qualification. Wave 1 source/migration files remain
+unchanged; the Farkle owner never calls Horses/SCC postgame logic.
+
 Gin replay/1: migration `20260914192806_gin_replay_v1.sql` owns the private
 append-only journal, Gin authority hooks and `public.export_gin_replay_v1`.
 `src/lib/replay/contractV1.ts` reconstructs offline; `visibilityV1.ts` owns the

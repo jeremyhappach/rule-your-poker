@@ -1,0 +1,28 @@
+{
+  "qualifiedWave1Commit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "appliedWave1Migration": "20260920155333",
+  "sharedFunction": "private.advance_due_canonical_game_timers(integer)",
+  "baselineMd5": "e7c784e3fa2e412d3333ffd2355096f4",
+  "candidateMd5": "3f60fdfc00de2466dd2f31060892db0d",
+  "existingBranchesTextPreserved": true,
+  "owner": "postgres",
+  "securityDefiner": true,
+  "config": [
+    "search_path=\"\""
+  ],
+  "grants": [
+    {
+      "grantee": "postgres",
+      "grantor": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    }
+  ],
+  "migration": "20260921143129_farkle_wave2_postgame.sql"
+}

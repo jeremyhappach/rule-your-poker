@@ -1,2 +1,3 @@
 # Preserve the reviewed mixed-newline function bodies and their fingerprints.
 *_farkle_wave1_authority.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+*_farkle_wave2_postgame.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

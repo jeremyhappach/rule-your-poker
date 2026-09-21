@@ -60,6 +60,80 @@ under `test-results/wave2-foundation/`. Final results are recorded in
 Main integration of Wave 2 remains pending complete playable qualification. Numeric
 production scoring defaults remain unapproved, unseeded and disabled.
 
+## September 21 resume: server continuation boundary confirmed
+
+Resumed at exact `cc426e833859e3ecfb9b5de0e5d14e0cab90af0e`. Read-only
+inspection of deployed PostgreSQL confirms that Farkle settlement ends in
+`game_over` (or `session_ended` for a pending session end), but there is no Farkle
+postgame RPC. `private.advance_standard_postgame` and the standard postgame
+timer registration admit only Holm/Horses/SCC. The Farkle round timer is cancelled
+at completion. The generic client transition cannot substitute: Farkle write
+guards correctly require an exact server authority claim.
+
+Jeremy clarified that a new Wave 2 migration may extend the shared dispatcher;
+the applied Wave 1 migration/history and existing-game behavior remain immutable.
+The approved isolated owner and single dispatch branch are now implemented in
+`supabase/farkle/wave2-postgame/`. The new migration is not applied yet.
+
+Production creation remains disabled, admin-only enabled, defaults approval false,
+and Farkle defaults row count zero. The existing resolver rejects even admin/service
+test-only creation while creation is disabled. Only the main Supabase branch exists.
+A running local Supabase stack belongs to another task and has no Farkle authority
+schema; it was inspected without mutation. Use a separate local instance with the
+qualified schema for test-only browser fixtures, preserving production flags and
+the other task's stack.
+
+The initial read-only inspection made no product/database changes. Its record is
+`supabase/farkle/wave2-boundary-inspection-20260921.json`.
+
+## Additive postgame draft — passing proofs, open qualification boundary
+
+`public.farkle_advance_postgame` validates game/dealer-game/round/hand identity,
+terminal frozen state and the existing Wave 1 settlement. A private receipt makes
+duplicate and late requests read-only, including after a subsequent dealer game.
+The function consumes participation intent atomically, uses canonical participation
+admission when too few players remain, and rotates to the next lower occupied
+eligible seat. It does not score or settle chips. Pending-session-end frames remain
+intact. It restores the transaction-local Farkle claim before returning.
+
+A Farkle-only trigger registers the existing canonical timer queue's 15-second
+fallback. The sole shared change is one `farkle_postgame` branch invoking the same
+Farkle owner. No Horses/SCC postgame owner, scheduler query, or existing branch
+changes. Executable recovery serializes with creation/continuation, refuses active
+Farkle games, disables the additive owner and restores the exact captured Wave 1
+definition/owner/security/grants. It preserves all Farkle data/history.
+
+Validation: 131 assertions in one complete rollback run, including original Wave 1
+authority/hardening proofs, candidate and restored seven-game regression and
+canonical timer proofs, two exact recoveries and three candidate installations,
+duplicate/late replay, tie/authorization/pause negatives, pending-session-end,
+canonical waiting/ended admission and fixture cascade cleanup. Typecheck/build,
+1,649 application tests, 226 harness tests and 282 mandatory regressions pass.
+
+The repository's three-database-operation budget was used by the deployed capture,
+the initial 129-assertion proof and the expanded 131-assertion proof. Stop before
+apply; no migration or release flag changes persisted. Final review also found an
+uncovered next-phase boundary: the candidate keeps `games.game_type='farkle'` after
+returning to game selection. The latest source definition of
+`private.handle_config_deadline_timeout_exact` establishes the four existing card/
+Yahtzee authority flags but no Farkle claim before updating the dealer player.
+The Wave 1 guard would reject that later timeout. This was not exercised by the
+passing proof and is not a demonstrated existing-game defect.
+
+Next: verify the deployed setup-timeout owner and close this boundary within the
+isolated Farkle continuation owner if possible (neutral setup admission while
+retaining immutable dealer-game history and local terminal presentation). Prove
+setup timeout, waiting admission and replay/Run Back after that handoff. Do not add
+another shared-owner extension without reporting the need first. Rerun the complete
+candidate/recovery proof before apply; then record the actual migration version and
+run the full post-apply proof and cleanup/release checks. Resume client routing,
+terminal presentation and full playable/browser qualification. No additional scope
+approval is needed within the already-approved isolated scope. Wave 2 remains off main.
+
+See `supabase/farkle/wave2-postgame/README.md`, `manifest.json`,
+`qualification.json`, `rollback-proof.sql`, `post-apply-proof.sql` and
+`restore-shared.sql` for the captured definition, checks and executable artifacts.
+
 Final foundation check: typecheck/build, all 1,649 application tests and 226 harness
 tests pass. Isolated component checks pass at 390x844 and 1280x900, with no page
 errors or horizontal overflow and exact Hold selection [0,1]. Mobile rendering

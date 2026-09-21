@@ -1,5 +1,20 @@
 # Durable decision log
 
+## D-142 — Farkle continuation is additive authority, not a Wave 1 rewrite
+
+Jeremy's September 21 clarification permits a later Wave 2 migration to extend a
+shared function while preserving the applied Wave 1 migration/history and all
+existing-game behavior. Farkle uses an isolated exact-identity continuation owner
+and private durable receipts. Connected presentation completion and the canonical
+timer fallback call that same owner; neither client code nor Horses/SCC postgame
+logic advances Farkle. A single dispatch addition is derived from the captured
+qualified function. Forward recovery restores its definition, owner, security and
+grants exactly, serializes with creation/continuation, and preserves additive data.
+The current rollback proof passes, but final review found an uncovered later
+setup-timeout authority boundary. Close it before production apply; full Wave 2
+playable qualification also remains pending. Creation stays disabled and scoring defaults stay
+unapproved/unseeded.
+
 ## D-141 — Persistent timing supports, but does not replace, replay qualification
 
 Normal play records bounded, sampled observations without a calendar expiry.

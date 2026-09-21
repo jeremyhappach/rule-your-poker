@@ -1,0 +1,493 @@
+{
+  "capturedAt": "2026-09-21",
+  "qualifiedWave1Commit": "e80200300ee81597f8ac11447a2aa15069107644",
+  "appliedWave1Migration": "20260920155333",
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "private.game_timer_registry",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.game_timer_registry",
+      "column": "game_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "timer_kind",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "identity_key",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "owner_task",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.game_timer_registry",
+      "column": "dealer_game_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "private.game_timer_registry",
+      "column": "round_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "integer",
+      "table": "private.game_timer_registry",
+      "column": "hand_number",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "private.game_timer_registry",
+      "column": "actor_player_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "phase",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.game_timer_registry",
+      "column": "due_at",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "state",
+      "default": "'scheduled'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "private.game_timer_registry",
+      "column": "metadata",
+      "default": "'{}'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "type": "integer",
+      "table": "private.game_timer_registry",
+      "column": "attempt_count",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.game_timer_registry",
+      "column": "last_attempt_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.game_timer_registry",
+      "column": "completed_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "private.game_timer_registry",
+      "column": "last_error",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.game_timer_registry",
+      "column": "created_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.game_timer_registry",
+      "column": "updated_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "game_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "dealer_game_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "round_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "integer",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "hand_number",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "winner_player_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "target_status",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "integer",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "dealer_position",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "config_deadline",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.yahtzee_postgame_advances",
+      "column": "created_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    },
+    {
+      "type": "boolean",
+      "table": "public.players",
+      "column": "auto_fold",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "type": "bigint",
+      "table": "public.players",
+      "column": "intent_version",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "public.players",
+      "column": "auto_play_stop_round_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bigint",
+      "table": "public.players",
+      "column": "authority_revision",
+      "default": "1",
+      "nullable": "NO"
+    },
+    {
+      "type": "integer",
+      "table": "public.games",
+      "column": "current_round",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "integer",
+      "table": "public.games",
+      "column": "total_hands",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "bigint",
+      "table": "public.games",
+      "column": "authority_revision",
+      "default": "1",
+      "nullable": "NO"
+    }
+  ],
+  "indexes": [
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE UNIQUE INDEX game_timer_registry_pkey ON private.game_timer_registry USING btree (id)"
+    },
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE UNIQUE INDEX game_timer_registry_game_id_timer_kind_identity_key_key ON private.game_timer_registry USING btree (game_id, timer_kind, identity_key)"
+    },
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE INDEX idx_game_timer_registry_due ON private.game_timer_registry USING btree (owner_task, due_at, id) WHERE (state = 'scheduled'::text)"
+    },
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE INDEX idx_game_timer_registry_game_active ON private.game_timer_registry USING btree (game_id, timer_kind, due_at) WHERE (state = ANY (ARRAY['scheduled'::text, 'processing'::text]))"
+    },
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE INDEX idx_game_timer_registry_round_id ON private.game_timer_registry USING btree (round_id) WHERE (round_id IS NOT NULL)"
+    },
+    {
+      "table": "game_timer_registry",
+      "definition": "CREATE INDEX idx_game_timer_registry_actor_player_id ON private.game_timer_registry USING btree (actor_player_id) WHERE (actor_player_id IS NOT NULL)"
+    },
+    {
+      "table": "yahtzee_postgame_advances",
+      "definition": "CREATE UNIQUE INDEX yahtzee_postgame_advances_pkey ON private.yahtzee_postgame_advances USING btree (game_id, dealer_game_id, round_id, hand_number)"
+    }
+  ],
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "functions": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "md5": "e7c784e3fa2e412d3333ffd2355096f4",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.advance_due_canonical_game_timers(integer)",
+      "definition": "CREATE OR REPLACE FUNCTION private.advance_due_canonical_game_timers(p_limit integer DEFAULT 64)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_saved_recovery_context jsonb:=private.capture_recovery_context();\n  v_timer private.game_timer_registry%ROWTYPE;\n  v_legacy record;\n  v_result jsonb;\n  v_game public.games%ROWTYPE;\n  v_player public.players%ROWTYPE;\n  v_decision text;\n  v_fold_probability numeric;\n  v_processed integer:=0;\n  v_failed integer:=0;\n  v_error text;\nBEGIN\n  PERFORM set_config('request.jwt.claim.role','service_role',true);\n  PERFORM set_config('request.jwt.claims','{\"role\":\"service_role\"}',true);\n\n  FOR v_timer IN\n    SELECT timer.*\n      FROM private.game_timer_registry timer\n      JOIN public.games game_row ON game_row.id=timer.game_id\n     WHERE timer.owner_task='canonical_timers'\n       AND timer.state='scheduled'\n       AND timer.due_at<=clock_timestamp()\n       AND NOT coalesce(game_row.is_paused,false)\n     ORDER BY timer.due_at,timer.id\n     LIMIT greatest(1,least(coalesce(p_limit,64),256))\n     FOR UPDATE OF timer SKIP LOCKED\n  LOOP\n    UPDATE private.game_timer_registry\n       SET state='processing',attempt_count=attempt_count+1,\n           last_attempt_at=clock_timestamp(),updated_at=clock_timestamp()\n     WHERE id=v_timer.id;\n    BEGIN\n      v_result:=NULL;\n      CASE v_timer.timer_kind\n        WHEN 'dealer_selection_prepare' THEN\n          v_result:=private.prepare_session_dealer_selection(\n            v_timer.game_id,(v_timer.metadata->>'timer_generation')::bigint\n          );\n        WHEN 'dealer_selection_complete' THEN\n          v_result:=private.complete_session_dealer_selection(\n            v_timer.game_id,(v_timer.metadata->>'timer_generation')::bigint\n          );\n        WHEN 'config_timeout' THEN\n          v_result:=private.handle_config_deadline_timeout_exact(\n            v_timer.game_id,\n            (v_timer.metadata->>'expected_deadline')::timestamptz,\n            (v_timer.metadata->>'expected_dealer_position')::integer\n          );\n        WHEN 'ante_phase' THEN\n          v_result:=private.advance_ante_phase_exact(\n            v_timer.game_id,v_timer.dealer_game_id,\n            (v_timer.metadata->>'expected_deadline')::timestamptz,\n            clock_timestamp()\n          );\n        WHEN 'holm_decision' THEN\n          SELECT * INTO v_player FROM public.players\n           WHERE id=v_timer.actor_player_id;\n          IF NOT FOUND THEN\n            v_result:=jsonb_build_object('outcome','stale_actor');\n          ELSE\n            IF coalesce(v_player.is_bot,false) THEN\n              SELECT coalesce(defaults.bot_fold_probability,30)\n                INTO v_fold_probability FROM public.game_defaults defaults\n               WHERE defaults.game_type='holm' LIMIT 1;\n              v_decision:=CASE WHEN private.secure_random_unit()*100<coalesce(v_fold_probability,30)\n                               THEN 'fold' ELSE 'stay' END;\n            ELSE\n              v_decision:='fold';\n            END IF;\n            SELECT public.holm_apply_deadline_decision(\n              v_timer.game_id,v_timer.round_id,v_player.id,v_decision,\n              NOT coalesce(v_player.is_bot,false)\n            ) INTO v_result;\n          END IF;\n        WHEN 'farkle_turn' THEN\n          v_result:=private.farkle_advance_due_v1(v_timer.round_id,clock_timestamp());\n        WHEN 'horses_scc_turn' THEN\n          v_result:=private.advance_horses_scc_expired_turn(\n            v_timer.round_id,clock_timestamp()\n          );\n        WHEN 'horses_scc_terminal' THEN\n          v_result:=private.advance_horses_scc_expired_turn(\n            v_timer.round_id,clock_timestamp()\n          );\n          IF v_result->>'status'='tie_waiting_for_client' THEN\n            v_result:=private.horses_scc_rollover_abandoned_round(\n              v_timer.round_id,clock_timestamp()\n            );\n          END IF;\n        WHEN 'standard_postgame' THEN\n          v_result:=private.advance_standard_postgame(\n            v_timer.game_id,v_timer.dealer_game_id,v_timer.hand_number\n          );\n        ELSE\n          RAISE EXCEPTION 'advance_due_canonical_game_timers:unknown_kind:%',\n            v_timer.timer_kind;\n      END CASE;\n\n      IF v_result->>'outcome' IN ('pending','paused','not_prepared','no_eligible_players','deadline_not_expired') THEN\n        SELECT * INTO v_game FROM public.games WHERE id=v_timer.game_id;\n        UPDATE private.game_timer_registry\n           SET state='scheduled',\n               due_at=CASE WHEN v_result->>'outcome' IN ('pending','deadline_not_expired')\n                 AND v_result->>'deadline' IS NOT NULL\n                 THEN (v_result->>'deadline')::timestamptz\n                 ELSE clock_timestamp()+interval '1 second' END,\n               metadata=CASE WHEN v_timer.timer_kind='ante_phase'\n                 AND v_game.ante_decision_deadline IS NOT NULL\n                 THEN metadata || jsonb_build_object(\n                   'expected_deadline',v_game.ante_decision_deadline\n                 ) ELSE metadata END,\n               updated_at=clock_timestamp()\n         WHERE id=v_timer.id;\n      ELSE\n        UPDATE private.game_timer_registry\n           SET state='completed',completed_at=clock_timestamp(),\n               metadata=metadata || jsonb_build_object(\n                 'result',coalesce(v_result,'{}'::jsonb)\n               ),updated_at=clock_timestamp()\n         WHERE id=v_timer.id;\n      END IF;\n      v_processed:=v_processed+1;\n    EXCEPTION WHEN OTHERS THEN\n      v_error:=SQLSTATE || ':' || SQLERRM;\n      UPDATE private.game_timer_registry\n         SET state='scheduled',due_at=clock_timestamp()+interval '5 seconds',\n             last_error=v_error,updated_at=clock_timestamp()\n       WHERE id=v_timer.id;\n      v_failed:=v_failed+1;\n    END;\n  END LOOP;\n\n  -- Client-created legacy dice rounds used NULL as a bot-delay sentinel.\n  -- Convert only the exact active post-cutover actor to a database timestamp;\n  -- no historical row is scanned or admitted.\n  FOR v_legacy IN\n    SELECT round_row.id,round_row.game_id,defaults.bot_decision_delay_seconds\n    FROM public.rounds round_row CROSS JOIN public.games game_row\n    JOIN public.game_defaults defaults\n      ON defaults.game_type=game_row.game_type\n    JOIN public.players actor\n      ON actor.game_id=game_row.id AND actor.is_bot=true\n   WHERE round_row.game_id=game_row.id\n     AND game_row.game_type IN ('horses','ship-captain-crew')\n     AND game_row.status='in_progress'\n     AND NOT coalesce(game_row.is_paused,false)\n     AND game_row.current_game_uuid IS NOT DISTINCT FROM round_row.dealer_game_id\n     AND round_row.horses_state->>'gamePhase'='playing'\n     AND nullif(round_row.horses_state->>'turnDeadline','') IS NULL\n     AND actor.id::text=round_row.horses_state->>'currentTurnPlayerId'\n     AND EXISTS (\n       SELECT 1 FROM private.game_timer_cutover cutover\n        WHERE cutover.singleton=true\n          AND game_row.timer_generation>0\n     )\n     AND NOT private.recovery_session_deferred('canonical_timers',game_row.id)\n     ORDER BY round_row.id LIMIT 64\n  LOOP\n    BEGIN\n      UPDATE public.rounds SET horses_state=jsonb_set(horses_state,'{turnDeadline}',to_jsonb(\n        clock_timestamp()+make_interval(secs=>greatest(0.1,coalesce(v_legacy.bot_decision_delay_seconds,2)))),true)\n      WHERE id=v_legacy.id;\n      PERFORM private.clear_recovery_unit_failure('canonical_timers',v_legacy.game_id,'legacy:'||v_legacy.id::text);\n    EXCEPTION WHEN OTHERS THEN\n      PERFORM private.record_recovery_unit_failure('canonical_timers',v_legacy.game_id,'legacy:'||v_legacy.id::text,SQLSTATE,SQLERRM);\n    END;\n  END LOOP;\n\n  PERFORM private.restore_recovery_context(v_saved_recovery_context);\n\n  RETURN jsonb_build_object(\n    'outcome',CASE WHEN v_failed=0 THEN 'completed' ELSE 'partial_failure' END,\n    'processed',v_processed,'failed',v_failed\n  );\nEXCEPTION WHEN OTHERS THEN\n PERFORM private.restore_recovery_context(v_saved_recovery_context);\n RAISE;\nEND;\n$function$\n",
+      "volatility": "v",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "6438955b90e803c361fbd877390a5c06",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.cancel_game_timers(uuid,text,uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION private.cancel_game_timers(p_game_id uuid, p_timer_kind text, p_round_id uuid DEFAULT NULL::uuid)\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_count integer;\nBEGIN\n  UPDATE private.game_timer_registry timer\n     SET state = 'cancelled',\n         completed_at = clock_timestamp(),\n         updated_at = clock_timestamp()\n   WHERE timer.game_id = p_game_id\n     AND timer.timer_kind = p_timer_kind\n     AND (p_round_id IS NULL OR timer.round_id = p_round_id)\n     AND timer.state IN ('scheduled','processing');\n  GET DIAGNOSTICS v_count = ROW_COUNT;\n  RETURN v_count;\nEND;\n$function$\n",
+      "volatility": "v",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "0b89609d141d0b6e29e4d257a56ea597",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.capture_recovery_context()",
+      "definition": "CREATE OR REPLACE FUNCTION private.capture_recovery_context()\n RETURNS jsonb\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n SELECT jsonb_object_agg(k,coalesce(current_setting(k,true),'')) FROM unnest(ARRAY[\n 'request.jwt.claim.sub','request.jwt.claim.role','request.jwt.claims',\n 'app.three_five_seven_authoritative_write','app.three_five_seven_recovery',\n 'app.cribbage_authoritative_write','app.gin_rummy_authoritative_write',\n 'app.yahtzee_authoritative_write','app.session_pause_write'\n ]) k\n$function$\n",
+      "volatility": "s",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "fe9bd036beaa268be65d593b389091ef",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.farkle_claim_v1(uuid,uuid,uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION private.farkle_claim_v1(p_game_id uuid, p_dealer_id uuid, p_round_id uuid, p_operation text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n IF p_operation IS NULL OR p_operation NOT IN ('configure','start','action','pause','control','cleanup')\n OR NOT EXISTS(SELECT 1 FROM public.games g WHERE g.id=p_game_id\n   AND (p_operation IN ('configure','cleanup') OR (g.game_type='farkle' AND g.current_game_uuid=p_dealer_id)))\n OR (p_round_id IS NOT NULL AND p_operation NOT IN ('start','cleanup') AND NOT EXISTS(\n   SELECT 1 FROM public.rounds r WHERE r.id=p_round_id AND r.game_id=p_game_id AND r.dealer_game_id=p_dealer_id))\n THEN RAISE EXCEPTION 'farkle:invalid_authority_identity' USING ERRCODE='42501'; END IF;\n PERFORM set_config('app.farkle_authority',jsonb_build_object('game',p_game_id,'dealer',p_dealer_id,'round',p_round_id,'operation',p_operation)::text,true);\nEND $function$\n",
+      "volatility": "v",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "4b6a5ee8f6b8088f862f3c0f29e3db94",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.register_game_timer(uuid,text,text,text,timestamp with time zone,uuid,uuid,integer,uuid,text,jsonb)",
+      "definition": "CREATE OR REPLACE FUNCTION private.register_game_timer(p_game_id uuid, p_timer_kind text, p_identity_key text, p_owner_task text, p_due_at timestamp with time zone, p_dealer_game_id uuid DEFAULT NULL::uuid, p_round_id uuid DEFAULT NULL::uuid, p_hand_number integer DEFAULT NULL::integer, p_actor_player_id uuid DEFAULT NULL::uuid, p_phase text DEFAULT NULL::text, p_metadata jsonb DEFAULT '{}'::jsonb)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_id uuid;\nBEGIN\n  IF p_game_id IS NULL OR p_timer_kind IS NULL OR p_identity_key IS NULL\n     OR p_owner_task IS NULL OR p_due_at IS NULL THEN\n    RAISE EXCEPTION 'register_game_timer:missing_identity';\n  END IF;\n\n  UPDATE private.game_timer_registry timer\n     SET state = 'cancelled',\n         completed_at = clock_timestamp(),\n         updated_at = clock_timestamp()\n   WHERE timer.game_id = p_game_id\n     AND timer.timer_kind = p_timer_kind\n     AND timer.identity_key <> p_identity_key\n     AND timer.state IN ('scheduled','processing');\n\n  INSERT INTO private.game_timer_registry(\n    game_id, timer_kind, identity_key, owner_task, dealer_game_id,\n    round_id, hand_number, actor_player_id, phase, due_at, state,\n    metadata, completed_at, last_error, updated_at\n  ) VALUES (\n    p_game_id, p_timer_kind, p_identity_key, p_owner_task,\n    p_dealer_game_id, p_round_id, p_hand_number, p_actor_player_id,\n    p_phase, p_due_at, 'scheduled', coalesce(p_metadata, '{}'::jsonb),\n    NULL, NULL, clock_timestamp()\n  )\n  ON CONFLICT (game_id, timer_kind, identity_key) DO UPDATE\n    SET owner_task = EXCLUDED.owner_task,\n        dealer_game_id = EXCLUDED.dealer_game_id,\n        round_id = EXCLUDED.round_id,\n        hand_number = EXCLUDED.hand_number,\n        actor_player_id = EXCLUDED.actor_player_id,\n        phase = EXCLUDED.phase,\n        due_at = EXCLUDED.due_at,\n        state = 'scheduled',\n        metadata = EXCLUDED.metadata,\n        completed_at = NULL,\n        last_error = NULL,\n        updated_at = clock_timestamp()\n  RETURNING id INTO v_id;\n\n  RETURN v_id;\nEND;\n$function$\n",
+      "volatility": "v",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "03f62dd7e265ebe888851e53eae7ebc4",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.resolve_postgame_participation(uuid,timestamp with time zone)",
+      "definition": "CREATE OR REPLACE FUNCTION private.resolve_postgame_participation(p_game_id uuid, p_now timestamp with time zone DEFAULT clock_timestamp())\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_replay_shared jsonb; v_replay_return text;\n  v_game public.games%ROWTYPE;\n  v_active_humans integer := 0;\n  v_active_players integer := 0;\n  v_seated_humans integer := 0;\n  v_has_results boolean := false;\n  v_has_unsettled_financial_evidence boolean := false;\n  v_outcome text;\nBEGIN\n  SELECT * INTO v_game\n    FROM public.games\n   WHERE id = p_game_id\n   FOR UPDATE;\n IF FOUND THEN\n  IF v_game.replay_contract_version=1 THEN v_replay_shared:=private.replay_gin_lifecycle_begin_v2(v_game,'private.resolve_postgame_participation',false,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now)); END IF;\n  PERFORM 1; -- Preserve the original missing-row guard.\n END IF;\n\n  IF NOT FOUND THEN\n    v_replay_return := 'missing-game';\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\n  END IF;\n\n  IF v_game.status NOT IN (\n       'waiting', 'waiting_for_players', 'dealer_selection',\n       'game_selection', 'configuring', 'ante_decision', 'game_over'\n     ) THEN\n    v_replay_return := 'ineligible-state';\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\n  END IF;\n\n  SELECT\n    count(*) FILTER (\n      WHERE NOT player.is_bot\n        AND player.position IS NOT NULL\n        AND player.status NOT IN ('observer', 'left')\n    ),\n    count(*) FILTER (\n      WHERE NOT player.is_bot\n        AND NOT player.sitting_out\n        AND player.position IS NOT NULL\n        AND player.status NOT IN ('observer', 'left')\n    ),\n    count(*) FILTER (\n      WHERE NOT player.sitting_out\n        AND player.position IS NOT NULL\n        AND player.status NOT IN ('observer', 'left')\n    )\n    INTO v_seated_humans, v_active_humans, v_active_players\n    FROM public.players AS player\n   WHERE player.game_id = p_game_id;\n\n  SELECT EXISTS (\n    SELECT 1 FROM public.game_results WHERE game_id = p_game_id\n  ) INTO v_has_results;\n\n  UPDATE public.games AS game\n     SET current_host = (\n       SELECT player.user_id\n         FROM public.players AS player\n        WHERE player.game_id = p_game_id\n          AND NOT player.is_bot\n          AND player.position IS NOT NULL\n          AND player.status NOT IN ('observer', 'left')\n        ORDER BY player.created_at, player.id\n        LIMIT 1\n     )\n   WHERE game.id = p_game_id\n     AND NOT EXISTS (\n       SELECT 1\n         FROM public.players AS host_player\n        WHERE host_player.game_id = game.id\n          AND host_player.user_id = game.current_host\n          AND NOT host_player.is_bot\n          AND host_player.position IS NOT NULL\n          AND host_player.status NOT IN ('observer', 'left')\n     );\n\n  IF v_seated_humans = 0 THEN\n    IF COALESCE(v_game.real_money, false) AND v_has_results THEN\n      v_replay_return := private.finalize_settled_session_if_no_active_humans(\n        p_game_id,\n        p_now\n      );\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\n    END IF;\n\n    IF COALESCE(v_game.real_money, false) AND NOT v_has_results THEN\n      SELECT\n        EXISTS (\n          SELECT 1 FROM public.session_player_snapshots\n           WHERE game_id = p_game_id\n        )\n        OR EXISTS (\n          SELECT 1 FROM public.player_transactions\n           WHERE source_game_id = p_game_id\n        )\n        OR COALESCE(v_game.pot, 0) <> 0\n        OR EXISTS (\n          SELECT 1 FROM public.players\n           WHERE game_id = p_game_id AND chips <> 0\n        )\n        INTO v_has_unsettled_financial_evidence;\n\n      IF v_has_unsettled_financial_evidence THEN\n        UPDATE public.games\n           SET status = 'waiting',\n               current_game_uuid = NULL,\n               config_complete = false,\n               config_deadline = NULL,\n               ante_decision_deadline = NULL,\n               awaiting_next_round = false,\n               last_round_result = NULL\n         WHERE id = p_game_id;\n        v_replay_return := 'blocked-unsettled-financial-evidence';\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\n      END IF;\n    END IF;\n\n    UPDATE public.games\n       SET status = 'session_ended',\n           pending_session_end = false,\n           session_ended_at = p_now,\n           game_over_at = COALESCE(game_over_at, p_now),\n           current_game_uuid = NULL,\n           config_complete = false,\n           config_deadline = NULL,\n           ante_decision_deadline = NULL,\n           awaiting_next_round = false,\n           last_round_result = NULL,\n           is_paused = false\n     WHERE id = p_game_id\n       AND status <> 'session_ended';\n\n    DELETE FROM private.session_abandonment_watches\n     WHERE game_id = p_game_id;\n    DELETE FROM private.postgame_forced_absence_watches\n     WHERE game_id = p_game_id;\n\n    v_replay_return := 'session-ended-without-financial-settlement';\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\n  END IF;\n\n  UPDATE public.games\n     SET status = 'waiting',\n         current_game_uuid = NULL,\n         config_complete = false,\n         config_deadline = NULL,\n         ante_decision_deadline = NULL,\n         awaiting_next_round = false,\n         last_round_result = NULL\n   WHERE id = p_game_id;\n\n  v_replay_return := 'waiting-seated-humans:' || v_seated_humans::text ||\n    ';active-humans:' || v_active_humans::text ||\n    ';active-players:' || v_active_players::text;\n IF v_replay_shared IS NOT NULL THEN PERFORM private.replay_gin_shared_end_v1(v_replay_shared,jsonb_build_object('p_game_id',p_game_id,'p_now',p_now),to_jsonb(v_replay_return)); END IF;\n RETURN v_replay_return;\nEND;\n$function$\n",
+      "volatility": "v",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "8cee367b26b7c4f3711c79aec369def5",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "private.restore_recovery_context(jsonb)",
+      "definition": "CREATE OR REPLACE FUNCTION private.restore_recovery_context(p_context jsonb)\n RETURNS void\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE item record;\nBEGIN FOR item IN SELECT key,value FROM jsonb_each_text(p_context) LOOP PERFORM set_config(item.key,item.value,true); END LOOP; END\n$function$\n",
+      "volatility": "v",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "md5": "1b2d5d5b1fd11aaabf51b9e383953495",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog, public, private"
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "strict": false,
+      "parallel": "u",
+      "leakproof": false,
+      "signature": "yahtzee_advance_postgame(uuid,uuid,uuid,integer)",
+      "definition": "CREATE OR REPLACE FUNCTION public.yahtzee_advance_postgame(_game_id uuid, _round_id uuid, _dealer_game_id uuid, _hand_number integer)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nDECLARE\n  v_actor_id uuid:=auth.uid();\n  v_service boolean:=coalesce(auth.jwt()->>'role','')='service_role';\n  v_round public.rounds%ROWTYPE;\n  v_game public.games%ROWTYPE;\n  v_claim private.yahtzee_postgame_advances%ROWTYPE;\n  v_result public.game_results%ROWTYPE;\n  v_result_count integer;\n  v_winner public.players%ROWTYPE;\n  v_active_count integer;\n  v_active_human_count integer;\n  v_eligible_count integer;\n  v_allow_bot_dealers boolean:=false;\n  v_make_it_take_it boolean:=false;\n  v_eligible_positions integer[];\n  v_current_index integer;\n  v_next_dealer_position integer;\n  v_target_status text;\n  v_config_deadline timestamptz;\nBEGIN\n  IF _game_id IS NULL OR _round_id IS NULL OR _dealer_game_id IS NULL\n     OR _hand_number IS NULL OR _hand_number<1 THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:missing_identity';\n  END IF;\n  IF v_actor_id IS NULL AND NOT v_service THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:authentication_required';\n  END IF;\n  SELECT * INTO v_round FROM public.rounds WHERE id=_round_id FOR UPDATE;\n  IF NOT FOUND OR v_round.game_id IS DISTINCT FROM _game_id\n     OR v_round.dealer_game_id IS DISTINCT FROM _dealer_game_id\n     OR v_round.hand_number IS DISTINCT FROM _hand_number THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:round_identity_mismatch';\n  END IF;\n  SELECT * INTO v_game FROM public.games WHERE id=_game_id FOR UPDATE;\n  IF NOT FOUND OR v_game.game_type IS DISTINCT FROM 'yahtzee' THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:not_yahtzee_game';\n  END IF;\n  IF NOT v_service AND NOT EXISTS(\n    SELECT 1 FROM public.players participant\n     WHERE participant.game_id=_game_id AND participant.user_id=v_actor_id\n       AND participant.status<>'left'\n  ) AND NOT public.has_role(v_actor_id,'admin'::public.app_role) THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:not_in_session';\n  END IF;\n  SELECT * INTO v_claim FROM private.yahtzee_postgame_advances claim\n   WHERE claim.game_id=_game_id AND claim.dealer_game_id=_dealer_game_id\n     AND claim.round_id=_round_id AND claim.hand_number=_hand_number;\n  IF FOUND THEN\n    RETURN jsonb_build_object(\n      'outcome','already_advanced','deduped',true,'status',v_claim.target_status,\n      'dealer_position',v_claim.dealer_position,'config_deadline',v_claim.config_deadline\n    );\n  END IF;\n  IF v_game.status IS DISTINCT FROM 'game_over'\n     OR v_game.current_game_uuid IS DISTINCT FROM _dealer_game_id\n     OR v_game.total_hands IS DISTINCT FROM _hand_number THEN\n    RETURN jsonb_build_object(\n      'outcome','stale_identity','deduped',true,'status',v_game.status,\n      'current_dealer_game_id',v_game.current_game_uuid,\n      'current_hand_number',v_game.total_hands\n    );\n  END IF;\n  IF v_round.status IS DISTINCT FROM 'completed'\n     OR v_round.yahtzee_state->>'gamePhase' IS DISTINCT FROM 'complete' THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:round_not_terminal';\n  END IF;\n  SELECT count(*) INTO v_result_count\n    FROM public.game_results result\n   WHERE result.game_id=_game_id AND result.dealer_game_id=_dealer_game_id\n     AND result.hand_number=_hand_number AND result.settlement_key='yahtzee_terminal';\n  IF v_result_count<>1 THEN\n    RAISE EXCEPTION 'yahtzee_advance_postgame:settlement_not_committed:%',v_result_count;\n  END IF;\n  SELECT * INTO v_result FROM public.game_results result\n   WHERE result.game_id=_game_id AND result.dealer_game_id=_dealer_game_id\n     AND result.hand_number=_hand_number AND result.settlement_key='yahtzee_terminal';\n  SELECT * INTO v_winner FROM public.players winner\n   WHERE winner.id=v_result.winner_player_id AND winner.game_id=_game_id;\n  IF NOT FOUND THEN RAISE EXCEPTION 'yahtzee_advance_postgame:winner_not_in_session'; END IF;\n\n  DELETE FROM public.players player\n   WHERE player.game_id=_game_id AND coalesce(player.is_bot,false)\n     AND coalesce(player.stand_up_next_hand,false);\n  UPDATE public.players player SET\n    status=CASE WHEN coalesce(player.stand_up_next_hand,false) THEN 'left' ELSE player.status END,\n    sitting_out=CASE\n      WHEN coalesce(player.stand_up_next_hand,false) OR coalesce(player.sit_out_next_hand,false) THEN true\n      WHEN coalesce(player.waiting,false) THEN false ELSE player.sitting_out END,\n    waiting=false,stand_up_next_hand=false,sit_out_next_hand=false,\n    auto_fold=false,current_decision=NULL,decision_locked=false,pre_fold=false,pre_stay=false,\n    ante_decision=NULL,auto_ante=false,auto_ante_runback=false\n   WHERE player.game_id=_game_id;\n\n  SELECT count(*) FILTER(WHERE NOT coalesce(sitting_out,false) AND status NOT IN ('observer','left')),\n         count(*) FILTER(WHERE NOT coalesce(sitting_out,false) AND status NOT IN ('observer','left') AND NOT coalesce(is_bot,false))\n    INTO v_active_count,v_active_human_count FROM public.players WHERE game_id=_game_id;\n  SELECT coalesce(defaults.allow_bot_dealers,false) INTO v_allow_bot_dealers\n    FROM public.game_defaults defaults WHERE defaults.game_type='holm' LIMIT 1;\n  SELECT count(*) INTO v_eligible_count FROM public.players player\n   WHERE player.game_id=_game_id AND NOT coalesce(player.sitting_out,false)\n     AND player.status NOT IN ('observer','left') AND player.position IS NOT NULL\n     AND (v_allow_bot_dealers OR NOT coalesce(player.is_bot,false));\n\n  IF v_active_human_count<1 THEN\n    v_target_status:='session_ended';\n  ELSIF v_active_count<2 OR v_eligible_count<1 THEN\n    v_target_status:='waiting';\n  ELSE\n    SELECT coalesce((setting.value->>'enabled')::boolean,false) INTO v_make_it_take_it\n      FROM public.system_settings setting WHERE setting.key='make_it_take_it' LIMIT 1;\n    IF v_make_it_take_it AND NOT coalesce(v_winner.is_bot,false)\n       AND NOT coalesce(v_winner.sitting_out,false) AND v_winner.status NOT IN ('observer','left') THEN\n      v_next_dealer_position:=v_winner.position;\n    ELSIF v_make_it_take_it AND (coalesce(v_winner.is_bot,false) OR coalesce(v_winner.sitting_out,false) OR v_winner.status IN ('observer','left')) THEN\n      IF v_eligible_count=1 THEN\n        SELECT position INTO v_next_dealer_position FROM public.players player\n         WHERE player.game_id=_game_id AND NOT coalesce(player.sitting_out,false)\n           AND player.status NOT IN ('observer','left') AND NOT coalesce(player.is_bot,false) LIMIT 1;\n      ELSE\n        v_target_status:='dealer_selection';\n      END IF;\n    END IF;\n    IF v_target_status IS NULL AND v_next_dealer_position IS NULL THEN\n      SELECT array_agg(player.position ORDER BY player.position) INTO v_eligible_positions\n        FROM public.players player WHERE player.game_id=_game_id\n         AND NOT coalesce(player.sitting_out,false) AND player.status NOT IN ('observer','left')\n         AND (v_allow_bot_dealers OR NOT coalesce(player.is_bot,false));\n      v_current_index:=array_position(v_eligible_positions,coalesce(v_game.dealer_position,1));\n      v_next_dealer_position:=CASE WHEN v_current_index IS NULL THEN v_eligible_positions[1]\n        ELSE v_eligible_positions[(v_current_index%cardinality(v_eligible_positions))+1] END;\n    END IF;\n    IF v_target_status IS NULL THEN\n      v_target_status:='game_selection';\n      v_config_deadline:=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(v_game.game_setup_timer_seconds,30)));\n    END IF;\n  END IF;\n\n  PERFORM set_config('app.yahtzee_authoritative_write','on',true);\n  UPDATE public.rounds SET status='completed',decision_deadline=NULL,current_turn_position=NULL\n   WHERE game_id=_game_id AND dealer_game_id=_dealer_game_id;\n  UPDATE public.games SET\n    status=v_target_status,config_complete=false,config_deadline=v_config_deadline,\n    last_round_result=NULL,current_round=NULL,awaiting_next_round=false,next_round_number=NULL,\n    pot=0,all_decisions_in=false,all_decisions_in_round_id=NULL,game_over_at=NULL,\n    buck_position=NULL,total_hands=0,is_first_hand=false,current_game_uuid=NULL,\n    dealer_selection_state=NULL,\n    dealer_position=CASE WHEN v_target_status='game_selection' THEN v_next_dealer_position ELSE dealer_position END,\n    pending_session_end=CASE WHEN v_target_status='session_ended' THEN false ELSE pending_session_end END,\n    session_ended_at=CASE WHEN v_target_status='session_ended' THEN coalesce(session_ended_at,clock_timestamp()) ELSE session_ended_at END\n   WHERE id=_game_id;\n  INSERT INTO private.yahtzee_postgame_advances(\n    game_id,dealer_game_id,round_id,hand_number,winner_player_id,target_status,dealer_position,config_deadline\n  ) VALUES(\n    _game_id,_dealer_game_id,_round_id,_hand_number,v_result.winner_player_id,v_target_status,\n    CASE WHEN v_target_status='game_selection' THEN v_next_dealer_position END,v_config_deadline\n  );\n  RETURN jsonb_build_object(\n    'outcome','advanced','deduped',false,'status',v_target_status,\n    'dealer_position',CASE WHEN v_target_status='game_selection' THEN v_next_dealer_position END,\n    'config_deadline',v_config_deadline\n  );\nEND;\n$function$\n",
+      "volatility": "v",
+      "security_definer": true
+    }
+  ],
+  "defaults_count": 0
+}

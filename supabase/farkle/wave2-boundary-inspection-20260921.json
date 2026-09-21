@@ -1,0 +1,81 @@
+{
+  "inspectedAt": "2026-09-21 14:27:08 UTC",
+  "sourceCommit": "cc426e833859e3ecfb9b5de0e5d14e0cab90af0e",
+  "branch": "codex/farkle-playable",
+  "inspectionOnly": true,
+  "productChanges": 0,
+  "databaseMutations": 0,
+  "fixturesCreated": 0,
+  "productionProject": "xvhmbuppghwmwpwrkzao",
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": false,
+    "production_defaults_approved": false
+  },
+  "productionDefaultsRows": 0,
+  "publicFarkleFunctions": [
+    "farkle_apply_action(uuid,uuid,text,bigint,uuid,jsonb)",
+    "farkle_read_replay(uuid)"
+  ],
+  "postgameOwners": [
+    {
+      "signature": "yahtzee_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "cribbage_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "private.resolve_postgame_participation(uuid,timestamp with time zone)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "resolve_postgame_participation(uuid)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "stand_up_and_resolve_postgame(uuid)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "private.replay_gin_postgame_v1(uuid,uuid,jsonb)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "gin_rummy_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "private.stand_up_and_resolve_postgame(uuid)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "private.advance_standard_postgame(uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "three_five_seven_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "holm_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    },
+    {
+      "signature": "horses_scc_advance_postgame(uuid,uuid,uuid,integer)",
+      "mentions_farkle": false
+    }
+  ],
+  "findings": {
+    "settlement": "private.farkle_settle_v1 settles once and ends in game_over, or session_ended when pending_session_end was set.",
+    "continuation": "No Farkle postgame RPC is deployed. private.advance_standard_postgame admits only holm, holm-game, horses and ship-captain-crew.",
+    "recovery": "private.sync_game_timer_registry registers standard_postgame only for holm, holm-game, horses and ship-captain-crew. Farkle's round timer is cancelled at completion.",
+    "genericBoundary": "private.farkle_guard_shared_v1 requires an exact Farkle authority claim for Farkle game/player writes. Generic client continuation is not an allowed fallback.",
+    "creation": "private.farkle_resolve_config_v1 rejects creation_enabled=false before checking admin/service/testConfiguration. The production flag therefore also excludes test-only admin creation.",
+    "environments": "Supabase branch listing contains only the production/default main branch. The running Docker stack run21-app-test-local belongs to rule-your-poker-run21-app-test and has neither private.farkle_release nor public.farkle_apply_action. It was only inspected."
+  },
+  "nextDecision": "Authorize an additive, isolated Farkle exact-identity postgame RPC/receipt and disconnect recovery through a narrow canonical timer-dispatch addition. Keep historical Wave 1 migration files and gameplay/scoring/settlement/control contracts unchanged; requalify affected deployed shared fingerprints. Use a separate local test instance for test-only creation; keep production gates unchanged.",
+  "qualification": "Not run: no live route was enabled and no Wave 2 release or main integration was attempted. This is a boundary inspection, not a passing qualification."
+}
