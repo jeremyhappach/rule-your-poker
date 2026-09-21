@@ -1,0 +1,23 @@
+{
+  "testedSha": "4d01916afdf7365e06b55e268de16634c88dba87",
+  "applicationTests": 1657,
+  "applicationFiles": 247,
+  "harnessTests": 226,
+  "harnessFiles": 11,
+  "typecheck": true,
+  "build": true,
+  "buildSeconds": 38.23,
+  "logSha256": "ec21b8b091534028dc8be8bf8427ed3edaaa749ee36df6474a3b6bc46c64eab5",
+  "focusedBrowserCases": 4,
+  "focusedBrowserPassed": 4,
+  "browserEndgames": [
+    "immediate",
+    "equal_turns",
+    "one_last_turn"
+  ],
+  "observedTiebreakTurn": 1,
+  "cleanup": true,
+  "localFunctionsMatchProduction": 384,
+  "wave2Qualified": false,
+  "mainMerged": false
+}
