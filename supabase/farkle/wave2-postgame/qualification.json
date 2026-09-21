@@ -1,11 +1,12 @@
 {
-  "recordedAt": "2026-09-21 14:45:59 UTC",
-  "phase": "Wave 2 postgame draft; passing proofs with an open qualification boundary",
+  "recordedAt": "2026-09-21 15:27:47 UTC",
+  "phase": "Wave 2 postgame/setup handoff pre-apply proof passed",
+  "preApplyAuthorityHandoffPassed": true,
   "releaseReady": false,
-  "openBoundary": "Final source review: continuation retains game_type=farkle at game_selection, but the latest handle_config_deadline_timeout_exact has no Farkle claim before updating players. Verify deployed definition and close/prove neutral setup admission inside the isolated owner if possible; do not apply yet or extend another shared owner without reporting.",
+  "openBoundary": null,
   "productionApplied": false,
   "productionMigrationVersion": null,
-  "sourceBase": "cc426e833859e3ecfb9b5de0e5d14e0cab90af0e",
+  "sourceBase": "433afeb4d83f1e77118de2e9a7a4a079aed0632f",
   "qualifiedWave1Commit": "e80200300ee81597f8ac11447a2aa15069107644",
   "appliedWave1MigrationUnchanged": "20260920155333",
   "cases": [
@@ -49,6 +50,33 @@
     "game type cannot bypass immutable rules",
     "generic decrement definer cannot move Farkle chips",
     "generic increment definer cannot move Farkle chips",
+    "handoff admits canonical neutral setup",
+    "handoff authenticated write rejected after_timeout chips",
+    "handoff authenticated write rejected after_timeout config",
+    "handoff authenticated write rejected after_timeout generic_rpc",
+    "handoff authenticated write rejected after_timeout pot",
+    "handoff authenticated write rejected after_timeout round",
+    "handoff authenticated write rejected after_timeout status",
+    "handoff authenticated write rejected setup chips",
+    "handoff authenticated write rejected setup config",
+    "handoff authenticated write rejected setup generic_rpc",
+    "handoff authenticated write rejected setup pot",
+    "handoff authenticated write rejected setup round",
+    "handoff authenticated write rejected setup status",
+    "handoff complete chain uses canonical setup timeout authority",
+    "handoff duplicate continuation after timeout is harmless",
+    "handoff duplicate timeout cannot rotate again",
+    "handoff fixture cleanup",
+    "handoff generic definer cannot edit Farkle history after_timeout",
+    "handoff generic definer cannot edit Farkle history setup",
+    "handoff next Farkle setup reinstates exact player write guard",
+    "handoff recovery has no unrelated legacy actor writes",
+    "handoff retains Farkle through terminal settlement",
+    "handoff Run Back restores Farkle from frozen snapshot",
+    "handoff stale continuation cannot cross identity",
+    "handoff stale dealer timeout cannot cross identity",
+    "handoff stale timeout is read only",
+    "handoff timeout preserves balances scores config and semantic replay",
     "hot dice across rolls",
     "idempotent configuration",
     "immediate terminal",
@@ -142,27 +170,42 @@
     "wrong game authority claim cannot mutate round"
   ],
   "passed": true,
-  "assertions": 131,
-  "build": {
+  "assertions": 158,
+  "checks": {
     "typecheck": true,
-    "applicationTests": 1649,
-    "applicationFiles": 243,
-    "harnessTests": 226,
-    "harnessFiles": 11,
-    "viteSeconds": 42.56
+    "sevenGameRegressionFiles": 41,
+    "sevenGameRegressionTests": 282
   },
-  "sevenGameRegression": {
-    "files": 41,
-    "tests": 282,
-    "passed": true
+  "priorUnchangedClientBuild": {
+    "commit": "433afeb4d83f1e77118de2e9a7a4a079aed0632f",
+    "applicationTests": 1649,
+    "harnessTests": 226,
+    "viteSeconds": 42.56,
+    "note": "Client source unchanged in this handoff correction; full build not repeated."
+  },
+  "handoff": {
+    "isolatedOwnerOnly": true,
+    "additionalSharedOwnerChanges": 0,
+    "neutralPhases": [
+      "game_selection",
+      "dealer_selection",
+      "waiting"
+    ],
+    "terminalFarkleIdentityPreserved": true,
+    "actualAuthenticatedRoleNegatives": 12,
+    "historicalFarkleGenericDefinerNegatives": 2,
+    "canonicalTimerChainPassed": true,
+    "duplicateAndStaleWorkReadOnly": true,
+    "runBackFrozenConfig": true
   },
   "restoration": {
     "executions": 2,
     "exactDefinitionOwnerSecurityAttributesGrants": true,
-    "additiveReceiptHistoryPreserved": true
+    "additiveReceiptHistoryPreserved": true,
+    "sharedCandidateMd5Unchanged": "3f60fdfc00de2466dd2f31060892db0d"
   },
-  "candidateSha256": "31505e19050f7ebc5a85ed9091b50c5598df65f421cf9cd8b61e7e84c5a82fa3",
-  "rollbackProofSha256": "9d56176cd89d8a60592c1569e3b3e38e6ec97bd69303287c675691c92c52ec58",
+  "candidateSha256": "cfc947d1bcda10f38c5940b97a0fc11c6ae471bb033a737f50dcfedb0ec45c21",
+  "rollbackProofSha256": "66fb7fcf505981fec87effa1bcdde9b18ba78c8c940287f19d48800b3e17c0f2",
   "recoverySha256": "20d3ae337f3c97e488818e63bca2450440b332dff4f17423534392c6731220fb",
   "productionStatePreserved": {
     "creationEnabled": false,
@@ -170,12 +213,11 @@
     "productionDefaultsApproved": false,
     "productionDefaultsSeeded": 0
   },
-  "fixtures": "All proof writes rolled back; explicit fixture cascade assertions passed.",
+  "fixtures": "Diagnostic and complete proof rolled back; explicit cascade cleanup passed.",
   "databaseValidationOperations": 3,
-  "stopReason": "Repository execution policy: three database validation operations used (capture, initial rollback proof, expanded complete rollback proof). Stop before apply.",
+  "stopReason": "Requested pre-apply handoff proof complete; no production apply this pass.",
   "remaining": [
-    "Close and prove the post-continuation setup-timeout/waiting admission boundary, plus replay/Run Back, then rerun the complete candidate/recovery gate before apply.",
-    "After the gate is complete, apply through the supported Supabase migration path and record actual production version; run post-apply-proof.sql and verify cleanup/release gates.",
+    "Production apply remains held. Subsequent release work must use the supported migration path, record actual version, run complete post-apply proof, and verify metadata/cleanup/release gates.",
     "Complete live canonical client integration and the full Wave 2 browser/end-to-end gate before main integration."
   ],
   "browserQualificationRun": false,

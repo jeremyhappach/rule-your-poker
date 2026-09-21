@@ -1,8 +1,8 @@
 # Wave 2 isolated postgame — pre-apply candidate
 
 Approved September 21. No production migration has been applied for this phase.
-**Do not apply this draft yet:** final review identified the setup-timeout boundary
-below, which the passing rollback proof does not cover.
+**Production apply remains held as requested.** The setup-timeout authority handoff
+is now proved in the complete 158-assertion rollback run described below.
 The applied Wave 1 migration `20260920155333` and qualified commit
 `e80200300ee81597f8ac11447a2aa15069107644` are unchanged.
 
@@ -42,32 +42,40 @@ the canonical worker holds timer locks first. Late workers read the receipt and
 complete without changing gameplay or balances. Connected completion and fallback
 therefore share a single durable continuation owner.
 
-## Validation and next phase
+## Setup-timeout handoff and validation
 
-`qualification.json` records the final 131-assertion rollback proof, 282 mandatory
-regressions, 1,649 application tests, 226 harness tests, typecheck and build. The
-initial 129-assertion result is retained separately; the final proof also includes
-the existing canonical timer proof in both candidate and restored states.
+The isolated continuation owner now clears the live family discriminator only in
+canonical setup/waiting phases that have no committed dealer game. The shell
+explicitly supports this neutral state. Farkle remains in terminal/ended frames
+and in every historical configuration, round, event and receipt. The existing
+setup-timeout owner therefore runs normally in its own transaction. No shared
+owner beyond the already-approved dispatch branch, guard, grant or claim changes.
 
-The three-database-operation circuit breaker stops this pass before production
-apply. Final source review also identified a remaining qualification boundary:
-the candidate retains `games.game_type='farkle'` at game selection, while the
-latest `private.handle_config_deadline_timeout_exact` source establishes no Farkle
-claim before writing the dealer player. The Wave 1 guard would reject a later
-setup timeout. Verify the deployed owner next, prefer a neutral setup handoff
-inside the isolated Farkle owner, and prove setup timeout/waiting/replay/Run Back.
-If that needs another shared-owner extension, stop and report before changing it.
-No product patch was made for this newly found boundary in this pass.
+`handoff-proof.sql` exercises settlement → continuation → setup → actual canonical
+timer dispatch → dealer rotation. Actual authenticated-role writes fail before
+and after timeout; the retired Farkle round also rejects a generic definer. Duplicate
+and stale work is read-only. Scores, balances, frozen replay and Run Back remain
+exact, and next-game configuration reinstates Farkle's active-game guards.
 
-After closing it and rerunning the full proof, apply and post-apply verification
-are already authorized. Use the supported
-Supabase migration path, record its actual migration version and align this new,
-previously unapplied migration's filename/manifest if the service assigns another
-version. Do not rename, replace, edit or reapply the applied Wave 1 migration.
-Verify the installed body before accepting any actual-version filename adjustment.
+`handoff-inspection.json` captures deployed ownership and the diagnostic. The
+diagnostic's generic increment probe runs as database owner; that RPC has no
+authenticated EXECUTE grant. Final acceptance uses actual authenticated-role
+probes, not that diagnostic, to establish client write protection.
 
-After apply run the full post-apply proof and verify exact metadata, cleanup and
-release state: creation disabled, admin-only enabled, defaults approval false and
-no Farkle production default row. No main integration before the full Wave 2 client,
-browser, end-to-end and shared-surface regression gate. Browser qualification was
-not run in this database-only phase.
+`qualification.json` records the complete 158-assertion rollback proof, 282
+mandatory regressions and typecheck. It includes candidate/restored seven-game SQL
+and canonical timer proofs, two exact recoveries and three candidate installations.
+The prior unchanged-client build passed 1,649 application and 226 harness tests;
+it was not repeated for this SQL-only correction.
+
+Production apply remains held as requested. Subsequent release work must use the
+supported Supabase migration path, record its actual migration version and align
+this new, previously unapplied migration's filename/manifest if the service assigns
+another version. Do not rename, replace, edit or reapply Wave 1's applied migration.
+Verify installed bytes before accepting an actual-version filename adjustment.
+
+After apply, run the complete post-apply proof and verify exact metadata, cleanup
+and release state: creation disabled, admin-only enabled, defaults approval false
+and no Farkle production default row. No main integration before the full Wave 2
+client/browser/end-to-end and shared-surface regression gate. Browser qualification
+was not run in this database-only handoff phase.

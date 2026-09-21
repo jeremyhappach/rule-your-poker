@@ -113,7 +113,13 @@ BEGIN
     deadline:=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.game_setup_timer_seconds,30)));
    END IF;
   END IF;
-  UPDATE public.games SET status=target,config_complete=false,config_deadline=deadline,ante_decision_deadline=NULL,
+  -- No dealer game is committed in canonical setup/waiting. Retire only the
+  -- live family discriminator; immutable dealer-game/round/history keep Farkle.
+  -- A later setup timer has its own transaction and must use canonical authority,
+  -- never a leaked Farkle claim from this continuation. Ended frames retain it.
+  UPDATE public.games SET status=target,
+   game_type=CASE WHEN target IN ('game_selection','dealer_selection','waiting') THEN NULL ELSE game_type END,
+   config_complete=false,config_deadline=deadline,ante_decision_deadline=NULL,
    last_round_result=NULL,current_round=NULL,awaiting_next_round=false,next_round_number=NULL,pot=0,
    all_decisions_in=false,all_decisions_in_round_id=NULL,game_over_at=NULL,buck_position=NULL,total_hands=0,
    is_first_hand=false,current_game_uuid=NULL,dealer_selection_state=NULL,

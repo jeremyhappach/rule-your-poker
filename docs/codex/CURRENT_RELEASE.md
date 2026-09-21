@@ -18,16 +18,17 @@ and have not received end-to-end playable qualification. No Wave 1 SQL or
 Horses/SCC controller, layout, scoring, or geometry values were changed.
 See [Wave 2 status](FARKLE_WAVE2_20260920.md).
 
-September 21: the approved additive Farkle postgame candidate is implemented and
-passes 131 rollback assertions, exact shared-definition/security/grant restoration
-twice, candidate/restored seven-game SQL and canonical timer recovery proofs,
-282 mandatory regression tests, typecheck, 1,649 application tests, 226 harness
-tests and build. It is **not applied or release-ready**: final source review found
-an uncovered post-continuation setup-timeout boundary, and the three-database-
-operation budget was used by capture and two proof runs. Close and prove that
-boundary before the already-authorized apply. Production gates and Wave 1 history remain
-unchanged. See `supabase/farkle/wave2-postgame/qualification.json` and the
-[Wave 2 status](FARKLE_WAVE2_20260920.md); full playable qualification is pending.
+September 21: the setup-timeout handoff is closed entirely inside the isolated
+Farkle continuation owner. Terminal frames retain Farkle; setup/waiting retire
+the live family into the existing neutral canonical state. No additional shared
+owner, guard or grant changed. The complete 158-assertion rollback proof passes,
+including actual authenticated-role negatives, canonical setup timeout, duplicate/
+stale work, frozen replay/Run Back, two exact recoveries and candidate/restored
+seven-game/canonical timer proofs. All 282 mandatory regressions and typecheck pass.
+The prior unchanged-client build passed 1,649 application and 226 harness tests.
+Production apply remains held as requested; full playable qualification is pending.
+Production gates and Wave 1 history are unchanged. See
+`supabase/farkle/wave2-postgame/qualification.json` and the [Wave 2 status](FARKLE_WAVE2_20260920.md).
 
 ## September 18 continuous sampled play timing
 

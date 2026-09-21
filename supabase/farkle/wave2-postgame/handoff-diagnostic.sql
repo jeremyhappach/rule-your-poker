@@ -1,3 +1,7 @@
+-- Historical diagnostic of 433afeb4d, not a migration or the final acceptance proof.
+-- The generic helper probe runs as database owner; final client-role negatives
+-- live in handoff-proof.sql and the complete rollback-proof.sql.
+BEGIN; SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='90s';
 DO $guard$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_proc p WHERE p.oid='private.advance_due_canonical_game_timers(integer)'::regprocedure AND md5(pg_get_functiondef(p.oid)) IN ('e7c784e3fa2e412d3333ffd2355096f4','3f60fdfc00de2466dd2f31060892db0d') AND pg_get_userbyid(p.proowner)='postgres' AND p.prosecdef=true AND p.proconfig=ARRAY['search_path=""']::text[] AND p.proacl::text='{postgres=X/postgres,service_role=X/postgres}' AND p.provolatile='v' AND p.proparallel='u' AND p.proleakproof=false AND p.proisstrict=false) THEN RAISE EXCEPTION 'farkle_wave2:shared_metadata_drift'; END IF; END $guard$;
 DO $gate$ BEGIN IF NOT EXISTS(SELECT 1 FROM private.farkle_release WHERE singleton AND NOT creation_enabled AND admin_only AND NOT production_defaults_approved) OR EXISTS(SELECT 1 FROM public.game_defaults WHERE game_type='farkle') THEN RAISE EXCEPTION 'farkle_wave2:release_gate_changed'; END IF; END $gate$;
 -- Additive Wave 2 continuation. No scoring, settlement, or existing-game owner changes.
@@ -115,13 +119,7 @@ BEGIN
     deadline:=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.game_setup_timer_seconds,30)));
    END IF;
   END IF;
-  -- No dealer game is committed in canonical setup/waiting. Retire only the
-  -- live family discriminator; immutable dealer-game/round/history keep Farkle.
-  -- A later setup timer has its own transaction and must use canonical authority,
-  -- never a leaked Farkle claim from this continuation. Ended frames retain it.
-  UPDATE public.games SET status=target,
-   game_type=CASE WHEN target IN ('game_selection','dealer_selection','waiting') THEN NULL ELSE game_type END,
-   config_complete=false,config_deadline=deadline,ante_decision_deadline=NULL,
+  UPDATE public.games SET status=target,config_complete=false,config_deadline=deadline,ante_decision_deadline=NULL,
    last_round_result=NULL,current_round=NULL,awaiting_next_round=false,next_round_number=NULL,pot=0,
    all_decisions_in=false,all_decisions_in_round_id=NULL,game_over_at=NULL,buck_position=NULL,total_hands=0,
    is_first_hand=false,current_game_uuid=NULL,dealer_selection_state=NULL,
@@ -357,3 +355,130 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$
 ;
+
+-- Caller wraps candidate + this proof + recovery twice in BEGIN/ROLLBACK.
+-- Every numeric rule in this file is TEST ONLY, not a production recommendation.
+CREATE TEMP TABLE farkle_proof_log(case_name text PRIMARY KEY);
+CREATE FUNCTION pg_temp.farkle_identity(id uuid) RETURNS void LANGUAGE plpgsql AS $p$
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub',id::text,true);
+ PERFORM set_config('request.jwt.claim.role','authenticated',true);
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',id,'role','authenticated')::text,true);
+END $p$;
+CREATE FUNCTION pg_temp.farkle_assert(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $p$
+BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'farkle_proof:%',label; END IF;
+ INSERT INTO farkle_proof_log VALUES(label); END $p$;
+CREATE TEMP TABLE farkle_test_config(config jsonb);
+INSERT INTO farkle_test_config VALUES ('{"version":1,"testOnly":true,"testLabel":"TEST ONLY: authority proof; NOT APPROVED PRODUCTION RULES","ante_amount":7,"targetScore":1000,"endgame":"immediate","turnSeconds":30,"botDelayMs":1000,"botPolicy":"balanced","botBankThreshold":100,"rules":{"version":1,"singles":{"1":100,"5":50},"ofAKind":{"3":[1000,200,300,400,500,600],"4":[2000,2000,2000,2000,2000,2000],"5":[3000,3000,3000,3000,3000,3000],"6":[4000,4000,4000,4000,4000,4000]},"straight":1500,"threePairs":1500,"twoTriplets":2500,"fourPlusPair":1500}}');
+
+
+-- Runs only inside the outer rollback; every fixture uses labeled TEST ONLY rules.
+CREATE TEMP TABLE farkle_postgame_history_fixture(game_id uuid,round_id uuid,dealer_game_id uuid);
+CREATE FUNCTION pg_temp.farkle_postgame_fixture() RETURNS jsonb LANGUAGE plpgsql AS $p$
+DECLARE admin_id uuid; peer_id uuid; bot_user uuid; gid uuid:=gen_random_uuid(); a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); bot uuid:=gen_random_uuid();
+ c jsonb; input jsonb; g public.games; dg uuid; rd uuid; ans jsonb; deadline timestamptz:=clock_timestamp()+interval '15 minutes';
+BEGIN
+ SELECT user_id INTO admin_id FROM public.user_roles WHERE role='admin' ORDER BY user_id LIMIT 1;
+ SELECT id INTO peer_id FROM public.profiles WHERE id<>admin_id AND NOT public.has_role(id,'admin'::public.app_role) ORDER BY id LIMIT 1;
+ SELECT id INTO bot_user FROM public.profiles WHERE id NOT IN (admin_id,peer_id) ORDER BY id LIMIT 1;
+ SELECT config INTO c FROM farkle_test_config;
+ input:=jsonb_build_object('ante_amount',7,'targetScore',1000,'endgame','immediate','testConfiguration',
+  jsonb_build_object('testOnly',true,'label',c->'testLabel','rules',c->'rules','turnSeconds',30,'botDelayMs',1000,'botBankThreshold',100,'botPolicy','balanced'));
+ PERFORM set_config('app.farkle_authority','',true);
+ PERFORM pg_temp.farkle_identity(admin_id);
+ UPDATE private.farkle_release SET creation_enabled=true WHERE singleton;
+ INSERT INTO public.games(id,name,status,current_host,dealer_position,config_complete,config_deadline,real_money,pot,current_round,total_hands)
+ VALUES(gid,'TEST ONLY: Wave2 postgame rollback','game_selection',admin_id,4,false,deadline,false,0,0,0);
+ INSERT INTO public.players(id,game_id,user_id,position,chips,status,is_bot) VALUES
+ (a,gid,admin_id,4,100,'active',false),(b,gid,peer_id,3,100,'active',false),(bot,gid,bot_user,5,100,'active',true);
+ ans:=public.configure_dealer_game(gid,a,4,'farkle',input,deadline); dg:=(ans->'dealer_game'->>'id')::uuid;
+ PERFORM private.farkle_claim_v1(gid,dg,NULL,'configure');
+ UPDATE public.players SET ante_decision='ante_up' WHERE game_id=gid;
+ SELECT * INTO g FROM public.games WHERE id=gid;
+ PERFORM private.advance_ante_phase_exact(gid,dg,g.ante_decision_deadline,clock_timestamp());
+ SELECT id INTO rd FROM public.rounds WHERE dealer_game_id=dg;
+ PERFORM set_config('app.farkle_authority','',true);
+ UPDATE private.farkle_release SET creation_enabled=false WHERE singleton;
+ RETURN jsonb_build_object('game',gid,'dealer',dg,'round',rd,'a',a,'b',b,'bot',bot,'admin',admin_id,'peer',peer_id);
+END $p$;
+CREATE FUNCTION pg_temp.farkle_postgame_bank(f jsonb,pending_end boolean DEFAULT false) RETURNS void LANGUAGE plpgsql AS $p$
+DECLARE s jsonb;
+BEGIN
+ PERFORM private.farkle_claim_v1((f->>'game')::uuid,(f->>'dealer')::uuid,NULL,'configure');
+ SELECT farkle_state INTO s FROM public.rounds WHERE id=(f->>'round')::uuid;
+ UPDATE public.rounds SET farkle_state=s||jsonb_build_object('stage','bank_or_roll','thisTurn',1000) WHERE id=(f->>'round')::uuid;
+ IF pending_end THEN UPDATE public.games SET pending_session_end=true WHERE id=(f->>'game')::uuid; END IF;
+ PERFORM set_config('app.farkle_authority','',true);
+ PERFORM pg_temp.farkle_identity((f->>'peer')::uuid);
+ PERFORM public.farkle_apply_action((f->>'round')::uuid,(f->>'b')::uuid,'bank',0,gen_random_uuid());
+END $p$;
+CREATE FUNCTION pg_temp.farkle_postgame_cleanup() RETURNS void LANGUAGE plpgsql AS $p$
+DECLARE f record;
+BEGIN
+ FOR f IN SELECT * FROM farkle_postgame_history_fixture LOOP
+  PERFORM private.farkle_claim_v1(f.game_id,f.dealer_game_id,NULL,'cleanup');
+  DELETE FROM public.games WHERE id=f.game_id;
+  PERFORM pg_temp.farkle_assert(NOT EXISTS(SELECT 1 FROM private.farkle_postgame_receipts_v2 WHERE game_id=f.game_id)
+   AND NOT EXISTS(SELECT 1 FROM private.farkle_events WHERE round_id=f.round_id)
+   AND NOT EXISTS(SELECT 1 FROM private.game_timer_registry WHERE game_id=f.game_id),'postgame fixture cascade cleanup');
+ END LOOP;
+ PERFORM set_config('app.farkle_authority','',true);
+END $p$;
+
+-- Diagnostic only, not a migration. Caller wraps candidate + fixture helpers +
+-- this file in BEGIN/ROLLBACK. No production state persists.
+CREATE TEMP TABLE farkle_handoff_diagnostic(mode text, facts jsonb);
+DO $p$
+DECLARE mode text; f jsonb; g uuid; d uuid; r uuid; deadline timestamptz;
+ timeout_answer jsonb; timeout_error text; generic_error text; generic_wrote boolean;
+ before_chips integer; original_game jsonb; after_game jsonb; duplicate jsonb;
+BEGIN
+ UPDATE public.system_settings SET value=jsonb_build_object('enabled',false) WHERE key='make_it_take_it';
+ FOREACH mode IN ARRAY ARRAY['retained_farkle','neutral_setup'] LOOP
+  f:=pg_temp.farkle_postgame_fixture(); g:=(f->>'game')::uuid; d:=(f->>'dealer')::uuid; r:=(f->>'round')::uuid;
+  PERFORM pg_temp.farkle_postgame_bank(f);
+  PERFORM public.farkle_advance_postgame(g,r,d,1);
+  PERFORM private.farkle_claim_v1(g,d,NULL,'cleanup');
+  -- Simulates only the isolated owner's proposed neutral setup assignment.
+  -- No guard or deployed shared function is changed by this diagnostic.
+  IF mode='neutral_setup' THEN UPDATE public.games SET game_type=NULL WHERE id=g; END IF;
+  deadline:=clock_timestamp()-interval '1 second';
+  UPDATE public.games SET config_deadline=deadline WHERE id=g;
+  PERFORM set_config('app.farkle_authority','',true);
+  PERFORM pg_temp.farkle_identity((f->>'peer')::uuid);
+  SELECT chips INTO before_chips FROM public.players WHERE id=(f->>'b')::uuid;
+  generic_wrote:=false; generic_error:=NULL;
+  BEGIN
+   PERFORM public.increment_player_chips((f->>'b')::uuid,1);
+   SELECT chips<>before_chips INTO generic_wrote FROM public.players WHERE id=(f->>'b')::uuid;
+   RAISE EXCEPTION 'diagnostic:undo_generic_probe';
+  EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM<>'diagnostic:undo_generic_probe' THEN generic_error:=SQLSTATE||':'||SQLERRM; END IF;
+  END;
+  SELECT to_jsonb(x) INTO original_game FROM public.games x WHERE id=g;
+  timeout_answer:=NULL; timeout_error:=NULL;
+  BEGIN
+   timeout_answer:=private.handle_config_deadline_timeout_exact(g,deadline,3);
+  EXCEPTION WHEN OTHERS THEN timeout_error:=SQLSTATE||':'||SQLERRM;
+  END;
+  SELECT to_jsonb(x) INTO after_game FROM public.games x WHERE id=g;
+  duplicate:=public.farkle_advance_postgame(g,r,d,1);
+  INSERT INTO farkle_handoff_diagnostic VALUES(mode,jsonb_build_object(
+   'generic_rpc_authenticated_execute',has_function_privilege('authenticated','public.increment_player_chips(uuid,integer)','EXECUTE'),
+   'generic_chip_write_succeeded',generic_wrote,'generic_error',generic_error,
+   'timeout_result',timeout_answer,'timeout_error',timeout_error,
+   'resulting_status',after_game->'status','resulting_game_type',after_game->'game_type',
+   'failed_timeout_unchanged',CASE WHEN timeout_error IS NOT NULL THEN after_game=original_game ELSE NULL END,
+   'continuation_duplicate',duplicate->>'outcome',
+   'duplicate_unchanged',(SELECT to_jsonb(x)=after_game FROM public.games x WHERE id=g),
+   'authority_claim_restored',coalesce(current_setting('app.farkle_authority',true),'')=''));
+  PERFORM private.farkle_claim_v1(g,d,NULL,'cleanup'); DELETE FROM public.games WHERE id=g;
+  PERFORM set_config('app.farkle_authority','',true);
+ END LOOP;
+END $p$;
+SELECT jsonb_build_object('diagnostic',jsonb_object_agg(mode,facts),
+ 'release',(SELECT to_jsonb(r) FROM private.farkle_release r),
+ 'fixture_count',(SELECT count(*) FROM public.games WHERE name='TEST ONLY: Wave2 postgame rollback')) AS evidence
+FROM farkle_handoff_diagnostic;
+
+ROLLBACK;
