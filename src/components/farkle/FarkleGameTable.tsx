@@ -63,8 +63,10 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const controlled = selfTurn && !self.auto_fold && !isPaused;
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 500); return () => clearInterval(timer); }, []);
-  const seconds = state.turnDeadline ? Math.max(0, Math.ceil((Date.parse(state.turnDeadline) - clock) / 1000)) : null;
-  useShellTimer(state.gamePhase === 'playing' && (seconds !== null || isPaused) ? {
+  const activePlayer = players.find(player => player.id === state.currentTurnPlayerId);
+  const humanClock = state.gamePhase === 'playing' && !!activePlayer && !activePlayer.is_bot && !activePlayer.auto_fold;
+  const seconds = humanClock && state.turnDeadline ? Math.max(0, Math.ceil((Date.parse(state.turnDeadline) - clock) / 1000)) : null;
+  useShellTimer(humanClock && (seconds !== null || isPaused) ? {
     secondsRemaining: seconds ?? 0, totalSeconds: state.config.turnSeconds, paused: isPaused,
     actorLabel: nameFor(state.currentTurnPlayerId), activePlayerId: state.currentTurnPlayerId,
     identityKey: `${scopeKey}/${state.currentTurnPlayerId}/${state.turnDeadline}`,
@@ -151,7 +153,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
         {selfTurn || state.gamePhase === 'complete' ? <FarkleAnchoredSlot artifactId="farkle.scoreboard"><FarkleScoreboard state={state} nameFor={nameFor} surface="felt" /></FarkleAnchoredSlot>
           : <FarkleAnchoredSlot artifactId="farkle.remoteDice"><FarkleRemoteStage dice={remoteDice}
           receiptKey={`${scopeKey}/${state.currentTurnPlayerId}/${state.rollNumber}`} animate={animate && !!roll} retired={retired} scoring={scoring} /></FarkleAnchoredSlot>}
-        <FarkleAnchoredSlot artifactId="farkle.thisTurn"><div className="flex h-full items-center justify-center font-bold text-amber-100">THIS TURN {state.thisTurn}</div></FarkleAnchoredSlot>
+        <FarkleAnchoredSlot artifactId="farkle.thisTurn"><div className="flex h-full items-center justify-center font-bold text-amber-100">THIS TURN {state.thisTurn.toLocaleString('en-US')}</div></FarkleAnchoredSlot>
         <FarkleAnchoredSlot artifactId="farkle.turnStatus"><div className="flex h-full items-center justify-center text-sm font-bold text-amber-300">{farkleTurnStatus(state)}</div></FarkleAnchoredSlot>
       </FarkleGameplayGeometryProvider>
       <GameplayOpponentSeatLayer family="farkle" participants={players.filter(p => state.playerStates[p.id] && p.id !== self?.id).map(p => ({ id: p.id, position: p.position, name: nameFor(p.id), chips: p.chips }))}

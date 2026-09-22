@@ -1,5 +1,24 @@
 # Current release and cutover state
 
+## September 22 Farkle human turn clock and dice correction
+
+Additive production migration `20260922200027_farkle_human_turn_clock` changes only
+the Farkle action owner and its Admin Default human timer. A new human turn
+starts with 60 seconds. Roll, partial Hold and Roll N retain the exact stored
+deadline; an authoritative HOT DICE Hold renews 60 seconds for that same human.
+Bank and Farkle end the turn; the next human receives a fresh deadline.
+Bots and fake-money takeover retain their separate two-second action pacing;
+real-money human timeout still pauses. The client displays only a human turn
+clock, sized canonical dice and a lower Geometry Lab `THIS TURN` placement.
+
+The frozen config of one pre-existing paused production Farkle game still
+contains 10 seconds. It was not rewritten; start a new dealer game to use the
+approved 60-second default. No scoring, settlement, public gate or other game
+changed. Focused isolated proof passed 14 timing/authority assertions and
+candidate → recovery → candidate fingerprints. The desktop/mobile client
+browser case, 31 focused tests, typecheck and production build passed. The
+applied action-owner fingerprint is `fc22fa88a8d909f6bc836e3c1d8e4611`.
+
 ## September 22 Farkle scoped UX smoke correction
 
 Farkle-only presentation changes add the authoritative canonical countdown,

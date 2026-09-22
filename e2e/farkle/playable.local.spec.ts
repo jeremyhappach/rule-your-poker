@@ -14,6 +14,13 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
   const evidence: unknown[] = [];
   let gameId: string | undefined;
   try {
+    for (const page of pages) await page.route('**/rpc/configure_dealer_game', async route => {
+      const body = route.request().postDataJSON();
+      if (body.p_game_type === 'farkle' && body.p_config.testConfiguration?.testOnly) {
+        body.p_config.testConfiguration.turnSeconds = 60;
+        await route.continue({ postData: JSON.stringify(body) });
+      } else await route.continue();
+    });
     for (const [i, page] of pages.entries()) {
       await page.goto('/auth');
       await page.locator('#login-email').fill(accounts[i].email);
@@ -61,6 +68,8 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     const order=[...snap.players].sort((a,b)=>((snap.game.dealer_position-a.position+7)%7||7)-((snap.game.dealer_position-b.position+7)%7||7)).map(p=>p.id);
     expect(snap.state.turnOrder).toEqual(order);
     expect(snap.state.config.testOnly).toBe(true);
+    expect(snap.state.config.turnSeconds).toBe(60);
+    expect(Date.parse(snap.state.turnDeadline!) - Date.now()).toBeGreaterThan(50_000);
     const actorPage=()=>pages[accounts.findIndex((a:{id:string})=>a.id===snap.players.find(p=>p.id===snap.state.currentTurnPlayerId)?.user_id)];
     let actor=actorPage();
     const checkOwnership=async()=>{
@@ -79,15 +88,43 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     };
     await refresh('before-first-roll');
     await checkOwnership();
+    let actorDeadline = snap.state.turnDeadline;
+    let actorId = snap.state.currentTurnPlayerId;
+    for (const page of [actor]) {
+      const dice = page.locator('.farkle-die-visual > button').first();
+      await expect(dice).toBeVisible();
+      const ratio = await dice.evaluate(node => {
+        const pip = node.querySelector('.rounded-full');
+        return pip ? pip.getBoundingClientRect().width / node.getBoundingClientRect().width : 0;
+      });
+      expect(ratio).toBeGreaterThan(0.13);
+      expect(ratio).toBeLessThan(0.27);
+    }
+    const scorecard = await actor.locator('[data-farkle-scoreboard="felt"]').boundingBox();
+    const atRisk = await actor.locator('[data-wave5-farkle-slot="farkle.thisTurn"]').boundingBox();
+    expect(scorecard && atRisk && scorecard.y + scorecard.height < atRisk.y).toBe(true);
     for(let attempt=0;attempt<8 && snap.state.stage!=='hold';attempt++){
       await actor.getByRole('button',{name:/^Roll \d/}).click();
       await expect(actor.locator('[data-farkle-self-roll-phase]')).toHaveAttribute('data-farkle-self-roll-phase',/cluster|rumble|reveal/);
       await expect.poll(async()=>(await snapshot()).state.actionSequence).toBeGreaterThan(snap.state.actionSequence);
       snap=await snapshot();actor=actorPage();
+      if (snap.state.currentTurnPlayerId === actorId) expect(snap.state.turnDeadline).toBe(actorDeadline);
+      else {
+        actorId = snap.state.currentTurnPlayerId;
+        actorDeadline = snap.state.turnDeadline;
+        expect(Date.parse(actorDeadline!) - Date.now()).toBeGreaterThan(50_000);
+      }
     }
     expect(snap.state.stage).toBe('hold');
+    const remote = pages.find(page => page !== actor)!;
+    const remoteRatio = await remote.locator('.farkle-die-visual > button').first().evaluate(node => {
+      const pip = node.querySelector('.rounded-full');
+      return pip ? pip.getBoundingClientRect().width / node.getBoundingClientRect().width : 0;
+    });
+    expect(remoteRatio).toBeGreaterThan(0.13);
+    expect(remoteRatio).toBeLessThan(0.27);
     await refresh('awaiting-hold');
-    const hold=snap.state.legalHolds[0];
+    const hold=snap.state.legalHolds.find(candidate => candidate.indexes.length < 6) ?? snap.state.legalHolds[0];
     const die=actor.locator(`[data-farkle-active-area] button[data-farkle-die-index="${hold.indexes[0]}"]`);
     await die.click();await expect(die).toHaveAttribute('aria-pressed','true');await die.click();await expect(die).toHaveAttribute('aria-pressed','false');
     for(const index of hold.indexes)await actor.locator(`[data-farkle-active-area] button[data-farkle-die-index="${index}"]`).click();
@@ -97,6 +134,7 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     }
     await expect.poll(async()=>(await snapshot()).state.stage).toBe('bank_or_roll');
     snap=await snapshot();expect(snap.state.thisTurn).toBe(hold.points);
+    if (hold.indexes.length < 6) expect(snap.state.turnDeadline).toBe(actorDeadline);
     await expect(actor.getByLabel('Committed scoring dice')).toContainText(`+${hold.points}`);
     await refresh('committed-hold-bank-or-roll');
     await checkOwnership();
@@ -113,6 +151,7 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     await expect.poll(async()=>(await snapshot()).state.playerStates[player].completedTurns).toBe(before.completedTurns+1);
     snap=await snapshot();expect(snap.state.playerStates[player].banked).toBe(before.banked+hold.points);
     actor=actorPage();await checkOwnership();
+    expect(Date.parse(snap.state.turnDeadline!) - Date.now()).toBeGreaterThan(50_000);
     for(const page of pages)await expect(page.locator('[data-canonical-announcement-content]')).toContainText(`BANKS ${hold.points}`);
     evidence.push({stage:'banked',state:snap.state});
     await pages[0].screenshot({path:info.outputPath('playable.png')});

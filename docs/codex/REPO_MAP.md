@@ -1,5 +1,14 @@
 # Repository map
 
+Farkle human turn clock (applied as `20260922200027`):
+`supabase/migrations/20260922200027_farkle_human_turn_clock.sql` retains a
+human's deadline across normal actions, renews it on authoritative HOT DICE,
+and freezes the approved 60-second default for new dealer games. The Farkle
+client publishes that human deadline only; `FarkleDie` uses the canonical die
+size ladder, and Farkle geometry places `THIS TURN` below the felt scorecard.
+Focused rollback proof and executable recovery live in
+`supabase/farkle/turn-clock/`.
+
 Farkle terminal COMMIT handoff (applied as `20260921172016`):
 `supabase/farkle/commit-boundary/authority.sql` owns the private transaction-bound
 handoff and exact deferred-trigger validator. `build.mjs` adds its creation to

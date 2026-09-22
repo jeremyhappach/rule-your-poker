@@ -19,7 +19,7 @@ export function FarkleDefaultsEditor() {
     <p>Target {defaults.points_to_win.toLocaleString()} · {FARKLE_ENDGAME_LABELS[endgame]}</p>
     <p>No entry minimum. Repeated-Farkle penalties are unsupported in v1.</p>
     <p>Bot policy: {botPolicy} · Bank threshold: {botBankThreshold}</p>
-    <p>Decision timer: {defaults.decision_timer_seconds}s · Bot delay: {defaults.bot_decision_delay_seconds}s</p>
+    <p>Human turn clock: {defaults.decision_timer_seconds}s · Bot action delay: {defaults.bot_decision_delay_seconds}s</p>
     <table className="w-full text-sm"><caption className="text-left font-semibold">Approved scoring</caption><tbody>
       <tr><th className="text-left">Single 1 / 5</th><td>{scoring.singles['1']} / {scoring.singles['5']}</td></tr>
       {(['3', '4', '5', '6'] as const).map(n => <tr key={n}><th className="text-left">{n} of a kind (1–6)</th><td>{scoring.ofAKind[n].join(' / ')}</td></tr>)}
