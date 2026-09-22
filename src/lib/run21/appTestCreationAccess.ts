@@ -4,9 +4,11 @@ import { run21AppTestRequested } from './appTestEnvironment';
 
 /** Recheck discovery at submission; this does not replace authorization in SQL. */
 export async function assertRun21CreationAccess(sessionId: string): Promise<void> {
-  const projectRef = import.meta.env.VITE_RUN21_TEST_PROJECT_REF ?? '';
+  const production = import.meta.env.VITE_SUPABASE_URL === 'https://xvhmbuppghwmwpwrkzao.supabase.co';
+  const projectRef = production ? 'xvhmbuppghwmwpwrkzao' : import.meta.env.VITE_RUN21_TEST_PROJECT_REF ?? '';
   if (!run21AppTestRequested({ lane: true,
-    enabled: import.meta.env.VITE_RUN21_APP_TEST_ENABLED,
+    enabled: production ? 'true' : import.meta.env.VITE_RUN21_APP_TEST_ENABLED,
+    productionAuthority: production ? 'vercel' : undefined,
     supabaseUrl: import.meta.env.VITE_SUPABASE_URL, projectRef,
   })) throw new Error('Run21 is unavailable');
   const { data: auth, error: authError } = await supabase.auth.getUser();
