@@ -2,6 +2,10 @@
 
 ## Run21 production admission — September 22
 
+- Start-flow correction deployed as `3aca5a02989c8685b9f612e73dfca088e04ab68e`:
+  Hap's fake-money/add-bot/Other/Run21/Start flow succeeds. The first face-up card
+  rendered, its column placement returned HTTP 200, and the timer counted down.
+  No migration or engine change was needed. Smoke sessions were cleaned up.
 - Deployed application: `9e1a609d2ba97b3b7e826a6d1c6b336af8992b29`.
 - The manifest emits `api/run21` on Node 24. Both authority URL forms return
   JSON 401 anonymously and JSON 403 for an authenticated non-allowlisted user.

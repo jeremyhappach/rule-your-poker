@@ -2,7 +2,7 @@
 
 ## September 22 Run21 published for Jeremy only
 
-Production deploys `9e1a609d2ba97b3b7e826a6d1c6b336af8992b29` at
+Production deploys `3aca5a02989c8685b9f612e73dfca088e04ab68e` at
 https://ptown-poker.vercel.app. The four Run21 migrations are applied. The
 release gate is enabled with Hap's verified administrator UUID as its sole
 allowlist member. The emitted `api/run21` function returns JSON 401 anonymously
@@ -10,7 +10,14 @@ and JSON 403 for a real authenticated non-allowlisted user, including after
 enablement. Other administrators remain denied. Hap's production browser
 confirmed Other → Run21 opens setup; Holm and Yahtzee remain available.
 Temporary authentication fixtures and the fake-money setup session were removed.
-Jeremy's first gameplay test remains manual. See [release details](RUN21_PRODUCTION_RELEASE.md).
+The subsequent Start Run21 failure was reproduced as a client-side rejection:
+the submit guard still required local-test environment flags. It now uses the
+same production project recognition as discovery and retains the authenticated
+database capability check. Hap's exact fake-money/add-bot/Other/Run21 flow now
+starts successfully. The first king of hearts was visible; placing it in column
+1 returned HTTP 200, revealed the next card, and started the countdown. Both
+reproduction sessions were removed through the canonical fake-money cleanup RPC.
+See [release details](RUN21_PRODUCTION_RELEASE.md).
 
 ## September 21 3-5-7 correction verified; final application gate blocked
 
