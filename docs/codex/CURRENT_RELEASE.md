@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## September 22 Farkle scoped UX smoke correction
+
+Farkle-only presentation changes add the authoritative canonical countdown,
+self roll animation, readable active-pane identity, banked-only scoreboards,
+committed-Hold highlight/retirement and Hold/Bank announcements. Own dice stay
+in the active pane; remote dice stay on the felt. Roll N retains six-dice
+size/spacing and centers the remaining group. Dice use the existing canonical
+visual primitive without changing Horses/SCC or shared renderers.
+
+Validation: 31 focused tests, typecheck and production build passed. Three
+isolated browser proofs passed (playable flow, held-dice reconnect/remote
+Roll N, and both-client HOT DICE/FARKLE notice lifetimes), with desktop/mobile
+screenshots reviewed. Disposable local accounts/fixtures were removed and
+the local creation gate restored. No SQL, authority, scoring, defaults,
+production settings, Run21, Horses or SCC changes. Publication verification
+follows the scoped release; Jeremy's production smoke remains acceptance.
+
 ## September 22 Run21 latency and canonical continuation correction
 
 Published application: `d3f3209d02daeb05f5563bf225713541602e67e7`, READY at

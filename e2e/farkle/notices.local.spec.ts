@@ -23,6 +23,12 @@ test('HOT DICE and FARKLE are visible for their canonical lifetime on both clien
   await pages[0].getByRole('dialog',{name:'Create New Game'}).getByRole('button',{name:'Create Game',exact:true}).click();
   await expect(pages[0]).toHaveURL(/\/game\/[0-9a-f-]{36}$/);gameId=pages[0].url().split('/game/')[1];
   await pages[1].goto(`/game/${gameId}`);await pages[1].locator('[data-waiting-seat-open] button').first().click();
+  // Both seated participants explicitly opt into the next game if sat out.
+  for(const page of pages){
+    const rejoin=page.getByRole('button',{name:'Return to Play',exact:true});
+    if(await rejoin.isVisible())await rejoin.click();
+  }
+  await expect(pages[0].locator('[data-start-game-btn]')).toBeVisible({timeout:15000});
   await pages[0].locator('[data-start-game-btn]').click();let dealer=pages[0];
   await expect.poll(async()=>{for(const p of pages)if(await p.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=p;return true;}return false;},{timeout:75_000}).toBe(true);
   await dealer.getByRole('tab',{name:'Dice Games',exact:true}).click();await dealer.locator('[data-dealer-game-option="farkle"]').click();

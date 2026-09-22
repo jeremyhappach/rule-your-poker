@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
+import { ShellTimerRail, useShellTimer } from '@/lib/canonicalShell/ShellTimerRail';
 import { useShellTabBar, type ShellTabId } from '@/lib/canonicalShell/ShellTabBar';
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
@@ -17,6 +18,7 @@ import { admitFarkleSnapshot, farkleCommittedHolds, farkleScopeKey, farkleTurnSt
 import { FarkleGameplayGeometryProvider } from '@/lib/farkle/FarkleGameplayGeometryProvider';
 import type { FarkleAction, FarkleReplay, FarkleScope, FarkleState } from '@/lib/farkle/types';
 import { FarkleActiveArea } from './FarkleActiveArea';
+import { FarkleScoreboard } from './FarkleScoreboard';
 import { FarkleAnchoredSlot } from './FarkleAnchoredSlot';
 import { FarkleRemoteStage } from './FarkleRemoteStage';
 import { FarkleRules } from './FarkleRules';
@@ -47,6 +49,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const actionInFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [scoringFlash, setScoringFlash] = useState<{ key: string; indexes: number[] } | null>(null);
   const [localTab, setLocalTab] = useState<ShellTabId>('cards');
   const tab = props.activeTab ?? localTab;
   const setTab = props.onActiveTabChange ?? setLocalTab;
@@ -56,10 +59,16 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const self = players.find(p => p.user_id === currentUserId && !p.is_bot);
   const nameFor = (id: string) => { const player = players.find(p => p.id === id);
     return player?.is_bot ? getBotAlias(players, player.user_id) : player?.profiles?.username ?? 'Player'; };
-  const controlled = !!self && self.id === state.currentTurnPlayerId && !self.auto_fold && !isPaused && state.gamePhase === 'playing';
+  const selfTurn = !!self && self.id === state.currentTurnPlayerId && state.gamePhase === 'playing';
+  const controlled = selfTurn && !self.auto_fold && !isPaused;
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 500); return () => clearInterval(timer); }, []);
   const seconds = state.turnDeadline ? Math.max(0, Math.ceil((Date.parse(state.turnDeadline) - clock) / 1000)) : null;
+  useShellTimer(state.gamePhase === 'playing' && (seconds !== null || isPaused) ? {
+    secondsRemaining: seconds ?? 0, totalSeconds: state.config.turnSeconds, paused: isPaused,
+    actorLabel: nameFor(state.currentTurnPlayerId), activePlayerId: state.currentTurnPlayerId,
+    identityKey: `${scopeKey}/${state.currentTurnPlayerId}/${state.turnDeadline}`,
+  } : null);
   usePublishShellFelt({ gameKind: 'farkle', anteAmount: state.config.ante_amount, pointsToWin: state.config.targetScore, publisherLabel: 'FarkleGameTable' });
   useShellTabBar({ cardsIcon: 'dice', activeTab: tab, setActiveTab: setTab, cardsFlashing: controlled ? 'green' : null, isPaused });
 
@@ -85,13 +94,23 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     lastPresented.current = { scopeKey, sequence: state.actionSequence };
     if (prior.scopeKey !== scopeKey || state.actionSequence <= prior.sequence) return;
     for (const event of state.events ?? []) {
-      if (event.type === 'farkle' || event.type === 'hot_dice') emit({
+      const title = event.type === 'farkle' ? 'FARKLE' : event.type === 'hot_dice' ? 'HOT DICE'
+        : event.type === 'dice_held' ? `THIS TURN +${(event.points ?? 0).toLocaleString('en-US')}`
+        : event.type === 'banked' ? `${nameFor(event.playerId ?? '')} BANKS ${(event.points ?? 0).toLocaleString('en-US')}` : null;
+      if (title) emit({
         id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
         scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
-        payload: { title: event.type === 'farkle' ? 'FARKLE' : 'HOT DICE' }, ttlMs: 1600, behavior: 'enqueue',
+        payload: { title }, ttlMs: event.type === 'dice_held' ? 900 : 1600, behavior: 'enqueue',
       });
     }
   }, [scopeKey, state.actionSequence, emit]);
+  useEffect(() => {
+    const held = state.events?.find(event => event.type === 'dice_held');
+    if (!animate || !held) { setScoringFlash(null); return; }
+    setScoringFlash({ key: `${scopeKey}/${state.actionSequence}`, indexes: held.indexes ?? [] });
+    const timer = setTimeout(() => setScoringFlash(null), 900);
+    return () => clearTimeout(timer);
+  }, [scopeKey, state.actionSequence, animate]);
 
   const act = useCallback(async (action: FarkleAction, selection: number[] = []) => {
     if (!controlled || !self || actionInFlight.current) return;
@@ -118,34 +137,40 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const currentReplay = replay?.roundId === scope.roundId ? replay : null;
   const roll = state.events?.find(event => event.type === 'dice_rolled');
   const remoteDice = roll?.dice ?? state.dice;
+  const committed = farkleCommittedHolds(currentReplay?.events ?? [], state);
+  const heldEvent = state.events?.find(event => event.type === 'dice_held');
+  const retired = [...new Set([...state.dice.filter(d => !state.available.includes(d.index)).map(d => d.index),
+    ...committed.filter(group => group.rollNumber === state.rollNumber).flatMap(group => group.dice.map(d => d.index)), ...(heldEvent?.indexes ?? [])])];
+  const scoring = scoringFlash?.key === `${scopeKey}/${state.actionSequence}` ? scoringFlash.indexes : [];
   return <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent" data-farkle-scope={scopeKey}>
     <FarkleTerminalPresentation scope={scope} state={state} live={props.terminalPresentationLive === true}
       winnerName={nameFor(state.winnerPlayerId ?? '')} winnerIsSelf={self?.id === state.winnerPlayerId}
       onActive={props.onTerminalPresentationActiveChange} onComplete={props.onTerminalPresentationComplete} />
     <div style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
       <FarkleGameplayGeometryProvider>
-        {!controlled && <FarkleAnchoredSlot artifactId="farkle.remoteDice"><FarkleRemoteStage dice={remoteDice}
-          receiptKey={`${scopeKey}/${state.actionSequence}`} animate={animate && !!roll} /></FarkleAnchoredSlot>}
+        {selfTurn || state.gamePhase === 'complete' ? <FarkleAnchoredSlot artifactId="farkle.scoreboard"><FarkleScoreboard state={state} nameFor={nameFor} surface="felt" /></FarkleAnchoredSlot>
+          : <FarkleAnchoredSlot artifactId="farkle.remoteDice"><FarkleRemoteStage dice={remoteDice}
+          receiptKey={`${scopeKey}/${state.currentTurnPlayerId}/${state.rollNumber}`} animate={animate && !!roll} retired={retired} scoring={scoring} /></FarkleAnchoredSlot>}
         <FarkleAnchoredSlot artifactId="farkle.thisTurn"><div className="flex h-full items-center justify-center font-bold text-amber-100">THIS TURN {state.thisTurn}</div></FarkleAnchoredSlot>
         <FarkleAnchoredSlot artifactId="farkle.turnStatus"><div className="flex h-full items-center justify-center text-sm font-bold text-amber-300">{farkleTurnStatus(state)}</div></FarkleAnchoredSlot>
       </FarkleGameplayGeometryProvider>
       <GameplayOpponentSeatLayer family="farkle" participants={players.filter(p => state.playerStates[p.id] && p.id !== self?.id).map(p => ({ id: p.id, position: p.position, name: nameFor(p.id), chips: p.chips }))}
-        presentation={{ dealerPip: () => false, scoreLine: p => `${state.playerStates[p.id].banked} · ${state.playerStates[p.id].completedTurns} turns`,
+        presentation={{ dealerPip: () => false, scoreLine: p => state.playerStates[p.id].banked.toLocaleString('en-US'),
           autoRoll: p => !isRealMoney && players.some(row => row.id === p.id && row.auto_fold && !row.is_bot),
           activeTimer: p => !isPaused && seconds !== null && p.id === state.currentTurnPlayerId ? { timeLeft: seconds, maxTime: state.config.turnSeconds, activePlayerId: p.id } : null }} />
     </div>
     <div aria-hidden style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)' }} />
-    <ShellHudGrid timer={<div className="flex h-full items-center justify-center gap-3 text-xs text-amber-100">
-      <span>{isPaused ? 'Paused' : state.gamePhase === 'complete' ? `${nameFor(state.winnerPlayerId ?? '')} wins` : `${nameFor(state.currentTurnPlayerId)} · ${seconds ?? '—'}s`}</span>
-      <strong>THIS TURN {state.thisTurn}</strong><button type="button" aria-label="Frozen Farkle rules" onClick={() => setHelp(true)}>?</button>
-    </div>} pane={error ? <div role="alert" className="p-2 text-sm text-amber-200">{error}<Button size="sm" onClick={() => { setError(null); onRefetch(); }}>Reconnect</Button></div>
+    <ShellHudGrid timer={<div className="flex h-full items-center text-xs text-foreground"><ShellTimerRail /><span className="shrink-0 pr-2 tabular-nums">{isPaused ? 'Paused' : seconds !== null && state.gamePhase === 'playing' ? `${seconds}s` : ''}</span></div>}
+      pane={error ? <div role="alert" className="p-2 text-sm text-foreground">{error}<Button size="sm" onClick={() => { setError(null); onRefetch(); }}>Reconnect</Button></div>
       : tab === 'history' ? <FarkleHistory replay={currentReplay} nameFor={nameFor} />
       : tab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={currentUserId} diagnosticGameId={scope.gameId} diagnosticDealerGameId={scope.dealerGameId} />
       : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · <PresentationChipBalance playerId={p.id} rawBalance={p.chips} /></p>)}</div>
-      : <FarkleActiveArea state={state} controllable={controlled} pending={pending} committed={farkleCommittedHolds(currentReplay?.events ?? [], state)} onAction={act} />}
-      identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-amber-100">
-        {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {state.playerStates[self.id]?.banked ?? 0} points · {state.playerStates[self.id]?.completedTurns ?? 0} turns</span>
+      : selfTurn ? <FarkleActiveArea state={state} controllable={controlled} pending={pending} committed={committed} onAction={act} animate={animate && !!roll} retired={retired} scoring={scoring} />
+      : <FarkleScoreboard state={state} nameFor={nameFor} surface="pane" />}
+      identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-foreground">
+        {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {(state.playerStates[self.id]?.banked ?? 0).toLocaleString('en-US')} points</span>
           {!isRealMoney && self.auto_fold && <><Bot className="h-4 w-4" aria-label="Bot control" /><Button size="sm" disabled={pending || !!self.auto_play_stop_round_id} onClick={reclaim}>{self.auto_play_stop_round_id ? 'Rejoining after this turn' : 'Rejoin'}</Button></>}</> : <span>Observing</span>}
+        <button type="button" aria-label="Frozen Farkle rules" onClick={() => setHelp(true)}>?</button>
       </div>} />
     <Dialog open={help} onOpenChange={setHelp}><DialogContent className="max-h-full overflow-auto"><DialogHeader><DialogTitle>Farkle rules</DialogTitle></DialogHeader><FarkleRules config={state.config} /></DialogContent></Dialog>
   </div>;

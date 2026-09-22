@@ -27,7 +27,13 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     gameId = pages[0].url().split('/game/')[1];
     await pages[1].goto(`/game/${gameId}`);
     await pages[1].locator('[data-waiting-seat-open] button').first().click();
-    await pages[0].locator('[data-start-game-btn]').click();
+  // Both seated participants explicitly opt into the next game if sat out.
+  for(const page of pages){
+    const rejoin=page.getByRole('button',{name:'Return to Play',exact:true});
+    if(await rejoin.isVisible())await rejoin.click();
+  }
+  await expect(pages[0].locator('[data-start-game-btn]')).toBeVisible({timeout:15000});
+  await pages[0].locator('[data-start-game-btn]').click();
     let dealer = pages[0];
     await expect.poll(async()=>{
       for(const page of pages)if(await page.locator('[data-dealer-game-setup-step="game-selection"]').isVisible()){dealer=page;return true;}
@@ -57,13 +63,25 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     expect(snap.state.config.testOnly).toBe(true);
     const actorPage=()=>pages[accounts.findIndex((a:{id:string})=>a.id===snap.players.find(p=>p.id===snap.state.currentTurnPlayerId)?.user_id)];
     let actor=actorPage();
+    const checkOwnership=async()=>{
+      const remote=pages.find(p=>p!==actor)!;
+      await expect(actor.locator('[data-farkle-active-area]')).toBeVisible();
+      await expect(actor.locator('[data-farkle-scoreboard="felt"]')).toBeVisible();
+      await expect(actor.locator('[data-farkle-roll-phase]')).toHaveCount(0);
+      await expect(remote.locator('[data-farkle-active-area]')).toHaveCount(0);
+      await expect(remote.locator('[data-farkle-scoreboard="pane"]')).toBeVisible();
+      await expect(remote.locator('[data-farkle-roll-phase]')).toBeVisible();
+      for(const page of pages)await expect(page.locator('[data-canonical-shell-timer-rail]')).toBeVisible();
+    };
     const refresh=async(label:string)=>{
       const before=await snapshot();await actor.reload();await expect(actor.locator('[data-farkle-scope]')).toBeVisible();
       const after=await snapshot();expect(after.state).toEqual(before.state);evidence.push({stage:label,state:after.state});
     };
     await refresh('before-first-roll');
+    await checkOwnership();
     for(let attempt=0;attempt<8 && snap.state.stage!=='hold';attempt++){
       await actor.getByRole('button',{name:/^Roll \d/}).click();
+      await expect(actor.locator('[data-farkle-self-roll-phase]')).toHaveAttribute('data-farkle-self-roll-phase',/cluster|rumble|reveal/);
       await expect.poll(async()=>(await snapshot()).state.actionSequence).toBeGreaterThan(snap.state.actionSequence);
       snap=await snapshot();actor=actorPage();
     }
@@ -74,10 +92,19 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     await die.click();await expect(die).toHaveAttribute('aria-pressed','true');await die.click();await expect(die).toHaveAttribute('aria-pressed','false');
     for(const index of hold.indexes)await actor.locator(`[data-farkle-active-area] button[data-farkle-die-index="${index}"]`).click();
     await actor.getByRole('button',{name:/^Hold Dice/}).click();
+    for(const page of pages){
+      for(const index of hold.indexes)await expect(page.locator(`.farkle-die[data-farkle-die="${index}"][data-scoring="true"]`)).toBeVisible();
+    }
     await expect.poll(async()=>(await snapshot()).state.stage).toBe('bank_or_roll');
     snap=await snapshot();expect(snap.state.thisTurn).toBe(hold.points);
     await expect(actor.getByLabel('Committed scoring dice')).toContainText(`+${hold.points}`);
     await refresh('committed-hold-bank-or-roll');
+    await checkOwnership();
+    for(const index of hold.indexes){
+      await expect(actor.locator(`.farkle-die[data-farkle-die="${index}"]`)).toHaveAttribute('data-retired','true');
+      await expect(actor.locator(`button[data-farkle-die-index="${index}"]`)).toBeDisabled();
+    }
+    for(const [i,page] of pages.entries())await page.screenshot({path:info.outputPath(`held-${i}.png`)});
     await actor.getByRole('button',{name:'Frozen Farkle rules',exact:true}).click();
     await expect(actor.getByRole('dialog')).toContainText('TEST ONLY: isolated Wave 2 browser qualification');
     await actor.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
@@ -85,6 +112,8 @@ test('actual admin setup, ante, roll, selection, hold, bank and refresh', async 
     await actor.getByRole('button',{name:'Bank',exact:true}).click();
     await expect.poll(async()=>(await snapshot()).state.playerStates[player].completedTurns).toBe(before.completedTurns+1);
     snap=await snapshot();expect(snap.state.playerStates[player].banked).toBe(before.banked+hold.points);
+    actor=actorPage();await checkOwnership();
+    for(const page of pages)await expect(page.locator('[data-canonical-announcement-content]')).toContainText(`BANKS ${hold.points}`);
     evidence.push({stage:'banked',state:snap.state});
     await pages[0].screenshot({path:info.outputPath('playable.png')});
   } finally {

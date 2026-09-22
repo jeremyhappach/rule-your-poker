@@ -26,17 +26,17 @@ vi.mock('@/components/ui/dialog', () => ({
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Farkle canonical notices', () => {
-  it.each([['hot_dice', 'HOT DICE'], ['farkle', 'FARKLE']])('renders %s through the existing canonical renderer', async (type, title) => {
+  it.each([['hot_dice', 'HOT DICE'], ['farkle', 'FARKLE'], ['dice_held', 'THIS TURN +250'], ['banked', 'Player BANKS 250']])('renders %s through the existing canonical renderer', async (type, title) => {
     const state = farkleTestState();
     const scope = { gameId: 'session', dealerGameId: 'dealer', handNumber: 1, roundId: state._authorityScope };
     const props = { scope, incoming: state, revision: 1, players: [], isPaused: false, isRealMoney: false, onRefetch: vi.fn() };
     const view = render(<FarkleGameTable {...props} />);
     expect(emit).not.toHaveBeenCalled();
-    const incoming = { ...state, actionSequence: 2, events: [{ type }] };
+    const incoming = { ...state, actionSequence: 2, events: [{ type, points: 250, indexes: [0] }] };
     view.rerender(<FarkleGameTable {...props} incoming={incoming} revision={2} />);
     await waitFor(() => expect(emit).toHaveBeenCalledTimes(1));
     const event = emit.mock.calls[0][0];
-    expect(event).toMatchObject({ type: 'gameplay_notice', payload: { title }, ttlMs: 1600, behavior: 'enqueue',
+    expect(event).toMatchObject({ type: 'gameplay_notice', payload: { title }, ttlMs: type === 'dice_held' ? 900 : 1600, behavior: 'enqueue',
       scope: { dealerGameId: scope.gameId, roundId: scope.roundId } });
     render(renderAnnouncement(event));
     expect(screen.getByText(title)).toBeVisible();
