@@ -26,6 +26,7 @@ export class Run21Authority {
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private pending = new Map<string, {done: Promise<void>; resolve: () => void}>();
   private listeners = new Map<string, Set<() => void>>();
+  private committed = new Map<string, StoredMatch>();
   constructor(readonly store: Store, readonly now = Date.now, readonly shuffle = shuffleRound) {}
   private serial<T>(gameId: string, work: () => Promise<T>): Promise<T> {
     const result = (this.queues.get(gameId) ?? Promise.resolve()).catch(() => {}).then(async () => {
@@ -33,6 +34,7 @@ export class Run21Authority {
         try { return await work(); }
         catch (error) {
           if (!(error instanceof AuthorityError) || error.code !== 'run21:concurrent_commit' || attempt >= 7) throw error;
+          this.committed.delete(gameId);
           // Reload canonical state and reapply the same request identity after a CAS race.
         }
       }
@@ -48,6 +50,8 @@ export class Run21Authority {
   private async latest(gameId: string) {
     const row = (await this.store.load(gameId)).at(-1);
     if (!row) throw new AuthorityError('run21:not_configured', 404);
+    const prior=this.committed.get(gameId);
+    if(!prior||prior.dealer_game_id!==row.dealer_game_id||row.revision>=prior.revision)this.committed.set(gameId,row);
     return row;
   }
   private player(row: StoredMatch, userId: string) {
@@ -113,6 +117,7 @@ export class Run21Authority {
     const choice = chooseAction(project(state, bot.id), at);
     due = choice ? due ?? at + choice.delayMs : null;
     if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due);
+    this.committed.set(row.game_id,row);
     this.schedule(row);
     return row;
   }
@@ -156,14 +161,31 @@ export class Run21Authority {
       return this.snapshot(row, player.id, afterSequence);
     });
   }
+  /** Revision notifications observe committed state; they never queue gameplay work. */
+  async observe(gameId: string, userId: string, afterSequence = 0) {
+    const row = await this.latest(gameId);
+    const player = this.player(row, userId);
+    if (!row.state) return this.read(gameId, userId, afterSequence);
+    return this.snapshot(row, player.id, afterSequence);
+  }
   async act(gameId: string, userId: string, command: Command, afterSequence = 0) {
     return this.serial(gameId, async () => {
-      const initial = await this.latest(gameId); const player = this.player(initial, userId);
+      // A matching committed revision can go directly to the PostgreSQL CAS.
+      // No cached result bypasses the database write; races reload and retry the same ID.
+      const cached=this.committed.get(gameId),round=cached?.state?.rounds.at(-1);
+      const exact=cached&&!cached.finished&&command?.identity?.dealerGameId===cached.dealer_game_id&&
+        command?.roundId===round?.id&&command?.revision===round?.boards[command?.playerId]?.revision;
+      const initial = exact ? cached : await this.latest(gameId); const player = this.player(initial, userId);
       let row = await this.advance(initial);
       if (row.finished) throw new AuthorityError('run21:finished');
       if (!command || !isUuid(command.requestId ?? '') || !command.identity || !command.intent ||
         !['place', 'pass', 'collect', 'acknowledge'].includes(command.intent.type)) throw new AuthorityError('run21:invalid_command', 400);
-      const result = applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt));
+      let result = applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt));
+      if(exact&&result.status!=='accepted'){
+        row=await this.advance(await this.latest(gameId));
+        if(row.finished)throw new AuthorityError('run21:finished');
+        result=applyCommand(row.state!,command,{kind:'player',playerId:player.id},Math.max(this.now(),row.state!.updatedAt));
+      }
       if (result.status === 'rejected') throw new AuthorityError(`run21:${result.reason}`);
       if (result.status === 'accepted') row = await this.store.commit(row, result.state, null);
       row = await this.advance(row); this.notify(gameId);
@@ -184,6 +206,7 @@ export class Run21Authority {
       const row = await this.latest(gameId); this.player(row, userId);
       if (!row.state?.settlement) throw new AuthorityError('run21:not_settled');
       await this.store.close(row.dealer_game_id, userId); clearTimeout(this.timers.get(gameId));
+      this.committed.delete(gameId);
       this.pending.get(gameId)?.resolve(); this.pending.delete(gameId); this.notify(gameId);
     });
   }
@@ -196,6 +219,7 @@ export class Run21Authority {
   }
   dispose() {
     this.timers.forEach(clearTimeout); this.timers.clear(); this.listeners.clear();
+    this.committed.clear();
     this.pending.forEach(work => work.resolve()); this.pending.clear();
   }
 }

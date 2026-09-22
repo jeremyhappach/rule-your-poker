@@ -17,7 +17,10 @@ function fixture(botFirst = false) {
   if (!botFirst) row.participants.reverse();
   const store: Store = {load: async () => [structuredClone(row)], commit: async (old, state, due) => {
     if (old.revision !== row.revision) throw Error('CAS conflict');
-    row = {...row, state: structuredClone(state), revision: row.revision + 1, bot_due_at: due}; return structuredClone(row);
+    row = {...row, state: structuredClone(state), revision: row.revision + 1, bot_due_at: due};
+    // Real persistence yields to I/O. Keep long three-round proofs from starving
+    // the worker heartbeat while the in-memory fixture resolves only microtasks.
+    const committed=structuredClone(row);await new Promise<void>(resolve=>setImmediate(resolve));return committed;
   }, close: async () => {row.finished = true;}};
   const make = () => {const w = new Run21Authority(store, () => now, async () => fixtureDeck([], 17)); workers.push(w); return w;};
   return {make, get row() {return row;}, tick: (ms: number) => {now += ms;}};
@@ -29,6 +32,16 @@ function command(row: StoredMatch, intent: Intent): Command {
   return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it('does not queue an action behind a blocked passive notification read',async()=>{
+    const f=fixture(),a=f.make();await a.read(game,user);
+    const load=a.store.load.bind(a.store);let unblock!:()=>void,started!:()=>void;
+    const held=new Promise<void>(resolve=>{unblock=resolve;}),entered=new Promise<void>(resolve=>{started=resolve;});
+    let first=true;a.store.load=async id=>{if(first){first=false;started();await held;}return load(id);};
+    const observer=a.observe(game,user);await entered;
+    const accepted=await a.act(game,user,command(f.row,{type:'place',column:0}));
+    expect(accepted.status).toBe('accepted');expect(accepted.view.boards[human]?.current).toBeTruthy();
+    unblock();await observer;
+  });
   it('admits only the human starter without a clock; rejects outsiders and an impersonated actor', async () => {
     const f = fixture(), a = f.make();
     await expect(a.read(game, uuid(99))).rejects.toThrow('participant_required'); expect(f.row.state).toBeNull();

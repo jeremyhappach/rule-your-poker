@@ -25,20 +25,15 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
     if(!accepted||accepted!==value)return;
     latest.current=accepted;
     const tick=performance.now();clock.current={server:Math.max(accepted.serverAt,clock.current.server+tick-clock.current.local),local:tick};
-    const p=presentation.current,wasCaughtUp=p.sequence===p.received&&p.received>0&&p.queue.length===0;
-    p.ingest(accepted.events??[]);
-    if(actionResponse){
-      // An accepted command is already a complete transaction, including its next card.
-      p.queue=[];p.sequence=p.received=accepted.eventSequence??p.received;
-      p.event=accepted.events?.at(-1)??p.event;p.shownAt=tick;
-      setSnapshot(accepted);setNow(accepted.serverAt);setOptimistic(null);
-      try{sessionStorage.setItem(storageKey,JSON.stringify({sequence:p.sequence,snapshot:accepted}));}catch{}
-      return;
-    }
-    if(!accepted.events)setSnapshot(accepted);
-    // A single fresh transaction already contains its landed card and next upcard.
-    // Only a missed event backlog replays recorded pacing.
-    paint(wasCaughtUp&&p.queue.length===1);
+    // Live transport is a snapshot, not a replay timeline. The authority owns bot pacing
+    // and score holds; missed events remain available in History without delaying play.
+    const p=presentation.current;
+    p.queue=[];p.sequence=p.received=accepted.eventSequence??p.received;
+    p.event=accepted.events?.at(-1)??p.event;p.shownAt=tick;
+    setSnapshot(accepted);setNow(accepted.serverAt);
+    if(actionResponse)setOptimistic(null);
+    try{sessionStorage.setItem(storageKey,JSON.stringify({sequence:p.sequence,snapshot:accepted}));}catch{}
+
   },[dealerGameId,paint,storageKey]);
   useEffect(()=>{
     latest.current=null;presentation.current=new LivePresentation();setSnapshot(null);setError(null);
@@ -53,23 +48,37 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
   useEffect(()=>{
     // Reconnect preserves the mounted surface and consumes unseen persisted events.
     const controller=new AbortController();
-    const run=async()=>{try{
-      const response=await run21Fetch(gameId,`events?after=${presentation.current.received}`,{signal:controller.signal});
-      if(!response.ok||!response.body)throw new Error('Run21 connection unavailable. Reconnecting…');
-      setConnected(true);setError(null);
-      const reader=response.body.getReader(),decoder=new TextDecoder();let text='';
-      while(!controller.signal.aborted){const {value,done}=await reader.read();if(done)break;
-        text+=decoder.decode(value,{stream:true});let end:number;
-        while((end=text.indexOf('\n\n'))>=0){const frame=text.slice(0,end);text=text.slice(end+2);if(frame.startsWith('data: '))accept(JSON.parse(frame.slice(6)));}
+    const run=async()=>{
+      while(!controller.signal.aborted){
+        let renewed=false;
+        try{
+          const response=await run21Fetch(gameId,`events?after=${presentation.current.received}`,{signal:controller.signal});
+          if(!response.ok||!response.body)throw new Error('Run21 transport unavailable');
+          setConnected(true);
+          const reader=response.body.getReader(),decoder=new TextDecoder();let text='';
+          while(!controller.signal.aborted){const {value,done}=await reader.read();if(done)break;
+            text+=decoder.decode(value,{stream:true});let end:number;
+            while((end=text.indexOf('\n\n'))>=0){
+              const frame=text.slice(0,end);text=text.slice(end+2);
+              if(frame.startsWith('event: renew'))renewed=true;
+              else if(frame.startsWith('data: '))accept(JSON.parse(frame.slice(6)));
+            }
+          }
+        }catch{/* The canonical shell owns sustained connectivity presentation. */}
+        if(controller.signal.aborted)return;
+        if(renewed)continue;
+        setConnected(false);
+        await new Promise<void>(resolve=>{
+          const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',done);resolve();};
+          const timer=setTimeout(done,1000);controller.signal.addEventListener('abort',done,{once:true});
+        });
       }
-    }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Connection lost.');}
-    finally{if(!controller.signal.aborted)setConnected(false);}};
+    };
     void run();return()=>controller.abort();
   },[gameId,dealerGameId,accept,retry]);
-  useEffect(()=>{if(connected)return;const timer=setTimeout(()=>setRetry(n=>n+1),3000);return()=>clearTimeout(timer);},[connected,retry]);
   const onIntent=useCallback(async(intent:Intent)=>{
     const current=latest.current;
-    if(!current?.view.viewerId||!connected||inFlight.current||presentation.current.queue.length)return;
+    if(!current?.view.viewerId||inFlight.current)return;
     const view=current.view,board=view.boards[view.viewerId]!;
     if(intent.type==='place'&&(view.active_player_id!==view.viewerId||!legalColumns(board,view.config).includes(intent.column)))return;
     const command:Command={identity:view.identity,roundId:view.roundId!,playerId:view.viewerId,requestId:crypto.randomUUID(),revision:board.revision,intent};
@@ -80,7 +89,7 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
       flushSync(()=>accept(response,true));
     }catch(e){setOptimistic(null);setError(e instanceof Error?e.message:'Action rejected.');}
     finally{inFlight.current=false;setPending(false);}
-  },[gameId,connected,accept]);
+  },[gameId,accept]);
   const shown=snapshot?.view.identity.dealerGameId===dealerGameId?snapshot:null;
   return {snapshot:shown?{...shown,view:optimisticPlacement(shown.view,optimistic)}:null,now,
     phase:presentationPhase(shown?.view,now,presentation.current.event?.type),error,connected,

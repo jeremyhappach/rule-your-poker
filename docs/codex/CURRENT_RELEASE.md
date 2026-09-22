@@ -1,5 +1,32 @@
 # Current release and cutover state
 
+## September 22 Run21 latency and canonical continuation correction
+
+Based on current main `490a33e8202c4449e1af5bde8529e9a7793d93b4`.
+Passive revision reads no longer serialize with player commands. Exact warm
+committed revisions use the existing PostgreSQL CAS without a redundant load;
+races reload and retry the same request ID. Live projections do not replay
+missed bot pacing, and accepted place/Pass results render immediately. Event
+stream renewal is seamless, and command admission is independent of it. The
+canonical identity row uses its standard balance mapping, without a chip disc.
+
+The explicitly approved Run21-only migration `20260922182242` replaces only
+`run21_server_close`, reusing canonical participation and dealer-selection
+policy while preserving authorized session-end rules. Rollback proof covers
+continuation, duplicate and late completion, authorization, missing receipt,
+authorized session end, unchanged settlement/history, and canonical Farkle
+successor configuration. Production apply passed with only that migration
+pending. All Farkle function definitions hash identically before/after; no
+Farkle source, defaults, gate, migration, or shared owner was changed.
+
+The production-equivalent three-round diagnostic captured 52 commands. The
+original 55-second stream cutoff and delayed renewal interrupted live updates;
+passive reads also queued commands. Initial queue waits reached 415 ms. The
+full publication smoke and final production timings are recorded separately
+under the task worktree's ignored `qualification.local` directory. The two
+requested polish items are queued in BACKLOG.md and remain unimplemented.
+
+
 ## September 22 Farkle readiness reconciled and production verified
 
 Main `79e35cdf0d25c4b35f4904f2565a83222d1ad395` already contains the complete

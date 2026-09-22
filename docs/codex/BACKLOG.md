@@ -1,5 +1,14 @@
 # Backlog
 
+## Queued — Run21 action labels and exact-21 polish — September 22
+
+Jeremy requested `Give Up` below the qualifying score and `Take Win` once
+qualified, plus a brief restrained pulse/sparkle for an exact-21 column without
+card movement or layout changes. Deferred until the current upcard latency and
+canonical lifecycle correction is accepted. Neither is implemented in this pass.
+Provenance: production playtest report; Cross Country Chaos was off.
+
+
 ## September 11 toast-storm correction
 
 Implemented and published e9c9a831c. Focused loader/browser regressions pass;

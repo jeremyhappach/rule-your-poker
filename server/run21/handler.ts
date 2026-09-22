@@ -1,5 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import type {IncomingMessage, ServerResponse} from 'node:http';
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {AuthorityError, Run21Authority, type StoredMatch} from './authority.js';
 
 export interface AuthorityOptions {
@@ -7,9 +8,13 @@ export interface AuthorityOptions {
 }
 /** Shared transport. Only the server receives the privileged credential. */
 export function createRun21Handler(options: AuthorityOptions) {
+  const timing = new AsyncLocalStorage<{receivedAt:number; rpc:{name:string;startedAt:number;completedAt:number}[]}>();
   const db = createClient(options.url, options.key, {auth: {persistSession: false, autoRefreshToken: false}});
   const rpc = async <T,>(name: string, args: Record<string, unknown>): Promise<T> => {
+    const span = {name,startedAt:Date.now(),completedAt:0};
+    timing.getStore()?.rpc.push(span);
     const {data, error} = await db.rpc(name, args);
+    span.completedAt=Date.now();
     if (error) throw new AuthorityError(error.message.startsWith('run21:') ? error.message : 'run21:database_rejected');
     return data as T;
   };
@@ -31,7 +36,10 @@ export function createRun21Handler(options: AuthorityOptions) {
     close: (dealerId, userId) => rpc('run21_server_close', {p_dealer_game_id: dealerId, p_user_id: userId}),
   });
   const send = (res: ServerResponse, status: number, body: unknown) => {
-    res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'}); res.end(JSON.stringify(body));
+    const trace=timing.getStore();
+    const payload=JSON.stringify(body);
+    res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store',
+      ...(trace?{'X-Run21-Timing':JSON.stringify({...trace,sentAt:Date.now()})}:{})}); res.end(payload);
   };
   async function authenticate(req: IncomingMessage) {
     if (options.loopbackOnly && !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')) throw new AuthorityError('run21:loopback_only', 403);
@@ -59,11 +67,18 @@ export function createRun21Handler(options: AuthorityOptions) {
         let channel: ReturnType<typeof db.channel> | undefined;
         let expiry: ReturnType<typeof setTimeout> | undefined;
         let stopped = false;
-        const refresh = () => { void authority.read(gameId!, userId, cursor).then(value => {
-          if (!stopped && res.headersSent) { res.write(`data: ${JSON.stringify(value)}\n\n`); cursor = Math.max(cursor, value.eventSequence); }
-        }).catch(() => res.end()); };
-        const unsubscribe = authority.subscribe(gameId, refresh);
-        const cleanup = () => { stopped = true; clearTimeout(expiry); unsubscribe(); if (channel) void db.removeChannel(channel); };
+        let refreshing=false,dirty=false;
+        const refresh = () => {
+          dirty=true;
+          if(refreshing||!res.headersSent||stopped)return;
+          refreshing=true;
+          void (async()=>{while(dirty&&!stopped){
+            dirty=false;
+            const value=await authority.observe(gameId!,userId,cursor);
+            if(!stopped){res.write(`data: ${JSON.stringify(value)}\n\n`);cursor=Math.max(cursor,value.eventSequence);}
+          }})().catch(()=>res.end()).finally(()=>{refreshing=false;});
+        };
+        const cleanup = () => { stopped = true; clearTimeout(expiry); if (channel) void db.removeChannel(channel); };
         res.once('close', cleanup);
         try {
           // Cross-instance notifications contain a revision only. Subscribe before reading.
@@ -78,7 +93,9 @@ export function createRun21Handler(options: AuthorityOptions) {
           if (stopped) return;
           res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive'});
           res.write(`data: ${JSON.stringify(initial)}\n\n`); cursor = initial.eventSequence;
-          expiry = setTimeout(() => res.end(), 55000); // Reconnect revalidates the JWT and gate.
+          if(dirty)refresh();
+          // Rotate before the hosting limit. Normal renewal is not a disconnect.
+          expiry = setTimeout(() => {res.write('event: renew\ndata: {}\n\n');res.end();}, 240000);
           await new Promise<void>(resolve => res.once('close', resolve));
         } finally { cleanup(); }
         return;
@@ -100,5 +117,9 @@ export function createRun21Handler(options: AuthorityOptions) {
       if (gameId) options.waitUntil?.(authority.drain(gameId));
     }
   };
-  return {handler, authority, dispose: () => { authority.dispose(); void db.removeAllChannels(); }};
+  return {handler:(req:IncomingMessage & {body?:unknown},res:ServerResponse)=>
+    req.headers['x-run21-timing']==='1'
+      ? timing.run({receivedAt:Date.now(),rpc:[]},()=>handler(req,res))
+      : handler(req,res), authority,
+    dispose: () => { authority.dispose(); void db.removeAllChannels(); }};
 }

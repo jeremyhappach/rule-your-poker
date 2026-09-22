@@ -4,7 +4,6 @@ import { useCanonicalFeltInteractionLayerElement } from '@/lib/canonicalShell/us
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { useShellTabBar, type ShellTabId } from '@/lib/canonicalShell/ShellTabBar';
-import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { HandHistory } from '@/components/HandHistory';
 import { MobileChatPanel } from '@/components/MobileChatPanel';
 import { useGameChatContext } from '@/hooks/GameChatContext';
@@ -37,7 +36,7 @@ function Felt({view, now, onIntent, pending}: {view: Projection; now: number; on
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
-  const {snapshot, now, error, pending, connected, onIntent, reconnect, phase} = useRun21Local(props.gameId, props.dealerGameId);
+  const {snapshot, now, error, pending, onIntent, reconnect, phase} = useRun21Local(props.gameId, props.dealerGameId);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
   const view = snapshot?.view;
@@ -45,8 +44,8 @@ export function Run21GameTable(props: Props) {
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
   const closeError=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
   useEffect(()=>{if(props.sessionEnded)setReplay(null);},[props.sessionEnded]);
-  const errorPane = <div className="text-center text-xs" role="status">{error || closeError || (!connected ? 'Reconnecting…' : '')}
-    {(!connected || error) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
+  const errorPane = <div className="text-center text-xs" role="status">{error || closeError}
+    {(error || closeError) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
   let pane: ReactNode = errorPane;
   let felt: ReactNode = null, timer: ReactNode = null, identity: ReactNode = null;
   if (view && snapshot) {
@@ -58,7 +57,7 @@ export function Run21GameTable(props: Props) {
       : <div className="run21-player-pane">
           {errorPane}
           <Run21Scoreboard view={view} now={now}/>
-          {!view.revealed&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>}
+          {!view.revealed&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/>}
         </div>;
     felt = <>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}
@@ -68,10 +67,9 @@ export function Run21GameTable(props: Props) {
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
           {createPortal(<div className="run21-replay-controls">{controls}<button onClick={() => setReplay(null)}>Return to live match</button></div>,
             document.querySelector('[data-hud-row="pane"]') ?? document.createDocumentFragment())}
-        </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>)}</>;
+        </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending}/>)}</>;
     timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
-    identity = <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}
-      balance={<CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>}/>;
+    identity = <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}/>;
   }
   return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
     {view && !view.settlement && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}

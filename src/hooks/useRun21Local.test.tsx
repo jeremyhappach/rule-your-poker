@@ -9,6 +9,37 @@ const mock=vi.hoisted(()=>({fetch:vi.fn(),request:vi.fn()}));
 vi.mock('@/lib/run21/localClient',async importOriginal=>({...await importOriginal<object>(),run21Fetch:mock.fetch,run21Request:mock.request}));
 import {useRun21Local} from './useRun21Local';
 afterEach(()=>{cleanup();sessionStorage.clear();vi.clearAllMocks();});
+it('keeps one subscription across revisions and admits commands while the spectator stream reconnects',async()=>{
+ const state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0);
+ const events=visibleHistory(state,PLAYERS[0].id);
+ const snapshot={revision:1,serverAt:0,view:project(state,PLAYERS[0].id),balances:{},finished:false,events,eventSequence:events.at(-1)!.sequence};
+ let stream!:ReadableStreamDefaultController<Uint8Array>;
+ mock.fetch.mockImplementation(async()=>({ok:true,body:new ReadableStream({start(c){stream=c;c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(snapshot)}\n\n`));}})}));
+ mock.request.mockImplementation(async(_game,_path,command)=>{
+  const next=applyCommand(state,command,{kind:'player',playerId:PLAYERS[0].id},750).state;
+  return {...snapshot,revision:2,serverAt:750,view:project(next,PLAYERS[0].id),events:visibleHistory(next,PLAYERS[0].id,snapshot.eventSequence),eventSequence:next.events.at(-1)!.sequence,requestId:command.requestId};
+ });
+ const {result}=renderHook(()=>useRun21Local(IDENTITY.sessionId,IDENTITY.dealerGameId));
+ await waitFor(()=>expect(result.current.connected).toBe(true));
+ await act(async()=>stream.error(new Error('network')));
+ expect(result.current.connected).toBe(false);
+ await act(()=>result.current.onIntent({type:'pass'}));
+ expect(mock.request).toHaveBeenCalledTimes(1);
+ expect(result.current.snapshot!.view.boards[PLAYERS[0].id]!.passesUsed).toBe(1);
+ expect(result.current.pending).toBe(false);expect(mock.fetch).toHaveBeenCalledTimes(1);
+});
+it('presents the current authoritative card immediately after a missed event backlog',async()=>{
+ let state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0);
+ state=play(state,PLAYERS[0].id,{type:'place',column:0},750);
+ state=play(state,PLAYERS[0].id,{type:'place',column:1},1500);
+ const events=visibleHistory(state,PLAYERS[0].id);
+ const snapshot={revision:3,serverAt:1500,view:project(state,PLAYERS[0].id),balances:{},finished:false,events,eventSequence:events.at(-1)!.sequence};
+ mock.fetch.mockImplementation(async()=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(snapshot)}\n\n`));}})}));
+ const {result}=renderHook(()=>useRun21Local(IDENTITY.sessionId,IDENTITY.dealerGameId));
+ await waitFor(()=>expect(result.current.connected).toBe(true));
+ expect(result.current.snapshot!.view).toEqual(snapshot.view);
+ expect(result.current.pending).toBe(false);expect(mock.fetch).toHaveBeenCalledTimes(1);
+});
 it('paints pending placement before the response, suppresses repeats, rolls back rejection and retains the surface on reconnect',async()=>{
  const state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0),snapshot={revision:1,serverAt:Date.now(),view:project(state,PLAYERS[0].id),balances:{},finished:false,events:visibleHistory(state,PLAYERS[0].id),eventSequence:state.events.at(-1)!.sequence};
  mock.fetch.mockImplementation(async()=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(snapshot)}\n\n`));}})}));
