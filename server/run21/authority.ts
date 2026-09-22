@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
+import { advanceScorePresentation, applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
 import { chooseAction } from '../../src/lib/run21/bot.js';
 import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
 import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
@@ -76,9 +76,10 @@ export class Run21Authority {
         row.participants.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake, DEFAULT_CONFIG, at);
       state = await this.openRound(state, row.first_round_id, at);
     }
+    state = advanceScorePresentation(state, at);
     let round = state.rounds.at(-1)!;
     // Missed deadlines after a process restart settle at their persisted authority time.
-    if (!round.revealed && !round.active_player_id) throw new AuthorityError('run21:sequential_round_required');
+    if (!round.revealed && !round.active_player_id && !round.scorePresentation) throw new AuthorityError('run21:sequential_round_required');
     if (round.active_player_id) {
       const board = round.boards[round.active_player_id];
       if (!board.result && board.deadline !== null && at >= board.deadline)
@@ -90,6 +91,12 @@ export class Run21Authority {
       const action = chooseAction(project(state, bot.id), at);
       if (action) state = this.command(state, bot.id, action.intent, at);
       due = null;
+    }
+    round = state.rounds.at(-1)!;
+    // Live boards need no reveal acknowledgement: the second scoring hold completes the round.
+    if (round.revealed && round.liveBoards && !state.winnerId) {
+      for (const p of state.players) if (!state.rounds.at(-1)!.acknowledged.includes(p.id))
+        state = this.command(state, p.id, {type: 'acknowledge'}, at);
     }
     round = state.rounds.at(-1)!;
     if (round.revealed && !round.acknowledged.includes(bot.id)) state = this.command(state, bot.id, {type: 'acknowledge'}, at);
@@ -112,6 +119,7 @@ export class Run21Authority {
     const round = row.state.rounds.at(-1)!;
     const active = round.active_player_id ? round.boards[round.active_player_id] : null;
     const deadlines = active && !active.result && active.deadline !== null ? [active.deadline] : [];
+    if (round.scorePresentation) deadlines.push(round.scorePresentation.endsAt);
     if (row.bot_due_at !== null && row.state.players.find(p => p.id === round.active_player_id)?.kind === 'bot') deadlines.push(row.bot_due_at);
     if (!deadlines.length) return;
     let resolve!: () => void;

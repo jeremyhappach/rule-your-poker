@@ -1,6 +1,6 @@
 /** Offline lab/test fixtures only. Not imported by the production route or server shuffle. */
 import { type Card, type Config, DEFAULT_CONFIG, type Match, type Intent, type DeckEvidence } from './model';
-import { applyCommand, createMatch, prepareRound, project } from './engine';
+import { advanceScorePresentation, applyCommand, createMatch, prepareRound, project } from './engine';
 import { cardKey, standardDeck } from './rules';
 import { chooseAction, seededRandom } from './bot';
 export const uuid = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, '0')}`;
@@ -33,9 +33,10 @@ export function simulateRound(input: Match, seed = 21): Match {
   for (let safety = 0; safety < 110; safety++) {
     const round = match.rounds.at(-1)!;
     if (round.revealed) return match;
+    if (round.scorePresentation) {match = advanceScorePresentation(match, round.scorePresentation.endsAt); continue;}
     const playerId = round.active_player_id!, board = round.boards[playerId];
     const choice = chooseAction(project(match, playerId), match.updatedAt, {seed, minActionMs: 220, maxActionMs: 420})!;
-    match = act(match, playerId, choice.intent, Math.min(board.deadline!, match.updatedAt + choice.delayMs));
+    match = act(match, playerId, choice.intent, Math.min(board.deadline ?? Infinity, match.updatedAt + choice.delayMs));
   }
   throw new Error('simulation_did_not_terminate');
 }

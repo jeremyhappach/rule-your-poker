@@ -29,7 +29,7 @@ export interface Board {
   current: Card | null;
   cardIndex: number;
   revision: number;
-  /** Authority admission time; both fields remain null until this player's turn. */
+  /** First accepted placement time; admission and Pass leave both fields null. */
   startedAt: number | null;
   deadline: number | null;
   result: Result | null;
@@ -49,7 +49,13 @@ export interface DeckEvidence { cards: Card[]; salt: string; commitment: string 
 export interface Round {
   id: string; number: number; secret: DeckEvidence;
   starting_player_id: string; active_player_id: string | null;
+  liveBoards?: boolean;
+  scorePresentation?: ScorePresentation | null;
   boards: Record<string, Board>; revealed: boolean; acknowledged: string[];
+}
+export const SCORE_PRESENTATION_MS = 5000;
+export interface ScorePresentation {
+  playerId: string; startedAt: number; endsAt: number; from: number; to: number;
 }
 export type Intent = { type: 'ready' | 'pass' | 'collect' | 'expire' | 'acknowledge' } | { type: 'place'; column: number };
 export interface Command {
@@ -67,6 +73,8 @@ export interface Frame {
   identity: Identity; config: Config; players: Player[]; stake: number;
   roundId: string | null; roundNumber: number; commitment: string | null;
   active_player_id: string | null;
+  liveBoards?: boolean;
+  scorePresentation?: ScorePresentation | null;
   boards: Record<string, Board>; revealed: boolean; acknowledged: string[];
   cumulative: Record<string, number>; winnerId: string | null;
   settlement: SettlementReceipt | null;

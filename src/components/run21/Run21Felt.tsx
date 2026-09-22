@@ -12,6 +12,7 @@ import {cardFan} from '@/lib/run21/cardFan';
 import type {Rect} from '@/lib/run21/safeFelt';
 import './run21.css';
 import {Run21ScoringHelp} from './Run21ScoringHelp';
+import {displayedPlayerId} from '@/lib/run21/presentation';
 
 const SUITS: Record<Card['suit'],DisplaySuit>={hearts:'♥',diamonds:'♦',clubs:'♣',spades:'♠'};
 export function Run21Card({card}:{card:Card|null}) {
@@ -48,7 +49,7 @@ interface Props {
   drawRect?: Rect;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,drawRect,playerId=view.viewerId??view.players[0].id}:Props) {
+export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,drawRect,playerId=displayedPlayerId(view)}:Props) {
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
@@ -63,16 +64,16 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
   const reason=board?.result?.reason;
   // A single centered pair in the same interaction layer, just inside the rim.
   const draw=drawRect?<div className="run21-draw" data-run21-draw style={{left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`}}>
-    {view.viewerId&&slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
-    {view.viewerId&&slot('currentCard',<>{(view.revealed||view.active_player_id===playerId||view.active_player_id===undefined)&&board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
+    {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
+    {slot('currentCard',<>{board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
     {slot('help',<Run21ScoringHelp/>)}
   </div>:null;
   return <section className="run21-felt-content" data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>
-    {slot('board',<div className={view.revealed?'run21-revealed-boards':'run21-single-board'}>
-      {(view.revealed?view.players.map(p=>p.id):[playerId]).map(id=>{
+    {slot('board',<div className={view.revealed&&!view.liveBoards?'run21-revealed-boards':'run21-single-board'}>
+      {(view.revealed&&!view.liveBoards?view.players.map(p=>p.id):[playerId]).map(id=>{
         const visibleBoard=view.boards[id];
         return <div className="run21-board-group" key={id}>
-          {view.revealed&&<small>{view.players.find(p=>p.id===id)!.name}</small>}
+          {(view.liveBoards||view.revealed)&&<small>{view.players.find(p=>p.id===id)!.name}{view.passUsed[id]?' · Pass used':''}</small>}
           {visibleBoard?<div className="run21-columns">{visibleBoard.columns.map((column,index)=>
             <button key={index} type="button" className="run21-column" aria-label={`Place in column ${index+1}, total ${total(column,view.config.target).value}`}
               aria-disabled={view.revealed||!active||!legal.includes(index)}
@@ -92,6 +93,9 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
       })}
     </div>)}
     {drawLayer?createPortal(draw,drawLayer):draw}
-    {reason&&!view.revealed&&slot('resultOverlay',<div className="run21-result" role="status">{reason==='timeout'?'TIME EXPIRED':reason==='bust'?'BUST':reason==='collect'?'WIN COLLECTED':'ROUND COMPLETE'}<small>{board!.result!.score.toLocaleString()} points</small></div>)}
+    {reason&&!view.revealed&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring>
+      {reason==='timeout'?'TIME EXPIRED':reason==='bust'?'BUST':`${player.name} scored ${board!.result!.aggregate}!`}
+      <small>{board!.result!.multiplier.toLocaleString()} × {board!.result!.speed} = {board!.result!.score.toLocaleString()}</small>
+    </div>)}
   </section>;
 }

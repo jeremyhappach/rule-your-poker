@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, type Card, type Command, type Config } from './model';
 import { act, fixtureDeck, fixtureMatch, IDENTITY, PLAYERS, simulateRound, uuid } from './fixtures';
-import { applyCommand, prepareRound, project, recordSettlement, settlementIntent } from './engine';
+import { advanceScorePresentation, applyCommand, prepareRound, project, recordSettlement, settlementIntent } from './engine';
 import { aggregate, duration, RANKS, speedAt, total, multiplierAt, standardDeck } from './rules';
 import { chooseAction } from './bot';
 import { exportReplay, seekReplay, visibleHistory } from './history';
@@ -41,37 +41,39 @@ describe('Run21 rules', () => {
   });
 });
 describe('Run21 authority specification', () => {
-  it('admits one timed board and transfers the same first card only after completion', () => {
+  it('admits one board without a clock and transfers the same first card after scoring completes', () => {
     let m=fixtureMatch(); expect(m.rounds[0].boards[a].deadline).toBeNull();
-    m=act(m,a,{type:'ready'},10000);
-    const first=m.rounds[0].boards[a].current;
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:10000,deadline:35000});
+    m=act(m,a,{type:'ready'},10000);const first=m.rounds[0].boards[a].current;
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:null,deadline:null});
     expect(m.rounds[0].boards[b]).toMatchObject({current:null,startedAt:null,deadline:null});
     expect(chooseAction(project(m,b),10000)).toBeNull();
-    m=act(m,a,{type:'expire'},35000);
+    m=act(m,a,{type:'place',column:0},10060);m=act(m,a,{type:'expire'},35060);
+    expect(m.rounds[0].active_player_id).toBeNull();
+    expect(m.rounds[0].boards[b].current).toBeNull();
+    m=advanceScorePresentation(m,40060);
     expect(m.rounds[0].active_player_id).toBe(b);
-    expect(m.rounds[0].boards[b]).toMatchObject({current:first,startedAt:35000,deadline:60000});
+    expect(m.rounds[0].boards[b]).toMatchObject({current:first,startedAt:null,deadline:null});
     expect(m.rounds[0].revealed).toBe(false);
   });
-  it('starts the clock on admission and never resets it on pass or placement',()=>{
+  it('starts the clock only on the first accepted placement and never resets it',()=>{
     let m=ready();const initial=m.rounds[0].boards[a].current;
-    expect(applyCommand(m,command(m,{type:'place',column:5}),{kind:'player',playerId:a},100).reason).toBe('column_locked');
-    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'service'},100).reason).toBe('before_deadline');
-    expect(applyCommand(m,command(m,{type:'ready'}),{kind:'player',playerId:a},100).reason).toBe('already_ready');
-    m=act(m,a,{type:'pass'},100);
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:0,deadline:25000});
+    expect(applyCommand(m,command(m,{type:'place',column:5}),{kind:'player',playerId:a},100000).reason).toBe('column_locked');
+    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'service'},100000).reason).toBe('before_deadline');
+    expect(applyCommand(m,command(m,{type:'ready'}),{kind:'player',playerId:a},100000).reason).toBe('already_ready');
+    m=act(m,a,{type:'pass'},100000);
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:null,deadline:null});
     expect(m.rounds[0].boards[a].current).not.toEqual(initial);
     const upcard=m.rounds[0].boards[a].current,c=command(m,{type:'place',column:2});
-    const placed=applyCommand(m,c,{kind:'player',playerId:a},200);
+    const placed=applyCommand(m,c,{kind:'player',playerId:a},200000);
     expect(placed.status).toBe('accepted');m=placed.state;
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:0,deadline:25000,columns:[[],[],[upcard],[],[]]});
-    expect(applyCommand(m,c,{kind:'player',playerId:a},300)).toMatchObject({status:'duplicate',state:m});
-    const replay=exportReplay(m,a),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='turn_started');
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:200000,deadline:225000,columns:[[],[],[upcard],[],[]]});
+    expect(applyCommand(m,c,{kind:'player',playerId:a},200100)).toMatchObject({status:'duplicate',state:m});
+    const replay=exportReplay(m,a),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed');
     expect(seekReplay(replay,index-1).boards[a]!.deadline).toBeNull();
-    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(25000);
-    m=act(m,a,{type:'expire'},25000);
-    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:25000});
-    expect(m.rounds[0].boards[b].deadline).toBe(50000);
+    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(225000);
+    m=act(m,a,{type:'expire'},225000);
+    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:225000});
+    expect(m.rounds[0].boards[b].deadline).toBeNull();
   });
   it('does not mutate inputs; duplicate/stale/rejected actions never consume a card', () => {
     const m = ready(); const frozen = JSON.stringify(m); const c = command(m, {type:'place',column:0});
@@ -97,7 +99,7 @@ describe('Run21 authority specification', () => {
     const next=act(m,a,{type:'place',column:0},100);
     expect(applyCommand(next,cb,{kind:'player',playerId:b},100)).toMatchObject({state:next,status:'rejected',reason:'not_your_turn'});
   });
-  it('records only Pass used, clears current before presenting the next card, and keeps the opponent private', () => {
+  it('records only Pass used, clears current before presenting the next card, and shares the accepted board without leaking the future deck', () => {
     let m = ready(); const card = m.rounds[0].boards[a].current;
     m = act(m,a,{type:'pass'},50);
     expect(m.rounds[0].boards[a].passesUsed).toBe(1);
@@ -110,10 +112,10 @@ describe('Run21 authority specification', () => {
     expect(m.events[index+1].frame.boards[a].current).not.toEqual(card);
     expect(applyCommand(m,command(m,{type:'pass'}),{kind:'player',playerId:a},100).reason).toBe('pass_used');
     const view = project(m,b);
-    expect(view.boards[a]).toBeNull();
+    expect(view.boards[a]).toEqual(m.rounds[0].boards[a]);
     expect(JSON.stringify(view)).not.toContain('salt');
     expect(JSON.stringify(view)).not.toContain('secret');
-    expect(visibleHistory(m,b).find(e => e.type === 'pass_used')).toMatchObject({operands:{},frame:{boards:{[a]:null},passUsed:{[a]:true}}});
+    expect(visibleHistory(m,b).find(e => e.type === 'pass_used')).toMatchObject({operands:{},frame:{boards:{[a]:m.events[index].frame.boards[a]},passUsed:{[a]:true}}});
     expect(() => project(m,uuid(500))).toThrow('unauthorized_viewer');
   });
   it('locks hard 21; a different-column bust ends the whole round with zero', () => {
@@ -122,7 +124,7 @@ describe('Run21 authority specification', () => {
     expect(applyCommand(m,command(m,{type:'place',column:0}),{kind:'player',playerId:a},4).reason).toBe('column_locked');
     for (let i=0;i<3;i++) m=act(m,a,{type:'place',column:1},i+4);
     expect(m.rounds[0].boards[a].result).toMatchObject({reason:'bust',score:0});
-    expect(project(m,b).boards[a]).toBeNull();
+    expect(project(m,b).boards[a]).toEqual(m.rounds[0].boards[a]);
     expect(applyCommand(m,command(m,{type:'pass'}),{kind:'player',playerId:a},9).reason).toBe('not_your_turn');
   });
   it.each([24999,25000,25001])('deterministically resolves collect versus expiration at %i', at => {
@@ -136,7 +138,7 @@ describe('Run21 authority specification', () => {
     let m=ready();m=act(m,a,{type:'place',column:0},0);
     m=act(m,a,{type:'place',column:0},25000);
     expect(m.rounds[0].revealed).toBe(false);
-    m=act(m,b,{type:'place',column:1},25000);m=act(m,b,{type:'expire'},50000);
+    m=advanceScorePresentation(m,30000);m=act(m,b,{type:'place',column:1},30000);m=act(m,b,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
     expect(m.rounds[0].boards[a].cardIndex).toBe(1);
     expect(m.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
     expect(project(m,a).boards[b]).not.toBeNull();
@@ -149,9 +151,10 @@ describe('Run21 authority specification', () => {
       m=ready(m);
       for(let turn=0;turn<2;turn++) {
         const id=m.rounds.at(-1)!.active_player_id!;
-        expect(m.rounds.at(-1)!.boards[id].deadline).toBe(m.updatedAt+25000);
+        expect(m.rounds.at(-1)!.boards[id].deadline).toBeNull();
         m=act(m,id,{type:'place',column:0},m.updatedAt);
         m=act(m,id,round===4&&id===a?{type:'collect'}:{type:'expire'},m.updatedAt+(round===4&&id===a?1:25000));
+        m=advanceScorePresentation(m,m.rounds.at(-1)!.scorePresentation!.endsAt);
       }
       if(round<4) {
         expect(m.winnerId).toBeNull();
@@ -206,12 +209,12 @@ describe('Run21 bot and replay',()=>{
     board.columns=Array.from({length:5},()=>cards('K','Q','A'));
     expect(chooseAction(view,1)!.intent).toEqual({type:'collect'});
   });
-  it('seeks every recorded event with exact recorded score and privacy',()=>{
+  it('seeks every recorded event with exact recorded score and no future deck',()=>{
     let m=ready();m=act(m,a,{type:'pass'},300);
     const privateReplay=exportReplay(m,b);
     const passIndex=privateReplay.steps.findIndex(s=>s.substeps[0]?.type==='pass_used');
     expect(passIndex).toBeGreaterThan(0);
-    expect(seekReplay(privateReplay,passIndex).boards[a]).toBeNull();
+    expect(seekReplay(privateReplay,passIndex).boards[a]?.passesUsed).toBe(1);
     expect(seekReplay(privateReplay,passIndex).passUsed[a]).toBe(true);
     expect(JSON.stringify(privateReplay)).not.toContain('salt');
     m=simulateRound(m);

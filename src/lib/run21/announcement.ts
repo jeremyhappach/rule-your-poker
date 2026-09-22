@@ -2,6 +2,13 @@ import type {Projection} from './model';
 
 /** Public phase narration only; the canonical rail owns its presentation. */
 export function run21Announcement(view:Projection){
+  if(view.scorePresentation){
+    const phase=view.scorePresentation, player=view.players.find(p=>p.id===phase.playerId)!;
+    const result=view.boards[player.id]?.result;
+    return {id:`run21:score:${view.roundId}:${player.id}:${phase.startedAt}`,title:
+      result?.reason==='timeout'?`${player.name}: TIME EXPIRED · 0 points`:
+      result?.reason==='bust'?`${player.name}: BUST · 0 points`:`${player.name} scored ${result?.aggregate ?? 0}!`};
+  }
   const round=view.roundNumber>view.config.rounds?`sudden death ${view.roundNumber-view.config.rounds}`:`round ${view.roundNumber}/${view.config.rounds}`;
   const playing=view.players.filter(p=>view.playStatus?.[p.id]==='playing');
   const otherPlayers=playing.filter(p=>p.id!==view.viewerId);

@@ -45,6 +45,8 @@
 .run21-pass-status{display:inline-flex;align-items:center;justify-content:center;width:1.2em;height:1.2em;font-size:.65rem;font-weight:700;line-height:1;color:#f5f1df;background:#13291f;border-radius:50%}
 .run21-timer{width:88%;height:45%;max-height:.8rem;margin:auto;overflow:hidden;border-radius:999px;background:#ffffff25;outline:1px solid #ffffff30}
 .run21-timer-fill{height:100%;display:block;background:#e5b453;border-radius:inherit}
+.run21-speed{height:100%;width:100%;display:flex;align-items:center;gap:.5rem;font-size:.7rem;font-variant-numeric:tabular-nums;padding:0 .5rem}
+.run21-speed>.run21-timer{flex:1}
 .run21-timer-caption{font-size:.75rem;text-align:center;display:block}
 .run21-draw{position:absolute;pointer-events:none;container-type:size}
 .run21-felt-safe-area{position:absolute;pointer-events:none}

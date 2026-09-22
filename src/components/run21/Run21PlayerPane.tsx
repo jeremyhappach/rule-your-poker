@@ -1,5 +1,6 @@
 import type {Intent, Projection} from '@/lib/run21/model';
-import {aggregate, canCollect, duration} from '@/lib/run21/rules';
+import {aggregate, canCollect, duration, speedAt} from '@/lib/run21/rules';
+import {displayedPlayerId} from '@/lib/run21/presentation';
 
 export function Run21PassStatus({used}:{used:boolean}) {
   return used?null:<span className="run21-pass-status" data-run21-pass-available aria-label="Pass available" title="Pass available">P</span>;
@@ -9,6 +10,7 @@ export function Run21PassStatus({used}:{used:boolean}) {
 export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projection;now:number;onIntent?:(intent:Intent)=>void;pending?:boolean}) {
   const board=view.viewerId?view.boards[view.viewerId]:null;
   if(!board)return null;
+  if(view.scorePresentation)return null;
   if(!view.revealed&&view.active_player_id!==view.viewerId) return <div role="status">{view.players.find(p=>p.id===view.active_player_id)?.name??'Opponent'} is playing</div>;
   const active=!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
   return <div className="run21-player-actions" data-run21-player-actions>
@@ -23,14 +25,15 @@ export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projecti
 
 /** Presentation of the existing deadline, with no local clock or progression owner. */
 export function Run21Timer({view,now}:{view:Projection;now:number}) {
-  const board=view.viewerId?view.boards[view.viewerId]:null;
+  const board=view.boards[displayedPlayerId(view)];
   if(!board)return <span className="run21-timer-caption">Watching Run21</span>;
-  if(view.revealed||(view.active_player_id!==undefined&&view.active_player_id!==view.viewerId))return null;
+  if(view.revealed)return null;
   const full=duration(view.config);
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??now)));
   const percent=100*remaining/full;
-  return <div className="run21-timer" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
-    aria-valuetext={board.startedAt===null?'Waiting for turn':`${(remaining/1000).toFixed(1)} seconds remaining`} data-run21-time-remaining={remaining}>
+  const speed=speedAt(board,view.config,board.result?.at??now);
+  return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><div className="run21-timer" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
+    aria-valuetext={board.startedAt===null?'Speed 250, waiting for first placement':`${(remaining/1000).toFixed(1)} seconds remaining`} data-run21-time-remaining={remaining}>
     <span className="run21-timer-fill" style={{width:`${percent}%`}}/>
-  </div>;
+  </div></div>;
 }

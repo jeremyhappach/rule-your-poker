@@ -1,4 +1,4 @@
-import { assertConfig, isUuid, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
+import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
 import { aggregate, cardKey, duration, legalColumns, canCollect, speedAt, standardDeck, total, multiplierAt } from './rules.js';
 
 function clock(match: Match, at: number) {
@@ -9,6 +9,7 @@ export function frameOf(match: Match): Frame {
   return structuredClone({ identity: match.identity, config: match.config, players: match.players, stake: match.stake,
     roundId: round?.id ?? null, roundNumber: round?.number ?? 0, commitment: round?.secret.commitment ?? null,
     active_player_id: round?.active_player_id ?? null,
+    liveBoards: round?.liveBoards ?? false, scorePresentation: round?.scorePresentation ?? null,
     boards: round?.boards ?? {}, revealed: round?.revealed ?? false, acknowledged: round?.acknowledged ?? [],
     cumulative: match.cumulative, winnerId: match.winnerId, settlement: match.settlement });
 }
@@ -16,9 +17,9 @@ export function redactFrame(frame: Frame, viewerId: string | null, revealed = fr
   if (viewerId !== null && !frame.players.some(p => p.id === viewerId)) throw new Error('unauthorized_viewer');
   return { ...structuredClone(frame), viewerId,
     passUsed: Object.fromEntries(Object.entries(frame.boards).map(([id, board]) => [id, board.passesUsed >= frame.config.passes])),
-    playStatus: Object.fromEntries(Object.entries(frame.boards).map(([id, board]) => [id, board.result?'finished':board.startedAt===null?'waiting':'playing'])),
+    playStatus: Object.fromEntries(Object.entries(frame.boards).map(([id, board]) => [id, board.result?'finished':id===frame.active_player_id?'playing':'waiting'])),
     boards: Object.fromEntries(Object.entries(frame.boards).map(([id, board]) =>
-    [id, revealed || id === viewerId ? structuredClone(board) : null])) };
+    [id, revealed || id === viewerId || (frame.liveBoards && board.presented.length > 0) ? structuredClone(board) : null])) };
 }
 export const project = (match: Match, viewerId: string | null): Projection => redactFrame(frameOf(match), viewerId);
 function event(match: Match, type: string, at: number, actorId: string | null = null, requestId: string | null = null, operands: Record<string, unknown> = {}) {
@@ -57,6 +58,7 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
   const starter = match.players[match.rounds.length % match.players.length].id;
   const round: Round = { id, number: match.rounds.length + 1, secret: structuredClone(deck), revealed: false, acknowledged: [],
     starting_player_id: starter, active_player_id: starter,
+    liveBoards: true, scorePresentation: null,
     boards: Object.fromEntries(match.players.map(p => [p.id, { playerId: p.id, columns: Array.from({length: match.config.columns}, () => []),
       passesUsed: 0, presented: [], current: null, cardIndex: 0, revision: 0, startedAt: null, deadline: null, result: null }])) };
   match.rounds.push(round);
@@ -66,8 +68,6 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
 function startTurn(match: Match, round: Round, board: Board, at: number, requestId: string) {
   round.active_player_id = board.playerId;
   board.revision++;
-  board.startedAt = at;
-  board.deadline = at + duration(match.config);
   event(match, 'turn_started', at, null, requestId, {active_player_id: board.playerId});
   present(match, round, board, at, requestId);
 }
@@ -80,10 +80,23 @@ function finish(match: Match, round: Round, board: Board, reason: NonNullable<Bo
   board.result = {reason, at, aggregate: sum, totals: totals.map(t => t.value), aceElevations: totals.map(t => t.elevated),
     multiplier, speed, score: rule === 'zero' ? 0 : multiplier * speed};
   round.active_player_id = null;
+  const from = match.cumulative[board.playerId];
+  match.cumulative[board.playerId] += board.result.score;
+  round.scorePresentation = {playerId: board.playerId, startedAt: transferAt, endsAt: transferAt + SCORE_PRESENTATION_MS,
+    from, to: match.cumulative[board.playerId]};
   event(match, reason, at, board.playerId, requestId, { result: board.result });
+  event(match, 'score_presentation_started', transferAt, board.playerId, requestId, {presentation: round.scorePresentation});
+}
+/** Persisted presentation deadline: reconnects and server restarts cannot skip or duplicate scoring. */
+export function advanceScorePresentation(input: Match, at: number): Match {
+  const phase = input.rounds.at(-1)?.scorePresentation;
+  if (!phase || at < phase.endsAt) return input;
+  clock(input, at);
+  const match = structuredClone(input), round = match.rounds.at(-1)!;
+  round.scorePresentation = null;
+  event(match, 'score_presentation_completed', at, phase.playerId);
   if (Object.values(round.boards).every(b => b.result) && !round.revealed) {
     round.revealed = true;
-    for (const b of Object.values(round.boards)) match.cumulative[b.playerId] += b.result!.score;
     if (round.number >= match.config.rounds) {
       const [a, b] = match.players;
       if (match.cumulative[a.id] !== match.cumulative[b.id]) match.winnerId = match.cumulative[a.id] > match.cumulative[b.id] ? a.id : b.id;
@@ -92,8 +105,9 @@ function finish(match: Match, round: Round, board: Board, reason: NonNullable<Bo
     if (match.winnerId) event(match, 'match_decided', at, null, null, { settlementIntent: settlementIntent(match) });
   } else {
     const next = Object.values(round.boards).find(b => !b.result)!;
-    startTurn(match, round, next, transferAt, requestId);
+    startTurn(match, round, next, at, `turn:${round.id}:${next.playerId}`);
   }
+  return match;
 }
 function present(match: Match, round: Round, board: Board, at: number, requestId: string) {
   board.current = round.secret.cards[board.cardIndex] ?? null;
@@ -149,6 +163,10 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   else if (type === 'place' || type === 'pass') {
     const card = board.current!;
     if (command.intent.type === 'place') {
+      if (board.startedAt === null) {
+        board.startedAt = at;
+        board.deadline = at + duration(match.config);
+      }
       board.columns[command.intent.column].push(card);
     }
     else board.passesUsed++;

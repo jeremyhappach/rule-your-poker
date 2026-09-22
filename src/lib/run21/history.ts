@@ -6,7 +6,7 @@ export interface VisibleEvent extends Omit<Event, 'frame'> { frame: Projection }
 /** Server-side read projection. No client receives a raw private Event or Match. */
 export function visibleHistory(match: Match, viewerId: string | null): VisibleEvent[] {
   const revealed = new Set(match.rounds.filter(r => r.revealed).map(r => r.id));
-  return match.events.filter(e => !e.actorId || e.actorId === viewerId || e.type === 'pass_used' || revealed.has(e.roundId ?? '')).map(e => ({
+  return match.events.filter(e => e.frame.liveBoards || !e.actorId || e.actorId === viewerId || e.type === 'pass_used' || revealed.has(e.roundId ?? '')).map(e => ({
     ...structuredClone(e), frame: redactFrame(e.frame, viewerId, revealed.has(e.roundId ?? '')),
   }));
 }

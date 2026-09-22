@@ -7,7 +7,7 @@ import {CanonicalAnnouncementProvider,useAnnouncementContext} from '@/lib/canoni
 import {Run21Announcement} from '@/components/run21/Run21Announcement';
 import {run21Announcement} from './announcement';
 import {act,fixtureMatch,PLAYERS,uuid,fixtureDeck} from './fixtures';
-import {prepareRound,project} from './engine';
+import {advanceScorePresentation,prepareRound,project} from './engine';
 import {exportReplay,seekReplay} from './history';
 import type {Projection} from './model';
 const [self,bot]=PLAYERS.map(p=>p.id);
@@ -15,38 +15,41 @@ const ready=()=>act(act(fixtureMatch(),self,{type:'ready'},0),self,{type:'place'
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 
 describe('Run21 canonical round narration',()=>{
-  it('publishes only phase enums for private opponents',()=>{
-    expect(project(fixtureMatch(),null).playStatus).toEqual({[self]:'waiting',[bot]:'waiting'});
+  it('publishes the active board and public phases without future deck evidence',()=>{
+    expect(project(fixtureMatch(),null).playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
     const opening=act(fixtureMatch(),self,{type:'ready'},0);
     expect(project(opening,null).playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
     expect(run21Announcement(project(opening,self)).title).toBe('You are playing round 1/3');
-    expect(project(act(opening,self,{type:'expire'},25000),null).playStatus).toEqual({[self]:'finished',[bot]:'playing'});
+    expect(project(act(opening,self,{type:'place',column:0},100),null).playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
     const view=project(ready(),null);
     expect(view.playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
-    expect(view.boards).toEqual({[self]:null,[bot]:null});
-    expect(JSON.stringify(view)).not.toMatch(/"rank"|"suit"|"deadline"|"startedAt"|"result"/);
+    expect(view.boards[self]?.columns[0]).toHaveLength(1);expect(view.boards[bot]).toBeNull();
+    expect(JSON.stringify(view)).not.toMatch(/"secret"|"salt"/);
   });
   it('names each active player in order and announces completion only after both finish',()=>{
     let m=ready();
     expect(run21Announcement(project(m,self)).title).toBe('You are playing round 1/3');
     m=act(m,self,{type:'expire'},25000);
+    expect(run21Announcement(project(m,self)).title).toContain('TIME EXPIRED');
+    m=advanceScorePresentation(m,30000);
     expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 1/3');
-    m=act(m,bot,{type:'expire'},50000);
+    m=act(m,bot,{type:'place',column:0},30000);
+    m=act(m,bot,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
     expect(run21Announcement(project(m,self)).title).toBe('Round 1/3 complete');
-    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},50000);
-    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),50000);
-    expect(run21Announcement(project(m,self)).title).toBe('Waiting to start round 2/3');
+    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},60000);
+    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),60000);
+    expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 2/3');
   });
   it('keeps the announcement stable through card actions and reads recorded phases on seek',()=>{
     let m=ready();const initial=run21Announcement(project(m,self)).id;
     m=act(m,self,{type:'pass'},100);
     expect(run21Announcement(project(m,self)).id).toBe(initial);
-    m=act(m,self,{type:'expire'},25000);m=act(m,bot,{type:'place',column:0},25000);m=act(m,bot,{type:'expire'},50000);
+    m=act(m,self,{type:'expire'},25000);m=advanceScorePresentation(m,30000);m=act(m,bot,{type:'place',column:0},30000);m=act(m,bot,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
     const replay=exportReplay(m,self);
     const index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed'&&s.substeps[0]?.actorId===bot);
     expect(run21Announcement(seekReplay(replay,index)).title).toBe('Run21 bot is playing round 1/3');
     const lastFinish=replay.steps.map(s=>s.substeps[0]?.type).lastIndexOf('timeout');
-    expect(run21Announcement(seekReplay(replay,lastFinish)).title).toBe('Round 1/3 complete');
+    expect(run21Announcement(seekReplay(replay,lastFinish)).title).toContain('TIME EXPIRED');
     expect(run21Announcement(seekReplay(replay,replay.steps.length-1)).title).toBe('Round 1/3 complete');
     const old={...project(m,self),playStatus:undefined} as unknown as Projection;
     expect(()=>run21Announcement(old)).not.toThrow();

@@ -18,6 +18,7 @@ import { Run21Felt } from './Run21Felt';
 import { Run21PlayerPane, Run21Timer } from './Run21PlayerPane';
 import { Run21Announcement } from './Run21Announcement';
 import { Run21Replay } from './Run21Replay';
+import {displayedPlayerId, displayedScore} from '@/lib/run21/presentation';
 
 interface Props {
   gameId: string; dealerGameId: string; userId: string; dealerPosition: number;
@@ -26,8 +27,8 @@ interface Props {
 }
 function Felt({view, now, onIntent, pending}: {view: Projection; now: number; onIntent?: (intent: Intent) => void; pending?: boolean}) {
   const layer = useCanonicalFeltInteractionLayerElement(true);
-  const {area, draw} = useSafeFelt(layer, `${view.viewerId}:${view.roundId}:${view.revealed}`, RUN21_GEOMETRY_DEFAULTS, !!view.viewerId);
-  return layer && area.width > 0 ? createPortal(<div className="run21-felt-safe-area" data-run21-deadline={view.viewerId ? view.boards[view.viewerId]?.deadline : undefined}
+  const {area, draw} = useSafeFelt(layer, `${displayedPlayerId(view)}:${view.roundId}:${view.revealed}`, RUN21_GEOMETRY_DEFAULTS, !!view.viewerId);
+  return layer && area.width > 0 ? createPortal(<div className="run21-felt-safe-area" data-run21-deadline={view.boards[displayedPlayerId(view)]?.deadline ?? undefined}
     style={{left: `${area.x * 100}%`, top: `${area.y * 100}%`, width: `${area.width * 100}%`, height: `${area.height * 100}%`}}>
     <Run21Felt view={view} now={now} onIntent={onIntent} pending={pending} drawLayer={layer} drawRect={draw}/>
   </div>, layer) : null;
@@ -78,7 +79,7 @@ export function Run21GameTable(props: Props) {
       <div aria-hidden style={{flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none'}}/>
       <div className="relative overflow-visible" style={{height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', pointerEvents: 'none'}}>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}
-          presentation={{scoreLine: p => view.cumulative[p.id].toLocaleString(), dealerPip: p => p.position === props.dealerPosition,
+          presentation={{scoreLine: p => displayedScore(view,p.id,now).toLocaleString(), dealerPip: p => p.position === props.dealerPosition,
             isolatedBalance: p => snapshot.balances[p.id],
             passAvailable: p => !props.sessionEnded && !view.passUsed[p.id]}}/>
         {!props.sessionEnded && (replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <>
@@ -91,7 +92,7 @@ export function Run21GameTable(props: Props) {
       <ShellHudGrid timer={!props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null}
         pane={replay ? null : pane}
         identity={<div className="run21-self-identity"><strong>{self.name}</strong><CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>
-          <span aria-label={`Score ${view.cumulative[self.id]}`}>{view.cumulative[self.id].toLocaleString()}</span></div>}/>
+          <span aria-label={`Score ${displayedScore(view,self.id,now)}`}>{displayedScore(view,self.id,now).toLocaleString()}</span></div>}/>
     </div>;
   }
   return <div className="h-full flex flex-col"><div className="flex-1"/><ShellHudGrid timer={null} pane={pane} identity={null}/></div>;

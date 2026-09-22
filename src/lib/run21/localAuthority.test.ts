@@ -28,29 +28,32 @@ function command(row: StoredMatch, intent: Intent): Command {
   return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
-  it('admits only the human starter with a clock; rejects outsiders and an impersonated actor', async () => {
+  it('admits only the human starter without a clock; rejects outsiders and an impersonated actor', async () => {
     const f = fixture(), a = f.make();
     await expect(a.read(game, uuid(99))).rejects.toThrow('participant_required'); expect(f.row.state).toBeNull();
     const result = await a.read(game, user);
     expect(result.view.active_player_id).toBe(human);
-    expect(result.view.boards[human]?.current).toBeTruthy(); expect(result.view.boards[human]?.deadline).toBe(26000);
+    expect(result.view.boards[human]?.current).toBeTruthy(); expect(result.view.boards[human]?.deadline).toBeNull();
     expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({current:null,startedAt:null,deadline:null,presented:[]});
     expect(f.row.bot_due_at).toBeNull();
     expect(result.view.boards[PLAYERS[1].id]).toBeNull();
     expect(JSON.stringify(result)).not.toContain('secret'); expect(JSON.stringify(result)).not.toContain('salt');
     await expect(a.act(game, user, {...command(f.row, {type: 'place', column: 0}), playerId: PLAYERS[1].id})).rejects.toThrow('unauthorized');
   });
-  it('persists exactly one pass under concurrent duplicate requests without resetting the admitted clock', async () => {
+  it('persists exactly one pass under duplicate requests without starting the clock, including reconnect', async () => {
     const f = fixture(), a = f.make(); await a.read(game, user);
     const cmd = command(f.row, {type: 'pass'});
     const outcomes = await Promise.all([a.act(game, user, cmd), a.act(game, user, cmd)]);
     expect(outcomes.map(r => r.status)).toEqual(['accepted', 'duplicate']);
     expect(f.row.state!.rounds[0].boards[human].passesUsed).toBe(1);
-    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(26000);
+    expect(f.row.state!.rounds[0].boards[human].deadline).toBeNull();
+    a.dispose(); f.tick(10000);
+    const reconnect=f.make();
+    expect((await reconnect.read(game,user)).view.boards[human]).toMatchObject({passesUsed:1,startedAt:null,deadline:null});
     await expect(a.act(game, user, command(f.row, {type: 'pass'}))).rejects.toThrow('pass_used');
     await expect(a.act(game, user, command(f.row, {type: 'collect'}))).rejects.toThrow('collect_unavailable');
     await a.act(game, user, command(f.row, {type: 'place', column: 0}));
-    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(26000);
+    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(36000);
     expect((await a.history(game, user))[0].events.filter(e => e.actorId === PLAYERS[1].id).length).toBe(0);
   });
   it('recovers a missed deadline from persisted state with zero score and no forged clock', async () => {
@@ -59,18 +62,24 @@ describe('persisted local Run21 authority', () => {
     const restarted = f.make(); await restarted.recover();
     expect(f.row.state!.rounds[0].boards[human].result).toMatchObject({reason: 'timeout', at: deadline, score: 0});
     expect((await restarted.read(game, user)).view.boards[human]?.result?.reason).toBe('timeout');
-    expect(f.row.state!.rounds[0].active_player_id).toBe(PLAYERS[1].id);
-    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({startedAt:27000,deadline:52000});
+    expect(f.row.state!.rounds[0].active_player_id).toBeNull();
+    expect(f.row.state!.rounds[0].scorePresentation).toMatchObject({startedAt:27000,endsAt:32000});
+    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({startedAt:null,deadline:null,current:null});
     expect(f.row.state!.rounds[0].revealed).toBe(false);
     const frozen = JSON.stringify(f.row.state!.rounds[0].boards[human]);
     f.tick(1000); await restarted.read(game, user);
     expect(JSON.stringify(f.row.state!.rounds[0].boards[human])).toBe(frozen);
+    f.tick(4000); await restarted.read(game,user);
+    expect(f.row.state!.rounds[0].active_player_id).toBe(PLAYERS[1].id);
+    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({startedAt:null,deadline:null});
   });
   it('finishes the starting bot before admitting the human, rejects inactive commands, then reveals both frozen boards', async () => {
     const f = fixture(true), a = f.make(), bot = PLAYERS[1].id;
     const opening = await a.read(game, user);
     expect(opening.view.active_player_id).toBe(bot);
     expect(opening.view.boards[human]).toMatchObject({current:null,deadline:null,startedAt:null,presented:[]});
+    expect(opening.view.boards[bot]?.current).toBeTruthy();
+    expect(opening.view.boards[bot]?.deadline).toBeNull();
     for (const intent of [{type:'place',column:0},{type:'pass'},{type:'collect'}] as Intent[])
       await expect(a.act(game,user,command(f.row,intent))).rejects.toThrow('not_your_turn');
     expect(f.row.state!.rounds[0].boards[human].revision).toBe(0);
@@ -79,18 +88,22 @@ describe('persisted local Run21 authority', () => {
     }
     const round=f.row.state!.rounds[0], completed=JSON.stringify(round.boards[bot]);
     expect(round.boards[bot].result).toBeTruthy();
-    expect(round.active_player_id).toBe(human);
-    expect(round.boards[human].current).toEqual(round.boards[bot].presented[0]);
-    expect(round.boards[human].deadline!-round.boards[human].startedAt!).toBe(25000);
+    expect(round.active_player_id).toBeNull();
+    expect(round.boards[human]).toMatchObject({current:null,startedAt:null,deadline:null});
     expect(round.revealed).toBe(false); expect(f.row.bot_due_at).toBeNull();
-    expect((await a.read(game,user)).view.boards[bot]).toBeNull();
+    expect((await a.read(game,user)).view.boards[bot]?.result).toBeTruthy();
+    f.tick(5000); const humanTurn=await a.read(game,user);
+    expect(humanTurn.view.active_player_id).toBe(human);
+    expect(humanTurn.view.boards[human]).toMatchObject({current:round.boards[bot].presented[0],startedAt:null,deadline:null});
     await a.act(game,user,command(f.row,{type:'place',column:0}));
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
-    f.tick(25000); const revealed=await a.read(game,user);
-    expect(revealed.view.revealed).toBe(true); expect(revealed.view.active_player_id).toBeNull();
+    f.tick(25000); expect((await a.read(game,user)).view.revealed).toBe(false);
+    f.tick(5000); const nextRound=await a.read(game,user);
+    expect(f.row.state!.rounds[0].revealed).toBe(true);
+    expect(nextRound.view.roundNumber).toBe(2);expect(nextRound.view.active_player_id).toBe(human);
+    expect(nextRound.view.boards[human]).toMatchObject({startedAt:null,deadline:null,columns:[[],[],[],[],[]]});
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
     expect(f.row.state!.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
-    await a.act(game,user,command(f.row,{type:'acknowledge'}));
     expect(f.row.state!.rounds[1].active_player_id).toBe(human);
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
   });
