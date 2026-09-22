@@ -12,9 +12,20 @@ shows the known card immediately, deduplicates by request/revision, and rolls
 back rejection. Display speed uses authoritative remaining time; the existing
 first-placement deadline remains exactly 25,000ms. No schema or gate expansion.
 
-Focused authority, presentation, reconnect, optimism, replay and timer checks
-pass. Production timing and HUD measurements are recorded in the release smoke
-before this correction is declared accepted.
+Deployed SHA: `03dba6a61da0a9b21588e859472993c9683add32`; Vercel production
+`dpl_4GFvmNET4Uk6fpWfuhjThixJzkdg`, https://ptown-poker.vercel.app.
+64 focused tests, app/node typechecks and the remote production build passed.
+The authority returned JSON 401 without authentication. Hap-only gating was
+restored with the sole existing admin allowlist entry unchanged.
+
+Production verification is PARTIAL: setup-to-active HUD displacement measured
+0.667px and admission speed stayed at 250. The requested live 25-second timeout
+and bot-first Round 1-to-2 transition were not completed. Disposable fixtures
+entered human-first after session setup despite attempted reseating; these
+fixture assertions establish neither a Run21 product failure nor a pass.
+The run stopped at its execution budget. All four smoke fixtures were removed
+and cleanup was verified. The user's original frozen session was preserved.
+Do not describe the production transition smoke as passed.
 
 
 ## September 22 Run21 live boards and scoring handoffs published
