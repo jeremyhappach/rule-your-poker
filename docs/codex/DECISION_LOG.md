@@ -1,5 +1,18 @@
 # Durable decision log
 
+## September 22 — Run21 public sequential turns and durable scoring presentation
+
+Jeremy's explicit turn-flow revision supersedes the prior private-board and
+admission-clock contract. The active board is public while future undealt cards
+remain private. A first accepted placement starts the clock; admission and Pass
+do not. A terminal board freezes and records its cumulative match score once.
+The existing private match JSON also persists a five-second score presentation;
+the server scheduler alone completes it and transfers control. Clients animate
+only the displayed seat score from the recorded before/after values and times.
+No client animation callback owns progression, and no animation mutates money.
+After both presentations, the authority advances without a separate reveal
+acknowledgement. Historical private replay frames retain their recorded visibility.
+
 ## D-142 — Farkle continuation is additive authority, not a Wave 1 rewrite
 
 Jeremy's September 21 clarification permits a later Wave 2 migration to extend a

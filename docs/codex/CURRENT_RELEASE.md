@@ -1,5 +1,40 @@
 # Current release and cutover state
 
+## September 22 Run21 live boards and scoring handoffs published
+
+Production at https://ptown-poker.vercel.app deploys
+`50af704931b963fc6de71323a5d2035169ac9842` (Vercel
+`dpl_23s3N81gaXwZ9RPdjDM7qspjZbj6`). This supersedes the private-board,
+admission-started clock and immediate handoff behavior below. Turns remain
+strictly sequential, but the active face-up card, placements, column totals,
+speed and Pass status are visible live. Future deck evidence remains server-only.
+Only the first accepted placement starts the deadline, atomically at speed 250.
+Pass, duplicate/rejected commands, admission and reconnect cannot start it.
+
+Each terminal result now records one cumulative score update and a persisted
+five-second presentation interval. The canonical announcement and felt show the
+result/calculation; the existing seat score counts up without changing money.
+Only after that interval does authority clear the displayed board and admit the
+opponent. The second presentation advances the next round automatically; final
+wager settlement remains unchanged. Existing scoring multipliers are preserved
+(for example, board total 101 maps to 250 × remaining speed).
+
+Validation: 49 focused Run21 checks, application/server typechecks and the remote
+production build passed. Production smoke at 13:12–13:15 UTC verified frozen 250
+after Pass and browser reload, a first-placement deadline exactly 25 seconds
+later, public bot moves with inactive-command HTTP 409 `run21:not_your_turn`,
+three five-second scoring holds, automatic round advance and a cleared human
+board with frozen 250 after the bot-first second round. The browser observed
+Hap's `250 × 159 = 39,750` calculation and score count-up, then live bot columns;
+the bot's later count-up finished at cumulative 49,000. Money balances stayed
+unchanged. Recorded production events prove all four admissions had null clock
+fields and all three accepted opening placements (human and bot) started at 250.
+
+The Hap-only gate is enabled with the same sole verified admin UUID. No migration
+changed. The dedicated fake-money fixture
+`b1168217-aa97-4f8a-8c2d-ebf1eb439b63` was removed through canonical cleanup,
+with zero game/match rows remaining; the isolated verification login signed out.
+
 ## September 22 Run21 sequential turns published
 
 Production at https://ptown-poker.vercel.app now deploys

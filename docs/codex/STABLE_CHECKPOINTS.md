@@ -1,5 +1,17 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 public live boards and first-placement timing — September 22
+
+- Deployed: `50af704931b963fc6de71323a5d2035169ac9842`.
+- Production verified sequential human/bot turns, accepted public board updates,
+  Pass and reload at frozen 250, atomic first-placement clocks for both actors,
+  inactive-command denial, and three persisted five-second score presentations.
+- Browser saw the score calculation/count-up followed by board clear and next
+  admission. Cumulative match scores changed; money balances did not.
+- 49 focused checks, both typechecks and Vercel production build passed.
+- Hap-only gate retained; smoke fixture cleaned up and verification login signed
+  out. No schema or historical migration changes.
+
 ## Run21 sequential production turns — September 22
 
 - Deployed SHA: `d15fc191efd874684e63bab229f30f997c41a130`.
