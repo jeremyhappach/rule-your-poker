@@ -1,5 +1,6 @@
 -- Run21-only live snapshot/journal split. Legacy full-history interfaces remain compatible.
 -- Reconcile this generated version with Farkle's final migration head before release.
+BEGIN;
 LOCK TABLE private.run21_matches IN SHARE ROW EXCLUSIVE MODE;
 ALTER TABLE private.run21_matches ADD COLUMN event_sequence bigint NOT NULL DEFAULT 0;
 CREATE TABLE private.run21_events (
@@ -146,3 +147,4 @@ BEGIN
     jsonb_set(to_jsonb(m),'{state,events}',p_state->'events') ELSE
     jsonb_set(to_jsonb(m),'{state,events}',p_state->'events') #- '{state,eventSequence}' END);
 END $$;
+COMMIT;

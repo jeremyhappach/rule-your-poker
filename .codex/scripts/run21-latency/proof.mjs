@@ -34,7 +34,9 @@ try{
  }
  assert(m.winnerId,'Expected real fourth-round winner');
  m=e.recordSettlement(m,{...e.settlementIntent(m),resultId:randomUUID(),transferBatchId:randomUUID(),at});states.push(m);
- const migration=fs.readFileSync('supabase/migrations/20260922210908_run21_bounded_live_journal.sql','utf8');
+ // Put the migration and assertions under one rollback/apply transaction.
+ // Production carries the same explicit transaction because db push does not add one.
+ const migration=fs.readFileSync('supabase/migrations/20260922210908_run21_bounded_live_journal.sql','utf8').replace(/^BEGIN;\r?\n/m,'').replace(/^COMMIT;\s*$/m,'');
  let proof=`DO $proof$ DECLARE result jsonb; original jsonb; BEGIN\n`;
  // Legacy full-history caller, then compact-delta callers; existing CAS is unchanged.
  let seq=0,revision=0;
