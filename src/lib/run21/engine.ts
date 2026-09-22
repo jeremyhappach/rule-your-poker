@@ -24,7 +24,8 @@ export function redactFrame(frame: Frame, viewerId: string | null, revealed = fr
 export const project = (match: Match, viewerId: string | null): Projection => redactFrame(frameOf(match), viewerId);
 function event(match: Match, type: string, at: number, actorId: string | null = null, requestId: string | null = null, operands: Record<string, unknown> = {}) {
   match.updatedAt = at;
-  match.events.push({ sequence: match.events.length + 1, type, at, roundId: match.rounds.at(-1)?.id ?? null,
+  match.eventSequence = (match.eventSequence ?? match.events.at(-1)?.sequence ?? 0) + 1;
+  match.events.push({ sequence: match.eventSequence, type, at, roundId: match.rounds.at(-1)?.id ?? null,
     actorId, requestId, operands: structuredClone(operands), frame: frameOf(match) });
 }
 export function createMatch(identity: Identity, players: Player[], stake: number, config: Config, at: number): Match {
@@ -181,7 +182,7 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   } else return reject('invalid_intent');
   // Timestamp on timeout is the exact deadline, while the commit clock remains monotonic.
   match.updatedAt = at;
-  match.receipts[receiptKey] = {fingerprint, sequence: match.events.length};
+  match.receipts[receiptKey] = {fingerprint, sequence: match.eventSequence!};
   return {state: match, status: 'accepted'};
 }
 export function settlementIntent(match: Match): SettlementIntent | null {

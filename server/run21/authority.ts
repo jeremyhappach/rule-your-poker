@@ -13,7 +13,7 @@ export interface StoredMatch {
   state: Match | null; bot_due_at: number | null; finished: boolean;
 }
 export interface Store {
-  load(gameId?: string): Promise<StoredMatch[]>;
+  load(gameId?: string, includeHistory?: boolean, afterSequence?: number): Promise<StoredMatch[]>;
   commit(record: StoredMatch, state: Match, botDue: number | null): Promise<StoredMatch>;
   close(dealerId: string, userId: string): Promise<void>;
 }
@@ -27,7 +27,14 @@ export class Run21Authority {
   private pending = new Map<string, {done: Promise<void>; resolve: () => void}>();
   private listeners = new Map<string, Set<() => void>>();
   private committed = new Map<string, StoredMatch>();
-  constructor(readonly store: Store, readonly now = Date.now, readonly shuffle = shuffleRound) {}
+  constructor(readonly store: Store, readonly now = Date.now, readonly shuffle = shuffleRound,
+    readonly measure: <T>(name:string,work:()=>T)=>T = (_name,work)=>work()) {}
+  /** Only a fresh server-side admission RPC supplies this snapshot; CAS still owns writes. */
+  admit(row: StoredMatch) {
+    const prior = this.committed.get(row.game_id);
+    if (!prior || prior.dealer_game_id !== row.dealer_game_id || row.revision >= prior.revision)
+      this.committed.set(row.game_id, row);
+  }
   private serial<T>(gameId: string, work: () => Promise<T>): Promise<T> {
     const result = (this.queues.get(gameId) ?? Promise.resolve()).catch(() => {}).then(async () => {
       for (let attempt = 0; ; attempt++) {
@@ -47,17 +54,19 @@ export class Run21Authority {
     const set = this.listeners.get(gameId) ?? new Set(); set.add(listener); this.listeners.set(gameId, set);
     return () => { set.delete(listener); if (!set.size) this.listeners.delete(gameId); };
   }
-  private async latest(gameId: string) {
-    const row = (await this.store.load(gameId)).at(-1);
+  private async latest(gameId: string, afterSequence?: number) {
+    const row = (await this.store.load(gameId, false, afterSequence)).at(-1);
     if (!row) throw new AuthorityError('run21:not_configured', 404);
     const prior=this.committed.get(gameId);
     if(!prior||prior.dealer_game_id!==row.dealer_game_id||row.revision>=prior.revision)this.committed.set(gameId,row);
     return row;
   }
   private player(row: StoredMatch, userId: string) {
-    const player = row.participants.find(p => p.userId === userId && p.kind === 'human');
-    if (!player) throw new AuthorityError('run21:participant_required', 403);
-    return player;
+    return this.measure('playerMembership',()=>{
+      const player = row.participants.find(p => p.userId === userId && p.kind === 'human');
+      if (!player) throw new AuthorityError('run21:participant_required', 403);
+      return player;
+    });
   }
   private command(state: Match, playerId: string, intent: Intent, at: number) {
     const round = state.rounds.at(-1)!;
@@ -152,18 +161,22 @@ export class Run21Authority {
   }
   private snapshot(row: StoredMatch, playerId: string, afterSequence: number) {
     return {revision: row.revision, serverAt: this.now(), view: project(row.state!, playerId), balances: row.balances, finished: row.finished,
-      eventSequence: row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId, afterSequence)};
+      eventSequence: row.state!.eventSequence ?? row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId, afterSequence)};
   }
   async read(gameId: string, userId: string, afterSequence = 0) {
     return this.serial(gameId, async () => {
-      const initial = await this.latest(gameId); const player = this.player(initial, userId);
+      const initial = await this.latest(gameId, afterSequence); const player = this.player(initial, userId);
       const row = await this.advance(initial);
-      return this.snapshot(row, player.id, afterSequence);
+      // Recovery may accept a timeout/bot transition while catching up. Keep the
+      // requested committed prefix as well as this transition's new events.
+      const events = [...new Map([...(initial.state?.events??[]),...row.state!.events]
+        .map(event=>[event.sequence,event])).values()].sort((a,b)=>a.sequence-b.sequence);
+      return this.snapshot({...row,state:{...row.state!,events}}, player.id, afterSequence);
     });
   }
   /** Revision notifications observe committed state; they never queue gameplay work. */
   async observe(gameId: string, userId: string, afterSequence = 0) {
-    const row = await this.latest(gameId);
+    const row = await this.latest(gameId, afterSequence);
     const player = this.player(row, userId);
     if (!row.state) return this.read(gameId, userId, afterSequence);
     return this.snapshot(row, player.id, afterSequence);
@@ -180,11 +193,11 @@ export class Run21Authority {
       if (row.finished) throw new AuthorityError('run21:finished');
       if (!command || !isUuid(command.requestId ?? '') || !command.identity || !command.intent ||
         !['place', 'pass', 'collect', 'acknowledge'].includes(command.intent.type)) throw new AuthorityError('run21:invalid_command', 400);
-      let result = applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt));
+      let result = this.measure('commandAuthorizationAndRules',()=>applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt)));
       if(exact&&result.status!=='accepted'){
         row=await this.advance(await this.latest(gameId));
         if(row.finished)throw new AuthorityError('run21:finished');
-        result=applyCommand(row.state!,command,{kind:'player',playerId:player.id},Math.max(this.now(),row.state!.updatedAt));
+        result=this.measure('commandAuthorizationAndRules',()=>applyCommand(row.state!,command,{kind:'player',playerId:player.id},Math.max(this.now(),row.state!.updatedAt)));
       }
       if (result.status === 'rejected') throw new AuthorityError(`run21:${result.reason}`);
       if (result.status === 'accepted') row = await this.store.commit(row, result.state, null);
@@ -193,7 +206,7 @@ export class Run21Authority {
     });
   }
   async history(gameId: string, userId: string) {
-    const rows = await this.store.load(gameId);
+    const rows = await this.store.load(gameId, true);
     if (!rows.length) throw new AuthorityError('run21:not_configured', 404);
     return rows.map(row => {
       const player = this.player(row, userId);

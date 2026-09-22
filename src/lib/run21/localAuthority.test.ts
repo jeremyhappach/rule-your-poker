@@ -10,20 +10,25 @@ const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
 function fixture(botFirst = false) {
   let now = 1000;
+  const journal: import('./model').Event[] = [];
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
     revision: 0, state: null, bot_due_at: null, finished: false};
   // Deliberately opposite seat order: the persisted dealer identity must decide.
   if (!botFirst) row.participants.reverse();
-  const store: Store = {load: async () => [structuredClone(row)], commit: async (old, state, due) => {
+  const store: Store = {load: async (_game, history, afterSequence) => [structuredClone(row.state && (history||afterSequence!==undefined)
+    ? {...row,state:{...row.state,events:journal.filter(e=>history||e.sequence>afterSequence!)}} : row)], commit: async (old, state, due) => {
     if (old.revision !== row.revision) throw Error('CAS conflict');
-    row = {...row, state: structuredClone(state), revision: row.revision + 1, bot_due_at: due};
+    const events=state.events.filter(e=>e.sequence>journal.length);
+    journal.push(...structuredClone(events));
+    row = {...row, state: {...structuredClone(state),events:[]}, revision: row.revision + 1, bot_due_at: due};
     // Real persistence yields to I/O. Keep long three-round proofs from starving
     // the worker heartbeat while the in-memory fixture resolves only microtasks.
-    const committed=structuredClone(row);await new Promise<void>(resolve=>setImmediate(resolve));return committed;
+    const committed={...structuredClone(row),state:{...structuredClone(row.state!),events:structuredClone(events)}};
+    await new Promise<void>(resolve=>setImmediate(resolve));return committed;
   }, close: async () => {row.finished = true;}};
   const make = () => {const w = new Run21Authority(store, () => now, async () => fixtureDeck([], 17)); workers.push(w); return w;};
-  return {make, get row() {return row;}, tick: (ms: number) => {now += ms;}};
+  return {make, get row() {return row.state?{...row,state:{...row.state,events:journal}}:row;}, tick: (ms: number) => {now += ms;}};
 }
 const game = IDENTITY.sessionId, user = uuid(30), human = PLAYERS[0].id;
 let sequence = 100;
@@ -32,6 +37,15 @@ function command(row: StoredMatch, intent: Intent): Command {
   return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it('retains the requested journal prefix when reconnect also recovers an expired deadline',async()=>{
+    const f=fixture(),a=f.make();await a.read(game,user);
+    await a.act(game,user,command(f.row,{type:'pass'}));
+    await a.act(game,user,command(f.row,{type:'place',column:0}));
+    f.tick(250001);
+    const recovered=await a.read(game,user,0),history=(await a.history(game,user))[0];
+    expect(recovered.events.map(e=>e.sequence)).toEqual(history.events.map(e=>e.sequence));
+    expect(recovered.events.some(e=>e.type==='timeout')).toBe(true);
+  });
   it('does not queue an action behind a blocked passive notification read',async()=>{
     const f=fixture(),a=f.make();await a.read(game,user);
     const load=a.store.load.bind(a.store);let unblock!:()=>void,started!:()=>void;

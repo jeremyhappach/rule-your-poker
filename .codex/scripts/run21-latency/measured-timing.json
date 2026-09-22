@@ -1,0 +1,3004 @@
+{
+  "environment": "isolated local Supabase clone; real Auth, PostgreSQL, HTTP handler and unchanged React hook; initial SSE fixture only",
+  "samples": [
+    {
+      "round": 1,
+      "tap": 690.5,
+      "sent": 703.2000000178814,
+      "received": 848.5,
+      "committed": 850.5,
+      "painted": 850.8000000119209,
+      "trace": {
+        "receivedAt": 1790105829368,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105829370,
+            "completedAt": 1790105829387
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105829471,
+            "completedAt": 1790105829507
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105829369,
+            "completedAt": 1790105829469
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105829369,
+            "completedAt": 1790105829469
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105829370,
+            "completedAt": 1790105829387
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105829469,
+            "completedAt": 1790105829508
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105829470,
+            "completedAt": 1790105829470
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105829470,
+            "completedAt": 1790105829471
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 1.053,
+          "membershipMs": 1.97
+        },
+        "sentAt": 1790105829509
+      }
+    },
+    {
+      "round": 1,
+      "tap": 907.8000000119209,
+      "sent": 918.4000000059605,
+      "received": 1048.5,
+      "committed": 1050.2000000178814,
+      "painted": 1050.300000011921,
+      "trace": {
+        "receivedAt": 1790105829583,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105829584,
+            "completedAt": 1790105829608
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105829677,
+            "completedAt": 1790105829708
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105829584,
+            "completedAt": 1790105829676
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105829584,
+            "completedAt": 1790105829676
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105829584,
+            "completedAt": 1790105829608
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105829676,
+            "completedAt": 1790105829709
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105829676,
+            "completedAt": 1790105829676
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105829676,
+            "completedAt": 1790105829677
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.564,
+          "membershipMs": 1.241
+        },
+        "sentAt": 1790105829709
+      }
+    },
+    {
+      "round": 1,
+      "tap": 1108.2000000178814,
+      "sent": 1117.4000000059605,
+      "received": 1306.6000000238419,
+      "committed": 1307.9000000059605,
+      "painted": 1317.300000011921,
+      "trace": {
+        "receivedAt": 1790105829783,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105829784,
+            "completedAt": 1790105829802
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105829910,
+            "completedAt": 1790105829962
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105829783,
+            "completedAt": 1790105829908
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105829783,
+            "completedAt": 1790105829908
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105829784,
+            "completedAt": 1790105829802
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105829908,
+            "completedAt": 1790105829966
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105829908,
+            "completedAt": 1790105829908
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105829909,
+            "completedAt": 1790105829910
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.599,
+          "membershipMs": 1.032
+        },
+        "sentAt": 1790105829966
+      }
+    },
+    {
+      "round": 1,
+      "tap": 1417.300000011921,
+      "sent": 1425.800000011921,
+      "received": 1701.5,
+      "committed": 1703.2000000178814,
+      "painted": 1707.4000000059605,
+      "trace": {
+        "receivedAt": 1790105830091,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105830092,
+            "completedAt": 1790105830124
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105830267,
+            "completedAt": 1790105830358
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105830091,
+            "completedAt": 1790105830266
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105830091,
+            "completedAt": 1790105830266
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105830092,
+            "completedAt": 1790105830124
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105830266,
+            "completedAt": 1790105830361
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105830266,
+            "completedAt": 1790105830266
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105830266,
+            "completedAt": 1790105830267
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.61,
+          "membershipMs": 1.006
+        },
+        "sentAt": 1790105830361
+      }
+    },
+    {
+      "round": 1,
+      "tap": 1796,
+      "sent": 1804.1000000238419,
+      "received": 2205.300000011921,
+      "committed": 2206.800000011921,
+      "painted": 2216,
+      "trace": {
+        "receivedAt": 1790105830470,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105830470,
+            "completedAt": 1790105830521
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105830784,
+            "completedAt": 1790105830862
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105830470,
+            "completedAt": 1790105830778
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105830470,
+            "completedAt": 1790105830778
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105830470,
+            "completedAt": 1790105830521
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105830779,
+            "completedAt": 1790105830865
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105830779,
+            "completedAt": 1790105830779
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105830782,
+            "completedAt": 1790105830784
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 2.51,
+          "membershipMs": 3.832
+        },
+        "sentAt": 1790105830865
+      }
+    },
+    {
+      "round": 1,
+      "tap": 2312.9000000059605,
+      "sent": 2323.5,
+      "received": 2560.2000000178814,
+      "committed": 2561.100000023842,
+      "painted": 2566.100000023842,
+      "trace": {
+        "receivedAt": 1790105830989,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105830990,
+            "completedAt": 1790105831017
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105831173,
+            "completedAt": 1790105831219
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105830989,
+            "completedAt": 1790105831171
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105830989,
+            "completedAt": 1790105831171
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105830990,
+            "completedAt": 1790105831017
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105831172,
+            "completedAt": 1790105831221
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105831172,
+            "completedAt": 1790105831172
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105831172,
+            "completedAt": 1790105831173
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.616,
+          "membershipMs": 1.178
+        },
+        "sentAt": 1790105831221
+      }
+    },
+    {
+      "round": 1,
+      "tap": 2629.4000000059605,
+      "sent": 2635.7000000178814,
+      "received": 2801,
+      "committed": 2802.100000023842,
+      "painted": 2816.2000000178814,
+      "trace": {
+        "receivedAt": 1790105831303,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105831304,
+            "completedAt": 1790105831321
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105831428,
+            "completedAt": 1790105831460
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105831303,
+            "completedAt": 1790105831427
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105831303,
+            "completedAt": 1790105831427
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105831304,
+            "completedAt": 1790105831321
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105831427,
+            "completedAt": 1790105831461
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105831427,
+            "completedAt": 1790105831427
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105831428,
+            "completedAt": 1790105831428
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.673,
+          "membershipMs": 0.502
+        },
+        "sentAt": 1790105831461
+      }
+    },
+    {
+      "round": 1,
+      "tap": 2908.9000000059605,
+      "sent": 2922.2000000178814,
+      "received": 3106.600000023842,
+      "committed": 3107.7000000178814,
+      "painted": 3115.9000000059605,
+      "trace": {
+        "receivedAt": 1790105831587,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105831588,
+            "completedAt": 1790105831606
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105831727,
+            "completedAt": 1790105831764
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105831587,
+            "completedAt": 1790105831726
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105831587,
+            "completedAt": 1790105831725
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105831588,
+            "completedAt": 1790105831606
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105831726,
+            "completedAt": 1790105831766
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105831726,
+            "completedAt": 1790105831726
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105831726,
+            "completedAt": 1790105831727
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.807,
+          "membershipMs": 0.473
+        },
+        "sentAt": 1790105831766
+      }
+    },
+    {
+      "round": 1,
+      "tap": 3176.7000000178814,
+      "sent": 3186.7000000178814,
+      "received": 3414,
+      "committed": 3415,
+      "painted": 3417.600000023842,
+      "trace": {
+        "receivedAt": 1790105831852,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105831853,
+            "completedAt": 1790105831882
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105832033,
+            "completedAt": 1790105832073
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105831853,
+            "completedAt": 1790105832026
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105831853,
+            "completedAt": 1790105832026
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105831853,
+            "completedAt": 1790105831882
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105832027,
+            "completedAt": 1790105832074
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105832027,
+            "completedAt": 1790105832027
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105832027,
+            "completedAt": 1790105832033
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.917,
+          "membershipMs": 0.643
+        },
+        "sentAt": 1790105832074
+      }
+    },
+    {
+      "round": 1,
+      "tap": 3475.2000000178814,
+      "sent": 3486.100000023842,
+      "received": 3664.4000000059605,
+      "committed": 3665.5,
+      "painted": 3665.7000000178814,
+      "trace": {
+        "receivedAt": 1790105832151,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105832152,
+            "completedAt": 1790105832188
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105832281,
+            "completedAt": 1790105832324
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105832152,
+            "completedAt": 1790105832279
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105832152,
+            "completedAt": 1790105832279
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105832152,
+            "completedAt": 1790105832188
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105832279,
+            "completedAt": 1790105832325
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105832279,
+            "completedAt": 1790105832279
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105832280,
+            "completedAt": 1790105832281
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.674,
+          "membershipMs": 0.485
+        },
+        "sentAt": 1790105832325
+      }
+    },
+    {
+      "round": 1,
+      "tap": 3723.100000023842,
+      "sent": 3734.300000011921,
+      "received": 3961,
+      "committed": 3962,
+      "painted": 3965.5,
+      "trace": {
+        "receivedAt": 1790105832400,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105832400,
+            "completedAt": 1790105832438
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105832575,
+            "completedAt": 1790105832620
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105832400,
+            "completedAt": 1790105832572
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105832400,
+            "completedAt": 1790105832572
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105832400,
+            "completedAt": 1790105832438
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105832572,
+            "completedAt": 1790105832622
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105832572,
+            "completedAt": 1790105832572
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105832573,
+            "completedAt": 1790105832575
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.7,
+          "membershipMs": 0.598
+        },
+        "sentAt": 1790105832622
+      }
+    },
+    {
+      "round": 1,
+      "tap": 4024.300000011921,
+      "sent": 4034.2000000178814,
+      "received": 4181.800000011921,
+      "committed": 4183,
+      "painted": 4183,
+      "trace": {
+        "receivedAt": 1790105832700,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105832701,
+            "completedAt": 1790105832717
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105832798,
+            "completedAt": 1790105832842
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105832700,
+            "completedAt": 1790105832796
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105832700,
+            "completedAt": 1790105832796
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105832701,
+            "completedAt": 1790105832717
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105832796,
+            "completedAt": 1790105832843
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105832796,
+            "completedAt": 1790105832796
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105832797,
+            "completedAt": 1790105832798
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.58,
+          "membershipMs": 0.488
+        },
+        "sentAt": 1790105832843
+      }
+    },
+    {
+      "round": 2,
+      "tap": 485.69999998807907,
+      "sent": 494.5,
+      "received": 623.1999999880791,
+      "committed": 625.3000000119209,
+      "painted": 625.9000000059605,
+      "trace": {
+        "receivedAt": 1790105833616,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105833616,
+            "completedAt": 1790105833632
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105833706,
+            "completedAt": 1790105833739
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105833616,
+            "completedAt": 1790105833705
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105833616,
+            "completedAt": 1790105833705
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105833616,
+            "completedAt": 1790105833632
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105833705,
+            "completedAt": 1790105833740
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105833705,
+            "completedAt": 1790105833705
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105833705,
+            "completedAt": 1790105833706
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.586,
+          "membershipMs": 0.568
+        },
+        "sentAt": 1790105833740
+      }
+    },
+    {
+      "round": 2,
+      "tap": 682,
+      "sent": 695.6999999880791,
+      "received": 822.5,
+      "committed": 823.0999999940395,
+      "painted": 827.1999999880791,
+      "trace": {
+        "receivedAt": 1790105833817,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105833817,
+            "completedAt": 1790105833856
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105833907,
+            "completedAt": 1790105833939
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105833817,
+            "completedAt": 1790105833906
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105833817,
+            "completedAt": 1790105833906
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105833817,
+            "completedAt": 1790105833856
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105833906,
+            "completedAt": 1790105833939
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105833906,
+            "completedAt": 1790105833906
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105833906,
+            "completedAt": 1790105833907
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.459,
+          "membershipMs": 0.528
+        },
+        "sentAt": 1790105833940
+      }
+    },
+    {
+      "round": 2,
+      "tap": 882.6999999880791,
+      "sent": 894.0999999940395,
+      "received": 1029.199999988079,
+      "committed": 1030.0999999940395,
+      "painted": 1042.699999988079,
+      "trace": {
+        "receivedAt": 1790105834015,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105834016,
+            "completedAt": 1790105834038
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105834116,
+            "completedAt": 1790105834143
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105834015,
+            "completedAt": 1790105834114
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105834015,
+            "completedAt": 1790105834114
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105834015,
+            "completedAt": 1790105834038
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105834114,
+            "completedAt": 1790105834144
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105834115,
+            "completedAt": 1790105834115
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105834115,
+            "completedAt": 1790105834116
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.633,
+          "membershipMs": 0.572
+        },
+        "sentAt": 1790105834144
+      }
+    },
+    {
+      "round": 2,
+      "tap": 1101.0999999940395,
+      "sent": 1114.0999999940395,
+      "received": 1263,
+      "committed": 1263.800000011921,
+      "painted": 1275.800000011921,
+      "trace": {
+        "receivedAt": 1790105834236,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105834236,
+            "completedAt": 1790105834271
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105834339,
+            "completedAt": 1790105834379
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105834236,
+            "completedAt": 1790105834337
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105834236,
+            "completedAt": 1790105834337
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105834236,
+            "completedAt": 1790105834271
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105834338,
+            "completedAt": 1790105834380
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105834338,
+            "completedAt": 1790105834338
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105834338,
+            "completedAt": 1790105834339
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.815,
+          "membershipMs": 0.564
+        },
+        "sentAt": 1790105834380
+      }
+    },
+    {
+      "round": 2,
+      "tap": 1334.5,
+      "sent": 1343.800000011921,
+      "received": 1486.800000011921,
+      "committed": 1487.5999999940395,
+      "painted": 1492.199999988079,
+      "trace": {
+        "receivedAt": 1790105834465,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105834465,
+            "completedAt": 1790105834492
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105834561,
+            "completedAt": 1790105834604
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105834465,
+            "completedAt": 1790105834560
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105834465,
+            "completedAt": 1790105834560
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105834465,
+            "completedAt": 1790105834492
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105834560,
+            "completedAt": 1790105834604
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105834560,
+            "completedAt": 1790105834560
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105834560,
+            "completedAt": 1790105834561
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.944,
+          "membershipMs": 0.796
+        },
+        "sentAt": 1790105834604
+      }
+    },
+    {
+      "round": 2,
+      "tap": 1550.5999999940395,
+      "sent": 1561.5999999940395,
+      "received": 1671.800000011921,
+      "committed": 1672.4000000059605,
+      "painted": 1675.5999999940395,
+      "trace": {
+        "receivedAt": 1790105834683,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105834683,
+            "completedAt": 1790105834702
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105834749,
+            "completedAt": 1790105834789
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105834683,
+            "completedAt": 1790105834747
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105834683,
+            "completedAt": 1790105834747
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105834683,
+            "completedAt": 1790105834702
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105834748,
+            "completedAt": 1790105834789
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105834748,
+            "completedAt": 1790105834748
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105834748,
+            "completedAt": 1790105834749
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.524,
+          "membershipMs": 0.356
+        },
+        "sentAt": 1790105834789
+      }
+    },
+    {
+      "round": 2,
+      "tap": 1735.0999999940395,
+      "sent": 1746.5999999940395,
+      "received": 1870.4000000059605,
+      "committed": 1871.0999999940395,
+      "painted": 1877,
+      "trace": {
+        "receivedAt": 1790105834868,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105834869,
+            "completedAt": 1790105834893
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105834952,
+            "completedAt": 1790105834986
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105834868,
+            "completedAt": 1790105834951
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105834868,
+            "completedAt": 1790105834951
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105834869,
+            "completedAt": 1790105834893
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105834951,
+            "completedAt": 1790105834987
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105834951,
+            "completedAt": 1790105834951
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105834952,
+            "completedAt": 1790105834952
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.671,
+          "membershipMs": 0.82
+        },
+        "sentAt": 1790105834987
+      }
+    },
+    {
+      "round": 2,
+      "tap": 1931.199999988079,
+      "sent": 1943.5999999940395,
+      "received": 2079.5,
+      "committed": 2080.5999999940395,
+      "painted": 2092.5999999940395,
+      "trace": {
+        "receivedAt": 1790105835064,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105835065,
+            "completedAt": 1790105835087
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105835142,
+            "completedAt": 1790105835193
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105835064,
+            "completedAt": 1790105835141
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105835064,
+            "completedAt": 1790105835141
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105835065,
+            "completedAt": 1790105835087
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105835141,
+            "completedAt": 1790105835195
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105835141,
+            "completedAt": 1790105835141
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105835141,
+            "completedAt": 1790105835142
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.76,
+          "membershipMs": 0.49
+        },
+        "sentAt": 1790105835195
+      }
+    },
+    {
+      "round": 2,
+      "tap": 2150.300000011921,
+      "sent": 2161.199999988079,
+      "received": 2268.199999988079,
+      "committed": 2268.699999988079,
+      "painted": 2275.199999988079,
+      "trace": {
+        "receivedAt": 1790105835283,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105835283,
+            "completedAt": 1790105835302
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105835350,
+            "completedAt": 1790105835385
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105835283,
+            "completedAt": 1790105835350
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105835283,
+            "completedAt": 1790105835350
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105835283,
+            "completedAt": 1790105835302
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105835350,
+            "completedAt": 1790105835386
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105835350,
+            "completedAt": 1790105835350
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105835350,
+            "completedAt": 1790105835350
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.704,
+          "membershipMs": 1.032
+        },
+        "sentAt": 1790105835386
+      }
+    },
+    {
+      "round": 2,
+      "tap": 2331.4000000059605,
+      "sent": 2345.0999999940395,
+      "received": 2438.199999988079,
+      "committed": 2438.699999988079,
+      "painted": 2441.800000011921,
+      "trace": {
+        "receivedAt": 1790105835466,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105835466,
+            "completedAt": 1790105835489
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105835528,
+            "completedAt": 1790105835555
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105835466,
+            "completedAt": 1790105835527
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105835466,
+            "completedAt": 1790105835527
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105835466,
+            "completedAt": 1790105835489
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105835527,
+            "completedAt": 1790105835555
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105835527,
+            "completedAt": 1790105835527
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105835528,
+            "completedAt": 1790105835528
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.38,
+          "membershipMs": 0.433
+        },
+        "sentAt": 1790105835556
+      }
+    },
+    {
+      "round": 2,
+      "tap": 2501,
+      "sent": 2511.4000000059605,
+      "received": 2620.5,
+      "committed": 2620.9000000059605,
+      "painted": 2625.0999999940395,
+      "trace": {
+        "receivedAt": 1790105835633,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105835634,
+            "completedAt": 1790105835659
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105835717,
+            "completedAt": 1790105835737
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105835633,
+            "completedAt": 1790105835716
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105835633,
+            "completedAt": 1790105835716
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105835634,
+            "completedAt": 1790105835659
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105835716,
+            "completedAt": 1790105835738
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105835716,
+            "completedAt": 1790105835716
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105835717,
+            "completedAt": 1790105835717
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.909,
+          "membershipMs": 0.884
+        },
+        "sentAt": 1790105835738
+      }
+    },
+    {
+      "round": 2,
+      "tap": 2683.5999999940395,
+      "sent": 2693,
+      "received": 2796.4000000059605,
+      "committed": 2797.0999999940395,
+      "painted": 2808.800000011921,
+      "trace": {
+        "receivedAt": 1790105835814,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105835815,
+            "completedAt": 1790105835833
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105835875,
+            "completedAt": 1790105835912
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105835814,
+            "completedAt": 1790105835874
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105835815,
+            "completedAt": 1790105835874
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105835815,
+            "completedAt": 1790105835833
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105835874,
+            "completedAt": 1790105835913
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105835874,
+            "completedAt": 1790105835874
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105835875,
+            "completedAt": 1790105835875
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.536,
+          "membershipMs": 0.729
+        },
+        "sentAt": 1790105835913
+      }
+    },
+    {
+      "round": 3,
+      "tap": 470.2000000178814,
+      "sent": 482.80000001192093,
+      "received": 611,
+      "committed": 613.3000000119209,
+      "painted": 614.7000000178814,
+      "trace": {
+        "receivedAt": 1790105836613,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105836613,
+            "completedAt": 1790105836651
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105836709,
+            "completedAt": 1790105836738
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105836613,
+            "completedAt": 1790105836709
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105836613,
+            "completedAt": 1790105836708
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105836613,
+            "completedAt": 1790105836651
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105836709,
+            "completedAt": 1790105836739
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105836709,
+            "completedAt": 1790105836709
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105836709,
+            "completedAt": 1790105836709
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.311,
+          "membershipMs": 0.398
+        },
+        "sentAt": 1790105836739
+      }
+    },
+    {
+      "round": 3,
+      "tap": 669.5,
+      "sent": 682.4000000059605,
+      "received": 774.7000000178814,
+      "committed": 775.2000000178814,
+      "painted": 782.6000000238419,
+      "trace": {
+        "receivedAt": 1790105836813,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105836813,
+            "completedAt": 1790105836835
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105836869,
+            "completedAt": 1790105836902
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105836813,
+            "completedAt": 1790105836868
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105836813,
+            "completedAt": 1790105836868
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105836813,
+            "completedAt": 1790105836835
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105836868,
+            "completedAt": 1790105836902
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105836868,
+            "completedAt": 1790105836868
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105836868,
+            "completedAt": 1790105836869
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.446,
+          "membershipMs": 0.835
+        },
+        "sentAt": 1790105836902
+      }
+    },
+    {
+      "round": 3,
+      "tap": 837.1000000238419,
+      "sent": 849.3000000119209,
+      "received": 962.9000000059605,
+      "committed": 963.4000000059605,
+      "painted": 965,
+      "trace": {
+        "receivedAt": 1790105836980,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105836980,
+            "completedAt": 1790105837016
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105837047,
+            "completedAt": 1790105837090
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105836980,
+            "completedAt": 1790105837046
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105836980,
+            "completedAt": 1790105837046
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105836980,
+            "completedAt": 1790105837016
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105837046,
+            "completedAt": 1790105837090
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105837046,
+            "completedAt": 1790105837046
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105837047,
+            "completedAt": 1790105837047
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.349,
+          "membershipMs": 0.412
+        },
+        "sentAt": 1790105837090
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1021.3000000119209,
+      "sent": 1032.300000011921,
+      "received": 1145.2000000178814,
+      "committed": 1145.6000000238419,
+      "painted": 1147.7000000178814,
+      "trace": {
+        "receivedAt": 1790105837163,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105837164,
+            "completedAt": 1790105837201
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105837236,
+            "completedAt": 1790105837272
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105837163,
+            "completedAt": 1790105837235
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105837163,
+            "completedAt": 1790105837235
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105837164,
+            "completedAt": 1790105837201
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105837235,
+            "completedAt": 1790105837273
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105837235,
+            "completedAt": 1790105837235
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105837236,
+            "completedAt": 1790105837236
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.43,
+          "membershipMs": 0.448
+        },
+        "sentAt": 1790105837273
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1202.300000011921,
+      "sent": 1215.7000000178814,
+      "received": 1323.4000000059605,
+      "committed": 1324,
+      "painted": 1332.7000000178814,
+      "trace": {
+        "receivedAt": 1790105837348,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105837348,
+            "completedAt": 1790105837369
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105837420,
+            "completedAt": 1790105837450
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105837348,
+            "completedAt": 1790105837417
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105837348,
+            "completedAt": 1790105837417
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105837348,
+            "completedAt": 1790105837369
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105837418,
+            "completedAt": 1790105837451
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105837418,
+            "completedAt": 1790105837418
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105837418,
+            "completedAt": 1790105837420
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.289,
+          "membershipMs": 0.511
+        },
+        "sentAt": 1790105837451
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1388.1000000238419,
+      "sent": 1399.800000011921,
+      "received": 1538.2000000178814,
+      "committed": 1538.7000000178814,
+      "painted": 1548.7000000178814,
+      "trace": {
+        "receivedAt": 1790105837531,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105837532,
+            "completedAt": 1790105837552
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105837625,
+            "completedAt": 1790105837665
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105837531,
+            "completedAt": 1790105837624
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105837531,
+            "completedAt": 1790105837624
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105837532,
+            "completedAt": 1790105837552
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105837624,
+            "completedAt": 1790105837665
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105837624,
+            "completedAt": 1790105837624
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105837624,
+            "completedAt": 1790105837625
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.47,
+          "membershipMs": 0.599
+        },
+        "sentAt": 1790105837665
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1605.800000011921,
+      "sent": 1615.7000000178814,
+      "received": 1732,
+      "committed": 1732.9000000059605,
+      "painted": 1733.1000000238419,
+      "trace": {
+        "receivedAt": 1790105837746,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105837747,
+            "completedAt": 1790105837772
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105837821,
+            "completedAt": 1790105837858
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105837746,
+            "completedAt": 1790105837820
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105837747,
+            "completedAt": 1790105837820
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105837747,
+            "completedAt": 1790105837772
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105837820,
+            "completedAt": 1790105837859
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105837820,
+            "completedAt": 1790105837820
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105837820,
+            "completedAt": 1790105837821
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.334,
+          "membershipMs": 0.504
+        },
+        "sentAt": 1790105837859
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1786.5,
+      "sent": 1800,
+      "received": 1914.1000000238419,
+      "committed": 1915.1000000238419,
+      "painted": 1915.300000011921,
+      "trace": {
+        "receivedAt": 1790105837931,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105837931,
+            "completedAt": 1790105837953
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105838015,
+            "completedAt": 1790105838040
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105837931,
+            "completedAt": 1790105838014
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105837931,
+            "completedAt": 1790105838014
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105837931,
+            "completedAt": 1790105837953
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105838014,
+            "completedAt": 1790105838041
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105838014,
+            "completedAt": 1790105838014
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105838015,
+            "completedAt": 1790105838015
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.44,
+          "membershipMs": 0.841
+        },
+        "sentAt": 1790105838041
+      }
+    },
+    {
+      "round": 3,
+      "tap": 1969.5,
+      "sent": 1984.9000000059605,
+      "received": 2109.2000000178814,
+      "committed": 2109.800000011921,
+      "painted": 2115.9000000059605,
+      "trace": {
+        "receivedAt": 1790105838116,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105838117,
+            "completedAt": 1790105838153
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105838201,
+            "completedAt": 1790105838235
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105838116,
+            "completedAt": 1790105838200
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105838116,
+            "completedAt": 1790105838200
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105838117,
+            "completedAt": 1790105838153
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105838200,
+            "completedAt": 1790105838236
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105838200,
+            "completedAt": 1790105838200
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105838200,
+            "completedAt": 1790105838201
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.478,
+          "membershipMs": 0.756
+        },
+        "sentAt": 1790105838236
+      }
+    },
+    {
+      "round": 3,
+      "tap": 2171,
+      "sent": 2182.100000023842,
+      "received": 2294.5,
+      "committed": 2295.2000000178814,
+      "painted": 2297.4000000059605,
+      "trace": {
+        "receivedAt": 1790105838313,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105838314,
+            "completedAt": 1790105838330
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105838384,
+            "completedAt": 1790105838421
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105838313,
+            "completedAt": 1790105838382
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105838313,
+            "completedAt": 1790105838382
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105838314,
+            "completedAt": 1790105838330
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105838383,
+            "completedAt": 1790105838421
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105838383,
+            "completedAt": 1790105838383
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105838383,
+            "completedAt": 1790105838384
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.376,
+          "membershipMs": 0.49
+        },
+        "sentAt": 1790105838422
+      }
+    },
+    {
+      "round": 3,
+      "tap": 2352.4000000059605,
+      "sent": 2365.600000023842,
+      "received": 2479.600000023842,
+      "committed": 2481,
+      "painted": 2481.2000000178814,
+      "trace": {
+        "receivedAt": 1790105838496,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105838497,
+            "completedAt": 1790105838506
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105838568,
+            "completedAt": 1790105838606
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105838497,
+            "completedAt": 1790105838566
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105838497,
+            "completedAt": 1790105838566
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105838497,
+            "completedAt": 1790105838506
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105838566,
+            "completedAt": 1790105838606
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105838566,
+            "completedAt": 1790105838566
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105838567,
+            "completedAt": 1790105838568
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.462,
+          "membershipMs": 0.762
+        },
+        "sentAt": 1790105838606
+      }
+    },
+    {
+      "round": 3,
+      "tap": 2538.7000000178814,
+      "sent": 2550.4000000059605,
+      "received": 2722.100000023842,
+      "committed": 2722.9000000059605,
+      "painted": 2730.7000000178814,
+      "trace": {
+        "receivedAt": 1790105838682,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105838683,
+            "completedAt": 1790105838719
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105838791,
+            "completedAt": 1790105838847
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105838682,
+            "completedAt": 1790105838789
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105838682,
+            "completedAt": 1790105838789
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105838683,
+            "completedAt": 1790105838719
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105838789,
+            "completedAt": 1790105838848
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105838789,
+            "completedAt": 1790105838789
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105838790,
+            "completedAt": 1790105838791
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.515,
+          "membershipMs": 0.861
+        },
+        "sentAt": 1790105838849
+      }
+    },
+    {
+      "round": 4,
+      "tap": 1647.800000011921,
+      "sent": 1656.9000000059605,
+      "received": 1895.1000000238419,
+      "committed": 1907,
+      "painted": 1907.5,
+      "trace": {
+        "receivedAt": 1790105840832,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105840833,
+            "completedAt": 1790105840857
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105841000,
+            "completedAt": 1790105841062
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105840832,
+            "completedAt": 1790105840996
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105840832,
+            "completedAt": 1790105840996
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105840833,
+            "completedAt": 1790105840857
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105840996,
+            "completedAt": 1790105841064
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105840996,
+            "completedAt": 1790105840996
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105840997,
+            "completedAt": 1790105841000
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.866,
+          "membershipMs": 2.22
+        },
+        "sentAt": 1790105841064
+      }
+    },
+    {
+      "round": 4,
+      "tap": 1963,
+      "sent": 1973.9000000059605,
+      "received": 2222.9000000059605,
+      "committed": 2224.100000023842,
+      "painted": 2237.800000011921,
+      "trace": {
+        "receivedAt": 1790105841149,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105841149,
+            "completedAt": 1790105841185
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105841328,
+            "completedAt": 1790105841389
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105841149,
+            "completedAt": 1790105841325
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105841149,
+            "completedAt": 1790105841325
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105841149,
+            "completedAt": 1790105841185
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105841326,
+            "completedAt": 1790105841390
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105841326,
+            "completedAt": 1790105841326
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105841326,
+            "completedAt": 1790105841328
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.613,
+          "membershipMs": 1.316
+        },
+        "sentAt": 1790105841390
+      }
+    },
+    {
+      "round": 4,
+      "tap": 2327,
+      "sent": 2338.300000011921,
+      "received": 2495.5,
+      "committed": 2496.300000011921,
+      "painted": 2502.7000000178814,
+      "trace": {
+        "receivedAt": 1790105841514,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105841514,
+            "completedAt": 1790105841539
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105841617,
+            "completedAt": 1790105841665
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105841514,
+            "completedAt": 1790105841616
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105841514,
+            "completedAt": 1790105841616
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105841514,
+            "completedAt": 1790105841539
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105841616,
+            "completedAt": 1790105841666
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105841616,
+            "completedAt": 1790105841616
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105841616,
+            "completedAt": 1790105841617
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.668,
+          "membershipMs": 1.206
+        },
+        "sentAt": 1790105841666
+      }
+    },
+    {
+      "round": 4,
+      "tap": 2559.5,
+      "sent": 2571.100000023842,
+      "received": 2733.300000011921,
+      "committed": 2734.100000023842,
+      "painted": 2736.100000023842,
+      "trace": {
+        "receivedAt": 1790105841746,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105841746,
+            "completedAt": 1790105841772
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105841841,
+            "completedAt": 1790105841902
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105841746,
+            "completedAt": 1790105841839
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105841746,
+            "completedAt": 1790105841839
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105841746,
+            "completedAt": 1790105841772
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105841839,
+            "completedAt": 1790105841903
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105841839,
+            "completedAt": 1790105841839
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105841840,
+            "completedAt": 1790105841841
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.458,
+          "membershipMs": 0.906
+        },
+        "sentAt": 1790105841903
+      }
+    },
+    {
+      "round": 4,
+      "tap": 2794,
+      "sent": 2806.2000000178814,
+      "received": 2923.300000011921,
+      "committed": 2924.100000023842,
+      "painted": 2936,
+      "trace": {
+        "receivedAt": 1790105841981,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105841981,
+            "completedAt": 1790105842007
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105842058,
+            "completedAt": 1790105842091
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105841981,
+            "completedAt": 1790105842056
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105841981,
+            "completedAt": 1790105842056
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105841981,
+            "completedAt": 1790105842007
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105842056,
+            "completedAt": 1790105842092
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105842056,
+            "completedAt": 1790105842056
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105842056,
+            "completedAt": 1790105842058
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.358,
+          "membershipMs": 0.824
+        },
+        "sentAt": 1790105842092
+      }
+    },
+    {
+      "round": 4,
+      "tap": 2993.600000023842,
+      "sent": 3004.4000000059605,
+      "received": 3158.600000023842,
+      "committed": 3159.100000023842,
+      "painted": 3169.4000000059605,
+      "trace": {
+        "receivedAt": 1790105842179,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105842179,
+            "completedAt": 1790105842203
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105842273,
+            "completedAt": 1790105842328
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105842179,
+            "completedAt": 1790105842272
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105842179,
+            "completedAt": 1790105842272
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105842179,
+            "completedAt": 1790105842203
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105842272,
+            "completedAt": 1790105842328
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105842272,
+            "completedAt": 1790105842272
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105842272,
+            "completedAt": 1790105842273
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.763,
+          "membershipMs": 1.164
+        },
+        "sentAt": 1790105842328
+      }
+    },
+    {
+      "round": 4,
+      "tap": 3226.9000000059605,
+      "sent": 3236.9000000059605,
+      "received": 3376.7000000178814,
+      "committed": 3377.5,
+      "painted": 3385.9000000059605,
+      "trace": {
+        "receivedAt": 1790105842411,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105842412,
+            "completedAt": 1790105842431
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105842499,
+            "completedAt": 1790105842546
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105842411,
+            "completedAt": 1790105842491
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105842411,
+            "completedAt": 1790105842491
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105842412,
+            "completedAt": 1790105842431
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105842491,
+            "completedAt": 1790105842547
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105842491,
+            "completedAt": 1790105842491
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105842497,
+            "completedAt": 1790105842499
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.493,
+          "membershipMs": 1.097
+        },
+        "sentAt": 1790105842547
+      }
+    },
+    {
+      "round": 4,
+      "tap": 3446.600000023842,
+      "sent": 3455.2000000178814,
+      "received": 3618,
+      "committed": 3618.800000011921,
+      "painted": 3619.300000011921,
+      "trace": {
+        "receivedAt": 1790105842630,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105842631,
+            "completedAt": 1790105842669
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105842750,
+            "completedAt": 1790105842788
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105842630,
+            "completedAt": 1790105842749
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105842630,
+            "completedAt": 1790105842749
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105842631,
+            "completedAt": 1790105842669
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105842749,
+            "completedAt": 1790105842788
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105842749,
+            "completedAt": 1790105842749
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105842749,
+            "completedAt": 1790105842750
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.496,
+          "membershipMs": 0.96
+        },
+        "sentAt": 1790105842789
+      }
+    },
+    {
+      "round": 4,
+      "tap": 3675.2000000178814,
+      "sent": 3687.300000011921,
+      "received": 3827.4000000059605,
+      "committed": 3828.100000023842,
+      "painted": 3837.9000000059605,
+      "trace": {
+        "receivedAt": 1790105842862,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105842862,
+            "completedAt": 1790105842897
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105842954,
+            "completedAt": 1790105842997
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105842862,
+            "completedAt": 1790105842951
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105842862,
+            "completedAt": 1790105842951
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105842862,
+            "completedAt": 1790105842897
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105842951,
+            "completedAt": 1790105842998
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105842951,
+            "completedAt": 1790105842951
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105842952,
+            "completedAt": 1790105842954
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.402,
+          "membershipMs": 0.766
+        },
+        "sentAt": 1790105842998
+      }
+    },
+    {
+      "round": 4,
+      "tap": 3891.600000023842,
+      "sent": 3903.800000011921,
+      "received": 4041.300000011921,
+      "committed": 4042.2000000178814,
+      "painted": 4052.300000011921,
+      "trace": {
+        "receivedAt": 1790105843078,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105843079,
+            "completedAt": 1790105843103
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105843171,
+            "completedAt": 1790105843210
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105843078,
+            "completedAt": 1790105843169
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105843078,
+            "completedAt": 1790105843169
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105843079,
+            "completedAt": 1790105843103
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105843169,
+            "completedAt": 1790105843211
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105843169,
+            "completedAt": 1790105843169
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105843170,
+            "completedAt": 1790105843171
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.555,
+          "membershipMs": 1.318
+        },
+        "sentAt": 1790105843211
+      }
+    },
+    {
+      "round": 4,
+      "tap": 4108.200000017881,
+      "sent": 4122.9000000059605,
+      "received": 4254,
+      "committed": 4254.9000000059605,
+      "painted": 4255,
+      "trace": {
+        "receivedAt": 1790105843297,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105843298,
+            "completedAt": 1790105843323
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105843403,
+            "completedAt": 1790105843423
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105843297,
+            "completedAt": 1790105843401
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105843297,
+            "completedAt": 1790105843401
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105843298,
+            "completedAt": 1790105843323
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105843401,
+            "completedAt": 1790105843424
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105843401,
+            "completedAt": 1790105843401
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105843401,
+            "completedAt": 1790105843403
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.606,
+          "membershipMs": 1.214
+        },
+        "sentAt": 1790105843424
+      }
+    },
+    {
+      "round": 4,
+      "tap": 4308.700000017881,
+      "sent": 4322.300000011921,
+      "received": 4453.4000000059605,
+      "committed": 4454.200000017881,
+      "painted": 4469,
+      "trace": {
+        "receivedAt": 1790105843497,
+        "rpc": [
+          {
+            "name": "run21_server_admit",
+            "startedAt": 1790105843497,
+            "completedAt": 1790105843515
+          },
+          {
+            "name": "run21_server_commit",
+            "startedAt": 1790105843582,
+            "completedAt": 1790105843622
+          }
+        ],
+        "phases": [
+          {
+            "name": "authorization",
+            "startedAt": 1790105843497,
+            "completedAt": 1790105843580
+          },
+          {
+            "name": "tokenVerification",
+            "startedAt": 1790105843497,
+            "completedAt": 1790105843580
+          },
+          {
+            "name": "gateAndMembership",
+            "startedAt": 1790105843497,
+            "completedAt": 1790105843515
+          },
+          {
+            "name": "authorizedCommandAndCommit",
+            "startedAt": 1790105843580,
+            "completedAt": 1790105843623
+          },
+          {
+            "name": "playerMembership",
+            "startedAt": 1790105843580,
+            "completedAt": 1790105843580
+          },
+          {
+            "name": "commandAuthorizationAndRules",
+            "startedAt": 1790105843581,
+            "completedAt": 1790105843582
+          }
+        ],
+        "databaseAdmission": {
+          "gateMs": 0.352,
+          "membershipMs": 0.939
+        },
+        "sentAt": 1790105843623
+      }
+    }
+  ],
+  "summary": [
+    {
+      "round": 1,
+      "n": 12,
+      "authorization": {
+        "p50": 127,
+        "p95": 308,
+        "max": 308
+      },
+      "commit": {
+        "p50": 43,
+        "p95": 91,
+        "max": 91
+      },
+      "handler": {
+        "p50": 179,
+        "p95": 395,
+        "max": 395
+      },
+      "frame": {
+        "p50": 4.5,
+        "p95": 15.200000017881393,
+        "max": 15.200000017881393
+      },
+      "tap": {
+        "p50": 207,
+        "p95": 420,
+        "max": 420
+      }
+    },
+    {
+      "round": 2,
+      "n": 12,
+      "authorization": {
+        "p50": 83,
+        "p95": 101,
+        "max": 101
+      },
+      "commit": {
+        "p50": 34,
+        "p95": 51,
+        "max": 51
+      },
+      "handler": {
+        "p50": 119,
+        "p95": 144,
+        "max": 144
+      },
+      "frame": {
+        "p50": 5.399999976158142,
+        "p95": 13.5,
+        "max": 13.5
+      },
+      "tap": {
+        "p50": 140.2000000178814,
+        "p95": 174.7000000178814,
+        "max": 174.7000000178814
+      }
+    },
+    {
+      "round": 3,
+      "n": 12,
+      "authorization": {
+        "p50": 72,
+        "p95": 107,
+        "max": 107
+      },
+      "commit": {
+        "p50": 36,
+        "p95": 56,
+        "max": 56
+      },
+      "handler": {
+        "p50": 110,
+        "p95": 167,
+        "max": 167
+      },
+      "frame": {
+        "p50": 2.9000000059604645,
+        "p95": 10.5,
+        "max": 10.5
+      },
+      "tap": {
+        "p50": 128.80000001192093,
+        "p95": 192,
+        "max": 192
+      }
+    },
+    {
+      "round": 4,
+      "n": 12,
+      "authorization": {
+        "p50": 93,
+        "p95": 176,
+        "max": 176
+      },
+      "commit": {
+        "p50": 43,
+        "p95": 62,
+        "max": 62
+      },
+      "handler": {
+        "p50": 136,
+        "p95": 241,
+        "max": 241
+      },
+      "frame": {
+        "p50": 10.5,
+        "p95": 15.599999994039536,
+        "max": 15.599999994039536
+      },
+      "tap": {
+        "p50": 162.69999998807907,
+        "p95": 274.80000001192093,
+        "max": 274.80000001192093
+      }
+    }
+  ],
+  "cleanup": true
+}
