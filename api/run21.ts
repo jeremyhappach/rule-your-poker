@@ -7,6 +7,9 @@ const production = createProductionAdapter(process.env);
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://authority.invalid');
   const path = url.searchParams.get('run21_path');
-  if (path !== null) req.url = `/__run21/${path}`;
+  if (path !== null) {
+    url.searchParams.delete('run21_path');
+    req.url = `/__run21/${path}${url.search ? url.search : ''}`;
+  }
   await production.handler(req, res);
 }

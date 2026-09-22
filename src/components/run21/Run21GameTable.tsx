@@ -35,7 +35,7 @@ function Felt({view, now, onIntent, pending}: {view: Projection; now: number; on
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
-  const {snapshot, now, error, pending, connected, onIntent, reconnect} = useRun21Local(props.gameId, props.dealerGameId);
+  const {snapshot, now, error, pending, connected, onIntent, reconnect, phase} = useRun21Local(props.gameId, props.dealerGameId);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
   const [closing, setClosing] = useState(false);
@@ -59,6 +59,7 @@ export function Run21GameTable(props: Props) {
   const errorPane = <div className="text-center text-xs" role="status">{error || closeError || (!connected ? 'Reconnecting…' : '')}
     {(!connected || error) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
   let pane: ReactNode = errorPane;
+  let felt: ReactNode = null, timer: ReactNode = null, identity: ReactNode = null;
   if (view && snapshot) {
     const self = view.players.find(p => p.id === view.viewerId)!;
     const winner = view.players.find(p => p.id === view.winnerId);
@@ -74,10 +75,7 @@ export function Run21GameTable(props: Props) {
               : <button className="underline" disabled={pending || !connected} onClick={() => void onIntent({type: 'acknowledge'})}>{view.roundNumber >= 3 ? 'Continue sudden death' : 'Next round'}</button>}
           </div> : <Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>}
         </div>;
-    return <div className="h-full min-h-0 flex flex-col relative" data-run21-live>
-      {!props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
-      <div aria-hidden style={{flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none'}}/>
-      <div className="relative overflow-visible" style={{height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', pointerEvents: 'none'}}>
+    felt = <>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}
           presentation={{scoreLine: p => displayedScore(view,p.id,now).toLocaleString(), dealerPip: p => p.position === props.dealerPosition,
             isolatedBalance: p => snapshot.balances[p.id],
@@ -86,14 +84,18 @@ export function Run21GameTable(props: Props) {
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
           {createPortal(<div className="run21-replay-controls">{controls}<button onClick={() => setReplay(null)}>Return to live match</button></div>,
             document.querySelector('[data-hud-row="pane"]') ?? document.createDocumentFragment())}
-        </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>)}
-      </div>
-      <div aria-hidden style={{flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none'}}/>
-      <ShellHudGrid timer={!props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null}
-        pane={replay ? null : pane}
-        identity={<div className="run21-self-identity"><strong>{self.name}</strong><CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>
-          <span aria-label={`Score ${displayedScore(view,self.id,now)}`}>{displayedScore(view,self.id,now).toLocaleString()}</span></div>}/>
-    </div>;
+        </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>)}</>;
+    timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
+    identity = <div className="run21-self-identity"><strong>{self.name}</strong><CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>
+          <span aria-label={`Score ${displayedScore(view,self.id,now)}`}>{displayedScore(view,self.id,now).toLocaleString()}</span></div>;
   }
-  return <div className="h-full flex flex-col"><div className="flex-1"/><ShellHudGrid timer={null} pane={pane} identity={null}/></div>;
+  return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
+    {view && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
+    <div aria-hidden style={{flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none'}}/>
+    <div className="relative overflow-visible" style={{height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', pointerEvents: 'none'}}>
+      {felt ?? <div className="absolute inset-0 flex items-center justify-center" role="status">Preparing Run21…</div>}
+    </div>
+    <div aria-hidden style={{flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none'}}/>
+    <ShellHudGrid timer={timer} pane={replay ? null : pane} identity={identity}/>
+  </div>;
 }

@@ -3,7 +3,7 @@ import type { Projection } from './model';
 import type { VisibleEvent } from './history';
 import type { ReplayPackageV1 } from '../replay/contractV1';
 
-export interface Run21Snapshot { revision: number; serverAt: number; view: Projection; balances: Record<string, number>; finished: boolean }
+export interface Run21Snapshot { revision: number; serverAt: number; view: Projection; balances: Record<string, number>; finished: boolean; events?: VisibleEvent[]; eventSequence?: number; requestId?: string }
 export interface Run21HistoryRecord {dealerGameId: string; balances: Record<string, number>; events: VisibleEvent[]; replay: ReplayPackageV1 | null}
 export async function run21Fetch(gameId: string, path: string, options: RequestInit = {}) {
   const {data} = await supabase.auth.getSession();

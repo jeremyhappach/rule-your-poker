@@ -2,7 +2,7 @@ import { type Board, type Card, type Config, type Intent, type Projection } from
 import { aggregate, canCollect, cardKey, legalColumns, multiplierAt, speedAt, standardDeck, total } from './rules.js';
 
 export interface BotPolicy { seed: number; minActionMs: number; maxActionMs: number }
-export const DEFAULT_BOT_POLICY: BotPolicy = {seed: 21, minActionMs: 220, maxActionMs: 420};
+export const DEFAULT_BOT_POLICY: BotPolicy = {seed: 21, minActionMs: 750, maxActionMs: 750};
 export function seededRandom(seed: number): () => number {
   let n = seed >>> 0;
   return () => { n += 0x6D2B79F5; let t = n; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };

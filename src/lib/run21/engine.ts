@@ -54,8 +54,8 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
   if (deck.cards.length !== expected.size || new Set(deck.cards.map(cardKey)).size !== expected.size ||
       deck.cards.some(c => !expected.has(cardKey(c))) || !/^[0-9a-f]{64}$/.test(deck.commitment) || !/^[0-9a-f]{64}$/.test(deck.salt)) throw new Error('invalid_deck_evidence');
   const match = structuredClone(input);
-  // Persisted participant order is canonical seat order; alternate the starter by round.
-  const starter = match.players[match.rounds.length % match.players.length].id;
+  // Persisted participant order is canonical for every round.
+  const starter = match.players[0].id;
   const round: Round = { id, number: match.rounds.length + 1, secret: structuredClone(deck), revealed: false, acknowledged: [],
     starting_player_id: starter, active_player_id: starter,
     liveBoards: true, scorePresentation: null,

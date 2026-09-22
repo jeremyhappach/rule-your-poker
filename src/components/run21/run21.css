@@ -11,7 +11,8 @@
 .run21-column-stack{position:absolute;inset:14% 3% 2%;display:block;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y}
 .run21-column-stack::-webkit-scrollbar{width:.2em}
 .run21-column-stack::-webkit-scrollbar-thumb{background:#f5f1df66;border-radius:1em}
-.run21-stacked-card{position:absolute;left:50%;transform:translateX(-50%);display:block}
+.run21-stacked-card{position:absolute;left:50%;transform:translateX(-50%);display:block;animation:run21-card-land 120ms ease-out}
+@keyframes run21-card-land{from{transform:translate(-50%,1em);opacity:.5}to{transform:translate(-50%,0);opacity:1}}
 .run21-card{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .run21-felt-content button small{margin-left:0.4em;font-weight:400}
 .run21-result{padding:.6em 1.4em;background:#17241ff5;border:1px solid #edc36b;border-radius:.8em;font-size:1.35em;font-weight:800;box-shadow:0 0 2em #0007;pointer-events:none}

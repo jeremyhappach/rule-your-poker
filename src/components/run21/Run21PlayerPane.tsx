@@ -1,5 +1,5 @@
 import type {Intent, Projection} from '@/lib/run21/model';
-import {aggregate, canCollect, duration, speedAt} from '@/lib/run21/rules';
+import {aggregate, canCollect, duration} from '@/lib/run21/rules';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 
 export function Run21PassStatus({used}:{used:boolean}) {
@@ -31,7 +31,7 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
   const full=duration(view.config);
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??now)));
   const percent=100*remaining/full;
-  const speed=speedAt(board,view.config,board.result?.at??now);
+  const speed=Math.min(view.config.speed.start,Math.max(0,view.config.speed.start-Math.floor((full-remaining)/view.config.speed.intervalMs)*view.config.speed.decrement));
   return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><div className="run21-timer" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
     aria-valuetext={board.startedAt===null?'Speed 250, waiting for first placement':`${(remaining/1000).toFixed(1)} seconds remaining`} data-run21-time-remaining={remaining}>
     <span className="run21-timer-fill" style={{width:`${percent}%`}}/>

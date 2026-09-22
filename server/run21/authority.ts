@@ -141,14 +141,18 @@ export class Run21Authority {
   async recover() {
     for (const row of await this.store.load()) await this.serial(row.game_id, () => this.advance(row));
   }
-  async read(gameId: string, userId: string) {
+  private snapshot(row: StoredMatch, playerId: string, afterSequence: number) {
+    return {revision: row.revision, serverAt: this.now(), view: project(row.state!, playerId), balances: row.balances, finished: row.finished,
+      eventSequence: row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId).filter(e => e.sequence > afterSequence)};
+  }
+  async read(gameId: string, userId: string, afterSequence = 0) {
     return this.serial(gameId, async () => {
       const initial = await this.latest(gameId); const player = this.player(initial, userId);
       const row = await this.advance(initial);
-      return {revision: row.revision, serverAt: this.now(), view: project(row.state!, player.id), balances: row.balances, finished: row.finished};
+      return this.snapshot(row, player.id, afterSequence);
     });
   }
-  async act(gameId: string, userId: string, command: Command) {
+  async act(gameId: string, userId: string, command: Command, afterSequence = 0) {
     return this.serial(gameId, async () => {
       const initial = await this.latest(gameId); const player = this.player(initial, userId);
       let row = await this.advance(initial);
@@ -159,7 +163,7 @@ export class Run21Authority {
       if (result.status === 'rejected') throw new AuthorityError(`run21:${result.reason}`);
       if (result.status === 'accepted') row = await this.store.commit(row, result.state, null);
       row = await this.advance(row); this.notify(gameId);
-      return {status: result.status, revision: row.revision, serverAt: this.now(), view: project(row.state!, player.id), balances: row.balances, finished: row.finished};
+      return {status: result.status, requestId: command.requestId, ...this.snapshot(row, player.id, afterSequence)};
     });
   }
   async history(gameId: string, userId: string) {

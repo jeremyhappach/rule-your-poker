@@ -80,6 +80,14 @@ describe('persisted local Run21 authority', () => {
     expect(opening.view.boards[human]).toMatchObject({current:null,deadline:null,startedAt:null,presented:[]});
     expect(opening.view.boards[bot]?.current).toBeTruthy();
     expect(opening.view.boards[bot]?.deadline).toBeNull();
+    expect(f.row.bot_due_at).toBe(1750);
+    f.tick(749); await a.read(game,user); expect(f.row.state!.rounds[0].boards[bot].startedAt).toBeNull();
+    f.tick(1); await Promise.all([a.read(game,user),a.read(game,user)]);
+    expect(f.row.state!.events.filter(e=>e.type==='card_placed'&&e.actorId===bot)).toHaveLength(1);
+    expect(f.row.bot_due_at).toBe(2500);
+    const resumed=await a.read(game,user,opening.eventSequence);
+    expect(resumed.events.every(e=>e.sequence>opening.eventSequence)).toBe(true);
+    expect(resumed.events.filter(e=>e.type==='card_placed')).toHaveLength(1);
     for (const intent of [{type:'place',column:0},{type:'pass'},{type:'collect'}] as Intent[])
       await expect(a.act(game,user,command(f.row,intent))).rejects.toThrow('not_your_turn');
     expect(f.row.state!.rounds[0].boards[human].revision).toBe(0);
@@ -100,11 +108,11 @@ describe('persisted local Run21 authority', () => {
     f.tick(25000); expect((await a.read(game,user)).view.revealed).toBe(false);
     f.tick(5000); const nextRound=await a.read(game,user);
     expect(f.row.state!.rounds[0].revealed).toBe(true);
-    expect(nextRound.view.roundNumber).toBe(2);expect(nextRound.view.active_player_id).toBe(human);
+    expect(nextRound.view.roundNumber).toBe(2);expect(nextRound.view.active_player_id).toBe(bot);
     expect(nextRound.view.boards[human]).toMatchObject({startedAt:null,deadline:null,columns:[[],[],[],[],[]]});
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
     expect(f.row.state!.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
-    expect(f.row.state!.rounds[1].active_player_id).toBe(human);
+    expect(f.row.state!.rounds[1].active_player_id).toBe(bot);
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
   });
   it('runs the real bot, three rounds, receipt and replay through the same persisted state', async () => {

@@ -10,7 +10,7 @@ vi.mock('@/hooks/GameChatContext', () => ({useGameChatContext: () => ({})}));
 vi.mock('@/hooks/useRun21SafeFelt', () => ({useSafeFelt: () => ({area: {width: 0}, draw: {}})}));
 vi.mock('@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement', () => ({useCanonicalFeltInteractionLayerElement: () => null}));
 vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer', () => ({GameplayOpponentSeatLayer: () => null}));
-vi.mock('@/lib/canonicalShell/ShellHudGrid', () => ({ShellHudGrid: ({pane}: {pane: React.ReactNode}) => pane}));
+vi.mock('@/lib/canonicalShell/ShellHudGrid', () => ({ShellHudGrid: ({pane}: {pane: React.ReactNode}) => <div data-testid="hud">{pane}</div>}));
 vi.mock('@/lib/canonicalShell/ShellTabBar', () => ({useShellTabBar: () => {}}));
 vi.mock('@/components/canonicalShell/CanonicalChipDisc', () => ({CanonicalChipDisc: () => null}));
 vi.mock('@/components/HandHistory', () => ({HandHistory: () => null}));
@@ -41,3 +41,11 @@ it('does not reopen terminal presentation when close refreshes the same persiste
   ui.rerender(<Run21GameTable {...props} sessionEnded/>);
   expect(screen.queryByRole('button', {name: 'Finish match'})).toBeNull();
 }, 15000);
+
+it('retains the same HUD element and fixed felt allocation from preparation into play',()=>{
+ const props={gameId:IDENTITY.sessionId,dealerGameId:IDENTITY.dealerGameId,userId:uuid(30),dealerPosition:1,activeTab:'cards' as const,setActiveTab:vi.fn(),sessionEnded:false,onTerminalActive:vi.fn(),onTerminalComplete:vi.fn()};
+ mock.snapshot=null;const ui=render(<Run21GameTable {...props}/>),hud=screen.getByTestId('hud');
+ const fixed=ui.container.querySelector('[style*="--shell-felt-h"]') as HTMLElement;
+ mock.snapshot={view:project(fixtureMatch(),PLAYERS[0].id),revision:1,serverAt:0,finished:false,balances:{}};ui.rerender(<Run21GameTable {...props}/>);
+ expect(screen.getByTestId('hud')).toBe(hud);expect(ui.container.querySelector('[style*="--shell-felt-h"]')).toBe(fixed);
+});

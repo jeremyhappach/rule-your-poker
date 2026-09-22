@@ -40,7 +40,10 @@ export function createRun21Handler(options: AuthorityOptions) {
     let gameId: string | undefined;
     try {
       const userId = await authenticate(req);
-      const path = new URL(req.url ?? '/', 'http://authority.invalid').pathname.replace(/^\/(?:__run21|api\/run21)/, '');
+      const url = new URL(req.url ?? '/', 'http://authority.invalid');
+      let cursor = Number(url.searchParams.get('after') ?? 0);
+      if (!Number.isSafeInteger(cursor) || cursor < 0) throw new AuthorityError('run21:invalid_cursor', 400);
+      const path = url.pathname.replace(/^\/(?:__run21|api\/run21)/, '');
       const route = /^\/([0-9a-f-]{36})\/(state|action|events|history|close)$/.exec(path);
       if (!route) throw new AuthorityError('run21:route', 404);
       [, gameId] = route; const operation = route[2];
@@ -49,8 +52,8 @@ export function createRun21Handler(options: AuthorityOptions) {
         let channel: ReturnType<typeof db.channel> | undefined;
         let expiry: ReturnType<typeof setTimeout> | undefined;
         let stopped = false;
-        const refresh = () => { void authority.read(gameId!, userId).then(value => {
-          if (!stopped && res.headersSent) res.write(`data: ${JSON.stringify(value)}\n\n`);
+        const refresh = () => { void authority.read(gameId!, userId, cursor).then(value => {
+          if (!stopped && res.headersSent) { res.write(`data: ${JSON.stringify(value)}\n\n`); cursor = Math.max(cursor, value.eventSequence); }
         }).catch(() => res.end()); };
         const unsubscribe = authority.subscribe(gameId, refresh);
         const cleanup = () => { stopped = true; clearTimeout(expiry); unsubscribe(); if (channel) void db.removeChannel(channel); };
@@ -64,16 +67,16 @@ export function createRun21Handler(options: AuthorityOptions) {
             if (status === 'SUBSCRIBED') resolve();
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new AuthorityError('run21:transport_unavailable', 503));
           }));
-          const initial = await authority.read(gameId, userId);
+          const initial = await authority.read(gameId, userId, cursor);
           if (stopped) return;
           res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive'});
-          res.write(`data: ${JSON.stringify(initial)}\n\n`);
+          res.write(`data: ${JSON.stringify(initial)}\n\n`); cursor = initial.eventSequence;
           expiry = setTimeout(() => res.end(), 55000); // Reconnect revalidates the JWT and gate.
           await new Promise<void>(resolve => res.once('close', resolve));
         } finally { cleanup(); }
         return;
       }
-      if (operation === 'state') return send(res, 200, await authority.read(gameId, userId));
+      if (operation === 'state') return send(res, 200, await authority.read(gameId, userId, cursor));
       if (operation === 'history') return send(res, 200, await authority.history(gameId, userId));
       if (operation === 'close') { await authority.close(gameId, userId); return send(res, 200, {closed: true}); }
       let body = '';
@@ -81,7 +84,7 @@ export function createRun21Handler(options: AuthorityOptions) {
       else for await (const chunk of req) { body += chunk; if (body.length > 4096) throw new AuthorityError('run21:request_size', 413); }
       if (body.length > 4096) throw new AuthorityError('run21:request_size', 413);
       let command: unknown; try { command = JSON.parse(body); } catch { throw new AuthorityError('run21:invalid_json', 400); }
-      send(res, 200, await authority.act(gameId, userId, command as Parameters<Run21Authority['act']>[2]));
+      send(res, 200, await authority.act(gameId, userId, command as Parameters<Run21Authority['act']>[2], cursor));
     } catch (error) {
       if (res.headersSent) res.end();
       else send(res, error instanceof AuthorityError ? error.status : 500, {error: error instanceof AuthorityError ? error.code : 'run21:server_failure'});

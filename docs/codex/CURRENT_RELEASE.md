@@ -1,5 +1,22 @@
 # Current release and cutover state
 
+## September 22 Run21 ordered live presentation correction
+
+Frozen production evidence confirmed Round 2 selected Hap because the authority
+alternated starters; the bot had not played that round. Reconnect also erased
+the presentation. The Run21 release now preserves canonical participant order
+in every round, paces actual bot commands at 750ms, and delivers persisted events
+with a resumable sequence cursor. Presentation checkpoints and a fixed shell
+footprint retain the board and HUD across transport refreshes. Human placement
+shows the known card immediately, deduplicates by request/revision, and rolls
+back rejection. Display speed uses authoritative remaining time; the existing
+first-placement deadline remains exactly 25,000ms. No schema or gate expansion.
+
+Focused authority, presentation, reconnect, optimism, replay and timer checks
+pass. Production timing and HUD measurements are recorded in the release smoke
+before this correction is declared accepted.
+
+
 ## September 22 Run21 live boards and scoring handoffs published
 
 Production at https://ptown-poker.vercel.app deploys
