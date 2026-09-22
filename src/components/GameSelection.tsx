@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveHarnessMap } from "@/lib/debugHarness/activeHarnessWarning";
+import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
 
 /** Red "H" badge — shown only when a game's harness would actually execute. */
 const HarnessBadge = ({ label }: { label: string }) => (
@@ -24,6 +25,7 @@ interface GameSelectionProps {
   activeHumanCount?: number;
   onSitOut?: () => void;
   onEndSession?: () => void;
+  sessionId?: string | null;
 }
 
 export const GameSelection = ({ 
@@ -33,8 +35,10 @@ export const GameSelection = ({
   activePlayerCount = 0,
   activeHumanCount = 0,
   onSitOut,
-  onEndSession
+  onEndSession,
+  sessionId = null,
 }: GameSelectionProps) => {
+  const run21Allowed = useRun21AppTestAccess(sessionId);
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
     'holm-game', '3-5-7', 'cribbage', 'gin-rummy',
@@ -102,11 +106,13 @@ export const GameSelection = ({
       case 'cribbage': return 'Cribbage';
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
+      case 'run21': return 'Run21';
       default: return gameType;
     }
   };
 
   const handleRunBack = () => {
+    if (lastGameType === 'run21' && !run21Allowed) return;
     if (lastGameType) {
       onSelectGame(lastGameType);
     }
@@ -139,6 +145,7 @@ export const GameSelection = ({
 
   // Determine which tab to default to based on last game type
   const getDefaultTab = () => {
+    if (lastGameType === 'run21' && run21Allowed) return 'other';
     if (lastGameType) {
       return lastGameType === 'horses' || lastGameType === 'ship-captain-crew' || lastGameType === 'yahtzee' ? 'dice' : 'cards';
     }
@@ -156,7 +163,7 @@ export const GameSelection = ({
 
           {/* Tabbed Game Selection */}
           <Tabs defaultValue={getDefaultTab()} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-poker-felt-dark border border-poker-gold/30">
+            <TabsList className={`grid w-full ${run21Allowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
               <TabsTrigger 
                 value="cards" 
                 className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
@@ -171,6 +178,7 @@ export const GameSelection = ({
                 <Dice5 className="w-4 h-4" />
                 Dice Games
               </TabsTrigger>
+              {run21Allowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
             </TabsList>
 
             {/* Card Games Tab */}
@@ -246,10 +254,20 @@ export const GameSelection = ({
                 ))}
               </div>
             </TabsContent>
+            {run21Allowed && (
+              <TabsContent value="other" className="mt-4">
+                <button type="button" data-dealer-game-option="run21"
+                  disabled={activePlayerCount > 2}
+                  onClick={() => handleGameSelect({ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', enabled: run21Allowed, maxPlayers: 2 })}
+                  className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
+                  <span className="font-bold">Run21</span><span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
+                </button>
+              </TabsContent>
+            )}
           </Tabs>
 
           {/* Run Back option - only show on 2nd+ game of session */}
-          {!isFirstHand && lastGameType && (
+          {!isFirstHand && lastGameType && (lastGameType !== 'run21' || run21Allowed) && (
             <div className="pt-3 border-t border-poker-gold/30">
               <button
                 onClick={handleRunBack}

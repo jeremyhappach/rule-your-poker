@@ -56,6 +56,7 @@ import {
 } from "@/lib/dice/diceArtifactDescriptors";
 
 import type { SizeMode } from "./store";
+import { getRun21ArtifactDescriptors } from '../run21/geometry';
 
 // ---------------------------------------------------------------------------
 // GameKey + per-game label
@@ -63,6 +64,7 @@ import type { SizeMode } from "./store";
 
 export type GameKey =
   | "farkle"
+  | "run21"
   | "cribbage"
   | "holm"
   | "threeFiveSeven"
@@ -73,6 +75,7 @@ export type GameKey =
 
 export const GAME_LABELS: Record<GameKey, string> = {
   farkle: "Farkle",
+  run21: 'Run21',
   cribbage: "Cribbage",
   holm: "Holm",
   threeFiveSeven: "3-5-7",
@@ -161,6 +164,7 @@ function dedupeById(lists: ArtifactDescriptor[][]): ArtifactDescriptor[] {
 }
 
 export const ARTIFACT_DESCRIPTOR_FACTORIES: Record<GameKey, FactoryEntry> = {
+  run21: {game: 'run21', enumerate: () => getRun21ArtifactDescriptors()},
   cribbage: {
     game: "cribbage",
     enumerate: () =>

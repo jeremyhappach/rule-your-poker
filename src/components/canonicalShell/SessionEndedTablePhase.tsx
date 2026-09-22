@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { run21Request, type Run21Snapshot } from '@/lib/run21/localClient';
 import { Button } from '@/components/ui/button';
 import { formatChipValue } from '@/lib/utils';
 import { getBotAlias } from '@/lib/botAlias';
@@ -52,6 +53,7 @@ function formatNet(net: number): string {
 
 export interface SessionEndedTablePhaseProps {
   gameId: string;
+  gameType?: string | null;
   sessionName?: string | null;
   currentUserId?: string | null;
 }
@@ -64,6 +66,7 @@ export interface SessionEndedTablePhaseProps {
  */
 export function SessionEndedFeltPanel({
   gameId,
+  gameType,
   sessionName,
   currentUserId,
 }: SessionEndedTablePhaseProps) {
@@ -72,6 +75,14 @@ export function SessionEndedFeltPanel({
   const interactionLayerEl = useCanonicalFeltInteractionLayerElement(true);
 
   const load = useCallback(async (signal: { cancelled: boolean }) => {
+    if (gameType === 'run21') {
+      try {
+        const result = await run21Request<Run21Snapshot>(gameId, 'state');
+        if (!signal.cancelled) setRows(result.view.players.map(p => ({key: p.id, username: p.name,
+          net: result.balances[p.id], isBot: p.kind === 'bot', isSelf: p.id === result.view.viewerId, latestAt: result.serverAt})));
+      } catch { if (!signal.cancelled) setFailed(true); }
+      return;
+    }
     // Participant union — snapshots alone are NOT a complete participant set.
     // `holm_settle_hand` (and the client snapshot owners) guard snapshot writes
     // on (game_id, hand_number) only, and hand_number restarts at 1 for every
@@ -154,7 +165,7 @@ export function SessionEndedFeltPanel({
     );
     setRows(sorted);
 
-  }, [gameId, currentUserId]);
+  }, [gameId, currentUserId, gameType]);
 
   useEffect(() => {
     const signal = { cancelled: false };

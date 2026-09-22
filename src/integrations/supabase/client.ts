@@ -2,9 +2,19 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { NetworkSimWebSocket, simulatedSupabaseFetch } from '@/lib/networkSimTransport';
+import { assertRun21AppTestEnvironment } from '@/lib/run21/appTestEnvironment';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// Guard before client construction: even startup telemetry/auth must stay off
+// production when this checkout is used for the Run21 app-test workstream.
+assertRun21AppTestEnvironment({
+  lane: typeof __RUN21_APP_TEST_LANE__ !== 'undefined' && __RUN21_APP_TEST_LANE__,
+  enabled: import.meta.env.VITE_RUN21_APP_TEST_ENABLED,
+  supabaseUrl: SUPABASE_URL,
+  projectRef: import.meta.env.VITE_RUN21_TEST_PROJECT_REF,
+});
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

@@ -1,5 +1,14 @@
 # Current release and cutover state
 
+## September 22 Run21 production transplant — migration preflight blocked
+
+The Run21 production candidate now starts from exact main commit 3d8a5f3db.
+Current-main game owners and historical migration bytes are preserved; only
+Run21 changes and four newly numbered migrations were added. One typecheck
+and application production build pass. Production dry run still rejects
+historical version mismatches, so no migration, enablement or production
+deployment has occurred. See [Run21 release evidence](RUN21_PRODUCTION_RELEASE.md).
+
 ## September 21 3-5-7 correction verified; final application gate blocked
 
 The 3-5-7 builder now admits an atomic `session_ended` frame only with its

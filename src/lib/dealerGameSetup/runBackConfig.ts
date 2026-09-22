@@ -14,7 +14,7 @@ export function resolveExactRunBackConfig(gameType: string, value: unknown, deal
     return { ante_amount: config.ante_amount, runBackDealerGameId: id };
   }
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
-  if (['horses', 'ship-captain-crew', 'yahtzee'].includes(gameType)) return { ante_amount: config.ante_amount };
+  if (['horses', 'ship-captain-crew', 'yahtzee', 'run21'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {
     if (!integer('points_to_win', 1) || !bool('skunk_enabled') || !bool('double_skunk_enabled')
       || !integer('skunk_threshold', 0) || !integer('double_skunk_threshold', 0)

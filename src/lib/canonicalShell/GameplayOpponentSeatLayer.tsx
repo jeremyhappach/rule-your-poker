@@ -88,6 +88,10 @@ export interface CardBacksPresentation {
 }
 
 export interface GameplayOpponentSeatPresentation {
+  /** A separately persisted local test ledger must not read the session money cursor. */
+  isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
+  /** Public one-use pass availability; contains no private card evidence. */
+  passAvailable?: (p: GameplayOpponentSeatParticipant) => boolean;
   dealerPip?: (p: GameplayOpponentSeatParticipant) => boolean;
   statusRing?: (p: GameplayOpponentSeatParticipant) => SeatStatusRing | undefined;
   /** Override the default `$<chips>` chip-value string. Return '' to render an empty chip bubble. */
@@ -107,7 +111,7 @@ export interface GameplayOpponentSeatPresentation {
 
 export interface GameplayOpponentSeatLayerProps {
   /** Game family used in ownerLabel + diagnostics. */
-  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle';
+  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
   /** Opponents to project (caller filters self / observers as needed). */
   participants: GameplayOpponentSeatParticipant[];
   /** Typed presentation accessors. All fields optional. */
@@ -286,8 +290,9 @@ export function GameplayOpponentSeatLayer({
         const dealerPip = presentation?.dealerPip?.(p) ?? false;
         const statusRing = presentation?.statusRing?.(p);
         const chipValueOverride = presentation?.chipValue?.(p);
+        const isolatedBalance = presentation?.isolatedBalance?.(p);
         const chipValue =
-          chipValueOverride !== undefined
+          isolatedBalance !== undefined ? defaultChipValue(isolatedBalance) : chipValueOverride !== undefined
             ? chipValueOverride
             : defaultChipValue(p.chips);
         const hideChipBubble = presentation?.hideChipBubble?.(p) ?? false;
@@ -320,7 +325,7 @@ export function GameplayOpponentSeatLayer({
             name={p.name}
             isDealer={dealerPip}
             chipValue={chipValue}
-            chipAmount={p.chips}
+            chipAmount={isolatedBalance === undefined ? p.chips : undefined}
             hideChipBubble={hideChipBubble}
             statusRing={statusRing}
             chipHUD={chipHUD}
@@ -329,6 +334,7 @@ export function GameplayOpponentSeatLayer({
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
           >
+            {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
             {renderCardBacks && cardBacks ? (
               <ShellOpponentCardBacks
                 count={cardBacks.count}

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Clock, ChevronLeft, MessageCircle } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { supabase } from "@/integrations/supabase/client";
+import { run21Request, type Run21Snapshot } from '@/lib/run21/localClient';
 
 // Format number with thousands separators
 const formatWithCommas = (num: number): string => {
@@ -48,6 +49,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const [showChat, setShowChat] = useState(false);
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [run21Error, setRun21Error] = useState<string | null>(null);
   const [gameCount, setGameCount] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; message: string; created_at: string; username: string }>>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -94,6 +96,15 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
 
   const fetchAllParticipants = async () => {
     setLoading(true);
+    if (session.game_type === 'run21') {
+      setRun21Error(null);
+      try {
+        const result = await run21Request<Run21Snapshot>(session.id, 'state');
+        setAllPlayers(result.view.players.map(p => ({id: p.id, username: p.name, chips: result.balances[p.id], legs: 0, is_bot: p.kind === 'bot'})));
+        setGameCount(1);
+      } catch {setRun21Error('Local Run21 authority is unavailable. Reconnect to read the isolated result.');}
+      setLoading(false); return;
+    }
 
     // First try to get data from session_player_snapshots (new accurate method)
     // Order by created_at DESC to get the most recent snapshot per player
@@ -271,7 +282,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     setLoading(false);
   };
 
-  const displayPlayers = allPlayers.length > 0 ? allPlayers : session.players;
+  const displayPlayers = session.game_type === 'run21' ? (run21Error ? [] : allPlayers) : allPlayers.length > 0 ? allPlayers : session.players;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -301,6 +312,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
             {session.real_money && <span className="text-green-400 ml-1">$</span>}
           </DialogTitle>
         </DialogHeader>
+        {session.game_type === 'run21' && <p className="text-xs text-muted-foreground">Isolated local match · no account money transferred</p>}
+        {run21Error && <p role="alert">{run21Error}</p>}
 
 
         {showHistory ? (

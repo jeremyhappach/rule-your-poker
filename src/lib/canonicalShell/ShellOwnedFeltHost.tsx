@@ -154,6 +154,7 @@ const TRACE_GAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   yahtzee: 'YAHTZEE',
   'gin-rummy': 'GIN RUMMY',
   cribbage: 'CRIBBAGE',
+  run21: 'RUN 21',
 };
 
 function tracePublisherTable(value: ShellFeltContextValue | null | undefined): string {
@@ -479,6 +480,7 @@ export function deriveFeltGameKind(
     case 'three-five-seven':
     case 'horses':
     case 'ship-captain-crew':
+    case 'run21':
       return gameType;
     case '3-5-7':
     case '3-5-7-game':
