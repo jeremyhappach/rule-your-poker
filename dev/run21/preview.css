@@ -1,0 +1,22 @@
+body{margin:0}
+.run21-canonical-play{position:relative;height:var(--shell-play-h);flex-shrink:0}
+/* Inscribed in the shell ellipse: every corner remains within its radius. */
+.run21-felt-safe-area{position:absolute;pointer-events:none}
+.run21-lab-header{display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 1rem;gap:.5rem}
+.run21-lab-header>span{font-size:.55rem;color:#b9ae8a}
+.run21-lab-header nav{display:flex;gap:.3rem}
+.run21-lab-header button,.run21-lab-controls button,.run21-lab-controls select,.run21-lab-controls input{font:inherit;border:1px solid #6c8d7755;border-radius:.4rem;padding:.3rem .5rem;background:#213c30;color:#f4efdf;max-width:100%}
+.run21-lab-header button{font-size:.65rem}
+.run21-lab-controls{flex:1;min-height:0;overflow:auto;padding:.4rem 1rem;font-size:.8rem}
+.run21-lab-controls p{margin:.3rem 0;color:#aebeb1}
+.run21-lab-controls label{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.4rem 0}
+.run21-lab-controls button{margin:.2rem .3rem .2rem 0}
+.run21-lab-controls input{max-width:50%}
+.run21-lab-controls input[type=range]{width:50%}
+.run21-lab-controls button:disabled{opacity:.45}
+.run21-lab-controls button[aria-pressed=true]{background:#d9b365;color:#162b20}
+.run21-lab-controls code{font-size:.65rem}
+.run21-self-identity{height:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:.75rem}
+.run21-self-identity>span{font-size:.65rem}
+.run21-fixture-status{display:block;text-align:center;font-size:.7rem}
+.run21-canonical-seats{position:absolute;left:50%;top:var(--play-top-safe-area);width:var(--shell-felt-w);min-width:300px;height:var(--shell-felt-h);transform:translateX(-50%)}

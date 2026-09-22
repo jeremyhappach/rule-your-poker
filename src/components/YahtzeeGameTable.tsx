@@ -1,3 +1,4 @@
+import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
 /**
  * YahtzeeGameTable – mirrors MobileGameTable's visual layout for dice games.
  *
@@ -2963,25 +2964,7 @@ export function YahtzeeGameTable({
             )}
           </div>
         }
-        identity={
-          myPlayer ? (
-            <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
-              <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
-              {/* Dice families (Yahtzee/Horses/SCC) have no dealer concept;
-                  the identity row never renders a dealer indicator. */}
-              <p className="text-sm font-semibold text-foreground truncate">
-                {myPlayer.profiles?.username || 'You'}
-                <span className="ml-1 text-green-500">(active)</span>
-              </p>
-              <span data-chip-delta-anchor={`player:${myPlayer.id}`} className={cn(
-                "font-bold text-lg tabular-nums",
-                myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
-              )}>
-                <PresentationChipBalance playerId={myPlayer.id} rawBalance={myPlayer.chips} prefix="" />
-              </span>
-            </div>
-          ) : null
-        }
+        identity={myPlayer?<CanonicalPlayerIdentityRow playerId={myPlayer.id} name={myPlayer.profiles?.username || 'You'} chips={myPlayer.chips} active/>:null}
       />
     </div>
   );

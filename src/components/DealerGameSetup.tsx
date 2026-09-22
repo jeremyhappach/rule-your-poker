@@ -2,6 +2,7 @@ import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/f
 import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/localQualification';
 import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -181,6 +182,7 @@ const DealerGameSetupInner = ({
   onSessionEnd,
   onSitOut,
 }: DealerGameSetupProps) => {
+  const run21Allowed = useRun21AppTestAccess(gameId);
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
@@ -824,6 +826,7 @@ const DealerGameSetupInner = ({
       case 'ship-captain-crew': return 'Ship';
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
+      case 'run21': return 'Run21';
       default: return gameType;
     }
   };
@@ -833,7 +836,7 @@ const DealerGameSetupInner = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy';
+    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21';
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -850,6 +853,7 @@ const DealerGameSetupInner = ({
       }
       setSelectedGameType(gameType); setSelectionStep('config'); return;
     }
+    if (gameType === 'run21' && !run21Allowed) return;
     // Check player count restrictions
     const gameInfo = allGames.find(g => g.id === gameType);
     if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
@@ -950,6 +954,7 @@ const DealerGameSetupInner = ({
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
     { id: 'farkle', name: 'Farkle', description: isAdmin ? 'Admin playtest' : 'Coming Soon', category: 'dice', enabled: isAdmin },
+    ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -978,8 +983,12 @@ const DealerGameSetupInner = ({
     }
 
     const gameTypeToSubmit = overrideGameType || selectedGameType;
+    if (gameTypeToSubmit === 'run21' && !run21Allowed) {
+      toast.error('Run21 is unavailable');
+      return;
+    }
     const simpleTypes = new Set<DealerGameType>([
-      'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee',
+      'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21',
     ]);
     if (!simpleTypes.has(gameTypeToSubmit as DealerGameType)) {
       toast.error('Select a supported game');
@@ -1054,6 +1063,7 @@ const DealerGameSetupInner = ({
   };
 
   const handleRunBack = async () => {
+    if (previousGameType === 'run21' && !run21Allowed) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
     if (previousGameType === 'farkle' && !isAdmin) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
@@ -1095,6 +1105,7 @@ const DealerGameSetupInner = ({
 
   // Determine which tab to default to based on previous game
   const getDefaultTab = () => {
+    if (previousGameType === 'run21' && run21Allowed) return 'other';
     if (previousGameType) {
       return isDiceGame(previousGameType) ? 'dice' : 'cards';
     }
@@ -1131,7 +1142,7 @@ const DealerGameSetupInner = ({
 
             {/* Tabbed Game Selection */}
             <Tabs defaultValue={getDefaultTab()} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-poker-felt-dark border border-poker-gold/30">
+              <TabsList className={`grid w-full ${run21Allowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
                 <TabsTrigger 
                   value="cards" 
                   className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
@@ -1146,6 +1157,7 @@ const DealerGameSetupInner = ({
                   <Dice5 className="w-4 h-4" />
                   Dice Games
                 </TabsTrigger>
+                {run21Allowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
               </TabsList>
 
               {/* Card Games Tab */}
@@ -1220,10 +1232,19 @@ const DealerGameSetupInner = ({
                   ))}
                 </div>
               </TabsContent>
+              {run21Allowed && (
+                <TabsContent value="other" className="mt-4">
+                  <button type="button" data-dealer-game-option="run21" onClick={() => handleGameSelect('run21')}
+                    disabled={activePlayerCount > 2}
+                    className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
+                    <span className="font-bold">Run21</span><span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
+                  </button>
+                </TabsContent>
+              )}
             </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'farkle' || isAdmin) && (
+            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'farkle' || isAdmin) && (previousGameType !== 'run21' || run21Allowed) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
@@ -1309,9 +1330,10 @@ const DealerGameSetupInner = ({
       const isCribbage = selectedGameType === 'cribbage';
       const isGinRummy = selectedGameType === 'gin-rummy';
       const isYahtzee = selectedGameType === 'yahtzee';
+      const isRun21 = selectedGameType === 'run21';
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : selectedGameType;
-      const gameRulesText = isSCC 
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
+      const gameRulesText = isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
@@ -1336,7 +1358,7 @@ const DealerGameSetupInner = ({
               <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 ? 'match stake' : 'ante'}</p>
                   {activeHarnessMap[selectedGameType]?.active && (
                     <p className="mt-1 text-sm font-bold text-red-500">
                       Harness: {activeHarnessMap[selectedGameType].label}
@@ -1358,7 +1380,7 @@ const DealerGameSetupInner = ({
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
 
                 <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">Ante ($)</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 ? 'Match stake ($)' : 'Ante ($)'}</Label>
                   <Input
                     id="ante-simple"
                     type="text"

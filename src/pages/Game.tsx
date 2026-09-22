@@ -411,6 +411,7 @@ import { advanceGinPostgame } from "@/lib/ginRummyRoundLogic";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions } from "@/lib/botPlayer";
+import { Run21GameTable } from '@/components/run21/Run21GameTable';
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
@@ -2066,6 +2067,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // unmount the presentation owner. A fresh terminal mount never observed
   // `in_progress`, so it has no scope and still redirects to the lobby.
   const liveTerminalGameType =
+    game?.game_type === 'run21' ||
     game?.game_type === 'cribbage' ||
     game?.game_type === 'gin-rummy' ||
     game?.game_type === 'yahtzee' ||
@@ -13915,7 +13917,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // selected game's branding immediately (ante decisions,
               // dealer-selection, etc.) — not just at gameplay start.
               const t = _routeShellGameType;
-              if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew' || t === 'yahtzee' || t === 'cribbage' || t === 'farkle') return t;
+              if (t === 'run21' || t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew' || t === 'yahtzee' || t === 'cribbage' || t === 'farkle') return t;
               if (t === '3-5-7' || t === '3-5-7-game' || t === '357') return 'three-five-seven';
               return null; // NeutralInterstitial falls back to a generic plate-less felt
             })()}
@@ -14221,6 +14223,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // CRIBBAGE — unified single instance across ALL session phases
+          if (renderGameType === 'run21' && game.current_game_uuid) return <Run21GameTable
+            key={game.current_game_uuid} gameId={gameId!} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
+            dealerPosition={game.dealer_position || 1} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace}
+            sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange}
+            onTerminalComplete={markTerminalPresentationComplete}/>;
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
           if (renderGameType === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
@@ -15391,7 +15398,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
             seats={shellEligibleSeats}
-            preSessionParticipants={preSessionParticipants}
+            // Run21 retains the same shell-owned gameplay seats at Session Ended:
+            // their balances come from its isolated ledger, not public money rows.
+            preSessionParticipants={game.game_type === 'run21' && _sessionEndedTableActive ? null : preSessionParticipants}
             lobbyMode={_isShellLobbyMode}
             header={mobileHeader}
           >
@@ -15411,6 +15420,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 <SessionEndedAnnouncementMount gameId={gameId!} />
                 <SessionEndedFeltPanel
                   gameId={gameId!}
+                  gameType={game.game_type}
                   currentUserId={user?.id ?? null}
                 />
                 <SessionEndedPaneAction

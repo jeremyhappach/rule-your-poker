@@ -412,11 +412,12 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
                                     : game.game_type === 'horses' ? 'Horses'
                                     : game.game_type === 'ship-captain-crew' ? 'SCC'
                                     : game.game_type === 'yahtzee' ? 'Yahtzee'
+                                    : game.game_type === 'run21' ? 'Run21'
                                     : '3-5-7'}
                                   {game.real_money && <span className="text-green-400 ml-1">$</span>}
                                 </span>
                                 <span className="text-amber-400/50">•</span>
-                                <span>${game.ante_amount} Ante</span>
+                                <span>${game.ante_amount} {game.game_type === 'run21' ? 'Match stake' : 'Ante'}</span>
                                 {game.game_type === 'holm-game' ? (
                                   <>
                                     <span className="text-amber-400/50">•</span>
@@ -436,7 +437,8 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
                                     <span className="text-amber-400/50">•</span>
                                     <span>{game.points_to_win || 25} pts</span>
                                   </>
-                                ) : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee' ? (
+                                ) : game.game_type === 'run21' ? <span>· Isolated local match</span>
+                                : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee' ? (
                                   <></>
                                 ) : (
                                   <>
@@ -453,7 +455,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
                         </div>
                         
                         {/* Players Table */}
-                        {isInProgress && activePlayers.length > 0 && (
+                        {isInProgress && game.game_type !== 'run21' && activePlayers.length > 0 && (
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-amber-400/60 mb-2">Current Standings</div>
                             <div className="border border-amber-700/30 rounded-lg overflow-hidden bg-slate-900/50">

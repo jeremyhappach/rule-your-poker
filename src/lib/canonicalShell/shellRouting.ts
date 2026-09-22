@@ -35,6 +35,7 @@ export function isPokerVariantFamily(gameType: string | null | undefined): boole
  */
 export const CANONICAL_SHELL_FAMILY = new Set<string>([
   ...POKER_VARIANT_FAMILY,
+  'run21',
   'gin-rummy',
   'cribbage',
   'yahtzee',
@@ -69,6 +70,7 @@ export function isCanonicalShellFamily(gameType: string | null | undefined): boo
  * See .lovable/canonical-shell-onboarding-checklist.md.
  */
 export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
+  'run21',
   'gin-rummy',
   'cribbage',
   'yahtzee',

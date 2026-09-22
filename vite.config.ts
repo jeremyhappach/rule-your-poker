@@ -1,8 +1,10 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
 import { componentTagger } from "lovable-tagger";
+import { assertRun21AppTestEnvironment } from "./src/lib/run21/appTestEnvironment";
+import { run21LocalServer } from "./server/run21/plugin";
 
 function getGitShaShort(): string | null {
   try {
@@ -33,6 +35,21 @@ function getGitShaFull(): string | null {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+  const appTestEnv = loadEnv(mode, process.cwd(), 'VITE_');
+  let branch = process.env.VERCEL_GIT_COMMIT_REF;
+  if (!branch) {
+    try { branch = execSync('git branch --show-current').toString().trim(); }
+    catch { branch = ''; }
+  }
+  const run21AppTestLane = ['codex/run21-app-test', 'codex/run21-app-test-reconciled'].includes(branch) || appTestEnv.VITE_RUN21_APP_TEST_ENABLED === 'true';
+  assertRun21AppTestEnvironment({
+    lane: run21AppTestLane,
+    enabled: appTestEnv.VITE_RUN21_APP_TEST_ENABLED,
+    supabaseUrl: appTestEnv.VITE_SUPABASE_URL,
+    projectRef: appTestEnv.VITE_SUPABASE_URL === 'https://xvhmbuppghwmwpwrkzao.supabase.co' ? 'xvhmbuppghwmwpwrkzao' : appTestEnv.VITE_RUN21_TEST_PROJECT_REF,
+    deploymentEnvironment: process.env.VERCEL_ENV,
+    productionAuthority: 'vercel',
+  });
   const isProd = mode === "production";
   const fullSha = getGitShaFull();
   const shortSha = getGitShaShort();
@@ -59,10 +76,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      host: "::",
+      host: run21AppTestLane ? "127.0.0.1" : "::",
       port: 8080,
     },
     define: {
+      __RUN21_APP_TEST_LANE__: JSON.stringify(run21AppTestLane),
       // Legacy short hash kept for existing consumers (buildMeta, cribbage
       // scoring trace, etc). Now sourced from the same authoritative pipeline.
       __BUILD_HASH__: JSON.stringify(effectiveShortSha),
@@ -78,6 +96,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      run21LocalServer(loadEnv(mode, process.cwd(), '')),
       mode === "development" && componentTagger(),
       {
         // Emits /build-manifest.json alongside the bundle so an already-open

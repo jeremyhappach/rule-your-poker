@@ -1,5 +1,9 @@
 import type { DealerGameType } from '@/lib/dealerGameSetupAuthority';
 
+// Run21 is restricted to the fake-money app-test lane. Adding it to dealer
+// discovery must not make it a real-money game or advertise recovery support.
+type RealMoneyDealerGameType = Exclude<DealerGameType, 'run21'>;
+
 export type RecoveryOwner =
   | 'canonical_timers'
   | 'holm'
@@ -63,8 +67,8 @@ export const REAL_MONEY_GAME_LIVENESS_CONTRACT = {
     { phase: 'first_draw/playing-human', owner: 'gin_rummy', deadlinePolicy: 'human_untimed_exempt', timerKinds: [], actionSurface: 'gin-human-turn' },
     { phase: 'bot/scoring/complete', owner: 'gin_rummy', deadlinePolicy: 'database', timerKinds: [] },
   ],
-} as const satisfies Record<DealerGameType, readonly LivenessPhaseContract[]>;
+} as const satisfies Record<RealMoneyDealerGameType, readonly LivenessPhaseContract[]>;
 
 export const ALL_REAL_MONEY_GAME_TYPES = Object.freeze(
-  Object.keys(REAL_MONEY_GAME_LIVENESS_CONTRACT) as DealerGameType[],
+  Object.keys(REAL_MONEY_GAME_LIVENESS_CONTRACT) as RealMoneyDealerGameType[],
 );

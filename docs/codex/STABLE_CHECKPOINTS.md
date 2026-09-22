@@ -1,5 +1,57 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 sole dealer and five application fixes — September 22
+
+- Deployed: `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4`.
+- Additive migration `20260922150253` applied; sole dealer resolves within
+  Start, while multiple eligible dealers retain the existing draw and hold.
+- Production browser Start completed in 197ms. Hap was dealer; persisted
+  history confirmed the bot started Round 1 and finished before Hap admission.
+- Pass/upcard placement, no seat pass badge, frozen opening clock, exact
+  250,000ms first-placement deadline, real-time cadence, accepted upcards,
+  and equal card dimensions were verified in the disposable production match.
+- Existing 104 focused tests remained accepted; only the new migration's
+  rollback proof and the required remote deployment build ran this pass.
+- Hap-only gate preserved; smoke fixture cleanup verified.
+
+## Run21 public live boards and first-placement timing — September 22
+
+- Deployed: `50af704931b963fc6de71323a5d2035169ac9842`.
+- Production verified sequential human/bot turns, accepted public board updates,
+  Pass and reload at frozen 250, atomic first-placement clocks for both actors,
+  inactive-command denial, and three persisted five-second score presentations.
+- Browser saw the score calculation/count-up followed by board clear and next
+  admission. Cumulative match scores changed; money balances did not.
+- 49 focused checks, both typechecks and Vercel production build passed.
+- Hap-only gate retained; smoke fixture cleaned up and verification login signed
+  out. No schema or historical migration changes.
+
+## Run21 sequential production turns — September 22
+
+- Deployed SHA: `d15fc191efd874684e63bab229f30f997c41a130`.
+- Production verified both human-first and bot-first rounds, inactive Place/Pass/
+  Collect rejection (`409 run21:not_your_turn`), full deadline on admission,
+  immutable completed boards, and reveal only after both players finish.
+- Browser confirmed bot-first waiting with disabled columns and no human current
+  card/timer, followed by a face-up human card and running timer on transfer.
+- 33 focused checks and application/server typechecks passed; Vercel's remote
+  production build passed. Hap remains the sole allowlisted administrator.
+- Test game and private match removed through canonical fake-money cleanup;
+  temporary verification session signed out. No migrations changed.
+
+## Run21 production admission — September 22
+
+- Start-flow correction deployed as `3aca5a02989c8685b9f612e73dfca088e04ab68e`:
+  Hap's fake-money/add-bot/Other/Run21/Start flow succeeds. The first face-up card
+  rendered, its column placement returned HTTP 200, and the timer counted down.
+  No migration or engine change was needed. Smoke sessions were cleaned up.
+- Deployed application: `9e1a609d2ba97b3b7e826a6d1c6b336af8992b29`.
+- The manifest emits `api/run21` on Node 24. Both authority URL forms return
+  JSON 401 anonymously and JSON 403 for an authenticated non-allowlisted user.
+- Only Hap's verified admin UUID is allowlisted; Other → Run21 opens setup in
+  Hap's existing production session. This is admission/setup smoke evidence,
+  not a completed production gameplay acceptance test.
+
 ## Platform
 
 - September 12 Jeremy reports zero issues during the prior evening's

@@ -1,9 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(?:__run21|api/run21)/(.*)",
+      "dest": "/api/run21?run21_path=$1"
+    },
+    { "handle": "filesystem" },
+    { "src": "/api(?:/.*)?", "status": 404 },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
-  ]
+  ],
+  "buildCommand": "npm run typecheck && vite build",
+  "functions": {
+    "api/run21.ts": {
+      "maxDuration": 300
+    }
+  }
 }

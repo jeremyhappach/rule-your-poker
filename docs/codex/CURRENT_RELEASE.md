@@ -1,5 +1,169 @@
 # Current release and cutover state
 
+## September 22 Run21 mainline integration
+
+Integrated deployed Run21 `6504d2402e69526394a7220087b66ff0cb057ebc`
+with main `070e47c7303fc842bfca9e915f87fd85c0ddf68b`. Run21 runtime
+files and shared Run21 behavior remain unchanged. The reconciliation retains
+main's approved Farkle defaults, both release records, and main's existing
+Farkle migration bytes. No database operation is part of this integration.
+The pending Farkle readiness commit `62203eac84db78e501d695b5cc2f53035fb60b83`
+is not included.
+
+
+## September 22 Run21 six-issue pass: published and smoke verified
+
+The release branch now derives fixed non-dealer/dealer order from
+`dealer_games.dealer_user_id`, uses a 250-second first-placement deadline,
+places one-use Pass beside the current card without seat badges, applies fresh
+accepted projections immediately, and keeps card dimensions independent of
+column depth. Persisted earlier matches retain their recorded configuration.
+The isolated Run21 branch also used the old 100ms decrement; the explicit new
+product requirement supersedes it with 1000ms.
+
+104 focused tests pass, including both dealer identities through three rounds,
+deadline boundaries, same-response upcards, event backlog ordering, and
+maximum-depth geometry. App/node typechecks and the production Vite build
+pass. A browser fixture measured all 29 cards across depths 1/3/6/8/11 at
+48.8021 x 73.2083px with zero dimension spread, overflow, or scrolling.
+
+Approved additive migration `20260922150253_session_sole_dealer_immediate.sql`
+was the sole pending migration and applied successfully. Its guarded patch
+reuses preparation/completion within the locked Start transaction only when
+one dealer is eligible; multi-player draws retain their three-second hold.
+A focused local rollback proof passed sole selection (39.651ms), multiple
+selection/hold, authorization, duplicate/stale identity, continuation, and
+unchanged balances. No historical migration was changed or reconciled.
+
+Production deploys `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4` at
+https://ptown-poker.vercel.app (Vercel `dpl_8xmWJreX1ra6erygYsy8JtkpKgKS`).
+The actual browser Start Game trace completed in 197ms at
+2026-09-22T15:10:34.228Z, selecting Hap immediately. Persisted Run21 history
+confirmed the non-dealer bot started Round 1 and finished before Hap admission.
+The deployed asset contains the exact release SHA. Pass appeared beside the
+upcard without a seat badge, changed the upcard, and kept the opening timer
+frozen. First placement established an exact 250,000ms authority deadline;
+31,197ms of browser wall time consumed 31,150ms of countdown. Accepted cards
+and next upcards agreed with authority; three placed cards across depths 2/1
+had equal 29.28125 x 43.91667px dimensions and remained inside their stacks.
+The prior 104 tests and maximum-depth checks above were accepted, not rerun.
+
+The authority returned JSON 401 without authentication. The gate is enabled
+and qualified with the same sole Hap admin allowlist entry. The disposable
+fake-money production smoke match was removed and cleanup verified; the
+user's frozen sessions were untouched.
+
+## September 22 Run21 ordered live presentation correction
+
+Frozen production evidence confirmed Round 2 selected Hap because the authority
+alternated starters; the bot had not played that round. Reconnect also erased
+the presentation. The Run21 release now preserves canonical participant order
+in every round, paces actual bot commands at 750ms, and delivers persisted events
+with a resumable sequence cursor. Presentation checkpoints and a fixed shell
+footprint retain the board and HUD across transport refreshes. Human placement
+shows the known card immediately, deduplicates by request/revision, and rolls
+back rejection. Display speed uses authoritative remaining time; the existing
+first-placement deadline remains exactly 25,000ms. No schema or gate expansion.
+
+Deployed SHA: `03dba6a61da0a9b21588e859472993c9683add32`; Vercel production
+`dpl_4GFvmNET4Uk6fpWfuhjThixJzkdg`, https://ptown-poker.vercel.app.
+64 focused tests, app/node typechecks and the remote production build passed.
+The authority returned JSON 401 without authentication. Hap-only gating was
+restored with the sole existing admin allowlist entry unchanged.
+
+Production verification is PARTIAL: setup-to-active HUD displacement measured
+0.667px and admission speed stayed at 250. The requested live 25-second timeout
+and bot-first Round 1-to-2 transition were not completed. Disposable fixtures
+entered human-first after session setup despite attempted reseating; these
+fixture assertions establish neither a Run21 product failure nor a pass.
+The run stopped at its execution budget. All four smoke fixtures were removed
+and cleanup was verified. The user's original frozen session was preserved.
+Do not describe the production transition smoke as passed.
+
+
+## September 22 Run21 live boards and scoring handoffs published
+
+Production at https://ptown-poker.vercel.app deploys
+`50af704931b963fc6de71323a5d2035169ac9842` (Vercel
+`dpl_23s3N81gaXwZ9RPdjDM7qspjZbj6`). This supersedes the private-board,
+admission-started clock and immediate handoff behavior below. Turns remain
+strictly sequential, but the active face-up card, placements, column totals,
+speed and Pass status are visible live. Future deck evidence remains server-only.
+Only the first accepted placement starts the deadline, atomically at speed 250.
+Pass, duplicate/rejected commands, admission and reconnect cannot start it.
+
+Each terminal result now records one cumulative score update and a persisted
+five-second presentation interval. The canonical announcement and felt show the
+result/calculation; the existing seat score counts up without changing money.
+Only after that interval does authority clear the displayed board and admit the
+opponent. The second presentation advances the next round automatically; final
+wager settlement remains unchanged. Existing scoring multipliers are preserved
+(for example, board total 101 maps to 250 × remaining speed).
+
+Validation: 49 focused Run21 checks, application/server typechecks and the remote
+production build passed. Production smoke at 13:12–13:15 UTC verified frozen 250
+after Pass and browser reload, a first-placement deadline exactly 25 seconds
+later, public bot moves with inactive-command HTTP 409 `run21:not_your_turn`,
+three five-second scoring holds, automatic round advance and a cleared human
+board with frozen 250 after the bot-first second round. The browser observed
+Hap's `250 × 159 = 39,750` calculation and score count-up, then live bot columns;
+the bot's later count-up finished at cumulative 49,000. Money balances stayed
+unchanged. Recorded production events prove all four admissions had null clock
+fields and all three accepted opening placements (human and bot) started at 250.
+
+The Hap-only gate is enabled with the same sole verified admin UUID. No migration
+changed. The dedicated fake-money fixture
+`b1168217-aa97-4f8a-8c2d-ebf1eb439b63` was removed through canonical cleanup,
+with zero game/match rows remaining; the isolated verification login signed out.
+
+## September 22 Run21 sequential turns published
+
+Production at https://ptown-poker.vercel.app now deploys
+`d15fc191efd874684e63bab229f30f997c41a130` (Vercel
+`dpl_87KTatTkARe8eFSPmNC62oFVLCdj`). The authority previously readied both
+boards and scheduled the bot independently. Each round now persists its
+starter and single active player in the existing private match JSON. Starters
+alternate in canonical participant/seat order. Admission presents one card and
+starts that player's deadline; a terminal board is frozen while the same commit
+admits the opponent. Reveal and scoring still wait for both terminal results.
+No migration or gate-policy change was required.
+
+Focused validation: 33 authority/presentation/narration checks, application and
+server TypeScript checks, and the required remote production build passed.
+Production fake-money smoke on September 22 at 04:10–04:12 UTC verified a
+human-first round (human bust, then bot collect), followed by a bot-first round
+(bot collect, then human timeout). All three direct inactive commands—Place,
+Pass, Collect—returned HTTP 409 JSON `run21:not_your_turn`. The browser showed
+the waiting state without actionable columns/current card/timer, then the
+human's first card and running timer after transfer. Both completed-board hashes
+remained unchanged, and history recorded four admissions and exactly two reveals,
+each after both terminal results. The shared opening card matched on transfer.
+
+The sole allowlisted account remains Hap's verified administrator UUID. The gate
+was closed during deployment and is enabled. The dedicated fake-money fixture
+`f7e2e149-5aa1-46cf-ab8b-7b3771fb2ea1` was removed through canonical cleanup;
+zero game/match rows remain. The isolated verification login was signed out.
+Existing games and historical completed boards were preserved.
+
+## September 22 Run21 published for Jeremy only
+
+Production deploys `3aca5a02989c8685b9f612e73dfca088e04ab68e` at
+https://ptown-poker.vercel.app. The four Run21 migrations are applied. The
+release gate is enabled with Hap's verified administrator UUID as its sole
+allowlist member. The emitted `api/run21` function returns JSON 401 anonymously
+and JSON 403 for a real authenticated non-allowlisted user, including after
+enablement. Other administrators remain denied. Hap's production browser
+confirmed Other → Run21 opens setup; Holm and Yahtzee remain available.
+Temporary authentication fixtures and the fake-money setup session were removed.
+The subsequent Start Run21 failure was reproduced as a client-side rejection:
+the submit guard still required local-test environment flags. It now uses the
+same production project recognition as discovery and retains the authenticated
+database capability check. Hap's exact fake-money/add-bot/Other/Run21 flow now
+starts successfully. The first king of hearts was visible; placing it in column
+1 returned HTTP 200, revealed the next card, and started the countdown. Both
+reproduction sessions were removed through the canonical fake-money cleanup RPC.
+See [release details](RUN21_PRODUCTION_RELEASE.md).
+
 ## September 21 approved Farkle defaults — admin-only release
 
 Migration `20260922024443_farkle_approved_production_defaults` is applied.
