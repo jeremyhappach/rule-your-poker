@@ -1,5 +1,18 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Farkle public fake-money release — September 22
+
+- Production client/main `1625441b86bdd81e85307f47aacfe723117a8194` and
+  migrations `20260922230246` (defaults guard) and `20260922233733` (admin
+  cleanup claim) verified. Public creation is enabled with approved defaults.
+- Non-admin setup/play passed through Farkle, Hot Dice, Bank, terminal settlement
+  and canonical continuation. A second non-admin game passed 60-second timeout
+  bot takeover and reclaim. Unauthorized blast/action attempts were rejected.
+- Both fake-money fixtures were removed by the corrected admin blast RPC;
+  game, round, results, snapshots, private Farkle events/receipts and timers all
+  verified absent. Existing frozen Farkle configurations and Run21 files remained
+  unchanged. The isolated candidate → recovery → candidate proof passed.
+
 ## Run21 continuation and identity row — September 22
 
 - Application `d3f3209d02daeb05f5563bf225713541602e67e7` and additive close

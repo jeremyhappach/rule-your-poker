@@ -1,3 +1,24 @@
+# Farkle public release — 2026-09-22
+
+Farkle is public for fake-money setup and play. The production policy is
+`creation_enabled=true`, `admin_only=false`,
+`production_defaults_approved=true`. Approved scoring/default values were not
+reseeded or changed. The Farkle-only Admin Defaults guard is production migration
+`20260922230246`; the admin fake-money blast cleanup handoff is migration
+`20260922233733`. The latter adds an exact transaction-local Farkle `cleanup`
+claim only after the existing admin and fake-money checks, then restores the
+prior claim. Forward recovery and 12 focused rollback assertions passed.
+
+The production main build at `1625441b86bdd81e85307f47aacfe723117a8194`
+passed two non-admin fake-money smokes. One configured from approved defaults,
+played Roll/Hold/Hot Dice/Farkle/Bank, settled once, continued to game selection,
+and was blasted by the normal admin RPC. The other reached the 60-second timeout,
+showed bot control, reclaimed human control, and was blasted. Non-admin blast
+and outsider Farkle action attempts were rejected. Both fixture graphs, including
+private events/receipts and timer rows, were absent afterward. Existing frozen
+Farkle configs retained their pre-release hashes. The code diff contains only
+the Farkle cleanup SQL/proof/recovery; Run21 code and owners are unchanged.
+
 # Run21 public admission and compact feedback — 2026-09-22
 
 Based on qualified main `872eb6dd435220d5fa62eb86d6ebd97e92660308`.
