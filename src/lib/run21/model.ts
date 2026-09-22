@@ -29,7 +29,7 @@ export interface Board {
   current: Card | null;
   cardIndex: number;
   revision: number;
-  /** Authority time of the first accepted placement; revealing a card leaves these null. */
+  /** Authority admission time; both fields remain null until this player's turn. */
   startedAt: number | null;
   deadline: number | null;
   result: Result | null;
@@ -48,6 +48,7 @@ export interface Result {
 export interface DeckEvidence { cards: Card[]; salt: string; commitment: string }
 export interface Round {
   id: string; number: number; secret: DeckEvidence;
+  starting_player_id: string; active_player_id: string | null;
   boards: Record<string, Board>; revealed: boolean; acknowledged: string[];
 }
 export type Intent = { type: 'ready' | 'pass' | 'collect' | 'expire' | 'acknowledge' } | { type: 'place'; column: number };
@@ -65,6 +66,7 @@ export interface SettlementReceipt extends SettlementIntent {
 export interface Frame {
   identity: Identity; config: Config; players: Player[]; stake: number;
   roundId: string | null; roundNumber: number; commitment: string | null;
+  active_player_id: string | null;
   boards: Record<string, Board>; revealed: boolean; acknowledged: string[];
   cumulative: Record<string, number>; winnerId: string | null;
   settlement: SettlementReceipt | null;

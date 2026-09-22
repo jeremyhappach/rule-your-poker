@@ -30,7 +30,7 @@ export function chooseAction(view: Projection, at: number, policy: BotPolicy = D
   if (!view.viewerId || !Number.isSafeInteger(policy.minActionMs) || policy.minActionMs <= 0 ||
       !Number.isSafeInteger(policy.maxActionMs) || policy.maxActionMs < policy.minActionMs) throw new Error('invalid_bot_policy');
   const board = view.boards[view.viewerId];
-  if (!board || board.result || !board.current) return null;
+  if (view.active_player_id !== view.viewerId || !board || board.result || !board.current) return null;
   const random = seededRandom(decisionSeed(view, board, policy.seed));
   const delayMs = policy.minActionMs + Math.floor(random() * (policy.maxActionMs - policy.minActionMs + 1));
   const actionAt = at + delayMs;

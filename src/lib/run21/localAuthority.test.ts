@@ -8,11 +8,12 @@ import type {Command, Intent} from './model';
 
 const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
-function fixture() {
+function fixture(botFirst = false) {
   let now = 1000;
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
     revision: 0, state: null, bot_due_at: null, finished: false};
+  if (botFirst) row.participants.reverse();
   const store: Store = {load: async () => [structuredClone(row)], commit: async (old, state, due) => {
     if (old.revision !== row.revision) throw Error('CAS conflict');
     row = {...row, state: structuredClone(state), revision: row.revision + 1, bot_due_at: due}; return structuredClone(row);
@@ -27,22 +28,25 @@ function command(row: StoredMatch, intent: Intent): Command {
   return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
-  it('opens one playable card without a clock; rejects outsiders and an impersonated actor', async () => {
+  it('admits only the human starter with a clock; rejects outsiders and an impersonated actor', async () => {
     const f = fixture(), a = f.make();
     await expect(a.read(game, uuid(99))).rejects.toThrow('participant_required'); expect(f.row.state).toBeNull();
     const result = await a.read(game, user);
-    expect(result.view.boards[human]?.current).toBeTruthy(); expect(result.view.boards[human]?.deadline).toBeNull();
+    expect(result.view.active_player_id).toBe(human);
+    expect(result.view.boards[human]?.current).toBeTruthy(); expect(result.view.boards[human]?.deadline).toBe(26000);
+    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({current:null,startedAt:null,deadline:null,presented:[]});
+    expect(f.row.bot_due_at).toBeNull();
     expect(result.view.boards[PLAYERS[1].id]).toBeNull();
     expect(JSON.stringify(result)).not.toContain('secret'); expect(JSON.stringify(result)).not.toContain('salt');
     await expect(a.act(game, user, {...command(f.row, {type: 'place', column: 0}), playerId: PLAYERS[1].id})).rejects.toThrow('unauthorized');
   });
-  it('persists exactly one pass under concurrent duplicate requests and starts the deadline only on placement', async () => {
+  it('persists exactly one pass under concurrent duplicate requests without resetting the admitted clock', async () => {
     const f = fixture(), a = f.make(); await a.read(game, user);
     const cmd = command(f.row, {type: 'pass'});
     const outcomes = await Promise.all([a.act(game, user, cmd), a.act(game, user, cmd)]);
     expect(outcomes.map(r => r.status)).toEqual(['accepted', 'duplicate']);
     expect(f.row.state!.rounds[0].boards[human].passesUsed).toBe(1);
-    expect(f.row.state!.rounds[0].boards[human].deadline).toBeNull();
+    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(26000);
     await expect(a.act(game, user, command(f.row, {type: 'pass'}))).rejects.toThrow('pass_used');
     await expect(a.act(game, user, command(f.row, {type: 'collect'}))).rejects.toThrow('collect_unavailable');
     await a.act(game, user, command(f.row, {type: 'place', column: 0}));
@@ -55,6 +59,40 @@ describe('persisted local Run21 authority', () => {
     const restarted = f.make(); await restarted.recover();
     expect(f.row.state!.rounds[0].boards[human].result).toMatchObject({reason: 'timeout', at: deadline, score: 0});
     expect((await restarted.read(game, user)).view.boards[human]?.result?.reason).toBe('timeout');
+    expect(f.row.state!.rounds[0].active_player_id).toBe(PLAYERS[1].id);
+    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({startedAt:27000,deadline:52000});
+    expect(f.row.state!.rounds[0].revealed).toBe(false);
+    const frozen = JSON.stringify(f.row.state!.rounds[0].boards[human]);
+    f.tick(1000); await restarted.read(game, user);
+    expect(JSON.stringify(f.row.state!.rounds[0].boards[human])).toBe(frozen);
+  });
+  it('finishes the starting bot before admitting the human, rejects inactive commands, then reveals both frozen boards', async () => {
+    const f = fixture(true), a = f.make(), bot = PLAYERS[1].id;
+    const opening = await a.read(game, user);
+    expect(opening.view.active_player_id).toBe(bot);
+    expect(opening.view.boards[human]).toMatchObject({current:null,deadline:null,startedAt:null,presented:[]});
+    for (const intent of [{type:'place',column:0},{type:'pass'},{type:'collect'}] as Intent[])
+      await expect(a.act(game,user,command(f.row,intent))).rejects.toThrow('not_your_turn');
+    expect(f.row.state!.rounds[0].boards[human].revision).toBe(0);
+    for(let i=0;i<100 && !f.row.state!.rounds[0].boards[bot].result;i++) {
+      f.tick(450); await a.read(game,user);
+    }
+    const round=f.row.state!.rounds[0], completed=JSON.stringify(round.boards[bot]);
+    expect(round.boards[bot].result).toBeTruthy();
+    expect(round.active_player_id).toBe(human);
+    expect(round.boards[human].current).toEqual(round.boards[bot].presented[0]);
+    expect(round.boards[human].deadline!-round.boards[human].startedAt!).toBe(25000);
+    expect(round.revealed).toBe(false); expect(f.row.bot_due_at).toBeNull();
+    expect((await a.read(game,user)).view.boards[bot]).toBeNull();
+    await a.act(game,user,command(f.row,{type:'place',column:0}));
+    expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
+    f.tick(25000); const revealed=await a.read(game,user);
+    expect(revealed.view.revealed).toBe(true); expect(revealed.view.active_player_id).toBeNull();
+    expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
+    expect(f.row.state!.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
+    await a.act(game,user,command(f.row,{type:'acknowledge'}));
+    expect(f.row.state!.rounds[1].active_player_id).toBe(human);
+    expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
   });
   it('runs the real bot, three rounds, receipt and replay through the same persisted state', async () => {
     const f = fixture(), a = f.make(); await a.read(game, user);

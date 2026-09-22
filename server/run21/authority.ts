@@ -63,7 +63,7 @@ export class Run21Authority {
   }
   private async openRound(state: Match, id: string, at: number) {
     state = prepareRound(state, id, state.rounds.at(-1)?.id ?? null, await this.shuffle(state.identity, id), at);
-    for (const p of state.players) state = this.command(state, p.id, {type: 'ready'}, at);
+    state = this.command(state, state.rounds.at(-1)!.active_player_id!, {type: 'ready'}, at);
     return state;
   }
   private async advance(row: StoredMatch) {
@@ -78,14 +78,15 @@ export class Run21Authority {
     }
     let round = state.rounds.at(-1)!;
     // Missed deadlines after a process restart settle at their persisted authority time.
-    for (const p of state.players) {
-      const board = state.rounds.at(-1)!.boards[p.id];
+    if (!round.revealed && !round.active_player_id) throw new AuthorityError('run21:sequential_round_required');
+    if (round.active_player_id) {
+      const board = round.boards[round.active_player_id];
       if (!board.result && board.deadline !== null && at >= board.deadline)
-        state = this.command(state, p.id, {type: 'expire'}, at);
+        state = this.command(state, board.playerId, {type: 'expire'}, at);
     }
     const bot = state.players.find(p => p.kind === 'bot')!;
     round = state.rounds.at(-1)!;
-    if (!round.revealed && due !== null && at >= due && !round.boards[bot.id].result) {
+    if (!round.revealed && round.active_player_id === bot.id && due !== null && at >= due && !round.boards[bot.id].result) {
       const action = chooseAction(project(state, bot.id), at);
       if (action) state = this.command(state, bot.id, action.intent, at);
       due = null;
@@ -108,8 +109,10 @@ export class Run21Authority {
     clearTimeout(this.timers.get(row.game_id)); this.timers.delete(row.game_id);
     this.pending.get(row.game_id)?.resolve(); this.pending.delete(row.game_id);
     if (row.finished || !row.state) return;
-    const deadlines = Object.values(row.state.rounds.at(-1)!.boards).filter(b => !b.result && b.deadline !== null).map(b => b.deadline!);
-    if (row.bot_due_at !== null) deadlines.push(row.bot_due_at);
+    const round = row.state.rounds.at(-1)!;
+    const active = round.active_player_id ? round.boards[round.active_player_id] : null;
+    const deadlines = active && !active.result && active.deadline !== null ? [active.deadline] : [];
+    if (row.bot_due_at !== null && row.state.players.find(p => p.id === round.active_player_id)?.kind === 'bot') deadlines.push(row.bot_due_at);
     if (!deadlines.length) return;
     let resolve!: () => void;
     const done = new Promise<void>(r => { resolve = r; });
@@ -146,7 +149,7 @@ export class Run21Authority {
         !['place', 'pass', 'collect', 'acknowledge'].includes(command.intent.type)) throw new AuthorityError('run21:invalid_command', 400);
       const result = applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt));
       if (result.status === 'rejected') throw new AuthorityError(`run21:${result.reason}`);
-      if (result.status === 'accepted') row = await this.store.commit(row, result.state, row.bot_due_at);
+      if (result.status === 'accepted') row = await this.store.commit(row, result.state, null);
       row = await this.advance(row); this.notify(gameId);
       return {status: result.status, revision: row.revision, serverAt: this.now(), view: project(row.state!, player.id), balances: row.balances, finished: row.finished};
     });

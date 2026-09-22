@@ -8,6 +8,7 @@ export function frameOf(match: Match): Frame {
   const round = match.rounds.at(-1);
   return structuredClone({ identity: match.identity, config: match.config, players: match.players, stake: match.stake,
     roundId: round?.id ?? null, roundNumber: round?.number ?? 0, commitment: round?.secret.commitment ?? null,
+    active_player_id: round?.active_player_id ?? null,
     boards: round?.boards ?? {}, revealed: round?.revealed ?? false, acknowledged: round?.acknowledged ?? [],
     cumulative: match.cumulative, winnerId: match.winnerId, settlement: match.settlement });
 }
@@ -52,14 +53,25 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
   if (deck.cards.length !== expected.size || new Set(deck.cards.map(cardKey)).size !== expected.size ||
       deck.cards.some(c => !expected.has(cardKey(c))) || !/^[0-9a-f]{64}$/.test(deck.commitment) || !/^[0-9a-f]{64}$/.test(deck.salt)) throw new Error('invalid_deck_evidence');
   const match = structuredClone(input);
+  // Persisted participant order is canonical seat order; alternate the starter by round.
+  const starter = match.players[match.rounds.length % match.players.length].id;
   const round: Round = { id, number: match.rounds.length + 1, secret: structuredClone(deck), revealed: false, acknowledged: [],
+    starting_player_id: starter, active_player_id: starter,
     boards: Object.fromEntries(match.players.map(p => [p.id, { playerId: p.id, columns: Array.from({length: match.config.columns}, () => []),
       passesUsed: 0, presented: [], current: null, cardIndex: 0, revision: 0, startedAt: null, deadline: null, result: null }])) };
   match.rounds.push(round);
   event(match, 'round_prepared', at);
   return match;
 }
-function finish(match: Match, round: Round, board: Board, reason: NonNullable<Board['result']>['reason'], at: number, requestId: string) {
+function startTurn(match: Match, round: Round, board: Board, at: number, requestId: string) {
+  round.active_player_id = board.playerId;
+  board.revision++;
+  board.startedAt = at;
+  board.deadline = at + duration(match.config);
+  event(match, 'turn_started', at, null, requestId, {active_player_id: board.playerId});
+  present(match, round, board, at, requestId);
+}
+function finish(match: Match, round: Round, board: Board, reason: NonNullable<Board['result']>['reason'], at: number, requestId: string, transferAt = at) {
   const totals = board.columns.map(c => total(c, match.config.target));
   const sum = aggregate(board, match.config);
   const speed = speedAt(board, match.config, at);
@@ -67,6 +79,7 @@ function finish(match: Match, round: Round, board: Board, reason: NonNullable<Bo
   const multiplier = totals.some(t => t.bust) ? 0 : multiplierAt(sum, match.config);
   board.result = {reason, at, aggregate: sum, totals: totals.map(t => t.value), aceElevations: totals.map(t => t.elevated),
     multiplier, speed, score: rule === 'zero' ? 0 : multiplier * speed};
+  round.active_player_id = null;
   event(match, reason, at, board.playerId, requestId, { result: board.result });
   if (Object.values(round.boards).every(b => b.result) && !round.revealed) {
     round.revealed = true;
@@ -77,6 +90,9 @@ function finish(match: Match, round: Round, board: Board, reason: NonNullable<Bo
     }
     event(match, 'round_revealed', at);
     if (match.winnerId) event(match, 'match_decided', at, null, null, { settlementIntent: settlementIntent(match) });
+  } else {
+    const next = Object.values(round.boards).find(b => !b.result)!;
+    startTurn(match, round, next, transferAt, requestId);
   }
 }
 function present(match: Match, round: Round, board: Board, at: number, requestId: string) {
@@ -100,6 +116,7 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   if (receipt) return receipt.fingerprint === fingerprint ? {state: input, status: 'duplicate'} : reject('request_conflict');
   const current = input.rounds.at(-1);
   if (!current || current.id !== command.roundId) return reject('stale_round');
+  if (command.intent.type !== 'acknowledge' && current.active_player_id !== command.playerId) return reject('not_your_turn');
   const original = current.boards[command.playerId];
   if (original.revision !== command.revision) return reject('stale_revision');
   if (!Number.isSafeInteger(at) || at < input.updatedAt) return reject('authority_clock');
@@ -120,23 +137,18 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   const match = structuredClone(input);
   const round = match.rounds.at(-1)!;
   const board = round.boards[command.playerId];
-  board.revision++;
-  if (expired) finish(match, round, board, 'timeout', board.deadline!, command.requestId);
+  if (type !== 'acknowledge' && type !== 'ready') board.revision++;
+  if (expired) finish(match, round, board, 'timeout', board.deadline!, command.requestId, at);
   else if (type === 'acknowledge') {
     round.acknowledged.push(command.playerId);
     event(match, 'reveal_acknowledged', at, board.playerId, command.requestId);
   } else if (type === 'ready') {
     event(match, 'player_ready', at, board.playerId, command.requestId);
-    present(match, round, board, at, command.requestId);
+    startTurn(match, round, board, at, command.requestId);
   } else if (type === 'collect') finish(match, round, board, 'collect', at, command.requestId);
   else if (type === 'place' || type === 'pass') {
     const card = board.current!;
     if (command.intent.type === 'place') {
-      // The first accepted placement starts this player's clock atomically.
-      if (board.startedAt === null) {
-        board.startedAt = at;
-        board.deadline = at + duration(match.config);
-      }
       board.columns[command.intent.column].push(card);
     }
     else board.passesUsed++;

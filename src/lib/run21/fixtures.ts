@@ -25,24 +25,17 @@ export function act(match: Match, playerId: string, intent: Intent, at: number):
   if (result.status !== 'accepted') throw new Error(`fixture_action:${result.reason}`);
   return result.state;
 }
-/** Deterministic event scheduler. Both players use the same reducer and their own projection. */
+/** Deterministic sequential scheduler using only the active player's projection. */
 export function simulateRound(input: Match, seed = 21): Match {
   let match = input;
-  for (const p of match.players) if (!match.rounds.at(-1)!.boards[p.id].presented.length) match = act(match, p.id, {type: 'ready'}, match.updatedAt);
-  const pending = new Map<string, {at: number; intent: Intent}>();
+  const first = match.rounds.at(-1)!.active_player_id;
+  if (first && !match.rounds.at(-1)!.boards[first].presented.length) match = act(match, first, {type: 'ready'}, match.updatedAt);
   for (let safety = 0; safety < 110; safety++) {
     const round = match.rounds.at(-1)!;
     if (round.revealed) return match;
-    for (const p of match.players) {
-      const board = round.boards[p.id];
-      if (!board.result && !pending.has(p.id)) {
-        const choice = chooseAction(project(match, p.id), match.updatedAt, {seed, minActionMs: 220, maxActionMs: 420})!;
-        pending.set(p.id, {at: Math.min(board.deadline??Infinity, match.updatedAt + choice.delayMs), intent: choice.intent});
-      }
-    }
-    const [playerId, choice] = [...pending].sort((a, b) => a[1].at - b[1].at || a[0].localeCompare(b[0]))[0];
-    pending.delete(playerId);
-    match = act(match, playerId, choice.intent, choice.at);
+    const playerId = round.active_player_id!, board = round.boards[playerId];
+    const choice = chooseAction(project(match, playerId), match.updatedAt, {seed, minActionMs: 220, maxActionMs: 420})!;
+    match = act(match, playerId, choice.intent, Math.min(board.deadline!, match.updatedAt + choice.delayMs));
   }
   throw new Error('simulation_did_not_terminate');
 }

@@ -9,7 +9,7 @@ import { commitmentFor, shuffleRound } from './shuffle.server';
 import { reconstructReplayV1, reconstructReplayPrefixV1 } from '../replay/contractV1';
 const [a, b] = PLAYERS.map(p => p.id);
 const cards = (...ranks: Card['rank'][]): Card[] => ranks.map((rank, i) => ({rank, suit: ['hearts','diamonds','clubs','spades'][Math.floor(i / 13)] as Card['suit']}));
-const ready = (m = fixtureMatch()) => act(act(m, a, {type: 'ready'}, 0), b, {type: 'ready'}, 0);
+const ready = (m = fixtureMatch()) => act(m, m.rounds.at(-1)!.active_player_id!, {type: 'ready'}, m.updatedAt);
 function command(m: ReturnType<typeof fixtureMatch>, intent: Command['intent'], playerId = a): Command {
   const r = m.rounds.at(-1)!;
   return {identity: IDENTITY, roundId: r.id, playerId, requestId: uuid(999), revision: r.boards[playerId].revision, intent};
@@ -41,41 +41,37 @@ describe('Run21 rules', () => {
   });
 });
 describe('Run21 authority specification', () => {
-  it('presents the same first card independently and does not start during preparation', () => {
-    let m = fixtureMatch(); expect(m.rounds[0].boards[a].deadline).toBeNull();
-    m = act(m, a, {type:'ready'}, 10000);
-    expect(m.rounds[0].boards[a].deadline).toBeNull();
-    expect(m.rounds[0].boards[b].current).toBeNull();
-    m = act(m, b, {type:'ready'}, 10050);
-    const first = m.rounds[0].boards[b].current;
-    m = act(m, a, {type:'place', column:0}, 10060);
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:10060,deadline:35060});
-    expect(m.rounds[0].boards[b]).toMatchObject({startedAt:null,deadline:null});
-    expect(m.rounds[0].boards[b].current).toEqual(first);
-    expect(m.rounds[0].boards[a].presented[0]).toEqual(first);
+  it('admits one timed board and transfers the same first card only after completion', () => {
+    let m=fixtureMatch(); expect(m.rounds[0].boards[a].deadline).toBeNull();
+    m=act(m,a,{type:'ready'},10000);
+    const first=m.rounds[0].boards[a].current;
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:10000,deadline:35000});
+    expect(m.rounds[0].boards[b]).toMatchObject({current:null,startedAt:null,deadline:null});
+    expect(chooseAction(project(m,b),10000)).toBeNull();
+    m=act(m,a,{type:'expire'},35000);
+    expect(m.rounds[0].active_player_id).toBe(b);
+    expect(m.rounds[0].boards[b]).toMatchObject({current:first,startedAt:35000,deadline:60000});
+    expect(m.rounds[0].revealed).toBe(false);
   });
-  it('waits indefinitely for the first legal placement and starts its clock exactly once',()=>{
+  it('starts the clock on admission and never resets it on pass or placement',()=>{
     let m=ready();const initial=m.rounds[0].boards[a].current;
-    expect(applyCommand(m,command(m,{type:'place',column:5}),{kind:'player',playerId:a},100000)).toMatchObject({status:'rejected',reason:'column_locked',state:m});
-    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'service'},100000).reason).toBe('before_deadline');
-    expect(applyCommand(m,command(m,{type:'ready'}),{kind:'player',playerId:a},100000).reason).toBe('already_ready');
-    expect(speedAt(m.rounds[0].boards[a],m.config,100000)).toBe(250);
-    m=act(m,a,{type:'pass'},100000);
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:null,deadline:null});
+    expect(applyCommand(m,command(m,{type:'place',column:5}),{kind:'player',playerId:a},100).reason).toBe('column_locked');
+    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'service'},100).reason).toBe('before_deadline');
+    expect(applyCommand(m,command(m,{type:'ready'}),{kind:'player',playerId:a},100).reason).toBe('already_ready');
+    m=act(m,a,{type:'pass'},100);
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:0,deadline:25000});
     expect(m.rounds[0].boards[a].current).not.toEqual(initial);
     const upcard=m.rounds[0].boards[a].current,c=command(m,{type:'place',column:2});
-    const placed=applyCommand(m,c,{kind:'player',playerId:a},200000);
+    const placed=applyCommand(m,c,{kind:'player',playerId:a},200);
     expect(placed.status).toBe('accepted');m=placed.state;
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:200000,deadline:225000,columns:[[],[],[upcard],[],[]]});
-    expect(applyCommand(m,c,{kind:'player',playerId:a},200100)).toMatchObject({status:'duplicate',state:m});
-    const replay=exportReplay(m,a),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed');
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:0,deadline:25000,columns:[[],[],[upcard],[],[]]});
+    expect(applyCommand(m,c,{kind:'player',playerId:a},300)).toMatchObject({status:'duplicate',state:m});
+    const replay=exportReplay(m,a),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='turn_started');
     expect(seekReplay(replay,index-1).boards[a]!.deadline).toBeNull();
-    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(225000);
-    m=act(m,a,{type:'place',column:3},200100);
-    expect(m.rounds[0].boards[a].deadline).toBe(225000);
-    m=act(m,a,{type:'expire'},225000);
-    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:225000});
-    expect(m.rounds[0].boards[b].deadline).toBeNull();
+    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(25000);
+    m=act(m,a,{type:'expire'},25000);
+    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:25000});
+    expect(m.rounds[0].boards[b].deadline).toBe(50000);
   });
   it('does not mutate inputs; duplicate/stale/rejected actions never consume a card', () => {
     const m = ready(); const frozen = JSON.stringify(m); const c = command(m, {type:'place',column:0});
@@ -95,13 +91,11 @@ describe('Run21 authority specification', () => {
     expect(applyCommand(m,{...c,roundId:uuid(101)},{kind:'player',playerId:a},1).reason).toBe('stale_round');
     expect(applyCommand(m,command(m,{type:'expire'}),{kind:'player',playerId:a},25000).reason).toBe('unauthorized');
   });
-  it('allows independent simultaneous commands without a shared player revision', () => {
-    const m = ready(); const ca = command(m,{type:'place',column:0}); const cb = command(m,{type:'place',column:1},b);
-    const ma = applyCommand(m,ca,{kind:'player',playerId:a},100).state;
-    const mab = applyCommand(ma,cb,{kind:'player',playerId:b},100).state;
-    const mb = applyCommand(m,cb,{kind:'player',playerId:b},100).state;
-    const mba = applyCommand(mb,ca,{kind:'player',playerId:a},100).state;
-    expect(mab.rounds[0].boards).toEqual(mba.rounds[0].boards);
+  it('rejects non-active commands before and after the active player advances', () => {
+    const m=ready(), cb=command(m,{type:'place',column:1},b);
+    expect(applyCommand(m,cb,{kind:'player',playerId:b},100)).toMatchObject({state:m,status:'rejected',reason:'not_your_turn'});
+    const next=act(m,a,{type:'place',column:0},100);
+    expect(applyCommand(next,cb,{kind:'player',playerId:b},100)).toMatchObject({state:next,status:'rejected',reason:'not_your_turn'});
   });
   it('records only Pass used, clears current before presenting the next card, and keeps the opponent private', () => {
     let m = ready(); const card = m.rounds[0].boards[a].current;
@@ -129,18 +123,20 @@ describe('Run21 authority specification', () => {
     for (let i=0;i<3;i++) m=act(m,a,{type:'place',column:1},i+4);
     expect(m.rounds[0].boards[a].result).toMatchObject({reason:'bust',score:0});
     expect(project(m,b).boards[a]).toBeNull();
-    expect(applyCommand(m,command(m,{type:'pass'}),{kind:'player',playerId:a},9).reason).toBe('round_complete');
+    expect(applyCommand(m,command(m,{type:'pass'}),{kind:'player',playerId:a},9).reason).toBe('not_your_turn');
   });
   it.each([24999,25000,25001])('deterministically resolves collect versus expiration at %i', at => {
     const cfg = {...DEFAULT_CONFIG,multipliers:{11:50}};
     let m=ready(fixtureMatch(cfg,cards('A'))); m=act(m,a,{type:'place',column:0},0);
     const next=applyCommand(m,command(m,{type:'collect'}),{kind:'player',playerId:a},at).state;
     expect(next.rounds[0].boards[a].result).toMatchObject({reason:at<25000?'collect':'timeout',score:at<25000?50:0,at:Math.min(at,25000)});
-    expect(applyCommand(next,{...command(next,{type:'expire'}),requestId:uuid(998)},{kind:'service'},at+1).reason).toBe('round_complete');
+    expect(applyCommand(next,{...command(next,{type:'expire'}),requestId:uuid(998)},{kind:'service'},at+1).reason).toBe('not_your_turn');
   });
   it('timeout wins placement races and reveals exactly once when both finish', () => {
-    let m=ready();m=act(m,a,{type:'place',column:0},0);m=act(m,b,{type:'place',column:1},0);
-    m=act(m,a,{type:'place',column:0},25000); m=act(m,b,{type:'expire'},25000);
+    let m=ready();m=act(m,a,{type:'place',column:0},0);
+    m=act(m,a,{type:'place',column:0},25000);
+    expect(m.rounds[0].revealed).toBe(false);
+    m=act(m,b,{type:'place',column:1},25000);m=act(m,b,{type:'expire'},50000);
     expect(m.rounds[0].boards[a].cardIndex).toBe(1);
     expect(m.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
     expect(project(m,a).boards[b]).not.toBeNull();
@@ -150,14 +146,13 @@ describe('Run21 authority specification', () => {
     const cfg: Config={...DEFAULT_CONFIG,multipliers:{11:50}};
     let m=fixtureMatch(cfg,cards('A'));
     for(let round=1;round<=4;round++) {
-      m=act(m,a,{type:'ready'},m.updatedAt); m=act(m,b,{type:'ready'},m.updatedAt);
-      for(const id of [a,b]){
-        expect(m.rounds.at(-1)!.boards[id].deadline).toBeNull();
+      m=ready(m);
+      for(let turn=0;turn<2;turn++) {
+        const id=m.rounds.at(-1)!.active_player_id!;
+        expect(m.rounds.at(-1)!.boards[id].deadline).toBe(m.updatedAt+25000);
         m=act(m,id,{type:'place',column:0},m.updatedAt);
+        m=act(m,id,round===4&&id===a?{type:'collect'}:{type:'expire'},m.updatedAt+(round===4&&id===a?1:25000));
       }
-      if(round===4) m=act(m,a,{type:'collect'},m.updatedAt+1);
-      else m=act(m,a,{type:'expire'},m.updatedAt+25000);
-      m=act(m,b,{type:'expire'},Math.max(m.updatedAt,m.rounds.at(-1)!.boards[b].deadline!));
       if(round<4) {
         expect(m.winnerId).toBeNull();
         const previous=m.rounds.at(-1)!.id;

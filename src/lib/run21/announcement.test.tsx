@@ -11,41 +11,37 @@ import {prepareRound,project} from './engine';
 import {exportReplay,seekReplay} from './history';
 import type {Projection} from './model';
 const [self,bot]=PLAYERS.map(p=>p.id);
-const ready=()=>{
-  let m=act(act(fixtureMatch(),self,{type:'ready'},0),bot,{type:'ready'},0);
-  for(const id of [self,bot])m=act(m,id,{type:'place',column:0},0);
-  return m;
-};
+const ready=()=>act(act(fixtureMatch(),self,{type:'ready'},0),self,{type:'place',column:0},0);
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 
 describe('Run21 canonical round narration',()=>{
   it('publishes only phase enums for private opponents',()=>{
     expect(project(fixtureMatch(),null).playStatus).toEqual({[self]:'waiting',[bot]:'waiting'});
-    const opening=act(act(fixtureMatch(),self,{type:'ready'},0),bot,{type:'ready'},0);
-    expect(project(opening,null).playStatus).toEqual({[self]:'waiting',[bot]:'waiting'});
-    expect(run21Announcement(project(opening,self)).title).toBe('Waiting to start round 1/3');
-    expect(project(act(opening,bot,{type:'place',column:0},100),null).playStatus).toEqual({[self]:'waiting',[bot]:'playing'});
+    const opening=act(fixtureMatch(),self,{type:'ready'},0);
+    expect(project(opening,null).playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
+    expect(run21Announcement(project(opening,self)).title).toBe('You are playing round 1/3');
+    expect(project(act(opening,self,{type:'expire'},25000),null).playStatus).toEqual({[self]:'finished',[bot]:'playing'});
     const view=project(ready(),null);
-    expect(view.playStatus).toEqual({[self]:'playing',[bot]:'playing'});
+    expect(view.playStatus).toEqual({[self]:'playing',[bot]:'waiting'});
     expect(view.boards).toEqual({[self]:null,[bot]:null});
     expect(JSON.stringify(view)).not.toMatch(/"rank"|"suit"|"deadline"|"startedAt"|"result"/);
   });
-  it('names the playing opponent, then the remaining player and completed round',()=>{
+  it('names each active player in order and announces completion only after both finish',()=>{
     let m=ready();
-    expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 1/3');
-    m=act(m,bot,{type:'expire'},25000);
     expect(run21Announcement(project(m,self)).title).toBe('You are playing round 1/3');
     m=act(m,self,{type:'expire'},25000);
+    expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 1/3');
+    m=act(m,bot,{type:'expire'},50000);
     expect(run21Announcement(project(m,self)).title).toBe('Round 1/3 complete');
-    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},25000);
-    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),25000);
+    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},50000);
+    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),50000);
     expect(run21Announcement(project(m,self)).title).toBe('Waiting to start round 2/3');
   });
   it('keeps the announcement stable through card actions and reads recorded phases on seek',()=>{
     let m=ready();const initial=run21Announcement(project(m,self)).id;
     m=act(m,self,{type:'pass'},100);
     expect(run21Announcement(project(m,self)).id).toBe(initial);
-    m=act(m,bot,{type:'expire'},25000);m=act(m,self,{type:'expire'},25000);
+    m=act(m,self,{type:'expire'},25000);m=act(m,bot,{type:'place',column:0},25000);m=act(m,bot,{type:'expire'},50000);
     const replay=exportReplay(m,self);
     const index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed'&&s.substeps[0]?.actorId===bot);
     expect(run21Announcement(seekReplay(replay,index)).title).toBe('Run21 bot is playing round 1/3');
@@ -63,13 +59,13 @@ describe('Run21 canonical round narration',()=>{
       {next&&<Run21Announcement view={next}/>}<State/>
     </CanonicalAnnouncementProvider>));
     try{
-      render(view);expect(container.textContent).toBe('Run21 bot is playing round 1/3');
-      render(structuredClone(view));expect(container.textContent).toBe('Run21 bot is playing round 1/3');
+      render(view);expect(container.textContent).toBe('You are playing round 1/3');
+      render(structuredClone(view));expect(container.textContent).toBe('You are playing round 1/3');
       const next=structuredClone(view);next.roundId=uuid(802);next.roundNumber=2;
-      render(next);expect(container.textContent).toBe('Run21 bot is playing round 2/3');
-      render(view);expect(container.textContent).toBe('Run21 bot is playing round 1/3');
+      render(next);expect(container.textContent).toBe('You are playing round 2/3');
+      render(view);expect(container.textContent).toBe('You are playing round 1/3');
       next.identity.dealerGameId=uuid(803);render(next);
-      expect(container.textContent).toBe('Run21 bot is playing round 2/3');
+      expect(container.textContent).toBe('You are playing round 2/3');
       render(null);expect(container.textContent).toBe('');
     }finally{reactAct(()=>root.unmount());container.remove();}
   });

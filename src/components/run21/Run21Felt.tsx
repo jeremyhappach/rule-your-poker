@@ -52,7 +52,7 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
-  const active=playerId===view.viewerId && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !pending && !!onIntent;
+  const active=playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !pending && !!onIntent;
   const legal=board?legalColumns(board,view.config):[];
   const player=view.players.find(p=>p.id===playerId)!;
   const slot=(id:string,children:ReactNode)=>{
@@ -64,7 +64,7 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
   // A single centered pair in the same interaction layer, just inside the rim.
   const draw=drawRect?<div className="run21-draw" data-run21-draw style={{left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`}}>
     {view.viewerId&&slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
-    {view.viewerId&&slot('currentCard',<>{board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
+    {view.viewerId&&slot('currentCard',<>{(view.revealed||view.active_player_id===playerId||view.active_player_id===undefined)&&board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
     {slot('help',<Run21ScoringHelp/>)}
   </div>:null;
   return <section className="run21-felt-content" data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>
@@ -76,6 +76,7 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
           {visibleBoard?<div className="run21-columns">{visibleBoard.columns.map((column,index)=>
             <button key={index} type="button" className="run21-column" aria-label={`Place in column ${index+1}, total ${total(column,view.config.target).value}`}
               aria-disabled={view.revealed||!active||!legal.includes(index)}
+              disabled={view.revealed||!active||!legal.includes(index)}
               onKeyDown={event=>{
                 const stack=event.currentTarget.querySelector<HTMLElement>('.run21-column-stack');
                 if(stack&&stack.scrollHeight>stack.clientHeight&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
