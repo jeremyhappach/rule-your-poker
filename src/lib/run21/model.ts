@@ -90,6 +90,8 @@ export interface Match {
   settlement: SettlementReceipt | null;
   receipts: Record<string, { fingerprint: string; sequence: number }>;
   events: Event[]; updatedAt: number;
+  /** Persisted journal cursor; live snapshots may carry only newly accepted events. */
+  eventSequence?: number;
 }
 export interface Projection extends Omit<Frame, 'boards'> {
   viewerId: string | null;

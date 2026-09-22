@@ -8,7 +8,12 @@ export interface AuthorityOptions {
 }
 /** Shared transport. Only the server receives the privileged credential. */
 export function createRun21Handler(options: AuthorityOptions) {
-  const timing = new AsyncLocalStorage<{receivedAt:number; rpc:{name:string;startedAt:number;completedAt:number}[]}>();
+  const timing = new AsyncLocalStorage<{receivedAt:number; rpc:{name:string;startedAt:number;completedAt:number}[];
+    phases:{name:string;startedAt:number;completedAt:number}[]; databaseAdmission?:{gateMs:number;membershipMs:number}}>();
+  const timed = async <T,>(name:string, work:()=>Promise<T>):Promise<T> => {
+    const span={name,startedAt:Date.now(),completedAt:0};timing.getStore()?.phases.push(span);
+    try{return await work();}finally{span.completedAt=Date.now();}
+  };
   const db = createClient(options.url, options.key, {auth: {persistSession: false, autoRefreshToken: false}});
   const rpc = async <T,>(name: string, args: Record<string, unknown>): Promise<T> => {
     const span = {name,startedAt:Date.now(),completedAt:0};
@@ -19,8 +24,9 @@ export function createRun21Handler(options: AuthorityOptions) {
     return data as T;
   };
   const authority = new Run21Authority({
-    async load(gameId) {
-      const rows = await rpc<StoredMatch[]>('run21_server_load', {p_game_id: gameId ?? null});
+    async load(gameId, includeHistory = false, afterSequence) {
+      const rows = await rpc<StoredMatch[]>(includeHistory?'run21_server_load':'run21_server_load_current',
+        {p_game_id: gameId ?? null,...(includeHistory?{}:{p_after_sequence:afterSequence??null})});
       const unstarted = rows.filter(row => !row.state);
       if (!unstarted.length) return rows;
       const {data, error} = await db.from('dealer_games').select('id,dealer_user_id').in('id', unstarted.map(row => row.dealer_game_id));
@@ -28,12 +34,17 @@ export function createRun21Handler(options: AuthorityOptions) {
       return rows.map(row => ({...row, dealer_user_id: data?.find(d => d.id === row.dealer_game_id)?.dealer_user_id ?? ''}));
     },
     async commit(row, state, botDue) {
+      const priorSequence=row.state?.eventSequence??row.state?.events.at(-1)?.sequence??0;
+      const delta={...state,events:state.events.filter(event=>event.sequence>priorSequence)};
       const value = await rpc<{outcome: string; record: StoredMatch}>('run21_server_commit', {
-        p_dealer_game_id: row.dealer_game_id, p_expected_revision: row.revision, p_state: state, p_bot_due_at: botDue});
+        p_dealer_game_id: row.dealer_game_id, p_expected_revision: row.revision, p_state: delta, p_bot_due_at: botDue});
       if (value.outcome !== 'committed') throw new AuthorityError('run21:concurrent_commit');
       return value.record;
     },
     close: (dealerId, userId) => rpc('run21_server_close', {p_dealer_game_id: dealerId, p_user_id: userId}),
+  },undefined,undefined,(name,work)=>{
+    const span={name,startedAt:Date.now(),completedAt:0};timing.getStore()?.phases.push(span);
+    try{return work();}finally{span.completedAt=Date.now();}
   });
   const send = (res: ServerResponse, status: number, body: unknown) => {
     const trace=timing.getStore();
@@ -41,7 +52,7 @@ export function createRun21Handler(options: AuthorityOptions) {
     res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store',
       ...(trace?{'X-Run21-Timing':JSON.stringify({...trace,sentAt:Date.now()})}:{})}); res.end(payload);
   };
-  async function authenticate(req: IncomingMessage) {
+  async function authenticate(req: IncomingMessage, gameId: string | null) {
     if (options.loopbackOnly && !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')) throw new AuthorityError('run21:loopback_only', 403);
     if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new AuthorityError('run21:origin', 403);
     const token = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '')?.[1];
@@ -51,22 +62,27 @@ export function createRun21Handler(options: AuthorityOptions) {
     let subject:unknown;
     try{subject=JSON.parse(Buffer.from(token.split('.')[1]??'','base64url').toString('utf8')).sub;}catch{}
     if(typeof subject!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subject))throw new AuthorityError('run21:authentication_required',401);
-    const [{data,error},allowed]=await Promise.all([
-      db.auth.getUser(token),rpc<boolean>('run21_server_authorize',{p_user_id:subject}),
+    const [{data,error},admission]=await Promise.all([
+      timed('tokenVerification',()=>db.auth.getUser(token)),
+      timed('gateAndMembership',()=>rpc<{allowed:boolean;record:StoredMatch|null;gateMs:number;membershipMs:number}>(
+        'run21_server_admit',{p_user_id:subject,p_game_id:gameId})),
     ]);
     if (error || !data.user || data.user.id!==subject) throw new AuthorityError('run21:authentication_required', 401);
-    if (!allowed) throw new AuthorityError('run21:release_denied', 403);
+    if (!admission.allowed) throw new AuthorityError('run21:release_denied', 403);
+    if (gameId && !admission.record) throw new AuthorityError('run21:participant_required',403);
+    if (admission.record) authority.admit(admission.record);
+    const trace=timing.getStore();if(trace)trace.databaseAdmission={gateMs:admission.gateMs,membershipMs:admission.membershipMs};
     return data.user.id;
   }
   const handler = async (req: IncomingMessage & {body?: unknown}, res: ServerResponse) => {
     let gameId: string | undefined;
     try {
-      const userId = await authenticate(req);
       const url = new URL(req.url ?? '/', 'http://authority.invalid');
-      let cursor = Number(url.searchParams.get('after') ?? 0);
-      if (!Number.isSafeInteger(cursor) || cursor < 0) throw new AuthorityError('run21:invalid_cursor', 400);
       const path = url.pathname.replace(/^\/(?:__run21|api\/run21)/, '');
       const route = /^\/([0-9a-f-]{36})\/(state|action|events|history|close)$/.exec(path);
+      const userId = await timed('authorization',()=>authenticate(req,route?.[1]??null));
+      let cursor = Number(url.searchParams.get('after') ?? 0);
+      if (!Number.isSafeInteger(cursor) || cursor < 0) throw new AuthorityError('run21:invalid_cursor', 400);
       if (!route) throw new AuthorityError('run21:route', 404);
       [, gameId] = route; const operation = route[2];
       if ((['action', 'close'].includes(operation) ? 'POST' : 'GET') !== req.method) throw new AuthorityError('run21:method', 405);
@@ -115,7 +131,7 @@ export function createRun21Handler(options: AuthorityOptions) {
       else for await (const chunk of req) { body += chunk; if (body.length > 4096) throw new AuthorityError('run21:request_size', 413); }
       if (body.length > 4096) throw new AuthorityError('run21:request_size', 413);
       let command: unknown; try { command = JSON.parse(body); } catch { throw new AuthorityError('run21:invalid_json', 400); }
-      send(res, 200, await authority.act(gameId, userId, command as Parameters<Run21Authority['act']>[2], cursor));
+      send(res, 200, await timed('authorizedCommandAndCommit',()=>authority.act(gameId!, userId, command as Parameters<Run21Authority['act']>[2], cursor)));
     } catch (error) {
       if (res.headersSent) res.end();
       else send(res, error instanceof AuthorityError ? error.status : 500, {error: error instanceof AuthorityError ? error.code : 'run21:server_failure'});
@@ -126,7 +142,7 @@ export function createRun21Handler(options: AuthorityOptions) {
   };
   return {handler:(req:IncomingMessage & {body?:unknown},res:ServerResponse)=>
     req.headers['x-run21-timing']==='1'
-      ? timing.run({receivedAt:Date.now(),rpc:[]},()=>handler(req,res))
+      ? timing.run({receivedAt:Date.now(),rpc:[],phases:[]},()=>handler(req,res))
       : handler(req,res), authority,
     dispose: () => { authority.dispose(); void db.removeAllChannels(); }};
 }
