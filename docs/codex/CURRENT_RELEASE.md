@@ -1,3 +1,9 @@
+# Run21 bounded journal release — 2026-09-22
+
+Reconciled candidate `c1dafd579350aaa149f64cf794196eea35b0760b` onto final Farkle main `4f9968d8386ab8e8e8298fd4209d5a24e583c34f` without source or shared-owner conflicts. The only reconciliation is renumbering the identical migration SQL to `20260922210908_run21_bounded_live_journal.sql` after the Farkle head and updating its proof path. Run21 presentation, rules, and Farkle files remain unchanged.
+
+Fresh authentication and Hap-only admission remain mandatory. Live commits append immutable events transactionally and exchange event deltas; history/replay rehydrate the journal. Reconciliation validation passed: 52 focused tests, application typecheck, production build, and rollback/apply journal proof (four rounds, 267 events, nine commits, settlement, CAS, privacy, immutable history and legacy read compatibility). Production dry run admits only the new Run21 migration. Apply it before the main push automatically deploys the new handler. Production latency acceptance remains pending the real browser match; local timing is not production qualification. See `RUN21_LATENCY_CANDIDATE_20260922.md` for the accepted design and local evidence.
+
 # Current release and cutover state
 
 ## September 22 Farkle terminal-roll presentation correction

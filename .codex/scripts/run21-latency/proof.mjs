@@ -34,7 +34,7 @@ try{
  }
  assert(m.winnerId,'Expected real fourth-round winner');
  m=e.recordSettlement(m,{...e.settlementIntent(m),resultId:randomUUID(),transferBatchId:randomUUID(),at});states.push(m);
- const migration=fs.readFileSync('supabase/migrations/20260922191358_run21_bounded_live_journal.sql','utf8');
+ const migration=fs.readFileSync('supabase/migrations/20260922210908_run21_bounded_live_journal.sql','utf8');
  let proof=`DO $proof$ DECLARE result jsonb; original jsonb; BEGIN\n`;
  // Legacy full-history caller, then compact-delta callers; existing CAS is unchanged.
  let seq=0,revision=0;
