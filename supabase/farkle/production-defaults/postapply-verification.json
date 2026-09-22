@@ -1,0 +1,114 @@
+{
+  "verifiedAt": "2026-09-22T02:46:03.609Z",
+  "migration": {
+    "name": "farkle_approved_production_defaults",
+    "version": "20260922024443"
+  },
+  "assertions": 45,
+  "proofTransaction": "passed and rolled back",
+  "proofFixtures": 0,
+  "functionsVerified": 384,
+  "changedFunctions": [
+    "private.farkle_resolve_config_v1(games,jsonb)"
+  ],
+  "expectedResolverMd5": "9f2d7d44fc2e4c5becfbbe4e1edcc7b8",
+  "metadataDrift": [],
+  "release": {
+    "singleton": true,
+    "admin_only": true,
+    "creation_enabled": true,
+    "production_defaults_approved": true
+  },
+  "defaults": {
+    "id": "d1a40627-43fa-4119-954b-6139992d960a",
+    "game_type": "farkle",
+    "gin_bonus": 0,
+    "leg_value": 1,
+    "created_at": "2026-09-22T02:44:43.590655+00:00",
+    "real_money": false,
+    "updated_at": "2026-09-22T02:44:43.590655+00:00",
+    "ante_amount": 1,
+    "legs_to_win": 3,
+    "rabbit_hunt": false,
+    "chucky_cards": 4,
+    "farkle_rules": {
+      "endgame": "equal_turns",
+      "scoring": {
+        "ofAKind": {
+          "3": [
+            1000,
+            200,
+            300,
+            400,
+            500,
+            600
+          ],
+          "4": [
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          "5": [
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000
+          ],
+          "6": [
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000
+          ]
+        },
+        "singles": {
+          "1": 100,
+          "5": 50
+        },
+        "version": 1,
+        "straight": 1500,
+        "threePairs": 1500,
+        "twoTriplets": 2500,
+        "fourPlusPair": 1500
+      },
+      "botPolicy": "balanced",
+      "botBankThreshold": 500
+    },
+    "debug_harness": "none",
+    "points_to_win": 10000,
+    "pot_max_value": 10,
+    "skunk_enabled": true,
+    "timeout_action": "none",
+    "undercut_bonus": 0,
+    "per_point_value": 0,
+    "pot_max_enabled": true,
+    "pussy_tax_value": 1,
+    "rollover_amount": 1,
+    "skunk_threshold": 91,
+    "allow_bot_dealers": false,
+    "pussy_tax_enabled": true,
+    "reveal_at_showdown": false,
+    "bot_fold_probability": 30,
+    "double_skunk_enabled": true,
+    "bot_use_hand_strength": true,
+    "decision_timer_seconds": 10,
+    "double_skunk_threshold": 61,
+    "holm_pre_chucky_delay_ms": 1500,
+    "bot_decision_delay_seconds": 2,
+    "holm_after_tabled_delay_ms": 1500,
+    "timeout_enforcement_enabled": false,
+    "holm_multi_showdown_delay_ms": 2000,
+    "chucky_last_card_delay_seconds": 3,
+    "three_five_seven_showdown_delay_ms": 2000,
+    "chucky_second_to_last_delay_seconds": 1.5,
+    "holm_rabbit_hunt_post_reveal_delay_ms": 1000,
+    "holm_presentation_ack_fallback_seconds": 30
+  }
+}

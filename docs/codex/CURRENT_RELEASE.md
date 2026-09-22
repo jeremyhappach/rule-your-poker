@@ -1,5 +1,37 @@
 # Current release and cutover state
 
+## September 21 approved Farkle defaults — admin-only release
+
+Migration `20260922024443_farkle_approved_production_defaults` is applied.
+The isolated resolver now uses `trim_scale` to serialize exact milliseconds;
+the frozen guard, all shared owners, grants and global timing are unchanged.
+Jeremy's approved scores, 10,000 target, Equal Turns and Balanced/500 policy
+are seeded. Creation and production-default approval are enabled; admin-only
+remains enabled. The new row inherits platform schema timing (10s / 2s).
+
+Both pre/post-apply focused SQL proofs pass 45 assertions; executable resolver
+restoration passes with metadata intact. All 384 functions are checked: only the
+approved resolver body differs. Focused Farkle/setup tests (49), typecheck and
+Vite production build pass. No exhaustive qualification was restarted.
+The client release loads these defaults for admin setup and submits only
+Stake, Target Score and Endgame to canonical authority. Admin Run Back retains
+the immutable snapshot; the defaults page shows approved server values.
+Production publication/browser smoke is recorded separately in the release
+evidence. Public enablement is not authorized.
+See [release record](FARKLE_PRODUCTION_DEFAULTS_20260921.md).
+
+## September 21 approved Farkle defaults — pre-apply authority blocker
+
+Wave 2 is qualified and published on main at `3d8a5f3db22f3e865fec9386840b9b90bf082199`.
+Jeremy has now approved the numeric production defaults and admin-only enablement.
+The seed candidate's rollback proof failed because production config resolution
+emits numeric `botDelayMs` as `2000.0`, while the frozen guard requires integer
+text. No production apply, seed, enablement or new publication occurred.
+Creation remains disabled, admin-only enabled, defaults approval flag false.
+The uncommitted candidate is on `codex/farkle-production-defaults`; the smallest
+proposed follow-up is isolated integer serialization in the Farkle config resolver.
+See [boundary and next step](FARKLE_PRODUCTION_DEFAULTS_BLOCKER_20260921.md).
+
 ## September 21 3-5-7 correction verified; final application gate blocked
 
 The 3-5-7 builder now admits an atomic `session_ended` frame only with its
