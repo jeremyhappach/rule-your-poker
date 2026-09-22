@@ -26,6 +26,7 @@ vi.mock('./Run21Felt', () => ({Run21Felt: () => null}));
 vi.mock('./Run21Replay', () => ({Run21Replay: () => null}));
 vi.mock('./Run21PlayerPane', () => ({Run21PlayerPane: () => null, Run21Timer: () => null}));
 import {Run21GameTable} from './Run21GameTable';
+import confetti from 'canvas-confetti';
 afterEach(cleanup);
 it('does not reopen terminal presentation when close refreshes the same persisted receipt', async () => {
   const view = project(fixtureMatch(), PLAYERS[0].id);
@@ -58,4 +59,15 @@ it('retains the same HUD element and fixed felt allocation from preparation into
  const fixed=ui.container.querySelector('[style*="--shell-felt-h"]') as HTMLElement;
  mock.snapshot={view:project(fixtureMatch(),PLAYERS[0].id),revision:1,serverAt:0,finished:false,balances:{}};ui.rerender(<Run21GameTable {...props}/>);
  expect(screen.getByTestId('hud')).toBe(hud);expect(ui.container.querySelector('[style*="--shell-felt-h"]')).toBe(fixed);
+});
+
+it('uses canonical winner confetti and transfer for the winning viewer',()=>{
+ vi.mocked(confetti).mockClear();vi.stubGlobal('requestAnimationFrame',(fn:FrameRequestCallback)=>{fn(0);return 1;});
+ const view=project(fixtureMatch(),PLAYERS[0].id);view.revealed=true;view.winnerId=PLAYERS[0].id;
+ view.cumulative={[PLAYERS[0].id]:105000,[PLAYERS[1].id]:35850};
+ view.settlement={key:'winning-viewer',resultId:uuid(600),transferBatchId:uuid(601),winnerId:PLAYERS[0].id,loserId:PLAYERS[1].id,amount:5,at:10};
+ mock.snapshot={view,revision:1,serverAt:10,finished:false,balances:{[PLAYERS[0].id]:5,[PLAYERS[1].id]:-5}};
+ render(<Run21GameTable gameId={IDENTITY.sessionId} dealerGameId={IDENTITY.dealerGameId} userId={uuid(30)} dealerPosition={1} activeTab="cards" setActiveTab={vi.fn()} sessionEnded={false} onTerminalActive={vi.fn()} onTerminalComplete={vi.fn()}/>);
+ expect(confetti).toHaveBeenCalledWith(expect.objectContaining({particleCount:150,spread:70}));
+ expect(terminal.dispatch).toHaveBeenLastCalledWith(expect.objectContaining({from:{kind:'seat',position:PLAYERS[1].seat},to:{kind:'seat',position:PLAYERS[0].seat},amount:5}),expect.any(Object));
 });

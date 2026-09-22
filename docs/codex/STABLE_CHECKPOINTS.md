@@ -1,5 +1,16 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 cumulative scores and automatic Session Ended — September 22
+
+- Deployed: `6504d2402e69526394a7220087b66ff0cb057ebc`.
+- Three-round production smoke: bot 117,400, Hap 88,200; authoritative
+  cumulative totals, winner, one 5-chip receipt, history and replay agree.
+- Canonical Session Ended arrived automatically; no Finish control.
+- Shared canonical identity row and scoreboard/column containment verified.
+- 145 focused tests pass; fixture cleanup verified; Hap-only gate preserved.
+- Response-to-next-frame is 2.4ms in the warmed production-backed harness;
+  total response time 636.1ms still exceeds the requested 250–300ms target.
+
 ## Run21 sole dealer and five application fixes — September 22
 
 - Deployed: `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4`.

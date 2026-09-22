@@ -1,5 +1,42 @@
 # Current release and cutover state
 
+## September 22 Run21 cumulative scoreboard and automatic completion
+
+Production deploys `6504d2402e69526394a7220087b66ff0cb057ebc` at
+https://ptown-poker.vercel.app (Vercel `dpl_BMoctbPbWNjsWZTj4CyjkGJisfJx`).
+Read-only evidence for dealer game `3165ff6a-362a-4259-93be-d1ae303ec503`
+proved Hap's cumulative 105,000 versus the bot's 35,850 and the 5-chip
+receipt were correct. The custom final panel incorrectly read last-round
+results (0 and 35,850). That historical match was not modified.
+
+The primary HUD scoreboard now reads match-scoped cumulative totals, animates
+only the scoring player's row, and checks the frozen winner against those
+totals and the receipt. Run21 shares the extracted Yahtzee canonical identity
+row and uses the shell match-win announcement, canonical chip transport,
+winner-only confetti and automatic close on transport completion. No Finish
+control remains. Seat numbers again mean chips only. Column names are removed,
+totals enlarged 20%, and timer colors use the exact remaining-time ratio.
+No migration, scoring-rule or settlement mutation was needed.
+
+Accepted action responses synchronously publish their complete projection;
+history redaction filters the cursor before cloning old frames. An ignored
+local browser harness used the actual hook/renderer against production's
+authenticated authority: warmed placement response 636.1ms, then next-card DOM
+present at the next animation frame 2.4ms later. The first sample was 1129.1ms
+plus 1.6ms. The 250–300ms end-to-end target remains unmet; server/request latency
+dominates, not a client animation wait. The harness was stopped and adds no
+production instrumentation.
+
+145 focused Run21 tests pass (two slow simulations passed when rerun without
+build contention), both TypeScript checks and local/remote production builds
+pass. One disposable production match completed all three rounds: bot 117,400,
+Hap 88,200. Accepted awards sum exactly once; final winner, receipt, balances,
+history and replay agree. The browser entered canonical Session Ended without
+another action. Winner-only confetti is covered by the focused winning-viewer
+test; the bot won this live smoke. Canonical identity, full green timer,
+scoreboard and column containment were observed. The Hap-only gate remains
+enabled with one allowlisted account. Fixture cleanup was verified.
+
 ## September 22 Run21 six-issue pass: published and smoke verified
 
 The release branch now derives fixed non-dealer/dealer order from
