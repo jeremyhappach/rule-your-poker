@@ -1,5 +1,40 @@
 # Current release and cutover state
 
+## September 22 Farkle readiness correction: tested, publication blocked
+
+Read-only production inspection confirmed that Farkle creation is enabled,
+`production_defaults_approved=true`, and `admin_only=true`. The approved defaults
+are already present, including target 10,000, Equal Turns, Balanced/500, and the
+approved scoring values. Migration `20260922024443` is already applied. No
+defaults, release settings, database functions, or migrations were changed.
+
+The live production manifest identifies `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4`
+(Vercel `dpl_8xmWJreX1ra6erygYsy8JtkpKgKS`). Its Run21 branch predates the Farkle
+production client release `070e47c7303fc842bfca9e915f87fd85c0ddf68b` on main.
+The live bundle still contains hard-coded unapproved-defaults copy and a
+production-disabled Farkle Start button. Its Farkle defaults editor never reads
+the seeded row. This is an omitted client release, not missing defaults or a
+client cache problem.
+
+`codex/farkle-readiness`, based on the exact live production commit, restores only
+the previously approved Farkle defaults loader/editor and admin setup/Run Back
+wiring. All current Run21 changes remain intact. Admin setup reads the existing
+`game_defaults` row and submits only Stake, Target Score and Endgame through the
+existing authoritative RPC. Public selection stays Coming Soon; server guards
+remain unchanged.
+
+Validation: 31 focused defaults, Farkle Run Back, seven-game Run Back and setup
+layer tests passed; application typecheck and production build passed. The
+helper, its tests and the defaults editor match the already-approved main
+versions exactly. No production browser verification of this candidate has
+occurred because it has not been published.
+
+Main and production diverge from `3d8a5f3db22f3e865fec9386840b9b90bf082199`.
+Publishing current main would remove newer Run21 work. The normal fast-forward
+release path is therefore blocked pending an explicit publication-path decision;
+neither broad branch reconciliation nor a production rollback is part of this
+Farkle-only correction.
+
 ## September 22 Run21 six-issue pass: publication pending
 
 The release branch now derives fixed non-dealer/dealer order from

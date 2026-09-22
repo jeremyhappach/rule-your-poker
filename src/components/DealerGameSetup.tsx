@@ -1,5 +1,6 @@
 import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/farkle/FarkleDealerFields';
 import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/localQualification';
+import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
@@ -215,7 +216,7 @@ const DealerGameSetupInner = ({
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
-  const [farkleDraft, setFarkleDraft] = useState<FarkleDealerFieldsValue>({ stake: '', target: '', endgame: 'one_last_turn' });
+  const [farkleDraft, setFarkleDraft] = useState<FarkleDealerFieldsValue>({ stake: '', target: '', endgame: 'equal_turns' });
   // Timer settings are passed as props (cached at session start)
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -841,6 +842,15 @@ const DealerGameSetupInner = ({
   const handleGameSelect = async (gameType: string) => {
     if (gameType === 'farkle') {
       if (!isAdmin) return;
+      if (!isFarkleLocalQualification(import.meta.env, window.location.hostname)) {
+        try {
+          const defaults = await loadFarkleAdminDefaults();
+          setFarkleDraft({ stake: String(defaults.ante_amount), target: String(defaults.points_to_win), endgame: defaults.farkle_rules.endgame });
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'Could not load Farkle defaults');
+          return;
+        }
+      }
       setSelectedGameType(gameType); setSelectionStep('config'); return;
     }
     if (gameType === 'run21' && !run21Allowed) return;
@@ -943,7 +953,7 @@ const DealerGameSetupInner = ({
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
-    { id: 'farkle', name: 'Farkle', description: isAdmin ? 'Development preview' : 'Coming Soon', category: 'dice', enabled: isAdmin },
+    { id: 'farkle', name: 'Farkle', description: isAdmin ? 'Admin playtest' : 'Coming Soon', category: 'dice', enabled: isAdmin },
     ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
   ];
 
@@ -1055,8 +1065,7 @@ const DealerGameSetupInner = ({
   const handleRunBack = async () => {
     if (previousGameType === 'run21' && !run21Allowed) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
-    // Farkle remains unavailable for creation during the admin development gate.
-    if (previousGameType === 'farkle') return;
+    if (previousGameType === 'farkle' && !isAdmin) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
     if (!exactConfig) {
@@ -1239,7 +1248,7 @@ const DealerGameSetupInner = ({
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
-                  disabled={isSubmitting || previousGameType === 'farkle'}
+                  disabled={isSubmitting}
                   className="w-full py-3 px-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="w-5 h-5 text-amber-400" />
@@ -1291,13 +1300,13 @@ const DealerGameSetupInner = ({
   // Config step - show config UI based on selected game type
   if (selectionStep === 'config' && selectedGameType === 'farkle') {
     const localTest = isAdmin && isFarkleLocalQualification(import.meta.env, window.location.hostname);
-    const submitTestSetup = async () => {
-      if (!localTest || hasSubmittedRef.current) return;
+    const submitFarkleSetup = async () => {
+      if (!isAdmin || hasSubmittedRef.current) return;
       try {
-        const config = farkleLocalSetup(farkleDraft.stake, farkleDraft.target, farkleDraft.endgame);
+        const config = (localTest ? farkleLocalSetup : farkleProductionSetup)(farkleDraft.stake, farkleDraft.target, farkleDraft.endgame);
         hasSubmittedRef.current = true;
         setIsSubmitting(true);
-        await commitSetup('farkle', config, 'isolated-test-only-setup');
+        await commitSetup('farkle', config, localTest ? 'isolated-test-only-setup' : 'approved-admin-setup');
       } catch (error) {
         hasSubmittedRef.current = false;
         setIsSubmitting(false);
@@ -1308,8 +1317,8 @@ const DealerGameSetupInner = ({
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
         <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
         <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
-        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration. Production rules remain unapproved.' : 'Development preview. Game creation is disabled while production scoring defaults await approval.'}</p>
-        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={!localTest} onClick={submitTestSetup}>{localTest ? 'Start TEST ONLY Game' : 'Coming Soon'}</Button></div>
+        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Admin playtest. Approved scoring rules are frozen when this game starts.'}</p>
+        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={!isAdmin || isSubmitting} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
       </CardContent></Card>
     </div>;
   }
