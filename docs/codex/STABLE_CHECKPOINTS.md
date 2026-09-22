@@ -1,5 +1,17 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Farkle admin readiness on Run21-complete main — September 22
+
+- Qualified runtime: `79e35cdf0d25c4b35f4904f2565a83222d1ad395`, already containing
+  all five client files from readiness correction `62203eac84db78e501d695b5cc2f53035fb60b83`.
+- 31 focused tests, application typecheck and production build passed.
+- Production browser verified the approved defaults editor, admin selection,
+  seeded setup values, enabled Start, and absence of stale approval/seeding copy.
+- Creation and defaults approval remain enabled; admin-only remains enabled.
+  No default reseeding, settings change or migration. Setup fixture cleanup passed.
+- Run21 runtime preserved exactly; its unauthenticated authority endpoint remains
+  present and returns JSON 401. No exhaustive gameplay campaign was repeated.
+
 ## Run21 sole dealer and five application fixes — September 22
 
 - Deployed: `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4`.

@@ -1,5 +1,40 @@
 # Current release and cutover state
 
+## September 22 Farkle readiness reconciled and production verified
+
+Main `79e35cdf0d25c4b35f4904f2565a83222d1ad395` already contains the complete
+five-file client correction from `62203eac84db78e501d695b5cc2f53035fb60b83`,
+byte-for-byte. The Run21 integration retained the approved Farkle mainline
+wiring, so a duplicate cherry-pick would add no product change. This follow-up
+records the reconciliation and verification only. All Run21 runtime files and
+behavior remain identical to `6504d2402e69526394a7220087b66ff0cb057ebc`; the
+only application-source differences from that release are those five approved
+Farkle files. The shared setup hunks change only Farkle paths.
+
+All 31 focused defaults/setup/Run Back tests passed. Application typecheck and
+production build passed using the existing Run21 dependency installation. The
+older main worktree's dependency link lacked `@vercel/functions`; no dependency
+or source changes were needed, and nothing was installed.
+
+Production browser verification against the exact `79e35cdf` manifest passed:
+the admin defaults editor displays the approved scoring, target 10,000 and
+Balanced/500; Farkle is selectable; setup fetches the existing Farkle defaults
+row, presents Stake 1 / Target 10,000 / Equal Turns, and enables Start Game.
+The stale approval/seeding text is absent. No Farkle game configuration or
+gameplay action was submitted. Disposable setup fixture
+`93bdb90a-4d08-403f-b7ff-d2d6f245c18c` was removed through the canonical admin
+cleanup RPC, with zero game rows remaining.
+
+Read-only production verification confirms `creation_enabled=true`,
+`production_defaults_approved=true`, `admin_only=true`, and unchanged approved
+defaults (original update timestamp `2026-09-22T02:44:43.590655Z`). Public
+selection remains Coming Soon with the existing server admin gate intact.
+No migration, database-definition, defaults, or release-setting changes were
+made. The Run21 endpoint still returns its expected unauthenticated JSON 401.
+The previously accepted Run21 gameplay qualification is retained without
+restarting exhaustive qualification. Local browser evidence/screenshots are in
+`farkle-readiness-main/qualification.local/`.
+
 ## September 22 Run21 mainline integration
 
 Integrated deployed Run21 `6504d2402e69526394a7220087b66ff0cb057ebc`
@@ -7,8 +42,9 @@ with main `070e47c7303fc842bfca9e915f87fd85c0ddf68b`. Run21 runtime
 files and shared Run21 behavior remain unchanged. The reconciliation retains
 main's approved Farkle defaults, both release records, and main's existing
 Farkle migration bytes. No database operation is part of this integration.
-The pending Farkle readiness commit `62203eac84db78e501d695b5cc2f53035fb60b83`
-is not included.
+The Farkle readiness commit `62203eac84db78e501d695b5cc2f53035fb60b83` is not
+an ancestor, but its complete client correction is present; see verification
+above.
 
 
 ## September 22 Run21 six-issue pass: published and smoke verified
