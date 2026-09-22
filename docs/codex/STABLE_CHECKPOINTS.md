@@ -1,5 +1,14 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 production admission — September 22
+
+- Deployed application: `9e1a609d2ba97b3b7e826a6d1c6b336af8992b29`.
+- The manifest emits `api/run21` on Node 24. Both authority URL forms return
+  JSON 401 anonymously and JSON 403 for an authenticated non-allowlisted user.
+- Only Hap's verified admin UUID is allowlisted; Other → Run21 opens setup in
+  Hap's existing production session. This is admission/setup smoke evidence,
+  not a completed production gameplay acceptance test.
+
 ## Platform
 
 - September 12 Jeremy reports zero issues during the prior evening's

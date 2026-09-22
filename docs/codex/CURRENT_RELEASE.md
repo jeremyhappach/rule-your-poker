@@ -1,13 +1,16 @@
 # Current release and cutover state
 
-## September 22 Run21 production transplant — migration preflight blocked
+## September 22 Run21 published for Jeremy only
 
-The Run21 production candidate now starts from exact main commit 3d8a5f3db.
-Current-main game owners and historical migration bytes are preserved; only
-Run21 changes and four newly numbered migrations were added. One typecheck
-and application production build pass. Production dry run still rejects
-historical version mismatches, so no migration, enablement or production
-deployment has occurred. See [Run21 release evidence](RUN21_PRODUCTION_RELEASE.md).
+Production deploys `9e1a609d2ba97b3b7e826a6d1c6b336af8992b29` at
+https://ptown-poker.vercel.app. The four Run21 migrations are applied. The
+release gate is enabled with Hap's verified administrator UUID as its sole
+allowlist member. The emitted `api/run21` function returns JSON 401 anonymously
+and JSON 403 for a real authenticated non-allowlisted user, including after
+enablement. Other administrators remain denied. Hap's production browser
+confirmed Other → Run21 opens setup; Holm and Yahtzee remain available.
+Temporary authentication fixtures and the fake-money setup session were removed.
+Jeremy's first gameplay test remains manual. See [release details](RUN21_PRODUCTION_RELEASE.md).
 
 ## September 21 3-5-7 correction verified; final application gate blocked
 
