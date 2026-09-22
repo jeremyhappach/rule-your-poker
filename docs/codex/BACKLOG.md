@@ -1,5 +1,15 @@
 # Backlog
 
+## Queued — Run21 repeated selection in a continuing session — September 22
+
+The canonical continuation proof exposed existing `run21:new_local_session_required`
+when selecting another Run21 dealer game in the same table session. Selecting
+the canonical Farkle successor passed instead. The deployed close correction
+keeps the session active, but does not change Run21 configuration admission.
+Investigate this separately before promising Run Back Run21; do not weaken the
+current identity guards. Provenance: rollback-only continuation proof during
+the latency/lifecycle correction; no historical sessions were modified.
+
 ## Queued — Run21 action labels and exact-21 polish — September 22
 
 Jeremy requested `Give Up` below the qualifying score and `Take Win` once

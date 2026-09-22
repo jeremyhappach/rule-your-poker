@@ -1,5 +1,17 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 continuation and identity row — September 22
+
+- Application `d3f3209d02daeb05f5563bf225713541602e67e7` and additive close
+  migration `20260922182242` verified in production.
+- Complete match, including overtime, settled into canonical game selection;
+  the table session remained active. Standard identity row, no chip disc,
+  one event subscription and no reconnect text. Fixture cleanup passed.
+- Farkle source and function definitions unchanged; Hap-only gate retained.
+- This checkpoint does **not** qualify latency: full-match p95 was 853 ms,
+  with growing commit-RPC duration and one authorization-RPC outlier.
+  Exact evidence and limitations are in CURRENT_RELEASE.md.
+
 ## Farkle admin readiness on Run21-complete main — September 22
 
 - Qualified runtime: `79e35cdf0d25c4b35f4904f2565a83222d1ad395`, already containing

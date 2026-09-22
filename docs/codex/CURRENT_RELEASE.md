@@ -2,6 +2,53 @@
 
 ## September 22 Run21 latency and canonical continuation correction
 
+Published application: `d3f3209d02daeb05f5563bf225713541602e67e7`, READY at
+`https://holm357.com/`. Lifecycle/HUD smoke passed; latency is NOT fully qualified.
+The complete production match reached an existing fourth-round tiebreaker,
+settled, and automatically returned to canonical `game_selection` with
+`session_ended_at=NULL`. One event subscription served the match, with zero
+reconnecting messages. The standard identity row had no chip disc. Synthetic
+fixture cleanup was verified. Hap remains the only Run21 allowlisted account.
+
+Latest production samples (tap to next upcard):
+
+| Round | Samples | p95 | Maximum | Response to first frame p95 |
+|---|---:|---:|---:|---:|
+| 1 | 14 | 643 ms | 643 ms | 18 ms |
+| 2 | 13 | 546 ms | 546 ms | 17 ms |
+| 3 | 14 | 1,447 ms | 1,447 ms | 15 ms |
+| 4, overtime | 17 | 3,587 ms | 3,587 ms | 21 ms |
+
+The first three rounds combined have p95 643 ms; all 58 samples have p95
+853 ms, above the requested 750 ms. Every observed projection was committed
+before the first subsequent animation-frame callback (DOM commit maximum
+10 ms); the callback maximum was 21 ms. No recurring 5–7-second gap occurred.
+The slowest request spent 2,775 ms in authorization, 217 ms loading, and
+488 ms committing: 3,505 ms total handler time, 62 ms outside the handler,
+14 ms before send, and 6 ms response to frame. These RPC spans include
+transport and database execution; they do not prove database lock contention.
+Round 3's 1,447 ms sample comprised 674 ms handler, 745 ms outside it,
+13 ms before send, and 15 ms response to frame. Cross-host absolute clocks
+are not assumed synchronized; splits subtract durations measured per host.
+
+Commit RPC duration also grew across the match (p95 160/317/510/645 ms by
+round). The existing commit interface submits and returns the complete stored
+match including growing event history. Further optimization is unqualified
+and must preserve that history, replay, CAS and settlement. No additional
+database change was made: authorization covers only the close correction.
+The original reported 5–7-second request was not captured before correction;
+identified sources of avoidable waits are established by source and focused
+tests, not represented as a complete timing reconstruction of that request.
+
+Validation: 13 focused hook/authority/table tests and 3 authentication-boundary
+tests passed, as did typecheck and the production build. Authentication and
+allowlist reads now overlap, but admission still requires verified identical
+UUIDs and both successful checks. The final smoke's strict three-round-only
+diagnostic assertion rejected legitimate overtime after settlement and cleanup;
+its captured lifecycle evidence remains valid, and latency remains unqualified
+independently of that diagnostic error. Evidence is in ignored
+`qualification.local/production-smoke.json`.
+
 Based on current main `490a33e8202c4449e1af5bde8529e9a7793d93b4`.
 Passive revision reads no longer serialize with player commands. Exact warm
 committed revisions use the existing PostgreSQL CAS without a redundant load;
