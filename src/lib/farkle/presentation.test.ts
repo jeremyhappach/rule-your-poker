@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admitFarkleSnapshot, farkleCommittedHolds, farkleStraightRow, farkleTurnStatus, selectedFarkleHold } from './presentation';
+import { admitFarkleSnapshot, farkleCommittedHolds, farkleResolvedRoll, farkleStraightRow, farkleTurnStatus, selectedFarkleHold } from './presentation';
 import { farkleTestState } from './__fixtures__/testState';
 
 describe('Farkle server-owned presentation', () => {
@@ -22,6 +22,22 @@ describe('Farkle server-owned presentation', () => {
     const dice = [{ index: 4, value: 1 }, { index: 0, value: 6 }, { index: 1, value: 1 }];
     expect(farkleStraightRow(dice).map(d => d.index)).toEqual([1, 4, 0]);
     expect(dice.map(d => d.index)).toEqual([4, 0, 1]);
+  });
+  it('captures the exact terminal roll actor rather than the advanced current actor', () => {
+    const state = farkleTestState();
+    const actorId = state.currentTurnPlayerId;
+    state.currentTurnPlayerId = state.turnOrder[1];
+    state.dice = [];
+    state.events = [
+      { type: 'dice_rolled', playerId: actorId, rollNumber: 2, dice: [{ index: 3, value: 2 }, { index: 5, value: 6 }] },
+      { type: 'farkle', playerId: actorId },
+    ];
+    expect(farkleResolvedRoll(state, 'receipt-scope', actorId)).toMatchObject({
+      id: `receipt-scope/${state.actionSequence}/${actorId}/2`, actorId, local: true,
+      dice: [{ index: 3, value: 2 }, { index: 5, value: 6 }],
+    });
+    state.events[1].playerId = state.currentTurnPlayerId;
+    expect(farkleResolvedRoll(state, 'receipt-scope', actorId)).toBeNull();
   });
   it('admits a newer pause/deadline revision without allowing equal-sequence score changes', () => {
     const current = farkleTestState();

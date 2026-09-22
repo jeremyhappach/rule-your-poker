@@ -26,7 +26,7 @@ vi.mock('@/components/ui/dialog', () => ({
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Farkle canonical notices', () => {
-  it.each([['hot_dice', 'HOT DICE'], ['farkle', 'FARKLE'], ['dice_held', 'THIS TURN +250'], ['banked', 'Player BANKS 250']])('renders %s through the existing canonical renderer', async (type, title) => {
+  it.each([['hot_dice', 'HOT DICE'], ['dice_held', 'THIS TURN +250'], ['banked', 'Player BANKS 250']])('renders %s through the existing canonical renderer', async (type, title) => {
     const state = farkleTestState();
     const scope = { gameId: 'session', dealerGameId: 'dealer', handNumber: 1, roundId: state._authorityScope };
     const props = { scope, incoming: state, revision: 1, players: [], isPaused: false, isRealMoney: false, onRefetch: vi.fn() };

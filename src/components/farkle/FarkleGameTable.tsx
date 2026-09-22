@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,7 +14,7 @@ import { setAutomaticPlay } from '@/lib/sessionPlayerIntent';
 import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
 import { getBotAlias } from '@/lib/botAlias';
 import { applyFarkleAction, createFarkleActionRequest, readFarkleReplay } from '@/lib/farkle/authority';
-import { admitFarkleSnapshot, farkleCommittedHolds, farkleScopeKey, farkleTurnStatus } from '@/lib/farkle/presentation';
+import { admitFarkleSnapshot, farkleCommittedHolds, farkleResolvedRoll, farkleScopeKey, farkleTurnStatus, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
 import { FarkleGameplayGeometryProvider } from '@/lib/farkle/FarkleGameplayGeometryProvider';
 import type { FarkleAction, FarkleReplay, FarkleScope, FarkleState } from '@/lib/farkle/types';
 import { FarkleActiveArea } from './FarkleActiveArea';
@@ -55,6 +55,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const setTab = props.onActiveTabChange ?? setLocalTab;
   const chat = useGameChatContext();
   const { emit } = useAnnouncements();
+  const emitLatest = useRef(emit); emitLatest.current = emit;
   const state = accepted.scopeKey === scopeKey ? accepted.state : incoming;
   const self = players.find(p => p.user_id === currentUserId && !p.is_bot);
   const nameFor = (id: string) => { const player = players.find(p => p.id === id);
@@ -91,12 +92,35 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const entry = useRef({ scopeKey, sequence: incoming.actionSequence });
   if (entry.current.scopeKey !== scopeKey) entry.current = { scopeKey, sequence: incoming.actionSequence };
   const animate = state.actionSequence > entry.current.sequence;
+  const [resolvedRoll, setResolvedRoll] = useState<FarkleResolvedRoll | null>(null);
+  const lastResolved = useRef({ scopeKey, sequence: incoming.actionSequence });
+  useLayoutEffect(() => {
+    const prior = lastResolved.current;
+    lastResolved.current = { scopeKey, sequence: state.actionSequence };
+    if (prior.scopeKey !== scopeKey || state.actionSequence <= prior.sequence) return;
+    const receipt = farkleResolvedRoll(state, scopeKey, self?.id);
+    if (receipt) setResolvedRoll(receipt);
+  }, [scopeKey, state, self?.id]);
+  const presentingRoll = resolvedRoll?.scopeKey === scopeKey ? resolvedRoll : null;
+  useEffect(() => {
+    if (!presentingRoll) return;
+    const receiptId = presentingRoll.id;
+    // The roll reaches its straight row at 850 ms; the remote row then settles over 240 ms.
+    const settle = setTimeout(() => {
+      emitLatest.current({ id: `farkle/${scopeKey}/${presentingRoll.sequence}/farkle`, type: 'gameplay_notice',
+        scope: { dealerGameId: scope.gameId, roundId: scope.roundId }, payload: { title: 'FARKLE' },
+        ttlMs: 1600, behavior: 'enqueue',
+        onRetired: () => setResolvedRoll(current => current?.id === receiptId ? null : current),
+      });
+    }, 1100);
+    return () => clearTimeout(settle);
+  }, [presentingRoll?.id, scopeKey, scope.gameId, scope.roundId]);
   useEffect(() => {
     const prior = lastPresented.current;
     lastPresented.current = { scopeKey, sequence: state.actionSequence };
     if (prior.scopeKey !== scopeKey || state.actionSequence <= prior.sequence) return;
     for (const event of state.events ?? []) {
-      const title = event.type === 'farkle' ? 'FARKLE' : event.type === 'hot_dice' ? 'HOT DICE'
+      const title = event.type === 'hot_dice' ? 'HOT DICE'
         : event.type === 'dice_held' ? `THIS TURN +${(event.points ?? 0).toLocaleString('en-US')}`
         : event.type === 'banked' ? `${nameFor(event.playerId ?? '')} BANKS ${(event.points ?? 0).toLocaleString('en-US')}` : null;
       if (title) emit({
@@ -138,7 +162,8 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   };
   const currentReplay = replay?.roundId === scope.roundId ? replay : null;
   const roll = state.events?.find(event => event.type === 'dice_rolled');
-  const remoteDice = roll?.dice ?? state.dice;
+  const remoteDice = presentingRoll?.dice ?? (roll?.playerId === state.currentTurnPlayerId ? roll.dice ?? state.dice : state.dice);
+  const liveRollAnimation = animate && roll?.playerId === state.currentTurnPlayerId && state.dice.length > 0;
   const committed = farkleCommittedHolds(currentReplay?.events ?? [], state);
   const heldEvent = state.events?.find(event => event.type === 'dice_held');
   const retired = [...new Set([...state.dice.filter(d => !state.available.includes(d.index)).map(d => d.index),
@@ -150,9 +175,10 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       onActive={props.onTerminalPresentationActiveChange} onComplete={props.onTerminalPresentationComplete} />
     <div style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
       <FarkleGameplayGeometryProvider>
-        {selfTurn || state.gamePhase === 'complete' ? <FarkleAnchoredSlot artifactId="farkle.scoreboard"><FarkleScoreboard state={state} nameFor={nameFor} surface="felt" /></FarkleAnchoredSlot>
+        {(presentingRoll?.local ?? selfTurn) || (!presentingRoll && state.gamePhase === 'complete') ? <FarkleAnchoredSlot artifactId="farkle.scoreboard"><FarkleScoreboard state={state} nameFor={nameFor} surface="felt" /></FarkleAnchoredSlot>
           : <FarkleAnchoredSlot artifactId="farkle.remoteDice"><FarkleRemoteStage dice={remoteDice}
-          receiptKey={`${scopeKey}/${state.currentTurnPlayerId}/${state.rollNumber}`} animate={animate && !!roll} retired={retired} scoring={scoring} /></FarkleAnchoredSlot>}
+          receiptKey={presentingRoll?.id ?? `${scopeKey}/${state.currentTurnPlayerId}/${state.rollNumber}`}
+          animate={!!presentingRoll || liveRollAnimation} retired={presentingRoll ? [] : retired} scoring={presentingRoll ? [] : scoring} /></FarkleAnchoredSlot>}
         <FarkleAnchoredSlot artifactId="farkle.thisTurn"><div className="flex h-full items-center justify-center font-bold text-amber-100">THIS TURN {state.thisTurn.toLocaleString('en-US')}</div></FarkleAnchoredSlot>
         <FarkleAnchoredSlot artifactId="farkle.turnStatus"><div className="flex h-full items-center justify-center text-sm font-bold text-amber-300">{farkleTurnStatus(state)}</div></FarkleAnchoredSlot>
       </FarkleGameplayGeometryProvider>
@@ -167,7 +193,8 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       : tab === 'history' ? <FarkleHistory replay={currentReplay} nameFor={nameFor} />
       : tab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={currentUserId} diagnosticGameId={scope.gameId} diagnosticDealerGameId={scope.dealerGameId} />
       : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · <PresentationChipBalance playerId={p.id} rawBalance={p.chips} /></p>)}</div>
-      : selfTurn ? <FarkleActiveArea state={state} controllable={controlled} pending={pending} committed={committed} onAction={act} animate={animate && !!roll} retired={retired} scoring={scoring} />
+      : presentingRoll?.local || (!presentingRoll && selfTurn) ? <FarkleActiveArea state={state} controllable={controlled && !presentingRoll} pending={pending} committed={presentingRoll ? [] : committed} onAction={act}
+        animate={liveRollAnimation} retired={retired} scoring={scoring} resolvedRoll={presentingRoll?.local ? presentingRoll : undefined} />
       : <FarkleScoreboard state={state} nameFor={nameFor} surface="pane" />}
       identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-foreground">
         {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {(state.playerStates[self.id]?.banked ?? 0).toLocaleString('en-US')} points</span>

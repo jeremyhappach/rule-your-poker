@@ -1,5 +1,23 @@
 # Current release and cutover state
 
+## September 22 Farkle terminal-roll presentation correction
+
+Farkle now captures a live Farkle roll from its authoritative `dice_rolled`/`farkle`
+receipt, including the original actor and exact indexed dice. Self dice remain in
+the active pane and remote dice settle on the felt even though server authority
+has already advanced the turn. The canonical FARKLE notice starts after the row
+settles; its actual retirement releases the visual snapshot. Receipt identity
+guards older callbacks, and a reconnect does not replay an old terminal roll.
+The next actor's empty stage does not animate the prior roll. No authority,
+scoring, settlement, timeout, or other game was changed.
+
+Focused component tests cover two/six dice in both viewing roles, notice
+retirement, stale callbacks and reconnect. The isolated two-client browser proof
+passed two-die and six-die reducer-produced Farkles, with final dice on both
+correct surfaces through acknowledgment and one ordered animation sequence.
+The isolated game fixtures were removed; production smoke is Jeremy's
+acceptance gate after publication.
+
 ## September 22 Farkle human turn clock and dice correction
 
 Additive production migration `20260922200027_farkle_human_turn_clock` changes only

@@ -23,6 +23,35 @@ export function farkleStraightRow(dice: readonly FarkleDie[]): FarkleDie[] {
   return [...dice].sort((a, b) => a.value - b.value || a.index - b.index);
 }
 
+export interface FarkleResolvedRoll {
+  id: string;
+  scopeKey: string;
+  sequence: number;
+  actorId: string;
+  rollNumber: number;
+  dice: FarkleDie[];
+  local: boolean;
+}
+
+/** A live terminal-roll receipt keeps visual ownership after authority advances. */
+export function farkleResolvedRoll(state: FarkleState, scopeKey: string, selfId?: string): FarkleResolvedRoll | null {
+  const roll = state.events?.find(event => event.type === 'dice_rolled');
+  const farkle = state.events?.find(event => event.type === 'farkle');
+  if (!roll?.playerId || !farkle || farkle.playerId !== roll.playerId || !state.turnOrder.includes(roll.playerId)
+    || !Number.isSafeInteger(roll.rollNumber) || (roll.rollNumber ?? 0) < 1 || !roll.dice?.length || roll.dice.length > 6) return null;
+  const indexes = new Set<number>();
+  for (const die of roll.dice) {
+    if (!Number.isInteger(die.index) || die.index < 0 || die.index > 5 || !Number.isInteger(die.value)
+      || die.value < 1 || die.value > 6 || indexes.has(die.index)) return null;
+    indexes.add(die.index);
+  }
+  return {
+    id: `${scopeKey}/${state.actionSequence}/${roll.playerId}/${roll.rollNumber}`,
+    scopeKey, sequence: state.actionSequence, actorId: roll.playerId, rollNumber: roll.rollNumber,
+    dice: roll.dice.map(die => ({ index: die.index, value: die.value })), local: roll.playerId === selfId,
+  };
+}
+
 export interface FarkleCommittedHold { sequence: number; dice: FarkleDie[]; points: number; rollNumber: number }
 
 /** Rebuild committed scoring rows from semantic receipts, including reconnect. */

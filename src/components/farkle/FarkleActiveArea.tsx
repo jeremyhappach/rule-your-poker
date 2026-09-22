@@ -1,33 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { FarkleAction, FarkleState } from '@/lib/farkle/types';
-import { selectedFarkleHold, type FarkleCommittedHold } from '@/lib/farkle/presentation';
+import { selectedFarkleHold, type FarkleCommittedHold, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
 import { FarkleDie } from './FarkleDie';
 import { useFarkleRollPhase } from './useFarkleRollPhase';
 
-export function FarkleActiveArea({ state, controllable, pending, committed, onAction, animate = false, retired = [], scoring = [] }: {
+export function FarkleActiveArea({ state, controllable, pending, committed, onAction, animate = false, retired = [], scoring = [], resolvedRoll }: {
   state: FarkleState; controllable: boolean; pending: boolean; committed: FarkleCommittedHold[];
-  animate?: boolean; retired?: number[]; scoring?: number[];
+  animate?: boolean; retired?: number[]; scoring?: number[]; resolvedRoll?: FarkleResolvedRoll;
   onAction: (action: FarkleAction, selected?: number[]) => void;
 }) {
   const [selection, setSelection] = useState<{ key: string; indexes: number[] }>({ key: '', indexes: [] });
-  const key = `${state._authorityScope}/${state.actionSequence}`;
-  const phase = useFarkleRollPhase(`${state._authorityScope}/${state.currentTurnPlayerId}/${state.rollNumber}`, animate);
+  const key = resolvedRoll?.id ?? `${state._authorityScope}/${state.actionSequence}`;
+  const phase = useFarkleRollPhase(resolvedRoll?.id ?? `${state._authorityScope}/${state.currentTurnPlayerId}/${state.rollNumber}`, !!resolvedRoll || animate);
   const selected = selection.key === key ? selection.indexes : [];
   useEffect(() => { setSelection({ key, indexes: [] }); }, [key]);
-  const hold = selectedFarkleHold(state, selected);
-  const enabled = controllable && !pending && state.gamePhase === 'playing';
+  const hold = resolvedRoll ? null : selectedFarkleHold(state, selected);
+  const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing';
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
-  return <div className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="">
+  const dice = resolvedRoll?.dice ?? state.dice;
+  return <div className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="" data-farkle-resolved-roll={resolvedRoll?.id}>
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
     <div className="farkle-self-dice" data-farkle-self-roll-phase={phase}>
         {Array.from({ length: 6 }, (_, index) => {
-          const die = state.dice.find(d => d.index === index);
+          const die = dice.find(d => d.index === index);
           return die ? <FarkleDie key={index} die={die} selected={selected.includes(index)}
-            retired={retired.includes(index)} scoring={scoring.includes(index)}
+            retired={!resolvedRoll && retired.includes(index)} scoring={!resolvedRoll && scoring.includes(index)}
             disabled={!enabled || state.stage !== 'hold' || !state.available.includes(index)}
             onSelect={i => setSelection({ key, indexes: selected.includes(i) ? selected.filter(n => n !== i) : [...selected, i] })} />
-            : <FarkleDie key={index} die={{ index, value: 0 }} concealed retired={!state.available.includes(index)} />;
+            : <FarkleDie key={index} die={{ index, value: 0 }} concealed retired={!resolvedRoll && !state.available.includes(index)} />;
         })}
     </div>
     <div aria-label="Committed scoring dice" className="flex shrink-0 gap-2 overflow-x-auto text-xs text-foreground">
