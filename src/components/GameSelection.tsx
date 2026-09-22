@@ -76,7 +76,7 @@ export const GameSelection = ({
   ];
 
   const diceGames = [
-    { id: "farkle", name: "Farkle", description: "Coming Soon", enabled: false },
+    { id: "farkle", name: "Farkle", description: "Risk it or bank it", enabled: true },
     {
       id: "horses",
       name: "Horses",

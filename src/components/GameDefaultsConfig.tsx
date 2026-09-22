@@ -73,7 +73,7 @@ const GAME_TYPES = [
   { value: 'horses', label: 'Horses', icon: Dice5, category: 'dice' },
   { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
   { value: 'yahtzee', label: 'Yahtzee', icon: Dice5, category: 'dice' },
-  { value: 'farkle', label: 'Farkle (admin playtest)', icon: Dice5, category: 'dice' },
+  { value: 'farkle', label: 'Farkle', icon: Dice5, category: 'dice' },
 ];
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
@@ -1280,9 +1280,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={validateAndSave} disabled={saving || loading || selectedGameType === 'farkle'}>
+          {selectedGameType !== 'farkle' && <Button onClick={validateAndSave} disabled={saving || loading}>
             {saving ? 'Saving...' : 'Save Defaults'}
-          </Button>
+          </Button>}
         </div>
       </DialogContent>
     </Dialog>

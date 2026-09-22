@@ -19,21 +19,25 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing';
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
   const dice = resolvedRoll?.dice ?? state.dice;
+  const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
+  const visibleDice = consolidated ? dice : Array.from({ length: 6 }, (_, index) => dice.find(d => d.index === index) ?? { index, value: 0 });
   return <div className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="" data-farkle-resolved-roll={resolvedRoll?.id}>
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
-    <div className="farkle-self-dice" data-farkle-self-roll-phase={phase}>
-        {Array.from({ length: 6 }, (_, index) => {
-          const die = dice.find(d => d.index === index);
-          return die ? <FarkleDie key={index} die={die} selected={selected.includes(index)}
+    <div className="farkle-self-dice" data-farkle-self-roll-phase={phase} data-held-consolidated={consolidated}>
+        {visibleDice.map(die => {
+          const index = die.index;
+          return die.value ? <FarkleDie key={index} die={die} selected={selected.includes(index)}
             retired={!resolvedRoll && retired.includes(index)} scoring={!resolvedRoll && scoring.includes(index)}
             disabled={!enabled || state.stage !== 'hold' || !state.available.includes(index)}
             onSelect={i => setSelection({ key, indexes: selected.includes(i) ? selected.filter(n => n !== i) : [...selected, i] })} />
             : <FarkleDie key={index} die={{ index, value: 0 }} concealed retired={!resolvedRoll && !state.available.includes(index)} />;
         })}
     </div>
-    <div aria-label="Committed scoring dice" className="flex shrink-0 gap-2 overflow-x-auto text-xs text-foreground">
-      {committed.length ? committed.map(group => <span className="whitespace-nowrap" key={group.sequence}>
-        {group.dice.map(d => d.value).join(' · ')} +{group.points.toLocaleString('en-US')}
+    <div aria-label="Committed scoring dice" data-held-consolidated={consolidated} className="flex shrink-0 items-center justify-start gap-2 overflow-x-auto text-xs text-foreground">
+      {committed.length ? committed.map(group => <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap" key={group.sequence}>
+        {consolidated ? <span className="farkle-committed-dice">{group.dice.map(die => <FarkleDie key={`${group.sequence}/${die.index}`} die={die} />)}</span>
+          : <span>{group.dice.map(d => d.value).join(' · ')}</span>}
+        <span>+{group.points.toLocaleString('en-US')}</span>
       </span>) : <span>No dice held this turn</span>}
     </div>
     <div className="flex shrink-0 justify-center gap-2 pb-1">

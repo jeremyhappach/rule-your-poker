@@ -841,7 +841,6 @@ const DealerGameSetupInner = ({
 
   const handleGameSelect = async (gameType: string) => {
     if (gameType === 'farkle') {
-      if (!isAdmin) return;
       if (!isFarkleLocalQualification(import.meta.env, window.location.hostname)) {
         try {
           const defaults = await loadFarkleAdminDefaults();
@@ -953,7 +952,7 @@ const DealerGameSetupInner = ({
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
-    { id: 'farkle', name: 'Farkle', description: isAdmin ? 'Admin playtest' : 'Coming Soon', category: 'dice', enabled: isAdmin },
+    { id: 'farkle', name: 'Farkle', description: 'Risk it or bank it', category: 'dice', enabled: true },
     ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
   ];
 
@@ -1065,7 +1064,6 @@ const DealerGameSetupInner = ({
   const handleRunBack = async () => {
     if (previousGameType === 'run21' && !run21Allowed) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
-    if (previousGameType === 'farkle' && !isAdmin) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
     if (!exactConfig) {
@@ -1244,7 +1242,7 @@ const DealerGameSetupInner = ({
             </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'farkle' || isAdmin) && (previousGameType !== 'run21' || run21Allowed) && (
+            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'run21' || run21Allowed) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
@@ -1301,12 +1299,12 @@ const DealerGameSetupInner = ({
   if (selectionStep === 'config' && selectedGameType === 'farkle') {
     const localTest = isAdmin && isFarkleLocalQualification(import.meta.env, window.location.hostname);
     const submitFarkleSetup = async () => {
-      if (!isAdmin || hasSubmittedRef.current) return;
+      if (hasSubmittedRef.current) return;
       try {
         const config = (localTest ? farkleLocalSetup : farkleProductionSetup)(farkleDraft.stake, farkleDraft.target, farkleDraft.endgame);
         hasSubmittedRef.current = true;
         setIsSubmitting(true);
-        await commitSetup('farkle', config, localTest ? 'isolated-test-only-setup' : 'approved-admin-setup');
+        await commitSetup('farkle', config, localTest ? 'isolated-test-only-setup' : 'approved-production-setup');
       } catch (error) {
         hasSubmittedRef.current = false;
         setIsSubmitting(false);
@@ -1317,8 +1315,8 @@ const DealerGameSetupInner = ({
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
         <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
         <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
-        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Admin playtest. Approved scoring rules are frozen when this game starts.'}</p>
-        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={!isAdmin || isSubmitting} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
+        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Scoring rules are frozen when this game starts.'}</p>
+        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
       </CardContent></Card>
     </div>;
   }

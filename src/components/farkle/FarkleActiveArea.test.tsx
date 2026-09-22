@@ -25,4 +25,19 @@ describe('Farkle local selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hold Dice' }));
     expect(action).not.toHaveBeenCalled();
   });
+  it('moves prior committed dice to the far-left held row after Roll N without changing indexes or points', () => {
+    const state = farkleTestState();
+    state.rollNumber = 2;
+    state.stage = 'hold';
+    state.available = [1, 2, 3, 4, 5];
+    state.dice = [{ index: 1, value: 2 }, { index: 2, value: 3 }, { index: 3, value: 4 }, { index: 4, value: 6 }, { index: 5, value: 2 }];
+    const { container } = render(<FarkleActiveArea state={state} controllable pending={false}
+      committed={[{ sequence: 2, dice: [{ index: 0, value: 1 }], points: 100, rollNumber: 1 }]} onAction={() => {}} />);
+    expect(container.querySelector('.farkle-self-dice')?.getAttribute('data-held-consolidated')).toBe('true');
+    expect(container.querySelector('.farkle-self-dice [data-farkle-die="0"]')).toBeNull();
+    const held = screen.getByLabelText('Committed scoring dice');
+    expect(held.firstElementChild?.querySelector('[data-farkle-die="0"]')).toBeTruthy();
+    expect(held.textContent).toContain('+100');
+    expect(container.querySelectorAll('.farkle-self-dice .farkle-die')).toHaveLength(5);
+  });
 });

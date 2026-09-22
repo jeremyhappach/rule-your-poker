@@ -472,7 +472,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 </ul>
               </div>
             </TabsContent>
-            <TabsContent value="farkle" className="mt-0 space-y-4 pr-4"><h3 className="font-bold text-lg">Farkle — Coming Soon</h3><FarkleInstructions /><p className="text-sm">Scoring values appear in the frozen rules for each game.</p></TabsContent>
+            <TabsContent value="farkle" className="mt-0 space-y-4 pr-4"><h3 className="font-bold text-lg">Farkle</h3><FarkleInstructions /><p className="text-sm">Scoring values appear in the frozen rules for each game.</p></TabsContent>
           </ScrollArea>
         </Tabs>
       </DialogContent>

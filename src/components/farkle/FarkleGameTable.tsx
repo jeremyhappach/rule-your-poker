@@ -199,7 +199,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-foreground">
         {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {(state.playerStates[self.id]?.banked ?? 0).toLocaleString('en-US')} points</span>
           {!isRealMoney && self.auto_fold && <><Bot className="h-4 w-4" aria-label="Bot control" /><Button size="sm" disabled={pending || !!self.auto_play_stop_round_id} onClick={reclaim}>{self.auto_play_stop_round_id ? 'Rejoining after this turn' : 'Rejoin'}</Button></>}</> : <span>Observing</span>}
-        <button type="button" aria-label="Frozen Farkle rules" onClick={() => setHelp(true)}>?</button>
+        <button type="button" aria-label="Frozen Farkle rules" onClick={() => setHelp(true)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-950/90 text-base font-bold text-amber-50 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">?</button>
       </div>} />
     <Dialog open={help} onOpenChange={setHelp}><DialogContent className="max-h-full overflow-auto"><DialogHeader><DialogTitle>Farkle rules</DialogTitle></DialogHeader><FarkleRules config={state.config} /></DialogContent></Dialog>
   </div>;
