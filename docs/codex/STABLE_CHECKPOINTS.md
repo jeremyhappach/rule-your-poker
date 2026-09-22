@@ -1,5 +1,18 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 sequential production turns — September 22
+
+- Deployed SHA: `d15fc191efd874684e63bab229f30f997c41a130`.
+- Production verified both human-first and bot-first rounds, inactive Place/Pass/
+  Collect rejection (`409 run21:not_your_turn`), full deadline on admission,
+  immutable completed boards, and reveal only after both players finish.
+- Browser confirmed bot-first waiting with disabled columns and no human current
+  card/timer, followed by a face-up human card and running timer on transfer.
+- 33 focused checks and application/server typechecks passed; Vercel's remote
+  production build passed. Hap remains the sole allowlisted administrator.
+- Test game and private match removed through canonical fake-money cleanup;
+  temporary verification session signed out. No migrations changed.
+
 ## Run21 production admission — September 22
 
 - Start-flow correction deployed as `3aca5a02989c8685b9f612e73dfca088e04ab68e`:

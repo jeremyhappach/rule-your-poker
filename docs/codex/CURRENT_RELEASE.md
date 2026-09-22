@@ -1,5 +1,34 @@
 # Current release and cutover state
 
+## September 22 Run21 sequential turns published
+
+Production at https://ptown-poker.vercel.app now deploys
+`d15fc191efd874684e63bab229f30f997c41a130` (Vercel
+`dpl_87KTatTkARe8eFSPmNC62oFVLCdj`). The authority previously readied both
+boards and scheduled the bot independently. Each round now persists its
+starter and single active player in the existing private match JSON. Starters
+alternate in canonical participant/seat order. Admission presents one card and
+starts that player's deadline; a terminal board is frozen while the same commit
+admits the opponent. Reveal and scoring still wait for both terminal results.
+No migration or gate-policy change was required.
+
+Focused validation: 33 authority/presentation/narration checks, application and
+server TypeScript checks, and the required remote production build passed.
+Production fake-money smoke on September 22 at 04:10–04:12 UTC verified a
+human-first round (human bust, then bot collect), followed by a bot-first round
+(bot collect, then human timeout). All three direct inactive commands—Place,
+Pass, Collect—returned HTTP 409 JSON `run21:not_your_turn`. The browser showed
+the waiting state without actionable columns/current card/timer, then the
+human's first card and running timer after transfer. Both completed-board hashes
+remained unchanged, and history recorded four admissions and exactly two reveals,
+each after both terminal results. The shared opening card matched on transfer.
+
+The sole allowlisted account remains Hap's verified administrator UUID. The gate
+was closed during deployment and is enabled. The dedicated fake-money fixture
+`f7e2e149-5aa1-46cf-ab8b-7b3771fb2ea1` was removed through canonical cleanup;
+zero game/match rows remain. The isolated verification login was signed out.
+Existing games and historical completed boards were preserved.
+
 ## September 22 Run21 published for Jeremy only
 
 Production deploys `3aca5a02989c8685b9f612e73dfca088e04ab68e` at
