@@ -26,7 +26,7 @@ function fixture(botFirst = false) {
     // the worker heartbeat while the in-memory fixture resolves only microtasks.
     const committed={...structuredClone(row),state:{...structuredClone(row.state!),events:structuredClone(events)}};
     await new Promise<void>(resolve=>setImmediate(resolve));return committed;
-  }, close: async () => {row.finished = true;}};
+  }, confirm: async old => {if(old.revision!==row.revision)throw Error('CAS conflict');return structuredClone(row);}, close: async () => {row.finished = true;}};
   const make = () => {const w = new Run21Authority(store, () => now, async () => fixtureDeck([], 17)); workers.push(w); return w;};
   return {make, get row() {return row.state?{...row,state:{...row.state,events:journal}}:row;}, tick: (ms: number) => {now += ms;}};
 }

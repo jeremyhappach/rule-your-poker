@@ -65,7 +65,8 @@ try{
   for(const player of m.players)command(player.id,{type:'acknowledge'});await commit();
  }
  assert.equal(evidence.samples.length,48);
+ assert(evidence.samples.every(s=>s.trace.rpc.length===1&&s.trace.rpc[0].name==='run21_server_commit_admitted'),'Normal Place/Pass must use one admitted commit and no admission RPC');
  const summary=[];const stats=values=>{const a=values.sort((a,b)=>a-b);return {p50:a[Math.ceil(a.length*.5)-1],p95:a[Math.ceil(a.length*.95)-1],max:a.at(-1)};};
- for(let round=1;round<=4;round++){const a=evidence.samples.filter(x=>x.round===round);summary.push({round,n:a.length,authorization:stats(a.map(x=>{const p=x.trace.phases.find(p=>p.name==='authorization');return p.completedAt-p.startedAt;})),commit:stats(a.map(x=>x.trace.rpc.filter(p=>p.name==='run21_server_commit').reduce((n,p)=>n+p.completedAt-p.startedAt,0))),handler:stats(a.map(x=>x.trace.sentAt-x.trace.receivedAt)),frame:stats(a.map(x=>x.painted-x.received)),tap:stats(a.map(x=>x.painted-x.tap))});}
+ for(let round=1;round<=4;round++){const a=evidence.samples.filter(x=>x.round===round);summary.push({round,n:a.length,authorization:stats(a.map(x=>{const p=x.trace.phases.find(p=>p.name==='authorization');return p.completedAt-p.startedAt;})),commit:stats(a.map(x=>x.trace.rpc.filter(p=>p.name==='run21_server_commit_admitted').reduce((n,p)=>n+p.completedAt-p.startedAt,0))),handler:stats(a.map(x=>x.trace.sentAt-x.trace.receivedAt)),frame:stats(a.map(x=>x.painted-x.received)),tap:stats(a.map(x=>x.painted-x.tap))});}
  evidence.summary=summary;evidence.cleanup=true;fs.writeFileSync('qualification.local/timing.json',JSON.stringify(evidence,null,2));console.log(JSON.stringify(summary));
 }finally{runtime?.dispose();await browser?.close();server.closeAllConnections();server.close();await vite.close();await f.cleanup();}

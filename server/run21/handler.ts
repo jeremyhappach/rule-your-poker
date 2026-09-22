@@ -2,6 +2,7 @@ import {createClient} from '@supabase/supabase-js';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {AuthorityError, Run21Authority, type StoredMatch} from './authority.js';
+import type {Match} from '../../src/lib/run21/model.js';
 
 export interface AuthorityOptions {
   url: string; key: string; loopbackOnly?: boolean; waitUntil?: (work: Promise<unknown>) => void;
@@ -20,8 +21,17 @@ export function createRun21Handler(options: AuthorityOptions) {
     timing.getStore()?.rpc.push(span);
     const {data, error} = await db.rpc(name, args);
     span.completedAt=Date.now();
-    if (error) throw new AuthorityError(error.message.startsWith('run21:') ? error.message : 'run21:database_rejected');
+    if (error) throw new AuthorityError(error.message.startsWith('run21:') ? error.message : 'run21:database_rejected',error.code==='42501'?403:409);
     return data as T;
+  };
+  const commit = async (row:StoredMatch,state:Match|null,botDue:number|null,verifiedUserId?:string) => {
+    const priorSequence=row.state?.eventSequence??row.state?.events.at(-1)?.sequence??0;
+    const delta=state?{...state,events:state.events.filter(event=>event.sequence>priorSequence)}:null;
+    const value=await rpc<{outcome:string;record:StoredMatch}>(verifiedUserId?'run21_server_commit_admitted':'run21_server_commit',{
+      p_dealer_game_id:row.dealer_game_id,p_expected_revision:row.revision,p_state:delta,p_bot_due_at:botDue,
+      ...(verifiedUserId?{p_verified_user_id:verifiedUserId}:{})});
+    if(value.outcome!=='committed')throw new AuthorityError('run21:concurrent_commit');
+    return value.record;
   };
   const authority = new Run21Authority({
     async load(gameId, includeHistory = false, afterSequence) {
@@ -33,14 +43,8 @@ export function createRun21Handler(options: AuthorityOptions) {
       if (error) throw new AuthorityError('run21:dealer_identity_unavailable');
       return rows.map(row => ({...row, dealer_user_id: data?.find(d => d.id === row.dealer_game_id)?.dealer_user_id ?? ''}));
     },
-    async commit(row, state, botDue) {
-      const priorSequence=row.state?.eventSequence??row.state?.events.at(-1)?.sequence??0;
-      const delta={...state,events:state.events.filter(event=>event.sequence>priorSequence)};
-      const value = await rpc<{outcome: string; record: StoredMatch}>('run21_server_commit', {
-        p_dealer_game_id: row.dealer_game_id, p_expected_revision: row.revision, p_state: delta, p_bot_due_at: botDue});
-      if (value.outcome !== 'committed') throw new AuthorityError('run21:concurrent_commit');
-      return value.record;
-    },
+    commit,
+    confirm: (row,userId)=>commit(row,null,row.bot_due_at,userId),
     close: (dealerId, userId) => rpc('run21_server_close', {p_dealer_game_id: dealerId, p_user_id: userId}),
   },undefined,undefined,(name,work)=>{
     const span={name,startedAt:Date.now(),completedAt:0};timing.getStore()?.phases.push(span);
@@ -52,11 +56,18 @@ export function createRun21Handler(options: AuthorityOptions) {
     res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store',
       ...(trace?{'X-Run21-Timing':JSON.stringify({...trace,sentAt:Date.now()})}:{})}); res.end(payload);
   };
-  async function authenticate(req: IncomingMessage, gameId: string | null) {
+  async function authenticate(req: IncomingMessage, gameId: string | null, action = false) {
     if (options.loopbackOnly && !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')) throw new AuthorityError('run21:loopback_only', 403);
     if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new AuthorityError('run21:origin', 403);
     const token = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '')?.[1];
     if (!token) throw new AuthorityError('run21:authentication_required', 401);
+    if(action){
+      // Only fresh Auth output supplies the service-only commit identity. No JWT
+      // decoding, cached permission, or client-provided user ID authorizes an action.
+      const {data,error}=await timed('tokenVerification',()=>db.auth.getUser(token));
+      if(error||!data.user)throw new AuthorityError('run21:authentication_required',401);
+      return data.user.id;
+    }
     // The unverified subject is only a speculative lookup key. Neither check
     // authorizes a request until Auth verifies that exact same identity.
     let subject:unknown;
@@ -80,7 +91,7 @@ export function createRun21Handler(options: AuthorityOptions) {
       const url = new URL(req.url ?? '/', 'http://authority.invalid');
       const path = url.pathname.replace(/^\/(?:__run21|api\/run21)/, '');
       const route = /^\/([0-9a-f-]{36})\/(state|action|events|history|close)$/.exec(path);
-      const userId = await timed('authorization',()=>authenticate(req,route?.[1]??null));
+      const userId = await timed('authorization',()=>authenticate(req,route?.[1]??null,route?.[2]==='action'));
       let cursor = Number(url.searchParams.get('after') ?? 0);
       if (!Number.isSafeInteger(cursor) || cursor < 0) throw new AuthorityError('run21:invalid_cursor', 400);
       if (!route) throw new AuthorityError('run21:route', 404);

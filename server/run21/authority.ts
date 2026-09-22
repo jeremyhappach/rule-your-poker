@@ -14,7 +14,8 @@ export interface StoredMatch {
 }
 export interface Store {
   load(gameId?: string, includeHistory?: boolean, afterSequence?: number): Promise<StoredMatch[]>;
-  commit(record: StoredMatch, state: Match, botDue: number | null): Promise<StoredMatch>;
+  commit(record: StoredMatch, state: Match, botDue: number | null, verifiedUserId?: string): Promise<StoredMatch>;
+  confirm(record: StoredMatch, verifiedUserId: string): Promise<StoredMatch>;
   close(dealerId: string, userId: string): Promise<void>;
 }
 export class AuthorityError extends Error {
@@ -29,7 +30,7 @@ export class Run21Authority {
   private committed = new Map<string, StoredMatch>();
   constructor(readonly store: Store, readonly now = Date.now, readonly shuffle = shuffleRound,
     readonly measure: <T>(name:string,work:()=>T)=>T = (_name,work)=>work()) {}
-  /** Only a fresh server-side admission RPC supplies this snapshot; CAS still owns writes. */
+  /** Server-loaded computation snapshot only. Every action rechecks admission at commit. */
   admit(row: StoredMatch) {
     const prior = this.committed.get(row.game_id);
     if (!prior || prior.dealer_game_id !== row.dealer_game_id || row.revision >= prior.revision)
@@ -80,7 +81,7 @@ export class Run21Authority {
     state = this.command(state, state.rounds.at(-1)!.active_player_id!, {type: 'ready'}, at);
     return state;
   }
-  private async advance(row: StoredMatch) {
+  private async advance(row: StoredMatch, verifiedUserId?: string) {
     if (row.finished) return row;
     const at = Math.max(this.now(), row.state?.updatedAt ?? 0);
     let state = row.state;
@@ -125,7 +126,7 @@ export class Run21Authority {
     }
     const choice = chooseAction(project(state, bot.id), at);
     due = choice ? due ?? at + choice.delayMs : null;
-    if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due);
+    if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due, verifiedUserId);
     this.committed.set(row.game_id,row);
     this.schedule(row);
     return row;
@@ -189,19 +190,21 @@ export class Run21Authority {
       const exact=cached&&!cached.finished&&command?.identity?.dealerGameId===cached.dealer_game_id&&
         command?.roundId===round?.id&&command?.revision===round?.boards[command?.playerId]?.revision;
       const initial = exact ? cached : await this.latest(gameId); const player = this.player(initial, userId);
-      let row = await this.advance(initial);
+      let row = await this.advance(initial, userId);
       if (row.finished) throw new AuthorityError('run21:finished');
       if (!command || !isUuid(command.requestId ?? '') || !command.identity || !command.intent ||
         !['place', 'pass', 'collect', 'acknowledge'].includes(command.intent.type)) throw new AuthorityError('run21:invalid_command', 400);
       let result = this.measure('commandAuthorizationAndRules',()=>applyCommand(row.state!, command, {kind: 'player', playerId: player.id}, Math.max(this.now(), row.state!.updatedAt)));
       if(exact&&result.status!=='accepted'){
-        row=await this.advance(await this.latest(gameId));
+        row=await this.advance(await this.latest(gameId), userId);
         if(row.finished)throw new AuthorityError('run21:finished');
         result=this.measure('commandAuthorizationAndRules',()=>applyCommand(row.state!,command,{kind:'player',playerId:player.id},Math.max(this.now(),row.state!.updatedAt)));
       }
+      // Duplicate/rejected commands cannot return cached data or bypass current admission.
+      if (result.status !== 'accepted') row = await this.store.confirm(row, userId);
       if (result.status === 'rejected') throw new AuthorityError(`run21:${result.reason}`);
-      if (result.status === 'accepted') row = await this.store.commit(row, result.state, null);
-      row = await this.advance(row); this.notify(gameId);
+      if (result.status === 'accepted') row = await this.store.commit(row, result.state, null, userId);
+      row = await this.advance(row, userId); this.notify(gameId);
       return {status: result.status, requestId: command.requestId, ...this.snapshot(row, player.id, afterSequence)};
     });
   }
