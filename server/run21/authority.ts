@@ -7,6 +7,7 @@ import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
 
 export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;
+  dealer_user_id: string;
   participants: (Player & {userId: string; chips: number})[];
   stake: number; balances: Record<string, number>; revision: number;
   state: Match | null; bot_due_at: number | null; finished: boolean;
@@ -72,8 +73,11 @@ export class Run21Authority {
     let state = row.state;
     let due = row.bot_due_at;
     if (!state) {
+      const dealer = row.participants.find(p => p.userId === row.dealer_user_id);
+      if (!dealer) throw new AuthorityError('run21:dealer_identity_required');
+      const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
-        row.participants.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake, DEFAULT_CONFIG, at);
+        ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake, DEFAULT_CONFIG, at);
       state = await this.openRound(state, row.first_round_id, at);
     }
     state = advanceScorePresentation(state, at);

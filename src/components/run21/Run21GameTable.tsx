@@ -78,8 +78,7 @@ export function Run21GameTable(props: Props) {
     felt = <>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}
           presentation={{scoreLine: p => displayedScore(view,p.id,now).toLocaleString(), dealerPip: p => p.position === props.dealerPosition,
-            isolatedBalance: p => snapshot.balances[p.id],
-            passAvailable: p => !props.sessionEnded && !view.passUsed[p.id]}}/>
+            isolatedBalance: p => snapshot.balances[p.id]}}/>
         {!props.sessionEnded && (replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <>
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
           {createPortal(<div className="run21-replay-controls">{controls}<button onClick={() => setReplay(null)}>Return to live match</button></div>,

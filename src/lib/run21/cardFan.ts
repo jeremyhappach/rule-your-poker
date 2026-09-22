@@ -11,17 +11,12 @@ export function rankExposure(width:number,config:CardFrontDesignConfig,mode:Deck
   return Math.min(height,Math.max(0,height/2-group/2+rankLine+offset/100*height+rank*.16+1));
 }
 
-/** Fit ordinary columns; long stacks retain readable ranks and scroll locally. */
+/** Geometry alone fixes card size. Depth changes only the overlap, never the card. */
 export function cardFan(width:number,height:number,count:number,config:CardFrontDesignConfig,mode:DeckFaceMode){
-  let low=0,high=Math.max(0,Math.min(width,height/1.5));
-  for(let i=0;i<24;i++){
-    const candidate=(low+high)/2;
-    if(candidate*1.5+Math.max(0,count-1)*rankExposure(candidate,config,mode)<=height)low=candidate;
-    else high=candidate;
-  }
-  const policy=mode==='four-color'?config.tiers.medium.fourColor:config.tiers.medium.twoColor;
-  const readableWidth=12/Math.max(.01,policy.rankScalePctOfCardWidth/100);
-  const cardWidth=Math.max(low,Math.min(width,readableWidth));
-  const cardHeight=cardWidth*1.5,step=rankExposure(cardWidth,config,mode);
+  // At most 11 cards can be placed before a standard-deck column locks or busts.
+  // Reserve a slim visible edge for that maximum while keeping the newest face whole.
+  const cardWidth=Math.max(0,Math.min(width,height/(1.5+10*.06)));
+  const cardHeight=cardWidth*1.5,available=Math.max(0,height-cardHeight);
+  const step=Math.min(rankExposure(cardWidth,config,mode),available/Math.max(1,count-1));
   return {width:cardWidth,height:cardHeight,step,contentHeight:cardHeight+Math.max(0,count-1)*step};
 }

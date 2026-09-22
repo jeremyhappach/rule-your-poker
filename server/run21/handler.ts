@@ -14,7 +14,14 @@ export function createRun21Handler(options: AuthorityOptions) {
     return data as T;
   };
   const authority = new Run21Authority({
-    load: gameId => rpc<StoredMatch[]>('run21_server_load', {p_game_id: gameId ?? null}),
+    async load(gameId) {
+      const rows = await rpc<StoredMatch[]>('run21_server_load', {p_game_id: gameId ?? null});
+      const unstarted = rows.filter(row => !row.state);
+      if (!unstarted.length) return rows;
+      const {data, error} = await db.from('dealer_games').select('id,dealer_user_id').in('id', unstarted.map(row => row.dealer_game_id));
+      if (error) throw new AuthorityError('run21:dealer_identity_unavailable');
+      return rows.map(row => ({...row, dealer_user_id: data?.find(d => d.id === row.dealer_game_id)?.dealer_user_id ?? ''}));
+    },
     async commit(row, state, botDue) {
       const value = await rpc<{outcome: string; record: StoredMatch}>('run21_server_commit', {
         p_dealer_game_id: row.dealer_game_id, p_expected_revision: row.revision, p_state: state, p_bot_due_at: botDue});

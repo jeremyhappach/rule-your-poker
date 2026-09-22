@@ -10,10 +10,11 @@ const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
 function fixture(botFirst = false) {
   let now = 1000;
-  let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20),
+  let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
     revision: 0, state: null, bot_due_at: null, finished: false};
-  if (botFirst) row.participants.reverse();
+  // Deliberately opposite seat order: the persisted dealer identity must decide.
+  if (!botFirst) row.participants.reverse();
   const store: Store = {load: async () => [structuredClone(row)], commit: async (old, state, due) => {
     if (old.revision !== row.revision) throw Error('CAS conflict');
     row = {...row, state: structuredClone(state), revision: row.revision + 1, bot_due_at: due}; return structuredClone(row);
@@ -53,17 +54,17 @@ describe('persisted local Run21 authority', () => {
     await expect(a.act(game, user, command(f.row, {type: 'pass'}))).rejects.toThrow('pass_used');
     await expect(a.act(game, user, command(f.row, {type: 'collect'}))).rejects.toThrow('collect_unavailable');
     await a.act(game, user, command(f.row, {type: 'place', column: 0}));
-    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(36000);
+    expect(f.row.state!.rounds[0].boards[human].deadline).toBe(261000);
     expect((await a.history(game, user))[0].events.filter(e => e.actorId === PLAYERS[1].id).length).toBe(0);
   });
   it('recovers a missed deadline from persisted state with zero score and no forged clock', async () => {
     const f = fixture(), a = f.make(); await a.read(game, user); await a.act(game, user, command(f.row, {type: 'place', column: 0}));
-    const deadline = f.row.state!.rounds[0].boards[human].deadline; a.dispose(); f.tick(26000);
+    const deadline = f.row.state!.rounds[0].boards[human].deadline; a.dispose(); f.tick(251000);
     const restarted = f.make(); await restarted.recover();
     expect(f.row.state!.rounds[0].boards[human].result).toMatchObject({reason: 'timeout', at: deadline, score: 0});
     expect((await restarted.read(game, user)).view.boards[human]?.result?.reason).toBe('timeout');
     expect(f.row.state!.rounds[0].active_player_id).toBeNull();
-    expect(f.row.state!.rounds[0].scorePresentation).toMatchObject({startedAt:27000,endsAt:32000});
+    expect(f.row.state!.rounds[0].scorePresentation).toMatchObject({startedAt:252000,endsAt:257000});
     expect(f.row.state!.rounds[0].boards[PLAYERS[1].id]).toMatchObject({startedAt:null,deadline:null,current:null});
     expect(f.row.state!.rounds[0].revealed).toBe(false);
     const frozen = JSON.stringify(f.row.state!.rounds[0].boards[human]);
@@ -105,7 +106,7 @@ describe('persisted local Run21 authority', () => {
     expect(humanTurn.view.boards[human]).toMatchObject({current:round.boards[bot].presented[0],startedAt:null,deadline:null});
     await a.act(game,user,command(f.row,{type:'place',column:0}));
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
-    f.tick(25000); expect((await a.read(game,user)).view.revealed).toBe(false);
+    f.tick(250000); expect((await a.read(game,user)).view.revealed).toBe(false);
     f.tick(5000); const nextRound=await a.read(game,user);
     expect(f.row.state!.rounds[0].revealed).toBe(true);
     expect(nextRound.view.roundNumber).toBe(2);expect(nextRound.view.active_player_id).toBe(bot);
@@ -115,8 +116,8 @@ describe('persisted local Run21 authority', () => {
     expect(f.row.state!.rounds[1].active_player_id).toBe(bot);
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
   });
-  it('runs the real bot, three rounds, receipt and replay through the same persisted state', async () => {
-    const f = fixture(), a = f.make(); await a.read(game, user);
+  it.each([false,true])('preserves non-dealer order through three rounds, receipt and replay (human dealer: %s)', async (botFirst) => {
+    const f = fixture(botFirst), a = f.make(); await a.read(game, user);
     let i = 0;
     while (!f.row.state?.settlement && i++ < 2000) {
       f.tick(450); await a.read(game, user);
@@ -127,6 +128,7 @@ describe('persisted local Run21 authority', () => {
         if (action) await a.act(game, user, command(f.row, action.intent));
       }
     }
+    expect(f.row.state?.events.filter(e=>e.type==='turn_started').slice(0,6).map(e=>e.frame.active_player_id)).toEqual(Array.from({length:3},()=>botFirst?[PLAYERS[1].id,human]:[human,PLAYERS[1].id]).flat());
     expect(f.row.state?.rounds.length).toBeGreaterThanOrEqual(3); expect(f.row.state?.settlement).toBeTruthy();
     expect(f.row.state?.events.filter(e => e.type === 'settlement_recorded')).toHaveLength(1);
     const receipt = f.row.state!.settlement;

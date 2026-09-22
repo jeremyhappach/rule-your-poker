@@ -15,11 +15,11 @@ export class LivePresentation {
       else this.queue.push(event);
     }
   }
-  advance(at: number): VisibleEvent | null {
+  advance(at: number, live = false): VisibleEvent | null {
     const next = this.queue[0]; if (!next) return null;
     const gap = this.event ? Math.max(0,next.at-this.event.at) : 0;
     const delay = this.event?.type === 'score_presentation_completed' ? 120 : Math.min(this.event?.frame.scorePresentation ? 5000 : 750,gap);
-    if (this.event && at-this.shownAt < delay) return null;
+    if (this.event && (!live || this.event.frame.scorePresentation || this.event.type === 'score_presentation_completed') && at-this.shownAt < delay) return null;
     this.event = this.queue.shift()!; this.sequence = this.event.sequence; this.shownAt = at; return this.event;
   }
 }

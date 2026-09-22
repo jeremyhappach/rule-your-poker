@@ -34,7 +34,7 @@ describe('Run21 rules', () => {
   });
   it('uses configured speed and deadline boundaries', () => {
     const board = act(ready(),a,{type:'place',column:0},0).rounds[0].boards[a];
-    for (const [at, speed] of [[0,250],[99,250],[100,249],[24999,1],[25000,0],[100000,0]]) expect(speedAt(board, DEFAULT_CONFIG, at)).toBe(speed);
+    for (const [at, speed] of [[0,250],[999,250],[1000,249],[249999,1],[250000,0],[1000000,0]]) expect(speedAt(board, DEFAULT_CONFIG, at)).toBe(speed);
     const config = {...DEFAULT_CONFIG, speed: {start: 7, decrement: 2, intervalMs: 30}};
     expect(duration(config)).toBe(120);
     expect(speedAt(board, config, 90)).toBe(1);
@@ -47,10 +47,10 @@ describe('Run21 authority specification', () => {
     expect(m.rounds[0].boards[a]).toMatchObject({startedAt:null,deadline:null});
     expect(m.rounds[0].boards[b]).toMatchObject({current:null,startedAt:null,deadline:null});
     expect(chooseAction(project(m,b),10000)).toBeNull();
-    m=act(m,a,{type:'place',column:0},10060);m=act(m,a,{type:'expire'},35060);
+    m=act(m,a,{type:'place',column:0},10060);m=act(m,a,{type:'expire'},260060);
     expect(m.rounds[0].active_player_id).toBeNull();
     expect(m.rounds[0].boards[b].current).toBeNull();
-    m=advanceScorePresentation(m,40060);
+    m=advanceScorePresentation(m,265060);
     expect(m.rounds[0].active_player_id).toBe(b);
     expect(m.rounds[0].boards[b]).toMatchObject({current:first,startedAt:null,deadline:null});
     expect(m.rounds[0].revealed).toBe(false);
@@ -66,13 +66,13 @@ describe('Run21 authority specification', () => {
     const upcard=m.rounds[0].boards[a].current,c=command(m,{type:'place',column:2});
     const placed=applyCommand(m,c,{kind:'player',playerId:a},200000);
     expect(placed.status).toBe('accepted');m=placed.state;
-    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:200000,deadline:225000,columns:[[],[],[upcard],[],[]]});
+    expect(m.rounds[0].boards[a]).toMatchObject({startedAt:200000,deadline:450000,columns:[[],[],[upcard],[],[]]});
     expect(applyCommand(m,c,{kind:'player',playerId:a},200100)).toMatchObject({status:'duplicate',state:m});
     const replay=exportReplay(m,a),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed');
     expect(seekReplay(replay,index-1).boards[a]!.deadline).toBeNull();
-    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(225000);
-    m=act(m,a,{type:'expire'},225000);
-    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:225000});
+    expect(seekReplay(replay,index).boards[a]!.deadline).toBe(450000);
+    m=act(m,a,{type:'expire'},450000);
+    expect(m.rounds[0].boards[a].result).toMatchObject({reason:'timeout',at:450000});
     expect(m.rounds[0].boards[b].deadline).toBeNull();
   });
   it('does not mutate inputs; duplicate/stale/rejected actions never consume a card', () => {
@@ -91,7 +91,7 @@ describe('Run21 authority specification', () => {
     expect(applyCommand(m,c,{kind:'player',playerId:b},1).reason).toBe('unauthorized');
     expect(applyCommand(m,{...c,identity:{...IDENTITY,handNumber:2}},{kind:'player',playerId:a},1).reason).toBe('identity');
     expect(applyCommand(m,{...c,roundId:uuid(101)},{kind:'player',playerId:a},1).reason).toBe('stale_round');
-    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'player',playerId:a},25000).reason).toBe('unauthorized');
+    expect(applyCommand(m,command(m,{type:'expire'}),{kind:'player',playerId:a},250000).reason).toBe('unauthorized');
   });
   it('rejects non-active commands before and after the active player advances', () => {
     const m=ready(), cb=command(m,{type:'place',column:1},b);
@@ -127,18 +127,18 @@ describe('Run21 authority specification', () => {
     expect(project(m,b).boards[a]).toEqual(m.rounds[0].boards[a]);
     expect(applyCommand(m,command(m,{type:'pass'}),{kind:'player',playerId:a},9).reason).toBe('not_your_turn');
   });
-  it.each([24999,25000,25001])('deterministically resolves collect versus expiration at %i', at => {
+  it.each([249999,250000,250001])('deterministically resolves collect versus expiration at %i', at => {
     const cfg = {...DEFAULT_CONFIG,multipliers:{11:50}};
     let m=ready(fixtureMatch(cfg,cards('A'))); m=act(m,a,{type:'place',column:0},0);
     const next=applyCommand(m,command(m,{type:'collect'}),{kind:'player',playerId:a},at).state;
-    expect(next.rounds[0].boards[a].result).toMatchObject({reason:at<25000?'collect':'timeout',score:at<25000?50:0,at:Math.min(at,25000)});
+    expect(next.rounds[0].boards[a].result).toMatchObject({reason:at<250000?'collect':'timeout',score:at<250000?50:0,at:Math.min(at,250000)});
     expect(applyCommand(next,{...command(next,{type:'expire'}),requestId:uuid(998)},{kind:'service'},at+1).reason).toBe('not_your_turn');
   });
   it('timeout wins placement races and reveals exactly once when both finish', () => {
     let m=ready();m=act(m,a,{type:'place',column:0},0);
-    m=act(m,a,{type:'place',column:0},25000);
+    m=act(m,a,{type:'place',column:0},250000);
     expect(m.rounds[0].revealed).toBe(false);
-    m=advanceScorePresentation(m,30000);m=act(m,b,{type:'place',column:1},30000);m=act(m,b,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
+    m=advanceScorePresentation(m,255000);m=act(m,b,{type:'place',column:1},255000);m=act(m,b,{type:'expire'},505000);m=advanceScorePresentation(m,510000);
     expect(m.rounds[0].boards[a].cardIndex).toBe(1);
     expect(m.events.filter(e=>e.type==='round_revealed')).toHaveLength(1);
     expect(project(m,a).boards[b]).not.toBeNull();
@@ -153,7 +153,7 @@ describe('Run21 authority specification', () => {
         const id=m.rounds.at(-1)!.active_player_id!;
         expect(m.rounds.at(-1)!.boards[id].deadline).toBeNull();
         m=act(m,id,{type:'place',column:0},m.updatedAt);
-        m=act(m,id,round===4&&id===a?{type:'collect'}:{type:'expire'},m.updatedAt+(round===4&&id===a?1:25000));
+        m=act(m,id,round===4&&id===a?{type:'collect'}:{type:'expire'},m.updatedAt+(round===4&&id===a?1:250000));
         m=advanceScorePresentation(m,m.rounds.at(-1)!.scorePresentation!.endsAt);
       }
       if(round<4) {
@@ -203,7 +203,7 @@ describe('Run21 bot and replay',()=>{
   });
   it('passes a forced bust and collects a maximum board',()=>{
     const view=project(ready(),a);const board=view.boards[a]!;
-    board.startedAt=0;board.deadline=25000;
+    board.startedAt=0;board.deadline=250000;
     board.columns=Array.from({length:5},()=>cards('K','9'));board.current={rank:'K',suit:'spades'};
     expect(chooseAction(view,1)!.intent).toEqual({type:'pass'});
     board.columns=Array.from({length:5},()=>cards('K','Q','A'));

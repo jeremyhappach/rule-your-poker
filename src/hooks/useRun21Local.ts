@@ -10,8 +10,8 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
   const [optimistic,setOptimistic]=useState<Command|null>(null),inFlight=useRef(false),[retry,setRetry]=useState(0);
   const clock=useRef({server:0,local:0}),[now,setNow]=useState(0);
   const storageKey=`run21-presentation:${gameId}:${dealerGameId}`;
-  const paint=useCallback(()=>{
-    const p=presentation.current,tick=performance.now(),event=p.advance(tick);
+  const paint=useCallback((live=false)=>{
+    const p=presentation.current,tick=performance.now(),event=p.advance(tick,live);
     if(event&&latest.current){
       const shown=eventSnapshot(latest.current,event);setSnapshot(shown);
       try{sessionStorage.setItem(storageKey,JSON.stringify({sequence:p.sequence,snapshot:shown}));}catch{/* Optional checkpoint. */}
@@ -24,9 +24,12 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
     if(!accepted||accepted!==value)return;
     latest.current=accepted;
     const tick=performance.now();clock.current={server:Math.max(accepted.serverAt,clock.current.server+tick-clock.current.local),local:tick};
-    presentation.current.ingest(accepted.events??[]);
+    const p=presentation.current,wasCaughtUp=p.sequence===p.received&&p.received>0&&p.queue.length===0;
+    p.ingest(accepted.events??[]);
     if(!accepted.events)setSnapshot(accepted);
-    paint();
+    // A single fresh transaction already contains its landed card and next upcard.
+    // Only a missed event backlog replays recorded pacing.
+    paint(wasCaughtUp&&p.queue.length===1);
   },[dealerGameId,paint]);
   useEffect(()=>{
     latest.current=null;presentation.current=new LivePresentation();setSnapshot(null);setError(null);
@@ -36,7 +39,7 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
         setSnapshot(saved.snapshot);presentation.current.received=saved.sequence;presentation.current.sequence=saved.sequence;
       }
     }catch{/* Recover the recorded prefix when no checkpoint exists. */}
-    const display=setInterval(paint,50);return()=>clearInterval(display);
+    const display=setInterval(()=>paint(),50);return()=>clearInterval(display);
   },[dealerGameId,storageKey,paint]);
   useEffect(()=>{
     // Reconnect preserves the mounted surface and consumes unseen persisted events.

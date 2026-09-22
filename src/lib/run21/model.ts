@@ -16,7 +16,7 @@ export interface Config {
 export const DEFAULT_CONFIG: Config = {
   preset: 'run21/1', rounds: 3, columns: 5, target: 21, passes: 1,
   multipliers: {97: 50, 98: 100, 99: 150, 100: 200, 101: 250, 102: 300, 103: 400, 104: 500, 105: 1000},
-  speed: { start: 250, decrement: 1, intervalMs: 100 },
+  speed: { start: 250, decrement: 1, intervalMs: 1000 },
   expiration: 'zero', bust: 'zero', exhausted: 'score',
 };
 export interface Identity { sessionId: string; dealerGameId: string; handNumber: number }

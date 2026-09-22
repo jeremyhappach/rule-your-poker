@@ -4,7 +4,7 @@ vi.mock('react',async original=>{const react=await original<typeof import('react
 vi.mock('@/integrations/supabase/client',()=>({supabase:new Proxy({}, {get(){throw new Error('Offline presentation test');}})}));
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Run21Felt } from '../../components/run21/Run21Felt';
-import {Run21PlayerPane,Run21PassStatus,Run21Timer} from '../../components/run21/Run21PlayerPane';
+import {Run21PlayerPane,Run21Timer} from '../../components/run21/Run21PlayerPane';
 import { act, fixtureDeck, fixtureMatch, IDENTITY, PLAYERS, uuid } from './fixtures';
 import { advanceScorePresentation, applyCommand, createMatch, prepareRound, project } from './engine';
 import {DEFAULT_CONFIG} from './model';
@@ -18,7 +18,7 @@ describe('Run21 player presentation',()=>{
   it('shows the bot board and frozen speed while the human controls remain inactive',()=>{
     const m=act(prepareRound(createMatch(IDENTITY,[...PLAYERS].reverse(),5,DEFAULT_CONFIG,0),uuid(100),null,fixtureDeck(),0),other,{type:'ready'},0);
     const html=render(m);
-    expect(html.match(/disabled=""/g)).toHaveLength(5);
+    expect(html.match(/disabled=""/g)).toHaveLength(6);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).toContain('Run21 bot is playing');expect(pane(m)).not.toContain('<button');
     expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={1000}/>)).toContain('Speed 250');
@@ -39,14 +39,14 @@ describe('Run21 player presentation',()=>{
     expect(html.match(/data-playing-card-hidden/g)).toHaveLength(1);
     expect(html).not.toMatch(/run21-(discard|passed)/);
   });
-  it('shows disabled PASS USED and resets the one-use allowance at the next round',()=>{
+  it('removes used Pass and resets the one-use allowance at the next round',()=>{
     let m=act(ready(),self,{type:'pass'},1);
-    expect(pane(m)).toMatch(/disabled=""[^>]*>Pass used/);
+    expect(pane(m)).not.toContain('Pass');
     expect(render(m)).not.toContain('run21.pass');
-    m=act(m,self,{type:'place',column:0},1);m=act(m,self,{type:'expire'},25001);m=advanceScorePresentation(m,30001);
-    m=act(m,other,{type:'place',column:0},30001);m=act(m,other,{type:'expire'},55001);m=advanceScorePresentation(m,60001);
-    for(const id of [self,other])m=act(m,id,{type:'acknowledge'},60001);
-    m=prepareRound(m,uuid(800),m.rounds[0].id,fixtureDeck(),60001);
+    m=act(m,self,{type:'place',column:0},1);m=act(m,self,{type:'expire'},250001);m=advanceScorePresentation(m,255001);
+    m=act(m,other,{type:'place',column:0},255001);m=act(m,other,{type:'expire'},505001);m=advanceScorePresentation(m,510001);
+    for(const id of [self,other])m=act(m,id,{type:'acknowledge'},510001);
+    m=prepareRound(m,uuid(800),m.rounds[0].id,fixtureDeck(),510001);
     expect(m.rounds[1].boards[self].passesUsed).toBe(0);
     expect(pane(m)).not.toContain('Pass used');
     expect(project(m,null).passUsed[self]).toBe(false);
@@ -61,7 +61,7 @@ describe('Run21 player presentation',()=>{
   });
   it.each([96,97])('renders Collect admission at aggregate %i',sum=>{
     const m=ready(),deck=standardDeck();
-    m.rounds[0].boards[self].startedAt=0;m.rounds[0].boards[self].deadline=25000;
+    m.rounds[0].boards[self].startedAt=0;m.rounds[0].boards[self].deadline=250000;
     // Four 20s, then 16 or 17: exact rule boundary, unique physical cards.
     m.rounds[0].boards[self].columns=[...Array.from({length:4},(_,i)=>[deck[i*13+11],deck[i*13+12]]),[deck[9],deck[sum-91]]];
     const html=pane(m),button=html.match(/<button[^>]*class="run21-collect-button"[^>]*>/)![0];
@@ -74,9 +74,6 @@ describe('Run21 player presentation',()=>{
     expect(view.passUsed).toEqual({[self]:true,[other]:false});
     const html=renderToStaticMarkup(<Run21PlayerPane view={view} now={100} onIntent={()=>{}}/>);
     expect(html).not.toContain('<button');
-    expect(renderToStaticMarkup(<Run21PassStatus used={view.passUsed[self]}/>)).toBe('');
-    const badge=renderToStaticMarkup(<Run21PassStatus used={view.passUsed[other]}/>);
-    expect(badge).toContain('>P</span>');expect(badge).toContain('aria-label="Pass available"');
     const replay=exportReplay(m,null),index=replay.steps.findIndex(s=>s.substeps[0]?.type==='pass_used');
     const frame=seekReplay(replay,index);
     expect(frame.boards[self]?.passesUsed).toBe(1);expect(frame.passUsed[self]).toBe(true);
@@ -89,16 +86,16 @@ describe('Run21 player presentation',()=>{
     expect(project(m,self).cumulative[self]).toBe(12500);
     m=advanceScorePresentation(m,5002);m=act(m,other,{type:'place',column:0},5002);
     const r=m.rounds[0],command={identity:m.identity,roundId:r.id,playerId:other,requestId:uuid(9900),revision:r.boards[other].revision,intent:{type:'expire' as const}};
-    m=applyCommand(m,command,{kind:'service'},30002).state;
+    m=applyCommand(m,command,{kind:'service'},255002).state;
     expect(project(m,self).cumulative[self]).toBe(12500);
-    expect(project(applyCommand(m,command,{kind:'service'},30002).state,self).cumulative[self]).toBe(12500);
-    m=advanceScorePresentation(m,35002);for(const id of [self,other])m=act(m,id,{type:'acknowledge'},35002);
-    m=prepareRound(m,uuid(8800),r.id,fixtureDeck(),35002);
+    expect(project(applyCommand(m,command,{kind:'service'},255002).state,self).cumulative[self]).toBe(12500);
+    m=advanceScorePresentation(m,260002);for(const id of [self,other])m=act(m,id,{type:'acknowledge'},260002);
+    m=prepareRound(m,uuid(8800),r.id,fixtureDeck(),260002);
     expect(project(m,self).cumulative[self]).toBe(12500);
   });
   it('presents the same deadline as a draining bar without mutating the round',()=>{
     const m=act(ready(),self,{type:'place',column:0},0),before=JSON.stringify(m),view=project(m,self);
-    for(const [at,remaining] of [[0,25000],[12500,12500],[25000,0]]){
+    for(const [at,remaining] of [[0,250000],[125000,125000],[250000,0]]){
       const html=renderToStaticMarkup(<Run21Timer view={view} now={at}/>);
       expect(html).toContain('role="progressbar"');expect(html).toContain(`data-run21-time-remaining="${remaining}"`);
       expect(html).toContain('Speed');
@@ -107,12 +104,12 @@ describe('Run21 player presentation',()=>{
   });
   it('keeps the opening speed frozen and then displays the active opponent after scoring',()=>{
     let m=ready();const view=project(m,self);
-    expect(renderToStaticMarkup(<Run21Timer view={view} now={100000}/>)).toContain('data-run21-time-remaining="25000"');
-    m=act(m,self,{type:'place',column:0},0);m=act(m,self,{type:'expire'},25000);m=advanceScorePresentation(m,30000);
+    expect(renderToStaticMarkup(<Run21Timer view={view} now={100000}/>)).toContain('data-run21-time-remaining="250000"');
+    m=act(m,self,{type:'place',column:0},0);m=act(m,self,{type:'expire'},250000);m=advanceScorePresentation(m,255000);
     const watching=project(m,self),html=render(m);
-    expect(html.match(/disabled=""/g)).toHaveLength(5);
+    expect(html.match(/disabled=""/g)).toHaveLength(6);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).toContain('Run21 bot is playing');expect(pane(m)).not.toContain('<button');
-    expect(renderToStaticMarkup(<Run21Timer view={watching} now={30000}/>)).toContain('Speed 250');
+    expect(renderToStaticMarkup(<Run21Timer view={watching} now={255000}/>)).toContain('Speed 250');
   });
 });

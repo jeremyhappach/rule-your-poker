@@ -38,8 +38,8 @@ function Run21ColumnCards({cards}:{cards:Card[]}){
     const observer=new ResizeObserver(([entry])=>setSize({width:entry.contentRect.width,height:entry.contentRect.height}));
     observer.observe(ref.current);return()=>observer.disconnect();
   },[]);
-  return <span ref={ref} className="run21-column-stack" data-run21-scroll-stack={fan.contentHeight>size.height+1}>
-    {cards.map((card,index)=><span key={`${card.rank}:${card.suit}`} className="run21-stacked-card" style={{top:index*fan.step,width:fan.width,height:fan.height}}><Run21Card card={card}/></span>)}
+  return <span ref={ref} className="run21-column-stack">
+    {cards.map((card,index)=><span key={`${card.rank}:${card.suit}`} className="run21-stacked-card" style={{zIndex:index,top:index*fan.step,width:fan.width,height:fan.height}}><Run21Card card={card}/></span>)}
   </span>;
 }
 interface Props {
@@ -67,24 +67,19 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<>{board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
     {slot('help',<Run21ScoringHelp/>)}
+    {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
+      <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;
   return <section className="run21-felt-content" data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>
     {slot('board',<div className={view.revealed&&!view.liveBoards?'run21-revealed-boards':'run21-single-board'}>
       {(view.revealed&&!view.liveBoards?view.players.map(p=>p.id):[playerId]).map(id=>{
         const visibleBoard=view.boards[id];
         return <div className="run21-board-group" key={id}>
-          {(view.liveBoards||view.revealed)&&<small>{view.players.find(p=>p.id===id)!.name}{view.passUsed[id]?' · Pass used':''}</small>}
+          {(view.liveBoards||view.revealed)&&<small>{view.players.find(p=>p.id===id)!.name}</small>}
           {visibleBoard?<div className="run21-columns">{visibleBoard.columns.map((column,index)=>
             <button key={index} type="button" className="run21-column" aria-label={`Place in column ${index+1}, total ${total(column,view.config.target).value}`}
               aria-disabled={view.revealed||!active||!legal.includes(index)}
               disabled={view.revealed||!active||!legal.includes(index)}
-              onKeyDown={event=>{
-                const stack=event.currentTarget.querySelector<HTMLElement>('.run21-column-stack');
-                if(stack&&stack.scrollHeight>stack.clientHeight&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
-                  event.preventDefault();
-                  stack.scrollTo({top:event.key==='Home'?0:event.key==='End'?stack.scrollHeight:stack.scrollTop+(event.key==='ArrowDown'?1:-1)*stack.clientHeight*.5});
-                }
-              }}
               onClick={()=>{if(!view.revealed&&active&&legal.includes(index))onIntent?.({type:'place',column:index});}}>
               <span className="run21-column-total">{total(column,view.config.target).value}</span>
               <Run21ColumnCards key={view.roundId} cards={column}/>

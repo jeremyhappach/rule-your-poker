@@ -1,5 +1,5 @@
 import {useLayoutEffect,useState} from 'react';
-import {drawPairRect,drawHelpRect,safeFeltRect,type Rect} from '@/lib/run21/safeFelt';
+import {drawPairRect,drawHelpRect,drawPassRect,safeFeltRect,type Rect} from '@/lib/run21/safeFelt';
 import type {Run21Geometry} from '@/lib/run21/geometry';
 export const RESERVED_SELECTOR='[data-canonical-felt-plate], [data-canonical-seat-cluster], [data-canonical-seat-cluster] *, [data-chip-center], [data-canonical-dealer-pip], [data-canonical-shell-hud-grid], [data-canonical-shell-tabbar], .run21-lab-header';
 export function useSafeFelt(layer:HTMLElement|null,identity:string,geometry:Run21Geometry,hasDrawCards:boolean){
@@ -16,7 +16,7 @@ export function useSafeFelt(layer:HTMLElement|null,identity:string,geometry:Run2
       const reserved=nodes.map(n=>n.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:(r.x-felt.x)/felt.width,y:(r.y-felt.y)/felt.height,width:r.width/felt.width,height:r.height/felt.height}));
       const aspect=felt.width/felt.height;
       const draw=drawPairRect(reserved,aspect,geometry.controlsY,hasDrawCards);
-      const area=safeFeltRect([...reserved,drawHelpRect(draw),...(hasDrawCards?[draw]:[])],aspect);
+      const area=safeFeltRect([...reserved,drawHelpRect(draw),...(hasDrawCards?[draw,drawPassRect(draw)]:[])],aspect);
       const next={area,draw};
       setLayout(prior=>JSON.stringify(prior)===JSON.stringify(next)?prior:next);
     };

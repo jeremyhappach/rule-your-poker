@@ -23,7 +23,7 @@ function previewScene(scene: Run21Preview,perspective: string): Projection {
   // Geometry scenes represent an already-playing round, separate from live admission.
   for(const board of Object.values(m.rounds[0].boards)){board.startedAt=0;board.deadline=duration(m.config);}
   if(scene==='pass-used')m=act(m,focus,{type:'pass'},300);
-  if(scene==='time-expired')m=act(m,focus,{type:'expire'},25000);
+  if(scene==='time-expired')m=act(m,focus,{type:'expire'},250000);
   if(scene==='round-reveal')m=simulateRound(m);
   if(perspective==='observer')return project(m,null);
   const view=project(m,focus);

@@ -29,22 +29,22 @@ describe('Run21 canonical round narration',()=>{
   it('names each active player in order and announces completion only after both finish',()=>{
     let m=ready();
     expect(run21Announcement(project(m,self)).title).toBe('You are playing round 1/3');
-    m=act(m,self,{type:'expire'},25000);
+    m=act(m,self,{type:'expire'},250000);
     expect(run21Announcement(project(m,self)).title).toContain('TIME EXPIRED');
-    m=advanceScorePresentation(m,30000);
+    m=advanceScorePresentation(m,255000);
     expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 1/3');
-    m=act(m,bot,{type:'place',column:0},30000);
-    m=act(m,bot,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
+    m=act(m,bot,{type:'place',column:0},255000);
+    m=act(m,bot,{type:'expire'},505000);m=advanceScorePresentation(m,510000);
     expect(run21Announcement(project(m,self)).title).toBe('Round 1/3 complete');
-    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},60000);
-    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),60000);
-    expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 2/3');
+    for(const id of [self,bot])m=act(m,id,{type:'acknowledge'},510000);
+    m=prepareRound(m,uuid(801),m.rounds[0].id,fixtureDeck(),510000);
+    expect(run21Announcement(project(m,self)).title).toBe('You are playing round 2/3');
   });
   it('keeps the announcement stable through card actions and reads recorded phases on seek',()=>{
     let m=ready();const initial=run21Announcement(project(m,self)).id;
     m=act(m,self,{type:'pass'},100);
     expect(run21Announcement(project(m,self)).id).toBe(initial);
-    m=act(m,self,{type:'expire'},25000);m=advanceScorePresentation(m,30000);m=act(m,bot,{type:'place',column:0},30000);m=act(m,bot,{type:'expire'},55000);m=advanceScorePresentation(m,60000);
+    m=act(m,self,{type:'expire'},250000);m=advanceScorePresentation(m,255000);m=act(m,bot,{type:'place',column:0},255000);m=act(m,bot,{type:'expire'},505000);m=advanceScorePresentation(m,510000);
     const replay=exportReplay(m,self);
     const index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed'&&s.substeps[0]?.actorId===bot);
     expect(run21Announcement(seekReplay(replay,index)).title).toBe('Run21 bot is playing round 1/3');

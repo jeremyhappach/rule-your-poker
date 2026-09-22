@@ -1,13 +1,15 @@
 export interface Rect { x:number; y:number; width:number; height:number }
 export const intersects=(a:Rect,b:Rect)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
 export const DRAW_HELP={x:-.2,y:.5,width:.24,height:.35};
+export const DRAW_PASS={...DRAW_HELP,x:1.2};
+export const drawPassRect=(draw:Rect):Rect=>({...drawHelpRect(draw),x:draw.x+(DRAW_PASS.x-DRAW_PASS.width/2)*draw.width});
 export const drawHelpRect=(draw:Rect):Rect=>({x:draw.x+(DRAW_HELP.x-DRAW_HELP.width/2)*draw.width,y:draw.y+(DRAW_HELP.y-DRAW_HELP.height/2)*draw.height,width:DRAW_HELP.width*draw.width,height:DRAW_HELP.height*draw.height});
 /** A close, symmetric 2:3 card pair just inside the bottom felt rim. */
 export function drawPairRect(reserved:Rect[],feltAspect:number,centerY=.88,hasDrawCards=true):Rect {
   const height=.22,width=height/1.5/feltAspect/.46;
   for(let bottom=Math.min(.975,centerY+height/2);bottom>=.45;bottom-=.01){
     const r={x:.5-width/2,y:bottom-height,width,height};
-    const clear=[...(hasDrawCards?[r]:[]),drawHelpRect(r)].every(rect=>{
+    const clear=[...(hasDrawCards?[r,drawPassRect(r)]:[]),drawHelpRect(r)].every(rect=>{
       const padded={x:rect.x-.015,y:rect.y-.015,width:rect.width+.03,height:rect.height+.03};
       return !reserved.some(o=>intersects(padded,o))&&[rect.x,rect.x+rect.width].every(x=>[rect.y,rect.y+rect.height].every(y=>(2*x-1)**2+(2*y-1)**2<=.985));
     });

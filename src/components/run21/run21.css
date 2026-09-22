@@ -8,9 +8,7 @@
 .run21-column[aria-disabled="false"]:hover{background:#ffe2a42a;border-color:#ffde91}
 .run21-column[aria-disabled="true"]{cursor:default}
 .run21-column-total{position:absolute;top:1%;left:0;width:100%;display:block;height:12%;line-height:1;font-size:1.25em;font-weight:700;font-variant-numeric:tabular-nums}
-.run21-column-stack{position:absolute;inset:14% 3% 2%;display:block;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y}
-.run21-column-stack::-webkit-scrollbar{width:.2em}
-.run21-column-stack::-webkit-scrollbar-thumb{background:#f5f1df66;border-radius:1em}
+.run21-column-stack{position:absolute;inset:14% 3% 2%;display:block;overflow:hidden;touch-action:manipulation}
 .run21-stacked-card{position:absolute;left:50%;transform:translateX(-50%);display:block;animation:run21-card-land 120ms ease-out}
 @keyframes run21-card-land{from{transform:translate(-50%,1em);opacity:.5}to{transform:translate(-50%,0);opacity:1}}
 .run21-card{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
@@ -31,7 +29,10 @@
 .run21-board-group>small{line-height:1.2;font-size:.75em}
 .run21-felt-content{pointer-events:auto}
 
-.run21-help{pointer-events:auto}
+.run21-help,.run21-pass{pointer-events:auto}
+.run21-pass button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:.5em;background:#213c30;color:#f5f1df;font-weight:700;font-size:clamp(.5rem,8cqw,.8rem);cursor:pointer;touch-action:manipulation}
+.run21-pass button:disabled{cursor:default;opacity:.6}
+.run21-pass button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
 .run21-help button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:50%;background:#ffffff0e;color:#f5f1df;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
 .run21-help button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
 .run21-help-popover{max-width:var(--radix-popover-content-available-width);max-height:var(--radix-popover-content-available-height);overflow:auto}
@@ -43,7 +44,6 @@
 .run21-player-actions button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
 .run21-player-actions .run21-collect-button:enabled{background:#e5b453;color:#182c23}
 .run21-player-actions button small{margin-left:.4em;font-weight:400}
-.run21-pass-status{display:inline-flex;align-items:center;justify-content:center;width:1.2em;height:1.2em;font-size:.65rem;font-weight:700;line-height:1;color:#f5f1df;background:#13291f;border-radius:50%}
 .run21-timer{width:88%;height:45%;max-height:.8rem;margin:auto;overflow:hidden;border-radius:999px;background:#ffffff25;outline:1px solid #ffffff30}
 .run21-timer-fill{height:100%;display:block;background:#e5b453;border-radius:inherit}
 .run21-speed{height:100%;width:100%;display:flex;align-items:center;gap:.5rem;font-size:.7rem;font-variant-numeric:tabular-nums;padding:0 .5rem}

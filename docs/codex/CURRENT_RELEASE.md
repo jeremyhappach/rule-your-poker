@@ -1,5 +1,34 @@
 # Current release and cutover state
 
+## September 22 Run21 six-issue pass: publication pending
+
+The release branch now derives fixed non-dealer/dealer order from
+`dealer_games.dealer_user_id`, uses a 250-second first-placement deadline,
+places one-use Pass beside the current card without seat badges, applies fresh
+accepted projections immediately, and keeps card dimensions independent of
+column depth. Persisted earlier matches retain their recorded configuration.
+The isolated Run21 branch also used the old 100ms decrement; the explicit new
+product requirement supersedes it with 1000ms.
+
+104 focused tests pass, including both dealer identities through three rounds,
+deadline boundaries, same-response upcards, event backlog ordering, and
+maximum-depth geometry. App/node typechecks and the production Vite build
+pass. A browser fixture measured all 29 cards across depths 1/3/6/8/11 at
+48.8021 x 73.2083px with zero dimension spread, overflow, or scrolling.
+
+Publication is pending approval of the necessary canonical dealer correction.
+Read-only production and local catalog evidence matches exactly:
+`begin_session_dealer_selection(uuid)` has fingerprint
+`da82c324af2a7b26c0d1d93502af6f8d` and does not prepare selection;
+`private.complete_session_dealer_selection(uuid,bigint)` has fingerprint
+`fa42c411b01fefa605c4780a52659e9e` and unconditionally holds three seconds.
+The proposed forward patch in ignored `qualification.local/sole-dealer-proposed.sql`
+reuses preparation/completion within the locked Start transaction only when
+one dealer is eligible; actual multi-player draws retain their hold. It has
+not been applied. Production remains at `03dba6a61da0a9b21588e859472993c9683add32`
+with the existing Hap-only gate unchanged. No production gameplay smoke of
+these new changes has occurred yet.
+
 ## September 22 Run21 ordered live presentation correction
 
 Frozen production evidence confirmed Round 2 selected Hap because the authority

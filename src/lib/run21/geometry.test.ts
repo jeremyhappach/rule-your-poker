@@ -20,7 +20,7 @@ describe('Run21 additive registration contracts',()=>{
     const draw=drawPairRect([],1.09);
     for(const d of descriptors){
       expect(d.id.startsWith('run21.')).toBe(true);
-      const parent=['run21.deck','run21.currentCard','run21.help'].includes(d.id)?draw:{x:0,y:0,width:1,height:1};
+      const parent=['run21.deck','run21.currentCard','run21.pass','run21.help'].includes(d.id)?draw:{x:0,y:0,width:1,height:1};
       expect(parent.x+(d.anchorX!-d.widthPct!/2)*parent.width).toBeGreaterThanOrEqual(0);
       expect(parent.x+(d.anchorX!+d.widthPct!/2)*parent.width).toBeLessThanOrEqual(1);
       expect(parent.y+(d.anchorY!-d.heightPct!/2)*parent.height).toBeGreaterThanOrEqual(0);

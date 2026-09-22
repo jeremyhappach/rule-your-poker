@@ -9,7 +9,7 @@ import { useShellTabBar, type ShellTabId } from '@/lib/canonicalShell/ShellTabBa
 import { useCanonicalFeltInteractionLayerElement } from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { Run21Felt } from '@/components/run21/Run21Felt';
-import {Run21PlayerPane,Run21PassStatus,Run21Timer} from '@/components/run21/Run21PlayerPane';
+import {Run21PlayerPane,Run21Timer} from '@/components/run21/Run21PlayerPane';
 import {Run21Announcement} from '@/components/run21/Run21Announcement';
 import type { Intent, Projection } from '@/lib/run21/model';
 import type { Run21Geometry } from '@/lib/run21/geometry';
@@ -35,7 +35,6 @@ function Contents({view,now,pane,geometry,onIntent}:Props) {
         slot={anchors.byPosition.get(p.seat)?.slot} position={p.seat} name={p.name}
         chipValue="100" chipAmount={100} playerId={p.id} ownerLabel="Run21Fixture" isDealer={p.id===view.players[1].id}
         scoreLine={compact(view.cumulative[p.id])}>
-          <Run21PassStatus used={view.passUsed[p.id]??false}/>
         </CanonicalSeatCluster>)}
       </div>
     </div>
