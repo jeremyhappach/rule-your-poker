@@ -75,7 +75,6 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
       {(view.revealed&&!view.liveBoards?view.players.map(p=>p.id):[playerId]).map(id=>{
         const visibleBoard=view.boards[id];
         return <div className="run21-board-group" key={id}>
-          {(view.liveBoards||view.revealed)&&<small>{view.players.find(p=>p.id===id)!.name}</small>}
           {visibleBoard?<div className="run21-columns">{visibleBoard.columns.map((column,index)=>
             <button key={index} type="button" className="run21-column" aria-label={`Place in column ${index+1}, total ${total(column,view.config.target).value}`}
               aria-disabled={view.revealed||!active||!legal.includes(index)}

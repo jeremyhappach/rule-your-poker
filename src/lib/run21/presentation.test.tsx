@@ -20,7 +20,7 @@ describe('Run21 player presentation',()=>{
     const html=render(m);
     expect(html.match(/disabled=""/g)).toHaveLength(6);
     expect(html).toContain('data-playing-card-face');
-    expect(pane(m)).toContain('Run21 bot is playing');expect(pane(m)).not.toContain('<button');
+    expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
     expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={1000}/>)).toContain('Speed 250');
   });
   it('renders five empty columns with only totals visible and accessible action indexes',()=>{
@@ -109,7 +109,24 @@ describe('Run21 player presentation',()=>{
     const watching=project(m,self),html=render(m);
     expect(html.match(/disabled=""/g)).toHaveLength(6);
     expect(html).toContain('data-playing-card-face');
-    expect(pane(m)).toContain('Run21 bot is playing');expect(pane(m)).not.toContain('<button');
+    expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
     expect(renderToStaticMarkup(<Run21Timer view={watching} now={255000}/>)).toContain('Speed 250');
   });
+});
+
+it.each([[224999,'success'],[225000,'warning'],[237499,'warning'],[237500,'danger'],[250000,'danger']] as const)('uses fractional authoritative timer threshold at %i', (at,tone)=>{
+ const m=act(ready(),self,{type:'place',column:0},0);
+ expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={at}/>)).toContain('data-run21-time-tone="'+tone+'"');
+});
+
+it('rejects contradictory final scores and preserves totals after board clearing',async()=>{
+ const {assertFinalScores}=await import('./presentation');
+ const {eventSnapshot}=await import('./livePresentation');
+ const view=project(ready(),self);view.cumulative={[self]:105000,[other]:35850};view.winnerId=self;
+ view.settlement={key:'test',winnerId:self,loserId:other,amount:5,resultId:uuid(501),transferBatchId:uuid(502),at:1};
+ expect(()=>assertFinalScores(view)).not.toThrow();
+ const cleared=eventSnapshot({view,revision:1,serverAt:1,balances:{},finished:false},{sequence:1,type:'score_presentation_completed',at:1,roundId:view.roundId,actorId:self,requestId:null,operands:{},frame:view});
+ expect(cleared.view.cumulative).toEqual(view.cumulative);expect(()=>assertFinalScores(cleared.view)).not.toThrow();
+ expect(()=>assertFinalScores({...view,cumulative:{[self]:0,[other]:35850}})).toThrow('mismatch');
+ expect(project(ready(),self).cumulative).toEqual({[self]:0,[other]:0});
 });

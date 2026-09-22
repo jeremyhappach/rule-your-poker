@@ -147,7 +147,7 @@ export class Run21Authority {
   }
   private snapshot(row: StoredMatch, playerId: string, afterSequence: number) {
     return {revision: row.revision, serverAt: this.now(), view: project(row.state!, playerId), balances: row.balances, finished: row.finished,
-      eventSequence: row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId).filter(e => e.sequence > afterSequence)};
+      eventSequence: row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId, afterSequence)};
   }
   async read(gameId: string, userId: string, afterSequence = 0) {
     return this.serial(gameId, async () => {

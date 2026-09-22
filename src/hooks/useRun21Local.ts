@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {flushSync} from 'react-dom';
 import {acceptRun21Snapshot,run21Fetch,run21Request,type Run21Snapshot} from '@/lib/run21/localClient';
 import {eventSnapshot,LivePresentation,optimisticPlacement,presentationPhase} from '@/lib/run21/livePresentation';
 import {legalColumns} from '@/lib/run21/rules';
@@ -19,18 +20,26 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
     const liveNow=clock.current.server+tick-clock.current.local;
     setNow(p.queue.length&&p.event?Math.min(p.queue[0].at,p.event.at+tick-p.shownAt):liveNow);
   },[storageKey]);
-  const accept=useCallback((value:Run21Snapshot)=>{
+  const accept=useCallback((value:Run21Snapshot, actionResponse=false)=>{
     const accepted=acceptRun21Snapshot(latest.current,value,dealerGameId);
     if(!accepted||accepted!==value)return;
     latest.current=accepted;
     const tick=performance.now();clock.current={server:Math.max(accepted.serverAt,clock.current.server+tick-clock.current.local),local:tick};
     const p=presentation.current,wasCaughtUp=p.sequence===p.received&&p.received>0&&p.queue.length===0;
     p.ingest(accepted.events??[]);
+    if(actionResponse){
+      // An accepted command is already a complete transaction, including its next card.
+      p.queue=[];p.sequence=p.received=accepted.eventSequence??p.received;
+      p.event=accepted.events?.at(-1)??p.event;p.shownAt=tick;
+      setSnapshot(accepted);setNow(accepted.serverAt);setOptimistic(null);
+      try{sessionStorage.setItem(storageKey,JSON.stringify({sequence:p.sequence,snapshot:accepted}));}catch{}
+      return;
+    }
     if(!accepted.events)setSnapshot(accepted);
     // A single fresh transaction already contains its landed card and next upcard.
     // Only a missed event backlog replays recorded pacing.
     paint(wasCaughtUp&&p.queue.length===1);
-  },[dealerGameId,paint]);
+  },[dealerGameId,paint,storageKey]);
   useEffect(()=>{
     latest.current=null;presentation.current=new LivePresentation();setSnapshot(null);setError(null);
     inFlight.current=false;setPending(false);setOptimistic(null);clock.current={server:0,local:performance.now()};
@@ -68,7 +77,7 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
     try{let response:Run21Snapshot;const path=`action?after=${presentation.current.received}`;
       try{response=await run21Request(gameId,path,command);}catch(e){if(!(e instanceof TypeError))throw e;response=await run21Request(gameId,path,command);}
       if(response.requestId!==command.requestId)throw new Error('Run21 action acknowledgment mismatch.');
-      accept(response);
+      flushSync(()=>accept(response,true));
     }catch(e){setOptimistic(null);setError(e instanceof Error?e.message:'Action rejected.');}
     finally{inFlight.current=false;setPending(false);}
   },[gameId,connected,accept]);

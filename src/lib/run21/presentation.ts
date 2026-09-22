@@ -1,5 +1,16 @@
 import type {Projection} from './model';
 
+/** Never announce or animate a recipient that contradicts the frozen scoreboard. */
+export function assertFinalScores(view:Projection):void {
+  if(!view.settlement)return;
+  const scores=view.players.map(p=>view.cumulative[p.id]);
+  if(scores.some(score=>!Number.isSafeInteger(score)||score<0)||
+    view.winnerId!==view.settlement.winnerId||!view.players.some(p=>p.id===view.winnerId)||
+    view.cumulative[view.winnerId!]!==Math.max(...scores)||
+    scores.filter(score=>score===Math.max(...scores)).length!==1)
+    throw new Error('Run21 final score and settlement mismatch.');
+}
+
 /** One public board on the canonical felt, including its terminal presentation. */
 export function displayedPlayerId(view: Projection): string {
   if (!view.liveBoards) return view.viewerId ?? view.players[0].id;

@@ -11,14 +11,16 @@ import { useGameChatContext } from '@/hooks/GameChatContext';
 import { useRun21Local } from '@/hooks/useRun21Local';
 import { useSafeFelt } from '@/hooks/useRun21SafeFelt';
 import { RUN21_GEOMETRY_DEFAULTS } from '@/lib/run21/geometry';
-import { run21Request } from '@/lib/run21/localClient';
+import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
+import {Run21Scoreboard} from './Run21Scoreboard';
+import {useRun21Terminal} from './useRun21Terminal';
 import type { Intent, Projection } from '@/lib/run21/model';
 import type { ReplayPackageV1 } from '@/lib/replay/contractV1';
 import { Run21Felt } from './Run21Felt';
 import { Run21PlayerPane, Run21Timer } from './Run21PlayerPane';
 import { Run21Announcement } from './Run21Announcement';
 import { Run21Replay } from './Run21Replay';
-import {displayedPlayerId, displayedScore} from '@/lib/run21/presentation';
+import {displayedPlayerId} from '@/lib/run21/presentation';
 
 interface Props {
   gameId: string; dealerGameId: string; userId: string; dealerPosition: number;
@@ -38,46 +40,29 @@ export function Run21GameTable(props: Props) {
   const {snapshot, now, error, pending, connected, onIntent, reconnect, phase} = useRun21Local(props.gameId, props.dealerGameId);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
-  const [closing, setClosing] = useState(false);
-  const [closeError, setCloseError] = useState('');
   const view = snapshot?.view;
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
-  useEffect(() => {
-    if (view?.settlement && !props.sessionEnded && !closing) onTerminalActive(true);
-  }, [view?.settlement?.resultId, props.sessionEnded, closing, onTerminalActive]);
-  useEffect(() => {if (props.sessionEnded) {setReplay(null); onTerminalActive(false);}}, [props.sessionEnded, onTerminalActive]);
-  async function finish() {
-    if (!view?.settlement || closing) return;
-    setClosing(true); setCloseError('');
-    try {
-      await run21Request(props.gameId, 'close', {});
-      onTerminalComplete(`run21|winseq|${props.gameId}|${props.dealerGameId}|1`);
-      onTerminalActive(false);
-    } catch (e) {setCloseError(e instanceof Error ? e.message : 'Could not finish.'); setClosing(false);}
-  }
+  const closeError=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
+  useEffect(()=>{if(props.sessionEnded)setReplay(null);},[props.sessionEnded]);
   const errorPane = <div className="text-center text-xs" role="status">{error || closeError || (!connected ? 'Reconnecting…' : '')}
     {(!connected || error) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
   let pane: ReactNode = errorPane;
   let felt: ReactNode = null, timer: ReactNode = null, identity: ReactNode = null;
   if (view && snapshot) {
     const self = view.players.find(p => p.id === view.viewerId)!;
-    const winner = view.players.find(p => p.id === view.winnerId);
     pane = props.activeTab === 'history' ? <HandHistory gameId={props.gameId} currentUserId={props.userId} gameType="run21" onRun21Replay={setReplay}/>
       : props.activeTab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>
       : props.activeTab === 'lobby' ? <div className="p-3 text-sm">{view.players.map(p => <p key={p.id}>{p.name} · {snapshot.balances[p.id]}</p>)}</div>
       : props.sessionEnded ? null
       : <div className="run21-player-pane">
           {errorPane}
-          {view.revealed ? <div className="text-center text-sm">
-            <p>{view.players.map(p => `${p.name}: ${view.boards[p.id]?.result?.score ?? 0}`).join(' · ')}</p>
-            {winner ? <><p>{winner.name} wins the match · {view.stake} stake</p><button className="underline" onClick={finish} disabled={closing}>Finish match</button></>
-              : <button className="underline" disabled={pending || !connected} onClick={() => void onIntent({type: 'acknowledge'})}>{view.roundNumber >= 3 ? 'Continue sudden death' : 'Next round'}</button>}
-          </div> : <Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>}
+          <Run21Scoreboard view={view} now={now}/>
+          {!view.revealed&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>}
         </div>;
     felt = <>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}
-          presentation={{scoreLine: p => displayedScore(view,p.id,now).toLocaleString(), dealerPip: p => p.position === props.dealerPosition,
+          presentation={{dealerPip: p => p.position === props.dealerPosition,
             isolatedBalance: p => snapshot.balances[p.id]}}/>
         {!props.sessionEnded && (replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <>
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
@@ -85,11 +70,11 @@ export function Run21GameTable(props: Props) {
             document.querySelector('[data-hud-row="pane"]') ?? document.createDocumentFragment())}
         </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending || !connected}/>)}</>;
     timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
-    identity = <div className="run21-self-identity"><strong>{self.name}</strong><CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>
-          <span aria-label={`Score ${displayedScore(view,self.id,now)}`}>{displayedScore(view,self.id,now).toLocaleString()}</span></div>;
+    identity = <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}
+      balance={<CanonicalChipDisc amount={snapshot.balances[self.id]} positionAnchor={self.seat} size="cluster"/>}/>;
   }
   return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
-    {view && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
+    {view && !view.settlement && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
     <div aria-hidden style={{flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none'}}/>
     <div className="relative overflow-visible" style={{height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', pointerEvents: 'none'}}>
       {felt ?? <div className="absolute inset-0 flex items-center justify-center" role="status">Preparing Run21…</div>}
