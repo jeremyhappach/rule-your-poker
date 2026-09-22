@@ -46,9 +46,16 @@ export function createRun21Handler(options: AuthorityOptions) {
     if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new AuthorityError('run21:origin', 403);
     const token = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '')?.[1];
     if (!token) throw new AuthorityError('run21:authentication_required', 401);
-    const {data, error} = await db.auth.getUser(token);
-    if (error || !data.user) throw new AuthorityError('run21:authentication_required', 401);
-    if (!await rpc<boolean>('run21_server_authorize', {p_user_id: data.user.id})) throw new AuthorityError('run21:release_denied', 403);
+    // The unverified subject is only a speculative lookup key. Neither check
+    // authorizes a request until Auth verifies that exact same identity.
+    let subject:unknown;
+    try{subject=JSON.parse(Buffer.from(token.split('.')[1]??'','base64url').toString('utf8')).sub;}catch{}
+    if(typeof subject!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subject))throw new AuthorityError('run21:authentication_required',401);
+    const [{data,error},allowed]=await Promise.all([
+      db.auth.getUser(token),rpc<boolean>('run21_server_authorize',{p_user_id:subject}),
+    ]);
+    if (error || !data.user || data.user.id!==subject) throw new AuthorityError('run21:authentication_required', 401);
+    if (!allowed) throw new AuthorityError('run21:release_denied', 403);
     return data.user.id;
   }
   const handler = async (req: IncomingMessage & {body?: unknown}, res: ServerResponse) => {
