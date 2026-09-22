@@ -1,5 +1,19 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 sole dealer and five application fixes — September 22
+
+- Deployed: `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4`.
+- Additive migration `20260922150253` applied; sole dealer resolves within
+  Start, while multiple eligible dealers retain the existing draw and hold.
+- Production browser Start completed in 197ms. Hap was dealer; persisted
+  history confirmed the bot started Round 1 and finished before Hap admission.
+- Pass/upcard placement, no seat pass badge, frozen opening clock, exact
+  250,000ms first-placement deadline, real-time cadence, accepted upcards,
+  and equal card dimensions were verified in the disposable production match.
+- Existing 104 focused tests remained accepted; only the new migration's
+  rollback proof and the required remote deployment build ran this pass.
+- Hap-only gate preserved; smoke fixture cleanup verified.
+
 ## Run21 public live boards and first-placement timing — September 22
 
 - Deployed: `50af704931b963fc6de71323a5d2035169ac9842`.

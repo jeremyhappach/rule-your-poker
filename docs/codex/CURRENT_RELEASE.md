@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-## September 22 Run21 six-issue pass: publication pending
+## September 22 Run21 six-issue pass: published and smoke verified
 
 The release branch now derives fixed non-dealer/dealer order from
 `dealer_games.dealer_user_id`, uses a 250-second first-placement deadline,
@@ -16,18 +16,31 @@ maximum-depth geometry. App/node typechecks and the production Vite build
 pass. A browser fixture measured all 29 cards across depths 1/3/6/8/11 at
 48.8021 x 73.2083px with zero dimension spread, overflow, or scrolling.
 
-Publication is pending approval of the necessary canonical dealer correction.
-Read-only production and local catalog evidence matches exactly:
-`begin_session_dealer_selection(uuid)` has fingerprint
-`da82c324af2a7b26c0d1d93502af6f8d` and does not prepare selection;
-`private.complete_session_dealer_selection(uuid,bigint)` has fingerprint
-`fa42c411b01fefa605c4780a52659e9e` and unconditionally holds three seconds.
-The proposed forward patch in ignored `qualification.local/sole-dealer-proposed.sql`
+Approved additive migration `20260922150253_session_sole_dealer_immediate.sql`
+was the sole pending migration and applied successfully. Its guarded patch
 reuses preparation/completion within the locked Start transaction only when
-one dealer is eligible; actual multi-player draws retain their hold. It has
-not been applied. Production remains at `03dba6a61da0a9b21588e859472993c9683add32`
-with the existing Hap-only gate unchanged. No production gameplay smoke of
-these new changes has occurred yet.
+one dealer is eligible; multi-player draws retain their three-second hold.
+A focused local rollback proof passed sole selection (39.651ms), multiple
+selection/hold, authorization, duplicate/stale identity, continuation, and
+unchanged balances. No historical migration was changed or reconciled.
+
+Production deploys `bb7c8beafa87ea5f22a2f8695d423c4d79b25af4` at
+https://ptown-poker.vercel.app (Vercel `dpl_8xmWJreX1ra6erygYsy8JtkpKgKS`).
+The actual browser Start Game trace completed in 197ms at
+2026-09-22T15:10:34.228Z, selecting Hap immediately. Persisted Run21 history
+confirmed the non-dealer bot started Round 1 and finished before Hap admission.
+The deployed asset contains the exact release SHA. Pass appeared beside the
+upcard without a seat badge, changed the upcard, and kept the opening timer
+frozen. First placement established an exact 250,000ms authority deadline;
+31,197ms of browser wall time consumed 31,150ms of countdown. Accepted cards
+and next upcards agreed with authority; three placed cards across depths 2/1
+had equal 29.28125 x 43.91667px dimensions and remained inside their stacks.
+The prior 104 tests and maximum-depth checks above were accepted, not rerun.
+
+The authority returned JSON 401 without authentication. The gate is enabled
+and qualified with the same sole Hap admin allowlist entry. The disposable
+fake-money production smoke match was removed and cleanup verified; the
+user's frozen sessions were untouched.
 
 ## September 22 Run21 ordered live presentation correction
 
