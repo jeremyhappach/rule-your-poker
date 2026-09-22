@@ -19,6 +19,7 @@ import { Run21Felt } from './Run21Felt';
 import { Run21PlayerPane, Run21Timer } from './Run21PlayerPane';
 import { Run21Announcement } from './Run21Announcement';
 import { Run21Replay } from './Run21Replay';
+import type {VisibleEvent} from '@/lib/run21/history';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 
 interface Props {
@@ -26,12 +27,12 @@ interface Props {
   activeTab: ShellTabId; setActiveTab: (tab: ShellTabId) => void; sessionEnded: boolean;
   onTerminalActive: (active: boolean) => void; onTerminalComplete: (identity: string) => void;
 }
-function Felt({view, now, onIntent, pending}: {view: Projection; now: number; onIntent?: (intent: Intent) => void; pending?: boolean}) {
+function Felt({view, now, onIntent, pending, events}: {events?: VisibleEvent[]; view: Projection; now: number; onIntent?: (intent: Intent) => void; pending?: boolean}) {
   const layer = useCanonicalFeltInteractionLayerElement(true);
   const {area, draw} = useSafeFelt(layer, `${displayedPlayerId(view)}:${view.roundId}:${view.revealed}`, RUN21_GEOMETRY_DEFAULTS, !!view.viewerId);
   return layer && area.width > 0 ? createPortal(<div className="run21-felt-safe-area" data-run21-deadline={view.boards[displayedPlayerId(view)]?.deadline ?? undefined}
     style={{left: `${area.x * 100}%`, top: `${area.y * 100}%`, width: `${area.width * 100}%`, height: `${area.height * 100}%`}}>
-    <Run21Felt view={view} now={now} onIntent={onIntent} pending={pending} drawLayer={layer} drawRect={draw}/>
+    <Run21Felt acceptedEvents={events} view={view} now={now} onIntent={onIntent} pending={pending} drawLayer={layer} drawRect={draw}/>
   </div>, layer) : null;
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
@@ -67,7 +68,7 @@ export function Run21GameTable(props: Props) {
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
           {createPortal(<div className="run21-replay-controls">{controls}<button onClick={() => setReplay(null)}>Return to live match</button></div>,
             document.querySelector('[data-hud-row="pane"]') ?? document.createDocumentFragment())}
-        </>}/> : <Felt view={view} now={now} onIntent={onIntent} pending={pending}/>)}</>;
+        </>}/> : <Felt events={snapshot.events} view={view} now={now} onIntent={onIntent} pending={pending}/>)}</>;
     timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
     identity = <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}/>;
   }

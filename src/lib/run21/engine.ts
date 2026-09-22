@@ -1,5 +1,5 @@
 import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
-import { aggregate, cardKey, duration, legalColumns, canCollect, speedAt, standardDeck, total, multiplierAt } from './rules.js';
+import { aggregate, cardKey, duration, legalColumns, canFinish, speedAt, standardDeck, total, multiplierAt } from './rules.js';
 
 function clock(match: Match, at: number) {
   if (!Number.isSafeInteger(at) || at < match.updatedAt) throw new Error('non_monotonic_authority_clock');
@@ -146,7 +146,7 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   if (!expired) {
     if (type === 'place' && !legalColumns(original, input.config).includes(command.intent.type === 'place' ? command.intent.column : -1)) return reject('column_locked');
     if (type === 'pass' && original.passesUsed >= input.config.passes) return reject('pass_used');
-    if (type === 'collect' && !canCollect(original, input.config)) return reject('collect_unavailable');
+    if (type === 'collect' && !canFinish(original, input.config)) return reject('collect_unavailable');
     if (type === 'expire') return reject('before_deadline');
   }
   const match = structuredClone(input);

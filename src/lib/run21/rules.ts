@@ -24,6 +24,9 @@ export const duration = (config: Config) => Math.ceil(config.speed.start / confi
 export const multiplierAt = (value: number, config: Config) => config.multipliers[value] ?? 0;
 export const canCollect = (board: Board, config: Config) => !board.result && board.startedAt !== null &&
   board.columns.every(c => !total(c, config.target).bust) && multiplierAt(aggregate(board, config), config) > 0;
+/** Give Up uses the same board finish; only qualified Collect can award points. */
+export const canFinish = (board: Board, config: Config) => canCollect(board, config) ||
+  (!board.result && !!board.current && aggregate(board, config) < 97 && board.columns.every(c => !total(c, config.target).bust));
 export function legalColumns(board: Board, config: Config): number[] {
   if (board.result || !board.current) return [];
   // A busting placement is legal and ends the round; only completed columns are locked.

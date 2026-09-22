@@ -84,7 +84,8 @@ describe('Run21 authority specification', () => {
     expect(applyCommand(next.state,{...c, requestId:uuid(998)},{kind:'player',playerId:a},200).reason).toBe('stale_revision');
     expect(applyCommand(next.state,{...c,intent:{type:'pass'}},{kind:'player',playerId:a},200).reason).toBe('request_conflict');
     expect(next.state.rounds[0].boards[a].cardIndex).toBe(1);
-    expect(applyCommand(m,command(m,{type:'collect'}),{kind:'player',playerId:a},1).state).toBe(m);
+    const surrender=applyCommand(m,command(m,{type:'collect'}),{kind:'player',playerId:a},1);
+    expect(surrender.status).toBe('accepted');expect(surrender.state.rounds[0].boards[a].result).toMatchObject({reason:'collect',score:0,multiplier:0});
   });
   it('separates authentication and exact identity from action operands', () => {
     const m = ready(); const c = command(m,{type:'place',column:0});

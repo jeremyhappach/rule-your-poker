@@ -59,13 +59,14 @@ describe('Run21 player presentation',()=>{
     expect(seekReplay(replay,index+1).boards[self]!.current).not.toBeNull();
     expect(JSON.stringify(replay)).not.toContain('discard');
   });
-  it.each([96,97])('renders Collect admission at aggregate %i',sum=>{
+  it.each([96,97])('renders the single Give Up / Take Win action at aggregate %i',sum=>{
     const m=ready(),deck=standardDeck();
     m.rounds[0].boards[self].startedAt=0;m.rounds[0].boards[self].deadline=250000;
     // Four 20s, then 16 or 17: exact rule boundary, unique physical cards.
     m.rounds[0].boards[self].columns=[...Array.from({length:4},(_,i)=>[deck[i*13+11],deck[i*13+12]]),[deck[9],deck[sum-91]]];
     const html=pane(m),button=html.match(/<button[^>]*class="run21-collect-button"[^>]*>/)![0];
-    expect(button.includes('disabled')).toBe(sum<97);
+    expect(button.includes('disabled')).toBe(false);
+    expect(html).toContain(sum<97?'Give Up':'Take Win');
   });
   it('publishes accepted moves and Pass status to observers without future cards',()=>{
     const m=act(ready(),self,{type:'pass'},100);

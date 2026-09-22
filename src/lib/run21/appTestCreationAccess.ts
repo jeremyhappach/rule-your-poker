@@ -12,7 +12,7 @@ export async function assertRun21CreationAccess(sessionId: string): Promise<void
     supabaseUrl: import.meta.env.VITE_SUPABASE_URL, projectRef,
   })) throw new Error('Run21 is unavailable');
   const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError || !auth.user) throw new Error('Run21 requires an authenticated admin');
+  if (authError || !auth.user) throw new Error('Run21 requires an authenticated user');
   const { data, error } = await supabase.rpc('run21_app_test_capabilities' as never, {
     p_session_id: sessionId,
   } as never);

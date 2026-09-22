@@ -59,3 +59,9 @@
 .run21-scoreboard>[role=row]{display:flex;align-items:center;justify-content:space-between;gap:5%;padding:0 4%;border-radius:.5em;font-size:clamp(.8rem,min(7cqw,calc(70cqh / var(--run21-players))),1.75rem);font-variant-numeric:tabular-nums}
 .run21-scoreboard>[role=row]>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .run21-scoreboard>[data-active=true]{background:hsl(var(--accent));color:hsl(var(--accent-foreground));font-weight:800;box-shadow:inset .2em 0 hsl(var(--primary))}
+
+/* Accepted placement feedback only; absolute paint leaves card geometry untouched. */
+.run21-column { position: relative; }
+.run21-exact21 { position: absolute; inset: 0; z-index: 50; pointer-events: none; border-radius: inherit; animation: run21-exact21 750ms ease-out forwards; }
+@keyframes run21-exact21 { 0% { box-shadow: inset 0 0 0 2px #d6e8ac, 0 0 8px #b9db6b80; opacity: .9; } 100% { box-shadow: inset 0 0 0 2px #d6e8ac, 0 0 8px #b9db6b00; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .run21-exact21 { animation-timing-function: linear; } }

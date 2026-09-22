@@ -12,6 +12,8 @@ import {cardFan} from '@/lib/run21/cardFan';
 import type {Rect} from '@/lib/run21/safeFelt';
 import './run21.css';
 import {Run21ScoringHelp} from './Run21ScoringHelp';
+import type {VisibleEvent} from '@/lib/run21/history';
+import {Exact21Feedback} from '@/lib/run21/exact21Feedback';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 
 const SUITS: Record<Card['suit'],DisplaySuit>={hearts:'♥',diamonds:'♦',clubs:'♣',spades:'♠'};
@@ -43,13 +45,21 @@ function Run21ColumnCards({cards}:{cards:Card[]}){
   </span>;
 }
 interface Props {
+  acceptedEvents?: VisibleEvent[];
   view: Projection; now: number; onIntent?: (intent: Intent)=>void;
   pending?: boolean; geometry?: Run21Geometry; playerId?: string;
   drawLayer?: HTMLElement | null;
   drawRect?: Rect;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,drawRect,playerId=displayedPlayerId(view)}:Props) {
+export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,playerId=displayedPlayerId(view)}:Props) {
+  const feedback=useRef(new Exact21Feedback());
+  const [pulses,setPulses]=useState<Record<number,number>>({});
+  const scope=JSON.stringify([view.identity,view.roundId,playerId]);
+  useLayoutEffect(()=>{
+    const next=feedback.current.accept(scope,playerId,acceptedEvents??[]);
+    if(next!==null)setPulses(current=>Object.keys(next).length?{...current,...next}:{});
+  },[scope,playerId,acceptedEvents]);
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
@@ -80,6 +90,7 @@ export function Run21Felt({view,now,onIntent,pending=false,geometry,drawLayer,dr
               aria-disabled={view.revealed||!active||!legal.includes(index)}
               disabled={view.revealed||!active||!legal.includes(index)}
               onClick={()=>{if(!view.revealed&&active&&legal.includes(index))onIntent?.({type:'place',column:index});}}>
+              {id===playerId&&pulses[index]!==undefined&&<span key={pulses[index]} aria-hidden="true" className="run21-exact21" data-run21-exact21={pulses[index]} onAnimationEnd={()=>setPulses(current=>current[index]===pulses[index]?Object.fromEntries(Object.entries(current).filter(([key])=>+key!==index)):current)}/>}
               <span className="run21-column-total">{total(column,view.config.target).value}</span>
               <Run21ColumnCards key={view.roundId} cards={column}/>
             </button>)}</div>:<div className="run21-private">Opponent is playing privately</div>}

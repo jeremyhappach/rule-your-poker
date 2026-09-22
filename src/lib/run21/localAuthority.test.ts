@@ -79,10 +79,16 @@ describe('persisted local Run21 authority', () => {
     const reconnect=f.make();
     expect((await reconnect.read(game,user)).view.boards[human]).toMatchObject({passesUsed:1,startedAt:null,deadline:null});
     await expect(a.act(game, user, command(f.row, {type: 'pass'}))).rejects.toThrow('pass_used');
-    await expect(a.act(game, user, command(f.row, {type: 'collect'}))).rejects.toThrow('collect_unavailable');
     await a.act(game, user, command(f.row, {type: 'place', column: 0}));
     expect(f.row.state!.rounds[0].boards[human].deadline).toBe(261000);
     expect((await a.history(game, user))[0].events.filter(e => e.actorId === PLAYERS[1].id).length).toBe(0);
+  });
+  it('persists Give Up through the existing collect receipt with zero points and deduplication', async()=>{
+    const f=fixture(),a=f.make();await a.read(game,user);const cmd=command(f.row,{type:'collect'});
+    const result=await a.act(game,user,cmd);expect(result.status).toBe('accepted');
+    expect(result.view.boards[human]?.result).toMatchObject({reason:'collect',score:0,multiplier:0});
+    expect((await a.act(game,user,cmd)).status).toBe('duplicate');
+    expect(result.view.cumulative[human]).toBe(0);a.dispose();
   });
   it('recovers a missed deadline from persisted state with zero score and no forged clock', async () => {
     const f = fixture(), a = f.make(); await a.read(game, user); await a.act(game, user, command(f.row, {type: 'place', column: 0}));

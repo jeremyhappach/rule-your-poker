@@ -1,3 +1,25 @@
+# Run21 public admission and compact feedback — 2026-09-22
+
+Based on qualified main `872eb6dd435220d5fa62eb86d6ebd97e92660308`.
+Run21 now uses canonical active-profile eligibility instead of its private
+admin/allowlist requirement. Its existing enabled/qualified gate, fake-money
+human-plus-bot setup, table membership, active turn, CAS, deadlines, privacy,
+settlement and continuation remain authoritative. Migration
+`20260922222445_run21_public_admission.sql` replaces only the Run21 eligibility
+helper and the two admin predicates in Run21 setup. The deferred repeat-game
+restriction shares that setup owner and is deliberately preserved.
+
+The compact existing collect action reads Give Up below 97 (canonical zero-point
+board finish) or Take Win at 97+. Accepted card-placement events trigger a 750 ms
+column glow on non-21 to 21 transitions. Optimistic renders, repeated snapshots,
+initial history and replay do not trigger it; soft 21 remains playable.
+
+Focused validation: 89 tests, application typecheck and production build passed.
+The isolated SQL rollback/apply proof verifies public eligibility, inactive-profile
+and removed-member denial, private RPC grants, CAS, immutable journal/history and
+one settlement. Production smoke follows publication. The qualified one-transaction
+latency path, realtime behavior and Farkle source are unchanged.
+
 # Run21 bounded journal release — 2026-09-22
 
 ## Run21 admission inside commit — release candidate

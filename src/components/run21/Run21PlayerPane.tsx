@@ -1,5 +1,5 @@
 import type {Intent, Projection} from '@/lib/run21/model';
-import {aggregate, canCollect, duration} from '@/lib/run21/rules';
+import {aggregate, canFinish, duration} from '@/lib/run21/rules';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 
 /** The shell owns the active pane; only the viewing player can issue intents. */
@@ -10,8 +10,8 @@ export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projecti
   if(!view.revealed&&view.active_player_id!==view.viewerId) return null;
   const active=!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
   return <div className="run21-player-actions" data-run21-player-actions>
-    <button className="run21-collect-button" type="button" disabled={!active||!canCollect(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
-      Collect Win <small>{aggregate(board,view.config)}</small>
+    <button className="run21-collect-button" type="button" disabled={!active||!canFinish(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
+      {aggregate(board,view.config)<97?'Give Up':'Take Win'} <small>{aggregate(board,view.config)}</small>
     </button>
   </div>;
 }
