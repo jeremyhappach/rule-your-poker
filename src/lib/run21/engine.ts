@@ -1,5 +1,5 @@
-import { assertConfig, isUuid, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model';
-import { aggregate, cardKey, duration, legalColumns, canCollect, speedAt, standardDeck, total, multiplierAt } from './rules';
+import { assertConfig, isUuid, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
+import { aggregate, cardKey, duration, legalColumns, canCollect, speedAt, standardDeck, total, multiplierAt } from './rules.js';
 
 function clock(match: Match, at: number) {
   if (!Number.isSafeInteger(at) || at < match.updatedAt) throw new Error('non_monotonic_authority_clock');

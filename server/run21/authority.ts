@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine';
-import { chooseAction } from '../../src/lib/run21/bot';
-import { shuffleRound } from '../../src/lib/run21/shuffle.server';
-import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model';
-import { exportReplay, visibleHistory } from '../../src/lib/run21/history';
+import { applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
+import { chooseAction } from '../../src/lib/run21/bot.js';
+import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
+import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
+import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
 
 export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;

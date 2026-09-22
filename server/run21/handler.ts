@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import type {IncomingMessage, ServerResponse} from 'node:http';
-import {AuthorityError, Run21Authority, type StoredMatch} from './authority';
+import {AuthorityError, Run21Authority, type StoredMatch} from './authority.js';
 
 export interface AuthorityOptions {
   url: string; key: string; loopbackOnly?: boolean; waitUntil?: (work: Promise<unknown>) => void;

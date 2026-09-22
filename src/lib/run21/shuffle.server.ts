@@ -1,5 +1,5 @@
-import { type DeckEvidence, type Identity } from './model';
-import { standardDeck, cardKey } from './rules';
+import { type DeckEvidence, type Identity } from './model.js';
+import { standardDeck, cardKey } from './rules.js';
 
 function context(identity: Identity, roundId: string, evidence: Pick<DeckEvidence, 'cards' | 'salt'>) {
   return JSON.stringify(['run21-shuffle/1', identity.sessionId, identity.dealerGameId, identity.handNumber, roundId, evidence.salt, evidence.cards.map(cardKey)]);

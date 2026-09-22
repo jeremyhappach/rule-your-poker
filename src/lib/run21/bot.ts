@@ -1,5 +1,5 @@
-import { type Board, type Card, type Config, type Intent, type Projection } from './model';
-import { aggregate, canCollect, cardKey, legalColumns, multiplierAt, speedAt, standardDeck, total } from './rules';
+import { type Board, type Card, type Config, type Intent, type Projection } from './model.js';
+import { aggregate, canCollect, cardKey, legalColumns, multiplierAt, speedAt, standardDeck, total } from './rules.js';
 
 export interface BotPolicy { seed: number; minActionMs: number; maxActionMs: number }
 export const DEFAULT_BOT_POLICY: BotPolicy = {seed: 21, minActionMs: 220, maxActionMs: 420};

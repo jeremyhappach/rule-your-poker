@@ -1,5 +1,5 @@
 import type {IncomingMessage, ServerResponse} from 'node:http';
-import {createProductionAdapter} from '../server/run21/production';
+import {createProductionAdapter} from '../server/run21/production.js';
 
 const production = createProductionAdapter(process.env);
 

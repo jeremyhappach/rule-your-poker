@@ -1,6 +1,6 @@
 import {waitUntil} from '@vercel/functions';
 import type {IncomingMessage, ServerResponse} from 'node:http';
-import {createRun21Handler} from './handler';
+import {createRun21Handler} from './handler.js';
 
 export function createProductionAdapter(env: NodeJS.ProcessEnv, retain: typeof waitUntil = waitUntil) {
  let runtime: ReturnType<typeof createRun21Handler> | undefined;

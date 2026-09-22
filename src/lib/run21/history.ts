@@ -1,6 +1,6 @@
-import { REPLAY_CONTRACT_V1, reconstructReplayPrefixV1, type ReplayObject, type ReplayPackageV1, type ReplayStepV1 } from '../replay/contractV1';
-import { redactFrame } from './engine';
-import type { Event, Match, Projection } from './model';
+import { REPLAY_CONTRACT_V1, reconstructReplayPrefixV1, type ReplayObject, type ReplayPackageV1, type ReplayStepV1 } from '../replay/contractV1.js';
+import { redactFrame } from './engine.js';
+import type { Event, Match, Projection } from './model.js';
 
 export interface VisibleEvent extends Omit<Event, 'frame'> { frame: Projection }
 /** Server-side read projection. No client receives a raw private Event or Match. */
