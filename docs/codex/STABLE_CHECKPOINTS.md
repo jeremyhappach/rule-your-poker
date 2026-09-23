@@ -1,5 +1,16 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 settled continuation guard — September 23
+
+- Production migration `20260923132530` replaced the unconditional historical
+  dealer-game rejection with the existing Run21 `finished`/settlement receipt
+  lifecycle plus canonical current-pointer protection.
+- Production table `2deb718f-5e69-4341-ad5c-af7941766be8` passed Farkle →
+  Run21, Run21 → Run21 / Run It Back, and Run21 → Farkle. Two settled Run21
+  rows and the settled Farkle result remained in history.
+- The focused rollback/apply proof passed. No Run21 latency or settlement
+  owner changed.
+
 ## Farkle public fake-money release — September 22
 
 - Production client/main `1625441b86bdd81e85307f47aacfe723117a8194` and

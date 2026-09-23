@@ -1,14 +1,14 @@
 # Backlog
 
-## Queued — Run21 repeated selection in a continuing session — September 22
+## Completed — Run21 repeated selection in a continuing session — September 23
 
-The canonical continuation proof exposed existing `run21:new_local_session_required`
-when selecting another Run21 dealer game in the same table session. Selecting
-the canonical Farkle successor passed instead. The deployed close correction
-keeps the session active, but does not change Run21 configuration admission.
-Investigate this separately before promising Run Back Run21; do not weaken the
-current identity guards. Provenance: rollback-only continuation proof during
-the latency/lifecycle correction; no historical sessions were modified.
+The unconditional `run21:new_local_session_required` check was replaced with
+the existing live-vs-settled predicate over `run21_matches.finished`, the
+settlement receipt and `games.current_game_uuid`. Migration `20260923132530`
+passed rollback/apply proof and production Farkle → Run21, Run21 → Run21 / Run
+It Back, and Run21 → Farkle smokes. Historical rows remained intact.
+Provenance: Jeremy-approved production correction and authenticated smoke on
+new table `2deb718f-5e69-4341-ad5c-af7941766be8`.
 
 ## Queued — Run21 action labels and exact-21 polish — September 22
 

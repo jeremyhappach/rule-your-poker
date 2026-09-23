@@ -1,5 +1,17 @@
 # Durable decision log
 
+## D-143 — Settled Run21 history must not block continuing setup
+
+The Run21 setup owner distinguishes a live or unresolved match from immutable
+dealer-game history using the existing lifecycle fields. A prior Run21 row is
+blocking until its authoritative close has marked `private.run21_matches.finished`
+true, its unique settlement receipt exists, and the canonical game no longer
+points at that dealer-game. Once the session is back in `game_selection`, the
+historical row remains queryable and replayable but does not prevent Farkle,
+Run21 or Run It Back configuration. The correction is additive and leaves
+authorization, membership, stake, CAS/deadline, concurrency/dedupe,
+settlement, replay and latency owners unchanged.
+
 ## September 22 — Run21 public sequential turns and durable scoring presentation
 
 Jeremy's explicit turn-flow revision supersedes the prior private-board and

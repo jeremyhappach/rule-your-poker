@@ -1,3 +1,24 @@
+# Run21 settled continuation guard — 2026-09-23
+
+The Run21 configuration guard now distinguishes live/unresolved Run21 matches
+from settled history. The old unconditional `session_id = g.id` dealer-game
+check (`run21:new_local_session_required`) was replaced by a join through
+`private.run21_matches` that blocks only when `finished` is not true, the
+matching `private.run21_settlements` receipt is absent, or
+`games.current_game_uuid` still points at that Run21 dealer-game. Historical
+settled rows remain intact and do not block a canonical `game_selection`
+continuation. Migration `20260923132530_run21_settled_continuation_guard` is
+applied in production.
+
+The rollback/apply proof passed the fresh, Farkle-history, settled-history,
+unfinished, pending-close, missing-receipt and stale-pointer cases while
+preserving authentication, membership, stake, deadline/CAS, player locking,
+request-hash dedupe and setup ownership. Production smoke on table
+`2deb718f-5e69-4341-ad5c-af7941766be8` passed Farkle → Run21, Run21 → Run21 /
+Run It Back, and Run21 → Farkle. The table retained one settled Farkle result,
+two settled Run21 matches and the current Farkle pointer. Run21 latency,
+settlement, replay and Farkle authority were not changed.
+
 # Run21 felt controls and score rail — 2026-09-22
 
 # September 23 Farkle final-die and terminal-roll correction
