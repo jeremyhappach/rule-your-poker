@@ -63,8 +63,10 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); });
 
 describe('Farkle terminal roll presentation ownership', () => {
   it.each([
+    ['self', 'one die', 'user-0', first, [{ index: 4, value: 2 }]],
     ['self', 'partial', 'user-0', first, [{ index: 2, value: 2 }, { index: 5, value: 3 }]],
     ['self', 'six dice', 'user-0', first, [2, 3, 4, 6, 2, 3].map((value, index) => ({ index, value }))],
+    ['remote', 'one die', 'user-0', second, [{ index: 4, value: 2 }]],
     ['remote', 'partial', 'user-0', second, [{ index: 1, value: 2 }, { index: 4, value: 3 }]],
     ['remote', 'six dice', 'user-0', second, [2, 3, 4, 6, 2, 3].map((value, index) => ({ index, value }))],
   ] as const)('keeps a %s %s Farkle on its actor surface through canonical notice retirement', async (owner, _, userId, actor, dice) => {
@@ -82,6 +84,7 @@ describe('Farkle terminal roll presentation ownership', () => {
       .filter(node => node.getAttribute('aria-label')?.includes(': '))
       .map(node => [Number(node.getAttribute('data-farkle-die-index')), Number(node.getAttribute('aria-label')?.split(': ')[1])]);
     expect(rendered.sort((a, b) => a[0] - b[0])).toEqual(dice.map(die => [die.index, die.value]).sort((a, b) => a[0] - b[0]));
+    expect(document.querySelectorAll(`${surface} .farkle-die`)).toHaveLength(dice.length);
     expect(screen.getByText('FARKLE')).toBeVisible();
     if (owner === 'remote') expect(document.querySelector('[data-farkle-roll-phase]')?.getAttribute('data-farkle-roll-phase')).toBe('row');
     await act(async () => { await vi.advanceTimersByTimeAsync(1599); });

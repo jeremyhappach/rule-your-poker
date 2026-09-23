@@ -681,6 +681,15 @@ Do not reintroduce a scrim/modal, automatic lobby redirect for connected flow, o
 
 Published runtime smoke is acceptance. Typecheck alone is never a stable checkpoint.
 
+## 2026-09-23 — Farkle final-die and terminal-roll checkpoint
+
+Production migration `20260923090000_farkle_final_single_die_auto_hold` is
+applied. The rollback/apply proof covers exact one/two/six-die terminal
+receipts, blank-placeholder rendering boundaries, authoritative one-die 1/5
+Hold plus HOT DICE receipts and timer renewal, normal one-die Farkle, and
+unchanged multi-die Hold behavior. Focused presentation tests and application
+typecheck pass. Await Jeremy's production smoke for runtime acceptance.
+
 ## Owned Supabase production
 
 - The final backend cutover completed on 2026-08-03. Vercel production

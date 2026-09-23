@@ -1,5 +1,22 @@
 # Run21 felt controls and score rail — 2026-09-22
 
+# September 23 Farkle final-die and terminal-roll correction
+
+Farkle terminal-roll presentation now preserves the exact dice rolled for both
+self and remote FARKLE acknowledgments, including one- and two-die rolls. The
+Farkle die wrapper no longer renders the shared unrolled placeholder pip;
+actual rolled ones retain their normal face. When exactly one die remains, a
+rolled one or five is committed through the authoritative reducer as the
+normal Hold receipt, immediately emits HOT DICE, resets the six available
+dice, and renews the existing human turn clock. Multi-die Hold and ordinary
+Farkle behavior remain unchanged.
+
+Migration `20260923090000_farkle_final_single_die_auto_hold` was applied after
+the complete rollback proof. The post-apply proof passed reducer, receipt,
+timer, exact-count, and multi-die assertions. Focused Farkle presentation tests
+(22) and the application typecheck passed. Production smoke remains Jeremy's
+acceptance gate.
+
 Run21 Pass and scoring-help control bounds are 30% larger, with larger labels.
 The existing felt exclusion solver reserves their full bounds so both stay
 inside the rim and clear of cards and shell chrome. The score rail uses dark

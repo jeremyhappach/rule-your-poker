@@ -20,7 +20,13 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
   const dice = resolvedRoll?.dice ?? state.dice;
   const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
-  const visibleDice = consolidated ? dice : Array.from({ length: 6 }, (_, index) => dice.find(d => d.index === index) ?? { index, value: 0 });
+  // A terminal receipt is the exact roll that happened. Keep its count intact
+  // until the canonical FARKLE notice retires it; only live turns use six slots.
+  const visibleDice = resolvedRoll
+    ? dice
+    : consolidated
+      ? dice
+      : Array.from({ length: 6 }, (_, index) => dice.find(d => d.index === index) ?? { index, value: 0 });
   return <div className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="" data-farkle-resolved-roll={resolvedRoll?.id}>
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
     <div className="farkle-self-dice" data-farkle-self-roll-phase={phase} data-held-consolidated={consolidated}>

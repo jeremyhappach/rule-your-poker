@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FarkleActiveArea } from './FarkleActiveArea';
 import { farkleTestState } from '@/lib/farkle/__fixtures__/testState';
+import type { FarkleResolvedRoll } from '@/lib/farkle/presentation';
 
 afterEach(cleanup);
 describe('Farkle local selection', () => {
@@ -39,5 +40,29 @@ describe('Farkle local selection', () => {
     expect(held.firstElementChild?.querySelector('[data-farkle-die="0"]')).toBeTruthy();
     expect(held.textContent).toContain('+100');
     expect(container.querySelectorAll('.farkle-self-dice .farkle-die')).toHaveLength(5);
+  });
+
+  it.each([1, 2, 6])('keeps an exact %s-die terminal roll in the self pane', count => {
+    const state = farkleTestState();
+    const dice = Array.from({ length: count }, (_, index) => ({ index, value: index === 0 ? 1 : 2 }));
+    const resolvedRoll: FarkleResolvedRoll = {
+      id: `terminal/${count}`, scopeKey: state._authorityScope, sequence: state.actionSequence,
+      actorId: state.currentTurnPlayerId, rollNumber: state.rollNumber, dice, local: true,
+    };
+    const { container } = render(<FarkleActiveArea state={state} controllable={false} pending={false}
+      committed={[]} onAction={() => {}} resolvedRoll={resolvedRoll} />);
+    expect(container.querySelectorAll('.farkle-self-dice > .farkle-die')).toHaveLength(count);
+    expect(container.querySelectorAll('.farkle-die .bg-muted-foreground\\/25')).toHaveLength(0);
+    expect(container.querySelector('[data-farkle-die="0"] .farkle-die-visual > button > div')).toBeTruthy();
+  });
+
+  it('keeps a live blank slot shell free of a ghost pip while a rolled one stays visible', () => {
+    const state = farkleTestState();
+    state.dice = [{ index: 0, value: 1 }];
+    state.available = [0, 1, 2, 3, 4, 5];
+    const { container } = render(<FarkleActiveArea state={state} controllable={false} pending={false}
+      committed={[]} onAction={() => {}} />);
+    expect(container.querySelector('[data-farkle-die="0"] .farkle-die-visual > button > div')).toBeTruthy();
+    expect(container.querySelectorAll('.farkle-die .bg-muted-foreground\\/25')).toHaveLength(0);
   });
 });

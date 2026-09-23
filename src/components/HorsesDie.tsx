@@ -17,6 +17,7 @@ interface HorsesDieProps {
    */
   sizePx?: number;
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
+  showUnrolledPlaceholder?: boolean; // Whether value 0 gets the legacy center placeholder pip
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
   forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
   isUnusedDie?: boolean; // Whether this is an auto-locked die NOT used in final hand (reddish overlay for NQ cargo)
@@ -32,6 +33,7 @@ export function HorsesDie({
   size = "md",
   sizePx,
   showWildHighlight = true,
+  showUnrolledPlaceholder = true,
   isSCCDie = false,
   forceWhiteBackground = false,
   isUnusedDie = false,
@@ -99,6 +101,7 @@ export function HorsesDie({
     
     // Unrolled dice show a subtle placeholder (no "?" to avoid flicker).
     if (v === 0) {
+      if (!showUnrolledPlaceholder) return null;
       return (
         <div className="flex items-center justify-center w-full h-full">
           <div className={cn(dotSize, "rounded-full bg-muted-foreground/25")} />

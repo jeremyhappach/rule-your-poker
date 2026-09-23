@@ -1979,6 +1979,17 @@ Anonymous privileged functions are closed while effective authenticated/service
 grants remain unchanged; five read-only RLS predicates are the explicit exception.
 The historical -$6 discrepancy is preserved and is not considered repaired.
 
+# D-133 — Keep final Farkle rolls exact and auto-commit an unambiguous die (2026-09-23)
+
+Terminal Farkle presentation must retain the exact authoritative `dice_rolled`
+receipt until the FARKLE acknowledgment resolves; it must not derive its slot
+count from the reset/advanced turn state. Farkle's die wrapper suppresses the
+shared unrolled placeholder pip while preserving the canonical shell and real
+one face. When one available die rolls 1 or 5, the reducer emits the same
+`dice_held` and `hot_dice` receipts as a manual Hold, resets the available dice,
+and the action owner renews the existing human deadline from the authoritative
+HOT DICE event. No client-only score or multi-die exception is permitted.
+
 ## September 21 — Farkle deferred settlement authority
 
 Terminal proof must cross COMMIT and read the result from a fresh session. A
