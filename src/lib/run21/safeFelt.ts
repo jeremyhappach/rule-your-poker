@@ -1,6 +1,6 @@
 export interface Rect { x:number; y:number; width:number; height:number }
 export const intersects=(a:Rect,b:Rect)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
-export const DRAW_HELP={x:-.2,y:.5,width:.24,height:.35};
+export const DRAW_HELP={x:-.2,y:.5,width:.312,height:.455};
 export const DRAW_PASS={...DRAW_HELP,x:1.2};
 export const drawPassRect=(draw:Rect):Rect=>({...drawHelpRect(draw),x:draw.x+(DRAW_PASS.x-DRAW_PASS.width/2)*draw.width});
 export const drawHelpRect=(draw:Rect):Rect=>({x:draw.x+(DRAW_HELP.x-DRAW_HELP.width/2)*draw.width,y:draw.y+(DRAW_HELP.y-DRAW_HELP.height/2)*draw.height,width:DRAW_HELP.width*draw.width,height:DRAW_HELP.height*draw.height});

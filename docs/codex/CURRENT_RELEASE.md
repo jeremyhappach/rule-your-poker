@@ -1,3 +1,18 @@
+# Run21 felt controls and score rail — 2026-09-22
+
+Run21 Pass and scoring-help control bounds are 30% larger, with larger labels.
+The existing felt exclusion solver reserves their full bounds so both stay
+inside the rim and clear of cards and shell chrome. The score rail uses dark
+green surfaces, subtle gold borders, an active-player accent and bold aligned
+totals. Only Run21 geometry constants and scoped CSS changed; gameplay,
+latency, subscriptions, scoring, database authority and Farkle are unchanged.
+
+Validation: all nine existing felt geometry tests, application typecheck and
+production build passed. Offline browser checks using the real shell and Run21
+components passed at 320, 390, 430, 768 and 1440 pixels wide, including ellipse
+containment, no column overlap, help/Pass interaction and long-name containment.
+Screenshots were visually reviewed. Production verification follows the main push.
+
 # Farkle public release — 2026-09-22
 
 Farkle is public for fake-money setup and play. The production policy is

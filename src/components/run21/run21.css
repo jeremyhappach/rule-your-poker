@@ -30,10 +30,10 @@
 .run21-felt-content{pointer-events:auto}
 
 .run21-help,.run21-pass{pointer-events:auto}
-.run21-pass button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:.5em;background:#213c30;color:#f5f1df;font-weight:700;font-size:clamp(.5rem,8cqw,.8rem);cursor:pointer;touch-action:manipulation}
+.run21-pass button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:.5em;background:#213c30;color:#f5f1df;font-weight:700;font-size:clamp(.6rem,10cqw,1rem);cursor:pointer;touch-action:manipulation}
 .run21-pass button:disabled{cursor:default;opacity:.6}
 .run21-pass button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
-.run21-help button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:50%;background:#ffffff0e;color:#f5f1df;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
+.run21-help button{width:100%;height:100%;border:1px solid #d4dbb14a;border-radius:50%;background:#213c30;color:#f5f1df;font-weight:700;font-size:clamp(.8rem,13cqw,1.15rem);line-height:1;cursor:pointer;touch-action:manipulation}
 .run21-help button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
 .run21-help-popover{max-width:var(--radix-popover-content-available-width);max-height:var(--radix-popover-content-available-height);overflow:auto}
 
@@ -56,9 +56,12 @@
 .run21-replay-controls{height:100%;overflow:auto;padding:.5rem;font-size:.75rem;pointer-events:auto}
 
 .run21-scoreboard{flex:1;min-height:0;display:grid;grid-template-rows:repeat(var(--run21-players),minmax(0,1fr));gap:3%;padding:2% 5%;container-type:size;overflow:hidden}
-.run21-scoreboard>[role=row]{display:flex;align-items:center;justify-content:space-between;gap:5%;padding:0 4%;border-radius:.5em;font-size:clamp(.8rem,min(7cqw,calc(70cqh / var(--run21-players))),1.75rem);font-variant-numeric:tabular-nums}
-.run21-scoreboard>[role=row]>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.run21-scoreboard>[data-active=true]{background:hsl(var(--accent));color:hsl(var(--accent-foreground));font-weight:800;box-shadow:inset .2em 0 hsl(var(--primary))}
+.run21-scoreboard>[role=row]{display:flex;align-items:center;justify-content:space-between;gap:5%;padding:0 5%;border:1px solid #d7b66a38;border-radius:.5em;background:linear-gradient(135deg,#20392e,#13271f);color:#f5f1df;font-size:clamp(.8rem,min(7cqw,calc(70cqh / var(--run21-players))),1.75rem);font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 #ffffff09}
+.run21-scoreboard>[role=row]>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8em;font-weight:600;letter-spacing:.015em;color:#d8dfd3}
+.run21-scoreboard>[role=row]>strong{flex-shrink:0;min-width:3ch;text-align:right;font-size:1.15em;font-weight:800;line-height:1;color:#f4e5bb}
+.run21-scoreboard>[data-active=true]{border-color:#dfba637a;background:linear-gradient(120deg,#484329,#263f30 55%,#193025);box-shadow:inset .16em 0 #e5b453,inset 0 1px 0 #ffe4a21a}
+.run21-scoreboard>[data-active=true]>span{color:#fff4d6}
+.run21-scoreboard>[data-active=true]>strong{color:#ffda83}
 
 /* Accepted placement feedback only; absolute paint leaves card geometry untouched. */
 .run21-column { position: relative; }
