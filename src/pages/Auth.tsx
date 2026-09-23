@@ -132,7 +132,7 @@ const Auth = () => {
         if (profile && !profile.is_active) {
           const { markIntentionalSignOut } = await import("@/lib/authInvalidationCause");
           markIntentionalSignOut("Auth#inactive-account-signOut");
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: "global" });
           toast({
             title: "Account Inactive",
             description: "Your account has been deactivated. Please contact an administrator.",

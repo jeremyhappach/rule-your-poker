@@ -1038,7 +1038,7 @@ const Game = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
+  const { user, isReady: authReady, authInvalidated } = useAuthGuard({ pageLabel: "Game" });
   const { isAdmin } = useIsAdmin(user?.id);
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [_game, setGame] = useState<GameData | null>(null);
@@ -12767,6 +12767,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     gameType: game?.game_type ?? null,
     dealerGameId: (game as any)?.current_game_uuid ?? null,
   });
+
+  // Confirmed invalidation removes every game action/portal while the guard
+  // navigates to Auth. Transient recovery keeps the canonical table mounted.
+  if (authInvalidated) return null;
 
   if ((loading || !game) && !hasHydratedRef.current) {
     setLifecycleContext({

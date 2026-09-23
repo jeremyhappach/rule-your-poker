@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { signOutLocal } from "@/lib/authSession";
 import { Button } from "@/components/ui/button";
 import { GameLobby } from "@/components/GameLobby";
 import {
@@ -72,6 +73,7 @@ const Index = () => {
   const { toast } = useToast();
   const { user, isReady } = useAuthGuard({ pageLabel: "Index" });
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionCleanupRequired, setSessionCleanupRequired] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -338,14 +340,23 @@ const Index = () => {
       });
     } catch { /* noop */ }
     try {
-      const { markIntentionalSignOut } = await import("@/lib/authInvalidationCause");
+      const { markIntentionalSignOut, consumeIntentionalSignOut } = await import("@/lib/authInvalidationCause");
       markIntentionalSignOut("Index#handleLogout");
-      await supabase.auth.signOut();
+      try {
+        await signOutLocal(supabase.auth, setSessionCleanupRequired);
+      } finally {
+        // A failed logout must not classify later transient loss as intentional.
+        consumeIntentionalSignOut();
+      }
+      navigate("/auth");
     } catch (error) {
       console.error('Logout error:', error);
+      toast({
+        title: 'Could not log out',
+        description: error instanceof Error ? error.message : 'Please check your connection and try again.',
+        variant: 'destructive',
+      });
     }
-    // Always navigate to auth page, even if signOut fails
-    navigate("/auth");
   };
 
 
@@ -430,6 +441,15 @@ const Index = () => {
     });
     setShowProfileDialog(false);
   };
+
+  if (sessionCleanupRequired) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-4">
+        <p>Your session has ended. Finish logging out to sign in again.</p>
+        <Button onClick={handleLogout}>Logout</Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

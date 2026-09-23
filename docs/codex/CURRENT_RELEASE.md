@@ -1,3 +1,40 @@
+# Auth session cleanup candidate — 2026-09-23 — publication held
+
+This candidate is based on current `origin/main`
+`f4208a5f967fd79626a7f5989e03fa58e27a152a`, on branch
+`codex/auth-session-cleanup`. It does not integrate the detached `89ce149f`
+checkout. Jeremy explicitly requested a local commit and a stop before
+deployment; production was last verified at `f4208a5f`.
+
+Normal Logout explicitly uses local scope; inactive-account forced sign-out
+explicitly retains global scope. With the unchanged Auth JS 2.84.0 dependency,
+confirmed missing-session logout errors use the supported `getUser()` cleanup
+path, then verify `getSession()` is empty before handler navigation. Other
+errors surface to the user. If revocation is confirmed but cleanup encounters
+a connectivity error, lobby actions are withheld and Logout remains available
+to finish cleanup. A failed attempt clears its intentional-sign-out marker.
+
+The shared auth guard now clears cached identity and Game's action surfaces on
+SDK `SIGNED_OUT` or positively identified session invalidation, regardless of
+the old JWT expiry or presentation recovery lease. Older asynchronous reads
+cannot restore that identity. Generic HTTP/network failures and transient null
+events retain the existing recovery path. No new recovery timer was added.
+
+Automated coverage includes the actual 2.84.0 SDK, guard recovery and stale-read
+tests, plus local Chrome/WebKit page checks with mocked auth responses for
+two isolated contexts, revoked logout, interrupted cleanup, and simulated
+background/resume. Exact locked dependencies were restored with Jeremy's
+approval; dependency manifests and lockfiles are unchanged. Local validation
+and candidate build identity are reported with the commit in the task.
+
+Publication and physical-device acceptance remain pending. After separate
+deployment approval, verify the published manifest and both phones against the
+candidate SHA before the same-account local-logout/account-switch test,
+create/join, dealer selection, Ante Up, authoritative action, revoked-session
+cleanup, and real iPhone background/resume. Start Game's earlier pre-dispatch
+symptom remains unproven and is not patched. Database objects, authorization,
+settlement, wagering, game rules, and session creation are unchanged.
+
 # Run21 settled continuation guard — 2026-09-23
 
 The Run21 configuration guard now distinguishes live/unresolved Run21 matches
