@@ -2161,10 +2161,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       : authoritativeNow < threeFiveSevenDecisionRevealClock.window.endsAtMs
         ? threeFiveSevenDecisionRevealClock.window.endsAtMs
         : null;
-    if (nextBoundary == null) return;
+    const serverDisclosureBoundary = threeFiveSevenDecisionRevealClock.disclosureNotBeforeLocalMs;
+    const boundaryDelay = nextBoundary == null ? Infinity : nextBoundary - authoritativeNow;
+    const disclosureDelay = serverDisclosureBoundary != null && serverDisclosureBoundary > Date.now()
+      ? serverDisclosureBoundary - Date.now() : Infinity;
+    const nextDelay = Math.min(boundaryDelay, disclosureDelay);
+    if (!Number.isFinite(nextDelay)) return;
     const timer = window.setTimeout(
-      () => setThreeFiveSevenDecisionRevealBoundary((value) => value + 1),
-      Math.max(0, nextBoundary - authoritativeNow + 10),
+      () => {
+        setThreeFiveSevenDecisionRevealBoundary((value) => value + 1);
+        // The clock schedules presentation only. The server decides whether
+        // this request may include the immutable resolved decisions.
+        void fetchGameData('realtime_update');
+      },
+      Math.max(0, nextDelay + 10),
     );
     return () => window.clearTimeout(timer);
   }, [threeFiveSevenDecisionRevealClock, threeFiveSevenDecisionRevealBoundary]);
@@ -2186,6 +2196,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         parsed.window,
         parsed.serverOffsetMs,
         parsed.window.roundId,
+        (receipt as { server_now: string }).server_now,
+        responseReceivedAtMs,
       )
     ));
   }, []);
@@ -3932,6 +3944,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const channel = supabase
       .channel(`game-${gameId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'three_five_seven_frame_notices', filter: `game_id=eq.${gameId}` },
+        () => { void fetchGameData('realtime_update'); },
+      )
       .on(
         'postgres_changes',
         {
@@ -8619,6 +8636,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             frameResponseReceivedAtMs,
           ),
           parsedFrame.identity.round_id,
+          parsedFrame.serverNow,
+          frameResponseReceivedAtMs,
         )
       ));
       return { frame: parsedFrame, error: null, rejected: false };

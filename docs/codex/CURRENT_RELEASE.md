@@ -1,3 +1,32 @@
+# Secure 3-5-7 concealment and winning-leg DROP — 2026-09-24 — local candidate
+
+Based on `d2c25f83f122cdb607269a143a42521c622bd95d`, on
+`codex/357-private-reveal`. Production is unchanged. This candidate captures
+immutable exact-round decisions privately and discloses them only at the
+authoritative server DROP time. The existing DROP renderer consumes that map
+after winning-leg settlement clears live decisions. Rules, settlement,
+payouts, countdown durations, auth/session clients and unrelated games are
+unchanged; dependencies and lockfiles are unchanged.
+
+Authority SQL qualification passed. Local full-app Chrome verified normal
+one-folder and winning one/multiple-folder dissolves, concealment, staying
+stacks, winning result completion and reset into dealer setup. A controlled
+unchanged-base A/B reproduced the normal-leg fixture's missing continuation
+request identically: effect admitted, reveal hold cleared, completion callback
+absent, no request. This is baseline/fixture behavior and was not patched.
+Existing SQL/HTTP continuation and identity/reset tests supply that coverage.
+
+Final focused suite passed 214 tests; the targeted Run21 retry passed 9/9,
+the harness passed 241/241, the final typecheck passed, and the production
+Vite build passed. The full source run timed out only on the two known
+long-running Run21 tests; both passed in the targeted retry and in the prior
+release log, so the timeouts are classified as non-candidate suite-load timing.
+Two previously reproduced baseline SQL failures remain documented. See
+[the qualification report](SECURE_357_QUALIFICATION_20260924.md) for exact files,
+test evidence, scope, deployment order and rollback constraints. No push or
+deployment is authorized by this qualification pass; physical production
+acceptance remains pending.
+
 # 3-5-7 / Yahtzee presentation candidate — 2026-09-23 — publication held
 
 Based on current main `67b380c7b96227c705c72c6f1f76db16be397716`,

@@ -100,11 +100,21 @@ export async function makeDecision(
   console.log(`[MAKE_DECISION] ===== START ===== game=${shortGameId} player=${shortPlayerId} decision=${decision} at ${decisionTimestamp}`);
   
   // Get current game
-  const { data: game, error: gameError } = await supabase
+  let { data: game, error: gameError } = await supabase
     .from('games')
     .select('*')
     .eq('id', gameId)
     .single();
+
+  // Resolved 3-5-7 rows are private until DROP. The authorized projection
+  // preserves the exact identity for retries during that interval.
+  if (!game && expectedRoundId) {
+    const frame = await supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any);
+    if (!frame.error && frame.data) {
+      game = (frame.data as any).game;
+      gameError = null;
+    }
+  }
 
   if (!game || gameError) {
     console.error(`[MAKE_DECISION] CRITICAL: Game not found`, { gameId, error: gameError?.message });
@@ -208,14 +218,13 @@ export async function makeDecision(
     if (is357Game) {
       // 3-5-7 can have multiple round_number=1/2/3 rows across hands.
       // Disambiguate via (dealer_game_id, hand_number, round_number).
-      const { data: round357 } = await supabase
-        .from('rounds')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('dealer_game_id', game.current_game_uuid)
-        .eq('hand_number', handNumber)
-        .eq('round_number', roundNumber)
-        .maybeSingle();
+      const frame = await supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any);
+      if (frame.error) throw frame.error;
+      const round357 = (frame.data as any)?.round;
+      if (round357?.dealer_game_id !== game.current_game_uuid || round357?.hand_number !== handNumber
+        || round357?.round_number !== roundNumber) {
+        throw new Error('three_five_seven_submit_decision requires exact current identity');
+      }
       currentRound = round357;
     } else {
       // Non-3-5-7 games can restart at round_number=1 when a new dealer game starts.

@@ -69,9 +69,11 @@ export function ThreeFiveSevenDecisionReveal({
     && player.status !== 'observer'
   )).map((player) => ({
     ...player,
-    current_decision: player.current_decision
+    // Live decisions can already be cleared by winning-leg settlement. Only the
+    // server-authorized snapshot supplies opponents' reveal decisions.
+    current_decision: clock?.window.resolvedDecisions?.[player.id]
       ?? (player.user_id === currentUserId ? pendingDecision : null),
-  })), [currentUserId, pendingDecision, players]);
+  })), [clock?.window.resolvedDecisions, currentUserId, pendingDecision, players]);
   const signature = eligiblePlayers
     .map((player) => `${player.id}:${player.position}:${player.current_decision ?? ''}`)
     .join('|');

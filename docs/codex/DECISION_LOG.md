@@ -1,5 +1,20 @@
 # Durable decision log
 
+## September 24 — Private exact-round 3-5-7 disclosure
+
+3-5-7 stores fold/stay decisions and the pre-settlement projection in a private
+immutable snapshot before terminal settlement clears live decisions. Public
+RPCs, direct reads, history/results and Realtime must not disclose another
+player's choice or an inferable outcome before the existing authoritative
+server DROP time. Exact game/dealer-game/round/hand identity and membership
+gate disclosure; a client clock can schedule a read but cannot authorize it.
+Secret-free round notices wake the safe frame reader. The renderer consumes
+the authorized snapshot, preserving the existing animation and financial owners.
+
+The normal-leg continuation qualification fixture fails identically on base
+and candidate; no continuation redesign or product patch is included. See
+`SECURE_357_QUALIFICATION_20260924.md` for the bounded A/B and release limits.
+
 ## D-143 — Settled Run21 history must not block continuing setup
 
 The Run21 setup owner distinguishes a live or unresolved match from immutable

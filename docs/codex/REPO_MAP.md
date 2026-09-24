@@ -1,5 +1,14 @@
 # Repository map
 
+Secure 3-5-7 disclosure (local candidate, not deployed):
+`20260924164708_three_five_seven_private_disclosure.sql` owns private immutable
+decision snapshots, the server DROP gate, safe frame/reveal readers and
+secret-free Realtime notices. `src/lib/threeFiveSeven/decisionReveal.ts` admits
+exact-round authorized maps; `ThreeFiveSevenDecisionReveal.tsx` renders them.
+Authority proof: `supabase/tests/three_five_seven_authority_rollback_proof.sql`.
+Local HTTP/Realtime proof: `.codex/scripts/three-five-seven-disclosure-local.mjs`.
+Qualification and release limits: `docs/codex/SECURE_357_QUALIFICATION_20260924.md`.
+
 Farkle human turn clock (applied as `20260922200027`):
 `supabase/migrations/20260922200027_farkle_human_turn_clock.sql` retains a
 human's deadline across normal actions, renews it on authoritative HOT DICE,

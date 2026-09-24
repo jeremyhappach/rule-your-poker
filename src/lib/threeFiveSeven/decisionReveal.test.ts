@@ -29,6 +29,37 @@ function clock(): ThreeFiveSevenDecisionRevealClock {
 }
 
 describe('3-5-7 authoritative decision reveal', () => {
+  it('schedules an early disclosure retry from server time even when the estimated clock is ahead', () => {
+    const received = Date.parse(rawWindow.drop_at) + 400;
+    const retry = reconcileThreeFiveSevenDecisionRevealClock(null, clock().window, 900, 'round-1',
+      '2026-09-01T14:00:03.500Z', received)!;
+    expect(retry.disclosureNotBeforeLocalMs).toBe(received + 200);
+    const disclosed = { ...clock().window, resolvedDecisions: { p1: 'fold' as const } };
+    expect(reconcileThreeFiveSevenDecisionRevealClock(retry, disclosed, 900, 'round-1',
+      rawWindow.drop_at, received)?.disclosureNotBeforeLocalMs).toBeUndefined();
+  });
+  it('admits an immutable authorized map without reconstructing legacy decisions', () => {
+    const window = parseThreeFiveSevenDecisionRevealWindow({ ...rawWindow, resolved_decisions: { p1: 'fold', p2: 'stay' } })!;
+    expect(window.resolvedDecisions).toEqual({ p1: 'fold', p2: 'stay' });
+    expect(Object.isFrozen(window.resolvedDecisions)).toBe(true);
+    expect(clock().window.resolvedDecisions).toBeNull();
+    expect(() => parseThreeFiveSevenDecisionRevealWindow({ ...rawWindow, resolved_decisions: { p1: 'unknown' } })).toThrow('malformed_decisions');
+  });
+
+  it('does not erase an authorized snapshot when an earlier concealed reply arrives', () => {
+    const disclosed = { ...clock(), window: parseThreeFiveSevenDecisionRevealWindow({ ...rawWindow, resolved_decisions: { p1: 'fold' } })! };
+    expect(reconcileThreeFiveSevenDecisionRevealClock(disclosed, clock().window, 0, 'round-1')?.window.resolvedDecisions).toEqual({ p1: 'fold' });
+    expect(() => reconcileThreeFiveSevenDecisionRevealClock(disclosed,
+      parseThreeFiveSevenDecisionRevealWindow({ ...rawWindow, resolved_decisions: { p1: 'stay' } }), 0, 'round-1')).toThrow('conflicting_snapshot');
+  });
+
+  it('rejects dealer/hand identity confusion and never carries a map into the next round', () => {
+    const disclosed = { ...clock(), window: parseThreeFiveSevenDecisionRevealWindow({ ...rawWindow, resolved_decisions: { p1: 'fold' } })! };
+    expect(() => reconcileThreeFiveSevenDecisionRevealClock(disclosed,
+      { ...disclosed.window, handNumber: 3 }, 0, 'round-1')).toThrow('scope_identity_mismatch');
+    const next = { ...clock().window, id: 'dg-1:round-2', roundId: 'round-2', roundNumber: 1, handNumber: 3 };
+    expect(reconcileThreeFiveSevenDecisionRevealClock(disclosed, next, 0, 'round-2')?.window.resolvedDecisions).toBeNull();
+  });
   it('derives locked-3-2-1-DROP-hold from the absolute server window', () => {
     const base = Date.parse(rawWindow.started_at);
     expect(deriveThreeFiveSevenDecisionRevealFrame(clock(), base).beat).toBe('locked');

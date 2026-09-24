@@ -18,11 +18,14 @@ export interface ThreeFiveSevenDecisionRevealWindow {
   dropAtMs: number;
   endsAtMs: number;
   continuationAtMs: number;
+  /** Populated only by the exact-round server response after disclosure. */
+  resolvedDecisions?: Readonly<Record<string, 'stay' | 'fold'>> | null;
 }
 
 export interface ThreeFiveSevenDecisionRevealClock {
   window: ThreeFiveSevenDecisionRevealWindow;
   serverOffsetMs: number;
+  disclosureNotBeforeLocalMs?: number;
 }
 
 export type ThreeFiveSevenDecisionRevealBeat = 'locked' | '3' | '2' | '1' | 'DROP' | 'hold' | 'expired';
@@ -106,6 +109,20 @@ export function parseThreeFiveSevenDecisionRevealWindow(
   const dropAtMs = timestampMs(raw.drop_at);
   const endsAtMs = timestampMs(raw.ends_at);
   const continuationAtMs = timestampMs(raw.continuation_at);
+  let resolvedDecisions: Record<string, 'stay' | 'fold'> | null = null;
+  if (raw.resolved_decisions != null) {
+    if (!isRecord(raw.resolved_decisions)) {
+      throw new Error('three_five_seven_decision_reveal:malformed_decisions');
+    }
+    resolvedDecisions = Object.create(null) as Record<string, 'stay' | 'fold'>;
+    for (const [playerId, decision] of Object.entries(raw.resolved_decisions)) {
+      if (!playerId || (decision !== 'stay' && decision !== 'fold')) {
+        throw new Error('three_five_seven_decision_reveal:malformed_decisions');
+      }
+      resolvedDecisions[playerId] = decision;
+    }
+    Object.freeze(resolvedDecisions);
+  }
 
   if (
     !id || !gameId || !dealerGameId || !roundId || handNumber == null || roundNumber == null
@@ -127,6 +144,7 @@ export function parseThreeFiveSevenDecisionRevealWindow(
     dropAtMs,
     endsAtMs,
     continuationAtMs,
+    resolvedDecisions,
   };
 }
 
@@ -145,6 +163,8 @@ export function reconcileThreeFiveSevenDecisionRevealClock(
   incoming: ThreeFiveSevenDecisionRevealWindow | null,
   serverOffsetMs: number,
   exactRoundId: string | null,
+  serverNow?: string,
+  responseReceivedAtMs?: number,
 ): ThreeFiveSevenDecisionRevealClock | null {
   if (!incoming) {
     return current && current.window.roundId === exactRoundId ? current : null;
@@ -152,13 +172,35 @@ export function reconcileThreeFiveSevenDecisionRevealClock(
   if (incoming.roundId !== exactRoundId) {
     throw new Error('three_five_seven_decision_reveal:round_identity_mismatch');
   }
+  // Schedule a refused/early disclosure read from the server's remaining delay,
+  // not from the estimated midpoint clock (which can run ahead under latency).
+  const serverNowMs = timestampMs(serverNow);
+  const disclosureNotBeforeLocalMs = !incoming.resolvedDecisions && serverNowMs != null
+    && responseReceivedAtMs != null && serverNowMs < incoming.dropAtMs
+    ? responseReceivedAtMs + incoming.dropAtMs - serverNowMs
+    : undefined;
   if (current?.window.id === incoming.id) {
     // The identity is stable, but pause authority may shift the derived
     // timestamps via presentation_fallback_at. Refreshing that immutable
     // projection resumes rather than restarts the exact same ritual.
-    return { window: incoming, serverOffsetMs };
+    if (current.window.gameId !== incoming.gameId
+      || current.window.dealerGameId !== incoming.dealerGameId
+      || current.window.handNumber !== incoming.handNumber
+      || current.window.roundNumber !== incoming.roundNumber) {
+      throw new Error('three_five_seven_decision_reveal:scope_identity_mismatch');
+    }
+    if (current.window.resolvedDecisions && incoming.resolvedDecisions
+      && JSON.stringify(Object.entries(current.window.resolvedDecisions).sort())
+        !== JSON.stringify(Object.entries(incoming.resolvedDecisions).sort())) {
+      throw new Error('three_five_seven_decision_reveal:conflicting_snapshot');
+    }
+    return {
+      window: { ...incoming, resolvedDecisions: incoming.resolvedDecisions ?? current.window.resolvedDecisions },
+      serverOffsetMs,
+      disclosureNotBeforeLocalMs,
+    };
   }
-  return { window: incoming, serverOffsetMs };
+  return { window: incoming, serverOffsetMs, disclosureNotBeforeLocalMs };
 }
 
 export function deriveThreeFiveSevenDecisionRevealFrame(

@@ -4,6 +4,64 @@
 
 BEGIN;
 
+-- Exercise the public disclosure boundary before retaining the original
+-- settlement/continuation assertions below. This helper and every fixture
+-- disappear on ROLLBACK; it waits for the real server deadline without
+-- changing the immutable snapshot or the reveal clock.
+CREATE FUNCTION pg_temp.qualify_357_drop(
+  g uuid, d uuid, r uuid, h integer, n integer, expected jsonb, receipt jsonb
+) RETURNS void LANGUAGE plpgsql AS $gate$
+DECLARE f jsonb; w jsonb; before_game jsonb; before_round jsonb; k text;
+BEGIN
+  SELECT game_before,round_before INTO STRICT before_game,before_round
+    FROM private.three_five_seven_decision_snapshots WHERE round_id=r;
+  IF receipt IS NOT NULL AND (
+    receipt->'resolution' IS DISTINCT FROM 'null'::jsonb OR
+    receipt#>'{decision_reveal,resolved_decisions}' IS DISTINCT FROM 'null'::jsonb
+  ) THEN RAISE EXCEPTION '357_authority_proof:early_receipt_disclosure:%',receipt; END IF;
+  EXECUTE 'SET LOCAL ROLE authenticated';
+  f:=public.three_five_seven_current_frame(g);
+  w:=public.three_five_seven_read_reveal(g,d,r,h,n);
+  IF w#>'{decision_reveal,resolved_decisions}' IS DISTINCT FROM 'null'::jsonb
+     OR f#>'{decision_reveal,resolved_decisions}' IS DISTINCT FROM 'null'::jsonb
+     OR EXISTS(SELECT 1 FROM jsonb_array_elements(f->'players') p
+       WHERE p->>'user_id'<>auth.uid()::text AND
+       (p->>'current_decision' IS NOT NULL OR (p->>'pre_fold')::boolean OR (p->>'pre_stay')::boolean))
+  THEN RAISE EXCEPTION '357_authority_proof:early_decision_disclosure:%',f; END IF;
+  FOREACH k IN ARRAY ARRAY['status','pot','last_round_result','awaiting_next_round','winner_player_id','chip_transfer_cursor'] LOOP
+    IF f->'game'->k IS DISTINCT FROM before_game->k THEN
+      RAISE EXCEPTION '357_authority_proof:early_outcome_disclosure:%',k;
+    END IF;
+  END LOOP;
+  IF f#>'{round,status}' IS DISTINCT FROM before_round->'status'
+     OR EXISTS(SELECT 1 FROM public.players WHERE game_id=g)
+     OR EXISTS(SELECT 1 FROM public.game_results WHERE game_id=g)
+  THEN RAISE EXCEPTION '357_authority_proof:early_direct_disclosure'; END IF;
+  BEGIN
+    PERFORM decisions FROM private.three_five_seven_decision_snapshots WHERE round_id=r;
+    RAISE EXCEPTION '357_authority_proof:private_snapshot_accessible';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  IF public.three_five_seven_advance_round(g,r,d,h,n)->>'outcome'
+      IS DISTINCT FROM 'disclosure_pending' THEN
+    RAISE EXCEPTION '357_authority_proof:early_continuation_allowed';
+  END IF;
+  PERFORM pg_sleep(greatest(0,extract(epoch FROM
+    (w#>>'{decision_reveal,drop_at}')::timestamptz-clock_timestamp()))+0.02);
+  w:=public.three_five_seven_read_reveal(g,d,r,h,n);
+  f:=public.three_five_seven_current_frame(g);
+  IF w#>'{decision_reveal,resolved_decisions}' IS DISTINCT FROM expected
+     OR f#>'{decision_reveal,resolved_decisions}' IS DISTINCT FROM expected
+     OR f#>>'{identity,round_id}' IS DISTINCT FROM r::text
+     OR f#>>'{identity,dealer_game_id}' IS DISTINCT FROM d::text
+     OR f#>>'{identity,hand_number}' IS DISTINCT FROM h::text
+     OR f#>>'{identity,round_number}' IS DISTINCT FROM n::text THEN
+    RAISE EXCEPTION '357_authority_proof:authorized_exact_round_reveal_invalid:%',w;
+  END IF;
+  EXECUTE 'RESET ROLE';
+END;
+$gate$;
+
 DO $proof$
 DECLARE
   v_users uuid[]; v_outsider uuid:=gen_random_uuid();
@@ -161,12 +219,15 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p2,'stay') INTO v_result;
+  PERFORM pg_temp.qualify_357_drop(v_game,v_dealer,v_round,1,1,
+    jsonb_build_object(v_p1,'stay',v_p2,'stay'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_game,v_round,v_dealer,1,1,v_p2,'stay') INTO v_result;
   -- The proof body runs inside one caller-owned transaction. Flush and restore
   -- the deferred projector here to model the production RPC commit boundary,
   -- so the later all-fold cursor identifies only its pussy-tax batch.
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
-  IF v_result#>>'{resolution,outcome}'<>'showdown'
+  IF v_result#>>'{resolution,outcome}' IS DISTINCT FROM 'showdown'
      OR (v_result#>>'{resolution,winner_player_id}')::uuid<>v_p1
      OR (SELECT chips FROM public.players WHERE id=v_p1)<>102
      OR (SELECT chips FROM public.players WHERE id=v_p2)<>94 THEN
@@ -207,7 +268,10 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_r2,v_dealer,1,2,v_p2,'stay') INTO v_result;
-  IF v_result#>>'{resolution,outcome}'<>'tie' OR (SELECT chips FROM public.players WHERE id=v_p1)<>v_chips1
+  PERFORM pg_temp.qualify_357_drop(v_game,v_dealer,v_r2,1,2,
+    jsonb_build_object(v_p1,'stay',v_p2,'stay'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_game,v_r2,v_dealer,1,2,v_p2,'stay') INTO v_result;
+  IF v_result#>>'{resolution,outcome}' IS DISTINCT FROM 'tie' OR (SELECT chips FROM public.players WHERE id=v_p1)<>v_chips1
      OR (SELECT chips FROM public.players WHERE id=v_p2)<>v_chips2 THEN
     RAISE EXCEPTION '357_authority_proof:tie_invalid:%',v_result;
   END IF;
@@ -220,9 +284,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_game,v_r3,v_dealer,1,3,v_p2,'fold') INTO v_result;
+  PERFORM pg_temp.qualify_357_drop(v_game,v_dealer,v_r3,1,3,
+    jsonb_build_object(v_p1,'fold',v_p2,'fold'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_game,v_r3,v_dealer,1,3,v_p2,'fold') INTO v_result;
   v_cursor:=(v_result#>>'{resolution,presentation_transfer_cursor}')::integer;
-  IF v_result#>>'{resolution,outcome}'<>'all_fold'
-     OR v_result#>>'{resolution,presentation_kind}'<>'pussy_tax'
+  IF v_result#>>'{resolution,outcome}' IS DISTINCT FROM 'all_fold'
+     OR v_result#>>'{resolution,presentation_kind}' IS DISTINCT FROM 'pussy_tax'
      OR coalesce(v_cursor,0)<=0
      OR v_result#>>'{game,id}' IS DISTINCT FROM v_game::text
      OR v_result#>>'{game,current_game_uuid}' IS DISTINCT FROM v_dealer::text
@@ -238,7 +305,7 @@ BEGIN
   END IF;
   SELECT public.three_five_seven_submit_decision(v_game,v_r3,v_dealer,1,3,v_p2,'fold') INTO v_replay;
   IF v_replay->>'outcome'<>'already_decided'
-     OR v_replay#>>'{resolution,outcome}'<>'all_fold'
+     OR v_replay#>>'{resolution,outcome}' IS DISTINCT FROM 'all_fold'
      OR (v_replay#>>'{resolution,presentation_transfer_cursor}')::integer<>v_cursor
      OR (SELECT count(*) FROM public.gameplay_transfer_batches
           WHERE game_id=v_game AND cursor=v_cursor)<>1 THEN
@@ -344,9 +411,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_leg_game,v_leg_round,v_leg_dealer,1,1,v_l2,'fold') INTO v_result;
+  PERFORM pg_temp.qualify_357_drop(v_leg_game,v_leg_dealer,v_leg_round,1,1,
+    jsonb_build_object(v_l1,'stay',v_l2,'fold'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_leg_game,v_leg_round,v_leg_dealer,1,1,v_l2,'fold') INTO v_result;
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
-  IF v_result#>>'{resolution,outcome}'<>'solo_stay'
+  IF v_result#>>'{resolution,outcome}' IS DISTINCT FROM 'solo_stay'
      OR (SELECT pot FROM public.games WHERE id=v_leg_game)<>10
      OR (SELECT chips FROM public.players WHERE id=v_l1)<>98
      OR (SELECT legs FROM public.players WHERE id=v_l1)<>1
@@ -403,6 +473,9 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_cron_game,v_cron_round,v_cron_dealer,1,1,v_cron_p2,'fold') INTO v_result;
+  PERFORM pg_temp.qualify_357_drop(v_cron_game,v_cron_dealer,v_cron_round,1,1,
+    jsonb_build_object(v_cron_p1,'fold',v_cron_p2,'fold'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_cron_game,v_cron_round,v_cron_dealer,1,1,v_cron_p2,'fold') INTO v_result;
   v_cursor:=(v_result#>>'{resolution,presentation_transfer_cursor}')::integer;
   PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
   UPDATE private.three_five_seven_round_resolutions
@@ -452,9 +525,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_users[2]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[2])::text,true);
   SELECT public.three_five_seven_submit_decision(v_terminal_game,v_terminal_round,v_terminal_dealer,1,1,v_t2,'fold') INTO v_result;
+  PERFORM pg_temp.qualify_357_drop(v_terminal_game,v_terminal_dealer,v_terminal_round,1,1,
+    jsonb_build_object(v_t1,'stay',v_t2,'fold'),v_result);
+  SELECT public.three_five_seven_submit_decision(v_terminal_game,v_terminal_round,v_terminal_dealer,1,1,v_t2,'fold') INTO v_result;
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize IMMEDIATE';
   EXECUTE 'SET CONSTRAINTS gameplay_transfer_pending_finalize DEFERRED';
-  IF v_result#>>'{resolution,outcome}'<>'terminal' OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'game_over'
+  IF v_result#>>'{resolution,outcome}' IS DISTINCT FROM 'terminal' OR (SELECT status FROM public.games WHERE id=v_terminal_game)<>'game_over'
      OR (SELECT current_game_uuid FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM v_terminal_dealer
      OR (SELECT total_hands FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM 1
      OR (SELECT current_round FROM public.games WHERE id=v_terminal_game) IS DISTINCT FROM 1
@@ -681,6 +757,17 @@ BEGIN
       true
     );
 
+    -- These synthetic legacy postgame fixtures have no decision snapshot.
+    -- They must remain gated before DROP too. Move only their existing
+    -- recovery deadline past before testing the unchanged postgame owner.
+    IF public.three_five_seven_advance_postgame(
+      v_case_game,v_case_round,v_case_dealer,1
+    )->>'outcome' IS DISTINCT FROM 'disclosure_pending' THEN
+      RAISE EXCEPTION '357_authority_proof:early_postgame_allowed:%',v_case.case_name;
+    END IF;
+    UPDATE private.three_five_seven_round_resolutions
+      SET presentation_fallback_at=clock_timestamp()-interval '1 second'
+      WHERE round_id=v_case_round;
     SELECT public.three_five_seven_advance_postgame(
       v_case_game,v_case_round,v_case_dealer,1
     ) INTO v_result;
@@ -829,6 +916,8 @@ BEGIN
   );
   PERFORM set_config('request.jwt.claim.sub',v_users[1]::text,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',v_users[1])::text,true);
+  PERFORM pg_temp.qualify_357_drop(v_session_terminal_game,v_session_terminal_dealer,v_session_terminal_round,1,1,
+    jsonb_build_object(v_st1,'stay',v_st2,'fold'),NULL);
   SELECT public.three_five_seven_current_frame(v_session_terminal_game) INTO v_frame;
   IF v_frame#>>'{game,status}'<>'session_ended'
      OR (v_frame#>>'{identity,dealer_game_id}')::uuid IS DISTINCT FROM v_session_terminal_dealer
