@@ -131,7 +131,10 @@ import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { ThreeFiveSevenDecisionReveal } from './ThreeFiveSevenDecisionReveal';
-import type { ThreeFiveSevenDecisionRevealClock } from '@/lib/threeFiveSeven/decisionReveal';
+import {
+  shouldRetireThreeFiveSevenFoldedSeatCardBacks,
+  type ThreeFiveSevenDecisionRevealClock,
+} from '@/lib/threeFiveSeven/decisionReveal';
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 // CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
 // is now the single stable instance across DEALING → READY → GAMEPLAY.
@@ -11786,8 +11789,27 @@ export const MobileGameTable = ({
     // round identity resumes the existing deal-owned card-back path.
     const isDecisionRevealRound =
       threeFiveSevenDecisionRevealClock?.window.roundId === threeFiveSevenViewRoundId;
+    // The dedicated reveal stack owns the synchronized DROP transition. Once
+    // that exact tableau is admitted, or once the exact result/terminal view
+    // is visible (including reconnect/replay reconstruction), the ordinary
+    // seat-card-back fallback must not repaint a folded player's cards.
+    // Before either boundary, keep the existing backs mounted while decisions
+    // are still hidden/incomplete.
+    const resultPresentationVisible =
+      !!lastRoundResult
+      || !!threeFiveSevenTerminalDescriptor
+      || (awaitingNextRound && !threeFiveSevenDecisionRevealBlocksResult);
+    const retireFoldedSeatCardBacks = shouldRetireThreeFiveSevenFoldedSeatCardBacks({
+      folded: player.status === 'folded' || playerDecision === 'fold',
+      decisionRevealRoundActive: isDecisionRevealRound,
+      resultPresentationVisible,
+    });
     const showCardBacks =
-      apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !isDecisionRevealRound;
+      apparentIsActivePlayer
+      && expectedCardCount > 0
+      && currentRound > 0
+      && !isDecisionRevealRound
+      && !retireFoldedSeatCardBacks;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
     // ── H1R3 → H2R1 targeted trace: opponent card-back derivation.

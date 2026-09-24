@@ -31,7 +31,7 @@ import { YahtzeeRollOverlay, UpperBonusOverlay, YahtzeeBonusOverlay } from "./Ya
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie, YahtzeePlayerState,
-  UPPER_BONUS_THRESHOLD, UPPER_BONUS_VALUE,
+  UPPER_BONUS_THRESHOLD,
 } from "@/lib/yahtzeeTypes";
 import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
@@ -47,6 +47,7 @@ import {
 import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
+  getDisplayedYahtzeeTotal,
   isYahtzeeScorePresentationSuperseded,
   resolveYahtzeeRemoteScorePresentation,
   YAHTZEE_SCORE_PRESENTATION_MS,
@@ -2469,15 +2470,10 @@ export function YahtzeeGameTable({
             <div className="flex flex-col items-center py-1.5 px-3 rounded-md border bg-poker-gold/20 border-poker-gold/60">
               <span className="font-bold text-poker-gold text-[10px] leading-tight">TOTAL</span>
               <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
-                {(() => {
-                  let total = getTotalScore(ps.scorecard);
-                  if (optimisticScore?.playerId === playerId && ps.scorecard.scores[optimisticScore.category] === undefined) {
-                    total += optimisticScore.value;
-                    // If this optimistic score triggers upper bonus
-                    if (gotBonus && !hasUpperBonus(ps.scorecard)) total += UPPER_BONUS_VALUE;
-                  }
-                  return total;
-                })()}
+                {playerId === myPlayer?.id ? myDisplayedTotal : getDisplayedYahtzeeTotal(
+                  ps.scorecard,
+                  optimisticScore?.playerId === playerId ? optimisticScore : null,
+                )}
               </span>
             </div>
           </div>
@@ -2501,6 +2497,13 @@ export function YahtzeeGameTable({
      mount onward. Only gameplay-specific sub-trees that REQUIRE a
      hydrated viewState are gated behind `isPlayable`. */
   const isPlayable = !!viewState && !!currentRoundId;
+  const myScorecard = myPlayer ? viewState?.playerStates?.[myPlayer.id]?.scorecard : null;
+  const myDisplayedTotal = myScorecard
+    ? getDisplayedYahtzeeTotal(
+        myScorecard,
+        optimisticScore?.playerId === myPlayer?.id ? optimisticScore : null,
+      )
+    : 0;
 
   /* ================================================================ */
   /*  RENDER – mirrors MobileGameTable layout exactly                  */
@@ -2964,7 +2967,21 @@ export function YahtzeeGameTable({
             )}
           </div>
         }
-        identity={myPlayer?<CanonicalPlayerIdentityRow playerId={myPlayer.id} name={myPlayer.profiles?.username || 'You'} chips={myPlayer.chips} active/>:null}
+        identity={myPlayer ? (
+          <div className="flex h-full w-full items-center gap-1 pr-2">
+            <div className="min-w-0 flex-1 h-full">
+              <CanonicalPlayerIdentityRow playerId={myPlayer.id} name={myPlayer.profiles?.username || 'You'} chips={myPlayer.chips} active />
+            </div>
+            <span
+              data-yahtzee-self-score=""
+              aria-label={`Your score: ${myDisplayedTotal}`}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-poker-gold/50 bg-poker-gold/10 px-1.5 py-0.5 text-xs font-bold tabular-nums text-poker-gold"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-amber-200/80">Score</span>
+              <span>{myDisplayedTotal}</span>
+            </span>
+          </div>
+        ) : null}
       />
     </div>
   );

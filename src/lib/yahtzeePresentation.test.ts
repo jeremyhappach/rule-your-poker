@@ -4,12 +4,15 @@ import {
   createYahtzeeScoreAnnouncement,
   createYahtzeeTurnAnnouncement,
   describeYahtzeeScore,
+  getDisplayedYahtzeeTotal,
   isYahtzeeScorePresentationSuperseded,
   resolveYahtzeeRemoteScorePresentation,
   YAHTZEE_SCORE_PRESENTATION_MS,
   yahtzeeScoreAnnouncementId,
 } from './yahtzeePresentation';
 import type { YahtzeeState } from './yahtzeeTypes';
+
+const emptyScorecard = () => ({ scores: {}, yahtzeeBonuses: 0 });
 
 const scoreAction: NonNullable<YahtzeeState['lastAction']> = {
   type: 'score',
@@ -128,5 +131,44 @@ describe('resolveYahtzeeRemoteScorePresentation', () => {
       category: 'large_straight',
       score: 40,
     })).toBe('a large straight');
+  });
+});
+
+describe('getDisplayedYahtzeeTotal', () => {
+  it('uses the authoritative scorecard total before and after scoring', () => {
+    const scorecard = { scores: { fours: 12 }, yahtzeeBonuses: 0 };
+    expect(getDisplayedYahtzeeTotal(scorecard)).toBe(12);
+    expect(getDisplayedYahtzeeTotal(scorecard, { category: 'fours', value: 16 })).toBe(12);
+  });
+
+  it('preserves the optimistic score while the authoritative scorecard catches up', () => {
+    const scorecard = emptyScorecard();
+    expect(getDisplayedYahtzeeTotal(scorecard, { category: 'fours', value: 16 })).toBe(16);
+  });
+
+  it('includes the upper bonus when an optimistic upper score crosses the threshold', () => {
+    const scorecard = {
+      scores: {
+        ones: 3,
+        twos: 6,
+        threes: 9,
+        fours: 12,
+        fives: 15,
+        sixes: undefined,
+      },
+      yahtzeeBonuses: 0,
+    };
+    expect(getDisplayedYahtzeeTotal(scorecard, { category: 'sixes', value: 18 })).toBe(63 + 35);
+  });
+
+  it('keeps Yahtzee bonuses in the shared total derivation', () => {
+    expect(getDisplayedYahtzeeTotal({ scores: {}, yahtzeeBonuses: 2 })).toBe(200);
+  });
+
+  it('does not overwrite a committed zero or mutate authoritative scores', () => {
+    const scorecard = { scores: { fours: 0 }, yahtzeeBonuses: 0 };
+    expect(getDisplayedYahtzeeTotal(scorecard, { category: 'fours', value: 20 })).toBe(0);
+    expect(getDisplayedYahtzeeTotal(scorecard, { category: 'fives', value: 15 })).toBe(15);
+    expect(scorecard).toEqual({ scores: { fours: 0 }, yahtzeeBonuses: 0 });
   });
 });

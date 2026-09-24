@@ -1,3 +1,40 @@
+# 3-5-7 / Yahtzee presentation candidate — 2026-09-23 — publication held
+
+Based on current main `67b380c7b96227c705c72c6f1f76db16be397716`,
+on `codex/presentation-357-yahtzee`. Both presentation fixes from
+`aa3c3c6fe` were absent from this base. Only their six relevant source/test
+files were brought forward, with the Yahtzee identity hunk adapted to preserve
+main's newer `CanonicalPlayerIdentityRow`. Jeremy reports the deployed auth
+correction working; its code is unchanged.
+
+3-5-7 retires ordinary backs for folded seats only after the current reveal
+tableau or resolved result/terminal presentation is admitted. Hidden/incomplete
+decisions retain backs. The existing synchronized DROP animation, result
+ownership, and round reset remain unchanged.
+
+Yahtzee adds a permanent score beside the canonical self identity, leaving the
+timer in its existing row. Both the self scorecard total and permanent score
+reuse the same derived value. Its selector overlays an uncommitted optimistic
+category on a copied scorecard and delegates to canonical `getTotalScore`,
+preserving upper and Yahtzee bonuses and committed zero scores.
+
+Qualification: typecheck and production build passed; the full source and
+harness suites passed 1,906 and 241 tests, followed by 49 focused tests after
+adding next-round and immutable-scorecard cases. Local Chrome fixtures passed
+18 Yahtzee phase/viewport checks (390×844 and 1280×900), including matching
+visible totals and no score overlap with identity, timer, or pane. The real
+DROP component passed one-fold and multiple-fold animation checks, with the
+guard exercised for hidden decisions, resolved reconstruction, and next round.
+These fixtures do not establish live multiplayer/winner acceptance.
+
+The isolated fixture emits a React maximum-update-depth warning that also
+reproduces using the unchanged base component; it is preserved in local
+qualification diagnostics and was not patched. Existing test act warnings,
+Browserslist age, and build chunk warnings remain. Physical-device production
+smoke is pending. No auth, Start Game, rules, authority, settlement, database,
+dependency, or lockfile changes are included. Jeremy explicitly requested a
+local commit only: do not integrate, push, or deploy without release approval.
+
 # Auth session cleanup candidate — 2026-09-23 — publication held
 
 This candidate is based on current `origin/main`

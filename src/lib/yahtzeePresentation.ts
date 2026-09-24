@@ -1,5 +1,6 @@
-import type { YahtzeeState } from './yahtzeeTypes';
+import type { YahtzeeState, YahtzeeCategory, YahtzeeScorecard } from './yahtzeeTypes';
 import { UPPER_CATEGORIES } from './yahtzeeTypes';
+import { getTotalScore } from './yahtzeeScoring';
 import type { AnnouncementEvent } from './canonicalShell/announcements/types';
 
 type ScoreAction = NonNullable<YahtzeeState['lastAction']>;
@@ -10,6 +11,33 @@ type ScoreAction = NonNullable<YahtzeeState['lastAction']>;
  * authoritative turn has already advanced when this interval begins.
  */
 export const YAHTZEE_SCORE_PRESENTATION_MS = 2500;
+
+export interface YahtzeeScoreDisplayOverride {
+  category: YahtzeeCategory;
+  value: number;
+}
+
+/**
+ * One presentation selector for every visible version of a player's total.
+ * The scorecard remains authoritative; the optional override only covers the
+ * existing optimistic gap while that same scorecard catches up.
+ */
+export function getDisplayedYahtzeeTotal(
+  scorecard: YahtzeeScorecard,
+  optimisticScore: YahtzeeScoreDisplayOverride | null = null,
+): number {
+  if (!optimisticScore || scorecard.scores[optimisticScore.category] !== undefined) {
+    return getTotalScore(scorecard);
+  }
+
+  return getTotalScore({
+    ...scorecard,
+    scores: {
+      ...scorecard.scores,
+      [optimisticScore.category]: optimisticScore.value,
+    },
+  });
+}
 
 export function yahtzeeScoreAnnouncementId(roundId: string, sequence: number): string {
   return `yahtzee-score:${roundId}:${sequence}`;

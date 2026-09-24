@@ -35,6 +35,31 @@ export interface ThreeFiveSevenDecisionRevealFrame {
   authoritativeNowMs: number;
 }
 
+export interface ThreeFiveSevenFoldedSeatCardBackGuardInput {
+  /** True when the authoritative/player projection says this seat folded. */
+  folded: boolean;
+  /** The exact current round owns an admitted decision-reveal tableau. */
+  decisionRevealRoundActive: boolean;
+  /** A result/terminal presentation is now visible or has been reconstructed. */
+  resultPresentationVisible: boolean;
+}
+
+/**
+ * Retire only the ordinary seat-card-back fallback for a resolved fold.
+ *
+ * The dedicated decision-reveal stack remains the canonical 3-2-1-DROP
+ * transition. Before that tableau or a resolved result is admitted, the
+ * ordinary seat backs stay mounted even when a local projection already knows
+ * that a player folded.
+ */
+export function shouldRetireThreeFiveSevenFoldedSeatCardBacks({
+  folded,
+  decisionRevealRoundActive,
+  resultPresentationVisible,
+}: ThreeFiveSevenFoldedSeatCardBackGuardInput): boolean {
+  return folded && (decisionRevealRoundActive || resultPresentationVisible);
+}
+
 export function revealStackDepthPx(cardCount: number): number {
   return Math.min(6, Math.max(0, Math.round(cardCount) - 1));
 }
