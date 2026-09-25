@@ -1,5 +1,19 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## 3-5-7 authorized ledger recovery — September 25
+
+- Production runtime and manifest: `e8f1439049ca690fbdc3d15571beeeb66e496e88`.
+  Published from committed files without changing main or schema.
+- The existing revealed financial cursor now enters the existing chip-ledger
+  recovery hook. Concealment, settlement, subscriptions and timing are unchanged.
+- 74 focused tests, application typecheck and production build passed.
+- Production automated desktop/mobile Chrome passed four normal legs with
+  matching host/peer settled balances, one-folder and two-folder terminal DROP
+  dissolves, correct results, concealed pre-DROP reconnect, authorized post-DROP
+  reconnect and fresh game reset. Two runs passed without retries; cleanup was
+  verified. Physical iPhone/WebKit was not tested in this pass.
+- Exact evidence paths are in CURRENT_RELEASE.md. Main remains at `98e691b7`.
+
 ## Run21 settled continuation guard — September 23
 
 - Production migration `20260923132530` replaced the unconditional historical

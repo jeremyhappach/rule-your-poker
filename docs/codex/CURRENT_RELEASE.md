@@ -1,4 +1,4 @@
-# 3-5-7 authorized balance recovery — 2026-09-25 — qualification pending
+# 3-5-7 authorized balance recovery — 2026-09-25 — production smoke passed
 
 Continues the existing `codex/357-private-reveal` worktree from deployed
 `98e691b748a81c770ba08e13f58c813c13aa573f`. Preserved production evidence shows
@@ -11,9 +11,26 @@ correction is included.
 
 Focused qualification passed 74 tests, including missed events, no pre-DROP
 cursor recovery, identity rejection, successive settlements, duplicate
-delivery and reconnect. Typecheck and production build passed. Production
-normal/winning-leg and reset/reconnect acceptance remain pending. Main must
-not move during this pass; generated `supabase/.temp/` remains excluded.
+delivery and reconnect. Typecheck and production build passed. Runtime commit
+`e8f1439049ca690fbdc3d15571beeeb66e496e88` was published directly from an archive
+of its committed files; production manifest and loaded browser builds matched.
+No migrations, branch push or main movement occurred. Main remains at
+`98e691b748a81c770ba08e13f58c813c13aa573f`; generated `supabase/.temp/` was excluded.
+
+Production fake-money qualification passed with no retries: four normal legs,
+a one-folder terminal leg, a two-folder terminal leg, pre-/post-DROP reconnect,
+and fresh dealer-game reset. Both clients recovered the normal-leg settlement
+balances. Countdown concealment, visible fold dissolves, staying stacks,
+terminal results, settlement conservation and absence of stale reveal state
+passed. Both synthetic sessions were cleaned up and verified. These were
+automated desktop/mobile Chrome checks, not physical iPhone/WebKit acceptance.
+
+Preserved evidence (relative to this worktree):
+- `test-results/production-357/prod357-ledger-recovery-20260925/transitions.humanChaos-two-39669-etains-only-successor-state/human-chaos-transition-evidence.json`
+- `test-results/secure357-multiple-20260925/artifacts/acceptance-winning-leg-wit-3d95b-nnect-and-exact-round-reset/acceptance-evidence.json`
+
+Existing build warnings (Browserslist age, mixed imports and bundle size) remain;
+no new qualification blocker was observed. No broad regression suite was rerun.
 
 # Secure 3-5-7 concealment and winning-leg DROP — 2026-09-24 — local candidate
 
