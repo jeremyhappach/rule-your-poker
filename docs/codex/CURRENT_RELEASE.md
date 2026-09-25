@@ -1,3 +1,20 @@
+# 3-5-7 authorized balance recovery — 2026-09-25 — qualification pending
+
+Continues the existing `codex/357-private-reveal` worktree from deployed
+`98e691b748a81c770ba08e13f58c813c13aa573f`. Preserved production evidence shows
+both clients received the settled balance, but the peer missed the concealed
+settlement batch and retained its old ledger balance. The table now passes
+its existing exact-round revealed financial cursor to the existing ledger
+recovery hook. Settlement, disclosure gates, subscriptions and ledger
+ownership are unchanged. The previously approved secure-receipt harness
+correction is included.
+
+Focused qualification passed 74 tests, including missed events, no pre-DROP
+cursor recovery, identity rejection, successive settlements, duplicate
+delivery and reconnect. Typecheck and production build passed. Production
+normal/winning-leg and reset/reconnect acceptance remain pending. Main must
+not move during this pass; generated `supabase/.temp/` remains excluded.
+
 # Secure 3-5-7 concealment and winning-leg DROP — 2026-09-24 — local candidate
 
 Based on `d2c25f83f122cdb607269a143a42521c622bd95d`, on

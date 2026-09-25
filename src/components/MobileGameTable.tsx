@@ -2122,6 +2122,11 @@ export const MobileGameTable = ({
     );
   retainedThreeFiveSevenRevealedFinancialPresentationRef.current =
     retainedThreeFiveSevenRevealedFinancialPresentation;
+  // Concealment can suppress the settlement's row/batch events. Recover its
+  // exact authorized cursor through the ledger after the existing reveal gate.
+  useChipPresentationCursorState(
+    retainedThreeFiveSevenRevealedFinancialPresentation?.transferCursor ?? null,
+  );
   const threeFiveSevenRolloverCursor =
     retainedThreeFiveSevenRolloverPresentation?.transferCursor ?? null;
   const threeFiveSevenRolloverCursorState = useChipPresentationCursorState(
