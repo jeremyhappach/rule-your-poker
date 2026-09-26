@@ -7,6 +7,33 @@ import type { FarkleResolvedRoll } from '@/lib/farkle/presentation';
 
 afterEach(cleanup);
 describe('Farkle local selection', () => {
+  it('does not issue Bank on HOT DICE, rerender, selection, or focus; records an explicit activation', () => {
+    const state = farkleTestState(), action = vi.fn();
+    const view = render(<FarkleActiveArea state={state} controllable pending={false} committed={[]} onAction={action} />);
+    const hot = { ...state, actionSequence: 2, stage: 'bank_or_roll' as const, thisTurn: 800,
+      scoringCycle: 2, finalQueue: [state.currentTurnPlayerId], available: [0, 1, 2, 3, 4, 5] };
+    view.rerender(<FarkleActiveArea state={hot} controllable pending={false} committed={[]} onAction={action} />);
+    const bank = screen.getByRole('button', { name: 'Bank' });
+    fireEvent.focus(bank);
+    expect(action).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Roll 6' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.keyDown(bank, { key: 'Enter' });
+    fireEvent.click(bank, { detail: 0 });
+    expect(action).toHaveBeenCalledExactlyOnceWith('bank', [], expect.objectContaining({ source: 'bank_button', key: 'Enter', enabled: true, clickDetail: 0 }));
+  });
+  it('records a pointer gesture begun before a snapshot change without initiating an action on that change', () => {
+    const state = { ...farkleTestState(), stage: 'bank_or_roll' as const }, action = vi.fn();
+    const view = render(<FarkleActiveArea state={state} controllable pending={false} committed={[]} onAction={action} />);
+    const bank = screen.getByRole('button', { name: 'Bank' });
+    fireEvent.pointerDown(bank, { pointerType: 'touch' });
+    view.rerender(<FarkleActiveArea state={{ ...state, actionSequence: state.actionSequence + 1 }} controllable pending={false} committed={[]} onAction={action} />);
+    expect(action).not.toHaveBeenCalled();
+    fireEvent.click(bank, { detail: 1 });
+    expect(action.mock.calls[0][2].input).toEqual(expect.objectContaining({ eventType: 'pointerdown', sequence: state.actionSequence }));
+    fireEvent.click(bank, { detail: 2 });
+    expect(action.mock.calls[1][2]).toEqual(expect.objectContaining({ input: null, clickDetail: 2,
+      previousClickTimestamp: action.mock.calls[0][2].eventTimestamp }));
+  });
   it('selects locally and sends only the committed hold gesture', () => {
     const state = farkleTestState(), action = vi.fn();
     render(<FarkleActiveArea state={state} controllable pending={false} committed={[]} onAction={action} />);

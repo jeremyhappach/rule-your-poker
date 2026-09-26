@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { FarkleAction, FarkleState } from '@/lib/farkle/types';
 import { selectedFarkleHold, type FarkleCommittedHold, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
 import { FarkleDie } from './FarkleDie';
 import { useFarkleRollPhase } from './useFarkleRollPhase';
+import type { FarkleBankActivation, FarkleBankInput } from '@/lib/farkle/bankProvenance';
 
 export function FarkleActiveArea({ state, controllable, pending, committed, onAction, animate = false, retired = [], scoring = [], resolvedRoll }: {
   state: FarkleState; controllable: boolean; pending: boolean; committed: FarkleCommittedHold[];
   animate?: boolean; retired?: number[]; scoring?: number[]; resolvedRoll?: FarkleResolvedRoll;
-  onAction: (action: FarkleAction, selected?: number[]) => void;
+  onAction: (action: FarkleAction, selected?: number[], activation?: FarkleBankActivation) => void;
 }) {
   const [selection, setSelection] = useState<{ key: string; indexes: number[] }>({ key: '', indexes: [] });
+  const bankInput = useRef<FarkleBankInput | null>(null);
+  const previousBankClick = useRef<number | null>(null);
   const key = resolvedRoll?.id ?? `${state._authorityScope}/${state.actionSequence}`;
   const phase = useFarkleRollPhase(resolvedRoll?.id ?? `${state._authorityScope}/${state.currentTurnPlayerId}/${state.rollNumber}`, !!resolvedRoll || animate);
   const selected = selection.key === key ? selection.indexes : [];
@@ -48,7 +51,35 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
     </div>
     <div className="flex shrink-0 justify-center gap-2 pb-1">
       <Button size="sm" disabled={!enabled || !hold} onClick={() => onAction('hold', selected)}>Hold Dice{hold ? ` +${hold.points}` : ''}</Button>
-      <Button size="sm" disabled={!enabled || state.stage !== 'bank_or_roll'} onClick={() => onAction('bank')}>Bank</Button>
+      <Button size="sm" disabled={!enabled || state.stage !== 'bank_or_roll'}
+        onPointerDown={event => { bankInput.current = {
+          eventType: event.type, clientTimestamp: new Date().toISOString(), eventTimestamp: event.timeStamp,
+          sequence: state.actionSequence, rollNumber: state.rollNumber, scoringCycle: state.scoringCycle,
+          pointerType: event.pointerType || null, key: null, repeatedKey: false,
+        }; }}
+        onKeyDown={event => { bankInput.current = ['Enter', ' '].includes(event.key) ? {
+          eventType: event.type, clientTimestamp: new Date().toISOString(), eventTimestamp: event.timeStamp,
+          sequence: state.actionSequence, rollNumber: state.rollNumber, scoringCycle: state.scoringCycle,
+          pointerType: null, key: event.key, repeatedKey: event.repeat,
+        } : null; }}
+        onBlur={() => { bankInput.current = null; }}
+        onClick={event => {
+          const button = event.currentTarget;
+          const bounds = button.getBoundingClientRect();
+          const activation: FarkleBankActivation = {
+            source: 'bank_button', clientTimestamp: new Date().toISOString(),
+            eventType: event.type, trusted: event.isTrusted, clickDetail: event.detail,
+            webdriver: navigator.webdriver === true,
+            pointerType: 'pointerType' in event.nativeEvent ? String(event.nativeEvent.pointerType) || null : null,
+            key: bankInput.current?.key ?? null, visible: bounds.width > 0 && bounds.height > 0,
+            enabled: !button.disabled, focused: document.activeElement === button,
+            eventTimestamp: event.timeStamp, previousClickTimestamp: previousBankClick.current,
+            input: bankInput.current,
+          };
+          bankInput.current = null;
+          previousBankClick.current = event.timeStamp;
+          onAction('bank', [], activation);
+        }}>Bank</Button>
       <Button size="sm" disabled={!rollAllowed} onClick={() => onAction('roll')}>Roll {state.available.length}</Button>
     </div>
   </div>;

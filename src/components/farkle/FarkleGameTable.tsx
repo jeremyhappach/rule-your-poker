@@ -24,6 +24,7 @@ import { FarkleRemoteStage } from './FarkleRemoteStage';
 import { FarkleRules } from './FarkleRules';
 import { FarkleHistory } from './FarkleHistory';
 import { FarkleTerminalPresentation } from './FarkleTerminalPresentation';
+import { recordFarkleBankIntent, type FarkleBankActivation } from '@/lib/farkle/bankProvenance';
 
 export interface FarkleParticipant {
   id: string; user_id: string; position: number; chips: number; is_bot: boolean;
@@ -138,10 +139,11 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     return () => clearTimeout(timer);
   }, [scopeKey, state.actionSequence, animate]);
 
-  const act = useCallback(async (action: FarkleAction, selection: number[] = []) => {
+  const act = useCallback(async (action: FarkleAction, selection: number[] = [], activation?: FarkleBankActivation) => {
     if (!controlled || !self || actionInFlight.current) return;
     const request = createFarkleActionRequest(scope, self.id, state, action, selection);
     actionInFlight.current = true; setPending(true); setError(null);
+    recordFarkleBankIntent(request, state, activation);
     try {
       const result = await applyFarkleAction(request);
       if (liveScope.current !== scopeKey) return;

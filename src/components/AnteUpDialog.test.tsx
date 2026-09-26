@@ -55,6 +55,33 @@ describe('AnteUpDialog authoritative Sit Out submission', () => {
     cleanup();
   });
 
+  it('switches 3-5-7 to Farkle and back without retaining names or rule fields', () => {
+    const callbacks = { onDecisionMade: vi.fn(), onDecisionRejected: vi.fn() };
+    const view = render(<AnteUpDialog {...baseProps} {...callbacks} gameType="3-5-7" />);
+    expect(screen.getByText('3-5-7')).toBeTruthy();
+    expect(screen.getByText('Legs to Win:')).toBeTruthy();
+    view.rerender(<AnteUpDialog {...baseProps} {...callbacks} dealerGameId="farkle-current" gameType="farkle" />);
+    expect(screen.getByText('Farkle')).toBeTruthy();
+    expect(screen.queryByText('3-5-7')).toBeNull();
+    for (const label of ['Leg Value:', 'Legs to Win:', 'Pussy Tax:', 'Pot Maximum:']) expect(screen.queryByText(label)).toBeNull();
+    expect(screen.getByText('$2')).toBeTruthy();
+    expect((screen.getByRole('button', { name: /Ante Up!/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: /Sit Out/ }) as HTMLButtonElement).disabled).toBe(false);
+    view.rerender(<AnteUpDialog {...baseProps} {...callbacks} dealerGameId="357-next" gameType="3-5-7" />);
+    expect(screen.getByText('3-5-7')).toBeTruthy();
+    expect(screen.queryByText('Farkle')).toBeNull();
+    for (const label of ['Leg Value:', 'Legs to Win:', 'Pussy Tax:', 'Pot Maximum:']) expect(screen.getByText(label)).toBeTruthy();
+  });
+
+  it.each([['Ante Up!', 'ante_up'], ['Sit Out', 'sit_out']])('preserves the Farkle %s request identity and amount', async (label, decision) => {
+    submitAnteDecisionMock.mockResolvedValue({ outcome: 'accepted', decision });
+    const onDecisionMade = vi.fn();
+    render(<AnteUpDialog {...baseProps} gameType="farkle" dealerGameId="farkle-current" onDecisionMade={onDecisionMade} onDecisionRejected={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(label) }));
+    await waitFor(() => expect(onDecisionMade).toHaveBeenCalledWith(decision));
+    expect(submitAnteDecisionMock).toHaveBeenCalledWith(expect.objectContaining({ dealerGameId: 'farkle-current', playerId: baseProps.playerId, decision }));
+  });
+
   it.each(['accepted', 'already_decided'])(
     'submits the exact admitted player and closes after Sit Out is %s',
     async (outcome) => {

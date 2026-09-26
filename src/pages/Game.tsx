@@ -193,6 +193,7 @@ import { GinRummyGameTable } from "@/components/GinRummyGameTable";
 import { YahtzeeGameTable } from "@/components/YahtzeeGameTable";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
+import { resolveAnteGameType } from "@/lib/antePresentation";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
 // LifecycleAnnouncement no longer rendered from Game.tsx — observer
 // lifecycle messaging is emitted into the canonical shell announcement
@@ -523,6 +524,7 @@ interface Player {
 
 interface AnteDialogIdentity {
   dealerGameId: string;
+  gameType: string;
   playerId: string;
   autoAnte: boolean;
   autoAnteRunback: boolean;
@@ -5497,6 +5499,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }))
     });
     
+    let cancelled = false;
     if (
       game?.status === 'ante_decision'
       && game.config_complete === true
@@ -5516,6 +5519,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .from('players')
           .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot, status')
           .eq('game_id', gameId);
+        if (cancelled) return;
         
         if (freshPlayersError || !freshPlayers) {
           console.error('[ANTE DIALOG] Error fetching fresh players:', freshPlayersError);
@@ -5539,6 +5543,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         
         // Determine if this is a runback FIRST before evaluating auto-ante
         let isRunBack = false;
+
+        // Resolve the new configuration even on the first dealer game. Keep its
+        // type with the exact dialog identity instead of session presentation.
+        const { data: currentDealerGame, error: currentError } = await supabase
+          .from('dealer_games')
+          .select('id, session_id, game_type, config')
+          .eq('session_id', game.id)
+          .eq('id', game.current_game_uuid)
+          .maybeSingle();
+        if (cancelled) return;
+        const anteGameType = resolveAnteGameType(game.id, game.current_game_uuid, currentDealerGame);
         
         if (!game.current_game_uuid) {
           console.log('[ANTE DIALOG] No current_game_uuid, not a runback');
@@ -5553,6 +5568,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .order('started_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+          if (cancelled) return;
 
           if (error) {
             console.error('[ANTE DIALOG] Error fetching previous dealer_game:', error);
@@ -5561,13 +5577,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[ANTE DIALOG] No previous dealer_game found - first game of session');
             isRunBack = false;
           } else {
-            // Get current dealer_game for comparison
-            const { data: currentDealerGame, error: currentError } = await supabase
-              .from('dealer_games')
-              .select('id, game_type, config')
-              .eq('id', game.current_game_uuid)
-              .single();
-
             if (currentError || !currentDealerGame) {
               console.error('[ANTE DIALOG] Error fetching current dealer_game:', currentError);
               isRunBack = false;
@@ -5633,10 +5642,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (!['accepted', 'already_decided'].includes(result.outcome ?? '') || result.decision !== 'ante_up') {
               throw new Error('The ante phase changed. Please confirm your participation.');
             }
+            if (cancelled) return;
             setAnteDialogIdentity(null);
             return;
           } catch (error) {
             if (anteConfirmedLatchRef.current === autoLatchKey) anteConfirmedLatchRef.current = null;
+            if (cancelled) return;
             toast({ title: 'Could not confirm automatic ante', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
             // Fall through to the visible decision surface after any rejected/lost response.
           }
@@ -5673,12 +5684,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
-          setAnteDialogIdentity({
+          setAnteDialogIdentity(anteGameType ? {
             dealerGameId: game.current_game_uuid,
+            gameType: anteGameType,
             playerId: freshCurrentPlayer.id,
             autoAnte: !!freshCurrentPlayer.auto_ante,
             autoAnteRunback: !!freshCurrentPlayer.auto_ante_runback,
-          });
+          } : null);
           // ── HANDOFF TRACE #5a: ante modal SHOWN ──
           emitCribbageHandoffTrace({
             gameId: gameId!,
@@ -5750,6 +5762,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset isRunningItBack so it re-computes on next ante_decision phase
       setIsRunningItBack(null);
     }
+    return () => { cancelled = true; };
   }, [game?.id, game?.status, game?.config_complete, game?.current_game_uuid, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Expiry is database-owned. The client may request an immediate exact check
@@ -14907,7 +14920,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId={gameId!}
               dealerGameId={exactAnteIdentity.dealerGameId}
               playerId={exactAnteIdentity.playerId}
-              gameType={game.game_type}
+              gameType={exactAnteIdentity.gameType}
               anteAmount={game.ante_amount}
               legValue={game.leg_value ?? 0}
               pussyTaxEnabled={game.pussy_tax_enabled ?? true}

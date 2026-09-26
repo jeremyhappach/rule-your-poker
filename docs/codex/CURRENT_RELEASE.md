@@ -1,3 +1,34 @@
+# Farkle ante identity and Bank diagnostics — 2026-09-26 — local candidate
+
+Based on main `8617494cc`. Ante presentation now reads the exact current
+dealer-game row and retains its game type with the dialog identity. Farkle
+displays its own name and excludes 3-5-7-only rule fields. Existing ante
+amounts, decisions, authority and other-game presentation are preserved.
+Late configuration reads cannot replace the current dialog identity.
+
+Each client Bank attempt emits one best-effort `farkle_bank_intent` row in
+the existing `debug_events` table, correlated with the action request ID.
+It records build, input/click timestamps, pointer/key details, event trust,
+the browser's WebDriver indicator,
+visibility/enabled/focus facts, and the input-start and dispatch turn/roll
+identities. Browser trust/WebDriver flags cannot prove human intent. These
+are untrusted diagnostics; logging failures do not block
+actions, and no diagnostic field enters the gameplay RPC or reducer.
+
+The retained September 25 production round
+`6a3cf950-69f1-4f27-b6f7-040f97fc2ee8` continued at HOT DICE (sequence 7,
+800 points, six available dice and a renewed clock), then completed on a
+distinct Bank request (sequence 8). Its browser activation source is unknown.
+Read-only deployed reducer checks passed repeated Hot Dice cycles in Equal
+Turns, One Last Turn and tiebreak turns. No reducer, scoring, settlement,
+timeout, Run21, migration, dependency or lockfile changes are included.
+
+Focused checks: 27 tests, application typecheck and production build passed.
+Existing build warnings remain. Live production ante/turn smoke remains pending;
+the current Windows checkout has no configured two-player smoke credentials.
+The previous isolated browser attempt failed in the browser tool before
+verification and does not constitute browser acceptance.
+
 # 3-5-7 authorized balance recovery — 2026-09-25 — production smoke passed
 
 Continues the existing `codex/357-private-reveal` worktree from deployed
