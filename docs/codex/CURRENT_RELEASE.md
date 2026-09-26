@@ -1,4 +1,13 @@
-# Farkle ante identity and Bank diagnostics — 2026-09-26 — local candidate
+# Farkle ante identity and Bank diagnostics — 2026-09-26 — deployed, gameplay smoke pending
+
+Product commit `1d2ba6fb6427e7abc4c41fd8494c7f5c163ec544` and the separately
+approved push-helper directory correction `07f339e91d51ba27e302661a38b5c3e61d2f2169`
+were pushed to `origin/main` through the existing helper. Its Git executable and
+exact push command are unchanged. Publish checkpoint tag:
+`farkle-ante-bank-diagnostics-publish-20260926`.
+Vercel deployment `dpl_CHZ6zAPJM4NJXyrwhNbAipjxRWk2` is READY for production;
+`https://holm357.com/build-manifest.json` returned HTTP 200 and build
+`07f339e91d51ba27e302661a38b5c3e61d2f2169` on September 26.
 
 Based on main `8617494cc`. Ante presentation now reads the exact current
 dealer-game row and retains its game type with the dialog identity. Farkle
@@ -24,10 +33,12 @@ Turns, One Last Turn and tiebreak turns. No reducer, scoring, settlement,
 timeout, Run21, migration, dependency or lockfile changes are included.
 
 Focused checks: 27 tests, application typecheck and production build passed.
-Existing build warnings remain. Live production ante/turn smoke remains pending;
-the current Windows checkout has no configured two-player smoke credentials.
-The previous isolated browser attempt failed in the browser tool before
-verification and does not constitute browser acceptance.
+Existing build warnings remain. The production browser loaded the sign-in page.
+Live 3-5-7 → Farkle ante, inverse transition and final-turn smoke remain pending:
+the current Windows checkout has no configured two-player smoke credentials,
+and the browser has no authenticated player session. No production gameplay
+acceptance is claimed. The previous isolated browser attempt failed in the
+browser tool before verification and does not constitute browser acceptance.
 
 # 3-5-7 authorized balance recovery — 2026-09-25 — production smoke passed
 
