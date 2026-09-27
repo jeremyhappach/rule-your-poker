@@ -1,3 +1,69 @@
+# Farkle remote Hold and Balanced Hot Dice — 2026-09-26 — release checkpoint, production smoke pending
+
+Jeremy approved both focused corrections. Based on main
+`8226fecdf30ba3ad2455ba9766d888449973429a`, the client correction keeps
+live remote scoring dice green through the canonical THIS TURN acknowledgment,
+then dissolves them over 240 ms. Automatic final-die Holds admit their notice
+after the existing roll presentation. Scope, actor, roll and action identity
+guard retirement callbacks. Self-held dice, history and reconnect rendering
+remain unchanged; reduced motion retires the remote dice immediately.
+
+`supabase/farkle/hot-dice-bot-policy/authority.sql` is the applied policy
+source. It retains target-reaching and terminal-winning Banks, then ignores
+the ordinary Balanced threshold only for bank_or_roll with six fresh dice in
+scoring cycle 2+. Partial Holds after the next roll resume the threshold;
+repeated Hot Dice applies the exception again. No reducer, scoring, action RPC,
+settlement, endgame, timeout, Run21, dependency or lockfile changes are included.
+
+Validation: 58 focused Farkle tests and the application TypeScript check passed.
+The SQL candidate plus `proof.sql` passed inside BEGIN/ROLLBACK against the
+deployed pure reducer: ordinary 500 Bank, Hot Dice 500 Roll, repeat Hot Dice,
+automatic final-die Hold, normal policy resumption, target Bank in all modes,
+final-turn/tiebreak winner and tie continuation, replay/late replay, private
+authorization and human Bank/Roll legality. All other Farkle/Run21 function
+definitions and ACLs were unchanged; rollback restored the original bot hash.
+No historical or synthetic gameplay rows were written.
+
+The production Vite build passed using installed Bun to load the unchanged
+configuration directly; the normal Node config loader failed on a restricted
+parent-directory scan. Existing build warnings remain. Isolated Chrome CSS
+checks using actual rendered component markup passed at 390 and 1280 pixels:
+green during fade, hidden afterward, unchanged self gray and reduced motion.
+This is component/CSS evidence, not live multiplayer smoke. The dev preview
+could not complete dependency optimization under the same filesystem restriction.
+
+Git write access was restored and branch `codex/farkle-hold-hot-dice` was created
+from `8226fecdf30ba3ad2455ba9766d888449973429a` (the intervening main commit
+records prior deployment evidence). Migration
+`20260926172812_farkle_balanced_hot_dice_policy` is applied to
+`xvhmbuppghwmwpwrkzao`; its exact SQL is recorded in `supabase/migrations/`.
+The complete rollback proof passed before application, restored the original
+bot hash, and passed again after application. The deployed bot hash is
+`24d6aabfefd04e0813d7a7ef69c8f9d4`. Other Farkle/Run21 definitions and ACLs
+retained fingerprint `5170055521d29877299460141c8f6b8b`; the bot remains private.
+No gameplay rows were written.
+
+The resumed client check exposed a React render-phase update in the new Hold
+retirement callback. That callback now queues its guarded local update in a
+microtask. Delayed final-die notice admission uses the existing latest-emitter
+ref so retirement of a prior notice cannot cancel it. The added queue-change
+regression and warning assertion pass within the 58-test focused suite.
+Installed TypeScript (`tsc -p tsconfig.app.json --noEmit`) passed; `tsgo` was
+unavailable and no package was installed. The normal Node Vite production build
+now passes with existing warnings, reporting 27m45s. No shared owner changed.
+
+Jeremy resumed publication after the execution-budget checkpoint. Final review
+is complete, and the source is qualified for the approved task-branch push,
+fast-forward main integration and unchanged main push helper. Publish checkpoint
+tag: `farkle-hold-hot-dice-publish-20260926`. Production verification must match
+the deployed manifest to that tag before gameplay acceptance. Pre-existing
+AGENTS.md and push-rule edits remain outside release scope. The migration is
+already applied: do not apply it again. Jeremy's live remote Hold and Balanced
+Hot Dice smoke remains the acceptance gate: remote scoring dice stay green
+through THIS TURN, then dissolve; automatic final-die notices follow the roll;
+Balanced bots roll six after Hot Dice unless a target or winning Bank applies,
+and ordinary threshold behavior resumes after a partial Hold.
+
 # Farkle ante identity and Bank diagnostics — 2026-09-26 — deployed, gameplay smoke pending
 
 Product commit `1d2ba6fb6427e7abc4c41fd8494c7f5c163ec544` and the separately
