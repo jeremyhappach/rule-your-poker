@@ -17,6 +17,9 @@ it('acknowledges committed dice in green without leaving gray slots', () => {
   const state = farkleTestState(); state.stage = 'bank_or_roll'; state.thisTurn = 100; state.available = [1,2,3,4,5];
   const view = render(<FarkleActiveArea state={state} controllable pending={false} presentationHold={{ key: 'hold', indexes: [0], phase: 'scoring' }}
     committed={[{ sequence: 2, dice: [state.dice[0]], points: 100, rollNumber: 1 }]} onAction={() => {}} />);
+  const actionSlot = view.container.querySelector('[data-farkle-self-action-slot]') as HTMLElement;
+  expect(actionSlot.classList.contains('h-10')).toBe(true);
+  expect(actionSlot.getAttribute('aria-hidden')).toBe('true');
   expect(screen.queryByRole('button', { name: 'Bank' })).toBeNull();
   const die = view.container.querySelector('[data-farkle-die="0"]') as HTMLElement;
   expect(die.dataset.retired).toBe('false');

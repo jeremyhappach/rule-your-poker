@@ -51,6 +51,7 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
         {visibleDice.map(die => {
           const index = die.index;
           return <FarkleDie key={index} die={die} selected={selected.includes(index)}
+            style={{ '--farkle-self-slot-x': `${50 + (index - 2.5) * (100 / 6)}%` } as CSSProperties}
             scoring={!resolvedRoll && (holdIsAcknowledging ? heldIndexes.includes(index) : scoring.includes(index))}
             disabled={!enabled || state.stage !== 'hold' || !state.available.includes(index)}
             onSelect={i => setSelection({ key, indexes: selected.includes(i) ? selected.filter(n => n !== i) : [...selected, i] })} />;
@@ -69,7 +70,8 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
         <span>+{group.points.toLocaleString('en-US')}</span>
       </span>) : <span>No dice held this turn</span>}
     </div>
-    {presentationReady && <div className="flex shrink-0 justify-center gap-2 pb-1">
+    <div className={`flex h-10 shrink-0 justify-center gap-2 pb-1${presentationReady ? '' : ' invisible pointer-events-none'}`}
+      aria-hidden={!presentationReady} data-farkle-self-action-slot="" data-farkle-actions-ready={presentationReady}>
       <Button size="sm" disabled={!enabled || !selectedHold} onClick={() => onAction('hold', selected)}>Hold Dice{selectedHold ? ` +${selectedHold.points}` : ''}</Button>
       <Button size="sm" disabled={!enabled || state.stage !== 'bank_or_roll'}
         onPointerDown={event => { bankInput.current = {
@@ -101,6 +103,6 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
           onAction('bank', [], activation);
         }}>Bank</Button>
       <Button size="sm" disabled={!rollAllowed} onClick={() => onAction('roll')}>Roll {state.available.length}</Button>
-    </div>}
+    </div>
   </div>;
 }

@@ -76,6 +76,9 @@ describe('Farkle local selection', () => {
     const { container } = render(<FarkleActiveArea state={state} controllable={false} pending={false} committed={[]} onAction={() => {}} />);
     expect([...container.querySelectorAll('.farkle-self-dice > [data-farkle-die]')]
       .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual([0, 2, 3, 5]);
+    expect([...container.querySelectorAll<HTMLElement>('.farkle-self-dice > [data-farkle-die]')]
+      .map(die => die.style.getPropertyValue('--farkle-self-slot-x')))
+      .toEqual([0, 2, 3, 5].map(index => `${50 + (index - 2.5) * (100 / 6)}%`));
     expect(container.querySelector('[data-retired="true"]')).toBeNull();
   });
 

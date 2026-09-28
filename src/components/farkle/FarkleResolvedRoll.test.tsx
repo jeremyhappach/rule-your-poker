@@ -134,9 +134,12 @@ function heldState(before: FarkleState, indexes = [0]): FarkleState {
 const remoteHeld = () => document.querySelector('.farkle-remote-die:has([data-farkle-die="0"])')!;
 
 describe('Farkle live remote Hold retirement', () => {
-  it.each([[[0]], [[0, 1]]])('keeps scoring dice %j green for 1.4 seconds, then dissolves and recenters without gray', async (indexes) => {
+  it.each([[[0]], [[0, 1]]])('keeps scoring dice %j green for 1.4 seconds, then dissolves without moving survivor slots', async (indexes) => {
     const before = farkleTestState();
     const view = mount(before, 'user-1');
+    const remote = document.querySelector('.farkle-remote-stage')!;
+    const slotsBeforeHold = new Map([...remote.querySelectorAll<HTMLElement>(':scope > .farkle-remote-die')]
+      .map(die => [Number(die.querySelector('[data-farkle-die]')?.getAttribute('data-farkle-die')), die.style.getPropertyValue('--farkle-row-x')]));
     const held = heldState(before, indexes);
     view.update(held);
     expect(screen.getByText(`THIS TURN +${100 * indexes.length}`)).toBeVisible();
@@ -152,11 +155,10 @@ describe('Farkle live remote Hold retirement', () => {
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-scoring', 'true');
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-retired', 'false');
     expect(remoteHeld()).toHaveAttribute('aria-hidden', 'true');
-    const remote = document.querySelector('.farkle-remote-stage')!;
     const survivors = [...remote.querySelectorAll(':scope > .farkle-remote-die:not([data-hold-phase])')];
     expect(survivors).toHaveLength(6 - indexes.length);
-    expect(survivors.map((die, order) => Number.parseFloat((die as HTMLElement).style.getPropertyValue('--farkle-row-x'))))
-      .toEqual(survivors.map((_, order, all) => 50 + (order - (all.length - 1) / 2) * (100 / 6)));
+    expect(survivors.map(die => (die as HTMLElement).style.getPropertyValue('--farkle-row-x')))
+      .toEqual(survivors.map(die => slotsBeforeHold.get(Number(die.querySelector('[data-farkle-die]')?.getAttribute('data-farkle-die')))));
     await act(async () => { await vi.advanceTimersByTimeAsync(240); });
     expect(remote.querySelector('.farkle-remote-hold-dissolving-layer')).toBeNull();
     expect(remote.querySelectorAll(':scope > .farkle-remote-die')).toHaveLength(6 - indexes.length);
@@ -254,12 +256,18 @@ describe('Farkle live remote Hold retirement', () => {
     expect(screen.queryByText('THIS TURN +200')).toBeNull();
   });
 
-  it.each([[[0], [1, 2, 3, 4, 5]], [[1, 4], [0, 2, 3, 5]]])('dissolves self-held dice %j and immediately recenters available dice %j', async (indexes, remaining) => {
+  it.each([[[0], [1, 2, 3, 4, 5]], [[1, 4], [0, 2, 3, 5]]])('dissolves self-held dice %j while keeping available dice in their original slots %j', async (indexes, remaining) => {
     const before = farkleTestState();
     const view = mount(before, 'user-0');
-    view.update(heldState(before, indexes));
     const selfRow = () => document.querySelector('.farkle-self-dice')!;
+    const actionSlot = () => view.container.querySelector('[data-farkle-self-action-slot]')!;
+    const slotsBeforeHold = new Map([...selfRow().querySelectorAll<HTMLElement>(':scope > [data-farkle-die]')]
+      .map(die => [Number(die.getAttribute('data-farkle-die')), die.style.getPropertyValue('--farkle-self-slot-x')]));
+    view.update(heldState(before, indexes));
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'scoring');
+    expect(actionSlot()).toHaveClass('h-10');
+    expect(actionSlot()).toHaveAttribute('data-farkle-actions-ready', 'false');
+    expect(actionSlot()).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('button', { name: `Roll ${remaining.length}` })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Bank' })).toBeNull();
     expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
@@ -269,11 +277,15 @@ describe('Farkle live remote Hold retirement', () => {
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'dissolving');
     expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
       .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual(remaining);
+    expect([...selfRow().querySelectorAll<HTMLElement>(':scope > [data-farkle-die]')]
+      .map(die => die.style.getPropertyValue('--farkle-self-slot-x')))
+      .toEqual(remaining.map(index => slotsBeforeHold.get(index)));
     expect(selfRow().querySelectorAll('.farkle-self-hold-dissolving [data-scoring="true"]')).toHaveLength(indexes.length);
     expect(screen.queryByRole('button', { name: `Roll ${remaining.length}` })).toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(240); });
     expect(selfRow()).not.toHaveAttribute('data-farkle-self-hold-phase');
     expect(selfRow().querySelector('[data-retired="true"]')).toBeNull();
+    expect(actionSlot()).toHaveAttribute('data-farkle-actions-ready', 'true');
     expect(screen.getByRole('button', { name: `Roll ${remaining.length}` })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeEnabled();
   });

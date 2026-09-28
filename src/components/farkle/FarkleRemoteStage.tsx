@@ -24,24 +24,25 @@ export function FarkleRemoteStage({ dice, receiptKey, animate = false, previewPh
   const removingHeldDice = hold?.phase === 'dissolving' || hold?.phase === 'retired';
   const liveDice = removingHeldDice ? orderedDice.filter(die => !heldIndexes.has(die.index)) : orderedDice;
   const dissolvingDice = hold?.phase === 'dissolving' ? orderedDice.filter(die => heldIndexes.has(die.index)) : [];
-  const dieStyle = (die: Die, order: number, count: number) => ({
-    '--farkle-row-x': `${50 + (order - (count - 1) / 2) * (100 / 6)}%`,
+  const displaySlot = new Map(orderedDice.map((die, slot) => [die.index, slot]));
+  const dieStyle = (die: Die, slot: number) => ({
+    '--farkle-row-x': `${50 + (slot - (orderedDice.length - 1) / 2) * (100 / 6)}%`,
     '--farkle-cluster-x': `${40 + (die.index % 3) * 10}%`,
     '--farkle-cluster-y': `${38 + Math.floor(die.index / 3) * 24}%`,
   } as CSSProperties);
   return <div className="farkle-remote-stage" data-farkle-roll-phase={shown} aria-label="Farkle dice">
-    {liveDice.map((die, order) => {
+    {liveDice.map(die => {
       const held = hold?.indexes.includes(die.index) ? hold : undefined;
       return <div key={`${receiptKey}/${die.index}`} className="farkle-remote-die"
         data-hold-phase={held?.phase} aria-hidden={held?.phase === 'dissolving' || undefined}
-        style={dieStyle(die, order, liveDice.length)}>
+        style={dieStyle(die, displaySlot.get(die.index) ?? 0)}>
         <FarkleDie die={die} concealed={shown === 'cluster' || shown === 'rumble'} retired={!held && retired.includes(die.index)}
           scoring={held ? shown === 'reveal' || shown === 'row' : scoring.includes(die.index)} />
       </div>;
     })}
     {dissolvingDice.length > 0 && <div className="farkle-remote-hold-dissolving-layer" aria-hidden="true">
-      {dissolvingDice.map((die, order) => <div key={`${receiptKey}/dissolving/${die.index}`} className="farkle-remote-die"
-        data-hold-phase="dissolving" aria-hidden="true" style={dieStyle(die, order, orderedDice.length)}>
+      {dissolvingDice.map(die => <div key={`${receiptKey}/dissolving/${die.index}`} className="farkle-remote-die"
+        data-hold-phase="dissolving" aria-hidden="true" style={dieStyle(die, displaySlot.get(die.index) ?? 0)}>
         <FarkleDie die={die} scoring />
       </div>)}
     </div>}

@@ -1,38 +1,41 @@
-# Farkle Hold presentation timing — 2026-09-28 — local candidate, production smoke pending
+# Farkle Hold presentation timing and stable slots — 2026-09-28 — local candidate, production smoke pending
 
 Approved scope remains presentation-only. The self active row contains only
 currently available dice after its receipt-bound green Hold acknowledgment.
-Committed dice dissolve over 240 ms rather than remaining as gray slots, and
-the remaining row re-centers at its existing size and spacing. The entire self
-action row, including Bank and Roll N, stays absent through the matching
-scoring and dissolve receipt phases; it returns only after the available dice
-have settled. A final-die Hold remains hidden across the authoritative Hot
-Dice reset, so the fresh Roll 6 state has no stale face. The visible compact
-Hold history clears at each authoritative `hot_dice` event while `THIS TURN`,
-replay, authoritative dice/indexes, timers, scoring, action transport, and
-settlement remain unchanged.
+Committed dice dissolve over 240 ms rather than remaining as gray slots.
+Available self dice retain their original authoritative-index slots throughout
+the scoring cycle, and the action-row slot remains at its normal 40 px height
+while its controls are hidden/inert. That prevents Hold gating from shifting
+the dice, compact history, timer, identity, or THIS TURN vertically. Bank and
+Roll N return only after the matching receipt settles. A final-die Hold remains
+hidden across the authoritative Hot Dice reset, so the fresh Roll 6 state has
+no stale face. The visible compact Hold history clears at each authoritative
+`hot_dice` event while `THIS TURN`, replay, authoritative dice/indexes, timers,
+scoring, action transport, and settlement remain unchanged.
 
 Remote committed dice now remain green for 1.4 seconds through their THIS TURN
 acknowledgment, then dissolve over the existing 240 ms. Dissolving remote dice
-live in a receipt-bound overlay and never retain row slots; only available
-survivors are laid out and re-centered. Existing scope, actor, action and roll
-identity guards still retire only their matching receipt. Reconnect rendering
-remains settled and does not recreate a past self Hold receipt. No reducer,
-RPC, scoring, timeout, replay, settlement, or non-Farkle behavior changed.
+live in a receipt-bound overlay and never retain row slots. Available remote
+survivors preserve their preceding display slots rather than re-centering.
+Existing scope, actor, action and roll identity guards still retire only their
+matching receipt. Reconnect rendering remains settled and does not recreate a
+past self Hold receipt. No reducer, RPC, scoring, timeout, replay, settlement,
+or non-Farkle behavior changed.
 
 Focused Farkle component/presentation coverage passed 46 tests: self and
-remote one/multiple Holds, remote green dwell and direct dissolve, survivor
-re-centering, self action gating, repeated Roll N state, stale receipt guards,
-final-die Hot Dice ordering, repeated cycle history, and the two reconnect
-cases. Installed TypeScript and `bunx vite build` passed. The normal `bun run
-build` full validation suite remains red solely on the pre-existing
-`gameTimerAuthority` static source assertion for `Game.tsx`; its unrelated
-timer expectation was not changed. A local browser check confirmed the
-application renders without a Vite error overlay or console errors, but
-stopped at the sign-in screen without using credentials. `bunx tsgo --noEmit`
-is unavailable on this host because the `tsgo` package cannot be resolved; no
-dependency was added. Production smoke remains the acceptance gate for the
-Hold and Hot Dice flows above.
+remote one/multiple Holds, remote green dwell and direct dissolve, fixed
+self/remote survivor slots, reserved self action-row space, action gating,
+repeated Roll N state, stale receipt guards, final-die Hot Dice ordering,
+repeated cycle history, and the two reconnect cases. Installed TypeScript
+passed. The production bundle and authenticated live Farkle smoke are pending.
+The normal `bun run build` full validation suite remains red solely on the
+pre-existing `gameTimerAuthority` static source assertion for `Game.tsx`; its
+unrelated timer expectation was not changed. Local desktop (1280×900) and
+mobile (390×844) browser checks confirmed application rendering with no Vite
+overlay or console errors, but stopped at the sign-in screen without
+credentials. `bunx tsgo --noEmit` is unavailable on this host because the
+`tsgo` package cannot be resolved; no dependency was added. Production smoke
+remains the acceptance gate for the Hold and Hot Dice flows above.
 
 # Farkle remote Hold and Balanced Hot Dice — 2026-09-26 — release checkpoint, production smoke pending
 

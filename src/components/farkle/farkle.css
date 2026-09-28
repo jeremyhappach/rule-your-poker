@@ -17,8 +17,8 @@
 .farkle-die[data-retired="true"] .farkle-die-visual { opacity: .35; filter: grayscale(1); }
 .farkle-die[data-scoring="true"] { box-shadow: 0 0 0 3px #16a34a, 0 0 12px #16a34a; }
 .farkle-die[data-scoring="true"] .farkle-die-visual { opacity: 1; filter: none; }
-.farkle-self-dice { position: relative; flex: 1; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; gap: 1%; }
-.farkle-self-dice > .farkle-die { width: min(15cqw, 90cqh, 104px); }
+.farkle-self-dice { position: relative; flex: 1; min-height: 0; container-type: size; }
+.farkle-self-dice > .farkle-die { position: absolute; width: min(15cqw, 90cqh, 104px); left: var(--farkle-self-slot-x); top: 50%; transform: translate(-50%, -50%); }
 .farkle-self-hold-dissolving-layer { position: absolute; inset: 0; pointer-events: none; }
 .farkle-self-hold-dissolving { position: absolute; width: min(15cqw, 90cqh, 104px); left: var(--farkle-self-hold-x); top: 50%; transform: translate(-50%, -50%); animation: farkle-self-hold-dissolve 240ms ease-out forwards; }
 .farkle-self-hold-dissolving .farkle-die { width: 100%; }
@@ -27,7 +27,7 @@
 .farkle-committed-dice .farkle-die { width: 2rem; flex: 0 0 2rem; }
 .farkle-self-dice[data-farkle-self-roll-phase="cluster"] > .farkle-die,
 .farkle-self-dice[data-farkle-self-roll-phase="rumble"] > .farkle-die { animation: farkle-self-rumble 90ms linear infinite alternate; }
-@keyframes farkle-self-rumble { from { transform: translate(-2%, 2%) rotate(-9deg); } to { transform: translate(2%, -2%) rotate(9deg); } }
+@keyframes farkle-self-rumble { from { transform: translate(-52%, -48%) rotate(-9deg); } to { transform: translate(-48%, -52%) rotate(9deg); } }
 .farkle-scoreboard { height: 100%; width: 100%; container-type: size; display: flex; justify-content: center; align-items: center; color: hsl(var(--foreground)); }
 .farkle-scoreboard[data-farkle-scoreboard="felt"] { color: #fff; }
 .farkle-scoreboard > [role="table"] { display: grid; grid-template-rows: repeat(var(--farkle-players), minmax(0, 1fr)); height: 90%; width: 90%; font-size: clamp(.65rem, calc(100cqh / (var(--farkle-players) * 2.5)), 1rem); }
