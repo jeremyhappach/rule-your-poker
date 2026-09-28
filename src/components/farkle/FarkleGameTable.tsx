@@ -22,7 +22,7 @@ import { FarkleActiveArea, type FarkleSelfHold } from './FarkleActiveArea';
 import { FarkleScoreboard } from './FarkleScoreboard';
 import { FarkleAnchoredSlot } from './FarkleAnchoredSlot';
 import { FarkleRemoteStage, type FarkleRemoteHold } from './FarkleRemoteStage';
-import { FarkleRules } from './FarkleRules';
+import { FarkleScoringTable } from './FarkleRules';
 import { FarkleHistory } from './FarkleHistory';
 import { FarkleTerminalPresentation } from './FarkleTerminalPresentation';
 import { recordFarkleBankIntent, type FarkleBankActivation } from '@/lib/farkle/bankProvenance';
@@ -321,6 +321,6 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
           {!isRealMoney && self.auto_fold && <><Bot className="h-4 w-4" aria-label="Bot control" /><Button size="sm" disabled={pending || !!self.auto_play_stop_round_id} onClick={reclaim}>{self.auto_play_stop_round_id ? 'Rejoining after this turn' : 'Rejoin'}</Button></>}</> : <span>Observing</span>}
         <button type="button" aria-label="Frozen Farkle rules" onClick={() => setHelp(true)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-950/90 text-base font-bold text-amber-50 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">?</button>
       </div>} />
-    <Dialog open={help} onOpenChange={setHelp}><DialogContent className="max-h-full overflow-auto"><DialogHeader><DialogTitle>Farkle rules</DialogTitle></DialogHeader><FarkleRules config={state.config} /></DialogContent></Dialog>
+    <Dialog open={help} onOpenChange={setHelp}><DialogContent className="max-h-full max-w-sm overflow-auto p-4 sm:max-w-md"><DialogHeader><DialogTitle>Farkle scoring</DialogTitle></DialogHeader><FarkleScoringTable rules={state.config.rules} /></DialogContent></Dialog>
   </div>;
 }

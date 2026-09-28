@@ -1,5 +1,61 @@
-import type { FarkleConfig } from '@/lib/farkle/types';
+import type { FarkleConfig, FarkleRules as FrozenFarkleRules } from '@/lib/farkle/types';
 import { FARKLE_ENDGAME_LABELS } from '@/lib/farkle/types';
+
+export interface FarkleScoringRow {
+  id: string;
+  label: string;
+  points: number;
+}
+
+const kindNames = { '3': 'Three', '4': 'Four', '5': 'Five', '6': 'Six' } as const;
+
+/**
+ * Produces a quick-reference view of the exact frozen scoring contract.
+ * Zero-valued rules are disabled by the dealer-game configuration.
+ */
+export function farkleScoringRows(rules: FrozenFarkleRules): FarkleScoringRow[] {
+  const rows: FarkleScoringRow[] = [];
+  const add = (id: string, label: string, points: number) => {
+    if (points > 0) rows.push({ id, label, points });
+  };
+
+  add('single-1', 'Single 1', rules.singles['1']);
+  add('single-5', 'Single 5', rules.singles['5']);
+
+  (['3', '4', '5', '6'] as const).forEach(kind => {
+    const values = rules.ofAKind[kind];
+    const enabled = values.map((points, index) => ({ points, face: index + 1 })).filter(({ points }) => points > 0);
+    if (!enabled.length) return;
+
+    if (enabled.length === values.length && enabled.every(({ points }) => points === enabled[0].points)) {
+      add(`kind-${kind}`, `${kindNames[kind]} of a Kind`, enabled[0].points);
+      return;
+    }
+
+    enabled.forEach(({ points, face }) => add(`kind-${kind}-${face}`, `${kindNames[kind]} ${face}s`, points));
+  });
+
+  add('straight', 'Straight', rules.straight);
+  add('three-pairs', 'Three Pairs', rules.threePairs);
+  add('two-triplets', 'Two Triplets', rules.twoTriplets);
+  add('four-plus-pair', 'Four of a Kind + Pair', rules.fourPlusPair);
+  return rows;
+}
+
+export function FarkleScoringTable({ rules }: { rules: FrozenFarkleRules }) {
+  return <table className="w-full border-collapse text-[15px] leading-5 sm:text-base" data-farkle-scoring-table>
+    <caption className="sr-only">Farkle scoring</caption>
+    <thead className="border-b border-amber-200/35 text-xs uppercase tracking-wide text-amber-200">
+      <tr><th scope="col" className="py-1.5 text-left font-semibold">Score</th><th scope="col" className="py-1.5 text-right font-semibold">Points</th></tr>
+    </thead>
+    <tbody>
+      {farkleScoringRows(rules).map(row => <tr key={row.id} className="border-b border-white/10 even:bg-white/5">
+        <th scope="row" className="py-2 pr-3 text-left font-medium text-foreground">{row.label}</th>
+        <td className="py-2 text-right font-semibold tabular-nums text-amber-100">{row.points.toLocaleString('en-US')}</td>
+      </tr>)}
+    </tbody>
+  </table>;
+}
 
 export function FarkleInstructions() {
   return <div className="space-y-2 text-sm">
