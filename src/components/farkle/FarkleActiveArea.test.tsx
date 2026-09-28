@@ -69,6 +69,16 @@ describe('Farkle local selection', () => {
     expect(container.querySelectorAll('.farkle-self-dice .farkle-die')).toHaveLength(5);
   });
 
+  it('keeps only available dice in the live self row after a reconnected Hold', () => {
+    const state = farkleTestState();
+    state.stage = 'bank_or_roll';
+    state.available = [0, 2, 3, 5];
+    const { container } = render(<FarkleActiveArea state={state} controllable={false} pending={false} committed={[]} onAction={() => {}} />);
+    expect([...container.querySelectorAll('.farkle-self-dice > [data-farkle-die]')]
+      .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual([0, 2, 3, 5]);
+    expect(container.querySelector('[data-retired="true"]')).toBeNull();
+  });
+
   it.each([1, 2, 6])('keeps an exact %s-die terminal roll in the self pane', count => {
     const state = farkleTestState();
     const dice = Array.from({ length: count }, (_, index) => ({ index, value: index === 0 ? 1 : 2 }));

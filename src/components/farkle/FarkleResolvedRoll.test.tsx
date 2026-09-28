@@ -238,14 +238,68 @@ describe('Farkle live remote Hold retirement', () => {
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-retired', 'true');
   });
 
-  it('preserves the self-held gray treatment after its green flash', async () => {
+  it('reconnects during a self scoring cycle with only available dice, without replaying the acknowledgment', () => {
+    mount(heldState(farkleTestState(), [1, 4]), 'user-0');
+    const selfRow = document.querySelector('.farkle-self-dice')!;
+    expect(selfRow).not.toHaveAttribute('data-farkle-self-hold-phase');
+    expect([...selfRow.querySelectorAll(':scope > [data-farkle-die]')]
+      .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual([0, 2, 3, 5]);
+    expect(screen.queryByText('THIS TURN +200')).toBeNull();
+  });
+
+  it.each([[[0], [1, 2, 3, 4, 5]], [[1, 4], [0, 2, 3, 5]]])('dissolves self-held dice %j and immediately recenters available dice %j', async (indexes, remaining) => {
     const before = farkleTestState();
     const view = mount(before, 'user-0');
-    view.update(heldState(before));
+    view.update(heldState(before, indexes));
+    const selfRow = () => document.querySelector('.farkle-self-dice')!;
+    expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'scoring');
+    expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
+      .filter(die => indexes.includes(Number(die.getAttribute('data-farkle-die'))))
+      .every(die => die.getAttribute('data-scoring') === 'true')).toBe(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
-    const die = document.querySelector('.farkle-self-dice [data-farkle-die="0"]');
-    expect(die).toHaveAttribute('data-retired', 'true');
-    expect(die).toHaveAttribute('data-scoring', 'false');
-    expect(document.querySelector('[data-hold-phase]')).toBeNull();
+    expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'dissolving');
+    expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
+      .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual(remaining);
+    expect(selfRow().querySelectorAll('.farkle-self-hold-dissolving [data-scoring="true"]')).toHaveLength(indexes.length);
+    await act(async () => { await vi.advanceTimersByTimeAsync(240); });
+    expect(selfRow()).not.toHaveAttribute('data-farkle-self-hold-phase');
+    expect(selfRow().querySelector('[data-retired="true"]')).toBeNull();
+  });
+
+  it('removes the final self-held die before the queued Hot Dice acknowledgment and preserves Roll 6', async () => {
+    const before = { ...farkleTestState(), stage: 'bank_or_roll' as const, available: [0], dice: [], thisTurn: 400 };
+    const view = mount(before, 'user-0');
+    const dice = [{ index: 0, value: 1 }];
+    const held = heldState(before);
+    const hot = { ...held, dice, rollNumber: before.rollNumber + 1, available: [0, 1, 2, 3, 4, 5], scoringCycle: 2,
+      events: [{ type: 'dice_rolled', playerId: first, dice, rollNumber: before.rollNumber + 1 }, ...held.events!, { type: 'hot_dice' }] };
+    view.update(hot);
+    expect(screen.queryByText('THIS TURN +100')).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
+    const selfRow = () => document.querySelector('.farkle-self-dice')!;
+    expect(screen.getByText('THIS TURN +100')).toBeVisible();
+    expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'scoring');
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect(screen.getByText('HOT DICE')).toBeVisible();
+    expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'dissolving');
+    expect(selfRow().querySelector(':scope > [data-farkle-die="0"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(240); });
+    expect(selfRow().querySelector('[data-farkle-die="0"]')).toBeNull();
+    expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'retired');
+  });
+
+  it('reconnects immediately after Hot Dice with no stale die face and a clean Roll 6 state', () => {
+    const before = { ...farkleTestState(), stage: 'bank_or_roll' as const, available: [0], dice: [], thisTurn: 400 };
+    const dice = [{ index: 0, value: 1 }];
+    const held = heldState(before);
+    const hot = { ...held, dice, rollNumber: before.rollNumber + 1, available: [0, 1, 2, 3, 4, 5], scoringCycle: 2,
+      events: [{ type: 'dice_rolled', playerId: first, dice, rollNumber: before.rollNumber + 1 }, ...held.events!, { type: 'hot_dice' }] };
+    mount(hot, 'user-0');
+    const selfRow = document.querySelector('.farkle-self-dice')!;
+    expect(selfRow).toHaveAttribute('data-farkle-self-hold-phase', 'retired');
+    expect(selfRow.querySelector('[data-farkle-die="0"]')).toBeNull();
+    expect(screen.queryByText('THIS TURN +100')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
   });
 });

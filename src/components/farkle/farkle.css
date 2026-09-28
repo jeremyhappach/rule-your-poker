@@ -16,8 +16,12 @@
 .farkle-die[data-retired="true"] .farkle-die-visual { opacity: .35; filter: grayscale(1); }
 .farkle-die[data-scoring="true"] { box-shadow: 0 0 0 3px #16a34a, 0 0 12px #16a34a; }
 .farkle-die[data-scoring="true"] .farkle-die-visual { opacity: 1; filter: none; }
-.farkle-self-dice { flex: 1; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; gap: 1%; }
+.farkle-self-dice { position: relative; flex: 1; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; gap: 1%; }
 .farkle-self-dice > .farkle-die { width: min(15cqw, 90cqh, 104px); }
+.farkle-self-hold-dissolving-layer { position: absolute; inset: 0; pointer-events: none; }
+.farkle-self-hold-dissolving { position: absolute; width: min(15cqw, 90cqh, 104px); left: var(--farkle-self-hold-x); top: 50%; transform: translate(-50%, -50%); animation: farkle-self-hold-dissolve 240ms ease-out forwards; }
+.farkle-self-hold-dissolving .farkle-die { width: 100%; }
+@keyframes farkle-self-hold-dissolve { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 .farkle-committed-dice { display: flex; align-items: center; justify-content: flex-start; gap: .35rem; }
 .farkle-committed-dice .farkle-die { width: 2rem; flex: 0 0 2rem; }
 .farkle-self-dice[data-farkle-self-roll-phase="cluster"] > .farkle-die,
@@ -31,5 +35,5 @@
 .farkle-scoreboard[data-farkle-scoreboard="felt"] [data-active="true"] { background: #ffffff20; box-shadow: inset 3px 0 #fff; }
 .farkle-scoreboard [role="cell"]:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .farkle-scoreboard strong { font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .farkle-remote-die, .farkle-self-dice > .farkle-die { transition: none; animation: none !important; } }
-@media (prefers-reduced-motion: reduce) { .farkle-remote-die[data-hold-phase="dissolving"] { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .farkle-remote-die, .farkle-self-dice > .farkle-die, .farkle-self-hold-dissolving { transition: none; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .farkle-remote-die[data-hold-phase="dissolving"], .farkle-self-hold-dissolving { visibility: hidden; } }

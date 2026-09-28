@@ -17,7 +17,7 @@ import { applyFarkleAction, createFarkleActionRequest, readFarkleReplay } from '
 import { admitFarkleSnapshot, farkleCommittedHolds, farkleResolvedRoll, farkleScopeKey, farkleTurnStatus, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
 import { FarkleGameplayGeometryProvider } from '@/lib/farkle/FarkleGameplayGeometryProvider';
 import type { FarkleAction, FarkleReplay, FarkleScope, FarkleState } from '@/lib/farkle/types';
-import { FarkleActiveArea } from './FarkleActiveArea';
+import { FarkleActiveArea, type FarkleSelfHold } from './FarkleActiveArea';
 import { FarkleScoreboard } from './FarkleScoreboard';
 import { FarkleAnchoredSlot } from './FarkleAnchoredSlot';
 import { FarkleRemoteStage, type FarkleRemoteHold } from './FarkleRemoteStage';
@@ -51,6 +51,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
   const [scoringFlash, setScoringFlash] = useState<{ key: string; indexes: number[] } | null>(null);
+  const [selfHold, setSelfHold] = useState<FarkleSelfHold | null>(null);
   const [remoteHold, setRemoteHold] = useState<FarkleRemoteHold | null>(null);
   const [localTab, setLocalTab] = useState<ShellTabId>('cards');
   const tab = props.activeTab ?? localTab;
@@ -84,7 +85,9 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       previous.scopeKey === scopeKey ? { previous: previous.revision, incoming: revision } : undefined)
       ? { state: incoming, revision, scopeKey } : previous);
   }, [incoming, revision, scopeKey, scope.roundId]);
-  useEffect(() => { setReplay(null); setError(null); setPending(false); actionInFlight.current = false; }, [scopeKey]);
+  useEffect(() => {
+    setReplay(null); setError(null); setPending(false); setSelfHold(null); setRemoteHold(null); actionInFlight.current = false;
+  }, [scopeKey]);
   useEffect(() => {
     let cancelled = false;
     void readFarkleReplay(scope).then(value => { if (!cancelled && liveScope.current === scopeKey) setReplay(value); })
@@ -105,10 +108,21 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     const receipt = farkleResolvedRoll(state, scopeKey, self?.id);
     if (receipt) setResolvedRoll(receipt);
     const held = state.events?.find(event => event.type === 'dice_held');
-    if (held?.playerId === state.currentTurnPlayerId && held.playerId !== self?.id) {
-      setRemoteHold({ key: holdKey, indexes: held.indexes ?? [], phase: 'scoring' });
+    if (held?.playerId === state.currentTurnPlayerId) {
+      if (held.playerId === self?.id) setSelfHold({ key: holdKey, indexes: held.indexes ?? [], phase: 'scoring',
+        persistAfterDissolve: state.events?.some(event => event.type === 'hot_dice') });
+      else setRemoteHold({ key: holdKey, indexes: held.indexes ?? [], phase: 'scoring' });
     }
   }, [scopeKey, state, self?.id, holdKey]);
+  useEffect(() => {
+    if (selfHold?.phase !== 'dissolving') return;
+    const key = selfHold.key;
+    const timer = setTimeout(() => setSelfHold(current => {
+      if (!current || current.key !== key) return current;
+      return current.persistAfterDissolve ? { ...current, phase: 'retired' } : null;
+    }), 240);
+    return () => clearTimeout(timer);
+  }, [selfHold]);
   const presentingRoll = resolvedRoll?.scopeKey === scopeKey ? resolvedRoll : null;
   useEffect(() => {
     if (!presentingRoll) return;
@@ -129,6 +143,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     if (prior.scopeKey !== scopeKey || state.actionSequence <= prior.sequence) return;
     const held = state.events?.find(event => event.type === 'dice_held');
     const remote = !!held?.playerId && held.playerId === state.currentTurnPlayerId && held.playerId !== self?.id;
+    const local = !!held?.playerId && held.playerId === state.currentTurnPlayerId && held.playerId === self?.id;
     const announce = () => {
       for (const event of state.events ?? []) {
         const title = event.type === 'hot_dice' ? 'HOT DICE'
@@ -138,16 +153,19 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
           id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
           scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
           payload: { title }, ttlMs: event.type === 'dice_held' ? 900 : 1600, behavior: 'enqueue',
-          onRetired: remote && event.type === 'dice_held'
+          onRetired: (remote || local) && event.type === 'dice_held'
             // The rail may retire inside its own React state updater.
-            ? () => queueMicrotask(() => setRemoteHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current))
+            ? () => queueMicrotask(() => {
+              if (local) setSelfHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
+              if (remote) setRemoteHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
+            })
             : undefined,
         });
       }
     };
     // An automatic final-die Hold shares its Roll receipt. Admit its scoring
     // notice after the existing roll/reveal/row animation, just like FARKLE.
-    if (remote && state.events?.some(event => event.type === 'dice_rolled')) {
+    if ((remote || local) && state.events?.some(event => event.type === 'dice_rolled')) {
       const settle = setTimeout(announce, 1100);
       return () => clearTimeout(settle);
     }
@@ -193,6 +211,10 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const retired = [...new Set([...state.dice.filter(d => !state.available.includes(d.index)).map(d => d.index),
     ...committed.filter(group => group.rollNumber === state.rollNumber).flatMap(group => group.dice.map(d => d.index)), ...(heldEvent?.indexes ?? [])])];
   const scoring = scoringFlash?.key === `${scopeKey}/${state.actionSequence}` ? scoringFlash.indexes : [];
+  const hotDiceHeld = state.events?.some(event => event.type === 'hot_dice') && heldEvent?.playerId === self?.id
+    ? { key: holdKey, indexes: heldEvent.indexes ?? [], phase: 'retired' as const }
+    : undefined;
+  const presentingSelfHold = selfHold?.key === holdKey ? selfHold : hotDiceHeld;
   return <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent" data-farkle-scope={scopeKey}>
     <FarkleTerminalPresentation scope={scope} state={state} live={props.terminalPresentationLive === true}
       winnerName={nameFor(state.winnerPlayerId ?? '')} winnerIsSelf={self?.id === state.winnerPlayerId}
@@ -219,7 +241,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       : tab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={currentUserId} diagnosticGameId={scope.gameId} diagnosticDealerGameId={scope.dealerGameId} />
       : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · <PresentationChipBalance playerId={p.id} rawBalance={p.chips} /></p>)}</div>
       : presentingRoll?.local || (!presentingRoll && selfTurn) ? <FarkleActiveArea state={state} controllable={controlled && !presentingRoll} pending={pending} committed={presentingRoll ? [] : committed} onAction={act}
-        animate={liveRollAnimation} retired={retired} scoring={scoring} resolvedRoll={presentingRoll?.local ? presentingRoll : undefined} />
+        animate={liveRollAnimation} scoring={scoring} presentationHold={presentingSelfHold} resolvedRoll={presentingRoll?.local ? presentingRoll : undefined} />
       : <FarkleScoreboard state={state} nameFor={nameFor} surface="pane" />}
       identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-foreground">
         {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {(state.playerStates[self.id]?.banked ?? 0).toLocaleString('en-US')} points</span>

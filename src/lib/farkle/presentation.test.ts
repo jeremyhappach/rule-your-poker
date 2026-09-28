@@ -46,12 +46,25 @@ describe('Farkle server-owned presentation', () => {
     expect(admitFarkleSnapshot(current, { ...resumed, thisTurn: 999 }, current._authorityScope, { previous: 2, incoming: 3 })).toBe(false);
     expect(admitFarkleSnapshot(current, { ...current, actionSequence: 2 }, current._authorityScope, { previous: 3, incoming: 2 })).toBe(false);
   });
-  it('reconstructs held rows from receipts and clears them at authoritative turn completion', () => {
+  it('reconstructs current-cycle held rows and clears them at Hot Dice or turn completion', () => {
     const state = farkleTestState(); state.actionSequence = 2;
     const frame = { sequence: 2, actorId: state.currentTurnPlayerId, configHash: 'test', stateAfter: state,
       events: [{ type: 'dice_held', playerId: state.currentTurnPlayerId, indexes: [0, 1], points: 200, rollNumber: 1 }] };
     expect(farkleCommittedHolds([frame], state)[0]).toMatchObject({ points: 200, dice: [{ index: 0, value: 1 }, { index: 1, value: 1 }] });
+    expect(farkleCommittedHolds([{ ...frame, events: [...frame.events, { type: 'hot_dice' }] }], state)).toEqual([]);
     expect(farkleCommittedHolds([{ ...frame, events: [...frame.events, { type: 'turn_completed' }] }], state)).toEqual([]);
+  });
+  it('begins a fresh compact history after each Hot Dice cycle without changing THIS TURN', () => {
+    const state = farkleTestState();
+    const firstHold = { sequence: 2, actorId: state.currentTurnPlayerId, configHash: 'test', stateAfter: { ...state, actionSequence: 2 },
+      events: [{ type: 'dice_held', playerId: state.currentTurnPlayerId, indexes: [0], points: 100, rollNumber: 1 }] };
+    const firstHotDice = { sequence: 3, actorId: state.currentTurnPlayerId, configHash: 'test', stateAfter: { ...state, actionSequence: 3, scoringCycle: 2, thisTurn: 100 },
+      events: [{ type: 'hot_dice', playerId: state.currentTurnPlayerId, thisTurn: 100, scoringCycle: 2 }] };
+    const secondHold = { sequence: 4, actorId: state.currentTurnPlayerId, configHash: 'test', stateAfter: { ...state, actionSequence: 4, scoringCycle: 2, thisTurn: 250 },
+      events: [{ type: 'dice_held', playerId: state.currentTurnPlayerId, indexes: [1], points: 150, rollNumber: 2 }] };
+    const current = { ...secondHold.stateAfter, actionSequence: 4 };
+    expect(farkleCommittedHolds([firstHold, firstHotDice, secondHold], current)).toMatchObject([{ sequence: 4, points: 150, dice: [{ index: 1, value: 1 }] }]);
+    expect(current.thisTurn).toBe(250);
   });
   it('shows exact server tiebreak number without changing lifetime turn counts', () => {
     const state = farkleTestState(); state.finalQueue = [state.currentTurnPlayerId];

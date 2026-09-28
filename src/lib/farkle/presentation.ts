@@ -54,13 +54,13 @@ export function farkleResolvedRoll(state: FarkleState, scopeKey: string, selfId?
 
 export interface FarkleCommittedHold { sequence: number; dice: FarkleDie[]; points: number; rollNumber: number }
 
-/** Rebuild committed scoring rows from semantic receipts, including reconnect. */
+/** Rebuild compact self history for the current scoring cycle, including reconnect. */
 export function farkleCommittedHolds(frames: readonly FarkleReplayFrame[], state: FarkleState): FarkleCommittedHold[] {
   let holds: FarkleCommittedHold[] = [];
   for (const frame of frames) {
     if (frame.sequence > state.actionSequence || frame.stateAfter._authorityScope !== state._authorityScope) continue;
     for (const event of frame.events) {
-      if (event.type === 'turn_started' || event.type === 'turn_completed') holds = [];
+      if (event.type === 'turn_started' || event.type === 'turn_completed' || event.type === 'hot_dice') holds = [];
       if (event.type === 'dice_held' && event.playerId === state.currentTurnPlayerId) {
         holds.push({ sequence: frame.sequence, dice: frame.stateAfter.dice.filter(d => event.indexes?.includes(d.index)),
           points: event.points ?? 0, rollNumber: event.rollNumber ?? 0 });
