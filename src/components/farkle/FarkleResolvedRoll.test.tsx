@@ -131,6 +131,15 @@ function heldState(before: FarkleState, indexes = [0]): FarkleState {
     events: [{ type: 'dice_held', playerId: before.currentTurnPlayerId, indexes, points: 100 * indexes.length, rollNumber: before.rollNumber }],
   };
 }
+function followUpRoll(before: FarkleState, dice: FarkleDie[]): FarkleState {
+  return { ...before, actionSequence: before.actionSequence + 1, stage: 'hold', dice,
+    available: dice.map(die => die.index), rollNumber: before.rollNumber + 1,
+    events: [{ type: 'dice_rolled', playerId: before.currentTurnPlayerId, dice, rollNumber: before.rollNumber + 1 }],
+  };
+}
+function centeredSlots(length: number) {
+  return Array.from({ length }, (_, slot) => `${50 + (slot - (length - 1) / 2) * (100 / 6)}%`);
+}
 const remoteHeld = () => document.querySelector('.farkle-remote-die:has([data-farkle-die="0"])')!;
 
 describe('Farkle live remote Hold retirement', () => {
@@ -323,6 +332,48 @@ describe('Farkle live remote Hold retirement', () => {
     expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
     expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
+  });
+
+  it('starts a self follow-up roll in a fresh centered row after held slots retire', async () => {
+    const before = farkleTestState();
+    const view = mount(before, 'user-0');
+    view.update(heldState(before, [1, 4]));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1140); });
+    const dice = [{ index: 0, value: 6 }, { index: 2, value: 1 }, { index: 3, value: 3 }, { index: 5, value: 5 }];
+    view.update(followUpRoll(heldState(before, [1, 4]), dice));
+    const selfRow = document.querySelector('.farkle-self-dice')!;
+    const slotXs = () => [...selfRow.querySelectorAll<HTMLElement>(':scope > [data-farkle-die]')]
+      .map(die => die.style.getPropertyValue('--farkle-self-slot-x'));
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
+    expect(selfRow).toHaveAttribute('data-farkle-self-roll-phase', 'cluster');
+    await act(async () => { await vi.advanceTimersByTimeAsync(180); });
+    expect(selfRow).toHaveAttribute('data-farkle-self-roll-phase', 'rumble');
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
+    await act(async () => { await vi.advanceTimersByTimeAsync(670); });
+    expect(selfRow).toHaveAttribute('data-farkle-self-roll-phase', 'row');
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
+  });
+
+  it('starts a remote follow-up roll in a fresh centered row after held slots retire', async () => {
+    const before = farkleTestState();
+    const view = mount(before, 'user-1');
+    view.update(heldState(before, [1, 4]));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1640); });
+    const dice = [{ index: 0, value: 6 }, { index: 2, value: 1 }, { index: 3, value: 3 }, { index: 5, value: 5 }];
+    view.update(followUpRoll(heldState(before, [1, 4]), dice));
+    const remote = document.querySelector('.farkle-remote-stage')!;
+    const slotXs = () => [...remote.querySelectorAll<HTMLElement>(':scope > .farkle-remote-die')]
+      .map(die => die.style.getPropertyValue('--farkle-row-x'));
+    expect(remote).toHaveAttribute('data-farkle-fresh-roll', 'true');
+    expect(remote).toHaveAttribute('data-farkle-roll-phase', 'cluster');
+    expect(remote.querySelector('[data-hold-phase]')).toBeNull();
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
+    await act(async () => { await vi.advanceTimersByTimeAsync(180); });
+    expect(remote).toHaveAttribute('data-farkle-roll-phase', 'rumble');
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
+    await act(async () => { await vi.advanceTimersByTimeAsync(670); });
+    expect(remote).toHaveAttribute('data-farkle-roll-phase', 'row');
+    expect(slotXs()).toEqual(centeredSlots(dice.length));
   });
 
   it('reconnects immediately after Hot Dice with no stale die face and a clean Roll 6 state', () => {

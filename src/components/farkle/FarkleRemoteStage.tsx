@@ -30,7 +30,8 @@ export function FarkleRemoteStage({ dice, receiptKey, animate = false, previewPh
     '--farkle-cluster-x': `${40 + (die.index % 3) * 10}%`,
     '--farkle-cluster-y': `${38 + Math.floor(die.index / 3) * 24}%`,
   } as CSSProperties);
-  return <div className="farkle-remote-stage" data-farkle-roll-phase={shown} aria-label="Farkle dice">
+  return <div className="farkle-remote-stage" data-farkle-roll-phase={shown}
+    data-farkle-fresh-roll={animate && !previewPhase || undefined} aria-label="Farkle dice">
     {liveDice.map(die => {
       const held = hold?.indexes.includes(die.index) ? hold : undefined;
       return <div key={`${receiptKey}/${die.index}`} className="farkle-remote-die"

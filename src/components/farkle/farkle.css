@@ -4,6 +4,10 @@
 .farkle-remote-stage[data-farkle-roll-phase="cluster"] .farkle-remote-die,
 .farkle-remote-stage[data-farkle-roll-phase="rumble"] .farkle-remote-die,
 .farkle-remote-stage[data-farkle-roll-phase="reveal"] .farkle-remote-die { left: var(--farkle-cluster-x); top: var(--farkle-cluster-y); }
+/* A follow-up roll discards held-slot geometry and stays centered through rumble. */
+.farkle-remote-stage[data-farkle-fresh-roll="true"][data-farkle-roll-phase="cluster"] .farkle-remote-die,
+.farkle-remote-stage[data-farkle-fresh-roll="true"][data-farkle-roll-phase="rumble"] .farkle-remote-die,
+.farkle-remote-stage[data-farkle-fresh-roll="true"][data-farkle-roll-phase="reveal"] .farkle-remote-die { left: var(--farkle-row-x); top: 50%; }
 .farkle-remote-stage[data-farkle-roll-phase="rumble"] .farkle-remote-die { animation: farkle-rumble 90ms linear infinite alternate; }
 .farkle-remote-die[data-hold-phase="dissolving"] { animation: farkle-hold-dissolve 240ms ease-out forwards; }
 @keyframes farkle-hold-dissolve { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }

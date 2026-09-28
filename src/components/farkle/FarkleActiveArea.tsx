@@ -29,7 +29,12 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const presentationReady = !presentationHold || presentationHold.phase === 'retired';
   const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing' && presentationReady;
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
-  const dice = resolvedRoll?.dice ?? state.dice;
+  const latestRoll = !resolvedRoll && animate
+    ? state.events?.find(event => event.type === 'dice_rolled' && event.playerId === state.currentTurnPlayerId)
+    : undefined;
+  const freshRollDice = resolvedRoll?.dice ?? latestRoll?.dice;
+  const dice = freshRollDice ?? state.dice;
+  const isFreshRoll = !!freshRollDice;
   const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
   const heldIndexes = presentationHold?.indexes ?? [];
   const holdIsAcknowledging = presentationHold?.phase === 'scoring';
@@ -48,10 +53,10 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
     <div className="farkle-self-dice" data-farkle-self-roll-phase={phase} data-held-consolidated={consolidated}
       data-farkle-self-hold-phase={presentationHold?.phase}>
-        {visibleDice.map(die => {
+        {visibleDice.map((die, slot) => {
           const index = die.index;
           return <FarkleDie key={index} die={die} selected={selected.includes(index)}
-            style={{ '--farkle-self-slot-x': `${50 + (index - 2.5) * (100 / 6)}%` } as CSSProperties}
+            style={{ '--farkle-self-slot-x': `${50 + ((isFreshRoll ? slot - (visibleDice.length - 1) / 2 : index - 2.5) * (100 / 6))}%` } as CSSProperties}
             scoring={!resolvedRoll && (holdIsAcknowledging ? heldIndexes.includes(index) : scoring.includes(index))}
             disabled={!enabled || state.stage !== 'hold' || !state.available.includes(index)}
             onSelect={i => setSelection({ key, indexes: selected.includes(i) ? selected.filter(n => n !== i) : [...selected, i] })} />;
