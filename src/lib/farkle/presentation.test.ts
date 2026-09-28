@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admitFarkleSnapshot, farkleCommittedHolds, farkleResolvedRoll, farkleStraightRow, farkleTurnStatus, selectedFarkleHold } from './presentation';
+import { admitFarkleSnapshot, farkleBlockingOverlayReceipt, farkleCommittedHolds, farkleResolvedRoll, farkleStraightRow, farkleTurnStatus, selectedFarkleHold } from './presentation';
 import { farkleTestState } from './__fixtures__/testState';
 
 describe('Farkle server-owned presentation', () => {
@@ -38,6 +38,24 @@ describe('Farkle server-owned presentation', () => {
     });
     state.events[1].playerId = state.currentTurnPlayerId;
     expect(farkleResolvedRoll(state, 'receipt-scope', actorId)).toBeNull();
+  });
+  it('keys valid BANKED, FARKLE, and HOT DICE receipts from a committed event without advancing authority', () => {
+    const banked = farkleTestState();
+    banked.actionSequence = 4;
+    banked.events = [{ type: 'banked', playerId: banked.currentTurnPlayerId, points: 1250 }];
+    expect(farkleBlockingOverlayReceipt(banked, 'scope', 1900)).toMatchObject({
+      id: 'scope/4/banked', eventType: 'banked', points: 1250, displayLifetimeMs: 1900,
+    });
+
+    const farkle = { ...banked, actionSequence: 5, events: [{ type: 'farkle', playerId: banked.currentTurnPlayerId, lost: 650 }] };
+    expect(farkleBlockingOverlayReceipt(farkle, 'scope', 2450)).toMatchObject({
+      id: 'scope/5/farkle', eventType: 'farkle', lost: 650, displayLifetimeMs: 2450,
+    });
+
+    const hotDice = { ...banked, actionSequence: 6, available: [0, 1, 2, 3, 4, 5],
+      events: [{ type: 'dice_held', playerId: banked.currentTurnPlayerId, indexes: [0], points: 100 }, { type: 'hot_dice' }] };
+    expect(farkleBlockingOverlayReceipt(hotDice, 'scope', 1900)).toMatchObject({ id: 'scope/6/hot_dice', eventType: 'hot_dice' });
+    expect(farkleBlockingOverlayReceipt({ ...hotDice, available: [0, 1, 2] }, 'scope', 1900)).toBeNull();
   });
   it('admits a newer pause/deadline revision without allowing equal-sequence score changes', () => {
     const current = farkleTestState();

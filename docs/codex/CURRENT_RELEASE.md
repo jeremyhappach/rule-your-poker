@@ -1,3 +1,37 @@
+# Farkle blocking outcome overlays — 2026-09-28 — local candidate, production smoke pending
+
+Approved Farkle-only presentation work replaces BANKED, FARKLE and HOT DICE
+rail notices with opaque, receipt-bound overlays at the canonical blocking-modal
+layer. A bank receipt displays an original cash register and its exact `+N`
+amount; a Farkle receipt keeps the exact terminal dice on the roller's original
+surface through the original bust-mascot overlay and displays `LOST N` when
+applicable; a Hot Dice receipt follows the unchanged `THIS TURN +N` Hold
+acknowledgment, then hides the already-authoritative fresh-six state until
+retirement. The server reducer, RPCs, scoring, timeouts and settlement remain
+independent of this client-only presentation hold: the next authoritative state
+is accepted immediately and merely kept visually covered.
+
+The Farkle-only Geometry Lab domain `farkle_blocking_overlay_timing` persists
+through the existing `system_settings` Apply path. Its default total display
+lifetime is 1900 ms and it provides separate BANKED, FARKLE and HOT DICE
+previews. Runtime captures the committed value at each live receipt; draft
+changes do not affect a displayed overlay. Receipt identity is authority scope,
+action sequence and event type. Initial/reconnect state does not arm an overlay,
+and guarded callbacks cannot retire a newer receipt. No migration or
+non-Farkle Geometry Lab value changed.
+
+Focused qualification passed 46 tests for receipt validation, each overlay art
+and copy, 1900 ms default/configured lifetime, Geometry Lab preview and Apply
+persistence, retained ordinary Hold rail behavior, Farkle terminal-die
+continuity, reconnect suppression, stale-receipt protection and the Hot Dice
+fresh-six hold. Application TypeScript and the direct Vite development bundle
+passed; existing Browserslist, dynamic-import and chunk-size warnings remain.
+Production gameplay smoke is the acceptance gate: verify BANKED, FARKLE and
+HOT DICE at desktop/mobile widths, including Farkle terminal dice continuity,
+Hot Dice after the Hold acknowledgement, fresh-six release only after the
+configured overlay lifetime, Geometry Lab Apply/reload, and reconnect without
+replaying an old overlay.
+
 # Farkle Hold presentation and current-roll geometry — 2026-09-28 — local candidate, production smoke pending
 
 Approved scope remains presentation-only. The self active row contains only

@@ -13,9 +13,9 @@ export interface FarkleSelfHold {
   persistAfterDissolve?: boolean;
 }
 
-export function FarkleActiveArea({ state, controllable, pending, committed, onAction, animate = false, scoring = [], presentationHold, resolvedRoll }: {
+export function FarkleActiveArea({ state, controllable, pending, committed, onAction, animate = false, scoring = [], presentationHold, presentationBlocked = false, resolvedRoll }: {
   state: FarkleState; controllable: boolean; pending: boolean; committed: FarkleCommittedHold[];
-  animate?: boolean; scoring?: number[]; presentationHold?: FarkleSelfHold; resolvedRoll?: FarkleResolvedRoll;
+  animate?: boolean; scoring?: number[]; presentationHold?: FarkleSelfHold; presentationBlocked?: boolean; resolvedRoll?: FarkleResolvedRoll;
   onAction: (action: FarkleAction, selected?: number[], activation?: FarkleBankActivation) => void;
 }) {
   const [selection, setSelection] = useState<{ key: string; indexes: number[] }>({ key: '', indexes: [] });
@@ -26,7 +26,7 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const selected = selection.key === key ? selection.indexes : [];
   useEffect(() => { setSelection({ key, indexes: [] }); }, [key]);
   const selectedHold = resolvedRoll ? null : selectedFarkleHold(state, selected);
-  const presentationReady = !presentationHold || presentationHold.phase === 'retired';
+  const presentationReady = (!presentationHold || presentationHold.phase === 'retired') && !presentationBlocked;
   const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing' && presentationReady;
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
   // Authority retains the complete current roll in state.dice through every

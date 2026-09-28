@@ -1,4 +1,5 @@
 import type { FarkleDie, FarkleReplayFrame, FarkleScope, FarkleState } from './types';
+import { FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS } from './blockingOverlayTiming';
 
 export function farkleScopeKey(scope: FarkleScope): string {
   return `${scope.gameId}/${scope.dealerGameId}/${scope.handNumber}/${scope.roundId}`;
@@ -31,6 +32,49 @@ export interface FarkleResolvedRoll {
   rollNumber: number;
   dice: FarkleDie[];
   local: boolean;
+}
+
+export interface FarkleBlockingOverlayReceipt {
+  id: string;
+  scopeKey: string;
+  sequence: number;
+  eventType: 'banked' | 'farkle' | 'hot_dice';
+  /** Captured when the live receipt is admitted; later Geometry Lab edits affect future events only. */
+  displayLifetimeMs: number;
+  points: number;
+  lost: number;
+}
+
+/**
+ * Extract one client-presentation-only blocking event from an already committed
+ * state transition. This function never calculates scores or mutates game state.
+ */
+export function farkleBlockingOverlayReceipt(
+  state: FarkleState,
+  scopeKey: string,
+  displayLifetimeMs: number,
+): FarkleBlockingOverlayReceipt | null {
+  const lifetime = Number.isSafeInteger(displayLifetimeMs) && displayLifetimeMs > 0
+    ? displayLifetimeMs
+    : FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS.displayLifetimeMs;
+  const banked = state.events?.find(event => event.type === 'banked');
+  if (banked?.playerId && state.turnOrder.includes(banked.playerId) && Number.isSafeInteger(banked.points) && banked.points > 0) {
+    return { id: `${scopeKey}/${state.actionSequence}/banked`, scopeKey, sequence: state.actionSequence,
+      eventType: 'banked', displayLifetimeMs: lifetime, points: banked.points, lost: 0 };
+  }
+  const farkle = state.events?.find(event => event.type === 'farkle');
+  if (farkle?.playerId && state.turnOrder.includes(farkle.playerId) && Number.isSafeInteger(farkle.lost) && farkle.lost >= 0) {
+    return { id: `${scopeKey}/${state.actionSequence}/farkle`, scopeKey, sequence: state.actionSequence,
+      eventType: 'farkle', displayLifetimeMs: lifetime, points: 0, lost: farkle.lost };
+  }
+  const held = state.events?.find(event => event.type === 'dice_held');
+  const hotDice = state.events?.find(event => event.type === 'hot_dice');
+  if (hotDice && held?.playerId === state.currentTurnPlayerId && state.available.length === 6
+    && state.available.every((index, expected) => index === expected)) {
+    return { id: `${scopeKey}/${state.actionSequence}/hot_dice`, scopeKey, sequence: state.actionSequence,
+      eventType: 'hot_dice', displayLifetimeMs: lifetime, points: 0, lost: 0 };
+  }
+  return null;
 }
 
 /** A live terminal-roll receipt keeps visual ownership after authority advances. */

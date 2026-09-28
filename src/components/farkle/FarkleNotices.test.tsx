@@ -26,21 +26,38 @@ vi.mock('@/components/ui/dialog', () => ({
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Farkle canonical notices', () => {
-  it.each([['hot_dice', 'HOT DICE'], ['dice_held', 'THIS TURN +250'], ['banked', 'Player BANKS 250']])('renders %s through the existing canonical renderer', async (type, title) => {
+  it('keeps only the ordinary Hold acknowledgement in the canonical rail', async () => {
     const state = farkleTestState();
     const scope = { gameId: 'session', dealerGameId: 'dealer', handNumber: 1, roundId: state._authorityScope };
     const props = { scope, incoming: state, revision: 1, players: [], isPaused: false, isRealMoney: false, onRefetch: vi.fn() };
     const view = render(<FarkleGameTable {...props} />);
     expect(emit).not.toHaveBeenCalled();
-    const incoming = { ...state, actionSequence: 2, events: [{ type, points: 250, indexes: [0] }] };
+    const incoming = { ...state, actionSequence: 2, events: [{ type: 'dice_held', points: 250, indexes: [0], playerId: state.currentTurnPlayerId }] };
     view.rerender(<FarkleGameTable {...props} incoming={incoming} revision={2} />);
     await waitFor(() => expect(emit).toHaveBeenCalledTimes(1));
     const event = emit.mock.calls[0][0];
-    expect(event).toMatchObject({ type: 'gameplay_notice', payload: { title }, ttlMs: type === 'dice_held' ? 900 : 1600, behavior: 'enqueue',
+    expect(event).toMatchObject({ type: 'gameplay_notice', payload: { title: 'THIS TURN +250' }, ttlMs: 1400, behavior: 'enqueue',
       scope: { dealerGameId: scope.gameId, roundId: scope.roundId } });
     render(renderAnnouncement(event));
-    expect(screen.getByText(title)).toBeVisible();
+    expect(screen.getByText('THIS TURN +250')).toBeVisible();
     view.rerender(<FarkleGameTable {...props} incoming={structuredClone(incoming)} revision={2} />);
     expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['banked', 'farkle', 'hot_dice'])('does not send %s through the nonblocking announcement rail', async (type) => {
+    const state = farkleTestState();
+    const scope = { gameId: 'session', dealerGameId: 'dealer', handNumber: 1, roundId: state._authorityScope };
+    const props = { scope, incoming: state, revision: 1, players: [], isPaused: false, isRealMoney: false, onRefetch: vi.fn() };
+    const view = render(<FarkleGameTable {...props} />);
+    const incoming = { ...state, actionSequence: 2, currentTurnPlayerId: state.turnOrder[1], stage: 'roll' as const,
+      available: [0, 1, 2, 3, 4, 5], dice: [], events: [type === 'banked'
+        ? { type, playerId: state.turnOrder[0], points: 250 }
+        : type === 'farkle'
+          ? { type, playerId: state.turnOrder[0], lost: 250 }
+          : { type, playerId: state.turnOrder[0] }],
+    };
+    view.rerender(<FarkleGameTable {...props} incoming={incoming} revision={2} />);
+    await Promise.resolve();
+    expect(emit).not.toHaveBeenCalled();
   });
 });

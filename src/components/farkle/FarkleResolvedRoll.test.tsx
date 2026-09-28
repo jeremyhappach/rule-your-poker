@@ -4,6 +4,8 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CanonicalAnnouncementProvider, useAnnouncementContext } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
 import { renderAnnouncement } from '@/lib/canonicalShell/announcements/renderers';
+import { _setFromRemote } from '@/lib/geometryLab/defaultsRegistry';
+import { FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS, FARKLE_BLOCKING_OVERLAY_TIMING_KEY } from '@/lib/farkle/blockingOverlayTiming';
 import { farkleTestState } from '@/lib/farkle/__fixtures__/testState';
 import type { FarkleDie, FarkleState } from '@/lib/farkle/types';
 import { FarkleGameTable, type FarkleParticipant } from './FarkleGameTable';
@@ -59,7 +61,12 @@ function mount(before: FarkleState, userId: string) {
 }
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); });
+afterEach(() => {
+  cleanup();
+  _setFromRemote(FARKLE_BLOCKING_OVERLAY_TIMING_KEY, FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS, { isInitialFetch: true, rowExists: false });
+  vi.useRealTimers();
+  vi.clearAllMocks();
+});
 
 describe('Farkle terminal roll presentation ownership', () => {
   it.each([
@@ -69,7 +76,7 @@ describe('Farkle terminal roll presentation ownership', () => {
     ['remote', 'one die', 'user-0', second, [{ index: 4, value: 2 }]],
     ['remote', 'partial', 'user-0', second, [{ index: 1, value: 2 }, { index: 4, value: 3 }]],
     ['remote', 'six dice', 'user-0', second, [2, 3, 4, 6, 2, 3].map((value, index) => ({ index, value }))],
-  ] as const)('keeps a %s %s Farkle on its actor surface through canonical notice retirement', async (owner, _, userId, actor, dice) => {
+  ] as const)('keeps a %s %s Farkle on its actor surface through blocking-overlay retirement', async (owner, _, userId, actor, dice) => {
     const before = farkleTestState(); before.currentTurnPlayerId = actor; before.stage = 'roll'; before.dice = [];
     const view = mount(before, userId);
     view.update(terminalRoll(before, [...dice]));
@@ -77,7 +84,7 @@ describe('Farkle terminal roll presentation ownership', () => {
     const other = owner === 'self' ? '[data-farkle-roll-phase]' : '[data-farkle-active-area]';
     expect(document.querySelector(surface)).toBeTruthy();
     expect(document.querySelector(other)).toBeNull();
-    expect(screen.queryByText('FARKLE')).toBeNull();
+    expect(screen.queryByText('FARKLE!')).toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
     expect(document.querySelector(surface)).toBeTruthy();
     const rendered = [...document.querySelectorAll(`${surface} [data-farkle-die-index]`)]
@@ -85,13 +92,14 @@ describe('Farkle terminal roll presentation ownership', () => {
       .map(node => [Number(node.getAttribute('data-farkle-die-index')), Number(node.getAttribute('aria-label')?.split(': ')[1])]);
     expect(rendered.sort((a, b) => a[0] - b[0])).toEqual(dice.map(die => [die.index, die.value]).sort((a, b) => a[0] - b[0]));
     expect(document.querySelectorAll(`${surface} .farkle-die`)).toHaveLength(dice.length);
-    expect(screen.getByText('FARKLE')).toBeVisible();
+    expect(screen.getByText('FARKLE!')).toBeVisible();
+    expect(document.querySelector('[data-farkle-blocking-overlay="farkle"]')).toHaveAttribute('data-farkle-overlay-duration', '1900');
     if (owner === 'remote') expect(document.querySelector('[data-farkle-roll-phase]')?.getAttribute('data-farkle-roll-phase')).toBe('row');
-    await act(async () => { await vi.advanceTimersByTimeAsync(1599); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1899); });
     expect(document.querySelector(surface)).toBeTruthy();
-    expect(screen.getByText('FARKLE')).toBeVisible();
+    expect(screen.getByText('FARKLE!')).toBeVisible();
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-    expect(screen.queryByText('FARKLE')).toBeNull();
+    expect(screen.queryByText('FARKLE!')).toBeNull();
     expect(document.querySelector(surface)).toBeNull();
     expect(document.querySelector(other)).toBeTruthy();
   });
@@ -101,7 +109,7 @@ describe('Farkle terminal roll presentation ownership', () => {
     const ended = terminalRoll(before, [{ index: 0, value: 2 }]);
     mount(ended, 'user-0');
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
-    expect(screen.queryByText('FARKLE')).toBeNull();
+    expect(screen.queryByText('FARKLE!')).toBeNull();
     expect(document.querySelector('[data-farkle-resolved-roll]')).toBeNull();
   });
 
@@ -111,19 +119,45 @@ describe('Farkle terminal roll presentation ownership', () => {
     const firstRoll = terminalRoll(before, [{ index: 2, value: 2 }]);
     view.update(firstRoll);
     await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
-    expect(screen.getByText('FARKLE')).toBeVisible();
+    expect(screen.getByText('FARKLE!')).toBeVisible();
     const secondRoll = terminalRoll(firstRoll, [{ index: 3, value: 3 }]);
     view.update(secondRoll);
     expect(document.querySelector('[data-farkle-roll-phase]')).toBeTruthy();
-    await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
-    // The first notice expired, but its callback cannot clear the second actor's dice.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
+    expect(screen.getByText('FARKLE!')).toBeVisible();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1899); });
+    // The older receipt cannot clear the newer actor's dice or overlay.
     expect(document.querySelector('[data-farkle-roll-phase]')).toBeTruthy();
     expect(document.querySelector('[data-farkle-roll-phase] [aria-label="Die 4: 3"]')).toBeTruthy();
-    await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
     expect(document.querySelector('[data-farkle-roll-phase]')).toBeNull();
     expect(document.querySelector('[data-farkle-active-area]')).toBeTruthy();
   });
+
+  it('uses the committed Farkle Geometry Lab duration for a BANKED receipt', async () => {
+    _setFromRemote(FARKLE_BLOCKING_OVERLAY_TIMING_KEY, { displayLifetimeMs: 2450 });
+    const before = farkleTestState();
+    const view = mount(before, 'user-0');
+    view.update(bankedState(before, 1250));
+    expect(screen.getByText('BANKED')).toBeVisible();
+    expect(screen.getByText('+1,250')).toBeVisible();
+    const overlay = document.querySelector('[data-farkle-blocking-overlay="banked"]');
+    expect(overlay).toHaveAttribute('data-farkle-overlay-duration', '2450');
+    await act(async () => { await vi.advanceTimersByTimeAsync(2449); });
+    expect(overlay).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(document.querySelector('[data-farkle-blocking-overlay]')).toBeNull();
+  });
 });
+
+function bankedState(before: FarkleState, points: number): FarkleState {
+  const actorId = before.currentTurnPlayerId;
+  return { ...before, actionSequence: before.actionSequence + 1,
+    currentTurnPlayerId: actorId === first ? second : first, stage: 'roll', dice: [],
+    available: [0, 1, 2, 3, 4, 5], rollNumber: 0, thisTurn: 0,
+    events: [{ type: 'banked', playerId: actorId, points }, { type: 'turn_completed', playerId: actorId }],
+  };
+}
 
 function heldState(before: FarkleState, indexes = [0]): FarkleState {
   return { ...before, actionSequence: before.actionSequence + 1, stage: 'bank_or_roll',
@@ -177,10 +211,10 @@ describe('Farkle live remote Hold retirement', () => {
     const errors = vi.spyOn(console, 'error');
     const before = farkleTestState();
     const view = mount(before, 'user-1');
-    const queued = { ...before, actionSequence: 2, events: [{ type: 'hot_dice' }] };
+    const queued = { ...before, actionSequence: 2, events: [{ type: 'dice_held', playerId: first, indexes: [0], points: 50 }] };
     view.update(queued);
     view.update(heldState(queued));
-    expect(screen.getByText('HOT DICE')).toBeVisible();
+    expect(screen.getByText('THIS TURN +50')).toBeVisible();
     await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
     expect(screen.getByText('THIS TURN +100')).toBeVisible();
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
@@ -193,7 +227,7 @@ describe('Farkle live remote Hold retirement', () => {
   it('keeps final-die admission scheduled when the previous notice retires during the roll', async () => {
     const before = { ...farkleTestState(), stage: 'bank_or_roll' as const, available: [0], dice: [], thisTurn: 400 };
     const view = mount(before, 'user-1');
-    const queued = { ...before, actionSequence: 2, events: [{ type: 'hot_dice' }] };
+    const queued = { ...before, actionSequence: 2, events: [{ type: 'dice_held', playerId: first, indexes: [0], points: 50 }] };
     view.update(queued);
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     const dice = [{ index: 0, value: 1 }];
@@ -221,7 +255,7 @@ describe('Farkle live remote Hold retirement', () => {
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
     await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
-    expect(screen.getByText('HOT DICE')).toBeVisible();
+    expect(screen.getByText('HOT DICE!')).toBeVisible();
   });
 
   it('does not let the prior notice retire a newer roll using the same die index', async () => {
@@ -313,13 +347,17 @@ describe('Farkle live remote Hold retirement', () => {
     expect(screen.getByText('THIS TURN +100')).toBeVisible();
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'scoring');
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
-    expect(screen.getByText('HOT DICE')).toBeVisible();
+    expect(screen.getByText('HOT DICE!')).toBeVisible();
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'dissolving');
     expect(selfRow().querySelector(':scope > [data-farkle-die="0"]')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Roll 6' })).toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(240); });
     expect(selfRow().querySelector('[data-farkle-die="0"]')).toBeNull();
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'retired');
+    expect(screen.queryByRole('button', { name: 'Roll 6' })).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1659); });
+    expect(screen.queryByRole('button', { name: 'Roll 6' })).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
     expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
   });
 

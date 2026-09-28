@@ -40,5 +40,29 @@
 .farkle-scoreboard[data-farkle-scoreboard="felt"] [data-active="true"] { background: #ffffff20; box-shadow: inset 3px 0 #fff; }
 .farkle-scoreboard [role="cell"]:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .farkle-scoreboard strong { font-variant-numeric: tabular-nums; }
+.farkle-blocking-overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: clamp(1rem, 5vw, 3rem); overflow: hidden; isolation: isolate; pointer-events: auto; color: #fff7ed; background: radial-gradient(circle at 50% 38%, #713f12 0, #1c1208 40%, #070b09 78%); }
+.farkle-blocking-overlay-panel { display: grid; justify-items: center; width: min(92vw, 38rem); padding: clamp(1rem, 3vw, 2rem); border: 3px solid #fbbf24; border-radius: 1.25rem; background: linear-gradient(145deg, rgb(69 26 3 / .98), rgb(30 9 3 / .99)); box-shadow: 0 0 0 1px rgb(255 247 237 / .3) inset, 0 1.5rem 5rem rgb(0 0 0 / .7); text-align: center; }
+.farkle-overlay-art { width: min(76vw, 16rem); height: auto; filter: drop-shadow(0 .4rem .4rem rgb(0 0 0 / .45)); }
+.farkle-blocking-overlay h2 { margin: .1rem 0 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.5rem, 12vw, 5.2rem); font-weight: 900; letter-spacing: .07em; line-height: .9; color: #fde68a; text-shadow: .1em .12em 0 #7c2d12, 0 0 .6em #f97316; }
+.farkle-blocking-overlay p { margin: .65rem 0 0; font-size: clamp(1.15rem, 5vw, 2rem); font-weight: 900; letter-spacing: .08em; color: #fff7ed; font-variant-numeric: tabular-nums; }
+.farkle-blocking-overlay[data-farkle-overlay-phase="enter"] .farkle-blocking-overlay-panel { animation: farkle-overlay-enter 220ms cubic-bezier(.22, 1.2, .36, 1) both; }
+.farkle-blocking-overlay[data-farkle-overlay-phase="exit"] .farkle-blocking-overlay-panel { animation: farkle-overlay-exit 220ms ease-in both; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="banked"] .farkle-register-drawer { animation: farkle-register-drawer 460ms cubic-bezier(.16, 1, .3, 1) both; transform-origin: center; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="hot_dice"] .farkle-hot-flame { animation: farkle-flame 420ms ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="hot_dice"] .farkle-hot-flame-right { animation-delay: 120ms; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="hot_dice"] .farkle-hot-die { animation: farkle-hot-dice-spin 760ms ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="hot_dice"] .farkle-hot-die-right { animation-delay: 180ms; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="farkle"] .farkle-bust-smoke { animation: farkle-bust-smoke 800ms ease-in-out infinite alternate; }
+.farkle-blocking-overlay[data-farkle-blocking-overlay="farkle"] .farkle-bust-die { animation: farkle-bust-die 650ms cubic-bezier(.16, 1, .3, 1) infinite alternate; transform-box: fill-box; transform-origin: center; }
+.farkle-blocking-overlay[data-farkle-overlay-phase="preview"] { position: absolute; min-height: 17rem; border-radius: .75rem; padding: 1rem; }
+.farkle-blocking-overlay[data-farkle-overlay-phase="preview"] .farkle-blocking-overlay-panel { width: min(100%, 30rem); }
+@keyframes farkle-overlay-enter { from { opacity: 0; transform: scale(.78) translateY(1rem); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes farkle-overlay-exit { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.06); } }
+@keyframes farkle-register-drawer { 0% { transform: translateY(-.8rem); } 45% { transform: translateY(.5rem); } 100% { transform: translateY(0); } }
+@keyframes farkle-flame { from { transform: scale(.82) rotate(-4deg); } to { transform: scale(1.12) rotate(4deg); } }
+@keyframes farkle-hot-dice-spin { from { transform: translateY(.15rem) rotate(-7deg); } to { transform: translateY(-.35rem) rotate(8deg); } }
+@keyframes farkle-bust-smoke { from { opacity: .35; stroke-dashoffset: 8; } to { opacity: .9; stroke-dashoffset: 0; } }
+@keyframes farkle-bust-die { from { transform: translateY(.15rem) rotate(-8deg); } to { transform: translateY(-.3rem) rotate(13deg); } }
 @media (prefers-reduced-motion: reduce) { .farkle-remote-die, .farkle-self-dice > .farkle-die, .farkle-self-hold-dissolving { transition: none; animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { .farkle-remote-die[data-hold-phase="dissolving"], .farkle-self-hold-dissolving { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .farkle-blocking-overlay *, .farkle-blocking-overlay-panel { animation: none !important; } }

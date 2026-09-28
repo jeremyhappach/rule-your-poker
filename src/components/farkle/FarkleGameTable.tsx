@@ -14,8 +14,9 @@ import { setAutomaticPlay } from '@/lib/sessionPlayerIntent';
 import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
 import { getBotAlias } from '@/lib/botAlias';
 import { applyFarkleAction, createFarkleActionRequest, readFarkleReplay } from '@/lib/farkle/authority';
-import { admitFarkleSnapshot, farkleCommittedHolds, farkleResolvedRoll, farkleScopeKey, farkleTurnStatus, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
+import { admitFarkleSnapshot, farkleBlockingOverlayReceipt, farkleCommittedHolds, farkleResolvedRoll, farkleScopeKey, farkleTurnStatus, type FarkleBlockingOverlayReceipt, type FarkleResolvedRoll } from '@/lib/farkle/presentation';
 import { FarkleGameplayGeometryProvider } from '@/lib/farkle/FarkleGameplayGeometryProvider';
+import { useFarkleBlockingOverlayTiming } from '@/lib/farkle/blockingOverlayTiming';
 import type { FarkleAction, FarkleReplay, FarkleScope, FarkleState } from '@/lib/farkle/types';
 import { FarkleActiveArea, type FarkleSelfHold } from './FarkleActiveArea';
 import { FarkleScoreboard } from './FarkleScoreboard';
@@ -25,6 +26,7 @@ import { FarkleRules } from './FarkleRules';
 import { FarkleHistory } from './FarkleHistory';
 import { FarkleTerminalPresentation } from './FarkleTerminalPresentation';
 import { recordFarkleBankIntent, type FarkleBankActivation } from '@/lib/farkle/bankProvenance';
+import { FarkleBlockingOverlay } from './FarkleBlockingOverlay';
 
 export interface FarkleParticipant {
   id: string; user_id: string; position: number; chips: number; is_bot: boolean;
@@ -59,6 +61,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const chat = useGameChatContext();
   const { emit } = useAnnouncements();
   const emitLatest = useRef(emit); emitLatest.current = emit;
+  const overlayTiming = useFarkleBlockingOverlayTiming();
   const state = accepted.scopeKey === scopeKey ? accepted.state : incoming;
   const holdKey = `${scopeKey}/${state.currentTurnPlayerId}/${state.rollNumber}/${state.actionSequence}`;
   const presentingHold = remoteHold?.key === holdKey ? remoteHold : undefined;
@@ -87,6 +90,11 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   }, [incoming, revision, scopeKey, scope.roundId]);
   useEffect(() => {
     setReplay(null); setError(null); setPending(false); setSelfHold(null); setRemoteHold(null); actionInFlight.current = false;
+    activeOverlayRef.current = null;
+    pendingHotOverlayRef.current = null;
+    farkleOverlayArmRef.current = null;
+    setBlockingOverlay(null);
+    setFarkleOverlayArm(null);
   }, [scopeKey]);
   useEffect(() => {
     let cancelled = false;
@@ -100,11 +108,60 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   if (entry.current.scopeKey !== scopeKey) entry.current = { scopeKey, sequence: incoming.actionSequence };
   const animate = state.actionSequence > entry.current.sequence;
   const [resolvedRoll, setResolvedRoll] = useState<FarkleResolvedRoll | null>(null);
+  const [blockingOverlay, setBlockingOverlay] = useState<FarkleBlockingOverlayReceipt | null>(null);
+  const [farkleOverlayArm, setFarkleOverlayArm] = useState<FarkleBlockingOverlayReceipt | null>(null);
+  const activeOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
+  const pendingHotOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
+  const farkleOverlayArmRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
+  const latestPresentationScope = useRef({ scopeKey, sequence: state.actionSequence });
+  latestPresentationScope.current = { scopeKey, sequence: state.actionSequence };
+  const presentingRoll = resolvedRoll?.scopeKey === scopeKey ? resolvedRoll : null;
+  const activateBlockingOverlay = useCallback((receipt: FarkleBlockingOverlayReceipt) => {
+    activeOverlayRef.current = receipt;
+    setBlockingOverlay(receipt);
+  }, []);
+  const retireBlockingOverlay = useCallback((receiptId: string) => {
+    const active = activeOverlayRef.current;
+    if (!active || active.id !== receiptId) return;
+    activeOverlayRef.current = null;
+    setBlockingOverlay(current => current?.id === receiptId ? null : current);
+    if (active.eventType === 'farkle') {
+      setResolvedRoll(current => current?.scopeKey === active.scopeKey && current.sequence === active.sequence ? null : current);
+    }
+  }, []);
   const lastResolved = useRef({ scopeKey, sequence: incoming.actionSequence });
   useLayoutEffect(() => {
     const prior = lastResolved.current;
     lastResolved.current = { scopeKey, sequence: state.actionSequence };
     if (prior.scopeKey !== scopeKey || state.actionSequence <= prior.sequence) return;
+    const overlay = farkleBlockingOverlayReceipt(state, scopeKey, overlayTiming.displayLifetimeMs);
+    const active = activeOverlayRef.current;
+    if (overlay && active?.scopeKey === scopeKey && active.sequence < overlay.sequence) {
+      // A newer critical receipt replaces an older visual owner immediately;
+      // its eventual callback can no longer clear or gate the new receipt.
+      activeOverlayRef.current = null;
+      setBlockingOverlay(current => current?.id === active.id ? null : current);
+      if (active.eventType === 'farkle') {
+        setResolvedRoll(current => current?.scopeKey === active.scopeKey && current.sequence === active.sequence ? null : current);
+      }
+    }
+    if (overlay?.eventType === 'banked') {
+      pendingHotOverlayRef.current = null;
+      farkleOverlayArmRef.current = null;
+      setFarkleOverlayArm(null);
+      setResolvedRoll(current => current?.scopeKey === scopeKey && current.sequence < overlay.sequence ? null : current);
+      activateBlockingOverlay(overlay);
+    } else if (overlay?.eventType === 'hot_dice') {
+      // The ordinary THIS TURN acknowledgement remains visible first. Its
+      // retirement admits this purely local presentation overlay.
+      pendingHotOverlayRef.current = overlay;
+      farkleOverlayArmRef.current = null;
+      setFarkleOverlayArm(null);
+    } else if (overlay?.eventType === 'farkle') {
+      pendingHotOverlayRef.current = null;
+      farkleOverlayArmRef.current = overlay;
+      setFarkleOverlayArm(overlay);
+    }
     const receipt = farkleResolvedRoll(state, scopeKey, self?.id);
     if (receipt) setResolvedRoll(receipt);
     const held = state.events?.find(event => event.type === 'dice_held');
@@ -113,7 +170,21 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
         persistAfterDissolve: state.events?.some(event => event.type === 'hot_dice') });
       else setRemoteHold({ key: holdKey, indexes: held.indexes ?? [], phase: 'scoring' });
     }
-  }, [scopeKey, state, self?.id, holdKey]);
+  }, [scopeKey, state, self?.id, holdKey, overlayTiming.displayLifetimeMs, activateBlockingOverlay]);
+  useEffect(() => {
+    if (!presentingRoll || !farkleOverlayArm || farkleOverlayArm.sequence !== presentingRoll.sequence) return;
+    const receiptId = farkleOverlayArm.id;
+    // Preserve the resolved terminal dice through their existing settle cadence;
+    // this timer controls only when local presentation starts, never authority.
+    const settle = window.setTimeout(() => {
+      const arm = farkleOverlayArmRef.current;
+      if (!arm || arm.id !== receiptId) return;
+      activateBlockingOverlay(arm);
+      farkleOverlayArmRef.current = null;
+      setFarkleOverlayArm(current => current?.id === receiptId ? null : current);
+    }, 1100);
+    return () => window.clearTimeout(settle);
+  }, [presentingRoll?.id, presentingRoll?.sequence, farkleOverlayArm?.id, farkleOverlayArm?.sequence, activateBlockingOverlay]);
   useEffect(() => {
     if (selfHold?.phase !== 'dissolving') return;
     const key = selfHold.key;
@@ -132,20 +203,6 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     }), 240);
     return () => clearTimeout(timer);
   }, [remoteHold]);
-  const presentingRoll = resolvedRoll?.scopeKey === scopeKey ? resolvedRoll : null;
-  useEffect(() => {
-    if (!presentingRoll) return;
-    const receiptId = presentingRoll.id;
-    // The roll reaches its straight row at 850 ms; the remote row then settles over 240 ms.
-    const settle = setTimeout(() => {
-      emitLatest.current({ id: `farkle/${scopeKey}/${presentingRoll.sequence}/farkle`, type: 'gameplay_notice',
-        scope: { dealerGameId: scope.gameId, roundId: scope.roundId }, payload: { title: 'FARKLE' },
-        ttlMs: 1600, behavior: 'enqueue',
-        onRetired: () => setResolvedRoll(current => current?.id === receiptId ? null : current),
-      });
-    }, 1100);
-    return () => clearTimeout(settle);
-  }, [presentingRoll?.id, scopeKey, scope.gameId, scope.roundId]);
   useEffect(() => {
     const prior = lastPresented.current;
     lastPresented.current = { scopeKey, sequence: state.actionSequence };
@@ -153,21 +210,26 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     const held = state.events?.find(event => event.type === 'dice_held');
     const remote = !!held?.playerId && held.playerId === state.currentTurnPlayerId && held.playerId !== self?.id;
     const local = !!held?.playerId && held.playerId === state.currentTurnPlayerId && held.playerId === self?.id;
+    const retireHoldPresentation = () => queueMicrotask(() => {
+      if (local) setSelfHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
+      if (remote) setRemoteHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
+      const hotOverlay = pendingHotOverlayRef.current;
+      if (!hotOverlay || hotOverlay.scopeKey !== scopeKey
+        || latestPresentationScope.current.scopeKey !== scopeKey
+        || latestPresentationScope.current.sequence !== hotOverlay.sequence) return;
+      pendingHotOverlayRef.current = null;
+      activateBlockingOverlay(hotOverlay);
+    });
     const announce = () => {
       for (const event of state.events ?? []) {
-        const title = event.type === 'hot_dice' ? 'HOT DICE'
-          : event.type === 'dice_held' ? `THIS TURN +${(event.points ?? 0).toLocaleString('en-US')}`
-          : event.type === 'banked' ? `${nameFor(event.playerId ?? '')} BANKS ${(event.points ?? 0).toLocaleString('en-US')}` : null;
+        const title = event.type === 'dice_held' ? `THIS TURN +${(event.points ?? 0).toLocaleString('en-US')}` : null;
         if (title) emitLatest.current({
           id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
           scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
           payload: { title }, ttlMs: event.type === 'dice_held' ? remote ? 1400 : 900 : 1600, behavior: 'enqueue',
           onRetired: (remote || local) && event.type === 'dice_held'
             // The rail may retire inside its own React state updater.
-            ? () => queueMicrotask(() => {
-              if (local) setSelfHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
-              if (remote) setRemoteHold(current => current?.key === holdKey ? { ...current, phase: 'dissolving' } : current);
-            })
+            ? retireHoldPresentation
             : undefined,
         });
       }
@@ -179,7 +241,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       return () => clearTimeout(settle);
     }
     announce();
-  }, [scopeKey, state.actionSequence]);
+  }, [scopeKey, state.actionSequence, activateBlockingOverlay]);
   useEffect(() => {
     const held = state.events?.find(event => event.type === 'dice_held');
     if (!animate || !held) { setScoringFlash(null); return; }
@@ -225,6 +287,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     : undefined;
   const presentingSelfHold = selfHold?.key === holdKey ? selfHold : hotDiceHeld;
   return <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent" data-farkle-scope={scopeKey}>
+    {blockingOverlay && <FarkleBlockingOverlay receipt={blockingOverlay} onRetire={retireBlockingOverlay} />}
     <FarkleTerminalPresentation scope={scope} state={state} live={props.terminalPresentationLive === true}
       winnerName={nameFor(state.winnerPlayerId ?? '')} winnerIsSelf={self?.id === state.winnerPlayerId}
       onActive={props.onTerminalPresentationActiveChange} onComplete={props.onTerminalPresentationComplete} />
@@ -250,7 +313,8 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
       : tab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={currentUserId} diagnosticGameId={scope.gameId} diagnosticDealerGameId={scope.dealerGameId} />
       : tab === 'lobby' ? <div className="h-full overflow-auto p-2 text-sm">{players.map(p => <p key={p.id}>{nameFor(p.id)} · <PresentationChipBalance playerId={p.id} rawBalance={p.chips} /></p>)}</div>
       : presentingRoll?.local || (!presentingRoll && selfTurn) ? <FarkleActiveArea state={state} controllable={controlled && !presentingRoll} pending={pending} committed={presentingRoll ? [] : committed} onAction={act}
-        animate={liveRollAnimation} scoring={scoring} presentationHold={presentingSelfHold} resolvedRoll={presentingRoll?.local ? presentingRoll : undefined} />
+        animate={liveRollAnimation} scoring={scoring} presentationHold={presentingSelfHold} presentationBlocked={blockingOverlay !== null}
+        resolvedRoll={presentingRoll?.local ? presentingRoll : undefined} />
       : <FarkleScoreboard state={state} nameFor={nameFor} surface="pane" />}
       identity={<div className="flex h-full items-center justify-center gap-2 text-xs text-foreground">
         {self ? <><span>{nameFor(self.id)} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips} /> · {(state.playerStates[self.id]?.banked ?? 0).toLocaleString('en-US')} points</span>
