@@ -376,6 +376,67 @@ describe('Farkle live remote Hold retirement', () => {
     expect(slotXs()).toEqual(centeredSlots(dice.length));
   });
 
+  it('keeps self survivors in their Roll 5 slots, then replaces them with a fresh Roll 3 row', async () => {
+    const before = farkleTestState();
+    const firstHold = heldState(before, [0]);
+    const fiveDice = [1, 2, 3, 4, 5].map((value, offset) => ({ index: offset + 1, value }));
+    const rolledFive = followUpRoll(firstHold, fiveDice);
+    const secondHold = heldState(rolledFive, [2, 4]);
+    const threeDice = [{ index: 1, value: 2 }, { index: 3, value: 4 }, { index: 5, value: 6 }];
+    const view = mount(before, 'user-0');
+    const selfRow = () => document.querySelector('.farkle-self-dice')!;
+    const slotXs = () => [...selfRow().querySelectorAll<HTMLElement>(':scope > [data-farkle-die]')]
+      .map(die => die.style.getPropertyValue('--farkle-self-slot-x'));
+
+    view.update(firstHold);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1140); });
+    view.update(rolledFive);
+    expect(slotXs()).toEqual(centeredSlots(fiveDice.length));
+
+    view.update(secondHold);
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
+      .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual([1, 3, 5]);
+    expect(slotXs()).toEqual([centeredSlots(fiveDice.length)[0], centeredSlots(fiveDice.length)[2], centeredSlots(fiveDice.length)[4]]);
+    expect([...selfRow().querySelectorAll<HTMLElement>('.farkle-self-hold-dissolving')]
+      .map(die => die.style.getPropertyValue('--farkle-self-hold-x')))
+      .toEqual([centeredSlots(fiveDice.length)[1], centeredSlots(fiveDice.length)[3]]);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(240); });
+    view.update(followUpRoll(secondHold, threeDice));
+    expect(slotXs()).toEqual(centeredSlots(threeDice.length));
+    expect(selfRow()).toHaveAttribute('data-farkle-self-roll-phase', 'cluster');
+  });
+
+  it('keeps remote survivors in their Roll 5 slots, then replaces them with a fresh Roll 3 row', async () => {
+    const before = farkleTestState();
+    const firstHold = heldState(before, [0]);
+    const fiveDice = [1, 2, 3, 4, 5].map((value, offset) => ({ index: offset + 1, value }));
+    const rolledFive = followUpRoll(firstHold, fiveDice);
+    const secondHold = heldState(rolledFive, [2, 4]);
+    const threeDice = [{ index: 1, value: 2 }, { index: 3, value: 4 }, { index: 5, value: 6 }];
+    const view = mount(before, 'user-1');
+    const remote = () => document.querySelector('.farkle-remote-stage')!;
+    const slotXs = () => [...remote().querySelectorAll<HTMLElement>(':scope > .farkle-remote-die')]
+      .map(die => die.style.getPropertyValue('--farkle-row-x'));
+
+    view.update(firstHold);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1640); });
+    view.update(rolledFive);
+    expect(slotXs()).toEqual(centeredSlots(fiveDice.length));
+
+    view.update(secondHold);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
+    expect([...remote().querySelectorAll(':scope > .farkle-remote-die')]
+      .map(die => Number(die.querySelector('[data-farkle-die]')?.getAttribute('data-farkle-die')))).toEqual([1, 3, 5]);
+    expect(slotXs()).toEqual([centeredSlots(fiveDice.length)[0], centeredSlots(fiveDice.length)[2], centeredSlots(fiveDice.length)[4]]);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(240); });
+    view.update(followUpRoll(secondHold, threeDice));
+    expect(slotXs()).toEqual(centeredSlots(threeDice.length));
+    expect(remote()).toHaveAttribute('data-farkle-roll-phase', 'cluster');
+  });
+
   it('reconnects immediately after Hot Dice with no stale die face and a clean Roll 6 state', () => {
     const before = { ...farkleTestState(), stage: 'bank_or_roll' as const, available: [0], dice: [], thisTurn: 400 };
     const dice = [{ index: 0, value: 1 }];

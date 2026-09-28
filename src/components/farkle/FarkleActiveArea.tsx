@@ -29,12 +29,12 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const presentationReady = !presentationHold || presentationHold.phase === 'retired';
   const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing' && presentationReady;
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
-  const latestRoll = !resolvedRoll && animate
-    ? state.events?.find(event => event.type === 'dice_rolled' && event.playerId === state.currentTurnPlayerId)
-    : undefined;
-  const freshRollDice = resolvedRoll?.dice ?? latestRoll?.dice;
-  const dice = freshRollDice ?? state.dice;
-  const isFreshRoll = !!freshRollDice;
+  // Authority retains the complete current roll in state.dice through every
+  // Hold. Its order is the presentation row identity; indexes remain scoring
+  // identity only. A new Roll replaces this array and therefore this map.
+  const dice = resolvedRoll?.dice ?? state.dice;
+  const currentRollSlots = new Map(dice.map((die, slot) => [die.index, slot]));
+  const rowX = (index: number) => `${50 + ((currentRollSlots.get(index) ?? 0) - (dice.length - 1) / 2) * (100 / 6)}%`;
   const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
   const heldIndexes = presentationHold?.indexes ?? [];
   const holdIsAcknowledging = presentationHold?.phase === 'scoring';
@@ -53,17 +53,17 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
     <div className="farkle-self-dice" data-farkle-self-roll-phase={phase} data-held-consolidated={consolidated}
       data-farkle-self-hold-phase={presentationHold?.phase}>
-        {visibleDice.map((die, slot) => {
+        {visibleDice.map(die => {
           const index = die.index;
           return <FarkleDie key={index} die={die} selected={selected.includes(index)}
-            style={{ '--farkle-self-slot-x': `${50 + ((isFreshRoll ? slot - (visibleDice.length - 1) / 2 : index - 2.5) * (100 / 6))}%` } as CSSProperties}
+            style={{ '--farkle-self-slot-x': rowX(index) } as CSSProperties}
             scoring={!resolvedRoll && (holdIsAcknowledging ? heldIndexes.includes(index) : scoring.includes(index))}
             disabled={!enabled || state.stage !== 'hold' || !state.available.includes(index)}
             onSelect={i => setSelection({ key, indexes: selected.includes(i) ? selected.filter(n => n !== i) : [...selected, i] })} />;
         })}
         {dissolvingDice.length > 0 && <div className="farkle-self-hold-dissolving-layer" aria-hidden="true">
           {dissolvingDice.map(die => <span key={die.index} className="farkle-self-hold-dissolving"
-            style={{ '--farkle-self-hold-x': `${50 + (die.index - 2.5) * (100 / 6)}%` } as CSSProperties}>
+            style={{ '--farkle-self-hold-x': rowX(die.index) } as CSSProperties}>
             <FarkleDie die={die} scoring />
           </span>)}
         </div>}
