@@ -50,8 +50,8 @@ export function FarkleScoringTable({ rules }: { rules: FrozenFarkleRules }) {
     </thead>
     <tbody>
       {farkleScoringRows(rules).map(row => <tr key={row.id} className="border-b border-white/10 even:bg-white/5">
-        <th scope="row" className="py-2 pr-3 text-left font-medium text-foreground">{row.label}</th>
-        <td className="py-2 text-right font-semibold tabular-nums text-amber-100">{row.points.toLocaleString('en-US')}</td>
+        <th scope="row" className="py-2 pr-3 text-left font-medium text-foreground"><span className="flex items-center"><span>{row.label}</span><span aria-hidden="true" data-farkle-scoring-leader className="mx-2 min-w-4 flex-1 border-b border-dotted border-black/60" /></span></th>
+        <td className="py-2 text-right font-semibold tabular-nums text-black">{row.points.toLocaleString('en-US')}</td>
       </tr>)}
     </tbody>
   </table>;

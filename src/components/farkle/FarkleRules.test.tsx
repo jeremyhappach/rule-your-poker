@@ -21,7 +21,7 @@ describe('Farkle frozen scoring quick reference', () => {
     rules.twoTriplets = 5000;
     rules.fourPlusPair = 0;
 
-    render(<FarkleScoringTable rules={rules} />);
+    const { container } = render(<FarkleScoringTable rules={rules} />);
 
     expect(screen.getByRole('row', { name: 'Single 1 1,234' })).toBeTruthy();
     expect(screen.getByRole('row', { name: 'Three 1s 1,000' })).toBeTruthy();
@@ -35,6 +35,10 @@ describe('Farkle frozen scoring quick reference', () => {
     expect(screen.queryByText('Three Pairs')).toBeNull();
     expect(screen.queryByText('Four of a Kind + Pair')).toBeNull();
     expect(screen.getByRole('columnheader', { name: 'Points' }).className).toContain('text-right');
+    expect(screen.getByRole('row', { name: 'Single 1 1,234' }).querySelector('td')?.className).toContain('text-black');
+    const leaders = container.querySelectorAll<HTMLElement>('[data-farkle-scoring-leader]');
+    expect(leaders).toHaveLength(farkleScoringRows(rules).length);
+    expect(leaders[0].className).toContain('border-dotted');
   });
 
   it('takes rows only from the supplied frozen scoring configuration', () => {
