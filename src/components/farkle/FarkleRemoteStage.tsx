@@ -9,7 +9,7 @@ export type { FarkleRollPhase } from './useFarkleRollPhase';
 export interface FarkleRemoteHold {
   key: string;
   indexes: number[];
-  phase: 'scoring' | 'dissolving';
+  phase: 'scoring' | 'dissolving' | 'retired';
 }
 
 /** Animation is presentation only; historical entry displays the settled row. */
@@ -19,15 +19,31 @@ export function FarkleRemoteStage({ dice, receiptKey, animate = false, previewPh
 }) {
   const phase = useFarkleRollPhase(receiptKey, animate && !previewPhase);
   const shown = previewPhase ?? phase;
+  const orderedDice = farkleStraightRow(dice);
+  const heldIndexes = new Set(hold?.indexes ?? []);
+  const removingHeldDice = hold?.phase === 'dissolving' || hold?.phase === 'retired';
+  const liveDice = removingHeldDice ? orderedDice.filter(die => !heldIndexes.has(die.index)) : orderedDice;
+  const dissolvingDice = hold?.phase === 'dissolving' ? orderedDice.filter(die => heldIndexes.has(die.index)) : [];
+  const dieStyle = (die: Die, order: number, count: number) => ({
+    '--farkle-row-x': `${50 + (order - (count - 1) / 2) * (100 / 6)}%`,
+    '--farkle-cluster-x': `${40 + (die.index % 3) * 10}%`,
+    '--farkle-cluster-y': `${38 + Math.floor(die.index / 3) * 24}%`,
+  } as CSSProperties);
   return <div className="farkle-remote-stage" data-farkle-roll-phase={shown} aria-label="Farkle dice">
-    {farkleStraightRow(dice).map((die, order) => {
+    {liveDice.map((die, order) => {
       const held = hold?.indexes.includes(die.index) ? hold : undefined;
       return <div key={`${receiptKey}/${die.index}`} className="farkle-remote-die"
         data-hold-phase={held?.phase} aria-hidden={held?.phase === 'dissolving' || undefined}
-        style={{ '--farkle-row-x': `${50 + (order - (dice.length - 1) / 2) * (100 / 6)}%`, '--farkle-cluster-x': `${40 + (die.index % 3) * 10}%`, '--farkle-cluster-y': `${38 + Math.floor(die.index / 3) * 24}%` } as CSSProperties}>
+        style={dieStyle(die, order, liveDice.length)}>
         <FarkleDie die={die} concealed={shown === 'cluster' || shown === 'rumble'} retired={!held && retired.includes(die.index)}
           scoring={held ? shown === 'reveal' || shown === 'row' : scoring.includes(die.index)} />
       </div>;
     })}
+    {dissolvingDice.length > 0 && <div className="farkle-remote-hold-dissolving-layer" aria-hidden="true">
+      {dissolvingDice.map((die, order) => <div key={`${receiptKey}/dissolving/${die.index}`} className="farkle-remote-die"
+        data-hold-phase="dissolving" aria-hidden="true" style={dieStyle(die, order, orderedDice.length)}>
+        <FarkleDie die={die} scoring />
+      </div>)}
+    </div>}
   </div>;
 }

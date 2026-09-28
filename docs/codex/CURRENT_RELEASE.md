@@ -1,24 +1,38 @@
-# Farkle self-turn Hold and Hot Dice presentation — 2026-09-28 — local candidate, production smoke pending
+# Farkle Hold presentation timing — 2026-09-28 — local candidate, production smoke pending
 
-Approved scope is presentation-only. The self active row now contains only
+Approved scope remains presentation-only. The self active row contains only
 currently available dice after its receipt-bound green Hold acknowledgment.
 Committed dice dissolve over 240 ms rather than remaining as gray slots, and
-the remaining row re-centers at its existing size and spacing. A final-die
-Hold remains hidden after dissolution across the authoritative Hot Dice reset,
-so the fresh Roll 6 state has no stale face. The visible compact Hold history
-clears at each authoritative `hot_dice` event while `THIS TURN`, replay,
-authoritative dice/indexes, timers, scoring, action transport, and settlement
-remain unchanged. Remote behavior and every non-Farkle game are unchanged.
+the remaining row re-centers at its existing size and spacing. The entire self
+action row, including Bank and Roll N, stays absent through the matching
+scoring and dissolve receipt phases; it returns only after the available dice
+have settled. A final-die Hold remains hidden across the authoritative Hot
+Dice reset, so the fresh Roll 6 state has no stale face. The visible compact
+Hold history clears at each authoritative `hot_dice` event while `THIS TURN`,
+replay, authoritative dice/indexes, timers, scoring, action transport, and
+settlement remain unchanged.
 
-Focused Farkle component/presentation coverage passed 42 tests: one/multiple
-Holds, repeated Roll N state, final-die Hot Dice ordering, repeated cycle
-history, reconnect during scoring, reconnect immediately after Hot Dice, and
-the existing remote/terminal regressions. Installed TypeScript passed; the
-normal production build passed. `bunx tsgo --noEmit` is unavailable on this
-host because the `tsgo` package cannot be resolved; no dependency was added.
-Production smoke remains the acceptance gate: normal Hold dissolution and
-re-centering, final Hold → HOT DICE → Roll 6, repeated Hot Dice cycles, and
-both reconnect cases.
+Remote committed dice now remain green for 1.4 seconds through their THIS TURN
+acknowledgment, then dissolve over the existing 240 ms. Dissolving remote dice
+live in a receipt-bound overlay and never retain row slots; only available
+survivors are laid out and re-centered. Existing scope, actor, action and roll
+identity guards still retire only their matching receipt. Reconnect rendering
+remains settled and does not recreate a past self Hold receipt. No reducer,
+RPC, scoring, timeout, replay, settlement, or non-Farkle behavior changed.
+
+Focused Farkle component/presentation coverage passed 46 tests: self and
+remote one/multiple Holds, remote green dwell and direct dissolve, survivor
+re-centering, self action gating, repeated Roll N state, stale receipt guards,
+final-die Hot Dice ordering, repeated cycle history, and the two reconnect
+cases. Installed TypeScript and `bunx vite build` passed. The normal `bun run
+build` full validation suite remains red solely on the pre-existing
+`gameTimerAuthority` static source assertion for `Game.tsx`; its unrelated
+timer expectation was not changed. A local browser check confirmed the
+application renders without a Vite error overlay or console errors, but
+stopped at the sign-in screen without using credentials. `bunx tsgo --noEmit`
+is unavailable on this host because the `tsgo` package cannot be resolved; no
+dependency was added. Production smoke remains the acceptance gate for the
+Hold and Hot Dice flows above.
 
 # Farkle remote Hold and Balanced Hot Dice — 2026-09-26 — release checkpoint, production smoke pending
 

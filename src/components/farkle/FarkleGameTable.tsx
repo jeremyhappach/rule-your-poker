@@ -123,6 +123,15 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
     }), 240);
     return () => clearTimeout(timer);
   }, [selfHold]);
+  useEffect(() => {
+    if (remoteHold?.phase !== 'dissolving') return;
+    const key = remoteHold.key;
+    const timer = setTimeout(() => setRemoteHold(current => {
+      if (!current || current.key !== key) return current;
+      return { ...current, phase: 'retired' };
+    }), 240);
+    return () => clearTimeout(timer);
+  }, [remoteHold]);
   const presentingRoll = resolvedRoll?.scopeKey === scopeKey ? resolvedRoll : null;
   useEffect(() => {
     if (!presentingRoll) return;
@@ -152,7 +161,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
         if (title) emitLatest.current({
           id: `farkle/${scopeKey}/${state.actionSequence}/${event.type}`, type: 'gameplay_notice',
           scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
-          payload: { title }, ttlMs: event.type === 'dice_held' ? 900 : 1600, behavior: 'enqueue',
+          payload: { title }, ttlMs: event.type === 'dice_held' ? remote ? 1400 : 900 : 1600, behavior: 'enqueue',
           onRetired: (remote || local) && event.type === 'dice_held'
             // The rail may retire inside its own React state updater.
             ? () => queueMicrotask(() => {
@@ -211,7 +220,7 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const retired = [...new Set([...state.dice.filter(d => !state.available.includes(d.index)).map(d => d.index),
     ...committed.filter(group => group.rollNumber === state.rollNumber).flatMap(group => group.dice.map(d => d.index)), ...(heldEvent?.indexes ?? [])])];
   const scoring = scoringFlash?.key === `${scopeKey}/${state.actionSequence}` ? scoringFlash.indexes : [];
-  const hotDiceHeld = state.events?.some(event => event.type === 'hot_dice') && heldEvent?.playerId === self?.id
+  const hotDiceHeld = Boolean(self?.id) && state.events?.some(event => event.type === 'hot_dice') && heldEvent?.playerId === self.id
     ? { key: holdKey, indexes: heldEvent.indexes ?? [], phase: 'retired' as const }
     : undefined;
   const presentingSelfHold = selfHold?.key === holdKey ? selfHold : hotDiceHeld;

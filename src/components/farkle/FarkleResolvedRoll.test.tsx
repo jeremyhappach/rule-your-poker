@@ -134,7 +134,7 @@ function heldState(before: FarkleState, indexes = [0]): FarkleState {
 const remoteHeld = () => document.querySelector('.farkle-remote-die:has([data-farkle-die="0"])')!;
 
 describe('Farkle live remote Hold retirement', () => {
-  it.each([[[0]], [[0, 1]]])('keeps scoring dice %j green through the notice, then dissolves without gray', async (indexes) => {
+  it.each([[[0]], [[0, 1]]])('keeps scoring dice %j green for 1.4 seconds, then dissolves and recenters without gray', async (indexes) => {
     const before = farkleTestState();
     const view = mount(before, 'user-1');
     const held = heldState(before, indexes);
@@ -145,17 +145,24 @@ describe('Farkle live remote Hold retirement', () => {
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-retired', 'false');
     expect(document.querySelectorAll('.farkle-remote-die [data-scoring="true"]')).toHaveLength(indexes.length);
     view.update(structuredClone(held));
-    await act(async () => { await vi.advanceTimersByTimeAsync(899); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1399); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-scoring', 'true');
     expect(remoteHeld().querySelector('.farkle-die')).toHaveAttribute('data-retired', 'false');
     expect(remoteHeld()).toHaveAttribute('aria-hidden', 'true');
-    expect(document.querySelectorAll('.farkle-remote-die:not([data-hold-phase])')).toHaveLength(6 - indexes.length);
+    const remote = document.querySelector('.farkle-remote-stage')!;
+    const survivors = [...remote.querySelectorAll(':scope > .farkle-remote-die:not([data-hold-phase])')];
+    expect(survivors).toHaveLength(6 - indexes.length);
+    expect(survivors.map((die, order) => Number.parseFloat((die as HTMLElement).style.getPropertyValue('--farkle-row-x'))))
+      .toEqual(survivors.map((_, order, all) => 50 + (order - (all.length - 1) / 2) * (100 / 6)));
+    await act(async () => { await vi.advanceTimersByTimeAsync(240); });
+    expect(remote.querySelector('.farkle-remote-hold-dissolving-layer')).toBeNull();
+    expect(remote.querySelectorAll(':scope > .farkle-remote-die')).toHaveLength(6 - indexes.length);
   });
 
-  it('waits for a queued scoring notice instead of expiring the highlight at 900 ms', async () => {
+  it('waits for a queued scoring notice instead of expiring the remote highlight early', async () => {
     const errors = vi.spyOn(console, 'error');
     const before = farkleTestState();
     const view = mount(before, 'user-1');
@@ -166,7 +173,7 @@ describe('Farkle live remote Hold retirement', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
     expect(screen.getByText('THIS TURN +100')).toBeVisible();
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
-    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
@@ -185,7 +192,7 @@ describe('Farkle live remote Hold retirement', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
     expect(screen.getByText('THIS TURN +100')).toBeVisible();
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
-    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
   });
 
@@ -201,7 +208,7 @@ describe('Farkle live remote Hold retirement', () => {
     expect(document.querySelector('[data-farkle-roll-phase]')).toHaveAttribute('data-farkle-roll-phase', 'row');
     expect(screen.getByText('THIS TURN +100')).toBeVisible();
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
-    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
     expect(screen.getByText('HOT DICE')).toBeVisible();
   });
@@ -216,7 +223,7 @@ describe('Farkle live remote Hold retirement', () => {
     view.update(heldState(next));
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'scoring');
-    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1900); });
     expect(remoteHeld()).toHaveAttribute('data-hold-phase', 'dissolving');
   });
 
@@ -253,6 +260,8 @@ describe('Farkle live remote Hold retirement', () => {
     view.update(heldState(before, indexes));
     const selfRow = () => document.querySelector('.farkle-self-dice')!;
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'scoring');
+    expect(screen.queryByRole('button', { name: `Roll ${remaining.length}` })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Bank' })).toBeNull();
     expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
       .filter(die => indexes.includes(Number(die.getAttribute('data-farkle-die'))))
       .every(die => die.getAttribute('data-scoring') === 'true')).toBe(true);
@@ -261,9 +270,12 @@ describe('Farkle live remote Hold retirement', () => {
     expect([...selfRow().querySelectorAll(':scope > [data-farkle-die]')]
       .map(die => Number(die.getAttribute('data-farkle-die')))).toEqual(remaining);
     expect(selfRow().querySelectorAll('.farkle-self-hold-dissolving [data-scoring="true"]')).toHaveLength(indexes.length);
+    expect(screen.queryByRole('button', { name: `Roll ${remaining.length}` })).toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(240); });
     expect(selfRow()).not.toHaveAttribute('data-farkle-self-hold-phase');
     expect(selfRow().querySelector('[data-retired="true"]')).toBeNull();
+    expect(screen.getByRole('button', { name: `Roll ${remaining.length}` })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Bank' })).toBeEnabled();
   });
 
   it('removes the final self-held die before the queued Hot Dice acknowledgment and preserves Roll 6', async () => {
@@ -283,10 +295,22 @@ describe('Farkle live remote Hold retirement', () => {
     expect(screen.getByText('HOT DICE')).toBeVisible();
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'dissolving');
     expect(selfRow().querySelector(':scope > [data-farkle-die="0"]')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Roll 6' })).toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(240); });
     expect(selfRow().querySelector('[data-farkle-die="0"]')).toBeNull();
     expect(selfRow()).toHaveAttribute('data-farkle-self-hold-phase', 'retired');
+    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
+  });
+
+  it('does not let a prior self Hold retirement gate controls for a newer roll state', async () => {
+    const before = farkleTestState();
+    const view = mount(before, 'user-0');
+    view.update(heldState(before));
+    const next = { ...before, actionSequence: 3, stage: 'bank_or_roll' as const, rollNumber: 2, events: [] };
+    view.update(next);
+    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect(screen.getByRole('button', { name: 'Roll 6' })).toBeEnabled();
   });
 
   it('reconnects immediately after Hot Dice with no stale die face and a clean Roll 6 state', () => {

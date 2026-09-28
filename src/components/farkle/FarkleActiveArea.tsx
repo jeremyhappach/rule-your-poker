@@ -26,7 +26,8 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const selected = selection.key === key ? selection.indexes : [];
   useEffect(() => { setSelection({ key, indexes: [] }); }, [key]);
   const selectedHold = resolvedRoll ? null : selectedFarkleHold(state, selected);
-  const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing';
+  const presentationReady = !presentationHold || presentationHold.phase === 'retired';
+  const enabled = !resolvedRoll && controllable && !pending && state.gamePhase === 'playing' && presentationReady;
   const rollAllowed = enabled && (state.stage === 'roll' || state.stage === 'bank_or_roll');
   const dice = resolvedRoll?.dice ?? state.dice;
   const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
@@ -68,7 +69,7 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
         <span>+{group.points.toLocaleString('en-US')}</span>
       </span>) : <span>No dice held this turn</span>}
     </div>
-    <div className="flex shrink-0 justify-center gap-2 pb-1">
+    {presentationReady && <div className="flex shrink-0 justify-center gap-2 pb-1">
       <Button size="sm" disabled={!enabled || !selectedHold} onClick={() => onAction('hold', selected)}>Hold Dice{selectedHold ? ` +${selectedHold.points}` : ''}</Button>
       <Button size="sm" disabled={!enabled || state.stage !== 'bank_or_roll'}
         onPointerDown={event => { bankInput.current = {
@@ -100,6 +101,6 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
           onAction('bank', [], activation);
         }}>Bank</Button>
       <Button size="sm" disabled={!rollAllowed} onClick={() => onAction('roll')}>Roll {state.available.length}</Button>
-    </div>
+    </div>}
   </div>;
 }

@@ -17,9 +17,10 @@ it('acknowledges committed dice in green without leaving gray slots', () => {
   const state = farkleTestState(); state.stage = 'bank_or_roll'; state.thisTurn = 100; state.available = [1,2,3,4,5];
   const view = render(<FarkleActiveArea state={state} controllable pending={false} presentationHold={{ key: 'hold', indexes: [0], phase: 'scoring' }}
     committed={[{ sequence: 2, dice: [state.dice[0]], points: 100, rollNumber: 1 }]} onAction={() => {}} />);
-  const button = screen.getByRole('button', { name: 'Die 1: 1' }) as HTMLButtonElement;
-  expect(button.disabled).toBe(true); expect(button.parentElement?.dataset.retired).toBe('false');
-  expect(button.parentElement?.dataset.scoring).toBe('true'); expect(screen.getByLabelText('Committed scoring dice').textContent).toContain('+100');
+  expect(screen.queryByRole('button', { name: 'Bank' })).toBeNull();
+  const die = view.container.querySelector('[data-farkle-die="0"]') as HTMLElement;
+  expect(die.dataset.retired).toBe('false');
+  expect(die.dataset.scoring).toBe('true'); expect(screen.getByLabelText('Committed scoring dice').textContent).toContain('+100');
   view.rerender(<FarkleActiveArea state={state} controllable pending={false} presentationHold={{ key: 'hold', indexes: [0], phase: 'dissolving' }}
     committed={[{ sequence: 2, dice: [state.dice[0]], points: 100, rollNumber: 1 }]} onAction={() => {}} />);
   expect(screen.queryByRole('button', { name: 'Die 1: 1' })).toBeNull();
