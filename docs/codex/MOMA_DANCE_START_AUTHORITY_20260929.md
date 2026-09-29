@@ -181,14 +181,31 @@ into this release. Moma Dance's session fingerprint and incident finance/history
 remain unchanged. Live testing was fake-money only; both money modes remain covered
 by the already-passed deployed SQL rollback suite.
 
-The prepublication live gate is PASS. Publication and the short deployed-client
-two-browser smoke are the remaining release steps.
+The prepublication live gate is PASS. Production checkpoint
+`762bd94fd55bbfdaa881aa589f155ec75da8866f` reached Vercel READY; both independent
+browsers loaded this exact SHA from `https://holm357.com/build-manifest.json`.
+The deployed-client smoke passed idle/ready, sole queued-host Start, peer rejection,
+both reloads, both actual network reconnects, a single successful Start and duplicate
+already_started acknowledgments from both identities. Pot, balances and all prior
+test-session history stayed equal before/after Start. Start itself enters dealer
+selection; dealer-game creation belongs to the subsequent configuration step,
+whose exactly-one-row behavior was covered in the full prepublication smoke.
+
+The post-smoke setup deadline expired naturally while recording the checkpoint,
+returning the fixture to waiting with no current game pointer and zero pot.
+No repair or direct session update was used. The final incident recheck matched
+original rounds, dealer games, results, snapshots, transfers and balances exactly.
+Raw deployed-client evidence is `postdeploy-two-client.json`; screenshots and
+the preservation comparison are alongside it. Final production qualification is
+**YES** for desktop/mobile Chrome and the specified lifecycle. Physical iPhone /
+WebKit and live real-money wagering were not exercised; real-money authority and
+financial guards were proved in the deployed rollback suite.
 
 At the release gate, Vercel still reports production deployment
 `dpl_8A1LqS6wNPRt7UchWJ1RwpjtdXX9` READY at
 `2e9a638a26a8fd852da7e11691fc225c4954b635`; the public build manifest agrees.
-This is the prepublication deployment checkpoint. Final production qualification
-remains NO until the deployed-client smoke passes.
+This was the prepublication deployment checkpoint; the verified production
+checkpoint and successful deployed-client smoke above supersede it.
 
 A read-only recheck at 17:50:41 UTC found Moma Dance `session_ended`, both players
 `left`, and no host. Its recorded end is 17:18:52 UTC, before this migration.

@@ -1,4 +1,4 @@
-# Waiting-table start authority — 2026-09-29 — SQL and live smoke qualified
+# Waiting-table start authority — 2026-09-29 — production qualified
 
 Moma Dance was captured read-only before reproduction. The server selected the
 queued host as starter, but the UI's queued-rejoin branch hid that host's Start.
@@ -26,7 +26,18 @@ both real network reconnects passed; the peer was rejected; one Start succeeded,
 duplicates returned already_started, and exactly one successor dealer game was
 created and delivered to both clients. The real ante/live-pointer boundary blocked
 readiness and Start. Test balances remained +3/-3 and pot zero after normal settlement;
-the prior settled game was unchanged. Publication/post-deploy smoke follow this gate.
+the prior settled game was unchanged.
+
+Production checkpoint `762bd94fd55bbfdaa881aa589f155ec75da8866f` is published,
+Vercel READY, with the same SHA confirmed by both browsers' public manifests.
+The deployed desktop/mobile Chrome smoke passed: idle/ready, sole queued-host Start,
+peer not_authorized, both reloads, both real reconnects, one started result, and
+two duplicate already_started results. Start changed no balances, pot, dealer-game,
+round, result or transfer records. Start opens dealer selection; the separate normal
+configuration step creates the dealer-game row. Incident finance/history recheck passed.
+The post-smoke setup deadline naturally returned the test table to waiting, with
+no live game pointer, pot zero and +3/-3 balances. No incident recovery was performed.
+The documentation checkpoint that records this result changes no runtime source.
 Moma Dance received no recovery commands. Its background lifecycle ended at
 17:18:52 UTC, before this migration. Captured evidence is preserved; balances,
 rounds, dealer games, results, snapshots and transfer records remain unchanged.

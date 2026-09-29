@@ -1,5 +1,23 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Waiting-table Start authority — September 29
+
+- Runtime checkpoint: `762bd94fd55bbfdaa881aa589f155ec75da8866f`, containing
+  candidate `9b9c0bd01`; Vercel READY and public manifests verified.
+- SQL migration `20260929173535` applied before publication; deployed definitions
+  match. Eight lifecycle variants and twelve blockers passed in rolled-back proofs.
+- Production-backed desktop/mobile Chrome completed normal Holm, next-dealer Sit
+  Out, normal heartbeat timeout, rejoin and queued-host Start. Both reloads and
+  reconnects passed; peer rejected; one successor; duplicate starts acknowledged
+  without creation. A live ante/pointer state correctly blocked readiness and Start.
+- The published-client smoke also passed sole Start, reload/reconnect, one successful
+  Start and duplicate rejection, with finances/history unchanged. Moma Dance was
+  never recovered or used as the test table; original financial/history evidence
+  remains unchanged. See MOMA_DANCE_START_AUTHORITY_20260929.md for precise scope,
+  natural lifecycle divergence and independent pre-existing session activity.
+- Post-smoke documentation commits change no runtime source. Physical WebKit and
+  live real-money play were not tested; both money modes passed deployed SQL proofs.
+
 ## 3-5-7 authorized ledger recovery — September 25
 
 - Production runtime and manifest: `e8f1439049ca690fbdc3d15571beeeb66e496e88`.
