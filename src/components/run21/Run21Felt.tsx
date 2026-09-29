@@ -50,9 +50,10 @@ interface Props {
   pending?: boolean; geometry?: Run21Geometry; playerId?: string;
   drawLayer?: HTMLElement | null;
   drawRect?: Rect;
+  hideScoring?: boolean;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,playerId=displayedPlayerId(view)}:Props) {
+export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,playerId=displayedPlayerId(view)}:Props) {
   const feedback=useRef(new Exact21Feedback());
   const [pulses,setPulses]=useState<Record<number,number>>({});
   const scope=JSON.stringify([view.identity,view.roundId,playerId]);
@@ -98,7 +99,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
       })}
     </div>)}
     {drawLayer?createPortal(draw,drawLayer):draw}
-    {reason&&!view.revealed&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring>
+    {reason&&!view.revealed&&!hideScoring&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring>
       {reason==='timeout'?'TIME EXPIRED':reason==='bust'?'BUST':`${player.name} scored ${board!.result!.aggregate}!`}
       <small>{board!.result!.multiplier.toLocaleString()} × {board!.result!.speed} = {board!.result!.score.toLocaleString()}</small>
     </div>)}

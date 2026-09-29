@@ -1,5 +1,16 @@
 # Durable decision log
 
+## September 29 — Run21 score medals and setup-frozen QA decks
+
+104/105 medals consume accepted score-start receipts in local presentation only.
+The server score hold is unchanged; the client retains that receipt's board
+through medal retirement and its normal count-up, accepting newer authority in
+parallel. Reconnect baselines do not create receipts and retirement requires the
+current receipt key. Global Run21 harness selection is captured by a private
+database insert trigger, immutable for that match, and only the server authority
+selects its deterministic deck. All players share it; results still come from
+legal placements and the unchanged reducer. `none` keeps the CSPRNG path.
+
 ## September 24 — Private exact-round 3-5-7 disclosure
 
 3-5-7 stores fold/stay decisions and the pre-settlement projection in a private

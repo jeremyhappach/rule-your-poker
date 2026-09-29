@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { advanceScorePresentation, applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
 import { chooseAction } from '../../src/lib/run21/bot.js';
 import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
+import { roundDeck } from './harness.js';
 import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
 import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
 
 export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;
   dealer_user_id: string;
+  debug_harness?: string;
   participants: (Player & {userId: string; chips: number})[];
   stake: number; balances: Record<string, number>; revision: number;
   state: Match | null; bot_due_at: number | null; finished: boolean;
@@ -76,8 +78,8 @@ export class Run21Authority {
     if (result.status !== 'accepted') throw new AuthorityError(`run21:runner_${result.reason}`);
     return result.state;
   }
-  private async openRound(state: Match, id: string, at: number) {
-    state = prepareRound(state, id, state.rounds.at(-1)?.id ?? null, await this.shuffle(state.identity, id), at);
+  private async openRound(state: Match, id: string, at: number, harness?: string) {
+    state = prepareRound(state, id, state.rounds.at(-1)?.id ?? null, await roundDeck(state.identity, id, harness, this.shuffle), at);
     state = this.command(state, state.rounds.at(-1)!.active_player_id!, {type: 'ready'}, at);
     return state;
   }
@@ -92,7 +94,7 @@ export class Run21Authority {
       const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
         ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake, DEFAULT_CONFIG, at);
-      state = await this.openRound(state, row.first_round_id, at);
+      state = await this.openRound(state, row.first_round_id, at, row.debug_harness);
     }
     state = advanceScorePresentation(state, at);
     let round = state.rounds.at(-1)!;
@@ -122,7 +124,7 @@ export class Run21Authority {
     if (state.winnerId && !state.settlement) {
       state = recordSettlement(state, {...settlementIntent(state)!, resultId: randomUUID(), transferBatchId: randomUUID(), at});
     } else if (!state.winnerId && round.revealed && round.acknowledged.length === state.players.length) {
-      state = await this.openRound(state, randomUUID(), at); due = null;
+      state = await this.openRound(state, randomUUID(), at, row.debug_harness); due = null;
     }
     const choice = chooseAction(project(state, bot.id), at);
     due = choice ? due ?? at + choice.delayMs : null;

@@ -8,12 +8,12 @@ import type {Command, Intent} from './model';
 
 const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
-function fixture(botFirst = false) {
+function fixture(botFirst = false, harness = 'none') {
   let now = 1000;
   const journal: import('./model').Event[] = [];
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
-    revision: 0, state: null, bot_due_at: null, finished: false};
+    revision: 0, state: null, bot_due_at: null, finished: false, debug_harness:harness};
   // Deliberately opposite seat order: the persisted dealer identity must decide.
   if (!botFirst) row.participants.reverse();
   const store: Store = {load: async (_game, history, afterSequence) => [structuredClone(row.state && (history||afterSequence!==undefined)
@@ -37,6 +37,28 @@ function command(row: StoredMatch, intent: Intent): Command {
   return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it.each([104,105])('retains the frozen %i deck for both players through recovery and every normal round',async score=>{
+    const f=fixture(false,`always_${score}`);let a=f.make();await a.read(game,user);
+    for(let roundNumber=1;roundNumber<=3;roundNumber++){
+      expect(f.row.state!.rounds.at(-1)!.number).toBe(roundNumber);
+      for(const column of [0,1,2,3,0,1,2,3,4,4,4])await a.act(game,user,command(f.row,{type:'place',column}));
+      const collect=command(f.row,{type:'collect'});await a.act(game,user,collect);
+      expect((await a.act(game,user,collect)).status).toBe('duplicate');
+      const phase=f.row.state!.rounds.at(-1)!.scorePresentation!;expect(phase.endsAt-phase.startedAt).toBe(5000);
+      a.dispose();a=f.make();await a.read(game,user);
+      f.tick(5000);await a.read(game,user);
+      for(let i=0;i<60&&!f.row.state!.rounds.at(-1)!.boards[PLAYERS[1].id].result;i++){
+        f.tick(750);await a.read(game,user);
+      }
+      const round=f.row.state!.rounds.at(-1)!;
+      for(const p of PLAYERS)expect(round.boards[p.id].result?.aggregate).toBe(score);
+      expect(round.boards[PLAYERS[0].id].presented.slice(0,11)).toEqual(round.boards[PLAYERS[1].id].presented.slice(0,11));
+      f.tick(5000);await a.read(game,user);
+    }
+    expect(f.row.state!.settlement).toBeTruthy();
+    const history=(await a.history(game,user))[0];expect(history.replay).toBeTruthy();
+    expect(JSON.stringify(await a.read(game,user))).not.toContain('debug_harness');
+  });
   it('retains the requested journal prefix when reconnect also recovers an expired deadline',async()=>{
     const f=fixture(),a=f.make();await a.read(game,user);
     await a.act(game,user,command(f.row,{type:'pass'}));

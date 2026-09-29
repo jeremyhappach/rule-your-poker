@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#071c18;font-family:system-ui"><div id="preview"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {Run21ScoreCelebration} from '../../src/components/run21/Run21ScoreCelebration';
+const aggregate=Number(new URLSearchParams(location.search).get('score'))===104?104:105;
+createRoot(document.getElementById('preview')).render(React.createElement(Run21ScoreCelebration,{receipt:{key:'preview',aggregate,playerName:'Run21 player'},onRetire:()=>{document.body.dataset.retired='true';}}));
+</script></body></html>

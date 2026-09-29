@@ -1,0 +1,13 @@
+.run21-celebration{position:fixed;inset:0;display:grid;place-items:center;isolation:isolate;overflow:hidden;pointer-events:auto;background:rgba(3,9,15,.92);color:#d9e4f0;text-align:center;container-type:size;animation:run21-ceremony-in .3s ease-out both}
+.run21-celebration-gold{color:#ffda70;background:radial-gradient(ellipse at center,#4b3416 0%,#090a0d 72%)}
+.run21-celebration-content{position:relative;padding:1.5rem;max-width:95%;animation:run21-medal-arrive .65s cubic-bezier(.2,.8,.25,1) both}
+.run21-medal{width:min(38cqw,29cqh,13rem);height:auto;display:block;margin:auto;filter:drop-shadow(0 0 1.5rem currentColor)}
+.run21-celebration h2{font-size:clamp(1.6rem,7cqw,4rem);font-weight:950;letter-spacing:.03em;line-height:1.15;margin:.45rem 0;text-shadow:0 .1em .6em #000}
+.run21-celebration-eyebrow{font-size:clamp(.65rem,2.5cqw,.9rem);letter-spacing:.25em;font-weight:700;margin-top:1rem}
+.run21-celebration-player{color:white;font-size:clamp(1rem,4cqw,1.5rem);font-weight:700;margin:.6rem 0}
+.run21-celebration-halo{position:absolute;width:100cqmax;height:100cqmax;border-radius:50%;opacity:.1;background:repeating-conic-gradient(from 0deg,transparent 0deg 12deg,currentColor 13deg 15deg,transparent 16deg 30deg)}
+.run21-celebration-gold .run21-celebration-halo{opacity:.25;animation:run21-rays 18s linear infinite}
+@keyframes run21-ceremony-in{from{opacity:0}to{opacity:1}}
+@keyframes run21-medal-arrive{from{opacity:0;transform:translateY(1rem) scale(.8)}to{opacity:1;transform:none}}
+@keyframes run21-rays{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.run21-celebration,.run21-celebration-content,.run21-celebration-gold .run21-celebration-halo{animation:none;transform:none}}

@@ -1,3 +1,34 @@
+# Run21 104/105 celebrations and frozen harness decks — 2026-09-29 — production smoke pending
+
+Approved Run21 scope adds a receipt-keyed silver 104 / gold `PERFECT 105!`
+blocking presentation, followed by the existing scoring modal and full local
+count-up. Server `scorePresentation`, reducer scoring, settlement, payout,
+history and replay remain unchanged. Initial/reconnect snapshots do not arm
+old receipts; retirement is key-guarded. Reduced motion keeps the same readable
+hold without motion. Latest authority continues to be accepted behind the hold.
+
+Game Defaults → Other → Run21 exposes Always 104 and Always 105 under the
+existing global master gate. Migration `20260929144536` captures the selected
+profile into the private match at setup (fake-money only), rejects later
+changes, and leaves existing matches at `none`. All players share the same
+server-selected full, unique 52-card deck in every round, including recovery.
+No result is injected. Harness-off uses the original CSPRNG path unchanged.
+Human QA placement for both profiles: **1,2,3,4,1,2,3,4,5,5,5, then Collect**.
+Different human choices remain real legal gameplay, not forced scores.
+
+Validation: 182 focused Run21/global-harness/overlay tests, application and focused
+server TypeScript, production Vite build, rollback SQL proof before and after
+the applied migration, and isolated Edge desktop/mobile/reduced-motion render
+checks. The legacy `dev/run21/tsconfig.json` check still lacks the existing
+`__RUN21_APP_TEST_LANE__` ambient declaration; application and server checks pass.
+No real session or historical result was mutated by the SQL proof.
+
+Production acceptance: create a **new** Run21 match with each enabled profile,
+use the placement guide, and check human and bot silver/gold → ordinary scoring
+sequence. Reconnect must not replay a medal; disable the profile/master gate
+and start another new match to verify normal random play. Changing defaults
+mid-match deliberately does not alter that match's frozen selection.
+
 # Farkle blocking outcome overlays — 2026-09-28 — local candidate, production smoke pending
 
 Approved Farkle-only presentation work replaces BANKED, FARKLE and HOT DICE

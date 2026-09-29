@@ -46,6 +46,7 @@ import {
  * resolved independently from the GLOBAL shared record.
  */
 const HARNESS_WARNING_GAME_IDS = [
+  'run21',
   'holm-game',
   '3-5-7',
   'cribbage',
@@ -1235,7 +1236,7 @@ const DealerGameSetupInner = ({
                   <button type="button" data-dealer-game-option="run21" onClick={() => handleGameSelect('run21')}
                     disabled={activePlayerCount > 2}
                     className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
-                    <span className="font-bold">Run21</span><span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
+                    <span className="font-bold">Run21</span>{activeHarnessMap.run21?.active && <HarnessBadge/>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                   </button>
                 </TabsContent>
               )}

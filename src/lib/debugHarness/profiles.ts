@@ -53,6 +53,11 @@ export const NONE_HARNESS: DebugHarnessProfile = {
 
 /** Per-game-type harness registry. Game-type keys mirror game_defaults.game_type. */
 export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
+  run21: [
+    NONE_HARNESS,
+    {id:'always_104',label:'Always 104',description:'Every player, every round: fixed 104 deck. Place in columns 1,2,3,4,1,2,3,4,5,5,5 then Collect. Frozen at match setup; scoring is unchanged.'},
+    {id:'always_105',label:'Always 105',description:'Every player, every round: fixed 105 deck. Place in columns 1,2,3,4,1,2,3,4,5,5,5 then Collect. Frozen at match setup; scoring is unchanged.'},
+  ],
   cribbage: [
     NONE_HARNESS,
     {

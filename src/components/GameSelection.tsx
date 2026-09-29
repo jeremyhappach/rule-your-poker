@@ -41,6 +41,7 @@ export const GameSelection = ({
   const run21Allowed = useRun21AppTestAccess(sessionId);
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
+    'run21',
     'holm-game', '3-5-7', 'cribbage', 'gin-rummy',
     'horses', 'ship-captain-crew', 'yahtzee',
   ]);
@@ -260,7 +261,7 @@ export const GameSelection = ({
                   disabled={activePlayerCount > 2}
                   onClick={() => handleGameSelect({ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', enabled: run21Allowed, maxPlayers: 2 })}
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
-                  <span className="font-bold">Run21</span><span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
+                  <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                 </button>
               </TabsContent>
             )}

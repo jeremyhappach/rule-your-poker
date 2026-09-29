@@ -74,6 +74,7 @@ const GAME_TYPES = [
   { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
   { value: 'yahtzee', label: 'Yahtzee', icon: Dice5, category: 'dice' },
   { value: 'farkle', label: 'Farkle', icon: Dice5, category: 'dice' },
+  { value: 'run21', label: 'Run21', icon: Spade, category: 'other' },
 ];
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
@@ -1264,6 +1265,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         {game.label}
                       </span>
                     </SelectItem>
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-1">Other</div>
+                  {GAME_TYPES.filter(g => g.category === 'other').map(game => (
+                    <SelectItem key={game.value} value={game.value}>{game.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

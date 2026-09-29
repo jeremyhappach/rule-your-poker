@@ -1,5 +1,15 @@
 # Repository map
 
+Run21 special score presentation and harness decks:
+`src/lib/run21/scoreCelebration.ts` owns local receipt admission/retirement;
+`useRun21Local.ts` holds only presentation while accepting latest authority;
+`Run21ScoreCelebration.tsx` renders the blocking medal before ordinary scoring.
+`server/run21/harness.ts` selects decks from the immutable private match marker
+captured by `20260929144536_run21_frozen_score_harness.sql`. Global controls use
+the existing debug-harness registry. Proofs: Run21 unit tests,
+`supabase/tests/run21/score_harness_rollback.sql`, and the isolated component
+browser check `dev/run21/score-celebration.preview.mjs`.
+
 Secure 3-5-7 disclosure (local candidate, not deployed):
 `20260924164708_three_five_seven_private_disclosure.sql` owns private immutable
 decision snapshots, the server DROP gate, safe frame/reveal readers and
