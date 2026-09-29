@@ -1,5 +1,15 @@
 # Durable decision log
 
+## September 29 — Chucky identity is not entropy
+
+Chucky draws use the same private cryptographic shuffle key as ordinary Holm
+deals. The legacy helper signature remains for compatibility, but its round UUID
+does not seed cards. Existing row locks and private immutable card commitments
+provide replay stability. Randomness must not be made deterministic to obtain
+idempotence. Historical MD5-derived draws remain unchanged and must be distinguished
+from corrected draws in future fairness reporting.
+See [qualification](HOLM_CHUCKY_RANDOMNESS_20260929.md).
+
 ## September 29 — Run21 score medals and setup-frozen QA decks
 
 104/105 medals consume accepted score-start receipts in local presentation only.

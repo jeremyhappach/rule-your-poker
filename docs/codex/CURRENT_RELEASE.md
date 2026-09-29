@@ -1,3 +1,28 @@
+# Holm Chucky cryptographic randomness — 2026-09-29 — qualified; production smoke pending
+
+Migration `20260929155908` replaces Chucky's UUID/MD5 deck sort with the
+existing private cryptographic shuffle key and marks the helper VOLATILE.
+The compatibility signature remains; round ID is no longer an entropy input.
+Locked callers, committed cards, deal timing, rules, scoring and settlement are unchanged.
+
+The full rollback proof passed before and after application: 64 synthetic
+real-money rounds (32 per caller), zero old-MD5 matches, stable participant
+reload/reconnect frames and recovery/replay, harness isolation, exact payouts,
+conservation, authorization, duplicate/late replay, continuation and terminal
+coverage. Another 32 identical-ID helper draws were all distinct. Local validation
+passed 124 tests, application TypeScript and the production build.
+
+All 161 pre-existing committed Chucky records retained their fingerprint; the
+42 retained September real-money draws still reproduce the old MD5 calculation.
+They remain legacy deterministic history. Future fairness reporting must use the
+generation boundary, not assume round creation time identifies the entropy source.
+
+Checkpoint: `holm-chucky-csprng-20260929`.
+See [qualification and audit evidence](HOLM_CHUCKY_RANDOMNESS_20260929.md).
+Production acceptance: two participants observe a new solo-stayer and tied-showdown
+Chucky hand, reload/reconnect, and confirm ordinary payout and continuation.
+Dashboard and Cribbage archive work have not started.
+
 # Run21 104/105 celebrations and frozen harness decks — 2026-09-29 — production smoke pending
 
 Approved Run21 scope adds a receipt-keyed silver 104 / gold `PERFECT 105!`
