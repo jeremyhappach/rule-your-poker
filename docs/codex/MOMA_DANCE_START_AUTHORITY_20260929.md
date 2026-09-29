@@ -135,19 +135,60 @@ and all fixtures rolled back. A live-round-pointer case sets `current_round=1`
 with its unfinished betting round; `current_round` is a round number, not a UUID.
 The same unfinished-round guard blocks it even without `current_game_uuid`.
 
-Live browser lifecycle qualification is pending two dedicated test-account logins.
-Jeremy selected providing those logins; the workspace has none configured. An
-isolated browser verified the candidate login page and found no page errors or
-Vite overlay. No authenticated live lifecycle smoke has run. Do not publish the
-client candidate `9b9c0bd0162aee4116842323fa7bdcf015ba21ef` until that gate passes.
-After publication, the short production smoke is also required. No CLI or
-dependency was installed.
+Live browser lifecycle qualification passed with the supplied account logins.
+The accounts have the same UUIDs as the incident players, but were used in fresh
+independent browser contexts and a separate fake-money session. No incident route
+was opened. Requests explicitly referencing Moma Dance were blocked; the blocked
+requests were read-only lobby history batches. No CLI or dependency was installed.
+
+The local `.env` still targets the old backend. An initial Create Session attempt
+there returned PGRST202 and created no game. The preview was restarted with isolated
+process environment targeting `xvhmbuppghwmwpwrkzao`; the following qualification
+used only that production backend. No product environment file was changed.
+
+Live table: **Sep 29 - Main St.**, `8e33b0f8-f730-4a82-a6f9-6ab9c85d84b4`.
+Both players began at zero. They completed one ordinary Holm round without a
+fixture or forced outcome: one ante each, one final settlement, balances +3/-3,
+pot zero. The next dealer (host) explicitly chose Sit Out. The other browser went
+offline and production presence auto-sat-out its player after about 69 seconds;
+no timestamps, watches or recovery functions were edited/called by the smoke.
+The peer used Return to Play; the declining host also queued Return to Play to
+restore the exact two-eligible queued shape seen in the captured incident.
+
+Both browsers then showed two seated / Ready. The host was sitting_out=true and
+waiting=true and alone displayed Start. The peer's direct Start request returned
+not_authorized without changing the session. Reloading each browser and disconnecting/
+reconnecting each browser preserved the same sole starter; both received fresh
+authoritative frames. A read-only DOM observer saw no peer Start button or duplicate
+Start. The longest sampled interval with both views Ready and no Start was 21 ms;
+there was no persistent missing action. The observer also recorded brief fail-closed
+readiness refreshes; full remount loading was not counted as an idle ready view.
+
+One host click returned started; duplicate calls from both identities returned
+already_started. Normal dealer setup created exactly one successor dealer game,
+`668cb433-755c-4b16-ab01-909d91f3180d`. Both clients received it in authoritative
+frames. During its ante/live-pointer boundary, both readiness RPCs returned blocked,
+neither UI showed Ready/Start, and Start returned not_startable. Its ordinary ante
+deadline later returned the table to waiting without moving money. Prior completed
+round/dealer/result/transfer rows and +3/-3 balances remained exactly unchanged.
+
+The broader account-history fingerprint was not globally static: the pre-existing
+in-progress real-money session Sep 14 - Jason Heyward continued pussy-tax hands on
+an approximately 92-second cadence before and throughout this test (hands 11988+).
+No browser RPC from the smoke targeted that session or any other game UUID. This
+independent activity is preserved in the evidence and was not repaired or expanded
+into this release. Moma Dance's session fingerprint and incident finance/history
+remain unchanged. Live testing was fake-money only; both money modes remain covered
+by the already-passed deployed SQL rollback suite.
+
+The prepublication live gate is PASS. Publication and the short deployed-client
+two-browser smoke are the remaining release steps.
 
 At the release gate, Vercel still reports production deployment
 `dpl_8A1LqS6wNPRt7UchWJ1RwpjtdXX9` READY at
 `2e9a638a26a8fd852da7e11691fc225c4954b635`; the public build manifest agrees.
-The waiting-start candidate has not been pushed or deployed. Final production
-qualification remains NO until both requested live smoke stages pass.
+This is the prepublication deployment checkpoint. Final production qualification
+remains NO until the deployed-client smoke passes.
 
 A read-only recheck at 17:50:41 UTC found Moma Dance `session_ended`, both players
 `left`, and no host. Its recorded end is 17:18:52 UTC, before this migration.

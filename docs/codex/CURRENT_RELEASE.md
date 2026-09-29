@@ -1,4 +1,4 @@
-# Waiting-table start authority — 2026-09-29 — SQL applied; live gate pending
+# Waiting-table start authority — 2026-09-29 — SQL and live smoke qualified
 
 Moma Dance was captured read-only before reproduction. The server selected the
 queued host as starter, but the UI's queued-rejoin branch hid that host's Start.
@@ -16,10 +16,17 @@ Migration `20260929173535_waiting_start_authority` applied the reviewed payload.
 All three deployed function bodies exactly match; ACLs/security settings pass.
 The installed public start/readiness entrypoints pass all eight rollback sequences
 and twelve blockers, including live round pointers. Every fixture rolled back.
-Client candidate `9b9c0bd0162aee4116842323fa7bdcf015ba21ef` is not published.
-Live two-client qualification is pending two dedicated test-account logins.
-The candidate login page renders without browser errors; that is not lifecycle
-acceptance. Do not publish until the requested live smoke passes.
+Client candidate `9b9c0bd0162aee4116842323fa7bdcf015ba21ef` passed live two-client
+qualification on production-backed fake-money table `8e33b0f8-f730-4a82-a6f9-6ab9c85d84b4`.
+A normal Holm game completed; the next dealer sat out; the peer lost heartbeat,
+was auto-sat-out after approximately 69 seconds, and rejoined. The declining
+dealer also queued Return to Play, matching the captured incident eligibility.
+Both clients showed Ready, with Start only on the queued host. Both reloads and
+both real network reconnects passed; the peer was rejected; one Start succeeded,
+duplicates returned already_started, and exactly one successor dealer game was
+created and delivered to both clients. The real ante/live-pointer boundary blocked
+readiness and Start. Test balances remained +3/-3 and pot zero after normal settlement;
+the prior settled game was unchanged. Publication/post-deploy smoke follow this gate.
 Moma Dance received no recovery commands. Its background lifecycle ended at
 17:18:52 UTC, before this migration. Captured evidence is preserved; balances,
 rounds, dealer games, results, snapshots and transfer records remain unchanged.
