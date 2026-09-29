@@ -106,7 +106,7 @@ The reproducible SQL proof compiles candidate functions only in `pg_temp` and
 uses newly generated synthetic identities inside BEGIN/ROLLBACK. Production
 functions are not replaced. Eight full sequences cover fake/real money, each
 disconnecting participant, and both queued-rejoin and seat-release/reseat.
-Eleven blocked-boundary cases, role ACLs, outsider rejection, duplicate start,
+Twelve blocked-boundary cases, role ACLs, outsider rejection, duplicate start,
 postgame duplicate receipts and intent replay pass. Exact financial/history
 fingerprints include ante rows and transfer history. Synthetic records roll back.
 
@@ -120,16 +120,41 @@ fingerprints include ante rows and transfer history. Synthetic records roll back
 | Either disconnect identity | Both roles × both money modes × both rejoin paths |
 | Reload/reconnect | Fresh component mounts, reversed roster, mounted snapshot update; live browser acceptance pending |
 | No duplicate start authority | One elected UUID; nonstarter/outsider rejected; duplicate start leaves row unchanged |
-| Unfinished game/money blocks | Shared read/start guard; eleven SQL cases; client unavailable/error/stale-read tests |
+| Unfinished game/money blocks | Shared read/start guard; twelve SQL cases; client unavailable/error/stale-read tests |
 | Finances/history unchanged | Exact fixture fingerprints plus preserved production records |
 
-**Migration required before client publication.** The payload is locally qualified;
-it has not been applied or assigned a migration version. See the adjacent SQL
-README for the supported migration and rollback-proof procedure. No CLI or
-dependency was installed. Do not publish the client first: the new readiness RPC
-is a dependency. Production acceptance remains Jeremy's two-client smoke after
-release, including ordinary completion, decline, each timeout/rejoin, correct
-single Start and reload/reconnect without financial/history changes.
+**Migration applied before client publication:** `20260929173535_waiting_start_authority`.
+All three deployed function bodies exactly match the candidate payload. Function
+ACLs, security-definer settings and empty search paths match the intended contract;
+the start-election body is unchanged from the reviewed candidate.
+
+Release qualification uses `prepare-proof.mjs --deployed` to exercise the installed
+public Start and readiness entrypoints, not only temporary candidate copies.
+Eight full sequences and twelve blockers pass, with exact finance/history equality
+and all fixtures rolled back. A live-round-pointer case sets `current_round=1`
+with its unfinished betting round; `current_round` is a round number, not a UUID.
+The same unfinished-round guard blocks it even without `current_game_uuid`.
+
+Live browser lifecycle qualification is pending two dedicated test-account logins.
+Jeremy selected providing those logins; the workspace has none configured. An
+isolated browser verified the candidate login page and found no page errors or
+Vite overlay. No authenticated live lifecycle smoke has run. Do not publish the
+client candidate `9b9c0bd0162aee4116842323fa7bdcf015ba21ef` until that gate passes.
+After publication, the short production smoke is also required. No CLI or
+dependency was installed.
+
+At the release gate, Vercel still reports production deployment
+`dpl_8A1LqS6wNPRt7UchWJ1RwpjtdXX9` READY at
+`2e9a638a26a8fd852da7e11691fc225c4954b635`; the public build manifest agrees.
+The waiting-start candidate has not been pushed or deployed. Final production
+qualification remains NO until both requested live smoke stages pass.
+
+A read-only recheck at 17:50:41 UTC found Moma Dance `session_ended`, both players
+`left`, and no host. Its recorded end is 17:18:52 UTC, before this migration.
+No recovery/gameplay command was issued against Moma Dance. Its balances, rounds,
+dealer games, game results, snapshots and transfers exactly match the original
+capture; no pending transfer exists. The ended lifecycle differs from the preserved
+bad state and is not evidence that the client correction has passed live smoke.
 
 ## Preserved local evidence
 

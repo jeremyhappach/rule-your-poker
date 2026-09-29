@@ -1,4 +1,4 @@
-# Waiting-table start authority — 2026-09-29 — locally qualified, not published
+# Waiting-table start authority — 2026-09-29 — SQL applied; live gate pending
 
 Moma Dance was captured read-only before reproduction. The server selected the
 queued host as starter, but the UI's queued-rejoin branch hid that host's Start.
@@ -8,15 +8,21 @@ pending transfers and unsettled pot state; the old RPC's missing pot guard was
 reproduced only on disposable rollback fixtures.
 
 49 focused tests, application TypeScript, production build and eight full rollback
-sequences (both players, both money modes, rejoin/reseat) pass. Eleven blocked-state
+sequences (both players, both money modes, rejoin/reseat) pass. Twelve blocked-state
 cases and exact finance/history preservation pass. One read-only review finding
 was resolved by sharing the server blocker predicate with client readiness.
 
-The required migration payload is `supabase/session-start-authority/authority.sql`.
-Apply it before client publication; neither has been published. Moma Dance received
-no recovery commands. Production presence continued independently after capture;
-the original state and unchanged financial/history evidence are retained locally.
-Two-client production reload/reconnect and lifecycle smoke remain pending.
+Migration `20260929173535_waiting_start_authority` applied the reviewed payload.
+All three deployed function bodies exactly match; ACLs/security settings pass.
+The installed public start/readiness entrypoints pass all eight rollback sequences
+and twelve blockers, including live round pointers. Every fixture rolled back.
+Client candidate `9b9c0bd0162aee4116842323fa7bdcf015ba21ef` is not published.
+Live two-client qualification is pending two dedicated test-account logins.
+The candidate login page renders without browser errors; that is not lifecycle
+acceptance. Do not publish until the requested live smoke passes.
+Moma Dance received no recovery commands. Its background lifecycle ended at
+17:18:52 UTC, before this migration. Captured evidence is preserved; balances,
+rounds, dealer games, results, snapshots and transfer records remain unchanged.
 See [findings, evidence and regression matrix](MOMA_DANCE_START_AUTHORITY_20260929.md).
 
 # Holm Chucky cryptographic randomness — 2026-09-29 — qualified; production smoke pending

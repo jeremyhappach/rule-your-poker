@@ -164,7 +164,7 @@ BEGIN
  IF baseline->>'outcome' NOT IN ('started','blocked_unfinished_state') THEN RAISE EXCEPTION 'start_proof:unexpected_deployed_probe:%',baseline; END IF;
  INSERT INTO waiting_start_proof_log VALUES('baseline_unsettled_pot_gap',baseline);
 
- FOREACH mode IN ARRAY ARRAY['pot','pointer','unfinished_round','pending_transfer','in_progress','ante_decision','game_over','session_ended','paused','pending_end','ended_at'] LOOP
+ FOREACH mode IN ARRAY ARRAY['pot','pointer','unfinished_round','live_round_pointer','pending_transfer','in_progress','ante_decision','game_over','session_ended','paused','pending_end','ended_at'] LOOP
   g:=gen_random_uuid(); dg:=gen_random_uuid();
   INSERT INTO public.games(id,name,status,current_host,real_money,pot) VALUES(g,'Rollback blocked start proof','waiting',users[1],true,0);
   INSERT INTO public.players(game_id,user_id,position,chips,status,sitting_out,waiting) VALUES
@@ -173,8 +173,9 @@ BEGIN
   ELSIF mode='pointer' THEN
    INSERT INTO public.dealer_games(id,session_id,dealer_user_id,game_type) VALUES(dg,g,users[1],'holm-game');
    UPDATE public.games SET current_game_uuid=dg WHERE id=g;
-  ELSIF mode='unfinished_round' THEN
+  ELSIF mode IN ('unfinished_round','live_round_pointer') THEN
    INSERT INTO public.rounds(game_id,round_number,hand_number,status,pot,cards_dealt) VALUES(g,1,1,'betting',0,4);
+   IF mode='live_round_pointer' THEN UPDATE public.games SET current_round=1 WHERE id=g; END IF;
   ELSIF mode='pending_transfer' THEN
    INSERT INTO public.gameplay_transfer_pending_changes(transaction_id,game_id,endpoint_key,opening_balance,closing_balance)
     VALUES(txid_current(),g,'pot',6,0);
