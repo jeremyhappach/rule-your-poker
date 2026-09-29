@@ -1,3 +1,41 @@
+# Run21 two-human setup/control — 2026-09-29 — qualified; production smoke pending
+
+The correct failed session, September 29 - You Enjoy Myself
+(`7cb0740a-5f12-4664-8b69-b1bed7d7c762`), had two active humans, not a bot.
+Run21 rejected that composition before frozen harness capture. This was not an
+Always 104/105 harness defect; the historical session remains untouched.
+
+Migration `20260929184904_run21_two_human_participants` removes only the mandatory
+bot count from `run21_configure_local`. Exactly two active, non-sitting-out
+participants and the existing authenticated-human, profile, fake-money, dealer,
+session, configuration, setup receipt and continuation guards remain required.
+The server runner chooses actions and schedules bot work only for the current
+authoritative bot actor; a missing bot is valid. Human commands retain their
+authenticated participant/turn checks. Existing ready, deadline, scoring-hold and
+acknowledgement lifecycle behavior is unchanged.
+
+184 focused Run21 tests, installed TypeScript check and production build pass.
+The generated rollback proof passed before migration and again against deployed
+authority: two humans, human/bot, server-frozen 104/105, harness-off setup, exact
+participant counts, setup authorization/staleness/dedupe, real engine tie/winner
+states, one loser-pays-winner receipt, exact journal history, commit replay/CAS,
+continuation, and Session Ended. All synthetic database changes rolled back.
+Source tests additionally prove both humans' own-turn control, stale bot wake-up
+retirement, late command replay, both-player 104/105 scores and unchanged CSPRNG.
+Existing celebration, reconnect, reduced-motion and presentation tests pass.
+
+Reproduce the SQL proof with `.codex/scripts/run21-two-human-proof.mjs`; it expands
+`supabase/tests/run21/two_human_rollback.sql` from legal engine commands. Execute
+the generated body inside BEGIN/ROLLBACK; never commit the synthetic fixtures.
+
+Live two-human production smoke is still required. The connected browser was
+at login, with no second authenticated human client available. In a fresh
+fake-money two-human session, select Always 104, configure Run21, and each human
+places `1,2,3,4,1,2,3,4,5,5,5`, then collects: authoritative 104 and silver overlay
+before normal scoring. Repeat Always 105 for both humans and `PERFECT 105!`.
+No scoring, settlement, payout, history/replay, presentation, Farkle or other-game
+product implementation changed.
+
 # Waiting-table start authority — 2026-09-29 — production qualified
 
 Moma Dance was captured read-only before reproduction. The server selected the

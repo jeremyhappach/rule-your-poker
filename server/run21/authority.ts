@@ -105,11 +105,11 @@ export class Run21Authority {
       if (!board.result && board.deadline !== null && at >= board.deadline)
         state = this.command(state, board.playerId, {type: 'expire'}, at);
     }
-    const bot = state.players.find(p => p.kind === 'bot')!;
     round = state.rounds.at(-1)!;
-    if (!round.revealed && round.active_player_id === bot.id && due !== null && at >= due && !round.boards[bot.id].result) {
-      const action = chooseAction(project(state, bot.id), at);
-      if (action) state = this.command(state, bot.id, action.intent, at);
+    const actor = state.players.find(p => p.id === round.active_player_id);
+    if (!round.revealed && actor?.kind === 'bot' && due !== null && at >= due && !round.boards[actor.id].result) {
+      const action = chooseAction(project(state, actor.id), at);
+      if (action) state = this.command(state, actor.id, action.intent, at);
       due = null;
     }
     round = state.rounds.at(-1)!;
@@ -119,14 +119,16 @@ export class Run21Authority {
         state = this.command(state, p.id, {type: 'acknowledge'}, at);
     }
     round = state.rounds.at(-1)!;
-    if (round.revealed && !round.acknowledged.includes(bot.id)) state = this.command(state, bot.id, {type: 'acknowledge'}, at);
+    const bot = state.players.find(p => p.kind === 'bot');
+    if (bot && round.revealed && !round.acknowledged.includes(bot.id)) state = this.command(state, bot.id, {type: 'acknowledge'}, at);
     round = state.rounds.at(-1)!;
     if (state.winnerId && !state.settlement) {
       state = recordSettlement(state, {...settlementIntent(state)!, resultId: randomUUID(), transferBatchId: randomUUID(), at});
     } else if (!state.winnerId && round.revealed && round.acknowledged.length === state.players.length) {
       state = await this.openRound(state, randomUUID(), at, row.debug_harness); due = null;
     }
-    const choice = chooseAction(project(state, bot.id), at);
+    const nextActor = state.players.find(p => p.id === state.rounds.at(-1)!.active_player_id);
+    const choice = nextActor?.kind === 'bot' ? chooseAction(project(state, nextActor.id), at) : null;
     due = choice ? due ?? at + choice.delayMs : null;
     if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due, verifiedUserId);
     this.committed.set(row.game_id,row);

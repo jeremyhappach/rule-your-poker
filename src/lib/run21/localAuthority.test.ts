@@ -1,19 +1,21 @@
 // @vitest-environment node
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Run21Authority, type StoredMatch, type Store} from '../../../server/run21/authority';
 import {fixtureDeck, IDENTITY, PLAYERS, uuid} from './fixtures';
 import {chooseAction} from './bot';
 import {project} from './engine';
 import type {Command, Intent} from './model';
+import {shuffleRound} from './shuffle.server';
 
 const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
-function fixture(botFirst = false, harness = 'none') {
+function fixture(botFirst = false, harness = 'none', twoHumans = false) {
   let now = 1000;
   const journal: import('./model').Event[] = [];
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
     revision: 0, state: null, bot_due_at: null, finished: false, debug_harness:harness};
+  if (twoHumans) row.participants.forEach(p => {p.kind = 'human';});
   // Deliberately opposite seat order: the persisted dealer identity must decide.
   if (!botFirst) row.participants.reverse();
   const store: Store = {load: async (_game, history, afterSequence) => [structuredClone(row.state && (history||afterSequence!==undefined)
@@ -27,16 +29,69 @@ function fixture(botFirst = false, harness = 'none') {
     const committed={...structuredClone(row),state:{...structuredClone(row.state!),events:structuredClone(events)}};
     await new Promise<void>(resolve=>setImmediate(resolve));return committed;
   }, confirm: async old => {if(old.revision!==row.revision)throw Error('CAS conflict');return structuredClone(row);}, close: async () => {row.finished = true;}};
-  const make = () => {const w = new Run21Authority(store, () => now, async () => fixtureDeck([], 17)); workers.push(w); return w;};
-  return {make, get row() {return row.state?{...row,state:{...row.state,events:journal}}:row;}, tick: (ms: number) => {now += ms;}};
+  const shuffle = vi.fn(twoHumans ? shuffleRound : async () => fixtureDeck([], 17));
+  const make = () => {const w = new Run21Authority(store, () => now, shuffle); workers.push(w); return w;};
+  return {make, shuffle, get row() {return row.state?{...row,state:{...row.state,events:journal}}:row;},
+    staleBotDue: () => {row.bot_due_at = 1;}, tick: (ms: number) => {now += ms;}};
 }
 const game = IDENTITY.sessionId, user = uuid(30), human = PLAYERS[0].id;
 let sequence = 100;
-function command(row: StoredMatch, intent: Intent): Command {
+function command(row: StoredMatch, intent: Intent, playerId = human): Command {
   const state = row.state!, round = state.rounds.at(-1)!;
-  return {identity: state.identity, roundId: round.id, playerId: human, requestId: uuid(sequence++), revision: round.boards[human].revision, intent};
+  return {identity: state.identity, roundId: round.id, playerId, requestId: uuid(sequence++), revision: round.boards[playerId].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it.each([104,105])('lets both authenticated humans earn %i through a tie, recovery, settlement and replay',async score=>{
+    const f=fixture(false,`always_${score}`,true);let a=f.make();await a.read(game,user);
+    let late: Command | undefined;
+    for(let number=1;number<=4;number++){
+      expect(f.row.state!.rounds.at(-1)!.number).toBe(number);
+      for(let turn=0;turn<2;turn++){
+        const id=f.row.state!.rounds.at(-1)!.active_player_id!;
+        const actor=f.row.participants.find(p=>p.id===id)!;
+        const other=f.row.participants.find(p=>p.id!==id)!;
+        await expect(a.act(game,other.userId,command(f.row,{type:'place',column:0},id))).rejects.toThrow('unauthorized');
+        await expect(a.act(game,other.userId,command(f.row,{type:'place',column:0},other.id))).rejects.toThrow('not_your_turn');
+        // Even a persisted stale bot wake-up may not automate either human.
+        a.dispose();f.staleBotDue();f.tick(1000);a=f.make();await a.read(game,actor.userId);
+        expect(f.row.bot_due_at).toBeNull();
+        expect(f.row.state!.rounds.at(-1)!.boards[id].presented).toHaveLength(1);
+        const stale=command(f.row,{type:'place',column:0},id);
+        for(const column of [0,1,2,3,0,1,2,3,4,4,4])await a.act(game,actor.userId,command(f.row,{type:'place',column},id));
+        await expect(a.act(game,actor.userId,stale)).rejects.toThrow('stale_revision');
+        if(number===4&&turn===1)f.tick(1000);
+        const collect=command(f.row,{type:'collect'},id);await a.act(game,actor.userId,collect);
+        expect((await a.act(game,actor.userId,collect)).status).toBe('duplicate');
+        if(!late)late=collect;
+        const r=f.row.state!.rounds.at(-1)!;
+        expect(r.boards[id].result).toMatchObject({aggregate:score,totals:[21,21,21,21,score-84]});
+        expect(r.scorePresentation!.endsAt-r.scorePresentation!.startedAt).toBe(5000);
+        f.tick(5000);await a.read(game,actor.userId);
+      }
+      if(number===3)expect(f.row.state!.settlement).toBeNull();
+    }
+    const settled=f.row.state!;
+    expect(settled.settlement).toMatchObject({amount:5,winnerId:settled.winnerId});
+    expect(settled.settlement!.loserId).not.toBe(settled.winnerId);
+    const lateActor=f.row.participants.find(p=>p.id===late!.playerId)!;
+    expect((await a.act(game,lateActor.userId,late!)).status).toBe('duplicate');
+    for(const p of f.row.participants){
+      const history=(await a.history(game,p.userId))[0];expect(history.replay).toBeTruthy();
+      expect(history.events.filter(e=>e.type==='settlement_recorded')).toHaveLength(1);
+    }
+    expect(f.shuffle).not.toHaveBeenCalled();
+    await expect(a.close(game,uuid(99))).rejects.toThrow('participant_required');
+    await a.close(game,user);expect(f.row.finished).toBe(true);
+    await expect(a.act(game,user,command(f.row,{type:'collect'}))).rejects.toThrow('finished');
+  });
+  it('uses the unchanged CSPRNG shuffle for harness-off two-human matches',async()=>{
+    const a=fixture(false,'none',true),b=fixture(false,'none',true);
+    await a.make().read(game,user);await b.make().read(game,user);
+    expect(a.shuffle).toHaveBeenCalledExactlyOnceWith(IDENTITY,uuid(20));
+    expect(b.shuffle).toHaveBeenCalledExactlyOnceWith(IDENTITY,uuid(20));
+    expect(a.row.state!.rounds[0].secret.cards).not.toEqual(b.row.state!.rounds[0].secret.cards);
+    expect(a.row.bot_due_at).toBeNull();expect(b.row.bot_due_at).toBeNull();
+  });
   it.each([104,105])('retains the frozen %i deck for both players through recovery and every normal round',async score=>{
     const f=fixture(false,`always_${score}`);let a=f.make();await a.read(game,user);
     for(let roundNumber=1;roundNumber<=3;roundNumber++){
