@@ -1,4 +1,4 @@
-# Run21 two-human setup/control — 2026-09-29 — qualified; production smoke pending
+# Run21 two-human setup/control — 2026-09-29 — production qualified
 
 The correct failed session, September 29 - You Enjoy Myself
 (`7cb0740a-5f12-4664-8b69-b1bed7d7c762`), had two active humans, not a bot.
@@ -28,11 +28,42 @@ Reproduce the SQL proof with `.codex/scripts/run21-two-human-proof.mjs`; it expa
 `supabase/tests/run21/two_human_rollback.sql` from legal engine commands. Execute
 the generated body inside BEGIN/ROLLBACK; never commit the synthetic fixtures.
 
-Live two-human production smoke is still required. The connected browser was
-at login, with no second authenticated human client available. In a fresh
-fake-money two-human session, select Always 104, configure Run21, and each human
-places `1,2,3,4,1,2,3,4,5,5,5`, then collects: authoritative 104 and silver overlay
-before normal scoring. Repeat Always 105 for both humans and `PERFECT 105!`.
+Live production smoke passed on runtime `17c9568137a42822b9a9ba6af14069adf3be27e1`
+(public build manifest verified), using the two configured E2E accounts in
+independent authenticated Chrome contexts. Credentials were kept out of evidence.
+Session **Sep 29 - Adams Street**: `212cf12f-cabc-4144-8baa-cbf999d73e0d`.
+Hap was host/non-dealer, seat 6, player `8b487cc0-cdaf-459e-ad84-20b075b407a4`;
+Happach Gmail was dealer, seat 2, player `2039223c-4211-49c8-923c-f6de7cb2123d`.
+Both were active humans; there were no bots. An initial test-runner timeout let
+the first setup timer expire; both clients reauthenticated, Hap used Return to
+Play, and a normal second draw selected Happach Gmail. No direct setup repair.
+
+- 104 dealer-game `0d895d0c-4f09-4f7d-8bea-ee4c991bfd82`: both humans scored
+  authoritative 104, totals `[21,21,21,21,20]`, in all three rounds using
+  `1,2,3,4,1,2,3,4,5,5,5`. Both clients saw silver then normal scoring/count-up.
+- 105 dealer-game `9bb09107-6247-4cbc-9ec7-a10e01626e2e`: both humans scored
+  authoritative 105, totals `[21,21,21,21,21]`, in all three rounds. Both clients
+  saw gold with exact headline `PERFECT 105!`, then normal scoring/count-up.
+- Both setup RPCs returned HTTP 200/configured with only the normal ante config.
+  All 12 accepted board results were verified from action receipts and database
+  state. Only the active human's browser had enabled placement controls.
+- Each browser recorded 12 receipt-specific celebration-to-scoring transitions,
+  with no overlapping celebration and normal scoring. Both reloads between 105
+  rounds replayed zero old celebrations; play continued. Client 2 reduced-motion
+  mode disabled all three celebration animations while retaining retirement.
+- The global default was restored to `always_104` immediately after 105 capture;
+  all later 105 rounds retained the frozen fixture. Bot due times remained null.
+- Both matches finished normally with exactly one settlement receipt each:
+  Happach Gmail won +1/+3; Hap paid -1/-3 in isolated match balances. Both users'
+  authenticated history exports retained both matches, each with 178 events and
+  178 replay steps. No account transactions or browser page errors occurred.
+
+The history check above covers authenticated Run21 history/replay exports. The
+generic History tab in next-game setup displayed its pre-game placeholder; no
+claim is made that this smoke qualified that separate setup-phase history UI.
+The new session and its completed matches remain intact; no historical incident
+was modified. Evidence: `.codex/evidence/run21-two-human-live-20260929/`
+(`live-evidence.json`, `database-proof.json`, and both-client overlay/scoring PNGs).
 No scoring, settlement, payout, history/replay, presentation, Farkle or other-game
 product implementation changed.
 

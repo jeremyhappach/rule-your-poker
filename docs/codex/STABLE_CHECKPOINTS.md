@@ -1,5 +1,23 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## Run21 two-human setup/control and 104/105 smoke — September 29
+
+- Runtime `17c9568137a42822b9a9ba6af14069adf3be27e1`, migration
+  `20260929184904`, release tag `run21-two-human-20260929`.
+- Production fake-money session `212cf12f-cabc-4144-8baa-cbf999d73e0d`
+  (Sep 29 - Adams Street), two independently authenticated humans, no bots.
+- Two real three-round matches completed: both humans earned 104 every round,
+  then 105 every round, by the approved 11-placement sequence and normal collect.
+  Both browsers verified silver/gold (exact `PERFECT 105!`) before normal scoring;
+  12 transitions per browser, no overlap. Only the current human could place.
+- Both fresh reloads suppressed old celebration receipts; reduced-motion gold
+  suppressed animation but retired normally. The frozen 105 match stayed 105
+  after the global default was restored to 104.
+- One settlement per match, correct isolated loser-pays-winner balances, no
+  account postings. Both users retained 178 history events/replay steps per match.
+  Setup-phase generic History UI is outside this qualification. No product edits
+  were needed during smoke. See CURRENT_RELEASE.md for exact identities/evidence.
+
 ## Waiting-table Start authority — September 29
 
 - Runtime checkpoint: `762bd94fd55bbfdaa881aa589f155ec75da8866f`, containing
