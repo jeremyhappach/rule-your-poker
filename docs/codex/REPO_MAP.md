@@ -702,6 +702,7 @@ Canonical snapshot identity is
 | Role | Source |
 |---|---|
 | Shared participation commands | `src/lib/sessionParticipation.ts` calls `public.session_leave` and `public.session_take_seat`; migration `20260905003226_atomic_departure_rejoin.sql`. |
+| Waiting start presentation | `waitingRoomStartAuthority.ts` projects the locked start election; `useWaitingRoomActions.ts` and `CanonicalShellWaitingSurface.tsx` preserve the selected queued starter. `supabase/session-start-authority/authority.sql` is the pending shared read/start blocker migration; do not publish its client before applying it. |
 | Departing-player audit | `private.session_departures`, written from locked server rows by participation version. No financial snapshot key is reserved mid-hand. Browser snapshot DML is revoked. |
 | Holm transactional writer | `public.holm_settle_hand`, latest projection change in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`. |
 | Financial snapshot writers | Seven transactional settlement owners. The seat command also records a zero opening balance for a newcomer at an already-settled boundary. Browser snapshot writers are removed. |

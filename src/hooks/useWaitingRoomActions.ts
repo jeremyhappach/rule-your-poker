@@ -16,6 +16,7 @@ import { generateUUID } from "@/lib/uuid";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
+import { deriveWaitingRoomStartAuthority, type WaitingStartBoundary } from "@/lib/waitingRoomStartAuthority";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -43,7 +44,7 @@ function getAggressionLevelForBotId(botId: string): AggressionLevel {
 export interface WaitingRoomActor {
   id?: string;
   user_id: string;
-  position: number;
+  position: number | null;
   is_bot: boolean;
   sitting_out: boolean;
   waiting?: boolean;
@@ -55,6 +56,8 @@ export interface UseWaitingRoomActionsArgs {
   gameId: string;
   players: WaitingRoomActor[];
   currentUserId: string | undefined;
+  currentHost?: string | null;
+  startBoundary: WaitingStartBoundary;
   realMoney?: boolean;
   onGameStart: () => void;
   onBotAdded?: () => void;
@@ -65,6 +68,10 @@ export interface UseWaitingRoomActions {
   isObserver: boolean;
   isSeated: boolean;
   isHost: boolean;
+  canStartGame: boolean;
+  startCheckFailed: boolean;
+  retryStartCheck: () => void;
+  hostUserId: string | undefined;
   hasEnoughPlayers: boolean;
   hasOpenSeats: boolean;
   seatedPlayerCount: number;
@@ -83,6 +90,8 @@ export function useWaitingRoomActions({
   gameId,
   players,
   currentUserId,
+  currentHost,
+  startBoundary,
   realMoney = false,
   onGameStart,
   onBotAdded,
@@ -118,30 +127,51 @@ export function useWaitingRoomActions({
     }
   }, [players]);
 
-  const currentPlayer = players.find((p) => p.user_id === currentUserId);
+  const currentPlayer = players.find((p) => p.user_id === currentUserId && p.position != null && p.status !== 'left' && p.status !== 'observer');
   const isSeated = !!currentPlayer;
   const isObserver = !currentPlayer;
 
-  const humanPlayers = players.filter((p) => !p.is_bot);
+  const humanPlayers = players.filter((p) => !p.is_bot && p.position != null && p.status !== 'left' && p.status !== 'observer');
   const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
     if (!a.created_at || !b.created_at) return 0;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
-  const hostPlayer = sortedByJoinTime[0];
+  const hostPlayer = humanPlayers.find(p => p.user_id === currentHost) ?? sortedByJoinTime[0];
   const isHost = !!currentPlayer && hostPlayer?.user_id === currentUserId;
 
   // Physical seating and next-game eligibility are deliberately separate.
   // Sitting Out keeps a player's authoritative seat; only observer/left
   // releases it. Start Game must still require an explicit opt-in.
-  const seatedPlayerCount = players.filter((p) => {
-    if (p.status === "observer" || p.status === "left") return false;
-    return true;
-  }).length;
-  const eligiblePlayerCount = players.filter((p) => {
-    if (p.status === "observer" || p.status === "left") return false;
-    return p.waiting === true || !p.sitting_out;
-  }).length;
-  const hasEnoughPlayers = eligiblePlayerCount >= 2;
+  const start = deriveWaitingRoomStartAuthority(players, currentHost, startBoundary);
+  // Unfinished rounds and pending financial journal entries are server-owned.
+  // Refresh from existing authoritative snapshot changes, never on a poll.
+  const [blockerRead, setBlockerRead] = useState<{
+    gameId: string; players: WaitingRoomActor[]; boundary: WaitingStartBoundary; blocked: boolean; failed: boolean;
+  } | null>(null);
+  const [startCheckAttempt, setStartCheckAttempt] = useState(0);
+  useEffect(() => {
+    let current = true;
+    if (!start.readyToStart) return;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_waiting_start_blocked' as any, { p_game_id: gameId } as any);
+        if (current) setBlockerRead({ gameId, players, boundary: startBoundary, blocked: !!error || data !== false, failed: !!error || typeof data !== 'boolean' });
+      } catch {
+        if (current) setBlockerRead({ gameId, players, boundary: startBoundary, blocked: true, failed: true });
+      }
+    })();
+    return () => { current = false; };
+  }, [gameId, players, startBoundary, start.readyToStart, startCheckAttempt]);
+  const seatedPlayerCount = start.seatedPlayerCount;
+  const hasEnoughPlayers = start.readyToStart && blockerRead?.gameId === gameId &&
+    blockerRead.players === players && blockerRead.boundary === startBoundary && !blockerRead.blocked;
+  const canStartGame = hasEnoughPlayers && !!currentPlayer && start.startAuthorityUserId === currentUserId;
+  const startCheckFailed = start.readyToStart && blockerRead?.gameId === gameId &&
+    blockerRead.players === players && blockerRead.boundary === startBoundary && blockerRead.failed;
+  const retryStartCheck = useCallback(() => {
+    setBlockerRead(null);
+    setStartCheckAttempt(attempt => attempt + 1);
+  }, []);
   const hasOpenSeats = seatedPlayerCount < 7;
 
   // Rejoin affordance — viewer is seated but currently sat out and not
@@ -308,7 +338,7 @@ export function useWaitingRoomActions({
     recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:click', {
       hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
     });
-    if (!hasEnoughPlayers || gameStartTriggeredRef.current) {
+    if (!canStartGame || gameStartTriggeredRef.current) {
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:skipped', {
         hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
       });
@@ -330,7 +360,7 @@ export function useWaitingRoomActions({
       setIsStartingGame(false);
       gameStartTriggeredRef.current = false;
     }, 8000);
-  }, [hasEnoughPlayers, onGameStart]);
+  }, [hasEnoughPlayers, canStartGame, onGameStart]);
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;
@@ -360,6 +390,10 @@ export function useWaitingRoomActions({
     isObserver,
     isSeated,
     isHost,
+    canStartGame,
+    startCheckFailed,
+    retryStartCheck,
+    hostUserId: hostPlayer?.user_id,
     hasEnoughPlayers,
     hasOpenSeats,
     seatedPlayerCount,

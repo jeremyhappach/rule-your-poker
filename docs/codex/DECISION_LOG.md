@@ -1,5 +1,15 @@
 # Durable decision log
 
+## September 29 — queued participation may own waiting-table Start
+
+Waiting-table Start presentation follows the existing locked server election:
+eligible seated human current_host, then eligible join order and UUID. Explicit
+Rejoin (`waiting=true`) is eligibility even if `sitting_out=true` remains until
+Start. Host/bot controls remain distinct from fallback start authority. Shared
+read/start blocker checks reject unfinished gameplay and money; a queued message
+must never hide the sole permitted start action. See the
+[Moma Dance proof](MOMA_DANCE_START_AUTHORITY_20260929.md); migration/publication pending.
+
 ## September 29 — Chucky identity is not entropy
 
 Chucky draws use the same private cryptographic shuffle key as ordinary Holm

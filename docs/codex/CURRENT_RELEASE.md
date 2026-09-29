@@ -1,3 +1,24 @@
+# Waiting-table start authority — 2026-09-29 — locally qualified, not published
+
+Moma Dance was captured read-only before reproduction. The server selected the
+queued host as starter, but the UI's queued-rejoin branch hid that host's Start.
+The correction mirrors the existing server election and permits the sole queued
+starter. A shared read/start guard also blocks unfinished rounds, live pointers,
+pending transfers and unsettled pot state; the old RPC's missing pot guard was
+reproduced only on disposable rollback fixtures.
+
+49 focused tests, application TypeScript, production build and eight full rollback
+sequences (both players, both money modes, rejoin/reseat) pass. Eleven blocked-state
+cases and exact finance/history preservation pass. One read-only review finding
+was resolved by sharing the server blocker predicate with client readiness.
+
+The required migration payload is `supabase/session-start-authority/authority.sql`.
+Apply it before client publication; neither has been published. Moma Dance received
+no recovery commands. Production presence continued independently after capture;
+the original state and unchanged financial/history evidence are retained locally.
+Two-client production reload/reconnect and lifecycle smoke remain pending.
+See [findings, evidence and regression matrix](MOMA_DANCE_START_AUTHORITY_20260929.md).
+
 # Holm Chucky cryptographic randomness — 2026-09-29 — qualified; production smoke pending
 
 Migration `20260929155908` replaces Chucky's UUID/MD5 deck sort with the

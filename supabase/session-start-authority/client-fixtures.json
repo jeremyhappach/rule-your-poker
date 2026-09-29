@@ -1,0 +1,290 @@
+[
+  {
+    "case": "rollback sequence 1",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "a1b51f87-2507-4954-a10b-97c81e65afd5",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:05.799675+00:00"
+      },
+      {
+        "id": "e761b245-1d2e-4a27-899b-f2d06fce35d4",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:05.796536+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": false
+    }
+  },
+  {
+    "case": "rollback sequence 2",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "4bb66843-0518-4a16-8783-6d3e99032752",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 5,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": false,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:05.977273+00:00"
+      },
+      {
+        "id": "bc61203c-bea7-43bb-a061-7166c742d8b1",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:05.97671+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": false
+    }
+  },
+  {
+    "case": "rollback sequence 3",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "122853cb-422c-48b1-99c5-8ce2e31b5c94",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.074152+00:00"
+      },
+      {
+        "id": "21f4664d-5038-4f51-8c63-4917e8aa8a14",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.073606+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": false
+    }
+  },
+  {
+    "case": "rollback sequence 4",
+    "current_host": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+    "starter": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+    "players": [
+      {
+        "id": "4ec278f1-b16e-4633-97d6-60232f264844",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": false,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.18709+00:00"
+      },
+      {
+        "id": "b015ec41-438e-410a-b6cb-a0ede1a61ce2",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.187821+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": false
+    }
+  },
+  {
+    "case": "rollback sequence 5",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "4b802e97-1464-425e-bca7-f14e28941135",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.314498+00:00"
+      },
+      {
+        "id": "69b23ccd-2405-4bbf-9bfb-f1a219767e04",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.314147+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": true
+    }
+  },
+  {
+    "case": "rollback sequence 6",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "df803b39-ab5f-4353-b515-23d56fcbdcd7",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 5,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": false,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.39441+00:00"
+      },
+      {
+        "id": "f60116ad-53f0-4a6c-ada0-fd481eba2d19",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.393904+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": true
+    }
+  },
+  {
+    "case": "rollback sequence 7",
+    "current_host": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "starter": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+    "players": [
+      {
+        "id": "56a39f0b-19ca-422f-b4bd-502ddf12d07f",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.488002+00:00"
+      },
+      {
+        "id": "950cfba2-4925-4089-8a0c-33f4c7ded2a8",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.487577+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": true
+    }
+  },
+  {
+    "case": "rollback sequence 8",
+    "current_host": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+    "starter": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+    "players": [
+      {
+        "id": "d74274b6-25d2-4543-b28d-a23878f9219e",
+        "user_id": "0ade68ac-111d-43a4-ab2d-2c4b568679dc",
+        "position": 1,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": false,
+        "waiting": true,
+        "created_at": "2026-09-29T17:13:06.555126+00:00"
+      },
+      {
+        "id": "ddb26bf2-17f8-492c-a5b4-a331d376bca9",
+        "user_id": "445a3c4c-3f90-494e-8f08-59d5958e8550",
+        "position": 4,
+        "status": "active",
+        "is_bot": false,
+        "sitting_out": true,
+        "waiting": true,
+        "created_at": "2026-09-29T17:14:06.555519+00:00"
+      }
+    ],
+    "boundary": {
+      "status": "waiting",
+      "current_game_uuid": null,
+      "pot": 0,
+      "is_paused": false,
+      "pending_session_end": false,
+      "session_ended_at": null,
+      "real_money": true
+    }
+  }
+]

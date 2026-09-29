@@ -560,6 +560,7 @@ function isAllDecisionsInFor(
 
 interface GameData {
   id: string;
+  current_host?: string | null;
   name?: string;
   status: string;
   buy_in: number;
@@ -13407,6 +13408,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             anteAmount={0}
             players={players as any}
             currentUserId={user?.id}
+            currentHost={game.current_host}
+            startBoundary={game}
             onSelectSeat={handleSelectSeat}
             onGameStart={startGameFromWaiting}
             onBotAdded={fetchGameData}

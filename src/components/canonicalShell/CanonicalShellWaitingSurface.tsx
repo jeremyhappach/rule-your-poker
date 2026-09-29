@@ -29,6 +29,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import type { WaitingStartBoundary } from "@/lib/waitingRoomStartAuthority";
 import {
   useWaitingRoomActions,
   type WaitingRoomActor,
@@ -85,6 +86,8 @@ export interface CanonicalShellWaitingSurfaceProps {
   anteAmount?: number;
   players: Player[];
   currentUserId: string | undefined;
+  currentHost?: string | null;
+  startBoundary: WaitingStartBoundary;
   onSelectSeat: (position: number) => void;
   onGameStart: () => void;
   onBotAdded?: () => void;
@@ -126,6 +129,8 @@ function WaitingSurfaceBody({
   anteAmount = 0,
   players,
   currentUserId,
+  currentHost,
+  startBoundary,
   onSelectSeat,
   onGameStart,
   onBotAdded,
@@ -173,6 +178,8 @@ function WaitingSurfaceBody({
     gameId,
     players,
     currentUserId,
+    currentHost,
+    startBoundary,
     realMoney,
     onGameStart,
     onBotAdded,
@@ -208,18 +215,7 @@ function WaitingSurfaceBody({
 
 
 
-  // Host pip discrimination — host is the earliest-joined human (same
-  // rule as `useWaitingRoomActions`). We surface it through the
-  // canonical seat cluster's `isDealer` slot so the dealer/host pip
-  // primitive stays single-sourced.
-  const humanPlayers = players.filter((p) => !p.is_bot);
-  const sortedHumans = [...humanPlayers].sort((a: any, b: any) => {
-    if (!a.created_at || !b.created_at) return 0;
-    return (
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-  });
-  const hostUserId = sortedHumans[0]?.user_id;
+  const hostUserId = actions.hostUserId;
 
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -561,6 +557,11 @@ function WaitingSurfaceBody({
             <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
               {/* Buttons sit immediately under the tab rail */}
               <div className="w-full flex flex-col items-center justify-start gap-3">
+                {actions.startCheckFailed && (
+                  <Button variant="outline" onClick={actions.retryStartCheck}>
+                    Retry start check
+                  </Button>
+                )}
                 {actions.isObserver ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
@@ -598,7 +599,7 @@ function WaitingSurfaceBody({
                       Share
                     </Button>
                   </>
-                ) : actions.viewerIsWaitingToRejoin ? (
+                ) : actions.viewerIsWaitingToRejoin && !actions.canStartGame ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
                       You&apos;re seated and queued to return for the next game.
@@ -611,7 +612,7 @@ function WaitingSurfaceBody({
                       Share
                     </Button>
                   </>
-                ) : actions.isHost ? (
+                ) : actions.isHost || actions.canStartGame ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
                       {actions.hasEnoughPlayers
@@ -626,7 +627,7 @@ function WaitingSurfaceBody({
                         <Share2 className="w-4 h-4 mr-2" />
                         Invite
                       </Button>
-                      {actions.hasOpenSeats && !realMoney && (
+                      {actions.isHost && actions.hasOpenSeats && !realMoney && (
                         <Button
                           type="button"
                           disabled={actions.isAddingBot}
@@ -650,7 +651,7 @@ function WaitingSurfaceBody({
                           )}
                         </Button>
                       )}
-                      {actions.hasEnoughPlayers && (
+                      {actions.canStartGame && (
                         <Button
                           data-start-game-btn
                           onClick={actions.handleStartGame}
