@@ -24,6 +24,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
 } }));
 
 import { configureDealerGame } from '@/lib/dealerGameSetupAuthority';
+import { toast } from 'sonner';
 import { resolveExactRunBackConfig } from '@/lib/dealerGameSetup/runBackConfig';
 import { DealerGameSetup } from './DealerGameSetup';
 
@@ -90,6 +91,32 @@ describe('the actual Run Back button across all seven games', () => {
     expect(vi.mocked(configureDealerGame).mock.calls.map(([args]) => args.config)).toEqual([crib, crib]);
   });
 });
+describe('Cribbage configuration rejection messages', () => {
+  it.each([
+    ['Supabase object', { code: '55000', message: 'real_money_liveness_unavailable:session_recovery_failure' }, true],
+    ['Error instance', new Error('real_money_liveness_unavailable:scheduler_heartbeat_stale'), true],
+    ['unrelated server error', { code: 'P0001', message: 'configure_dealer_game:configuration_expired' }, false],
+    ['malformed error', { message: 55000 }, false],
+    ['null error', null, false],
+  ])('preserves the intended message for %s', async (_label, error, recoveryBlocked) => {
+    vi.mocked(configureDealerGame).mockRejectedValueOnce(error);
+    await mount('cribbage', undefined);
+    const option = document.querySelector<HTMLButtonElement>('[data-dealer-game-option="cribbage"]');
+    expect(option).toBeTruthy();
+    await act(async () => option!.click());
+    const start = document.querySelector<HTMLButtonElement>('[data-dealer-game-start="cribbage"]');
+    expect(start).toBeTruthy();
+    await act(async () => start!.click());
+    expect(configureDealerGame).toHaveBeenCalledOnce();
+    expect(vi.mocked(configureDealerGame).mock.calls[0][0].gameType).toBe('cribbage');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenLastCalledWith(recoveryBlocked
+      ? 'Real-money deal blocked because server recovery is not healthy. No ante or game state was committed. Try again shortly.'
+      : 'Could not configure the game');
+    expect(start!.disabled).toBe(false);
+  });
+});
+
 describe('saved configuration integrity', () => {
   it.each(cases)('rejects a missing required stake for %s', (gameType, config) => {
     expect(resolveExactRunBackConfig(gameType, { ...config, ante_amount: undefined })).toBeNull();

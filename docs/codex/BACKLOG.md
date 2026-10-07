@@ -1,5 +1,40 @@
 # Backlog
 
+## Implemented — real-money dealer setup rejection — October 6, 2026
+
+Jeremy reported a two-human real-money session intended for Cribbage,
+`58974b5a-20a9-48fb-9da6-463cac2c53d2`, that reached dealer selection and game
+selection but never configured a dealer game. Expected: normal Cribbage
+selection/configuration after the successful session start. Read-only production
+evidence confirms `begin_session_dealer_selection` returned `started` at
+2026-10-07 01:07:55 UTC, and both clients recorded `game_selection` by
+01:07:59 UTC. The final row is `session_ended`, `game_type = null`,
+`config_complete = false`, and `current_game_uuid = null`.
+
+October 7 RCA proves four configuration POSTs from the seat-6 dealer failed
+with `real_money_liveness_unavailable:session_recovery_failure` (HTTP 500,
+SQLSTATE 55000). The admission check still counted an obsolete waiting-phase
+`session_abandonment` failure after the watch retired. The generic client
+message also mishandles the structured Supabase error. The waiting-room
+watchdog theory is rejected. Jeremy approved October 7; migration
+`20261007150935` and the structured-error correction passed focused validation.
+The historical session is preserved; fresh production smoke is pending.
+See `DEALER_SETUP_RCA_20261007.md` for evidence and validation details.
+Provenance: Jeremy's October 6 P0 hotfix request and read-only production query;
+production currently serves `4a06f203fb14a320fbd1d132dabee4aec87a591d`.
+
+## Queued — two baseline release-test failures — October 7, 2026
+
+The dealer-setup release suite passed 2,018 tests but failed two unchanged
+source-contract assertions: `src/lib/gameTimerAuthority.test.ts` expects
+`setAnteDialogIdentity({`, while current source uses the guarded ternary;
+`src/lib/systemSettingsRollbackProofIsolation.test.ts` flags missing `BEGIN;`
+in `supabase/tests/holm_chucky_secure_randomness_rollback_proof.sql`.
+The tested files match HEAD and were not changed by this hotfix. Reconcile
+their intended contracts separately; do not weaken the tests as release
+cleanup. Provenance: October 7 approved hotfix local validation. Vercel's
+configured typecheck/Vite production build passed.
+
 ## Completed — Run21 repeated selection in a continuing session — September 23
 
 The unconditional `run21:new_local_session_required` check was replaced with

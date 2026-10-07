@@ -1,3 +1,33 @@
+# Real-money dealer setup — 2026-10-07 — correction, production smoke pending
+
+Session `58974b5a-20a9-48fb-9da6-463cac2c53d2` successfully started, but four
+dealer configuration RPCs failed the real-money admission trigger with
+`real_money_liveness_unavailable:session_recovery_failure`. A waiting-only
+abandonment failure remained admission-relevant after its watch retired; the
+client's structured-error handling hid the precise reason behind a generic
+message. The waiting-room watchdog theory is rejected and unchanged.
+Approved migration `20261007150935_scope_waiting_abandonment_failure_admission`
+is installed. Health now counts abandonment failures only in their applicable
+waiting phase, retaining the records and all other admission safeguards. The
+client recognizes structured Supabase errors and shows the existing precise
+recovery message. No historical session, rule, balance or settlement changed.
+
+Rollback proofs passed before and after migration: waiting failure controls,
+retired failure admission, other failures, scheduler/overdue/paused guards,
+real-money Cribbage setup, failed-transaction atomicity, authorization and
+duplicate replay, plus the existing seven-game setup/late-replay proof. The
+old function was restored after candidate proof; post-apply hash is
+`b332b750f1ae7b9cd65c31403f334277`. Zero new proof fixtures remain.
+
+App typecheck, production Vite build, focused setup/start regressions and all
+241 harness tests passed. Application suite: 2,018 passed, two unchanged
+baseline source-contract failures (`gameTimerAuthority` and
+`systemSettingsRollbackProofIsolation`); queued separately, not hidden or
+changed. Vercel's configured production build is typecheck plus Vite.
+Release tag: `real-money-setup-admission-2026-10-07`. Jeremy's fresh two-human
+real-money Cribbage setup smoke remains acceptance truth. Exact RCA and proof
+instructions: `DEALER_SETUP_RCA_20261007.md`.
+
 # Run21 two-human setup/control — 2026-09-29 — production qualified
 
 The correct failed session, September 29 - You Enjoy Myself

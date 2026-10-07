@@ -1,0 +1,329 @@
+{
+  "capturedOn": "2026-10-07",
+  "incidentGameId": "58974b5a-20a9-48fb-9da6-463cac2c53d2",
+  "projectId": "xvhmbuppghwmwpwrkzao",
+  "scope": "Read-only Supabase edge/Postgres logs and deployed function definitions; no response bodies or request payloads retained by those logs.",
+  "incidentWindow": {
+    "start": "2026-10-07T01:07:59Z",
+    "end": "2026-10-07T01:09:00Z"
+  },
+  "requests": [
+    {
+      "timestamp": "2026-10-07T01:08:12.084000Z",
+      "method": "OPTIONS",
+      "path": "/rest/v1/game_defaults",
+      "search": "?select=ante_amount%2Cpoints_to_win%2Cskunk_enabled%2Cskunk_threshold%2Cdouble_skunk_enabled%2Cdouble_skunk_threshold%2Cper_point_value%2Cgin_bonus%2Cundercut_bonus&game_type=eq.cribbage",
+      "status": "200",
+      "userId": null,
+      "requestId": "01a113e7-5cb4-7a52-af23-a8b03e4ec8ed",
+      "proxyStatus": null
+    },
+    {
+      "timestamp": "2026-10-07T01:08:12.108000Z",
+      "method": "GET",
+      "path": "/rest/v1/game_defaults",
+      "search": "?select=ante_amount%2Cpoints_to_win%2Cskunk_enabled%2Cskunk_threshold%2Cdouble_skunk_enabled%2Cdouble_skunk_threshold%2Cper_point_value%2Cgin_bonus%2Cundercut_bonus&game_type=eq.cribbage",
+      "status": "200",
+      "userId": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "requestId": "01a113e7-5ccc-738f-af31-c00a2625bbbb",
+      "proxyStatus": null
+    },
+    {
+      "timestamp": "2026-10-07T01:08:12.783000Z",
+      "method": "OPTIONS",
+      "path": "/rest/v1/rpc/configure_dealer_game",
+      "search": null,
+      "status": "200",
+      "userId": null,
+      "requestId": "01a113e7-5f6f-7b85-95f9-3b0c7cf2196f",
+      "proxyStatus": null
+    },
+    {
+      "timestamp": "2026-10-07T01:08:12.808000Z",
+      "method": "POST",
+      "path": "/rest/v1/rpc/configure_dealer_game",
+      "search": null,
+      "status": "500",
+      "userId": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "requestId": "01a113e7-5f88-78f6-b765-16126a4bd97f",
+      "proxyStatus": "PostgREST; error=55000"
+    },
+    {
+      "timestamp": "2026-10-07T01:08:14.243000Z",
+      "method": "POST",
+      "path": "/rest/v1/rpc/configure_dealer_game",
+      "search": null,
+      "status": "500",
+      "userId": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "requestId": "01a113e7-6523-77dc-923b-f5d4872d3a32",
+      "proxyStatus": "PostgREST; error=55000"
+    },
+    {
+      "timestamp": "2026-10-07T01:08:16.226000Z",
+      "method": "POST",
+      "path": "/rest/v1/rpc/configure_dealer_game",
+      "search": null,
+      "status": "500",
+      "userId": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "requestId": "01a113e7-6ce2-74b1-8599-61b2ef3ab659",
+      "proxyStatus": "PostgREST; error=55000"
+    },
+    {
+      "timestamp": "2026-10-07T01:08:20.460000Z",
+      "method": "POST",
+      "path": "/rest/v1/rpc/configure_dealer_game",
+      "search": null,
+      "status": "500",
+      "userId": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "requestId": "01a113e7-7d6c-7214-9837-8e786c479da0",
+      "proxyStatus": "PostgREST; error=55000"
+    }
+  ],
+  "postgresErrors": [
+    {
+      "timestamp": "2026-10-07T01:08:12.880000Z",
+      "error": "real_money_liveness_unavailable:session_recovery_failure",
+      "sqlstate": "55000",
+      "detail": {
+        "reason": "session_recovery_failure",
+        "game_id": "58974b5a-20a9-48fb-9da6-463cac2c53d2",
+        "outcome": "unhealthy",
+        "checked_at": "2026-10-07T01:08:12.876577+00:00",
+        "overdue_timers": [],
+        "session_failures": [
+          {
+            "task": "session_abandonment",
+            "unit": "1:58974b5a-20a9-48fb-9da6-463cac2c53d2",
+            "sqlstate": "55P03",
+            "retry_after": "2026-10-07T01:07:56.984878+00:00"
+          }
+        ],
+        "admission_allowed": false,
+        "active_failure_tasks": [],
+        "scheduler_last_outcome": "completed",
+        "scheduler_last_duration_ms": 4,
+        "scheduler_last_completed_at": "2026-10-07T01:08:12.288537+00:00",
+        "scheduler_consecutive_partial_failures": 0
+      },
+      "context": [
+        "PL/pgSQL function enforce_real_money_liveness_admission() line 15 at RAISE",
+        "PL/pgSQL function configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone) line 260 at SQL statement"
+      ]
+    },
+    {
+      "timestamp": "2026-10-07T01:08:14.298000Z",
+      "error": "real_money_liveness_unavailable:session_recovery_failure",
+      "sqlstate": "55000",
+      "detail": {
+        "reason": "session_recovery_failure",
+        "game_id": "58974b5a-20a9-48fb-9da6-463cac2c53d2",
+        "outcome": "unhealthy",
+        "checked_at": "2026-10-07T01:08:14.293284+00:00",
+        "overdue_timers": [],
+        "session_failures": [
+          {
+            "task": "session_abandonment",
+            "unit": "1:58974b5a-20a9-48fb-9da6-463cac2c53d2",
+            "sqlstate": "55P03",
+            "retry_after": "2026-10-07T01:07:56.984878+00:00"
+          }
+        ],
+        "admission_allowed": false,
+        "active_failure_tasks": [],
+        "scheduler_last_outcome": "completed",
+        "scheduler_last_duration_ms": 5,
+        "scheduler_last_completed_at": "2026-10-07T01:08:13.290988+00:00",
+        "scheduler_consecutive_partial_failures": 0
+      },
+      "context": [
+        "PL/pgSQL function enforce_real_money_liveness_admission() line 15 at RAISE",
+        "PL/pgSQL function configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone) line 260 at SQL statement"
+      ]
+    },
+    {
+      "timestamp": "2026-10-07T01:08:16.276000Z",
+      "error": "real_money_liveness_unavailable:session_recovery_failure",
+      "sqlstate": "55000",
+      "detail": {
+        "reason": "session_recovery_failure",
+        "game_id": "58974b5a-20a9-48fb-9da6-463cac2c53d2",
+        "outcome": "unhealthy",
+        "checked_at": "2026-10-07T01:08:16.272242+00:00",
+        "overdue_timers": [],
+        "session_failures": [
+          {
+            "task": "session_abandonment",
+            "unit": "1:58974b5a-20a9-48fb-9da6-463cac2c53d2",
+            "sqlstate": "55P03",
+            "retry_after": "2026-10-07T01:07:56.984878+00:00"
+          }
+        ],
+        "admission_allowed": false,
+        "active_failure_tasks": [],
+        "scheduler_last_outcome": "completed",
+        "scheduler_last_duration_ms": 39,
+        "scheduler_last_completed_at": "2026-10-07T01:08:15.327614+00:00",
+        "scheduler_consecutive_partial_failures": 0
+      },
+      "context": [
+        "PL/pgSQL function enforce_real_money_liveness_admission() line 15 at RAISE",
+        "PL/pgSQL function configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone) line 260 at SQL statement"
+      ]
+    },
+    {
+      "timestamp": "2026-10-07T01:08:20.517000Z",
+      "error": "real_money_liveness_unavailable:session_recovery_failure",
+      "sqlstate": "55000",
+      "detail": {
+        "reason": "session_recovery_failure",
+        "game_id": "58974b5a-20a9-48fb-9da6-463cac2c53d2",
+        "outcome": "unhealthy",
+        "checked_at": "2026-10-07T01:08:20.513144+00:00",
+        "overdue_timers": [],
+        "session_failures": [
+          {
+            "task": "session_abandonment",
+            "unit": "1:58974b5a-20a9-48fb-9da6-463cac2c53d2",
+            "sqlstate": "55P03",
+            "retry_after": "2026-10-07T01:07:56.984878+00:00"
+          }
+        ],
+        "admission_allowed": false,
+        "active_failure_tasks": [],
+        "scheduler_last_outcome": "completed",
+        "scheduler_last_duration_ms": 6,
+        "scheduler_last_completed_at": "2026-10-07T01:08:20.302638+00:00",
+        "scheduler_consecutive_partial_failures": 0
+      },
+      "context": [
+        "PL/pgSQL function enforce_real_money_liveness_admission() line 15 at RAISE",
+        "PL/pgSQL function configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone) line 260 at SQL statement"
+      ]
+    }
+  ],
+  "sessionEvidence": {
+    "players": [
+      {
+        "id": "f014bd3c-d200-4c67-a8a6-5c6fae84e184",
+        "is_bot": false,
+        "status": "left",
+        "user_id": "e13e2dd9-6b38-4073-a313-2286877af40c",
+        "position": 3,
+        "sitting_out": true
+      },
+      {
+        "id": "799594b6-9723-4909-b8b2-a8c7e093e72e",
+        "is_bot": false,
+        "status": "left",
+        "user_id": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+        "position": 6,
+        "sitting_out": true
+      }
+    ],
+    "session_events": [
+      {
+        "user_id": "e13e2dd9-6b38-4073-a313-2286877af40c",
+        "created_at": "2026-10-07T01:07:17.3782+00:00",
+        "event_data": {
+          "session_name": "Oct 6 - Weather Report Suite"
+        },
+        "event_type": "session_created"
+      },
+      {
+        "user_id": "e13e2dd9-6b38-4073-a313-2286877af40c",
+        "created_at": "2026-10-07T01:07:55.638092+00:00",
+        "event_data": {
+          "reason": "Host started game",
+          "new_status": "dealer_selection",
+          "old_status": "waiting"
+        },
+        "event_type": "status_changed"
+      },
+      {
+        "user_id": "e13e2dd9-6b38-4073-a313-2286877af40c",
+        "created_at": "2026-10-07T01:07:55.640754+00:00",
+        "event_data": {
+          "outcome": "started",
+          "correlationId": "7bd6c082-61ae-4b72-acb7-d2c979a176b2",
+          "timerGeneration": 1
+        },
+        "event_type": "start_game_authoritative_result"
+      }
+    ],
+    "dealer_game_count": 0,
+    "debug_event_types": [
+      {
+        "n": 4,
+        "event_type": "dealer_selection_diag.dealer_selection_surface_mounted"
+      },
+      {
+        "n": 1,
+        "event_type": "start_game:start_game_completed"
+      },
+      {
+        "n": 1,
+        "event_type": "start_game:begin_session_dealer_selection_completed"
+      },
+      {
+        "n": 1,
+        "event_type": "start_game:start_game_entered"
+      },
+      {
+        "n": 1,
+        "event_type": "dealer_selection_diag.dealer_selection_state_published"
+      },
+      {
+        "n": 14,
+        "event_type": "bootstrap_flash_diag"
+      },
+      {
+        "n": 4,
+        "event_type": "dealer_selection_diag.dealer_selection_cards_visible"
+      },
+      {
+        "n": 2,
+        "event_type": "dealer_selection_diag.dealer_selection_announcement_published"
+      },
+      {
+        "n": 1,
+        "event_type": "dealer_selection_diag.dealer_selection_cards_published"
+      }
+    ]
+  },
+  "deployedDefinitions": [
+    {
+      "name": "private.clear_recovery_unit_failure",
+      "definition": "CREATE OR REPLACE FUNCTION private.clear_recovery_unit_failure(p_task text, p_game uuid, p_unit text)\n RETURNS void\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n DELETE FROM private.game_recovery_unit_failures WHERE task_name=p_task AND game_id=p_game AND unit_key=p_unit\n$function$\n"
+    },
+    {
+      "name": "private.enforce_real_money_liveness_admission",
+      "definition": "CREATE OR REPLACE FUNCTION private.enforce_real_money_liveness_admission()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nDECLARE\n  v_health jsonb;\nBEGIN\n  IF coalesce(NEW.real_money, false)\n     AND NEW.status = 'ante_decision'\n     AND coalesce(NEW.config_complete, false)\n     AND OLD.status IN ('game_selection', 'configuring')\n     AND (\n       OLD.status IS DISTINCT FROM NEW.status\n       OR OLD.current_game_uuid IS DISTINCT FROM NEW.current_game_uuid\n     ) THEN\n    v_health := private.evaluate_real_money_liveness(NEW.id);\n    IF NOT coalesce((v_health->>'admission_allowed')::boolean, false) THEN\n      RAISE EXCEPTION 'real_money_liveness_unavailable:%', v_health->>'reason'\n        USING ERRCODE = '55000', DETAIL = v_health::text;\n    END IF;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    {
+      "name": "private.evaluate_real_money_liveness",
+      "definition": "CREATE OR REPLACE FUNCTION private.evaluate_real_money_liveness(p_game_id uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nDECLARE\n  v_checked_at timestamptz := clock_timestamp();\n  v_game public.games%ROWTYPE;\n  v_dispatch private.game_recovery_dispatch_state%ROWTYPE;\n  v_failure_tasks text[] := ARRAY[]::text[];\n  v_session_failures jsonb:='[]'::jsonb;\n  v_overdue_timers jsonb := '[]'::jsonb;\n  v_scheduler_fresh boolean := false;\n  v_allowed boolean := false;\n  v_reason text := 'scheduler_heartbeat_missing';\nBEGIN\n  SELECT * INTO v_dispatch\n    FROM private.game_recovery_dispatch_state\n   WHERE singleton = true;\n\n  v_scheduler_fresh := v_dispatch.last_completed_at IS NOT NULL\n    AND v_dispatch.last_completed_at >= v_checked_at - interval '10 seconds'\n    AND v_dispatch.last_outcome = 'completed';\n\n  SELECT coalesce(array_agg(failure.task_name ORDER BY failure.task_name), ARRAY[]::text[])\n    INTO v_failure_tasks\n    FROM private.game_recovery_failures failure;\n\n  IF p_game_id IS NOT NULL THEN\n    SELECT * INTO v_game FROM public.games WHERE id = p_game_id;\n    IF NOT FOUND THEN\n      RAISE EXCEPTION 'real_money_liveness_health:game_not_found';\n    END IF;\n\n    IF NOT coalesce(v_game.real_money, false) THEN\n      RETURN jsonb_build_object(\n        'outcome', 'healthy',\n        'admission_allowed', true,\n        'reason', 'fake_money_exempt',\n        'checked_at', v_checked_at,\n        'game_id', p_game_id,\n        'scheduler_last_completed_at', v_dispatch.last_completed_at,\n        'scheduler_last_outcome', v_dispatch.last_outcome,\n        'active_failure_tasks', to_jsonb(v_failure_tasks),\n        'overdue_timers', '[]'::jsonb\n      );\n    END IF;\n\n    SELECT coalesce(jsonb_agg(jsonb_build_object('task',f.task_name,'unit',f.unit_key,'sqlstate',f.returned_sqlstate,'retry_after',f.retry_after)),'[]'::jsonb)\n    INTO v_session_failures FROM private.game_recovery_unit_failures f\n    WHERE f.game_id=p_game_id AND f.dealer_game_id IS NOT DISTINCT FROM v_game.current_game_uuid AND (f.round_id IS NULL OR EXISTS(SELECT 1 FROM public.rounds r WHERE r.id=f.round_id AND (\n r.hand_number>coalesce(v_game.total_hands,0) OR (r.hand_number=coalesce(v_game.total_hands,0) AND r.round_number>=coalesce(v_game.current_round,0)))));\n    -- Paused games are deliberately outside stagnation admission/evidence.\n    -- Their existing scheduled timer rows may remain overdue until resume.\n    IF NOT coalesce(v_game.is_paused, false) THEN\n      SELECT coalesce(jsonb_agg(jsonb_build_object(\n               'timer_kind', timer.timer_kind,\n               'owner_task', timer.owner_task,\n               'phase_key', timer.phase,\n               'seconds_overdue', greatest(\n                 0,\n                 floor(extract(epoch FROM (v_checked_at - timer.due_at)))::integer\n               )\n             ) ORDER BY timer.due_at, timer.id), '[]'::jsonb)\n        INTO v_overdue_timers\n        FROM private.game_timer_registry timer\n       WHERE timer.game_id = p_game_id\n         AND timer.state = 'scheduled'\n         AND timer.due_at < v_checked_at - interval '10 seconds'\n         AND (\n           timer.dealer_game_id IS NULL\n           OR timer.dealer_game_id IS NOT DISTINCT FROM v_game.current_game_uuid\n         )\n         AND (\n           timer.round_id IS NULL\n           OR EXISTS (\n             SELECT 1\n               FROM public.rounds round_row\n              WHERE round_row.id = timer.round_id\n                AND round_row.game_id = p_game_id\n                AND round_row.dealer_game_id IS NOT DISTINCT FROM v_game.current_game_uuid\n                AND round_row.status NOT IN ('completed', 'game_over')\n           )\n         );\n    END IF;\n  END IF;\n\n  IF p_game_id IS NOT NULL AND coalesce(v_game.is_paused, false) THEN\n    v_reason := 'game_paused';\n  ELSIF NOT v_scheduler_fresh THEN\n    v_reason := CASE\n      WHEN v_dispatch.last_completed_at IS NULL THEN 'scheduler_heartbeat_missing'\n      WHEN v_dispatch.last_outcome IS DISTINCT FROM 'completed' THEN 'scheduler_partial_failure'\n      ELSE 'scheduler_heartbeat_stale'\n    END;\n  ELSIF cardinality(v_failure_tasks) > 0 THEN\n    v_reason := 'active_recovery_failure';\n  ELSIF jsonb_array_length(v_session_failures)>0 THEN\n    v_reason:='session_recovery_failure';\n  ELSIF jsonb_array_length(v_overdue_timers) > 0 THEN\n    v_reason := 'overdue_authoritative_timer';\n  ELSE\n    v_allowed := true;\n    v_reason := 'healthy';\n  END IF;\n\n  RETURN jsonb_build_object(\n    'outcome', CASE WHEN v_allowed THEN 'healthy' ELSE 'unhealthy' END,\n    'admission_allowed', v_allowed,\n    'reason', v_reason,\n    'checked_at', v_checked_at,\n    'game_id', p_game_id,\n    'scheduler_last_completed_at', v_dispatch.last_completed_at,\n    'scheduler_last_outcome', v_dispatch.last_outcome,\n    'scheduler_last_duration_ms', v_dispatch.last_duration_ms,\n    'scheduler_consecutive_partial_failures', v_dispatch.consecutive_partial_failures,\n    'active_failure_tasks', to_jsonb(v_failure_tasks),\n    'session_failures',v_session_failures,\n    'overdue_timers', v_overdue_timers\n  );\nEND;\n$function$\n"
+    },
+    {
+      "name": "private.reconcile_abandoned_sessions",
+      "definition": "CREATE OR REPLACE FUNCTION private.reconcile_abandoned_sessions()\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_saved_recovery_context jsonb:=private.capture_recovery_context();\n  v_watch record;\n  v_processed integer := 0;\nBEGIN\n  PERFORM set_config(\n    'app.three_five_seven_authoritative_write',\n    'on',\n    true\n  );\n\n  FOR v_watch IN\n    SELECT watch.game_id\n      FROM private.session_abandonment_watches AS watch\n     WHERE NOT private.recovery_session_deferred('session_abandonment',watch.game_id)\n       AND watch.next_check_at <= clock_timestamp()\n     ORDER BY watch.next_check_at, watch.game_id\n     LIMIT 50\n     FOR UPDATE SKIP LOCKED\n  LOOP\n    BEGIN\n    PERFORM private.reconcile_session_abandonment(\n      v_watch.game_id,\n      clock_timestamp()\n    );\n    v_processed := v_processed + 1;\n\n      PERFORM private.clear_recovery_unit_failure('session_abandonment',v_watch.game_id,'1:'||v_watch.game_id::text);\n    EXCEPTION WHEN OTHERS THEN\n      PERFORM private.record_recovery_unit_failure('session_abandonment',v_watch.game_id,'1:'||v_watch.game_id::text,SQLSTATE,SQLERRM);\n    END;\n  END LOOP;\n\n  PERFORM private.restore_recovery_context(v_saved_recovery_context);\n\n  RETURN v_processed;\nEXCEPTION WHEN OTHERS THEN\n PERFORM private.restore_recovery_context(v_saved_recovery_context);\n RAISE;\nEND;\n$function$\n"
+    },
+    {
+      "name": "private.record_recovery_unit_failure",
+      "definition": "CREATE OR REPLACE FUNCTION private.record_recovery_unit_failure(p_task text, p_game uuid, p_unit text, p_sqlstate text, p_message text)\n RETURNS void\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n INSERT INTO private.game_recovery_unit_failures(task_name,game_id,unit_key,dealer_game_id,round_id,last_failed_at,retry_after,returned_sqlstate,error_message)\n SELECT p_task,p_game,p_unit,g.current_game_uuid,(SELECT r.id FROM public.rounds r WHERE r.game_id=p_game AND r.id::text=split_part(p_unit,':',2)),clock_timestamp(),clock_timestamp()+interval '2 seconds',p_sqlstate,left(p_message,2000)\n FROM public.games g WHERE g.id=p_game\n ON CONFLICT(task_name,game_id,unit_key) DO UPDATE SET\n dealer_game_id=EXCLUDED.dealer_game_id,round_id=EXCLUDED.round_id,last_failed_at=EXCLUDED.last_failed_at,\n retry_after=EXCLUDED.last_failed_at+make_interval(secs=>least(30,power(2,least(5,game_recovery_unit_failures.failure_count+1))::integer)),\n failure_count=game_recovery_unit_failures.failure_count+1,returned_sqlstate=EXCLUDED.returned_sqlstate,error_message=EXCLUDED.error_message\n$function$\n"
+    },
+    {
+      "name": "private.on_game_abandonment_boundary",
+      "definition": "CREATE OR REPLACE FUNCTION private.on_game_abandonment_boundary()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_now timestamptz := clock_timestamp();\n  v_kind text := 'initial';\n  v_entered_waiting boolean := false;\nBEGIN\n  IF NEW.status IN ('waiting', 'waiting_for_players')\n     AND NEW.current_game_uuid IS NULL THEN\n    IF EXISTS (SELECT 1 FROM public.game_results WHERE game_id = NEW.id)\n       OR COALESCE(NEW.total_hands, 0) > 0\n       OR NEW.game_over_at IS NOT NULL THEN\n      v_kind := 'subsequent';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n      v_entered_waiting := OLD.status NOT IN ('waiting', 'waiting_for_players')\n        OR OLD.current_game_uuid IS NOT NULL;\n      IF v_entered_waiting THEN\n        v_kind := 'subsequent';\n      END IF;\n    END IF;\n\n    IF EXISTS (\n      SELECT 1\n        FROM public.players AS player\n       WHERE player.game_id = NEW.id\n         AND NOT player.is_bot\n         AND player.position IS NOT NULL\n         AND player.status NOT IN ('observer', 'left')\n    ) THEN\n      IF v_entered_waiting THEN\n        INSERT INTO private.session_abandonment_watches AS existing_watch (\n          game_id, armed_at, zero_active_since, next_check_at,\n          missed_heartbeat_counts, last_outcome, updated_at, waiting_kind\n        ) VALUES (\n          NEW.id, v_now, NULL, v_now + interval '5 seconds',\n          '{}'::jsonb, 'armed-at-subsequent-waiting', v_now, 'subsequent'\n        )\n        ON CONFLICT (game_id) DO UPDATE\n          SET armed_at = EXCLUDED.armed_at,\n              zero_active_since = NULL,\n              next_check_at = EXCLUDED.next_check_at,\n              missed_heartbeat_counts = EXCLUDED.missed_heartbeat_counts,\n              last_outcome = EXCLUDED.last_outcome,\n              updated_at = EXCLUDED.updated_at,\n              waiting_kind = EXCLUDED.waiting_kind;\n      ELSE\n        INSERT INTO private.session_abandonment_watches AS existing_watch (\n          game_id, armed_at, zero_active_since, next_check_at,\n          missed_heartbeat_counts, last_outcome, updated_at, waiting_kind\n        ) VALUES (\n          NEW.id, v_now, NULL, v_now + interval '5 seconds',\n          '{}'::jsonb, 'armed-at-' || v_kind || '-waiting', v_now, v_kind\n        )\n        ON CONFLICT (game_id) DO UPDATE\n          SET armed_at = EXCLUDED.armed_at,\n              zero_active_since = NULL,\n              next_check_at = EXCLUDED.next_check_at,\n              missed_heartbeat_counts = EXCLUDED.missed_heartbeat_counts,\n              last_outcome = EXCLUDED.last_outcome,\n              updated_at = EXCLUDED.updated_at,\n              waiting_kind = EXCLUDED.waiting_kind\n          WHERE existing_watch.waiting_kind = 'initial'\n            AND EXCLUDED.waiting_kind = 'subsequent';\n      END IF;\n    END IF;\n  ELSE\n    DELETE FROM private.session_abandonment_watches\n     WHERE game_id = NEW.id;\n    IF NEW.status = 'session_ended' THEN\n      DELETE FROM private.postgame_forced_absence_watches\n       WHERE game_id = NEW.id;\n    END IF;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+    }
+  ],
+  "vercelErrorScan": {
+    "start": "2026-10-07T01:07:59Z",
+    "end": "2026-10-07T01:09:00Z",
+    "result": "No runtime errors found; does not cover browser-to-Supabase RPC failures."
+  },
+  "limitations": [
+    "Exact RPC p_config/p_game_type request body was not present in retained logs; Cribbage selection is inferred from the matching selection-only defaults GET and source path.",
+    "Initial 55P03 lock holder and historical full failure row were not retained in the queried logs; do not assign a competing transaction as proven cause.",
+    "Current ended-session health does not establish incident-time health."
+  ]
+}

@@ -157,7 +157,10 @@ interface DealerGameSetupProps {
 type GameDefaults = CardGameDefaults;
 
 const dealerSetupFailureMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = error !== null && typeof error === 'object'
+    && 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : String(error);
   if (message.includes('real_money_liveness_unavailable')) {
     return 'Real-money deal blocked because server recovery is not healthy. No ante or game state was committed. Try again shortly.';
   }
