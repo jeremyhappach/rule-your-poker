@@ -1,5 +1,22 @@
 # Durable decision log
 
+## October 9 — aggregate auto-fold is a database pause boundary
+
+Restore the retired worker's enabled-auto-fold policy for a nonempty cohort of
+eligible humans, in either money mode. Individual timeout flags are committed
+before aggregate evaluation; the final qualifying timeout pauses before its
+fold, financial resolution, or continuation. The internal guard delegates to
+the existing identity/versioned `set_game_paused` owner and fails atomically on
+lock contention. Expired unresolved poker clocks receive the configured action
+budget before freezing; manual pause semantics are unchanged. Existing recovery
+and continuation owners recheck already-qualified state, including after resume.
+Bots, departed/observer/unseated players and sitting-out players do not block
+the human cohort. Ordinary explicit folds do not establish timeout intent.
+Presence-lease expiry alone remains outside this policy. Historical progression
+and financial reconciliation are separate from pause containment and this fix.
+See migration `20261009231202_restore_all_human_auto_fold_pause` and its fake-money
+rollback proof. The Jason Heyward session must remain paused pending reconciliation.
+
 ## September 29 — queued participation may own waiting-table Start
 
 Waiting-table Start presentation follows the existing locked server election:

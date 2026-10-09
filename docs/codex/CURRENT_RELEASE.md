@@ -1,3 +1,41 @@
+# All-human auto-fold pause — 2026-10-09 — database qualified
+
+Migration `20261009231202_restore_all_human_auto_fold_pause` restores the
+aggregate auto-fold safeguard lost with the retired deadline worker. Canonical
+recovery uses the existing versioned pause owner before the last human timeout
+can fold, transfer chips, or start a successor. Holm records timeout intent
+before resolution; 3-5-7 now records missing human timeout flags. Policy still
+requires enabled `auto_fold`; disconnected presence alone is not a new rule.
+An expired unresolved decision receives its configured clock before freezing;
+returning players clear their own automatic intent and the host explicitly resumes.
+
+Jason Heyward (`295f501b-3e6b-495a-bb2d-29a4f46877cb`) was authoritatively paused
+at 2026-10-09 23:02:04.608573Z, version 5. Restricted receipts retain the exact
+frozen hand, pot and participant balances. Transaction-local comparisons
+confirmed no gameplay
+or financial change from the pause. Later checks beyond 60 and 180 seconds and
+after migration stayed unchanged. One in-flight timer was rejected as paused
+at commit; it committed no action. Keep this session paused pending separately
+approved financial reconciliation. No historical accounting was corrected.
+
+Candidate and deployed rollback proofs passed using fake-money fixtures only:
+Holm winner/tie/terminal settlement and replay; seven-game pause/resume;
+individual/all-human expiries; zero-client Holm/3-5-7 recovery; paused timer
+retention; explicit resume; policy/cohort exclusions; successor prevention.
+Independent authenticated API/SQL contention returned 55P03 with no partial
+intent write; retry paused once and stale replay was rejected. Committed test
+fixtures were removed. All eight patched owner definitions match the candidate;
+the versioned pause definition is unchanged. Recovery heartbeat remains healthy.
+Typecheck, Vite build, and 46 focused tests passed. Jeremy's gameplay smoke
+remains acceptance truth; do not use the contained incident for that smoke.
+
+Reproduce rollback SQL with `.codex/scripts/build-all-human-auto-fold-proof.mjs`
+(`--candidate` only against the pre-migration definitions). The independent API
+test helper requires explicit connector-verified project configuration because
+the local `.env` targets a separate project. Restricted containment receipts and
+checksums are outside the repository under the local P-TownPoker containment
+directory. Release tag: `all-human-auto-fold-pause-2026-10-09`.
+
 # Real-money dealer setup — 2026-10-07 — correction, production smoke pending
 
 Session `58974b5a-20a9-48fb-9da6-463cac2c53d2` successfully started, but four

@@ -1,5 +1,15 @@
 # Repository map
 
+Aggregate auto-fold pause:
+`supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql`
+adds the internal `private.pause_all_humans_auto_fold` policy/locking guard and
+hooks existing Holm, 3-5-7, automatic-intent, and canonical timer owners.
+It delegates pause/resume clock preservation to `public.set_game_paused`.
+`supabase/tests/all_human_auto_fold_pause_rollback_proof.sql` and
+`.codex/scripts/build-all-human-auto-fold-proof.mjs` compose fake-money timeout,
+settlement, and seven-game pause proofs. The independent authenticated API
+contender is `.codex/scripts/all-human-auto-fold-concurrency.mjs`.
+
 Run21 special score presentation and harness decks:
 `src/lib/run21/scoreCelebration.ts` owns local receipt admission/retirement;
 `useRun21Local.ts` holds only presentation while accepting latest authority;
