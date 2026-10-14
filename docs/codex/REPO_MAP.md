@@ -1,5 +1,11 @@
 # Repository map
 
+Game presentation metadata: `public.game_defaults.game_type` is the unique
+per-game catalog key. Migration `20261014224724_game_catalog_presentation_mode.sql`
+adds the constrained `presentation_mode` field; the rollback proof is
+`supabase/tests/game_catalog_presentation_mode_rollback.sql`. There is no frontend
+consumer in Phase 1. `public.games` remains session state.
+
 Aggregate auto-fold pause:
 `supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql`
 adds the internal `private.pause_all_humans_auto_fold` policy/locking guard and

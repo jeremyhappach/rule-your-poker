@@ -1,3 +1,36 @@
+# Game catalog presentation mode — 2026-10-14 — production database verified
+
+Migration `20261014224724_game_catalog_presentation_mode` is applied to
+`ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`). The per-game catalog is
+`public.game_defaults`, keyed uniquely by `game_type`; `public.games` contains
+sessions and is deliberately unchanged. New metadata is
+`presentation_mode text NOT NULL DEFAULT 'table'`, constrained by
+`game_defaults_presentation_mode_check` to `table` or `fullscreen`.
+
+Verified production classifications: `run21` = `fullscreen`; `3-5-7`,
+`cribbage`, `farkle`, `gin-rummy`, `holm`, `horses`, `ship-captain-crew`, and
+`yahtzee` = `table`. No game records were added. Existing catalog values and
+UUIDs are unchanged, apart from Run21's ordinary `updated_at` trigger.
+RLS, policies, grants, gameplay RPCs, session/hand/history/financial data,
+routing, frontend types and rendering are unchanged. No client update is required.
+
+Safety: nine-row catalog; constant default; ACCESS EXCLUSIVE NOWAIT prevents
+waiting behind active readers; 100ms lock and 3s statement limits; transaction
+guards verify old metadata and reject any other application-table writes.
+Candidate migration plus replay passed inside BEGIN/ROLLBACK before application.
+The committed SQL matches the reviewed candidate; its filename uses the service's
+recorded migration version. The unavailable local CLI was not installed.
+
+`supabase/tests/game_catalog_presentation_mode_rollback.sql` passed before and
+after deployment: classification, default inheritance, explicit fullscreen,
+CHECK/NOT NULL rejection, public read access, anonymous write denial and fixture
+rollback. No synthetic rows remain. Production PostgREST full-row, Run21-key and
+existing setup-column projections pass. All 36 focused defaults/session/setup
+tests and application TypeScript pass. Only migration, proof and related release
+documentation are included in this checkpoint; application source is unchanged.
+Jeremy's gameplay smoke remains acceptance truth. Fullscreen rendering is Phase 2.
+Release tag: `game-catalog-presentation-mode-2026-10-14`.
+
 # All-human auto-fold pause — 2026-10-09 — database qualified
 
 Migration `20261009231202_restore_all_human_auto_fold_pause` restores the

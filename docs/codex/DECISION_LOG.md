@@ -1,5 +1,15 @@
 # Durable decision log
 
+## October 14 — presentation mode belongs to per-game metadata
+
+Phase 1 stores `presentation_mode` on existing `public.game_defaults`, whose
+unique `game_type` identifies each catalog entry. `public.games` is session
+state, not the catalog. The constrained non-null text default is `table`;
+only the authoritative `run21` entry starts as `fullscreen`. This is metadata
+only: no frontend consumer, rendering, routing or game-rule change. New catalog
+entries inherit `table`; future fullscreen shell work must explicitly consume
+the field without adding another gameplay or settlement owner.
+
 ## October 9 — aggregate auto-fold is a database pause boundary
 
 Restore the retired worker's enabled-auto-fold policy for a nonempty cohort of
