@@ -413,6 +413,8 @@ import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
 import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions } from "@/lib/botPlayer";
 import { Run21GameTable } from '@/components/run21/Run21GameTable';
+import { useGamePresentationCatalog } from '@/hooks/useGamePresentationCatalog';
+import { resolvePresentationMode } from '@/lib/canonicalShell/presentationMode';
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
@@ -1054,6 +1056,7 @@ const Game = () => {
   const hasHydratedRef = useRef(false);
   if (_game) hasHydratedRef.current = true;
   const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
+  const presentationCatalog = useGamePresentationCatalog(gameId);
 
   // A Waiting-table entry gets one immediate, ordinary presence pulse instead
   // of waiting for the four-second cadence. The database owns whether that
@@ -12992,6 +12995,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // parent identity.
   const enableOuterShell =
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+  const presentationMode = enableOuterShell
+    ? resolvePresentationMode(presentationCatalog, game.game_type, game.current_game_uuid, game.status, _sessionEndedTableActive)
+    : 'table';
+  const isFullscreenPresentation = presentationMode === 'fullscreen';
 
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
@@ -13094,7 +13101,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // which would push the rail and tab bar below the viewport. Use
   // `flex-1 min-h-0` so mobile inner content fills the remaining
   // space above the shell-owned rail and tab bar without overflow.
-  const _innerBgClass = `${isMobile ? (_treatAsCanonicalRoute && enableOuterShell ? 'flex-1 min-h-0 overflow-hidden flex flex-col' : 'h-dvh overflow-hidden') : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  const _innerBgClass = isFullscreenPresentation ? 'flex-1 min-h-0 overflow-hidden flex flex-col bg-transparent' : `${isMobile ? (_treatAsCanonicalRoute && enableOuterShell ? 'flex-1 min-h-0 overflow-hidden flex flex-col' : 'h-dvh overflow-hidden') : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
   setLifecycleContext({
     userId: user?.id ?? null,
     gameId: gameId ?? null,
@@ -13119,7 +13126,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // data wiring stays put) and handed to PersistentTableShell via the
   // `header` prop. The shell renders it above the canonical
   // announcement rail and the opaque game children.
-  const mobileHeader = isMobile ? (
+  const mobileHeader = (isMobile || isFullscreenPresentation) ? (
     <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
       <div className="flex items-center gap-2">
         <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
@@ -13253,9 +13260,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-      <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
+      <div className={isFullscreenPresentation ? 'h-full min-h-0 flex flex-col overflow-hidden' : `${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
-        {!isMobile && (
+        {!isMobile && !isFullscreenPresentation && (
           <div className="flex justify-between items-center">
             <div className="flex items-start gap-3">
               {/* Player Options Menu - only show if player is seated */}
@@ -14263,6 +14270,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // CRIBBAGE — unified single instance across ALL session phases
           if (renderGameType === 'run21' && game.current_game_uuid) return <Run21GameTable
+            presentationMode={presentationMode}
             key={game.current_game_uuid} gameId={gameId!} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
             dealerPosition={game.dealer_position || 1} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace}
             sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange}
@@ -15432,6 +15440,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                still resolves real families once the dealer commits a
                game type. */
             gameType={_routeShellGameType ?? undefined}
+            presentationMode={presentationMode}
             anteAmount={_routeShellAnteAmount}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}

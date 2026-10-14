@@ -68,3 +68,38 @@
 .run21-exact21 { position: absolute; inset: 0; z-index: 50; pointer-events: none; border-radius: inherit; animation: run21-exact21 750ms ease-out forwards; }
 @keyframes run21-exact21 { 0% { box-shadow: inset 0 0 0 2px #d6e8ac, 0 0 8px #b9db6b80; opacity: .9; } 100% { box-shadow: inset 0 0 0 2px #d6e8ac, 0 0 8px #b9db6b00; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .run21-exact21 { animation-timing-function: linear; } }
+
+/* Fullscreen is an opt-in layout of the same board and intent controls. */
+.run21-fullscreen-board{display:grid;grid-template-rows:minmax(4rem,20%) minmax(0,1fr);gap:.5rem;container:run21-board/size}
+.run21-fullscreen-board>.run21-slot{position:relative;transform:none;left:auto;top:auto;width:100%;height:100%;min-height:0}
+.run21-fullscreen-board>.run21-board{grid-row:2}
+.run21-fullscreen-board>.run21-draw{grid-row:1;position:relative;display:grid;grid-template-columns:1fr minmax(0,1fr) 1fr;gap:.75rem;min-width:0;min-height:0;pointer-events:auto}
+.run21-fullscreen-board .run21-draw>.run21-slot{position:relative;transform:none;inset:auto;min-width:0;min-height:0;height:100%;font-size:1rem}
+.run21-fullscreen-board .run21-deck{display:none!important}
+.run21-fullscreen-board .run21-currentCard{grid-column:2;grid-row:1}
+.run21-fullscreen-board .run21-pass{grid-column:1;grid-row:1;justify-self:end;align-self:center;width:5rem;height:2.75rem!important}
+.run21-fullscreen-board .run21-help{grid-column:3;grid-row:1;justify-self:start;align-self:center;width:2.75rem;height:2.75rem!important}
+.run21-fullscreen-board .run21-help button,.run21-fullscreen-board .run21-pass button{font-size:.9rem}
+.run21-fullscreen-board .run21-column-total{font-size:clamp(1rem,4cqw,2rem);height:12%}
+.run21-fullscreen-board .run21-column{background:#ffffff06;border-color:#d9e7e52e;border-radius:.8rem}
+.run21-fullscreen-board>.run21-resultOverlay{position:absolute;inset:20% 5% auto;width:90%;height:auto;z-index:3;pointer-events:none}
+.run21-fullscreen-board .run21-result{font-size:clamp(1rem,4cqw,2rem);max-width:100%;overflow-wrap:anywhere}
+.fullscreen-game .run21-scoreboard{display:flex;gap:.5rem;padding:0;container-type:normal;overflow:visible}
+.fullscreen-game .run21-scoreboard>[role=row]{flex:1;min-width:0;padding:.3rem .5rem;gap:.4rem;font-size:.9rem}
+.fullscreen-game .run21-scoreboard .run21-balance{font-size:.65rem;padding:.15rem .3rem;border-radius:999px;background:#ffffff13;font-variant-numeric:tabular-nums}
+.fullscreen-game .run21-speed{flex:1;height:1.5rem;min-width:0}
+.fullscreen-game .run21-timer{height:.5rem}
+.fullscreen-game .run21-player-actions{padding:0}
+.fullscreen-game .run21-player-actions button{min-height:2.75rem}
+.run21-fullscreen-error{position:absolute;top:0;left:0;right:0;z-index:5;background:#431f20;padding:.4rem}
+.run21-fullscreen-replay{height:100%;display:flex;flex-direction:column;min-height:0}
+.run21-fullscreen-replay>.run21-felt-content{flex:1;min-height:0}
+.run21-fullscreen-replay-controls{flex:0 0 auto;padding:.25rem;font-size:.8rem}
+@container fullscreen-board (min-aspect-ratio:3/2){
+  .run21-fullscreen-board{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) minmax(5rem,16%)}
+  .run21-fullscreen-board>.run21-board{grid-row:1;grid-column:1}
+  .run21-fullscreen-board>.run21-draw{grid-row:1;grid-column:2;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 2.75rem 2.75rem;gap:.4rem}
+  .run21-fullscreen-board .run21-currentCard{grid-column:1;grid-row:1}
+  .run21-fullscreen-board .run21-pass{grid-column:1;grid-row:2;justify-self:center}
+  .run21-fullscreen-board .run21-help{grid-column:1;grid-row:3;justify-self:center}
+}

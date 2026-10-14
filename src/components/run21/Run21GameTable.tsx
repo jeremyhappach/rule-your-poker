@@ -22,8 +22,12 @@ import { Run21Replay } from './Run21Replay';
 import type {VisibleEvent} from '@/lib/run21/history';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import {Run21ScoreCelebration} from './Run21ScoreCelebration';
+import { Run21FullscreenView } from './Run21FullscreenView';
+import { Run21ScoringReference } from './Run21ScoringHelp';
+import type { PresentationMode } from '@/lib/canonicalShell/presentationMode';
 
 interface Props {
+  presentationMode?: PresentationMode;
   gameId: string; dealerGameId: string; userId: string; dealerPosition: number;
   activeTab: ShellTabId; setActiveTab: (tab: ShellTabId) => void; sessionEnded: boolean;
   onTerminalActive: (active: boolean) => void; onTerminalComplete: (identity: string) => void;
@@ -54,7 +58,9 @@ export function Run21GameTable(props: Props) {
     const self = view.players.find(p => p.id === view.viewerId)!;
     pane = props.activeTab === 'history' ? <HandHistory gameId={props.gameId} currentUserId={props.userId} gameType="run21" onRun21Replay={setReplay}/>
       : props.activeTab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>
-      : props.activeTab === 'lobby' ? <div className="p-3 text-sm">{view.players.map(p => <p key={p.id}>{p.name} · {snapshot.balances[p.id]}</p>)}</div>
+      : props.activeTab === 'lobby' ? <div className="p-3 text-sm">{view.players.map(p => <p key={p.id}>{p.name} · {snapshot.balances[p.id]}</p>)}
+          {props.presentationMode === 'fullscreen' && <div className="mt-4 space-y-3"><h3 className="font-semibold">Run21 rules</h3>
+            <p>Place each card into one of five columns. Aim for 21 in every column without going over.</p><Run21ScoringReference/></div>}</div>
       : props.sessionEnded ? null
       : <div className="run21-player-pane">
           {errorPane}
@@ -72,16 +78,22 @@ export function Run21GameTable(props: Props) {
         </>}/> : <Felt events={snapshot.events} view={view} now={now} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>)}
 </>;
     timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
-    identity = <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}/>;
+    identity = self ? <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}/> : null;
   }
   return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
     {!celebration && view && !view.settlement && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
     {celebration&&!props.sessionEnded&&<Run21ScoreCelebration key={celebration.key} receipt={celebration} onRetire={retireCelebration}/>}
+    {props.presentationMode === 'fullscreen' ? <Run21FullscreenView snapshot={snapshot} now={now} pending={pending}
+      onIntent={onIntent} hideScoring={!!celebration} sessionEnded={props.sessionEnded}
+      activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={pane}
+      error={(error || closeError) ? <div className="run21-fullscreen-error">{errorPane}</div> : null}
+      replay={replay} onReturnLive={() => setReplay(null)}/> : <>
     <div aria-hidden style={{flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none'}}/>
     <div className="relative overflow-visible" style={{height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', pointerEvents: 'none'}}>
       {felt ?? <div className="absolute inset-0 flex items-center justify-center" role="status">Preparing Run21…</div>}
     </div>
     <div aria-hidden style={{flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none'}}/>
     <ShellHudGrid timer={timer} pane={replay ? null : pane} identity={identity}/>
+    </>}
   </div>;
 }

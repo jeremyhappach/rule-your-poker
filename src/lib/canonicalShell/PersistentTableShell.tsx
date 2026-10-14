@@ -97,6 +97,8 @@ function LobbyAnnouncementReset({ lobbyMode }: { lobbyMode: boolean }) {
 }
 import { ShellTabBarProvider } from './ShellTabBar';
 import { ShellTimerProvider } from './ShellTimerRail';
+import type { PresentationMode } from './presentationMode';
+import './fullscreenGameShell.css';
 
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
@@ -115,6 +117,7 @@ import {
 } from './PreSessionSeatLayer';
 
 export interface PersistentTableShellProps {
+  presentationMode?: PresentationMode;
   gameId?: string;
   gameType?: string;
   anteAmount?: number | string;
@@ -163,6 +166,7 @@ export interface PersistentTableShellProps {
 // (preHandIntent removed in P9.6 — gameplay surfaces own felt geometry.)
 
 export function PersistentTableShell({
+  presentationMode = 'table',
   gameId,
   gameType,
   anteAmount = 0,
@@ -260,6 +264,7 @@ export function PersistentTableShell({
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
+      data-shell-presentation-mode={presentationMode}
       // Shell root height must track the SAME viewport unit as its
       // interior geometry tokens (`--shell-header-h`, `--shell-flex-h`,
       // `--shell-hud-*`) — every one of those is expressed against
@@ -293,7 +298,7 @@ export function PersistentTableShell({
           //          via flex-basis. This makes the play/HUD boundary
           //          a shell-owned pixel edge on every device.
           gridTemplateRows: header
-            ? 'var(--shell-header-h) minmax(0, 1fr)'
+            ? (presentationMode === 'fullscreen' ? '2.75rem minmax(0, 1fr)' : 'var(--shell-header-h) minmax(0, 1fr)')
             : 'minmax(0, 1fr)',
           height: '100%',
           minHeight: 0,
@@ -316,12 +321,12 @@ export function PersistentTableShell({
               their felt context via `usePublishShellFelt` and NEVER
               render felt themselves. There is no opt-in or per-family
               registry: local felt ownership has been retired. */}
-          <ShellOwnedFeltHost
+          {presentationMode === 'table' && <ShellOwnedFeltHost
             initialGameKind={deriveFeltGameKind(gameType)}
             initialAnteAmount={anteAmount}
             initialIsWaitingPhase={!gameType}
             lobbyMode={lobbyMode}
-          />
+          />}
 
           {/* Pre-session seat layer (Wartime FIX #1). Mounted at a
               stable JSX position inside the shell so cluster
@@ -339,7 +344,7 @@ export function PersistentTableShell({
               while a fallback renderer simultaneously mounted.
               shellMode==='lobby' ⇒ caller passes [] or populated
               array; gameplay ⇒ caller passes null/undefined. */}
-          {preSessionParticipants != null && preSessionParticipants.length > 0 ? (
+          {presentationMode === 'table' && preSessionParticipants != null && preSessionParticipants.length > 0 ? (
             <div
               data-canonical-shell-pre-session-seat-region=""
               style={{
@@ -385,7 +390,7 @@ export function PersistentTableShell({
               hit-tests without changing global wrapper pointer-events or
               moving noninteractive visual artifacts. Root is transparent;
               individual controls explicitly opt into pointer-events:auto. */}
-          <div
+          {presentationMode === 'table' && <div
             data-canonical-felt-interaction-layer=""
             style={{
               position: 'absolute',
@@ -398,7 +403,7 @@ export function PersistentTableShell({
               pointerEvents: 'none',
               zIndex: 2,
             }}
-          />
+          />}
         </div>
       </div>
 

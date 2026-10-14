@@ -1,3 +1,34 @@
+# Run21 fullscreen presentation — 2026-10-14 — qualified, gameplay smoke pending
+
+Phase 2 consumes `game_defaults.presentation_mode` with one read per session
+route. Missing, failed or old catalog responses use `table`. Committed gameplay
+uses the catalog value; waiting/setup/dealer selection retain the existing
+table. The route-stable `PersistentTableShell` keeps its existing providers and
+adds an opt-in fullscreen layout without oval felt or permanent seats.
+`FullscreenGameShell` provides a responsive board slot, compact scores and
+actions, existing announcement rail, and Session/rules, Chat and History drawers.
+Run21 reuses its current board, card fan, intents, clocks, replay, local client
+and terminal owner. Visible score balances provide the existing chip-transport
+targets. Shared Session Ended portal slots remain available.
+
+Validation: 246 focused tests across 31 files, TypeScript, and Vite production
+build pass. Offline Edge checks pass at 1440x900, 768x1024, 390x844, 320x568 and
+844x390: place/pass, rules drawer, bounded controls, no page overflow, simulated
+safe-area insets, 11-card fan, observer/reveal guards, terminal transport and
+all eight original table shells. Tests also cover catalog fallback/stale route
+responses, stable owner identity across layout changes, and terminal flow in
+both layouts. Evidence: `qualification.local/fullscreen-run21/`; repeat with
+`node dev/run21/fullscreen.preview.mjs`. Browser fixtures block external requests.
+
+No database migration or production session/financial writes occur in Phase 2.
+Rules, commands, settlement, authentication and waiting-room owners are unchanged.
+Existing build warnings concern Browserslist age, mixed imports and bundle size.
+Release tag: `fullscreen-run21-2026-10-14`; Vercel publication follows the scoped
+commit. Jeremy's real multiplayer smoke remains pending: Run21 on two clients,
+portrait/landscape, placement/pass/ready/collect, round transitions, reconnect,
+history/chat, final settlement/Session Ended and return to lobby; then an
+ordinary table game to confirm its existing layout and controls.
+
 # Game catalog presentation mode — 2026-10-14 — production database verified
 
 Migration `20261014224724_game_catalog_presentation_mode` is applied to

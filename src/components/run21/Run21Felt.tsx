@@ -45,6 +45,7 @@ function Run21ColumnCards({cards}:{cards:Card[]}){
   </span>;
 }
 interface Props {
+  layout?: 'table' | 'fullscreen';
   acceptedEvents?: VisibleEvent[];
   view: Projection; now: number; onIntent?: (intent: Intent)=>void;
   pending?: boolean; geometry?: Run21Geometry; playerId?: string;
@@ -53,7 +54,7 @@ interface Props {
   hideScoring?: boolean;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,playerId=displayedPlayerId(view)}:Props) {
+export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
   const feedback=useRef(new Exact21Feedback());
   const [pulses,setPulses]=useState<Record<number,number>>({});
   const scope=JSON.stringify([view.identity,view.roundId,playerId]);
@@ -70,18 +71,18 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const slot=(id:string,children:ReactNode)=>{
     const d=descriptors.find(d=>d.id===`run21.${id}`)!;
     const style:CSSProperties={left:`${d.anchorX!*100}%`,top:`${d.anchorY!*100}%`,width:`${d.widthPct!*100}%`,height:`${d.heightPct!*100}%`};
-    return <div className={`run21-slot run21-${id}`} style={style} data-run21-artifact={d.id}>{children}</div>;
+    return <div className={`run21-slot run21-${id}`} style={layout === 'table' ? style : undefined} data-run21-artifact={d.id}>{children}</div>;
   };
   const reason=board?.result?.reason;
   // A single centered pair in the same interaction layer, just inside the rim.
-  const draw=drawRect?<div className="run21-draw" data-run21-draw style={{left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`}}>
+  const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<>{board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
     {slot('help',<Run21ScoringHelp/>)}
     {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;
-  return <section className="run21-felt-content" data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>
+  return <section className={`run21-felt-content${layout === 'fullscreen' ? ' run21-fullscreen-board' : ''}`} data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>
     {slot('board',<div className={view.revealed&&!view.liveBoards?'run21-revealed-boards':'run21-single-board'}>
       {(view.revealed&&!view.liveBoards?view.players.map(p=>p.id):[playerId]).map(id=>{
         const visibleBoard=view.boards[id];

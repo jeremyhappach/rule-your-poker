@@ -4,7 +4,7 @@
  * PersistentTableShell — Phase 4 scaffolding tests.
  */
 
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,6 +25,7 @@ import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordShellEvent } from './diagnostics';
 import { ShellTabBar, ShellTabBarStateContext, useShellTabBar } from './ShellTabBar';
 import { ShellHudChrome } from './ShellHudChrome';
+import { resolvePresentationMode } from './presentationMode';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -42,6 +43,27 @@ afterEach(() => {
 });
 
 describe('PersistentTableShell', () => {
+  it.each(['3-5-7','cribbage','farkle','gin-rummy','holm-game','horses','ship-captain-crew','yahtzee'])('keeps the original shell DOM and geometry for %s', gameType => {
+    const content = <span data-testid="unchanged-game">game</span>;
+    act(() => root.render(<PersistentTableShell gameType={gameType} header={<span>Header</span>}>{content}</PersistentTableShell>));
+    const before = container.innerHTML;
+    const mode = resolvePresentationMode([{game_type:gameType === 'holm-game' ? 'holm' : gameType,presentation_mode:'table'}],gameType,'dg','in_progress');
+    act(() => root.render(<PersistentTableShell presentationMode={mode} gameType={gameType} header={<span>Header</span>}>{content}</PersistentTableShell>));
+    expect(container.innerHTML).toBe(before);
+    expect(container.querySelector('[data-canonical-felt-interaction-layer]')).not.toBeNull();
+  });
+  it('switches presentation without remounting the shell or game owner', () => {
+    const mount=vi.fn(),unmount=vi.fn();
+    function GameOwner(){useEffect(()=>{mount();return unmount;},[]);return <div data-owner/>;}
+    act(()=>root.render(<PersistentTableShell gameType="run21"><GameOwner/></PersistentTableShell>));
+    const shell=container.querySelector('[data-canonical-shell-root]'),owner=container.querySelector('[data-owner]');
+    act(()=>root.render(<PersistentTableShell gameType="run21" presentationMode="fullscreen"><GameOwner/></PersistentTableShell>));
+    expect(container.querySelector('[data-canonical-shell-root]')).toBe(shell);
+    expect(container.querySelector('[data-owner]')).toBe(owner);
+    expect(container.querySelector('[data-canonical-felt-interaction-layer]')).toBeNull();
+    expect(container.querySelector('[data-canonical-felt-surface]')).toBeNull();
+    expect(mount).toHaveBeenCalledTimes(1);expect(unmount).not.toHaveBeenCalled();
+  });
   it('mounts and removes registered tabs without changing hook order', () => {
     const errors = vi.spyOn(console, 'error');
     const state = { cardsIcon: 'spade' as const, activeTab: 'cards' as const, setActiveTab: () => {} };

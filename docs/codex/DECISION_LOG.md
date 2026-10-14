@@ -1,5 +1,18 @@
 # Durable decision log
 
+## October 14 — fullscreen is a layout within the existing session shell
+
+Catalog metadata selects presentation, never gameplay authority. The stable
+`PersistentTableShell` retains transport, announcements, overlays, timers and
+terminal ownership while its fullscreen variant omits the oval felt and seats.
+`FullscreenGameShell` supplies reusable board, score, action and information
+slots; Run21 is its first consumer. Existing shared Session Ended portals and
+chip transport are reused. No browser Fullscreen API, new route, polling loop,
+financial owner or alternate session lifecycle is introduced. CSS is scoped to
+the opt-in layout. Missing metadata defaults to the existing table, and setup
+and waiting phases stay there. Future fullscreen games supply their board and
+controls to this shell while retaining their authoritative game implementation.
+
 ## October 14 — presentation mode belongs to per-game metadata
 
 Phase 1 stores `presentation_mode` on existing `public.game_defaults`, whose

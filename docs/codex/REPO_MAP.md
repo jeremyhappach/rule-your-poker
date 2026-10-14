@@ -3,8 +3,14 @@
 Game presentation metadata: `public.game_defaults.game_type` is the unique
 per-game catalog key. Migration `20261014224724_game_catalog_presentation_mode.sql`
 adds the constrained `presentation_mode` field; the rollback proof is
-`supabase/tests/game_catalog_presentation_mode_rollback.sql`. There is no frontend
-consumer in Phase 1. `public.games` remains session state.
+`supabase/tests/game_catalog_presentation_mode_rollback.sql`. `public.games`
+remains session state. Phase 2 reads metadata in `useGamePresentationCatalog.ts`
+and resolves modes in `src/lib/canonicalShell/presentationMode.ts`; `Game.tsx`
+passes the mode into the stable `PersistentTableShell` and game renderer.
+`FullscreenGameShell.tsx` and its scoped CSS own fullscreen layout slots.
+`Run21FullscreenView.tsx` projects Run21 into those slots; `Run21GameTable.tsx`
+retains commands, shared controls and terminal effects. The offline responsive
+browser proof is `dev/run21/fullscreen.preview.mjs`.
 
 Aggregate auto-fold pause:
 `supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql`

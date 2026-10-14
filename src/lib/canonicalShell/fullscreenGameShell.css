@@ -1,0 +1,17 @@
+/* Scoped presentation variant. No table-mode selectors or global token changes. */
+[data-shell-presentation-mode="fullscreen"]{height:100dvh;min-height:0!important;box-sizing:border-box;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+[data-shell-presentation-mode="fullscreen"] [data-canonical-shell-header]>div{height:100%;min-width:0}
+.fullscreen-game{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:.35rem .65rem .5rem;gap:.3rem;background:radial-gradient(ellipse at top,#172b36,#0c171e 80%);color:#f5f1df;--hud-h-announcement:1.75rem}
+.fullscreen-game-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.5rem;min-width:0}
+.fullscreen-game-heading{display:flex;align-items:baseline;gap:.5rem;min-width:0;flex-wrap:wrap;line-height:1.15}
+.fullscreen-game-heading>span{font-size:.7rem;color:#b6c6cb}
+.fullscreen-game-toolbar nav{display:flex;gap:.25rem;flex-shrink:0}
+.fullscreen-game-toolbar button{font-size:.75rem;min-height:2.5rem;padding:.35rem .5rem;border:1px solid #ffffff26;border-radius:.5rem;background:#ffffff08}
+.fullscreen-game-toolbar button:focus-visible{outline:2px solid #ffd477;outline-offset:2px}
+.fullscreen-game-scores{min-height:0;flex:0 0 auto}
+.fullscreen-game-board{flex:1;position:relative;min-width:0;min-height:0;container:fullscreen-board/size}
+.fullscreen-game-interaction-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+.fullscreen-game-actions{position:relative;flex:0 0 auto;min-height:2.75rem;display:flex;align-items:center;gap:.5rem}
+.fullscreen-game-actions[data-session-ended]{min-height:3rem}
+.fullscreen-game-panel{display:flex;flex-direction:column;width:min(100%,28rem)!important;max-width:none!important;padding:calc(1.5rem + env(safe-area-inset-top,0px)) calc(1rem + env(safe-area-inset-right,0px)) calc(1rem + env(safe-area-inset-bottom,0px)) calc(1rem + env(safe-area-inset-left,0px))}
+.fullscreen-game-panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}

@@ -25,16 +25,17 @@ vi.mock('./Run21Announcement', () => ({Run21Announcement: () => null}));
 vi.mock('./Run21Felt', () => ({Run21Felt: () => null}));
 vi.mock('./Run21Replay', () => ({Run21Replay: () => null}));
 vi.mock('./Run21PlayerPane', () => ({Run21PlayerPane: () => null, Run21Timer: () => null}));
+vi.mock('@/lib/canonicalShell/ShellHudChrome', () => ({ShellAnnouncementRail: () => null}));
 import {Run21GameTable} from './Run21GameTable';
 afterEach(cleanup);
-it('does not reopen terminal presentation when close refreshes the same persisted receipt', async () => {
+it.each(['table','fullscreen'] as const)('does not reopen terminal presentation when close refreshes the same persisted receipt in %s', async presentationMode => {
   const view = project(fixtureMatch(), PLAYERS[0].id);
   view.revealed = true; view.winnerId = PLAYERS[1].id;view.cumulative={[PLAYERS[0].id]:105000,[PLAYERS[1].id]:135850};
   vi.stubGlobal('requestAnimationFrame',(fn:FrameRequestCallback)=>{fn(0);return 1;});
   view.settlement = {key: 'test-receipt', resultId: uuid(500), transferBatchId: uuid(501), winnerId: PLAYERS[1].id, loserId: PLAYERS[0].id, amount: 5, at: 10};
   mock.snapshot = {view, revision: 1, serverAt: 10, finished: false, balances: {[PLAYERS[0].id]: -5, [PLAYERS[1].id]: 5}};
   const onTerminalActive = vi.fn(), onTerminalComplete = vi.fn();
-  const props = {gameId: IDENTITY.sessionId, dealerGameId: IDENTITY.dealerGameId, userId: uuid(30), dealerPosition: 1,
+  const props = {presentationMode, gameId: IDENTITY.sessionId, dealerGameId: IDENTITY.dealerGameId, userId: uuid(30), dealerPosition: 1,
     activeTab: 'cards' as const, setActiveTab: vi.fn(), sessionEnded: false, onTerminalActive, onTerminalComplete};
   const ui = render(<Run21GameTable {...props}/>);
   expect(onTerminalActive.mock.calls).toEqual([[true]]);
