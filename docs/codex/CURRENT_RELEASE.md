@@ -1,3 +1,25 @@
+# TriTowers setup guidance — 2026-10-14 — client correction
+
+Production's `tri_towers:humans_only` rejection at approximately
+2026-10-15 01:02:21 UTC was intentional, but the setup error presenter only
+recognized recovery-health failures and displayed its generic fallback.
+TriTowers now maps known setup exceptions to actionable messages, including:
+"TriTowers currently requires 2–7 human players. Remove or sit out any bots
+before starting."
+
+The existing active-player/human counts show the same warning in Other and
+TriTowers configuration before submission. This is advisory; the unchanged
+server remains authoritative if the roster changes. Manual setup and Run Back
+share the error mapping and remain retryable after rejection.
+
+60 focused tests pass, covering Supabase plain-object errors, Error instances,
+known and unknown rejections, corrected retries, roster-warning updates and
+existing-game setup. TypeScript and production build pass.
+No database, rules, scoring, turn, authorization or financial changes.
+Checkpoint tag: `tri-towers-setup-messages-2026-10-14`.
+Owner smoke: with an active bot, confirm the warning and rejection message;
+sit out/remove the bot and retry with 2–7 humans.
+
 # TriTowers activation — 2026-10-14 — production database verified
 
 Phase 3B installs migration `20261015003637_activate_tri_towers_test_play`

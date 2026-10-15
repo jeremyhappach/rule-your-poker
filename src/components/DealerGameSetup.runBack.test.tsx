@@ -60,12 +60,12 @@ afterEach(() => {
   act(() => root.unmount()); container.remove(); vi.useRealTimers();
   delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
 });
-async function mount(gameType: string, saved: Record<string, unknown> | undefined, previousType = gameType) {
+async function mount(gameType: string, saved: Record<string, unknown> | undefined, previousType = gameType, counts = {players: 2, humans: 2}) {
   await act(async () => root.render(<DealerGameSetup gameId="session" dealerUsername="Dealer" isBot={false}
     dealerPlayerId="dealer-player" dealerPosition={2} configDeadline={deadline} previousGameType={gameType}
     previousGameConfig={{ game_type: previousType, ante_amount: 3, run_back_config: saved } as any}
-    isFirstHand={false} gameSetupTimerSeconds={120} anteDecisionTimerSeconds={30} activePlayerCount={2}
-    activeHumanCount={2} onConfigComplete={onComplete} onSessionEnd={() => {}} />));
+    isFirstHand={false} gameSetupTimerSeconds={120} anteDecisionTimerSeconds={30} activePlayerCount={counts.players}
+    activeHumanCount={counts.humans} onConfigComplete={onComplete} onSessionEnd={() => {}} />));
   await act(async () => { await vi.advanceTimersByTimeAsync(60); });
 }
 function button() {
@@ -128,6 +128,84 @@ describe('Cribbage configuration rejection messages', () => {
       ? 'Real-money deal blocked because server recovery is not healthy. No ante or game state was committed. Try again shortly.'
       : 'Could not configure the game');
     expect(start!.disabled).toBe(false);
+  });
+});
+
+describe('TriTowers setup validation messages', () => {
+  const humansOnly = 'TriTowers currently requires 2–7 human players. Remove or sit out any bots before starting.';
+  async function openSetup(counts = {players: 2, humans: 2}) {
+    triAccess.allowed = true;
+    await mount('tri-towers', {ante_amount: 5}, 'tri-towers', counts);
+    const option = document.querySelector<HTMLButtonElement>('[data-dealer-game-option="tri-towers"]');
+    expect(option).toBeTruthy();
+    await act(async () => option!.click());
+    return document.querySelector<HTMLButtonElement>('[data-dealer-game-start="tri-towers"]')!;
+  }
+
+  it.each([
+    ['Supabase plain object', {code: 'P0001', message: 'tri_towers:humans_only', details: null, hint: null}],
+    ['Error instance', new Error('tri_towers:humans_only')],
+  ])('shows the humans-only guidance for a %s and permits a corrected retry', async (_label, error) => {
+    // The UI can be stale when a bot joins; the authoritative RPC still decides.
+    vi.mocked(configureDealerGame).mockRejectedValueOnce(error);
+    const start = await openSetup();
+    await act(async () => start.click());
+    expect(toast.error).toHaveBeenLastCalledWith(humansOnly);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(start.disabled).toBe(false);
+    await act(async () => start.click());
+    expect(configureDealerGame).toHaveBeenCalledTimes(2);
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('uses the same actionable error for Run Back', async () => {
+    triAccess.allowed = true;
+    vi.mocked(configureDealerGame).mockRejectedValueOnce({message: 'tri_towers:humans_only'});
+    await mount('tri-towers', {ante_amount: 5});
+    await act(async () => button().click());
+    expect(toast.error).toHaveBeenLastCalledWith(humansOnly);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(button().disabled).toBe(false);
+  });
+
+  it.each([
+    ['player_count', 'Have 2–7 human players take active seats before starting TriTowers.'],
+    ['real_money_closed', 'TriTowers currently supports fake-money sessions only. Create a session with Real Money turned off.'],
+    ['tester_required', 'Every human in the session needs an active approved account for TriTowers. Ask the host to check player access.'],
+    ['release_closed', 'TriTowers is currently unavailable. Ask the host to check game access before trying again.'],
+    ['dealer_required', 'Only the current human dealer can start TriTowers.'],
+    ['config', 'Use a whole-number stake from 1 to 9,999. If setup has expired, return to the current dealer setup.'],
+    ['setup_identity', 'The dealer or setup window has changed, or the session is paused or ending. Return to the current session setup before trying again.'],
+    ['setup_replay_conflict', 'This setup was already submitted with different settings. Return to the session to see the current game.'],
+    ['setup_retired', 'This setup is no longer current. Return to the session to continue.'],
+    ['unfinished_pot', "The previous game's pot has not been settled. Finish that game before starting TriTowers."],
+    ['unknown_failure', 'Could not configure the game'],
+  ])('explains %s from a Supabase plain-object rejection', async (code, message) => {
+    vi.mocked(configureDealerGame).mockRejectedValueOnce({code: 'P0001', message: 'tri_towers:' + code});
+    const start = await openSetup();
+    await act(async () => start.click());
+    expect(toast.error).toHaveBeenLastCalledWith(message);
+    expect(configureDealerGame).toHaveBeenCalledOnce();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('warns before submit and removes the warning when bots are no longer active', async () => {
+    triAccess.allowed = true;
+    await mount('tri-towers', {ante_amount: 5}, 'tri-towers', {players: 3, humans: 2});
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(humansOnly);
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-dealer-game-option="tri-towers"]')!.click());
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(humansOnly);
+    expect(configureDealerGame).not.toHaveBeenCalled();
+    await mount('tri-towers', {ante_amount: 5});
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('does not warn or alter setup for another game with active bots', async () => {
+    await mount('cribbage', crib, 'cribbage', {players: 3, humans: 2});
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    await act(async () => button().click());
+    expect(configureDealerGame).toHaveBeenCalledOnce();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });
 
