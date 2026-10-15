@@ -1,8 +1,34 @@
+# Permanent financial release gate — 2026-10-15
+
+Effective immediately, every new game must pass the
+[mandatory financial release gate](WORKFLOW.md#mandatory-financial-release-gate)
+before production gameplay activation, including fake-money testing. Financial
+architecture must be designed and implemented alongside gameplay. Internal
+scores, private balances or game receipts alone do not qualify.
+
+Release acceptance requires authoritative winners/scores, actual canonical
+player-chip changes and balanced ledger transfers, atomic settlement/results/
+final snapshots, replay/concurrency safety, authorization/stake validation,
+disconnect/zero-client recovery, and terminal lifecycle/postgame continuation.
+Rollback-contained database proofs must exercise actual financial triggers and
+authority. Each game's qualification record must provide evidence for every
+requirement and an explicit `PASS`, `FAIL` or `MISSING` gate status linked here.
+A failed or missing proof automatically blocks release and activation.
+
+Run21's production release is complete at
+`df53b62d168c8d76a3c08dfca74267556cd66afb`, as reported by Jeremy on October 15.
+The prior qualification and outstanding owner gameplay smoke are recorded below;
+this policy task does not rerun qualification or claim new runtime acceptance.
+Immediately after Run21 production acceptance, the next separate task is the
+high-priority independent Farkle financial audit in `BACKLOG.md`. It is queued,
+not started. This change is documentation only and changes no gameplay,
+database functions, financial records or production sessions.
+
 # Run21 financial authority and production release — 2026-10-15
 
 Version-two settlement, production admission, durable recovery and
-Jeremy's configurable 30-second first-placement policy are implemented on
-`codex/run21-production-release`. Fake money auto-completes with an icon;
+Jeremy's configurable 30-second first-placement policy are released on `main`
+at `df53b62d168c8d76a3c08dfca74267556cd66afb`. Fake money auto-completes with an icon;
 real money pauses when a competitor sits out and uses canonical rejoin/resume.
 Isolated SQL proofs establish +5/−5 canonical balances, one journal/result,
 matching snapshots, concurrency safety, recovery and two-browser gameplay.

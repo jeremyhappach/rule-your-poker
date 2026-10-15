@@ -1,5 +1,36 @@
 # Durable decision log
 
+## October 15, 2026 — permanent atomic financial release gate
+
+Owner decision: no new game may be activated for production gameplay, including
+fake-money testing, without first proving atomic, server-authoritative settlement
+through the existing canonical financial infrastructure. The Run21 investigation
+exposed that its initial release lacked this integration; its corrected production
+release is complete at `df53b62d168c8d76a3c08dfca74267556cd66afb`.
+
+Financial architecture must be designed and implemented alongside gameplay,
+never deferred to a later real-money release. Internal scores, private balances
+and game-owned bookkeeping are not evidence of canonical settlement. Acceptance
+requires authoritative outcomes, actual canonical player-chip changes, balanced
+ledger transfers, atomic settlement/results/final snapshots, replay/concurrency
+safety, authorization/stake validation, disconnect/zero-client recovery and
+correct terminal lifecycle/postgame continuation.
+
+The binding checklist and evidence procedure are in
+[WORKFLOW.md](WORKFLOW.md#mandatory-financial-release-gate). Rollback-contained
+database proofs must exercise actual financial triggers and authority; failed
+or missing proof automatically blocks release and production activation in
+every money mode. Passing builds, internal engine tests or owner approval of
+implementation cannot waive this prerequisite.
+
+Immediately following Run21 production acceptance, independently audit Farkle's
+existing canonical settlement, journal, game results, snapshots, idempotency
+and recovery against actual database authority using rollback-contained proofs.
+This high-priority audit is queued in `BACKLOG.md` as a separate task. This
+decision changes engineering policy only; it neither starts the audit nor
+authorizes changes to gameplay, database functions, financial records or
+historical production sessions.
+
 ## October 15 — Run21 inactivity and financial authority
 
 Jeremy specified a configurable first-placement deadline, default 30 seconds.

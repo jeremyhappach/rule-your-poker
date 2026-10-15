@@ -30,6 +30,81 @@ authorize unrelated production-data mutation or broader infrastructure work.
 Never force-push. If a merge conflict, remote divergence, or other condition
 requires a material judgment, stop and report it.
 
+## Mandatory financial release gate
+
+No new game may be activated for production gameplay, including fake-money
+testing, until atomic, server-authoritative settlement through the existing
+canonical financial infrastructure is proven. This permanent owner policy
+applies to every future game-development task and every production admission
+path, including catalog/selector activation, setup RPCs and Run Back.
+Fake money, admin-only testing and a later planned real-money phase do not
+exempt a game. A failed or missing proof automatically blocks release and
+activation; ordinary implementation approval does not waive this gate.
+
+### Design financial authority with gameplay
+
+Include the financial architecture in the initial game design and implementation
+scope. Identify the authoritative score/winner owner, canonical balance and
+ledger writers, settlement identity/dedupe key, transaction boundary, results
+and snapshot owners, authorization/stake guards, durable recovery and terminal
+continuation before production admission is proposed. Reuse the existing
+canonical infrastructure; do not create a private wallet or second settlement
+owner. Financial integration is part of gameplay completion, never a follow-up
+reserved for real-money release.
+
+Internal points, match scores, private balances, game-owned journals/receipts
+and visual chip animations can describe gameplay but do not prove canonical
+settlement. Even correct server-side scores or a private zero-sum transfer are
+insufficient without actual canonical player-chip changes, the existing
+financial ledger and atomically consistent results/final snapshots.
+
+### Mandatory acceptance evidence
+
+Every row must pass for the exact release candidate and each money mode being
+activated. Record expected and observed values, not just a successful RPC or
+test exit code.
+
+| Requirement | Required proof |
+|---|---|
+| Authoritative outcome | The server determines scores, winner(s) and ties from authoritative game state; a client cannot choose the winner, score or payout. |
+| Canonical chip balances | Read actual canonical player-chip balances before and after settlement. Assert exact per-player deltas for the validated stake and payout rules, including every winner/loser and any pot/reserve endpoint. |
+| Balanced canonical ledger | Exercise the existing financial ledger/journal and transfer authority. Assert balanced debits/credits, conservation across all endpoints, correct UUID identities and amounts, and linkage to the actual committed transfer batch. A private receipt is insufficient. |
+| Atomic persistence | Settlement claim/receipt, canonical balances and ledger, game results, final post-settlement player snapshots and terminal disposition persist in one transaction. Inject a failure after financial writes and prove that none of these artifacts partially persist. |
+| Replay and concurrency safety | Prove one settlement for duplicate requests, ordinary replay, late replay after continuation, reconnect and competing callers on independent database connections. Verify actual unique indexes/constraints and locks/CAS; no duplicate payout, result, journal or snapshot. |
+| Authorization and stake validation | Exercise actual caller roles, membership and authoritative game/dealer/hand/round identity. Reject unauthorized or stale callers and invalid/tampered stakes or money modes with no financial side effects. Browser roles cannot invoke service-only entry points or bypass the canonical settlement owner. |
+| Disconnect and zero-client recovery | Disconnect participants and remove all browser clients at settlement boundaries. The durable server recovery owner must finish exactly once, survive worker interruption/retry and leave the same canonical financial outcome without a browser callback. |
+| Terminal lifecycle and continuation | Prove ordinary postgame continuation/Run Back, terminal session closure, duplicate/stale continuation and successor identity isolation. Connected clients retain terminal presentation then enter local Session Ended; fresh ended-session mounts go to the lobby. Presentation never owns settlement. |
+| Actual database authority and containment | Run rollback-contained database proofs through actual settlement entry points with actual financial triggers, constraints and authorization enabled. Check canonical rows directly, assert rollback leaves no synthetic financial records, and preserve historical sessions. Mock ledgers, disabled triggers, client-only tests and typecheck do not satisfy this requirement. |
+
+### Proof and release procedure
+
+1. Inspect the deployed definitions, financial triggers, permissions and actual
+   conflict indexes. Record the database/schema/migration versions and exact
+   candidate commit; document any difference between the proof environment and
+   deployment. An unverified difference in financial authority blocks release.
+2. Run the complete candidate proof inside rollback containment before any
+   settlement migration or production activation. Cover winner, tie, duplicate, replay,
+   late-replay, concurrent callers, authorization, invalid stake, injected
+   transaction failure, disconnect, zero-client recovery, continuation and
+   terminal-state cases. Financial writes must exercise real authority and
+   triggers; do not fabricate historical results or bypass guards to get a pass.
+3. For an approved migration, rerun the proof against the installed authority
+   before activation. Keep synthetic writes within rollback-contained fixtures
+   and verify their removal. A documentation-only task does not authorize these
+   database operations; they belong to the separately scoped implementation or
+   audit task.
+4. Record the proof path/command, case results, balance and ledger assertions,
+   results/snapshot comparisons, concurrency/recovery evidence and rollback
+   verification in the game's qualification record. Link it from
+   `CURRENT_RELEASE.md` with an explicit gate status: `PASS`, `FAIL` or `MISSING`.
+   Only `PASS` permits production activation; a missing case or failed assertion
+   automatically makes the release blocked. Keep admission closed until all
+   failures or evidence gaps are resolved and the complete proof passes.
+5. Verify terminal presentation and continuation with focused client/runtime
+   checks in addition to the database proof. Jeremy's subsequent production
+   smoke remains acceptance truth; it cannot substitute for the required
+   pre-activation financial proof.
+
 ## Mandatory execution-budget policy
 
 This policy governs how the existing workflow is executed. It does not create
@@ -340,6 +415,11 @@ and the resulting integration, push, and deployment status.
 Do not request screenshots or command output when the expected result is routine and Jeremy has not reported an error. Do not provide a long retrospective unless requested.
 
 ## Publishing and smoke
+
+For a new game, check the mandatory financial release gate above before any
+production gameplay activation, including fake-money testing. Release records
+must link passing evidence for every acceptance requirement; absent or failed
+evidence blocks activation even when the build and gameplay tests pass.
 
 Codex owns local source changes, tests, validation, diff review, the local
 commit, required approved schema migrations, Git integration/push, and Vercel

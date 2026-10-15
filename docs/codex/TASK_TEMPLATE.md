@@ -68,7 +68,19 @@ speculative refactor
 bunx tsgo --noEmit
 ```
 
-Add focused SQL/runtime proof only when required.
+Add focused SQL/runtime proof when required. For every new game, the
+[mandatory financial release gate](WORKFLOW.md#mandatory-financial-release-gate)
+is required before production gameplay activation, including fake-money
+testing. Design and implement canonical financial authority alongside gameplay.
+Complete every gate requirement with rollback-contained proofs of actual
+canonical balance/ledger changes, atomic results/final snapshots, authorization,
+stake validation, replay/concurrency safety, zero-client recovery and terminal
+continuation. Internal scores or private balances are insufficient.
+
+Record the proof path, candidate/schema identity, case evidence and rollback
+verification in the qualification record, link it from `CURRENT_RELEASE.md`,
+and report `PASS`, `FAIL` or `MISSING`. A failed or missing proof automatically
+blocks release; it cannot be deferred to a later real-money phase.
 
 ## Return
 

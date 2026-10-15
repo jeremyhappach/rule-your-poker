@@ -139,6 +139,24 @@ When these disagree, stop and report the discrepancy.
 
 ## Architecture invariants
 
+### Atomic financial release gate
+
+No new game may be activated for production gameplay, including fake-money
+testing, without first proving atomic, server-authoritative settlement through
+the existing canonical financial infrastructure. Design and implement financial
+architecture alongside gameplay; never defer it to a later real-money release.
+
+The mandatory acceptance checklist in
+`docs/codex/WORKFLOW.md#mandatory-financial-release-gate` requires authoritative
+winners/scores, actual canonical player-chip changes, balanced ledger transfers,
+atomic settlement/results/final snapshots, replay/concurrency safety,
+authorization/stake validation, disconnect/zero-client recovery, and correct
+terminal lifecycle/postgame continuation. Prove these with rollback-contained
+database tests exercising actual financial triggers and authority. Internal
+scores, private balances or game-owned receipts alone are not canonical
+settlement evidence. A failed or missing proof automatically blocks release
+and production activation in every money mode; passing UI tests cannot waive it.
+
 ### State pipeline
 
 `Authoritative database → permitted optimistic action → presentation-only rendering`
