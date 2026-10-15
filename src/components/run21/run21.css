@@ -22,7 +22,7 @@
 .run21-replay>p{font-size:.8rem}
 
 .run21-deck,.run21-currentCard{flex-direction:column;gap:.2em}
-.run21-deck>.run21-card,.run21-currentCard>.run21-card{height:100%;width:100%}
+.run21-deck>.run21-card,.run21-currentCard>.run21-card,.run21-live-card{height:100%;width:100%;min-height:0}
 .run21-single-board,.run21-revealed-boards{width:100%;height:100%;display:flex;flex-direction:column;gap:3%}
 .run21-board-group{flex:1;min-height:0;display:flex;flex-direction:column;width:100%}
 .run21-board-group>.run21-columns{flex:1;min-height:0}
@@ -70,7 +70,7 @@
 @media (prefers-reduced-motion: reduce) { .run21-exact21 { animation-timing-function: linear; } }
 
 /* Fullscreen is an opt-in layout of the same board and intent controls. */
-.run21-fullscreen-board{display:grid;grid-template-rows:minmax(4rem,20%) minmax(0,1fr);gap:.5rem;container:run21-board/size}
+.run21-fullscreen-board{display:grid;grid-template-rows:minmax(2.75rem,20%) minmax(0,1fr);gap:.5rem;container:run21-board/size}
 .run21-fullscreen-board>.run21-slot{position:relative;transform:none;left:auto;top:auto;width:100%;height:100%;min-height:0}
 .run21-fullscreen-board>.run21-board{grid-row:2}
 .run21-fullscreen-board>.run21-draw{grid-row:1;position:relative;display:grid;grid-template-columns:1fr minmax(0,1fr) 1fr;gap:.75rem;min-width:0;min-height:0;pointer-events:auto}
@@ -78,7 +78,18 @@
 .run21-fullscreen-board .run21-deck{display:none!important}
 .run21-fullscreen-board .run21-currentCard{grid-column:2;grid-row:1}
 .run21-fullscreen-board .run21-pass{grid-column:1;grid-row:1;justify-self:end;align-self:center;width:5rem;height:2.75rem!important}
-.run21-fullscreen-board .run21-help{grid-column:3;grid-row:1;justify-self:start;align-self:center;width:2.75rem;height:2.75rem!important}
+.run21-fullscreen-board .run21-help{grid-column:3;grid-row:1;justify-self:start;align-self:center;gap:.4rem;width:auto;height:2.75rem!important}
+.run21-fullscreen-board .run21-help button{flex:0 0 2.25rem;width:2.25rem;height:2.25rem}
+.run21-running-total{display:flex;align-items:baseline;gap:.1rem;color:#ff9a9a;font-variant-numeric:tabular-nums;white-space:nowrap}
+.run21-running-total strong{font-size:clamp(1rem,5cqw,1.4rem)}
+.run21-running-total small{font-size:.65rem}
+.run21-running-total[data-qualified=true]{color:#87e5a6}
+.run21-fullscreen-board .run21-live-card[data-run21-turn-state=active]{filter:drop-shadow(0 0 .25rem #efc568);animation:run21-live-glow 2.4s ease-in-out infinite}
+.run21-fullscreen-board .run21-live-card:not([data-run21-turn-state=active]){filter:grayscale(1);opacity:.45}
+@keyframes run21-live-glow{50%{filter:drop-shadow(0 0 .6rem #efc568)}}
+@media(prefers-reduced-motion:reduce){.run21-fullscreen-board .run21-live-card[data-run21-turn-state=active]{animation:none}}
+.run21-failure-icon{display:block;width:2rem;height:2rem;margin:0 auto .25rem;font-size:1.6rem;line-height:2rem}
+.run21-result[data-outcome=bust],.run21-result[data-outcome=no-qualify]{border-color:#ce8881;background:#2e2325f5;color:#ffe4df}
 .run21-fullscreen-board .run21-help button,.run21-fullscreen-board .run21-pass button{font-size:.9rem}
 .run21-fullscreen-board .run21-column-total{font-size:clamp(1rem,4cqw,2rem);height:12%}
 .run21-fullscreen-board .run21-column{background:#ffffff06;border-color:#d9e7e52e;border-radius:.8rem}
@@ -91,15 +102,9 @@
 .fullscreen-game .run21-timer{height:.5rem}
 .fullscreen-game .run21-player-actions{padding:0}
 .fullscreen-game .run21-player-actions button{min-height:2.75rem}
+.run21-fullscreen-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.4rem}
+.run21-fullscreen-actions>.run21-player-actions{grid-column:2;grid-row:1}
 .run21-fullscreen-error{position:absolute;top:0;left:0;right:0;z-index:5;background:#431f20;padding:.4rem}
 .run21-fullscreen-replay{height:100%;display:flex;flex-direction:column;min-height:0}
 .run21-fullscreen-replay>.run21-felt-content{flex:1;min-height:0}
 .run21-fullscreen-replay-controls{flex:0 0 auto;padding:.25rem;font-size:.8rem}
-@container fullscreen-board (min-aspect-ratio:3/2){
-  .run21-fullscreen-board{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) minmax(5rem,16%)}
-  .run21-fullscreen-board>.run21-board{grid-row:1;grid-column:1}
-  .run21-fullscreen-board>.run21-draw{grid-row:1;grid-column:2;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 2.75rem 2.75rem;gap:.4rem}
-  .run21-fullscreen-board .run21-currentCard{grid-column:1;grid-row:1}
-  .run21-fullscreen-board .run21-pass{grid-column:1;grid-row:2;justify-self:center}
-  .run21-fullscreen-board .run21-help{grid-column:1;grid-row:3;justify-self:center}
-}

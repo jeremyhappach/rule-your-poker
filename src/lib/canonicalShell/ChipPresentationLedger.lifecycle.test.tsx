@@ -81,6 +81,29 @@ afterEach(() => {
 });
 
 describe('ChipPresentationLedger lifecycle callbacks', () => {
+  it('never replays a committed Run21 dollar on duplicate delivery or a reconnect baseline', async () => {
+    realtime.rows.players=[{id:'loser',chips:0,position:1,chip_transfer_cursor:0},{id:'winner',chips:0,position:2,chip_transfer_cursor:0}];
+    let callbacks: import('./ChipPresentationLedger').LedgerDispatchOptions|undefined;
+    const transport={dispatch:vi.fn((_intent,options)=>{callbacks=options;return true;}),cancel:vi.fn()};
+    let ledger:ReturnType<typeof useChipPresentationLedger>;
+    function Harness(){ledger=useChipPresentationLedger('run21-session',transport,()=>true,0,undefined,undefined,undefined,undefined,true);return null;}
+    await act(async()=>{root.render(<Harness/>);});
+    const batch:ChipPresentationBatch={id:'receipt-batch',game_id:'run21-session',dealer_game_id:'run21-dealer',cursor:1,reason:'transfer',
+      transfers:[{id:'run21-session:1:1',amount:1,from:{kind:'player',playerId:'loser'},to:{kind:'player',playerId:'winner'}}],
+      opening_balances:{'player:loser':0,'player:winner':0},closing_balances:{'player:loser':-1,'player:winner':1}};
+    await act(async()=>{realtime.batchInsert?.({new:batch});realtime.batchInsert?.({new:batch});root.render(<Harness/>);});
+    expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    expect(transport.dispatch).toHaveBeenCalledWith(expect.objectContaining({id:'run21-session:1:1',amount:1,variant:'canonicalWinTransfer',destinationReaction:{pulse:true}}),expect.any(Object));
+    realtime.rows.players=[{id:'loser',chips:-1,position:1,chip_transfer_cursor:1},{id:'winner',chips:1,position:2,chip_transfer_cursor:1}];
+    await act(async()=>{callbacks?.onDeparted?.();callbacks?.onArrived?.();callbacks?.onSettled?.();});
+    await act(async()=>{root.render(<></>);});
+    realtime.rows.gameplay_transfer_batches=[batch];
+    await act(async()=>{root.render(<Harness/>);});
+    expect(ledger!.cursorState(1)).toBe('reconciled');
+    await act(async()=>{realtime.batchInsert?.({new:batch});});
+    expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    expect(ledger!.playerBalance('loser',99)).toBe(-1);expect(ledger!.playerBalance('winner',99)).toBe(1);
+  });
   it('preserves dealer-game identity and completes only after every real flight settles, once', async () => {
     realtime.rows.players = ['a', 'b', 'winner'].map((id, index) => ({ id, chips: 10, position: index + 1, chip_transfer_cursor: 0 }));
     const settled = vi.fn();

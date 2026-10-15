@@ -1,3 +1,38 @@
+# Run21 fullscreen polish — 2026-10-15 — qualified release candidate
+
+Five approved presentation corrections preserve the existing server authority:
+stable card-above-columns composition at every aspect ratio; active-card glow
+and muted watching state; configuration-derived red/green running total (current
+qualification starts at 97); explicit Busted / No Qualify feedback; and one
+canonical chip flight per committed transfer.
+
+Production receipt `d33194aa-19ee-4f6f-a801-34b6308a770b` points to batch
+`d9ae03d4-b5b7-4b14-bee7-e98c2979f7bd`, whose only transfer is
+`2b557eae-9f0e-4349-a6ef-a39a90e5ab45:2:1` for $1. The prior Run21 hook
+dispatched the batch UUID while the ledger independently dispatched that entry
+ID, bypassing transport deduplication. Run21 now observes the exact canonical
+batch cursor and preserves close/completion after settlement or reconciliation.
+The ledger alone dispatches the flight, with its existing landing bounce/pulse.
+Receipt-keyed completion survives child remounts; reconnect baselines do not
+replay motion. Fullscreen balances now use the ledger's presentation boundary.
+
+Validation: 2,368 full-suite tests, TypeScript and production build pass; 223
+focused Run21/transport tests and subsequent targeted boundary/reconnect checks
+pass. Responsive Chromium checks cover 1440×900, 768×1024, 390×844, 320×568,
+844×390 and live resizing, active/watching, failure/success feedback, qualification,
+Session Ended and all eight original table layouts. The isolated two-browser
+test proves one $1 flight per viewer, +1/−1 balances, one receipt/result, matching
+snapshots, one successor, and no replay on reload. Local commit/close SQL hashes
+match production. No financial SQL, production data, admission, rules or recovery
+changes. Evidence: [polish.evidence.json](../../dev/run21/polish.evidence.json);
+repeat with `dev/run21/polish.browser.config.ts` and `dev/run21/fullscreen.preview.mjs`.
+
+Owner production smoke remains pending: play on phone portrait/landscape and
+desktop resize; compare active/watching clients; cross 96→97; Give Up, bust and
+score; finish a $1 match and verify one flight/arrival per viewer, correct balances,
+History and Run Back. Cinematic table-to-fullscreen transition remains queued.
+Release checkpoint: `run21-fullscreen-polish-2026-10-15`.
+
 # Farkle correction — 2026-10-15 — deployed; admission open
 
 All mandatory local gates pass: 2,360 regression tests in 313 files, 72 focused

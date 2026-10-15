@@ -77,7 +77,7 @@ describe('Run21 live sequential turn flow',()=>{
   expect(displayedPlayerId(project(m,human))).toBe(bot);
   m=act(m,bot,{type:'place',column:0},5300);m=act(m,bot,{type:'expire'},255300);
   expect(m.rounds[0].boards[bot].result).toMatchObject({reason:'timeout',score:0});
-  expect(run21Announcement(project(m,human)).title).toContain('TIME EXPIRED');
+  expect(run21Announcement(project(m,human)).title).toContain('did not qualify. Time expired.');
   expect(m.rounds[0].revealed).toBe(false);
   m=advanceScorePresentation(m,255300+SCORE_PRESENTATION_MS);
   expect(m.rounds[0].revealed).toBe(true);expect(m.cumulative[human]).toBe(50000);

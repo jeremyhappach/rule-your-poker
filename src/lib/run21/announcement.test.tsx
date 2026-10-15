@@ -30,7 +30,7 @@ describe('Run21 canonical round narration',()=>{
     let m=ready();
     expect(run21Announcement(project(m,self)).title).toBe('You are playing round 1/3');
     m=act(m,self,{type:'expire'},250000);
-    expect(run21Announcement(project(m,self)).title).toContain('TIME EXPIRED');
+    expect(run21Announcement(project(m,self)).title).toContain('did not qualify. Time expired.');
     m=advanceScorePresentation(m,255000);
     expect(run21Announcement(project(m,self)).title).toBe('Run21 bot is playing round 1/3');
     m=act(m,bot,{type:'place',column:0},255000);
@@ -49,7 +49,7 @@ describe('Run21 canonical round narration',()=>{
     const index=replay.steps.findIndex(s=>s.substeps[0]?.type==='card_placed'&&s.substeps[0]?.actorId===bot);
     expect(run21Announcement(seekReplay(replay,index)).title).toBe('Run21 bot is playing round 1/3');
     const lastFinish=replay.steps.map(s=>s.substeps[0]?.type).lastIndexOf('timeout');
-    expect(run21Announcement(seekReplay(replay,lastFinish)).title).toContain('TIME EXPIRED');
+    expect(run21Announcement(seekReplay(replay,lastFinish)).title).toContain('did not qualify. Time expired.');
     expect(run21Announcement(seekReplay(replay,replay.steps.length-1)).title).toBe('Round 1/3 complete');
     const old={...project(m,self),playStatus:undefined} as unknown as Projection;
     expect(()=>run21Announcement(old)).not.toThrow();

@@ -334,7 +334,8 @@ export function ChipTransportProvider({
   const requiresDurablePresentationCursor = gameType === 'holm-game'
     || gameType === '3-5-7'
     || gameType === '3-5-7-game'
-    || gameType === '357';
+    || gameType === '357'
+    || gameType === 'run21';
   const presentationLedger = useChipPresentationLedger(
     gameId,
     ledgerTransport,

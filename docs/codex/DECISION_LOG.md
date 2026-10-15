@@ -1,5 +1,17 @@
 # Durable decision log
 
+## October 15, 2026 — Run21 observes canonical financial presentation
+
+The Run21 terminal adapter must not dispatch its settlement receipt as another
+chip intent. The receipt's batch UUID and the canonical journal's entry ID identify
+the same money at different levels; dispatching both produces duplicate motion.
+Run21 validates batch/dealer/session/player/amount identity, observes its durable
+ledger cursor, then uses the existing close RPC and terminal callbacks. The
+canonical ledger remains the sole flight/balance presenter, including arrival
+bounce and reconnect reconciliation. No database settlement or continuation rule
+changes. The isolated two-browser proof and immutable correlation are retained
+in `dev/run21/polish.evidence.json`; owner production smoke remains pending.
+
 ## October 15, 2026 — dealer-game completion preserves session continuation
 
 Jeremy clarified that Farkle settlement/presentation completion is not session

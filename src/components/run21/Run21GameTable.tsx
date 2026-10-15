@@ -52,7 +52,7 @@ export function Run21GameTable(props: Props) {
   const view = snapshot?.view;
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
-  const closeError=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
+  const {error:closeError,retry:retryTerminal}=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
   useEffect(()=>{if(props.sessionEnded)setReplay(null);},[props.sessionEnded]);
   const returnToPlay = async () => {
     if (!view?.viewerId || participationPending) return;
@@ -65,7 +65,7 @@ export function Run21GameTable(props: Props) {
     } finally {setParticipationPending(false);}
   };
   const errorPane = <div className="text-center text-xs" role="status">{error || closeError}
-    {(error || closeError) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
+    {(error || closeError) && <button className="ml-2 underline" onClick={()=>{reconnect();retryTerminal();}}>Reconnect</button>}</div>;
   const participationPane = view && <>
     {view.pausedAt != null && <p role="status">Session paused. {props.sittingOut ? 'Return when you are ready.' : 'Waiting for the host to resume.'}</p>}
     {!view.settlement && view.viewerId && (props.sittingOut || view.automaticPlayers?.includes(view.viewerId)) &&

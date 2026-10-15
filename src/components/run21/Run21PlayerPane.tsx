@@ -1,6 +1,7 @@
 import type {Intent, Projection} from '@/lib/run21/model';
 import {aggregate, canFinish, duration} from '@/lib/run21/rules';
 import {displayedPlayerId} from '@/lib/run21/presentation';
+import {multiplierAt} from '@/lib/run21/rules';
 
 /** The shell owns the active pane; only the viewing player can issue intents. */
 export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projection;now:number;onIntent?:(intent:Intent)=>void;pending?:boolean}) {
@@ -11,7 +12,7 @@ export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projecti
   const active=view.pausedAt==null&&!view.automaticPlayers?.includes(view.viewerId!)&&!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
   return <div className="run21-player-actions" data-run21-player-actions>
     <button className="run21-collect-button" type="button" disabled={!active||!canFinish(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
-      {aggregate(board,view.config)<97?'Give Up':'Take Win'} <small>{aggregate(board,view.config)}</small>
+      {multiplierAt(aggregate(board,view.config),view.config)>0?'Take Win':'Give Up'} <small>{aggregate(board,view.config)}</small>
     </button>
   </div>;
 }
@@ -24,7 +25,7 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
   const at=view.pausedAt??now;
   if(board.startedAt===null&&board.firstPlacementDeadline!=null&&!view.automaticPlayers?.includes(board.playerId)) {
     const seconds=Math.max(0,Math.ceil((board.firstPlacementDeadline-at)/1000));
-    return <span className="run21-timer-caption" role="timer" aria-label="First placement time remaining">{view.pausedAt!=null?'Paused · ':''}Place your first card · {seconds}s</span>;
+    return <span className="run21-timer-caption" role="timer" aria-label="First placement time remaining">{view.pausedAt!=null?'Paused · ':''}{board.playerId===view.viewerId?'Place your first card':'Watching · First placement'} · {seconds}s</span>;
   }
   const full=duration(view.config);
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??at)));

@@ -1,0 +1,326 @@
+{
+  "productionWrites": 0,
+  "gameId": "75362929-c370-4dc5-9469-6ddaa11c3d62",
+  "dealerGameId": "45e6674b-25d6-40a4-a079-0efb11c8eb07",
+  "receipt": {
+    "at": 1792104612639,
+    "key": "run21:45e6674b-25d6-40a4-a079-0efb11c8eb07:1",
+    "amount": 1,
+    "loserId": "cc7d20db-4ed9-4d4c-ba7b-b4a77f47b9f5",
+    "resultId": "eae72e32-1e6d-45c5-a196-668065fc1951",
+    "winnerId": "48198e05-70b6-494f-9a5a-1aeb83696642",
+    "transferBatchId": "5aab3af2-f4b9-4dbb-a368-89c6def1902e"
+  },
+  "batch": {
+    "id": "5aab3af2-f4b9-4dbb-a368-89c6def1902e",
+    "game_id": "75362929-c370-4dc5-9469-6ddaa11c3d62",
+    "dealer_game_id": "45e6674b-25d6-40a4-a079-0efb11c8eb07",
+    "cursor": 1,
+    "reason": "win",
+    "transfers": [
+      {
+        "id": "75362929-c370-4dc5-9469-6ddaa11c3d62:1:1",
+        "to": {
+          "kind": "player",
+          "playerId": "48198e05-70b6-494f-9a5a-1aeb83696642"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "cc7d20db-4ed9-4d4c-ba7b-b4a77f47b9f5"
+        },
+        "amount": 1
+      }
+    ],
+    "opening_balances": {
+      "player:48198e05-70b6-494f-9a5a-1aeb83696642": 0,
+      "player:cc7d20db-4ed9-4d4c-ba7b-b4a77f47b9f5": 0
+    },
+    "closing_balances": {
+      "player:48198e05-70b6-494f-9a5a-1aeb83696642": 1,
+      "player:cc7d20db-4ed9-4d4c-ba7b-b4a77f47b9f5": -1
+    },
+    "unmatched_deltas": {},
+    "created_at": "2026-10-15T22:50:12.686Z"
+  },
+  "snapshots": [
+    {
+      "player_id": "48198e05-70b6-494f-9a5a-1aeb83696642",
+      "chips": 1
+    },
+    {
+      "player_id": "cc7d20db-4ed9-4d4c-ba7b-b4a77f47b9f5",
+      "chips": -1
+    }
+  ],
+  "settlements": 1,
+  "results": 1,
+  "flights": [
+    [
+      {
+        "id": "75362929-c370-4dc5-9469-6ddaa11c3d62:1:1",
+        "variant": "canonicalWinTransfer",
+        "text": "$1",
+        "keyframes": [
+          {
+            "offset": 0,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px) scale(1) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0
+          },
+          {
+            "offset": 0.05,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px, -22px) scale(1.25) rotate(-4deg)",
+            "filter": "brightness(1.2)",
+            "opacity": "1",
+            "computedOffset": 0.05
+          },
+          {
+            "offset": 0.22,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-158.402px, -38px) scale(1.18) rotate(3deg)",
+            "filter": "brightness(1.25)",
+            "opacity": "1",
+            "computedOffset": 0.22
+          },
+          {
+            "offset": 0.48,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-443.527px, -26px) scale(1.1) rotate(-2deg)",
+            "filter": "brightness(1.1)",
+            "opacity": "1",
+            "computedOffset": 0.48
+          },
+          {
+            "offset": 0.65,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1.04) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0.65
+          },
+          {
+            "offset": 0.71,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -14px) scale(1.22)",
+            "opacity": "1",
+            "computedOffset": 0.71
+          },
+          {
+            "offset": 0.78,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.78
+          },
+          {
+            "offset": 0.84,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -9px) scale(1.14)",
+            "opacity": "1",
+            "computedOffset": 0.84
+          },
+          {
+            "offset": 0.9,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.96)",
+            "opacity": "1",
+            "computedOffset": 0.9
+          },
+          {
+            "offset": 0.94,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -3px) scale(1.04)",
+            "opacity": "1",
+            "computedOffset": 0.94
+          },
+          {
+            "offset": 0.97,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.97
+          },
+          {
+            "offset": 1,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.5)",
+            "filter": "none",
+            "opacity": "0",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "75362929-c370-4dc5-9469-6ddaa11c3d62:1:1",
+        "variant": "canonicalWinTransfer",
+        "text": "$1",
+        "keyframes": [
+          {
+            "offset": 0,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px) scale(1) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0
+          },
+          {
+            "offset": 0.05,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px, -22px) scale(1.25) rotate(-4deg)",
+            "filter": "brightness(1.2)",
+            "opacity": "1",
+            "computedOffset": 0.05
+          },
+          {
+            "offset": 0.22,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-158.402px, -38px) scale(1.18) rotate(3deg)",
+            "filter": "brightness(1.25)",
+            "opacity": "1",
+            "computedOffset": 0.22
+          },
+          {
+            "offset": 0.48,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-443.527px, -26px) scale(1.1) rotate(-2deg)",
+            "filter": "brightness(1.1)",
+            "opacity": "1",
+            "computedOffset": 0.48
+          },
+          {
+            "offset": 0.65,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1.04) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0.65
+          },
+          {
+            "offset": 0.71,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -14px) scale(1.22)",
+            "opacity": "1",
+            "computedOffset": 0.71
+          },
+          {
+            "offset": 0.78,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.78
+          },
+          {
+            "offset": 0.84,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -9px) scale(1.14)",
+            "opacity": "1",
+            "computedOffset": 0.84
+          },
+          {
+            "offset": 0.9,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.96)",
+            "opacity": "1",
+            "computedOffset": 0.9
+          },
+          {
+            "offset": 0.94,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -3px) scale(1.04)",
+            "opacity": "1",
+            "computedOffset": 0.94
+          },
+          {
+            "offset": 0.97,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.97
+          },
+          {
+            "offset": 1,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.5)",
+            "filter": "none",
+            "opacity": "0",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ]
+  ],
+  "arrivals": [
+    [
+      "1"
+    ],
+    [
+      "1"
+    ]
+  ],
+  "postgame": {
+    "status": "game_selection",
+    "finished": true,
+    "closeResponses": [
+      {
+        "client": 0,
+        "status": 200,
+        "at": 1792104615544
+      },
+      {
+        "client": 1,
+        "status": 200,
+        "at": 1792104615552
+      }
+    ],
+    "successor": "d548b1e7-5ba1-4ddd-bcbe-a77786a7bb94",
+    "matchCount": 2
+  },
+  "pageErrors": [],
+  "blockedRequests": [],
+  "localAuthority": {
+    "productionWrites": 0,
+    "localAuthorityMatchesProduction": [
+      {
+        "name": "run21_server_close",
+        "hash": "e57f2fcd24eee243f38c9696c7ac1e54"
+      },
+      {
+        "name": "run21_server_commit",
+        "hash": "ba04872109c092c278f2d620acd361b8"
+      },
+      {
+        "name": "run21_server_commit_admitted",
+        "hash": "52163d4db99f2b51e3e9882940cd8513"
+      }
+    ]
+  }
+}

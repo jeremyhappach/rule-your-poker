@@ -5,7 +5,8 @@ import type { Suit as DisplaySuit } from '@/lib/cardUtils';
 import { applyGeometryOverrides, useDraftedGeometryOverrides } from '@/lib/geometryLab/store';
 import { getRun21ArtifactDescriptors, type Run21Geometry } from '@/lib/run21/geometry';
 import type { Card, Intent, Projection } from '@/lib/run21/model';
-import { legalColumns, total } from '@/lib/run21/rules';
+import { aggregate, legalColumns, multiplierAt, total } from '@/lib/run21/rules';
+import {outcomePresentation, qualificationThreshold} from '@/lib/run21/outcomePresentation';
 import {useCardFrontDesign} from '@/lib/cardFrontDesign/config';
 import {useVisualPreferences} from '@/hooks/useVisualPreferences';
 import {cardFan} from '@/lib/run21/cardFan';
@@ -65,7 +66,8 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
-  const active=view.pausedAt==null && !view.automaticPlayers?.includes(playerId) && playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !pending && !!onIntent;
+  const live=view.pausedAt==null && !view.revealed && !view.scorePresentation && !view.automaticPlayers?.includes(playerId) && playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !!onIntent;
+  const active=live&&!pending;
   const legal=board?legalColumns(board,view.config):[];
   const player=view.players.find(p=>p.id===playerId)!;
   const slot=(id:string,children:ReactNode)=>{
@@ -74,11 +76,15 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
     return <div className={`run21-slot run21-${id}`} style={layout === 'table' ? style : undefined} data-run21-artifact={d.id}>{children}</div>;
   };
   const reason=board?.result?.reason;
+  const outcome=board?.result ? outcomePresentation(board.result,player.name) : null;
+  const runningTotal=board ? aggregate(board,view.config) : 0;
+  const watching=playerId!==view.viewerId || view.automaticPlayers?.includes(playerId);
+  const turnState=live?'active':watching?'watching':'inactive';
   // A single centered pair in the same interaction layer, just inside the rim.
   const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
-    {slot('currentCard',<>{board?.current&&<Run21Card card={board.current}/>}<small className="sr-only">Current card</small></>)}
-    {slot('help',<Run21ScoringHelp/>)}
+    {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
+    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{qualificationThreshold(view.config)}</small></output>}<Run21ScoringHelp/></>)}
     {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;
@@ -100,9 +106,11 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
       })}
     </div>)}
     {drawLayer?createPortal(draw,drawLayer):draw}
-    {reason&&!view.revealed&&!hideScoring&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring>
-      {reason==='timeout'?'TIME EXPIRED':reason==='bust'?'BUST':`${player.name} scored ${board!.result!.aggregate}!`}
-      <small>{board!.result!.multiplier.toLocaleString()} × {board!.result!.speed} = {board!.result!.score.toLocaleString()}</small>
+    {reason&&outcome&&!view.revealed&&!hideScoring&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring data-outcome={outcome.kind}>
+      {outcome.kind==='bust'&&<svg className="run21-failure-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 36 3 22 13 9 25 5 22 18 28 25 18 33 22 43Z" fill="#8b9299"/><path d="m29 7 12 9 5 20-18 8-4-10 11-9-7-8Z" fill="#b2bac0"/></svg>}
+      {outcome.kind==='no-qualify'&&<span className="run21-failure-icon" aria-hidden="true">💩</span>}
+      {outcome.title}
+      {outcome.kind==='score'?<small>{board!.result!.multiplier.toLocaleString()} × {board!.result!.speed} = {board!.result!.score.toLocaleString()}</small>:<small>{reason==='timeout'?'Time expired · ':''}0 points</small>}
     </div>)}
   </section>;
 }

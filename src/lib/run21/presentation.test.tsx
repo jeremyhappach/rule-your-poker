@@ -67,6 +67,9 @@ describe('Run21 player presentation',()=>{
     const html=pane(m),button=html.match(/<button[^>]*class="run21-collect-button"[^>]*>/)![0];
     expect(button.includes('disabled')).toBe(false);
     expect(html).toContain(sum<97?'Give Up':'Take Win');
+    const felt=renderToStaticMarkup(<Run21Felt layout="fullscreen" view={project(m,self)} now={0} onIntent={()=>{}}/>);
+    expect(felt).toContain(`data-qualified="${sum>=97}"`);
+    expect(felt).toContain(`Running total ${sum}; qualify at 97`);
   });
   it('publishes accepted moves and Pass status to observers without future cards',()=>{
     const m=act(ready(),self,{type:'pass'},100);
