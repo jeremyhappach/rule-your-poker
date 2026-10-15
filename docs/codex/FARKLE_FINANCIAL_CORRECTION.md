@@ -1,6 +1,6 @@
 # Farkle containment and correction — October 15, 2026
 
-**All mandatory local gates pass; migration 20261015212154 is installed and verified. Production admission remains closed pending matching frontend publication.** The final regression run passes 2,360 tests across 313 files, with zero failures. The 100 financial/recovery assertions, 72 focused tests, typecheck, build and retained two-browser lifecycle evidence all pass.
+**Released: all mandatory gates pass, migration 20261015212154 is installed, Vercel is READY with the exact published SHA, and production Farkle admission is open.** The final regression run passes 2,360 tests across 313 files, with zero failures. The 100 financial/recovery assertions, 72 focused tests, typecheck, build and retained two-browser lifecycle evidence all pass.
 
 Jeremy explicitly approved containment, scoped authorization and deadlock corrections, qualification, and conditional migration/deployment. He subsequently approved installing missing local test tooling. No further implementation or publication approval is needed within that scope; the release prerequisites still apply.
 
@@ -51,7 +51,7 @@ A completed Farkle dealer game is not a completed session. The previous two-brow
 
 The existing database participation and dealer-eligibility policy remains authoritative. Eligible sessions continue to `game_selection` or `dealer_selection`; insufficient participation, no eligible dealer, and explicit pending session end follow their existing server branches. No new session-ending rule is authorized. `SessionEndedTablePhase` is admitted only for actual `session_ended` after terminal presentation; a fresh mount of that status goes to the lobby.
 
-The full-app proof must separately capture both browsers and terminal/route traces for: (1) ordinary two-human Farkle continuation and next setup, including Run Back and dealer rotation; (2) one remaining eligible participant; (3) no eligible dealer; (4) explicit session termination; (5) Run21 fullscreen through neutral setup into a table game; and (6) Run21 fullscreen through neutral setup into another fullscreen game. Make-it-take-it policy must remain intact. Continuing sessions retain History and session controls; ended connected sessions retain results, HUD and local Back to Lobby. Run21 is qualification-only unless a concrete defect is established. All six pass locally; admission remains closed until deployed frontend verification.
+The full-app proof must separately capture both browsers and terminal/route traces for: (1) ordinary two-human Farkle continuation and next setup, including Run Back and dealer rotation; (2) one remaining eligible participant; (3) no eligible dealer; (4) explicit session termination; (5) Run21 fullscreen through neutral setup into a table game; and (6) Run21 fullscreen through neutral setup into another fullscreen game. Make-it-take-it policy must remain intact. Continuing sessions retain History and session controls; ended connected sessions retain results, HUD and local Back to Lobby. Run21 is qualification-only unless a concrete defect is established. All six pass locally; matching frontend publication was verified and admission reopened.
 
 These statuses describe the **local candidate**, not deployed corrected behavior.
 
@@ -81,7 +81,7 @@ These statuses describe the **local candidate**, not deployed corrected behavior
 | Other games / broad regression | PASS | 313 files / 2,360 tests; zero failures; all original assertions retained |
 | Typecheck and production build | PASS | Installed TypeScript `tsc` passed; Vite build passed; `tsgo` absent, not installed |
 | Corrected production authorization/recovery | PASS | Migration 20261015212154; all 11 routine hashes match; existing ACLs and 443 other routines unchanged; recovery healthy |
-| Unrestricted admission | BLOCKED | Remains closed until all mandatory qualification and deployed verification pass |
+| Unrestricted admission | PASS | Reopened after all qualification, deployed routine, Vercel READY, live SHA/bundle and recovery health checks |
 
 The database bundle contains **100 passing assertions, five recorded race/retry observations, and zero harness errors**, plus the explicit before/after race and metadata proofs. The post-WSL rerun again passed all 100 assertions with zero harness errors; its corrected forced race and durable retry are retained separately in `rerun-evidence.json`. A random final-queue Farkle exposed a proof-harness assumption that completion always occurs on Bank; the harness now preserves the exact server Roll receipt when that Roll completes the competition. Product scoring was unchanged.
 
@@ -123,7 +123,7 @@ Production was inspected read-only at 20:46 UTC: Farkle creation is false, canon
 
 The earlier financial rerun database `farkle_audit_empty_1792094109570` was dropped before the lifecycle clarification. The fresh handoff rerun database `farkle_audit_empty_1792096975400` was also dropped and its absence verified at 20:45:53 UTC (`cleanup-handoff.json`); PostgreSQL was stopped. Both local production app servers and the project-specific Supabase stack are shut down after qualification, with the synthetic fixtures retained only in its stopped local backup. No listeners remain on 5177, 5178, 57321, 57322 or 55439, and no project container remains running. Docker Desktop was also stopped; final verification is recorded in `handoff-services-cleanup.json`. Installed tooling, existing PostgreSQL data files and evidence are preserved; no additional tooling was installed in this handoff attempt. No production history or existing production session was modified.
 
-## Delivery state
+## Delivery state before frontend publication
 
 - Branch: `codex/farkle-financial-integrity`.
 - Exact unchanged base commit: `2059a816ab8b0f3ad789210c3abeb86a6af34332`.
@@ -151,3 +151,13 @@ The Farkle rerun again passes 100 assertions and the 72 focused tests pass. Brow
 After migration, all 11 qualified definitions match, existing production ACLs are identical, and 443 unrelated functions remain unchanged. All 20 Farkle rounds and 32,808 result rows retain their exact hashes. Recovery completes with zero consecutive partial failures and both jobs stay active. Read-only production checks accept an existing active account and reject a missing account. Production has no inactive profile available for a direct inactive probe; the installed function is byte-identical to the locally proven inactive-account implementation, and no production account was mutated to fabricate one.
 
 Evidence: release-validation.json, release-financial-proof.json, release-holm-proof.json, release-migration-proof.json, release-production-before.json, release-production-after.json and release-cleanup.json. Existing Supabase advisor findings were observed before migration; this routine-only correction does not alter their tables or permissions. The existing RLS advisory for gameplay_transfer_pending_changes is documented by the [Supabase advisor](https://supabase.com/docs/guides/database/database-linter?lint=0007_policy_exists_rls_disabled); no unrelated security/schema change was made.
+
+## Verified production release — 21:29:57 UTC
+
+Product correction 887bdb4e4d03e6c74f412178cc140bf621d8b0e0 was pushed on the task branch, fast-forwarded to main and published through the approved push helper. Tag farkle-financial-correction-qualified-20261015 records that checkpoint. Vercel deployment dpl_8QB6Lgab8dZrxfbQXWpPhsjvf5kZ is READY. The public build manifest and entry bundle match the exact SHA and production Supabase URL, with no isolated testing API embedded.
+
+After those checks, the existing advisory-locked release gate reopened creation. The transaction first rechecked all 11 qualified routine hashes, both active recovery jobs, fresh successful recovery with zero consecutive partial failures, and the expected closed gate/defaults. A read-only configuration resolver then returned production testOnly=false without creating a session.
+
+The final read-only receipt confirms admission open, healthy recovery, unchanged qualified routines, 443 unchanged unrelated routines, and exact unchanged hashes for all 20 existing Farkle rounds and 32,808 result rows. No synthetic production session or financial transaction was created. Existing sessions and other games were not modified. See release-deployment.json and release-cleanup.json.
+
+Disposable proof database removed; Supabase, native PostgreSQL and Docker Desktop stopped; no listener remains on 5177, 5178, 57321, 57322 or 55439. No tooling was installed during this final qualification. Unrelated user changes are preserved. No automated release blocker remains. Owner production gameplay smoke remains pending, as required by the repository acceptance contract.

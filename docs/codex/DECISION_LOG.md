@@ -18,8 +18,9 @@ gate to pass. See [the evidence](FARKLE_FINANCIAL_CORRECTION.md).
 
 Jeremy authorized closing new Farkle admission after proving the creation gate
 does not gate existing financial settlement, recovery or continuation. Creation
-is now closed; recovery stays running. Reopening requires the full financial
-gate, isolated two-browser terminal/history proof and deployed verification.
+was closed while qualification ran; recovery stayed running. Reopening required
+the full financial gate, isolated two-browser terminal/history proof and deployed
+verification. All passed and admission reopened at the October 15 release checkpoint.
 
 Fresh active-account eligibility belongs at human command boundaries. The
 existing trusted recovery owner and sealed deferred financial trigger must still

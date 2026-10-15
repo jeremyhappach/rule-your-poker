@@ -1,12 +1,12 @@
 # Backlog
 
-## P0 — Qualified, migration installed — Farkle financial correction — October 15, 2026
+## Implemented — deployed, admission open — Farkle financial correction — October 15, 2026
 
 - All local release gates pass: 100 database assertions, 72 focused tests,
   2,360 regression tests, typecheck, build, and all corrected two-browser lifecycle scenarios.
 - Active-account and recovery/action deadlock correction migration 20261015212154
-  is installed and verified. The frontend HUD correction awaits publication verification;
-  admission remains closed until that final gate passes. Production history is unchanged.
+  is installed and verified. The frontend HUD correction is deployed, Vercel READY and
+  live SHA/bundle verified; admission is open. Production history is unchanged.
 - Preserve existing database participation/dealer policy: completed dealer games
   continue normally; only authoritative session_ended admits Session Ended.
 - Evidence and original reproduction remain in [FARKLE_FINANCIAL_CORRECTION.md](FARKLE_FINANCIAL_CORRECTION.md).

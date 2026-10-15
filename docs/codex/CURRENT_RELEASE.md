@@ -1,4 +1,4 @@
-# Farkle correction — 2026-10-15 — qualified; migration installed
+# Farkle correction — 2026-10-15 — deployed; admission open
 
 All mandatory local gates pass: 2,360 regression tests in 313 files, 72 focused
 tests, 100 financial/recovery assertions, typecheck and production build. The six
@@ -8,8 +8,8 @@ files changed in the final pass; the already-proven product implementation was p
 
 Migration 20261015212154 is installed. All 11 qualified routine hashes match;
 existing ACLs, 443 unrelated routine definitions, all 20 Farkle rounds and 32,808
-result rows are unchanged. Recovery remains healthy. New Farkle admission stays
-closed until the matching frontend deployment is READY and verified. No synthetic
+result rows are unchanged. Recovery remains healthy. Farkle admission reopened
+after Vercel READY, live SHA/bundle verification and a guarded health check. No synthetic
 production sessions or financial transactions were created. The existing
 server-owned continuation policy remains authoritative; ordinary dealer-game
 completion never implies session termination.
@@ -20,6 +20,14 @@ also passed its actual settlement/replay/recovery checks and 96 entropy cases;
 rollback restored all inspected state. See [the correction report](FARKLE_FINANCIAL_CORRECTION.md)
 and retained release evidence. Disposable database/Supabase services are stopped;
 no tooling was installed during this final qualification.
+
+Product commit: `887bdb4e4d03e6c74f412178cc140bf621d8b0e0`. Vercel deployment
+`dpl_8QB6Lgab8dZrxfbQXWpPhsjvf5kZ` is READY; the public manifest and entry bundle
+match. The 21:29:57 UTC receipt confirms admission open, zero recovery failures,
+unchanged routines/history and approved production configuration. See
+[release-deployment.json](../../supabase/farkle/financial-correction/20261015/release-deployment.json).
+Owner production gameplay smoke remains pending; local qualification is not
+presented as Jeremy's production acceptance. No automated release blocker remains.
 
 # Independent Farkle financial audit — 2026-10-15 — FAIL (preceding evidence)
 
