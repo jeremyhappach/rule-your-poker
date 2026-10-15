@@ -2,6 +2,8 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 export interface Card { rank: Rank; suit: Suit }
 export interface Config {
+  /** Frozen when a production match starts; absent on historical matches. */
+  firstPlacementSeconds?: number;
   preset: string;
   rounds: number;
   columns: number;
@@ -32,6 +34,7 @@ export interface Board {
   /** First accepted placement time; admission and Pass leave both fields null. */
   startedAt: number | null;
   deadline: number | null;
+  firstPlacementDeadline?: number | null;
   result: Result | null;
 }
 export interface Result {
@@ -70,6 +73,8 @@ export interface SettlementReceipt extends SettlementIntent {
   resultId: string; transferBatchId: string; at: number;
 }
 export interface Frame {
+  automaticPlayers?: string[];
+  pausedAt?: number | null;
   identity: Identity; config: Config; players: Player[]; stake: number;
   roundId: string | null; roundNumber: number; commitment: string | null;
   active_player_id: string | null;
@@ -85,6 +90,8 @@ export interface Event {
   operands: Record<string, unknown>; frame: Frame;
 }
 export interface Match {
+  automaticPlayers?: string[];
+  pausedAt?: number | null;
   identity: Identity; config: Config; players: Player[]; stake: number;
   rounds: Round[]; cumulative: Record<string, number>; winnerId: string | null;
   settlement: SettlementReceipt | null;
@@ -103,6 +110,7 @@ export interface Projection extends Omit<Frame, 'boards'> {
 }
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export function assertConfig(config: Config): void {
+  if (config.firstPlacementSeconds !== undefined && (!Number.isSafeInteger(config.firstPlacementSeconds) || config.firstPlacementSeconds < 5 || config.firstPlacementSeconds > 60)) throw new Error('invalid_first_placement_timer');
   for (const n of [config.rounds, config.columns, config.target, config.speed.start, config.speed.decrement, config.speed.intervalMs]) {
     if (!Number.isSafeInteger(n) || n <= 0) throw new Error('invalid_config');
   }

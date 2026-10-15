@@ -65,7 +65,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
-  const active=playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !pending && !!onIntent;
+  const active=view.pausedAt==null && !view.automaticPlayers?.includes(playerId) && playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !pending && !!onIntent;
   const legal=board?legalColumns(board,view.config):[];
   const player=view.players.find(p=>p.id===playerId)!;
   const slot=(id:string,children:ReactNode)=>{

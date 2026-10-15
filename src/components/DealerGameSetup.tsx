@@ -3,7 +3,7 @@ import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/local
 import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTriTowersTestAccess } from '@/hooks/useTriTowersTestAccess';
-import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
+import { useRun21Access } from '@/hooks/useRun21Access';
 import { TRI_TOWERS } from '@/lib/triTowers/model';
 import { TRI_TOWERS_HUMANS_ONLY_MESSAGE, triTowersSetupFailureMessage } from '@/lib/triTowers/setupMessages';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
@@ -189,7 +189,7 @@ const DealerGameSetupInner = ({
   onSessionEnd,
   onSitOut,
 }: DealerGameSetupProps) => {
-  const run21Allowed = useRun21AppTestAccess(gameId);
+  const run21Allowed = useRun21Access(gameId);
   const triTowersAllowed = useTriTowersTestAccess(gameId);
   const otherAllowed = run21Allowed || triTowersAllowed;
   const hasActiveBots = activePlayerCount > activeHumanCount;

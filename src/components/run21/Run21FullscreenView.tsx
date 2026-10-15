@@ -13,6 +13,7 @@ interface Props {
   snapshot: Run21Snapshot | null;
   now: number;
   pending?: boolean;
+  participationControls?: ReactNode;
   onIntent?: (intent: Intent) => void;
   hideScoring?: boolean;
   sessionEnded: boolean;
@@ -33,7 +34,7 @@ export function Run21FullscreenView(props: Props) {
     activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={props.panel} sessionEnded={sessionEnded}
     scores={view && <Run21Scoreboard view={view} now={now} transportBalances={snapshot.balances}/>}
     timer={view && !sessionEnded && !replay && <Run21Timer view={view} now={now}/>}
-    actions={view && !sessionEnded && !replay && <Run21PlayerPane view={view} now={now} onIntent={props.onIntent} pending={props.pending}/>}>
+    actions={view && !sessionEnded && !replay && <>{props.participationControls}<Run21PlayerPane view={view} now={now} onIntent={props.onIntent} pending={props.pending}/></>}>
     {props.error}
     {!sessionEnded && (view ? replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <div className="run21-fullscreen-replay">
       <Run21Felt layout="fullscreen" view={frame} now={at}/>

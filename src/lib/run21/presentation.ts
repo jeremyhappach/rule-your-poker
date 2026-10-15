@@ -21,6 +21,7 @@ export function displayedPlayerId(view: Projection): string {
 
 /** Presentation only: authoritative totals and money balances are never rewritten. */
 export function displayedScore(view: Projection, playerId: string, at: number): number {
+  at = view.pausedAt ?? at;
   const phase = view.scorePresentation;
   if (!phase || phase.playerId !== playerId) return view.cumulative[playerId];
   const progress = Math.max(0, Math.min(1, (at - phase.startedAt) / (phase.endsAt - phase.startedAt)));

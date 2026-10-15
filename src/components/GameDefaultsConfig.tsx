@@ -1163,6 +1163,16 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           return renderSCCSettings();
         case 'yahtzee':
           return renderYahtzeeSettings();
+        case 'run21': {
+          const run21Defaults = defaults.find(d => d.game_type === 'run21');
+          return run21Defaults ? <div className="space-y-2">
+            <Label htmlFor="run21-first-placement">First placement deadline (seconds)</Label>
+            <Input id="run21-first-placement" type="number" min={5} max={60}
+              value={run21Defaults.decision_timer_seconds}
+              onChange={e => updateDefault('run21', 'decision_timer_seconds', e.target.value)}/>
+            <p className="text-xs text-muted-foreground">Default 30 seconds. Applies to each new turn in new matches. Real-money timeouts pause the session; fake-money timeouts enable automatic play.</p>
+          </div> : null;
+        }
         default:
           return null;
       }

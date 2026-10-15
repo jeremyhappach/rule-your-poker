@@ -4,7 +4,7 @@ import {render,fireEvent,cleanup} from '@testing-library/react';
 import {GameSelection} from '@/components/GameSelection';
 vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>false}));
 const access=vi.hoisted(()=>({allowed:false}));
-vi.mock('@/hooks/useRun21AppTestAccess',()=>({useRun21AppTestAccess:()=>access.allowed}));
+vi.mock('@/hooks/useRun21Access',()=>({useRun21Access:()=>access.allowed}));
 vi.mock('@/lib/debugHarness/activeHarnessWarning',()=>({useActiveHarnessMap:()=>({})}));
 afterEach(()=>{cleanup();access.allowed=false;});
 describe('canonical game selector with gated Other',()=>{

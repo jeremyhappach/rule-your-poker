@@ -1,3 +1,31 @@
+# Run21 financial authority and production release — 2026-10-15
+
+Version-two settlement, production admission, durable recovery and
+Jeremy's configurable 30-second first-placement policy are implemented on
+`codex/run21-production-release`. Fake money auto-completes with an icon;
+real money pauses when a competitor sits out and uses canonical rejoin/resume.
+Isolated SQL proofs establish +5/−5 canonical balances, one journal/result,
+matching snapshots, concurrency safety, recovery and two-browser gameplay.
+Production migrations `20261015133432_run21_production_authority` and
+`20261015133715_activate_run21_production` are applied. The five-second Run21
+job dispatches Edge worker version 2 and receives HTTP 200 plus a fresh database
+acknowledgement. Existing jobs and all 21 historical match records/receipts are
+unchanged. Normal active non-admin capability is enabled for both money modes;
+all privileged Run21 RPCs remain inaccessible to browser roles.
+
+325 focused/regression tests, the additional empty-HTTP-response regression,
+TypeScript, production build and isolated SQL/two-browser proofs pass. Proofs
+include zero-client terminal settlement, worker restarts, pause/resume, automatic
+control cancellation, historical compatibility, ties, failure rollback and races.
+No synthetic production financial transactions were performed.
+
+Release checkpoint tag: `run21-production-authority-2026-10-15`.
+Qualification, deployment evidence and forward-recovery guidance are in
+`RUN21_PRODUCTION_QUALIFICATION.md`. Owner gameplay smoke is still pending:
+select Run21 as a non-admin; test fake-money timeout/robot/take-back; test
+real-money timeout/return/host-resume; finish a 5-chip match and verify +5/−5,
+history and Run Back. Refresh existing tabs to receive production capabilities.
+
 # TriTowers setup guidance — 2026-10-14 — client correction
 
 Production's `tri_towers:humans_only` rejection at approximately

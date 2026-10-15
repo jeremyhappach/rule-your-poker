@@ -1,5 +1,20 @@
 # Durable decision log
 
+## October 15 — Run21 inactivity and financial authority
+
+Jeremy specified a configurable first-placement deadline, default 30 seconds.
+Fake-money expiry uses Horses-style automatic play and a visible robot icon;
+real-money sitting out pauses the canonical session. Rejoin and automatic-play
+controls retain the shared player-intent owners. Pause/resume preserves private
+Run21 clocks. Version-two matches use canonical transfer journals/results/final
+snapshots; historical version-one matches are neither backfilled nor included
+in the new durable recovery job. New-match qualification must not interrupt
+existing matches. The separate five-second job uses expiring single-use database
+dispatch tokens; an acknowledged worker completion determines health. The shared
+real-money health guard remains required. Void PostgREST acknowledgements may
+have empty HTTP bodies and are successful responses. See
+`RUN21_PRODUCTION_QUALIFICATION.md` for qualification and deployment evidence.
+
 ## October 14 — TriTowers production acceptance uses approved accounts and fake money
 
 Phase 3B supersedes the prior database hold. Add only game-owned tables, RPCs,

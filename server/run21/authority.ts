@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { advanceScorePresentation, applyCommand, createMatch, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
+import { advanceScorePresentation, applyCommand, createMatch, expireFirstPlacement, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
 import { chooseAction } from '../../src/lib/run21/bot.js';
 import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
 import { roundDeck } from './harness.js';
@@ -10,6 +10,10 @@ export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;
   dealer_user_id: string;
   debug_harness?: string;
+  financial_version?: number;
+  real_money?: boolean;
+  first_placement_seconds?: number;
+  paused_at?: number | null;
   participants: (Player & {userId: string; chips: number})[];
   stake: number; balances: Record<string, number>; revision: number;
   state: Match | null; bot_due_at: number | null; finished: boolean;
@@ -31,7 +35,8 @@ export class Run21Authority {
   private listeners = new Map<string, Set<() => void>>();
   private committed = new Map<string, StoredMatch>();
   constructor(readonly store: Store, readonly now = Date.now, readonly shuffle = shuffleRound,
-    readonly measure: <T>(name:string,work:()=>T)=>T = (_name,work)=>work()) {}
+    readonly measure: <T>(name:string,work:()=>T)=>T = (_name,work)=>work(),
+    readonly automaticTimers = true) {}
   /** Server-loaded computation snapshot only. Every action rechecks admission at commit. */
   admit(row: StoredMatch) {
     const prior = this.committed.get(row.game_id);
@@ -84,7 +89,10 @@ export class Run21Authority {
     return state;
   }
   private async advance(row: StoredMatch, verifiedUserId?: string) {
-    if (row.finished) return row;
+    // A host can pause between configuration and the first worker/read. There
+    // is no board to project yet, and initializing it would advance paused play.
+    if (!row.state && row.paused_at != null) throw new AuthorityError('run21:paused', 409);
+    if (row.finished || row.paused_at != null || row.state?.pausedAt != null) return row;
     const at = Math.max(this.now(), row.state?.updatedAt ?? 0);
     let state = row.state;
     let due = row.bot_due_at;
@@ -93,10 +101,16 @@ export class Run21Authority {
       if (!dealer) throw new AuthorityError('run21:dealer_identity_required');
       const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
-        ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake, DEFAULT_CONFIG, at);
+        ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake,
+        row.financial_version === 2 ? {...DEFAULT_CONFIG, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at);
       state = await this.openRound(state, row.first_round_id, at, row.debug_harness);
     }
     state = advanceScorePresentation(state, at);
+    state = expireFirstPlacement(state, at, row.real_money === true);
+    if (state.pausedAt != null) {
+      row = await this.store.commit(row, state, null, verifiedUserId);
+      this.committed.set(row.game_id, row); this.schedule(row); return row;
+    }
     let round = state.rounds.at(-1)!;
     // Missed deadlines after a process restart settle at their persisted authority time.
     if (!round.revealed && !round.active_player_id && !round.scorePresentation) throw new AuthorityError('run21:sequential_round_required');
@@ -107,7 +121,7 @@ export class Run21Authority {
     }
     round = state.rounds.at(-1)!;
     const actor = state.players.find(p => p.id === round.active_player_id);
-    if (!round.revealed && actor?.kind === 'bot' && due !== null && at >= due && !round.boards[actor.id].result) {
+    if (!round.revealed && actor && (actor.kind === 'bot' || state.automaticPlayers?.includes(actor.id)) && due !== null && at >= due && !round.boards[actor.id].result) {
       const action = chooseAction(project(state, actor.id), at);
       if (action) state = this.command(state, actor.id, action.intent, at);
       due = null;
@@ -128,7 +142,7 @@ export class Run21Authority {
       state = await this.openRound(state, randomUUID(), at, row.debug_harness); due = null;
     }
     const nextActor = state.players.find(p => p.id === state.rounds.at(-1)!.active_player_id);
-    const choice = nextActor?.kind === 'bot' ? chooseAction(project(state, nextActor.id), at) : null;
+    const choice = nextActor && (nextActor.kind === 'bot' || state.automaticPlayers?.includes(nextActor.id)) ? chooseAction(project(state, nextActor.id), at) : null;
     due = choice ? due ?? at + choice.delayMs : null;
     if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due, verifiedUserId);
     this.committed.set(row.game_id,row);
@@ -138,12 +152,14 @@ export class Run21Authority {
   private schedule(row: StoredMatch) {
     clearTimeout(this.timers.get(row.game_id)); this.timers.delete(row.game_id);
     this.pending.get(row.game_id)?.resolve(); this.pending.delete(row.game_id);
-    if (row.finished || !row.state) return;
+    if (!this.automaticTimers) return;
+    if (row.finished || !row.state || row.paused_at != null || row.state.pausedAt != null) return;
     const round = row.state.rounds.at(-1)!;
     const active = round.active_player_id ? round.boards[round.active_player_id] : null;
     const deadlines = active && !active.result && active.deadline !== null ? [active.deadline] : [];
+    if (active && !active.result && active.firstPlacementDeadline != null && !row.state.automaticPlayers?.includes(active.playerId)) deadlines.push(active.firstPlacementDeadline);
     if (round.scorePresentation) deadlines.push(round.scorePresentation.endsAt);
-    if (row.bot_due_at !== null && row.state.players.find(p => p.id === round.active_player_id)?.kind === 'bot') deadlines.push(row.bot_due_at);
+    if (row.bot_due_at !== null && (row.state.players.find(p => p.id === round.active_player_id)?.kind === 'bot' || row.state.automaticPlayers?.includes(round.active_player_id ?? ''))) deadlines.push(row.bot_due_at);
     if (!deadlines.length) return;
     let resolve!: () => void;
     const done = new Promise<void>(r => { resolve = r; });
@@ -163,6 +179,10 @@ export class Run21Authority {
   private notify(gameId: string) { this.listeners.get(gameId)?.forEach(fn => fn()); }
   async recover() {
     for (const row of await this.store.load()) await this.serial(row.game_id, () => this.advance(row));
+  }
+  /** One durable scheduler wake. Reload after CAS races; no retained process required. */
+  async recoverOne(gameId: string) {
+    return this.serial(gameId, async () => this.advance(await this.latest(gameId)));
   }
   private snapshot(row: StoredMatch, playerId: string, afterSequence: number) {
     return {revision: row.revision, serverAt: this.now(), view: project(row.state!, playerId), balances: row.balances, finished: row.finished,

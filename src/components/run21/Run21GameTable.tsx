@@ -25,9 +25,11 @@ import {Run21ScoreCelebration} from './Run21ScoreCelebration';
 import { Run21FullscreenView } from './Run21FullscreenView';
 import { Run21ScoringReference } from './Run21ScoringHelp';
 import type { PresentationMode } from '@/lib/canonicalShell/presentationMode';
+import {setAutomaticPlay, setSessionPlayerIntent} from '@/lib/sessionPlayerIntent';
 
 interface Props {
   presentationMode?: PresentationMode;
+  sittingOut?: boolean;
   gameId: string; dealerGameId: string; userId: string; dealerPosition: number;
   activeTab: ShellTabId; setActiveTab: (tab: ShellTabId) => void; sessionEnded: boolean;
   onTerminalActive: (active: boolean) => void; onTerminalComplete: (identity: string) => void;
@@ -45,13 +47,33 @@ export function Run21GameTable(props: Props) {
   const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration} = useRun21Local(props.gameId, props.dealerGameId);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
+  const [participationPending, setParticipationPending] = useState(false);
+  const [participationError, setParticipationError] = useState<string | null>(null);
   const view = snapshot?.view;
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
   const closeError=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
   useEffect(()=>{if(props.sessionEnded)setReplay(null);},[props.sessionEnded]);
+  const returnToPlay = async () => {
+    if (!view?.viewerId || participationPending) return;
+    setParticipationPending(true); setParticipationError(null);
+    try {
+      if (props.sittingOut) await setSessionPlayerIntent(view.viewerId, 'rejoin');
+      else await setAutomaticPlay(props.gameId, view.roundId, props.dealerGameId, view.viewerId, false);
+    } catch (error) {
+      setParticipationError(error instanceof Error ? error.message : 'Unable to return. Please try again.');
+    } finally {setParticipationPending(false);}
+  };
   const errorPane = <div className="text-center text-xs" role="status">{error || closeError}
     {(error || closeError) && <button className="ml-2 underline" onClick={reconnect}>Reconnect</button>}</div>;
+  const participationPane = view && <>
+    {view.pausedAt != null && <p role="status">Session paused. {props.sittingOut ? 'Return when you are ready.' : 'Waiting for the host to resume.'}</p>}
+    {!view.settlement && view.viewerId && (props.sittingOut || view.automaticPlayers?.includes(view.viewerId)) &&
+      <button type="button" disabled={participationPending} onClick={() => void returnToPlay()} className="underline">
+        {participationPending ? 'Returning…' : props.sittingOut ? 'Return to match' : 'Take back control'}
+      </button>}
+    {participationError && <p role="alert">{participationError}</p>}
+  </>;
   let pane: ReactNode = errorPane;
   let felt: ReactNode = null, timer: ReactNode = null, identity: ReactNode = null;
   if (view && snapshot) {
@@ -64,6 +86,7 @@ export function Run21GameTable(props: Props) {
       : props.sessionEnded ? null
       : <div className="run21-player-pane">
           {errorPane}
+          {participationPane}
           <Run21Scoreboard view={view} now={now}/>
           {!view.revealed&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/>}
         </div>;
@@ -85,6 +108,7 @@ export function Run21GameTable(props: Props) {
     {celebration&&!props.sessionEnded&&<Run21ScoreCelebration key={celebration.key} receipt={celebration} onRetire={retireCelebration}/>}
     {props.presentationMode === 'fullscreen' ? <Run21FullscreenView snapshot={snapshot} now={now} pending={pending}
       onIntent={onIntent} hideScoring={!!celebration} sessionEnded={props.sessionEnded}
+      participationControls={participationPane}
       activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={pane}
       error={(error || closeError) ? <div className="run21-fullscreen-error">{errorPane}</div> : null}
       replay={replay} onReturnLive={() => setReplay(null)}/> : <>

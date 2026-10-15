@@ -106,11 +106,11 @@ export async function configureDealerGame(
     throw new Error('Dealer setup is missing its exact configuration deadline');
   }
   if (params.gameType === 'run21') {
-    const { assertRun21CreationAccess } = await import('./run21/appTestCreationAccess');
+    const { assertRun21CreationAccess } = await import('./run21/creationAccess');
     await assertRun21CreationAccess(params.gameId);
   }
 
-  const { data, error } = await supabase.rpc((params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure_local' : 'configure_dealer_game') as never, {
+  const { data, error } = await supabase.rpc((params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
     p_game_id: params.gameId,
     p_dealer_player_id: params.dealerPlayerId,
     p_expected_dealer_position: params.expectedDealerPosition,

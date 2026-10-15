@@ -12,11 +12,11 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     return { data: { subscription: { unsubscribe: auth.unsubscribe } } };
   } },
 } }));
-import { useRun21AppTestAccess } from './useRun21AppTestAccess';
+import { useRun21Access } from './useRun21Access';
 const user = '11111111-1111-4111-8111-111111111111';
 const session = '22222222-2222-4222-8222-222222222222';
 const project = 'abcdefghijklmnopqrst';
-const response = { data: { version: 1, enabled: true, fake_money_only: true, user_id: user, session_id: session, project_ref: project }, error: null };
+const response = { data: { version: 2, enabled: true, fake_money_only: false, user_id: user, session_id: session, project_ref: project }, error: null };
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('VITE_RUN21_APP_TEST_ENABLED', 'true');
@@ -27,16 +27,16 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
 describe('Run21 capability lifetime', () => {
-  it('does not query auth or the database while disabled', () => {
-    vi.stubEnv('VITE_RUN21_APP_TEST_ENABLED', 'false');
-    const { result } = renderHook(() => useRun21AppTestAccess(session));
+  it('does not query auth or the database for an invalid project', () => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'invalid');
+    const { result } = renderHook(() => useRun21Access(session));
     expect(result.current).toBe(false);
     expect(auth.getSession).not.toHaveBeenCalled();
     expect(auth.rpc).not.toHaveBeenCalled();
   });
   it('denies a missing RPC and unsubscribes on unmount', async () => {
     auth.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202' } });
-    const { result, unmount } = renderHook(() => useRun21AppTestAccess(session));
+    const { result, unmount } = renderHook(() => useRun21Access(session));
     await waitFor(() => expect(auth.rpc).toHaveBeenCalled());
     expect(result.current).toBe(false);
     unmount(); expect(auth.unsubscribe).toHaveBeenCalledOnce();
@@ -44,14 +44,14 @@ describe('Run21 capability lifetime', () => {
   it('rejects a capability response that arrives after sign-out', async () => {
     let resolve!: (value: typeof response) => void;
     auth.rpc.mockReturnValue(new Promise(r => { resolve = r; }));
-    const { result } = renderHook(() => useRun21AppTestAccess(session));
+    const { result } = renderHook(() => useRun21Access(session));
     await waitFor(() => expect(auth.rpc).toHaveBeenCalledOnce());
     await act(async () => { auth.callback!('SIGNED_OUT', null); });
     await act(async () => { resolve(response); });
     expect(result.current).toBe(false);
   });
   it('does not carry permission across session identity changes', async () => {
-    const { result, rerender } = renderHook(({ id }) => useRun21AppTestAccess(id), { initialProps: { id: session } });
+    const { result, rerender } = renderHook(({ id }) => useRun21Access(id), { initialProps: { id: session } });
     await waitFor(() => expect(result.current).toBe(true));
     rerender({ id: '33333333-3333-4333-8333-333333333333' });
     expect(result.current).toBe(false);

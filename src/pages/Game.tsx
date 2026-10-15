@@ -14276,6 +14276,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={markTerminalPresentationComplete}/>;
           if (renderGameType === 'run21' && game.current_game_uuid) return <Run21GameTable
             presentationMode={presentationMode}
+            sittingOut={players.find(p => p.user_id === user?.id)?.sitting_out}
             key={game.current_game_uuid} gameId={gameId!} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
             dealerPosition={game.dealer_position || 1} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace}
             sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange}

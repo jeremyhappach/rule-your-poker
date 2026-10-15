@@ -7,6 +7,8 @@ function clock(match: Match, at: number) {
 export function frameOf(match: Match): Frame {
   const round = match.rounds.at(-1);
   return structuredClone({ identity: match.identity, config: match.config, players: match.players, stake: match.stake,
+    ...(match.automaticPlayers ? {automaticPlayers: match.automaticPlayers} : {}),
+    ...(match.pausedAt !== undefined ? {pausedAt: match.pausedAt} : {}),
     roundId: round?.id ?? null, roundNumber: round?.number ?? 0, commitment: round?.secret.commitment ?? null,
     active_player_id: round?.active_player_id ?? null,
     liveBoards: round?.liveBoards ?? false, scorePresentation: round?.scorePresentation ?? null,
@@ -68,6 +70,8 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
 }
 function startTurn(match: Match, round: Round, board: Board, at: number, requestId: string) {
   round.active_player_id = board.playerId;
+  if (match.config.firstPlacementSeconds !== undefined)
+    board.firstPlacementDeadline = at + match.config.firstPlacementSeconds * 1000;
   board.revision++;
   event(match, 'turn_started', at, null, requestId, {active_player_id: board.playerId});
   present(match, round, board, at, requestId);
@@ -121,6 +125,8 @@ export interface ActionResult { state: Match; status: 'accepted' | 'duplicate' |
 /** Pure transactional specification. Only an authenticated server supplies principal and at. */
 export function applyCommand(input: Match, command: Command, principal: Principal, at: number): ActionResult {
   const reject = (reason: string): ActionResult => ({ state: input, status: 'rejected', reason });
+  if (input.pausedAt != null) return reject('paused');
+  if (principal.kind === 'player' && input.automaticPlayers?.includes(command.playerId)) return reject('automatic_play');
   if (principal.kind === 'player' && (principal.playerId !== command.playerId || command.intent.type === 'expire')) return reject('unauthorized');
   if (!input.players.some(p => p.id === command.playerId) || !isUuid(command.requestId)) return reject('unauthorized');
   const i = command.identity;
@@ -167,6 +173,7 @@ export function applyCommand(input: Match, command: Command, principal: Principa
       if (board.startedAt === null) {
         board.startedAt = at;
         board.deadline = at + duration(match.config);
+        if (board.firstPlacementDeadline !== undefined) board.firstPlacementDeadline = null;
       }
       board.columns[command.intent.column].push(card);
     }
@@ -189,6 +196,25 @@ export function settlementIntent(match: Match): SettlementIntent | null {
   if (!match.winnerId) return null;
   return {key: `run21:${match.identity.dealerGameId}:${match.identity.handNumber}`, winnerId: match.winnerId,
     loserId: match.players.find(p => p.id !== match.winnerId)!.id, amount: match.stake};
+}
+/** Service-only timeout transition. Money mode comes from persisted admission. */
+export function expireFirstPlacement(input: Match, at: number, realMoney: boolean): Match {
+  const round = input.rounds.at(-1), id = round?.active_player_id;
+  const board = id ? round!.boards[id] : null;
+  if (input.players.find(player => player.id === id)?.kind !== 'human') return input;
+  if (!id || !board || board.result || board.startedAt !== null || board.firstPlacementDeadline == null ||
+      at < board.firstPlacementDeadline || input.pausedAt != null || input.automaticPlayers?.includes(id)) return input;
+  clock(input, at);
+  const match = structuredClone(input);
+  if (realMoney) {
+    match.pausedAt = at;
+    match.rounds.at(-1)!.boards[id].firstPlacementDeadline = at + match.config.firstPlacementSeconds! * 1000;
+  } else {
+    match.automaticPlayers = [...(match.automaticPlayers ?? []), id];
+    match.rounds.at(-1)!.boards[id].firstPlacementDeadline = null;
+  }
+  event(match, 'first_placement_timeout', at, id, null, {realMoney});
+  return match;
 }
 /** Records a receipt from the existing settlement infrastructure; never transfers money. */
 export function recordSettlement(input: Match, receipt: SettlementReceipt): Match {

@@ -4,7 +4,7 @@ import {cleanup,fireEvent,render} from '@testing-library/react';
 import {GameSelection} from '@/components/GameSelection';
 const access=vi.hoisted(()=>({allowed:true}));
 vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>access.allowed}));
-vi.mock('@/hooks/useRun21AppTestAccess',()=>({useRun21AppTestAccess:()=>false}));
+vi.mock('@/hooks/useRun21Access',()=>({useRun21Access:()=>false}));
 vi.mock('@/lib/debugHarness/activeHarnessWarning',()=>({useActiveHarnessMap:()=>({})}));
 afterEach(()=>{cleanup();access.allowed=true;});
 describe('TriTowers production selection',()=>{

@@ -1,29 +1,22 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { run21AppTestRequested } from '@/lib/run21/appTestEnvironment';
-import { acceptsRun21Capability } from '@/lib/run21/appTestAccess';
+import { acceptsRun21Capability, run21ProjectRef } from '@/lib/run21/access';
 
 /** Discovery only. Every future gameplay/creation/join RPC must authorize again. */
-export function useRun21AppTestAccess(sessionId: string | null = null): boolean {
+export function useRun21Access(sessionId: string | null = null): boolean {
   const [access, setAccess] = useState<{ sessionId: string | null; allowed: boolean } | null>(null);
   useEffect(() => {
     let disposed = false;
     let generation = 0;
-    const production = import.meta.env.VITE_SUPABASE_URL === 'https://xvhmbuppghwmwpwrkzao.supabase.co';
-    const projectRef = production ? 'xvhmbuppghwmwpwrkzao' : import.meta.env.VITE_RUN21_TEST_PROJECT_REF ?? '';
-    if (!run21AppTestRequested({
-      lane: typeof __RUN21_APP_TEST_LANE__ !== 'undefined' && __RUN21_APP_TEST_LANE__,
-      enabled: production ? 'true' : import.meta.env.VITE_RUN21_APP_TEST_ENABLED,
-      productionAuthority: production ? 'vercel' : undefined,
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL, projectRef,
-    })) return;
+    const projectRef = run21ProjectRef(import.meta.env.VITE_SUPABASE_URL);
+    if (!projectRef) return;
 
     const refresh = async (userId: string | null) => {
       const requestGeneration = ++generation;
       setAccess(null);
       if (!userId) return;
       try {
-        const { data, error } = await supabase.rpc('run21_app_test_capabilities' as never, {
+        const { data, error } = await supabase.rpc('run21_capabilities' as never, {
           p_session_id: sessionId,
         } as never);
         if (!disposed && generation === requestGeneration) {

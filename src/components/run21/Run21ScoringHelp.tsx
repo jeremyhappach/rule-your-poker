@@ -11,7 +11,7 @@ export function Run21ScoringReference(){
     <p>Round score = multiplier × remaining speed bonus.</p>
     <p>Any bust or timer expiration scores 0.</p>
     <p>One Pass per round.</p>
-    <p>The timer starts when you place your first card. Once started, it continues while this reference is open.</p>
+    <p>The speed timer starts when you place your first card. A separate first-placement deadline applies to each new turn. If it expires, real-money sessions pause; fake-money players auto-complete and sit out the next hand. Once started, the speed timer continues while this reference is open.</p>
   </div>;
 }
 /** Presentation state only: never dispatches an engine command or changes the clock. */

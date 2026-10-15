@@ -1,5 +1,16 @@
 # Repository map
 
+Run21 production authority: migration `20261015133432_run21_production_authority`
+installs financial, recovery, admission and pause/participation bridges;
+`20261015133715_activate_run21_production` opens qualified new-match admission.
+The component SQL under `supabase/run21/` remains qualification input. The existing
+`server/run21/authority.ts` stays the rules owner; `server/run21/recovery.ts`
+provides bounded fresh-worker execution through service RPCs, bundled by
+`supabase/functions/run21-recovery/index.ts`. `useRun21Access.ts` and
+`src/lib/run21/access.ts` own production capability discovery. Local SQL and
+two-browser proofs live in `supabase/tests/run21/`; current release gates and
+evidence are in `RUN21_PRODUCTION_QUALIFICATION.md`.
+
 TriTowers: `supabase/tri-towers/authority.sql` and `services.sql` are unapplied
 database candidates. `src/lib/triTowers` defines redacted projections/client
 contracts and an offline-only reference engine; `useTriTowers.ts` owns live

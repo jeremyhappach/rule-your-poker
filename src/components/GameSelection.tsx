@@ -4,7 +4,7 @@ import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveHarnessMap } from "@/lib/debugHarness/activeHarnessWarning";
 import { useTriTowersTestAccess } from '@/hooks/useTriTowersTestAccess';
-import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
+import { useRun21Access } from '@/hooks/useRun21Access';
 import { TRI_TOWERS } from '@/lib/triTowers/model';
 
 /** Red "H" badge — shown only when a game's harness would actually execute. */
@@ -40,7 +40,7 @@ export const GameSelection = ({
   onEndSession,
   sessionId = null,
 }: GameSelectionProps) => {
-  const run21Allowed = useRun21AppTestAccess(sessionId);
+  const run21Allowed = useRun21Access(sessionId);
   const triTowersAllowed = useTriTowersTestAccess(sessionId);
   const otherAllowed = run21Allowed || triTowersAllowed;
   // Canonical runtime predicate (master gate + per-game selection).

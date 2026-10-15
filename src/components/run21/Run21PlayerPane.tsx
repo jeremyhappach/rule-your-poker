@@ -8,7 +8,7 @@ export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projecti
   if(!board)return null;
   if(view.scorePresentation)return null;
   if(!view.revealed&&view.active_player_id!==view.viewerId) return null;
-  const active=!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
+  const active=view.pausedAt==null&&!view.automaticPlayers?.includes(view.viewerId!)&&!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
   return <div className="run21-player-actions" data-run21-player-actions>
     <button className="run21-collect-button" type="button" disabled={!active||!canFinish(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
       {aggregate(board,view.config)<97?'Give Up':'Take Win'} <small>{aggregate(board,view.config)}</small>
@@ -21,8 +21,13 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
   const board=view.boards[displayedPlayerId(view)];
   if(!board)return <span className="run21-timer-caption">Watching Run21</span>;
   if(view.revealed)return null;
+  const at=view.pausedAt??now;
+  if(board.startedAt===null&&board.firstPlacementDeadline!=null&&!view.automaticPlayers?.includes(board.playerId)) {
+    const seconds=Math.max(0,Math.ceil((board.firstPlacementDeadline-at)/1000));
+    return <span className="run21-timer-caption" role="timer" aria-label="First placement time remaining">{view.pausedAt!=null?'Paused · ':''}Place your first card · {seconds}s</span>;
+  }
   const full=duration(view.config);
-  const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??now)));
+  const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??at)));
   const percent=100*remaining/full;
   const speed=Math.min(250,Math.ceil(remaining/1000));
   return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><div className="run21-timer" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
