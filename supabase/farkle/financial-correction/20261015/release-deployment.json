@@ -1,0 +1,89 @@
+{
+  "at": "2026-10-15T21:29:57.478351+00:00",
+  "productCommit": "887bdb4e4d03e6c74f412178cc140bf621d8b0e0",
+  "deployment": {
+    "id": "dpl_8QB6Lgab8dZrxfbQXWpPhsjvf5kZ",
+    "name": "ptown-poker",
+    "url": "ptown-poker-i0ahbxvs0-jeremy-8e2b.vercel.app",
+    "type": "LAMBDAS",
+    "state": "READY",
+    "createdAt": 1792099580637,
+    "creator": {
+      "uid": "5ySPjYAGsh7KrY6wzwzAFjtr",
+      "username": "jeremyhappach"
+    },
+    "project": {
+      "id": "prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds",
+      "name": "ptown-poker",
+      "framework": "vite"
+    },
+    "meta": {
+      "githubCommitRef": "main",
+      "githubCommitSha": "887bdb4e4d03e6c74f412178cc140bf621d8b0e0",
+      "githubCommitMessage": "fix: enforce Farkle account authority and preserve terminal HUD",
+      "githubRepo": "rule-your-poker",
+      "githubOrg": "jeremyhappach"
+    },
+    "alias": [
+      "holm357.com",
+      "ptown-poker.vercel.app",
+      "ptown-poker-jeremy-8e2b.vercel.app",
+      "ptown-poker-git-main-jeremy-8e2b.vercel.app"
+    ],
+    "target": "production",
+    "regions": [
+      "iad1"
+    ],
+    "buildingAt": 1792099634791,
+    "ready": 1792099705504,
+    "readyState": "READY",
+    "source": "git",
+    "aliasError": null
+  },
+  "manifestVerified": true,
+  "liveBundleVerified": true,
+  "productionConfigTestOnly": false,
+  "gate": {
+    "singleton": true,
+    "admin_only": false,
+    "creation_enabled": true,
+    "production_defaults_approved": true
+  },
+  "recovery": {
+    "singleton": true,
+    "last_outcome": "completed",
+    "safety_cursor": 5,
+    "last_duration_ms": 8,
+    "last_safety_task": "yahtzee",
+    "last_completed_at": "2026-10-15T21:29:56.807141+00:00",
+    "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+    "last_safety_task_at": "2026-10-15T21:29:56.798706+00:00",
+    "consecutive_partial_failures": 0
+  },
+  "jobs": [
+    {
+      "jobid": 33,
+      "active": true,
+      "command": "CALL private.run_game_recovery_batch();",
+      "schedule": "1 second"
+    },
+    {
+      "jobid": 38,
+      "active": true,
+      "command": "SET statement_timeout = '3s'; SELECT private.run21_dispatch_recovery()",
+      "schedule": "5 seconds"
+    }
+  ],
+  "allQualifiedRoutineHashesMatch": true,
+  "unrelatedRoutinesUnchanged": 443,
+  "history": {
+    "hash": "6c9854d820b8fa02002aaa2da18b360f",
+    "count": 20
+  },
+  "results": {
+    "hash": "f6da030858d0efae3b51d91bb0ff1e55",
+    "count": 32808
+  },
+  "noSyntheticProductionSessionsOrFinancialTransactions": true,
+  "ownerRuntimeSmoke": "pending"
+}

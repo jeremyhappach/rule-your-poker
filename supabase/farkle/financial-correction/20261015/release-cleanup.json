@@ -4,5 +4,15 @@
   "verifiedAbsent": true,
   "supabaseStopped": true,
   "installedTooling": [],
-  "productionSyntheticWrites": 0
+  "productionSyntheticWrites": 0,
+  "nativePostgresStopped": true,
+  "dockerDesktopStopped": true,
+  "listenersRemaining": [],
+  "verifiedPorts": [
+    5177,
+    5178,
+    57321,
+    57322,
+    55439
+  ]
 }
