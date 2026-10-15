@@ -1,35 +1,26 @@
 # Backlog
 
-## P1 — Queued — independent Farkle financial audit — October 15, 2026
+## P0 — Qualified, migration installed — Farkle financial correction — October 15, 2026
 
-- Status: `Queued`; high priority. Jeremy explicitly places this as the next
-  separate task immediately after Run21 production acceptance. Do not begin
-  investigation during the financial release-gate documentation task.
-- Provenance: Jeremy's October 15 permanent financial release-gate directive,
-  following the Run21 production release at
-  `df53b62d168c8d76a3c08dfca74267556cd66afb`. Run21 exposed a gap between internal
-  game bookkeeping and canonical settlement. No Farkle financial defect is
-  asserted; prior gameplay/continuation smoke does not independently qualify
-  its financial authority.
-- Scope: independently inspect Farkle's deployed settlement authority, actual
-  canonical player-chip mutations, existing financial journal/transfer ledger,
-  game results, final player snapshots, idempotency keys/indexes/locks and
-  durable disconnect/zero-client recovery. Establish the exact authoritative
-  identities and transaction boundary; do not infer correctness from Run21,
-  internal scores, private balances or historical summaries.
-- Required proof: apply every requirement in
-  [the mandatory financial release gate](WORKFLOW.md#mandatory-financial-release-gate)
-  using actual database authority and financial triggers, with rollback-contained
-  synthetic fixtures. Verify exact balance deltas and balanced canonical ledger
-  entries, atomic result/snapshot persistence and injected-failure rollback;
-  winner/tie, duplicate/replay/late-replay, concurrent callers, authorization,
-  stake validation, disconnect, zero-client/worker recovery, terminal lifecycle
-  and postgame continuation. Verify no synthetic records remain.
-- Deliverable: independent `PASS`, `FAIL` or `MISSING` evidence by acceptance
-  requirement, exact owner-level gaps if any, and the smallest recommended
-  correction for Jeremy's approval. A failed or missing proof is a release
-  blocker. Preserve existing production sessions and financial history; do not
-  repair or backfill them as part of investigation.
+- All local release gates pass: 100 database assertions, 72 focused tests,
+  2,360 regression tests, typecheck, build, and all corrected two-browser lifecycle scenarios.
+- Active-account and recovery/action deadlock correction migration 20261015212154
+  is installed and verified. The frontend HUD correction awaits publication verification;
+  admission remains closed until that final gate passes. Production history is unchanged.
+- Preserve existing database participation/dealer policy: completed dealer games
+  continue normally; only authoritative session_ended admits Session Ended.
+- Evidence and original reproduction remain in [FARKLE_FINANCIAL_CORRECTION.md](FARKLE_FINANCIAL_CORRECTION.md).
+  Owner production smoke remains the final runtime acceptance.
+
+## Resolved — existing broad-suite qualification failures — October 15, 2026
+
+Jeremy authorized the three-file correction. Run Back mocks now implement the
+current signed-out Auth subscription/session interface. The ante source assertion
+checks the current typed identity/null gate while retaining timer/pause/resume checks.
+The Holm isolation test checks its actual assembled BEGIN/ROLLBACK artifact, includes
+the entire extension, and rejects commits. Its assembler can emit stdout without
+leaving generated files. All original 36 failures are resolved; no tests skipped.
+The actual Holm proof passed against the isolated stack with rollback verified.
 
 ## Implemented — real-money dealer setup rejection — October 6, 2026
 

@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-15T21:21:29.702Z",
+  "sourceRoutinesCompared": 453,
+  "sourceAndAclDrift": 0,
+  "migration": "supabase/migrations/20261015212154_farkle_active_account_and_recovery_lock_order.sql",
+  "migrationSha256": "fb0eded8d755354f1a45a4964cc6398ff04795e4f900dea40d14e6abe8ca7d44",
+  "originalAndRepeatApplicationPassed": true,
+  "rollback": true,
+  "lockTimeout": "5s",
+  "statementTimeout": "30s",
+  "functions": [
+    {
+      "signature": "farkle_advance_postgame(uuid,uuid,uuid,integer)",
+      "hash": "7a91f9df414410d6fdaa6ac441caa51a",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "private.advance_due_canonical_game_timers(integer)",
+      "hash": "e6a5040550c194284986f9a8de248eb5",
+      "acl": "{tri_test=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "hash": "cd7e21dc835c35e3df967482022ca598",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "set_game_paused(uuid,boolean,uuid,bigint)",
+      "hash": "1fa2220c33734d1cf14c11f3eaef432b",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test}"
+    },
+    {
+      "signature": "set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)",
+      "hash": "a69f39fefb234c3b01114c8049fdbbb6",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test}"
+    },
+    {
+      "signature": "submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)",
+      "hash": "c633a318c7f2605104c92e03d3b3b09a",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "private.farkle_require_active_actor_v1(uuid,uuid,boolean)",
+      "hash": "737a88469182ec1f515903886aed832b",
+      "acl": "{tri_test=X/tri_test}"
+    },
+    {
+      "signature": "farkle_apply_action(uuid,uuid,text,bigint,uuid,jsonb)",
+      "hash": "a265d4492773a9a008e7cb47f949f6a9",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "advance_ante_phase(uuid,uuid)",
+      "hash": "e9f1b6b65a404f94d68d535ed9f6ecb2",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test,service_role=X/tri_test}"
+    },
+    {
+      "signature": "set_session_player_intent(uuid,uuid,bigint,uuid,text,boolean)",
+      "hash": "0ac84e381210d0395b93e09feaf2b1db",
+      "acl": "{tri_test=X/tri_test,authenticated=X/tri_test}"
+    },
+    {
+      "signature": "private.farkle_claim_v1(uuid,uuid,uuid,text)",
+      "hash": "67d21bf8f9fbff95471b4c993715d6bb",
+      "acl": "{tri_test=X/tri_test}"
+    }
+  ],
+  "deployedVersion": "20261015212154",
+  "deployedHashesAndPrivilegesMatch": true,
+  "localOwnerMapping": "tri_test -> postgres only; all existing production ACLs equal pre-migration byte-for-byte",
+  "unrelatedRoutinesUnchanged": 443,
+  "historyAndResultsUnchanged": true
+}

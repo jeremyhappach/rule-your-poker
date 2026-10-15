@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-15T20:46:35.858095+00:00",
+  "cron": [
+    {
+      "jobid": 33,
+      "active": true,
+      "command": "CALL private.run_game_recovery_batch();",
+      "schedule": "1 second"
+    },
+    {
+      "jobid": 38,
+      "active": true,
+      "command": "SET statement_timeout = '3s'; SELECT private.run21_dispatch_recovery()",
+      "schedule": "5 seconds"
+    }
+  ],
+  "release": {
+    "singleton": true,
+    "admin_only": false,
+    "creation_enabled": false,
+    "production_defaults_approved": true
+  },
+  "recovery": {
+    "singleton": true,
+    "last_outcome": "completed",
+    "safety_cursor": 2,
+    "last_duration_ms": 5,
+    "last_safety_task": "holm",
+    "last_completed_at": "2026-10-15T20:46:35.839526+00:00",
+    "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+    "last_safety_task_at": "2026-10-15T20:46:35.83427+00:00",
+    "consecutive_partial_failures": 0
+  },
+  "run21_close_hash": "e57f2fcd24eee243f38c9696c7ac1e54"
+}

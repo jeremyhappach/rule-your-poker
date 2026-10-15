@@ -1,5 +1,33 @@
 # Durable decision log
 
+## October 15, 2026 — dealer-game completion preserves session continuation
+
+Jeremy clarified that Farkle settlement/presentation completion is not session
+termination. The existing database participation and dealer-eligibility policy
+chooses game selection, dealer election, waiting or actual session end. Only an
+authoritative `session_ended` status admits the connected Session Ended table
+phase; fresh ended-session mounts go to the lobby. No new ending rules apply.
+
+The local Farkle HUD correction uses the existing canonical table after retiring
+its gameplay surface. Full-app continuation, insufficient participation, explicit
+end and Run21 fullscreen-to-neutral successor proofs pass. Server lifecycle rules
+and Run21 source are unchanged; release still requires the failed broad regression
+gate to pass. See [the evidence](FARKLE_FINANCIAL_CORRECTION.md).
+
+## October 15, 2026 — Farkle containment and authorization boundary
+
+Jeremy authorized closing new Farkle admission after proving the creation gate
+does not gate existing financial settlement, recovery or continuation. Creation
+is now closed; recovery stays running. Reopening requires the full financial
+gate, isolated two-browser terminal/history proof and deployed verification.
+
+Fresh active-account eligibility belongs at human command boundaries. The
+existing trusted recovery owner and sealed deferred financial trigger must still
+finish already-authorized obligations. The local candidate proves deactivation
+between a valid final action and journal COMMIT preserves atomic settlement,
+while rejecting subsequent human commands. The qualified database correction is installed;
+see [its qualification record](FARKLE_FINANCIAL_CORRECTION.md).
+
 ## October 15, 2026 — permanent atomic financial release gate
 
 Owner decision: no new game may be activated for production gameplay, including

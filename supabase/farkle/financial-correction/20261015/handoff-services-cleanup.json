@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-15T20:50:08.3493412Z",
+  "listeners": [],
+  "backedUpSyntheticFixtures": true,
+  "supabaseStopped": true,
+  "dockerDesktopStopped": true,
+  "nativePostgresStopped": true,
+  "supabaseProject": "farkle-full-stack",
+  "productionWrites": 0,
+  "additionalToolsInstalled": []
+}

@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import {spawn,spawnSync} from 'node:child_process';
+const status=JSON.parse(fs.readFileSync('qualification.local/farkle-full-stack/status.json'));
+if(status.API_URL!=='http://127.0.0.1:57321')throw Error('Local API required');
+const env={...process.env,VITE_SUPABASE_URL:status.API_URL,VITE_SUPABASE_PUBLISHABLE_KEY:status.ANON_KEY};
+const build=spawnSync(process.execPath,['node_modules/vite/bin/vite.js','build'],{env,encoding:'utf8',maxBuffer:16e6});
+fs.writeFileSync('qualification.local/farkle-full-stack/local-build.log',(build.stdout??'')+'\n'+(build.stderr??''));
+if(build.status!==0)throw Error('Local qualification build failed; see local-build.log');
+console.log('Local production build passed; starting preview without file watching.');
+const child=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','5177','--strictPort'],{env,stdio:'inherit'});
+child.on('exit',code=>process.exitCode=code??1);

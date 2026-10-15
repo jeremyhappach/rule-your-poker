@@ -13,6 +13,10 @@ vi.mock('@/lib/startupFlightRecorder', () => ({ recordStartupFlight: vi.fn(), re
 vi.mock('@/lib/dealerGameSetupAuthority', () => ({ configureDealerGame: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
+  auth: {
+    getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
+    onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+  },
   from: () => {
     const response = { data: { ante_amount: 3, rollover_amount: 1, leg_value: 1, legs_to_win: 3,
       pussy_tax_enabled: true, pussy_tax_value: 1, pot_max_enabled: true, pot_max_value: 10, chucky_cards: 4,

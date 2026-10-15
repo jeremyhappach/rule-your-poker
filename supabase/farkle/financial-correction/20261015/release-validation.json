@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-15T21:22:57.259Z",
+  "baseline": "2059a816ab8b0f3ad789210c3abeb86a6af34332",
+  "regression": {
+    "filesPassed": 313,
+    "testsPassed": 2360,
+    "testsFailed": 0,
+    "srcTests": 2119,
+    "harnessTests": 241
+  },
+  "targeted": {
+    "passed": 53,
+    "failed": 0,
+    "originalFailingFilesTests": 49,
+    "authCapabilityTests": 4
+  },
+  "focused": {
+    "passed": 72,
+    "failed": 0
+  },
+  "typecheck": "PASS",
+  "productionBuild": "PASS",
+  "browserEvidenceRetained": [
+    "handoff-browser-evidence.json",
+    "run21-handoff-evidence.json"
+  ],
+  "browserRepeatRequired": false,
+  "reason": "Only qualification files changed in this final pass; qualified product implementation unchanged."
+}

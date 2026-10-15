@@ -1,0 +1,177 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.config.ts",
+    "rootDir": "C:/Users/jerem/source/repos/rule-your-poker/supabase/farkle/financial-correction/20261015",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "line",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "qualification.local/farkle-full-stack/browser-production-build-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/jerem/source/repos/rule-your-poker/qualification.local/farkle-full-stack/browser-production-build-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/jerem/source/repos/rule-your-poker/supabase/farkle/financial-correction/20261015",
+        "testIgnore": [],
+        "testMatch": [
+          "browser.spec.ts"
+        ],
+        "timeout": 240000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "browser.spec.ts",
+      "file": "browser.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "two browsers: terminal balances, history and fresh mount",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 65446,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Back to Lobby', exact: true })\nExpected: visible\nTimeout: 45000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 45000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Back to Lobby', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Back to Lobby', exact: true })\nExpected: visible\nTimeout: 45000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 45000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Back to Lobby', exact: true })\u001b[22m\n\n    at C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.spec.ts:65:75",
+                    "location": {
+                      "file": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.spec.ts",
+                      "column": 75,
+                      "line": 65
+                    },
+                    "snippet": "  63 |   if(terminal){\n  64 |    for(const [i,p] of pages.entries()){\n> 65 |     await expect(p.getByRole('button',{name:'Back to Lobby',exact:true})).toBeVisible({timeout:45000});\n     |                                                                           ^\n  66 |     await expect(p.getByText('Session Ended',{exact:true}).first()).toBeVisible();\n  67 |     await expect(p.locator('[data-farkle-active-area]')).toHaveCount(0);\n  68 |     await p.screenshot({path:info.outputPath(`terminal-client-${i}.png`),fullPage:true});"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.spec.ts",
+                        "column": 75,
+                        "line": 65
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Back to Lobby', exact: true })\nExpected: visible\nTimeout: 45000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 45000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Back to Lobby', exact: true })\u001b[22m\n\n\n  63 |   if(terminal){\n  64 |    for(const [i,p] of pages.entries()){\n> 65 |     await expect(p.getByRole('button',{name:'Back to Lobby',exact:true})).toBeVisible({timeout:45000});\n     |                                                                           ^\n  66 |     await expect(p.getByText('Session Ended',{exact:true}).first()).toBeVisible();\n  67 |     await expect(p.locator('[data-farkle-active-area]')).toHaveCount(0);\n  68 |     await p.screenshot({path:info.outputPath(`terminal-client-${i}.png`),fullPage:true});\n    at C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.spec.ts:65:75"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T20:03:39.048Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\qualification.local\\farkle-full-stack\\browser-production-build-output\\browser-two-browsers-termi-292c5-ces-history-and-fresh-mount\\test-failed-1.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\qualification.local\\farkle-full-stack\\browser-production-build-output\\browser-two-browsers-termi-292c5-ces-history-and-fresh-mount\\test-failed-2.png"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\qualification.local\\farkle-full-stack\\browser-production-build-output\\browser-two-browsers-termi-292c5-ces-history-and-fresh-mount\\trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\jerem\\source\\repos\\rule-your-poker\\supabase\\farkle\\financial-correction\\20261015\\browser.spec.ts",
+                    "column": 75,
+                    "line": 65
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "fbeac1b2decfba2c3acd-6595b074c3c7a636eb11",
+          "file": "browser.spec.ts",
+          "line": 8,
+          "column": 39
+        },
+        {
+          "title": "two browsers: continuation and Run Back",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "fbeac1b2decfba2c3acd-67e367201d690a1323c2",
+          "file": "browser.spec.ts",
+          "line": 8,
+          "column": 39
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 1 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-15T20:03:38.467Z",
+    "duration": 67576.719,
+    "expected": 0,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

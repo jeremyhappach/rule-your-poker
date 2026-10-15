@@ -1,3 +1,39 @@
+# Farkle correction — 2026-10-15 — qualified; migration installed
+
+All mandatory local gates pass: 2,360 regression tests in 313 files, 72 focused
+tests, 100 financial/recovery assertions, typecheck and production build. The six
+required two-browser lifecycle scenarios and additional Run Back, rotation,
+make-it-take-it, History and fresh-mount evidence remain valid. Only qualification
+files changed in the final pass; the already-proven product implementation was preserved.
+
+Migration 20261015212154 is installed. All 11 qualified routine hashes match;
+existing ACLs, 443 unrelated routine definitions, all 20 Farkle rounds and 32,808
+result rows are unchanged. Recovery remains healthy. New Farkle admission stays
+closed until the matching frontend deployment is READY and verified. No synthetic
+production sessions or financial transactions were created. The existing
+server-owned continuation policy remains authoritative; ordinary dealer-game
+completion never implies session termination.
+
+The three existing qualification issues are corrected without removing tests or
+weakening authorization, timer or rollback coverage. The assembled Holm proof
+also passed its actual settlement/replay/recovery checks and 96 entropy cases;
+rollback restored all inspected state. See [the correction report](FARKLE_FINANCIAL_CORRECTION.md)
+and retained release evidence. Disposable database/Supabase services are stopped;
+no tooling was installed during this final qualification.
+
+# Independent Farkle financial audit — 2026-10-15 — FAIL (preceding evidence)
+
+The [independent audit](FARKLE_FINANCIAL_AUDIT.md) proves canonical +5/−5
+settlement, balanced committed transfers, matching snapshots, atomic rollback,
+replay/concurrency safety and durable recovery using reproduced deployed
+authority. All 16 retained completed production games reconcile read-only.
+Qualification nevertheless fails: deactivated authenticated participants can
+still settle real-money Farkle and configure Run Back. A recovery/action
+lock-order deadlock is also documented; financial writes remain atomic.
+Fresh two-browser terminal/history acceptance was missing. The independent audit
+itself changed no production data, SQL, admission settings or gameplay code.
+The subsequently approved containment/correction is recorded above.
+
 # Permanent financial release gate — 2026-10-15
 
 Effective immediately, every new game must pass the

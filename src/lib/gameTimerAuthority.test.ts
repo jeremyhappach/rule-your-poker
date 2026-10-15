@@ -31,7 +31,8 @@ describe('canonical game timer ownership', () => {
     expect(anteSource).toContain('submitAnteDecision({');
     expect(anteSource).toContain('new Date(anteDecisionDeadline).getTime() - Date.now()');
     expect(anteSource).not.toContain('timeLeft <= 0 && !hasDecided');
-    expect(gameSource).toContain('setAnteDialogIdentity({');
+    expect(gameSource).toContain('setAnteDialogIdentity(anteGameType ? {');
+    expect(gameSource).toMatch(/setAnteDialogIdentity\(anteGameType \? \{[^}]*dealerGameId: game\.current_game_uuid,[^}]*gameType: anteGameType,[^}]*\} : null\)/);
     expect(gameSource).toContain('playerId: freshCurrentPlayer.id');
     expect(gameSource).toContain('playerId={exactAnteIdentity.playerId}');
     expect(gameSource).not.toContain("playerId={currentPlayer?.id || ''}");

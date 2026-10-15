@@ -1,0 +1,178 @@
+{
+  "at": "2026-10-15T19:23:19.959243+00:00",
+  "cron": [
+    {
+      "jobid": 33,
+      "active": true,
+      "command": "CALL private.run_game_recovery_batch();",
+      "schedule": "1 second"
+    },
+    {
+      "jobid": 38,
+      "active": true,
+      "command": "SET statement_timeout = '3s'; SELECT private.run21_dispatch_recovery()",
+      "schedule": "5 seconds"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "11e218b3-d9a8-484c-b9c3-bb23bd1ab2a2",
+      "hash": "70b12d4aae398f323bf6747ba6b42ed4",
+      "status": "completed"
+    },
+    {
+      "id": "29e40fc9-1077-42b2-82cf-88233ee9ff72",
+      "hash": "824440addf8e96cb8e33a5ff5cbbe343",
+      "status": "completed"
+    },
+    {
+      "id": "2d5c110a-c617-473c-974f-7c22bde11003",
+      "hash": "4c13e9ba57fa7935bbfa12206530f1de",
+      "status": "completed"
+    },
+    {
+      "id": "53326e94-ce85-4b9b-9122-e0bcbf6b0e9d",
+      "hash": "23f315116cf4587b993d5fc91206c600",
+      "status": "completed"
+    },
+    {
+      "id": "5ba032c2-7d88-46b6-aea8-b65106f7fd02",
+      "hash": "594a90b4ac4eab005bacdc5f3efcfb91",
+      "status": "betting"
+    },
+    {
+      "id": "683b395f-4fa2-4a73-a5d0-134ba1462b11",
+      "hash": "012997e71f5a1edd3c2cdd065d46f3a9",
+      "status": "betting"
+    },
+    {
+      "id": "6a3cf950-69f1-4f27-b6f7-040f97fc2ee8",
+      "hash": "d0bf604d26c0315c95980461a909b564",
+      "status": "completed"
+    },
+    {
+      "id": "7a3f6092-f5f6-4d87-bf88-c3c942053993",
+      "hash": "9d44b964077af28a5c751dc5b5c05e07",
+      "status": "completed"
+    },
+    {
+      "id": "9c58ffb0-256e-4eea-822e-911bb6ac8034",
+      "hash": "a56dc75badd21c0b9ec59078c27bd0d0",
+      "status": "completed"
+    },
+    {
+      "id": "9ea25b7c-4591-4878-974f-823d15c6bd40",
+      "hash": "aab753d0eee43a7dc0c6e1118e8ff968",
+      "status": "completed"
+    },
+    {
+      "id": "a582a290-727d-4d69-aa18-28dac3749b68",
+      "hash": "da2dd963b7064e044fafa2a15997b48e",
+      "status": "betting"
+    },
+    {
+      "id": "b22b08db-7da4-4865-b0b2-c286e7e1fcd9",
+      "hash": "1ba37df67006bd17e5d46c5a0dfcc0f3",
+      "status": "completed"
+    },
+    {
+      "id": "b6e8c747-7da2-410f-ac3d-dbd91437a8e6",
+      "hash": "ec6bf9dd2937cd802a5e3e89ac2ba5e2",
+      "status": "completed"
+    },
+    {
+      "id": "c286afb0-f09a-43a5-8e17-d4ee0c9310d8",
+      "hash": "a5c34b7e2f55700caa394b7b5df5dec2",
+      "status": "completed"
+    },
+    {
+      "id": "cca95caf-b63f-482a-aa97-a59059e06e5b",
+      "hash": "7f8cced64acc297c277c38397257600c",
+      "status": "completed"
+    },
+    {
+      "id": "d3b8d3ae-52e6-4fcd-84bd-daab9b404f2a",
+      "hash": "f579143670d441bf6156ce7f5eb9835e",
+      "status": "completed"
+    },
+    {
+      "id": "d5a8905b-1405-47a4-b4b3-0c7dfa4c9525",
+      "hash": "e231995a9e34d4914730bf516c241051",
+      "status": "betting"
+    },
+    {
+      "id": "db92fce0-4073-4fcf-a3f8-ed4fc0510a04",
+      "hash": "51c00825ce7c50dc68e5f10f1ea13fef",
+      "status": "completed"
+    },
+    {
+      "id": "e5613602-7054-4029-85d9-f03820d73dbd",
+      "hash": "333d18cfd90dc8994f79459ca1e654ee",
+      "status": "completed"
+    },
+    {
+      "id": "e5c6ee37-bdfb-4610-a187-e0ad5b3cd1c9",
+      "hash": "7a3f1cb7e4b648d55cef6957f4b72c84",
+      "status": "completed"
+    }
+  ],
+  "release": {
+    "singleton": true,
+    "admin_only": false,
+    "creation_enabled": false,
+    "production_defaults_approved": true
+  },
+  "balances": {
+    "0effb366-d85c-44b9-853f-898447840799": 1,
+    "21f6d142-dc5e-4838-a7ba-5f8cd92d3774": -2,
+    "25c8c565-abaa-45a0-832e-e7b633f36068": 1,
+    "28bed0d2-aaf7-435a-b1a4-cb29f10a594a": 0,
+    "33d52616-1f56-4445-ac5c-93ce153ad559": 0,
+    "441d85fd-c478-49ee-98fa-789e2ff65805": 1,
+    "49d2d12d-b753-4fac-a47e-7b6355e1d11a": -1,
+    "5221a93e-feb3-4aae-8db2-52a3825f2397": 0,
+    "5516f47b-6821-4b7e-88e4-05a38157e83e": -1,
+    "57cc32f8-25f3-4fc5-8034-61d1129fe744": -1,
+    "60cf77d9-f8a6-4409-a763-87813678a841": 2,
+    "618296e4-aeae-4c75-bc83-a805a8c925eb": -1,
+    "64634da3-1db7-4971-9c61-9b5cf3ef90d5": -1,
+    "665ecf06-09e5-4631-9355-1d13f83644a8": 1,
+    "6f83ccd6-e091-4204-9eb3-1a86e41fc54a": -2,
+    "74179020-d2b0-471e-989c-94a5c88423e2": -1,
+    "860d3449-82d5-4225-bbc4-6860a500e07b": 0,
+    "889e0376-048c-4018-b033-bfc5b1b4f6ba": 1,
+    "899f6523-4a46-4fb2-920f-1ec76e080e40": 1,
+    "8aa6e443-e384-4722-b575-a44fd148924f": 0,
+    "a1321872-5d83-4631-b9fe-0285e352ff10": -1,
+    "a3a887ba-7bd8-4b6b-a63a-9658b1d40c7f": 1,
+    "a3d58782-1f35-4468-9a8f-36acad1e8762": -1,
+    "a5900448-5133-4dec-badc-908877e5f255": 0,
+    "a77aec27-f5c0-41ab-ab2c-98c7e1407e3b": 0,
+    "ab4bd4db-387b-489a-abbe-e76c0013fde1": -1,
+    "abd0a191-fd4f-4e63-944c-c1eac8559da8": 1,
+    "b3b5d63a-d66e-40b2-9185-f0d1e30f739b": 1,
+    "b621476b-a948-4902-9383-f2253a878de0": -1,
+    "b6516edf-f923-45e6-b7df-c876d6d3a645": -1,
+    "bc4e9d54-8cf5-4b3b-9963-38040c30f6bf": 2,
+    "c0b37a6a-55f9-428d-8b9f-4a391886b469": -1,
+    "c45259ff-a239-4db1-99b4-3a967faed929": -1,
+    "c82b2eb9-8bb5-4066-b0ac-eb31cb7d0aeb": 1,
+    "c82c2080-d455-4b58-8261-6172fd38b8d5": 1,
+    "cd1104f7-e880-4c21-940b-a2ce909a6442": -1,
+    "edbdaacb-57c2-4af5-82d3-5d4cc4f05149": 0,
+    "f4101157-4621-4f11-9920-0975e29976ed": 2,
+    "f5a7c101-2b26-46da-bd84-a97b05b0cfdd": 1
+  },
+  "dispatch": {
+    "singleton": true,
+    "last_outcome": "completed",
+    "safety_cursor": 1,
+    "last_duration_ms": 6,
+    "last_safety_task": "canonical_timers",
+    "last_completed_at": "2026-10-15T19:23:19.189969+00:00",
+    "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+    "last_safety_task_at": "2026-10-15T19:23:19.184215+00:00",
+    "consecutive_partial_failures": 0
+  },
+  "resultsHash": "474775bac436ecc13d42a0dc21395843"
+}

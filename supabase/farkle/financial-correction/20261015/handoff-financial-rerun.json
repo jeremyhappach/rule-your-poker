@@ -1,0 +1,2351 @@
+{
+  "at": "2026-10-15T20:43:40.065Z",
+  "proofs": {
+    "containment-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Closed gate rejects new Farkle setup",
+          "status": "PASS",
+          "error": "farkle:creation_disabled"
+        },
+        {
+          "name": "Closed gate permits existing canonical financial completion",
+          "status": "PASS",
+          "game": "5e9e447a-bc4e-4643-901f-428f23533b76",
+          "dealerGame": "c5e545bb-7698-4c67-9deb-aef7034cfa93",
+          "round": "5f4f30ca-6254-4a7e-84ea-7a70bc9e22f4",
+          "winner": "51fcfc47-1af0-4a31-8bbc-b50fef9f9c20",
+          "before": {
+            "e2223b42-528e-4c77-b769-8dbaf78086a1": 0,
+            "51fcfc47-1af0-4a31-8bbc-b50fef9f9c20": 0
+          },
+          "after": {
+            "51fcfc47-1af0-4a31-8bbc-b50fef9f9c20": 5,
+            "e2223b42-528e-4c77-b769-8dbaf78086a1": -5
+          },
+          "transferBatch": {
+            "id": "96c3bdf5-e0a2-4b14-96d5-e567914e1b66",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "5e9e447a-bc4e-4643-901f-428f23533b76",
+            "transfers": [
+              {
+                "id": "5e9e447a-bc4e-4643-901f-428f23533b76:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "51fcfc47-1af0-4a31-8bbc-b50fef9f9c20"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "e2223b42-528e-4c77-b769-8dbaf78086a1"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:57.660861-05:00",
+            "dealer_game_id": "c5e545bb-7698-4c67-9deb-aef7034cfa93",
+            "closing_balances": {
+              "player:51fcfc47-1af0-4a31-8bbc-b50fef9f9c20": 5,
+              "player:e2223b42-528e-4c77-b769-8dbaf78086a1": -5
+            },
+            "opening_balances": {
+              "player:51fcfc47-1af0-4a31-8bbc-b50fef9f9c20": 0,
+              "player:e2223b42-528e-4c77-b769-8dbaf78086a1": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "7a0ce331-bd56-46d9-b748-000933a7b641",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Closed gate permits trusted recovery settlement",
+          "status": "PASS",
+          "game": "95247105-0e2f-4dd2-8330-ed0066cd9716",
+          "dealerGame": "d7cd63f0-b034-410d-97b0-396144b2a908",
+          "round": "52a29824-fc8d-4d5a-a4cd-552f47501c1a",
+          "winner": "22f7e452-8bdb-4395-a983-a29bdec0f2c0",
+          "before": {
+            "f61c073c-e166-4877-89a9-8a0c73933ef3": 0,
+            "22f7e452-8bdb-4395-a983-a29bdec0f2c0": 0
+          },
+          "after": {
+            "22f7e452-8bdb-4395-a983-a29bdec0f2c0": 5,
+            "f61c073c-e166-4877-89a9-8a0c73933ef3": -5
+          },
+          "transferBatch": {
+            "id": "02994d2a-2a76-4ff9-9e3a-5516d94035bb",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "95247105-0e2f-4dd2-8330-ed0066cd9716",
+            "transfers": [
+              {
+                "id": "95247105-0e2f-4dd2-8330-ed0066cd9716:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "22f7e452-8bdb-4395-a983-a29bdec0f2c0"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "f61c073c-e166-4877-89a9-8a0c73933ef3"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:57.660861-05:00",
+            "dealer_game_id": "d7cd63f0-b034-410d-97b0-396144b2a908",
+            "closing_balances": {
+              "player:22f7e452-8bdb-4395-a983-a29bdec0f2c0": 5,
+              "player:f61c073c-e166-4877-89a9-8a0c73933ef3": -5
+            },
+            "opening_balances": {
+              "player:22f7e452-8bdb-4395-a983-a29bdec0f2c0": 0,
+              "player:f61c073c-e166-4877-89a9-8a0c73933ef3": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "af2ca59a-2a40-4621-8bd4-a3790be8e0ce",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Closed gate permits postgame cleanup and continuation",
+          "status": "game_selection"
+        },
+        {
+          "name": "Closed gate rejects Run Back",
+          "status": "PASS",
+          "error": "farkle:creation_disabled"
+        },
+        {
+          "name": "Closed Farkle gate permits continuation into Horses",
+          "status": "PASS"
+        }
+      ],
+      "errors": []
+    },
+    "auth-corrected-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Inactive final bank denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive postgame denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive automation denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive pause denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive ante advance denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive ante decision denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive successor intent denied false",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "All inactive commands preserve authoritative and financial state false",
+          "status": "PASS"
+        },
+        {
+          "name": "Trusted clientless recovery settles with inactive participant",
+          "status": "PASS",
+          "game": "b96f7870-c77c-42f0-851d-221c2847ac24",
+          "dealerGame": "e4baf111-6714-40d3-9b0d-dce390e4866c",
+          "round": "158f2406-be32-43d4-969a-a34dd92c1a6c",
+          "winner": "ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3",
+          "before": {
+            "bec82c53-e2eb-4e4e-8e2c-d6bd474b7d49": 0,
+            "ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3": 0
+          },
+          "after": {
+            "bec82c53-e2eb-4e4e-8e2c-d6bd474b7d49": -5,
+            "ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3": 5
+          },
+          "transferBatch": {
+            "id": "20a6fd47-fdeb-4b35-959f-c436a2eab13d",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "b96f7870-c77c-42f0-851d-221c2847ac24",
+            "transfers": [
+              {
+                "id": "b96f7870-c77c-42f0-851d-221c2847ac24:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "bec82c53-e2eb-4e4e-8e2c-d6bd474b7d49"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:57.942637-05:00",
+            "dealer_game_id": "e4baf111-6714-40d3-9b0d-dce390e4866c",
+            "closing_balances": {
+              "player:bec82c53-e2eb-4e4e-8e2c-d6bd474b7d49": -5,
+              "player:ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3": 5
+            },
+            "opening_balances": {
+              "player:bec82c53-e2eb-4e4e-8e2c-d6bd474b7d49": 0,
+              "player:ddefa2c6-e78f-4e2d-a8ef-be0a90c5e8a3": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "06f9f400-55ce-4f86-b8a2-df0b7787e221",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Inactive final bank denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive postgame denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive automation denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive pause denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive ante advance denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive ante decision denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive successor intent denied true",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "All inactive commands preserve authoritative and financial state true",
+          "status": "PASS"
+        },
+        {
+          "name": "Inactive real-money human safely pauses; recovery makes no unauthorized bank",
+          "status": "PASS"
+        },
+        {
+          "name": "Active non-admin real-money final action succeeds",
+          "status": "PASS",
+          "game": "826d7d45-06d3-4bfb-8d3f-94e1b9fa549a",
+          "dealerGame": "6d293c77-0e64-47b2-9b89-70f3a43a0a78",
+          "round": "c7b69567-56fd-4dff-8a10-2f1247c3bee2",
+          "winner": "531485ec-e631-4667-a17b-4866f86c9bee",
+          "before": {
+            "72aaecab-397c-40c4-b60e-49f574b30f0a": 0,
+            "531485ec-e631-4667-a17b-4866f86c9bee": 0
+          },
+          "after": {
+            "531485ec-e631-4667-a17b-4866f86c9bee": 5,
+            "72aaecab-397c-40c4-b60e-49f574b30f0a": -5
+          },
+          "transferBatch": {
+            "id": "bb995d07-145b-4c18-a6dc-556a04257682",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "826d7d45-06d3-4bfb-8d3f-94e1b9fa549a",
+            "transfers": [
+              {
+                "id": "826d7d45-06d3-4bfb-8d3f-94e1b9fa549a:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "531485ec-e631-4667-a17b-4866f86c9bee"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "72aaecab-397c-40c4-b60e-49f574b30f0a"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:58.101121-05:00",
+            "dealer_game_id": "6d293c77-0e64-47b2-9b89-70f3a43a0a78",
+            "closing_balances": {
+              "player:531485ec-e631-4667-a17b-4866f86c9bee": 5,
+              "player:72aaecab-397c-40c4-b60e-49f574b30f0a": -5
+            },
+            "opening_balances": {
+              "player:531485ec-e631-4667-a17b-4866f86c9bee": 0,
+              "player:72aaecab-397c-40c4-b60e-49f574b30f0a": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "6d8ef797-93d3-4c58-842e-813dc7bd2d5c",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Inactive real-money Run Back denied",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Reactivated eligible dealer admitted with new successor identity",
+          "status": "PASS"
+        },
+        {
+          "name": "Inactive direct ante write denied",
+          "status": "PASS",
+          "error": "permission denied for table players"
+        },
+        {
+          "name": "Inactive direct successor intent write denied",
+          "status": "PASS",
+          "error": "permission denied for table players"
+        }
+      ],
+      "errors": []
+    },
+    "corrected-proof-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Canonical non-admin setup and ante start",
+          "status": "PASS",
+          "game": "a5f72222-cec7-41ea-9e01-67bbc339f019",
+          "round": "d09101fa-20ae-454d-8052-7d41070a22b9"
+        },
+        {
+          "name": "result failure rolls back whole final action",
+          "status": "PASS",
+          "error": "audit_injected_result"
+        },
+        {
+          "name": "snapshot failure rolls back whole final action",
+          "status": "PASS",
+          "error": "audit_injected_snapshot"
+        },
+        {
+          "name": "terminal failure rolls back whole final action",
+          "status": "PASS",
+          "error": "audit_injected_terminal"
+        },
+        {
+          "name": "journal failure rolls back whole final action",
+          "status": "PASS",
+          "error": "audit_injected_journal"
+        },
+        {
+          "name": "Outsider final action",
+          "status": "PASS",
+          "error": "farkle:not_authorized"
+        },
+        {
+          "name": "Browser direct settlement",
+          "status": "PASS",
+          "error": "permission denied for schema private"
+        },
+        {
+          "name": "Browser chip write",
+          "status": "PASS",
+          "error": "permission denied for table players"
+        },
+        {
+          "name": "Two-player 5-chip canonical settlement",
+          "status": "PASS",
+          "game": "a5f72222-cec7-41ea-9e01-67bbc339f019",
+          "dealerGame": "8d40cbcf-982a-4d8e-bc66-93f349465fb9",
+          "round": "d09101fa-20ae-454d-8052-7d41070a22b9",
+          "winner": "21d2b858-d416-4ef8-8409-0a05dec2c10b",
+          "before": {
+            "6326bd14-2632-4cd5-82f6-48aafa877e6e": 0,
+            "21d2b858-d416-4ef8-8409-0a05dec2c10b": 0
+          },
+          "after": {
+            "21d2b858-d416-4ef8-8409-0a05dec2c10b": 5,
+            "6326bd14-2632-4cd5-82f6-48aafa877e6e": -5
+          },
+          "transferBatch": {
+            "id": "eee9457a-e315-47a2-ab61-1b87bd78a460",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "a5f72222-cec7-41ea-9e01-67bbc339f019",
+            "transfers": [
+              {
+                "id": "a5f72222-cec7-41ea-9e01-67bbc339f019:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "21d2b858-d416-4ef8-8409-0a05dec2c10b"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "6326bd14-2632-4cd5-82f6-48aafa877e6e"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:58.786322-05:00",
+            "dealer_game_id": "8d40cbcf-982a-4d8e-bc66-93f349465fb9",
+            "closing_balances": {
+              "player:21d2b858-d416-4ef8-8409-0a05dec2c10b": 5,
+              "player:6326bd14-2632-4cd5-82f6-48aafa877e6e": -5
+            },
+            "opening_balances": {
+              "player:21d2b858-d416-4ef8-8409-0a05dec2c10b": 0,
+              "player:6326bd14-2632-4cd5-82f6-48aafa877e6e": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "f22567a2-9da3-49f1-abc8-8d1ac997176b",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Duplicate final request no financial effects",
+          "status": "PASS"
+        },
+        {
+          "name": "Duplicate settlement no financial effects",
+          "status": "PASS"
+        },
+        {
+          "name": "Late new final request rejected",
+          "status": "PASS"
+        },
+        {
+          "name": "Authorized history replay identifies exact terminal round",
+          "status": "PASS"
+        },
+        {
+          "name": "Run Back fresh identity; duplicate continuation and old financial replays are inert",
+          "status": "PASS",
+          "successor": "def05141-7616-4bc9-a30b-c3cb17033b94"
+        },
+        {
+          "name": "Rollback removes complete synthetic session",
+          "status": "PASS"
+        },
+        {
+          "name": "Four-player +15/-5/-5/-5 distribution",
+          "status": "PASS",
+          "game": "5189a582-2422-4cde-892d-9b593eb345c9",
+          "dealerGame": "7f65c71e-9658-4a76-9a82-cecbc6c057c3",
+          "round": "982124c7-d136-4890-b29d-a23f9f0bf6d6",
+          "winner": "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e",
+          "before": {
+            "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e": 0,
+            "478715ff-8d21-467a-b6a6-3bd856cd6562": 0,
+            "6188eb81-6b6c-4056-8498-dbb3181eaef4": 0,
+            "cbf06c1d-7f39-4e66-9c60-89b72d135484": 0
+          },
+          "after": {
+            "478715ff-8d21-467a-b6a6-3bd856cd6562": -5,
+            "6188eb81-6b6c-4056-8498-dbb3181eaef4": -5,
+            "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e": 15,
+            "cbf06c1d-7f39-4e66-9c60-89b72d135484": -5
+          },
+          "transferBatch": {
+            "id": "0fe7454a-3a09-4857-be42-916bbd72e47c",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "5189a582-2422-4cde-892d-9b593eb345c9",
+            "transfers": [
+              {
+                "id": "5189a582-2422-4cde-892d-9b593eb345c9:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "478715ff-8d21-467a-b6a6-3bd856cd6562"
+                },
+                "amount": 5
+              },
+              {
+                "id": "5189a582-2422-4cde-892d-9b593eb345c9:1:2",
+                "to": {
+                  "kind": "player",
+                  "playerId": "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "6188eb81-6b6c-4056-8498-dbb3181eaef4"
+                },
+                "amount": 5
+              },
+              {
+                "id": "5189a582-2422-4cde-892d-9b593eb345c9:1:3",
+                "to": {
+                  "kind": "player",
+                  "playerId": "a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "cbf06c1d-7f39-4e66-9c60-89b72d135484"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:58.944951-05:00",
+            "dealer_game_id": "7f65c71e-9658-4a76-9a82-cecbc6c057c3",
+            "closing_balances": {
+              "player:478715ff-8d21-467a-b6a6-3bd856cd6562": -5,
+              "player:6188eb81-6b6c-4056-8498-dbb3181eaef4": -5,
+              "player:a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e": 15,
+              "player:cbf06c1d-7f39-4e66-9c60-89b72d135484": -5
+            },
+            "opening_balances": {
+              "player:478715ff-8d21-467a-b6a6-3bd856cd6562": 0,
+              "player:6188eb81-6b6c-4056-8498-dbb3181eaef4": 0,
+              "player:a1a3ad20-89df-433f-90f3-1b4cfd6d5a3e": 0,
+              "player:cbf06c1d-7f39-4e66-9c60-89b72d135484": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "9abfdc7b-191b-4e36-9498-e6c36104abcd",
+          "snapshotCount": 4
+        },
+        {
+          "name": "Real-money final session canonical settlement",
+          "status": "PASS",
+          "game": "9fd13c7f-e580-4a1e-b7ec-fef4bace2db9",
+          "dealerGame": "ee441a09-21f4-40c7-b943-906acb76e25d",
+          "round": "04d69182-1452-4233-98f0-9eb9fb3ea3f1",
+          "winner": "6b11e6d2-e228-4841-b5d9-f52bb8ba2e62",
+          "before": {
+            "c390f342-eba1-4487-8917-c2dcff004a4d": 0,
+            "6b11e6d2-e228-4841-b5d9-f52bb8ba2e62": 0
+          },
+          "after": {
+            "6b11e6d2-e228-4841-b5d9-f52bb8ba2e62": 5,
+            "c390f342-eba1-4487-8917-c2dcff004a4d": -5
+          },
+          "transferBatch": {
+            "id": "3eb165a1-6f36-44cf-a2cd-09f94270929d",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "9fd13c7f-e580-4a1e-b7ec-fef4bace2db9",
+            "transfers": [
+              {
+                "id": "9fd13c7f-e580-4a1e-b7ec-fef4bace2db9:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "6b11e6d2-e228-4841-b5d9-f52bb8ba2e62"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "c390f342-eba1-4487-8917-c2dcff004a4d"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.027755-05:00",
+            "dealer_game_id": "ee441a09-21f4-40c7-b943-906acb76e25d",
+            "closing_balances": {
+              "player:6b11e6d2-e228-4841-b5d9-f52bb8ba2e62": 5,
+              "player:c390f342-eba1-4487-8917-c2dcff004a4d": -5
+            },
+            "opening_balances": {
+              "player:6b11e6d2-e228-4841-b5d9-f52bb8ba2e62": 0,
+              "player:c390f342-eba1-4487-8917-c2dcff004a4d": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "06b6a4b8-f19e-4309-a03a-cf154dee196e",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Real-money SessionResult credits only at terminal session",
+          "status": "PASS",
+          "transactions": [
+            {
+              "amount": 5,
+              "type": "SessionResult"
+            },
+            {
+              "amount": -5,
+              "type": "SessionResult"
+            }
+          ]
+        },
+        {
+          "name": "2-player all-tie continues without financial writes",
+          "status": "PASS"
+        },
+        {
+          "name": "2-player tiebreak eventual fixed-stake winner",
+          "status": "PASS",
+          "game": "1dc8811e-dd41-47a4-bff5-d8aa5c70ab7b",
+          "dealerGame": "0a4f84e5-b95d-4c1f-8cfd-ada2c779229b",
+          "round": "6959955c-1aca-4c99-84d5-5052593c1636",
+          "winner": "6eb62551-1d35-4540-a9c8-fb9efc194781",
+          "before": {
+            "0a2502e8-a9eb-4e26-8013-9d5fbb8dffb8": 0,
+            "6eb62551-1d35-4540-a9c8-fb9efc194781": 0
+          },
+          "after": {
+            "0a2502e8-a9eb-4e26-8013-9d5fbb8dffb8": -5,
+            "6eb62551-1d35-4540-a9c8-fb9efc194781": 5
+          },
+          "transferBatch": {
+            "id": "d87b18c0-b8e1-4ebf-b0a2-fb976394d4b5",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "1dc8811e-dd41-47a4-bff5-d8aa5c70ab7b",
+            "transfers": [
+              {
+                "id": "1dc8811e-dd41-47a4-bff5-d8aa5c70ab7b:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "6eb62551-1d35-4540-a9c8-fb9efc194781"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "0a2502e8-a9eb-4e26-8013-9d5fbb8dffb8"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.063167-05:00",
+            "dealer_game_id": "0a4f84e5-b95d-4c1f-8cfd-ada2c779229b",
+            "closing_balances": {
+              "player:0a2502e8-a9eb-4e26-8013-9d5fbb8dffb8": -5,
+              "player:6eb62551-1d35-4540-a9c8-fb9efc194781": 5
+            },
+            "opening_balances": {
+              "player:0a2502e8-a9eb-4e26-8013-9d5fbb8dffb8": 0,
+              "player:6eb62551-1d35-4540-a9c8-fb9efc194781": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "d74baa6a-bf5f-497e-a239-4dae164b8d5d",
+          "snapshotCount": 2
+        },
+        {
+          "name": "3-player all-tie continues without financial writes",
+          "status": "PASS"
+        },
+        {
+          "name": "3-player tiebreak eventual fixed-stake winner",
+          "status": "PASS",
+          "game": "f0c0c2e1-fd56-49e7-a362-799faff25c68",
+          "dealerGame": "2505b6fc-5d29-42de-bd48-0d6607dd4b51",
+          "round": "cab4ff1a-6645-45db-8f77-4e6e07d8441d",
+          "winner": "79b4b3ed-26dd-4b04-b84d-21b56ae8280e",
+          "before": {
+            "b9a1ed72-1b2e-420e-841c-e7adc5062fcc": 0,
+            "79b4b3ed-26dd-4b04-b84d-21b56ae8280e": 0,
+            "d183df2e-af11-4841-8d05-37829ea6688f": 0
+          },
+          "after": {
+            "79b4b3ed-26dd-4b04-b84d-21b56ae8280e": 10,
+            "b9a1ed72-1b2e-420e-841c-e7adc5062fcc": -5,
+            "d183df2e-af11-4841-8d05-37829ea6688f": -5
+          },
+          "transferBatch": {
+            "id": "753a3118-69f2-4de8-a080-275a31d8ce95",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "f0c0c2e1-fd56-49e7-a362-799faff25c68",
+            "transfers": [
+              {
+                "id": "f0c0c2e1-fd56-49e7-a362-799faff25c68:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "79b4b3ed-26dd-4b04-b84d-21b56ae8280e"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "b9a1ed72-1b2e-420e-841c-e7adc5062fcc"
+                },
+                "amount": 5
+              },
+              {
+                "id": "f0c0c2e1-fd56-49e7-a362-799faff25c68:1:2",
+                "to": {
+                  "kind": "player",
+                  "playerId": "79b4b3ed-26dd-4b04-b84d-21b56ae8280e"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "d183df2e-af11-4841-8d05-37829ea6688f"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.120965-05:00",
+            "dealer_game_id": "2505b6fc-5d29-42de-bd48-0d6607dd4b51",
+            "closing_balances": {
+              "player:79b4b3ed-26dd-4b04-b84d-21b56ae8280e": 10,
+              "player:b9a1ed72-1b2e-420e-841c-e7adc5062fcc": -5,
+              "player:d183df2e-af11-4841-8d05-37829ea6688f": -5
+            },
+            "opening_balances": {
+              "player:79b4b3ed-26dd-4b04-b84d-21b56ae8280e": 0,
+              "player:b9a1ed72-1b2e-420e-841c-e7adc5062fcc": 0,
+              "player:d183df2e-af11-4841-8d05-37829ea6688f": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "c698d9ae-49c2-487e-859b-ca7e3441a834",
+          "snapshotCount": 3
+        },
+        {
+          "name": "Stale sequence cannot change finances",
+          "status": "PASS"
+        },
+        {
+          "name": "Client payout helper inaccessible",
+          "status": "PASS",
+          "error": "permission denied for function settle_gameplay_chip_transfers"
+        },
+        {
+          "name": "Client cannot replace frozen scores",
+          "status": "PASS",
+          "error": "permission denied for function farkle_require_claim_v1"
+        },
+        {
+          "name": "Bank cannot accept forged dice or score payload",
+          "status": "PASS",
+          "error": "farkle:unexpected_selection"
+        },
+        {
+          "name": "Invalid stake 0",
+          "status": "PASS",
+          "error": "configure_dealer_game:invalid_ante"
+        },
+        {
+          "name": "Invalid stake -5",
+          "status": "PASS",
+          "error": "configure_dealer_game:invalid_ante"
+        },
+        {
+          "name": "Invalid stake 1000001",
+          "status": "PASS",
+          "error": "farkle:invalid_frozen_config"
+        },
+        {
+          "name": "Real-money human expiry pauses without scoring or financial movement",
+          "status": "PASS",
+          "outcome": {
+            "outcome": "paused",
+            "is_paused": true,
+            "paused_at": "2026-10-15T15:42:59.265288-05:00",
+            "pause_version": 1,
+            "remaining_seconds": 180
+          }
+        },
+        {
+          "name": "Canonical resume preserves the same competition",
+          "status": "PASS"
+        },
+        {
+          "name": "Zero-browser canonical timer settles final scoring boundary",
+          "status": "PASS",
+          "game": "08eda122-b3c3-43d4-8a11-696407333cb4",
+          "dealerGame": "32d30950-1403-4816-8dce-886614d8d12a",
+          "round": "349c330c-bf2b-49f9-9606-28d62480b834",
+          "winner": "f95d230a-4b67-4f8e-8ac8-1406b9de9fa1",
+          "before": {
+            "f78b802e-629f-4e40-b763-f324034ac674": 0,
+            "f95d230a-4b67-4f8e-8ac8-1406b9de9fa1": 0
+          },
+          "after": {
+            "f78b802e-629f-4e40-b763-f324034ac674": -5,
+            "f95d230a-4b67-4f8e-8ac8-1406b9de9fa1": 5
+          },
+          "transferBatch": {
+            "id": "ec431b51-38fb-4ee5-8649-3952a7868d99",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "08eda122-b3c3-43d4-8a11-696407333cb4",
+            "transfers": [
+              {
+                "id": "08eda122-b3c3-43d4-8a11-696407333cb4:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "f95d230a-4b67-4f8e-8ac8-1406b9de9fa1"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "f78b802e-629f-4e40-b763-f324034ac674"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.273803-05:00",
+            "dealer_game_id": "32d30950-1403-4816-8dce-886614d8d12a",
+            "closing_balances": {
+              "player:f78b802e-629f-4e40-b763-f324034ac674": -5,
+              "player:f95d230a-4b67-4f8e-8ac8-1406b9de9fa1": 5
+            },
+            "opening_balances": {
+              "player:f78b802e-629f-4e40-b763-f324034ac674": 0,
+              "player:f95d230a-4b67-4f8e-8ac8-1406b9de9fa1": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "72d22954-01e1-42fa-afae-91fc832b0e22",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Recovery retry does not settle twice",
+          "status": "PASS"
+        },
+        {
+          "name": "Raw race same_request",
+          "status": "OBSERVED",
+          "outcomes": [
+            {
+              "outcome": "applied",
+              "deduped": true
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Committed independent-connection same_request",
+          "status": "PASS",
+          "game": "3402a34f-28da-400e-a12c-8be9818f84f5",
+          "dealerGame": "c4fa6f2d-354e-4f3d-9515-f5d386cd4021",
+          "round": "17f8dece-d4a9-4a6e-8d12-d54557b60054",
+          "winner": "871479f4-390d-489a-b4c9-a25915246430",
+          "before": {
+            "8f530998-a50a-4231-8c88-f61d57a47b0c": 0,
+            "871479f4-390d-489a-b4c9-a25915246430": 0
+          },
+          "after": {
+            "871479f4-390d-489a-b4c9-a25915246430": 5,
+            "8f530998-a50a-4231-8c88-f61d57a47b0c": -5
+          },
+          "transferBatch": {
+            "id": "d47f0194-394d-4bda-bef0-11b9d295bbb3",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "3402a34f-28da-400e-a12c-8be9818f84f5",
+            "transfers": [
+              {
+                "id": "3402a34f-28da-400e-a12c-8be9818f84f5:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "871479f4-390d-489a-b4c9-a25915246430"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "8f530998-a50a-4231-8c88-f61d57a47b0c"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.383245-05:00",
+            "dealer_game_id": "c4fa6f2d-354e-4f3d-9515-f5d386cd4021",
+            "closing_balances": {
+              "player:871479f4-390d-489a-b4c9-a25915246430": 5,
+              "player:8f530998-a50a-4231-8c88-f61d57a47b0c": -5
+            },
+            "opening_balances": {
+              "player:871479f4-390d-489a-b4c9-a25915246430": 0,
+              "player:8f530998-a50a-4231-8c88-f61d57a47b0c": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "b505201f-93b0-4c85-98ad-8cc1430c366f",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Race outcomes same_request",
+          "status": "PASS",
+          "outcomes": [
+            {
+              "outcome": "applied",
+              "deduped": true
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Concurrent postgame same_request",
+          "status": "PASS",
+          "outcomes": [
+            "advanced",
+            "already_advanced"
+          ]
+        },
+        {
+          "name": "Raw race different_requests",
+          "status": "OBSERVED",
+          "outcomes": [
+            {
+              "outcome": "stale_identity"
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Committed independent-connection different_requests",
+          "status": "PASS",
+          "game": "8b65ebd2-5ccd-407d-9201-efeb3cde1b45",
+          "dealerGame": "334fca87-ff10-411a-be21-a95e6beeb42a",
+          "round": "8a9bfe49-05c7-43a5-874c-30fbba1089bc",
+          "winner": "6e65f957-f4cb-4167-816b-e391dc094095",
+          "before": {
+            "9eff7e7c-6685-4312-970e-58ab0547bef8": 0,
+            "6e65f957-f4cb-4167-816b-e391dc094095": 0
+          },
+          "after": {
+            "6e65f957-f4cb-4167-816b-e391dc094095": 5,
+            "9eff7e7c-6685-4312-970e-58ab0547bef8": -5
+          },
+          "transferBatch": {
+            "id": "7ae6683b-cd2e-4cd0-98dd-847fd8e11b70",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "8b65ebd2-5ccd-407d-9201-efeb3cde1b45",
+            "transfers": [
+              {
+                "id": "8b65ebd2-5ccd-407d-9201-efeb3cde1b45:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "6e65f957-f4cb-4167-816b-e391dc094095"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "9eff7e7c-6685-4312-970e-58ab0547bef8"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.64834-05:00",
+            "dealer_game_id": "334fca87-ff10-411a-be21-a95e6beeb42a",
+            "closing_balances": {
+              "player:6e65f957-f4cb-4167-816b-e391dc094095": 5,
+              "player:9eff7e7c-6685-4312-970e-58ab0547bef8": -5
+            },
+            "opening_balances": {
+              "player:6e65f957-f4cb-4167-816b-e391dc094095": 0,
+              "player:9eff7e7c-6685-4312-970e-58ab0547bef8": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "c9a6005c-5461-4d83-8caf-6ac17a630173",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Race outcomes different_requests",
+          "status": "PASS",
+          "outcomes": [
+            {
+              "outcome": "stale_identity"
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Concurrent postgame different_requests",
+          "status": "PASS",
+          "outcomes": [
+            "advanced",
+            "already_advanced"
+          ]
+        },
+        {
+          "name": "Raw race recovery_action",
+          "status": "OBSERVED",
+          "outcomes": [
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Committed independent-connection recovery_action",
+          "status": "PASS",
+          "game": "8dfcc96c-ce0b-43d0-9865-65d29cae5a74",
+          "dealerGame": "59ac843d-feb5-452e-b3e4-62ac6c257006",
+          "round": "2a8d1c75-d544-4533-aecd-db30c5032fa8",
+          "winner": "f7b08832-2c30-4a94-9ae6-d02b9214a19a",
+          "before": {
+            "12f6a742-474a-4dae-877b-2b4de3ea65c8": 0,
+            "f7b08832-2c30-4a94-9ae6-d02b9214a19a": 0
+          },
+          "after": {
+            "12f6a742-474a-4dae-877b-2b4de3ea65c8": -5,
+            "f7b08832-2c30-4a94-9ae6-d02b9214a19a": 5
+          },
+          "transferBatch": {
+            "id": "83c8eadd-8b38-4cb4-8f33-01ee9701d6ff",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "8dfcc96c-ce0b-43d0-9865-65d29cae5a74",
+            "transfers": [
+              {
+                "id": "8dfcc96c-ce0b-43d0-9865-65d29cae5a74:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "f7b08832-2c30-4a94-9ae6-d02b9214a19a"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "12f6a742-474a-4dae-877b-2b4de3ea65c8"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:59.868715-05:00",
+            "dealer_game_id": "59ac843d-feb5-452e-b3e4-62ac6c257006",
+            "closing_balances": {
+              "player:12f6a742-474a-4dae-877b-2b4de3ea65c8": -5,
+              "player:f7b08832-2c30-4a94-9ae6-d02b9214a19a": 5
+            },
+            "opening_balances": {
+              "player:12f6a742-474a-4dae-877b-2b4de3ea65c8": 0,
+              "player:f7b08832-2c30-4a94-9ae6-d02b9214a19a": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "9aad0ef4-73ec-4de8-9c15-5cc212b7c100",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Race outcomes recovery_action",
+          "status": "PASS",
+          "outcomes": [
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            },
+            {
+              "outcome": "applied",
+              "deduped": false
+            }
+          ]
+        },
+        {
+          "name": "Concurrent postgame recovery_action",
+          "status": "PASS",
+          "outcomes": [
+            "advanced",
+            "already_advanced"
+          ]
+        },
+        {
+          "name": "Raw race two_recovery_workers",
+          "status": "OBSERVED",
+          "outcomes": [
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            },
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            }
+          ]
+        },
+        {
+          "name": "Durable retry after two_recovery_workers",
+          "status": "OBSERVED",
+          "retry": {
+            "failed": 0,
+            "outcome": "completed",
+            "processed": 1
+          }
+        },
+        {
+          "name": "Committed independent-connection two_recovery_workers",
+          "status": "PASS",
+          "game": "e89adafa-7898-4d1e-96c4-75cb53bd0d73",
+          "dealerGame": "9f2fb701-fa48-4725-aed0-e284f80ef0a5",
+          "round": "8c0186c3-b4ef-49db-84cd-23bf5c800d53",
+          "winner": "a0646714-2087-411f-bc58-024dcf4c5929",
+          "before": {
+            "c0a5ae0f-282c-43a8-ae9b-60867517616c": 0,
+            "a0646714-2087-411f-bc58-024dcf4c5929": 0
+          },
+          "after": {
+            "a0646714-2087-411f-bc58-024dcf4c5929": 5,
+            "c0a5ae0f-282c-43a8-ae9b-60867517616c": -5
+          },
+          "transferBatch": {
+            "id": "2e08009c-8f0b-4b3d-8be7-508edb39b890",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "e89adafa-7898-4d1e-96c4-75cb53bd0d73",
+            "transfers": [
+              {
+                "id": "e89adafa-7898-4d1e-96c4-75cb53bd0d73:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "a0646714-2087-411f-bc58-024dcf4c5929"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "c0a5ae0f-282c-43a8-ae9b-60867517616c"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:05.730956-05:00",
+            "dealer_game_id": "9f2fb701-fa48-4725-aed0-e284f80ef0a5",
+            "closing_balances": {
+              "player:a0646714-2087-411f-bc58-024dcf4c5929": 5,
+              "player:c0a5ae0f-282c-43a8-ae9b-60867517616c": -5
+            },
+            "opening_balances": {
+              "player:a0646714-2087-411f-bc58-024dcf4c5929": 0,
+              "player:c0a5ae0f-282c-43a8-ae9b-60867517616c": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "dc4ba0b7-b569-498b-a59f-b502286f0bfc",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Race outcomes two_recovery_workers",
+          "status": "PASS",
+          "outcomes": [
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            },
+            {
+              "outcome": "completed",
+              "processed": 0,
+              "failed": 0
+            }
+          ]
+        },
+        {
+          "name": "Concurrent postgame two_recovery_workers",
+          "status": "PASS",
+          "outcomes": [
+            "advanced",
+            "already_advanced"
+          ]
+        },
+        {
+          "name": "Worker termination before commit rolls back settlement",
+          "status": "PASS"
+        },
+        {
+          "name": "Fresh worker completes interrupted settlement exactly once",
+          "status": "PASS",
+          "game": "2b63849c-0852-4698-a37a-572c025970eb",
+          "dealerGame": "bc3b097f-6676-47f4-a320-889c15a69510",
+          "round": "d29c8ec5-cbf5-42b5-8149-af66207b26c3",
+          "winner": "4cf62b89-58ac-4152-a58c-d10c58858e98",
+          "before": {
+            "c1b09bd7-b9d2-434a-849d-abf11d214d61": 0,
+            "4cf62b89-58ac-4152-a58c-d10c58858e98": 0
+          },
+          "after": {
+            "4cf62b89-58ac-4152-a58c-d10c58858e98": 5,
+            "c1b09bd7-b9d2-434a-849d-abf11d214d61": -5
+          },
+          "transferBatch": {
+            "id": "33a4a107-dac1-434b-97df-c50c0aeb1534",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "2b63849c-0852-4698-a37a-572c025970eb",
+            "transfers": [
+              {
+                "id": "2b63849c-0852-4698-a37a-572c025970eb:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "4cf62b89-58ac-4152-a58c-d10c58858e98"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "c1b09bd7-b9d2-434a-849d-abf11d214d61"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:05.922166-05:00",
+            "dealer_game_id": "bc3b097f-6676-47f4-a320-889c15a69510",
+            "closing_balances": {
+              "player:4cf62b89-58ac-4152-a58c-d10c58858e98": 5,
+              "player:c1b09bd7-b9d2-434a-849d-abf11d214d61": -5
+            },
+            "opening_balances": {
+              "player:4cf62b89-58ac-4152-a58c-d10c58858e98": 0,
+              "player:c1b09bd7-b9d2-434a-849d-abf11d214d61": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "2838e8a5-2b80-4989-abda-a0e5b5bd8c0d",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Actual COMMIT-time journal rejection rolls back complete final action",
+          "status": "PASS"
+        },
+        {
+          "name": "Frozen dealer configuration rejects owner mutation",
+          "status": "PASS",
+          "error": "farkle:frozen_config_immutable"
+        },
+        {
+          "name": "Postgame rejects mismatched dealer identity",
+          "status": "PASS",
+          "error": "farkle_postgame:round_identity_mismatch"
+        },
+        {
+          "name": "Client cannot toggle accounting mode",
+          "status": "PASS",
+          "error": "permission denied for table games"
+        },
+        {
+          "name": "Server hot dice and Farkle lose unbanked points only",
+          "status": "PASS",
+          "hotDicePoints": 3000
+        },
+        {
+          "name": "Only tied leaders enter sudden death; original losers remain liable",
+          "status": "PASS"
+        },
+        {
+          "name": "Subset tie still collects all original stakes",
+          "status": "PASS",
+          "game": "9f2825c5-01fa-4c0f-9080-00862a551a34",
+          "dealerGame": "a1c19e0f-ef28-45a7-ad9f-a13733a1bbba",
+          "round": "fbc19a6c-9af2-4371-8646-3e4f672cf0f7",
+          "winner": "9a186b53-c1bc-44e1-94ef-932431b08610",
+          "before": {
+            "aa044d12-fa38-40b8-9bbc-b37c4b45ab71": 0,
+            "9a186b53-c1bc-44e1-94ef-932431b08610": 0,
+            "8f37baf1-a9ca-4fb0-b2f3-84b500b4ea9a": 0
+          },
+          "after": {
+            "8f37baf1-a9ca-4fb0-b2f3-84b500b4ea9a": -5,
+            "9a186b53-c1bc-44e1-94ef-932431b08610": 10,
+            "aa044d12-fa38-40b8-9bbc-b37c4b45ab71": -5
+          },
+          "transferBatch": {
+            "id": "4286b612-0682-4ab1-b69e-708088112ab1",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "9f2825c5-01fa-4c0f-9080-00862a551a34",
+            "transfers": [
+              {
+                "id": "9f2825c5-01fa-4c0f-9080-00862a551a34:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "9a186b53-c1bc-44e1-94ef-932431b08610"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "8f37baf1-a9ca-4fb0-b2f3-84b500b4ea9a"
+                },
+                "amount": 5
+              },
+              {
+                "id": "9f2825c5-01fa-4c0f-9080-00862a551a34:1:2",
+                "to": {
+                  "kind": "player",
+                  "playerId": "9a186b53-c1bc-44e1-94ef-932431b08610"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "aa044d12-fa38-40b8-9bbc-b37c4b45ab71"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.128683-05:00",
+            "dealer_game_id": "a1c19e0f-ef28-45a7-ad9f-a13733a1bbba",
+            "closing_balances": {
+              "player:8f37baf1-a9ca-4fb0-b2f3-84b500b4ea9a": -5,
+              "player:9a186b53-c1bc-44e1-94ef-932431b08610": 10,
+              "player:aa044d12-fa38-40b8-9bbc-b37c4b45ab71": -5
+            },
+            "opening_balances": {
+              "player:8f37baf1-a9ca-4fb0-b2f3-84b500b4ea9a": 0,
+              "player:9a186b53-c1bc-44e1-94ef-932431b08610": 0,
+              "player:aa044d12-fa38-40b8-9bbc-b37c4b45ab71": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "4d39eced-6356-47c3-b2f2-f1d32875dd1c",
+          "snapshotCount": 3
+        }
+      ],
+      "errors": []
+    },
+    "corrected-supplement-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Real-money health rejects stale scheduler",
+          "status": "PASS",
+          "health": {
+            "reason": "scheduler_heartbeat_stale",
+            "game_id": "69e53919-e666-483b-9868-46d5e084c63a",
+            "outcome": "unhealthy",
+            "checked_at": "2026-10-15T15:43:06.329238-05:00",
+            "overdue_timers": [],
+            "session_failures": [],
+            "admission_allowed": false,
+            "active_failure_tasks": [],
+            "scheduler_last_outcome": "completed",
+            "scheduler_last_duration_ms": null,
+            "scheduler_last_completed_at": "2026-10-15T14:43:06.329087-05:00",
+            "scheduler_consecutive_partial_failures": 0
+          }
+        },
+        {
+          "name": "Real-money health rejects failed scheduler",
+          "status": "PASS"
+        },
+        {
+          "name": "Real-money ordinary game has same fixed-stake ledger",
+          "status": "PASS",
+          "game": "3972c7bd-4cb0-42d0-95a8-0142fbd626ce",
+          "dealerGame": "ac0ac07a-1655-4cd5-9683-caba5943cfb0",
+          "round": "851b52db-accd-49bf-9988-268059da015d",
+          "winner": "ee593dea-e509-467e-9192-bbf865f0c84a",
+          "before": {
+            "2a092d0f-ac91-42f2-a8f4-c6f1c2c87919": 0,
+            "ee593dea-e509-467e-9192-bbf865f0c84a": 0
+          },
+          "after": {
+            "2a092d0f-ac91-42f2-a8f4-c6f1c2c87919": -5,
+            "ee593dea-e509-467e-9192-bbf865f0c84a": 5
+          },
+          "transferBatch": {
+            "id": "6902c575-936c-4b11-b297-f07f97d27540",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "3972c7bd-4cb0-42d0-95a8-0142fbd626ce",
+            "transfers": [
+              {
+                "id": "3972c7bd-4cb0-42d0-95a8-0142fbd626ce:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "ee593dea-e509-467e-9192-bbf865f0c84a"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "2a092d0f-ac91-42f2-a8f4-c6f1c2c87919"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.331673-05:00",
+            "dealer_game_id": "ac0ac07a-1655-4cd5-9683-caba5943cfb0",
+            "closing_balances": {
+              "player:2a092d0f-ac91-42f2-a8f4-c6f1c2c87919": -5,
+              "player:ee593dea-e509-467e-9192-bbf865f0c84a": 5
+            },
+            "opening_balances": {
+              "player:2a092d0f-ac91-42f2-a8f4-c6f1c2c87919": 0,
+              "player:ee593dea-e509-467e-9192-bbf865f0c84a": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "775523c6-3ff8-4501-bf91-ee5142f61a34",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Real-money account transactions wait for session closure",
+          "status": "PASS"
+        },
+        {
+          "name": "Seven-player +30 and six -5 debits",
+          "status": "PASS",
+          "game": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2",
+          "dealerGame": "b1f11e38-08f7-4c73-8d5e-e259a7788bb6",
+          "round": "6f527716-38a7-4a9f-9a3b-324ac8c0f052",
+          "winner": "b2f578af-d3b9-4f26-adc4-574dc052c570",
+          "before": {
+            "76f1a7b6-31cd-4680-b792-372a94fa8436": 0,
+            "9f1c5866-72e4-42fc-91d8-2d2e7929a867": 0,
+            "2c420682-24f4-4c0a-9ad3-69f4b0daa451": 0,
+            "332b94c2-6c48-4ed1-91fe-1a32e3c32677": 0,
+            "adbfa44b-63cb-4991-87ac-a1bc00c4d210": 0,
+            "b2884bac-85ca-40ba-adda-414924e4dce8": 0,
+            "b2f578af-d3b9-4f26-adc4-574dc052c570": 0
+          },
+          "after": {
+            "2c420682-24f4-4c0a-9ad3-69f4b0daa451": -5,
+            "332b94c2-6c48-4ed1-91fe-1a32e3c32677": -5,
+            "76f1a7b6-31cd-4680-b792-372a94fa8436": -5,
+            "9f1c5866-72e4-42fc-91d8-2d2e7929a867": -5,
+            "adbfa44b-63cb-4991-87ac-a1bc00c4d210": -5,
+            "b2884bac-85ca-40ba-adda-414924e4dce8": -5,
+            "b2f578af-d3b9-4f26-adc4-574dc052c570": 30
+          },
+          "transferBatch": {
+            "id": "eb6a5362-7fae-45a4-b86f-4a7036a8964c",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2",
+            "transfers": [
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "2c420682-24f4-4c0a-9ad3-69f4b0daa451"
+                },
+                "amount": 5
+              },
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:2",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "332b94c2-6c48-4ed1-91fe-1a32e3c32677"
+                },
+                "amount": 5
+              },
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:3",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "76f1a7b6-31cd-4680-b792-372a94fa8436"
+                },
+                "amount": 5
+              },
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:4",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "9f1c5866-72e4-42fc-91d8-2d2e7929a867"
+                },
+                "amount": 5
+              },
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:5",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "adbfa44b-63cb-4991-87ac-a1bc00c4d210"
+                },
+                "amount": 5
+              },
+              {
+                "id": "01978eca-ce2f-4a04-b0cf-d5ada541dbd2:1:6",
+                "to": {
+                  "kind": "player",
+                  "playerId": "b2f578af-d3b9-4f26-adc4-574dc052c570"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "b2884bac-85ca-40ba-adda-414924e4dce8"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.399043-05:00",
+            "dealer_game_id": "b1f11e38-08f7-4c73-8d5e-e259a7788bb6",
+            "closing_balances": {
+              "player:2c420682-24f4-4c0a-9ad3-69f4b0daa451": -5,
+              "player:332b94c2-6c48-4ed1-91fe-1a32e3c32677": -5,
+              "player:76f1a7b6-31cd-4680-b792-372a94fa8436": -5,
+              "player:9f1c5866-72e4-42fc-91d8-2d2e7929a867": -5,
+              "player:adbfa44b-63cb-4991-87ac-a1bc00c4d210": -5,
+              "player:b2884bac-85ca-40ba-adda-414924e4dce8": -5,
+              "player:b2f578af-d3b9-4f26-adc4-574dc052c570": 30
+            },
+            "opening_balances": {
+              "player:2c420682-24f4-4c0a-9ad3-69f4b0daa451": 0,
+              "player:332b94c2-6c48-4ed1-91fe-1a32e3c32677": 0,
+              "player:76f1a7b6-31cd-4680-b792-372a94fa8436": 0,
+              "player:9f1c5866-72e4-42fc-91d8-2d2e7929a867": 0,
+              "player:adbfa44b-63cb-4991-87ac-a1bc00c4d210": 0,
+              "player:b2884bac-85ca-40ba-adda-414924e4dce8": 0,
+              "player:b2f578af-d3b9-4f26-adc4-574dc052c570": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "4eec078c-7394-4161-aabe-425d47eb479f",
+          "snapshotCount": 7
+        },
+        {
+          "name": "All privileged Farkle financial helpers deny browser EXECUTE",
+          "status": "PASS"
+        },
+        {
+          "name": "Zero-browser full competition from opening roll",
+          "status": "PASS",
+          "game": "7d389cf1-0b9f-402b-a1e6-17e2dc14bbbe",
+          "dealerGame": "25a0d020-2f72-48db-85ad-14d72db829b4",
+          "round": "338f45c7-b370-4f30-bac8-9ea63acb3dd0",
+          "winner": "d01e58b9-ce23-4895-a776-3803dde40296",
+          "before": {
+            "8acbe570-44a9-494e-840e-182bb9e52160": 0,
+            "d01e58b9-ce23-4895-a776-3803dde40296": 0
+          },
+          "after": {
+            "8acbe570-44a9-494e-840e-182bb9e52160": -5,
+            "d01e58b9-ce23-4895-a776-3803dde40296": 5
+          },
+          "transferBatch": {
+            "id": "5422cd5d-5382-46d2-b2ee-81adb1c9f04f",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "7d389cf1-0b9f-402b-a1e6-17e2dc14bbbe",
+            "transfers": [
+              {
+                "id": "7d389cf1-0b9f-402b-a1e6-17e2dc14bbbe:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "d01e58b9-ce23-4895-a776-3803dde40296"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "8acbe570-44a9-494e-840e-182bb9e52160"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.46105-05:00",
+            "dealer_game_id": "25a0d020-2f72-48db-85ad-14d72db829b4",
+            "closing_balances": {
+              "player:8acbe570-44a9-494e-840e-182bb9e52160": -5,
+              "player:d01e58b9-ce23-4895-a776-3803dde40296": 5
+            },
+            "opening_balances": {
+              "player:8acbe570-44a9-494e-840e-182bb9e52160": 0,
+              "player:d01e58b9-ce23-4895-a776-3803dde40296": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "27b0d0d1-7cc4-47f0-9d8b-ccd750c23fc3",
+          "snapshotCount": 2
+        },
+        {
+          "name": "All disconnected humans use server automatic control",
+          "status": "PASS",
+          "actions": 6
+        },
+        {
+          "name": "Bot competition uses same canonical financial authority",
+          "status": "PASS",
+          "game": "c75a5503-41b4-4c34-b0a9-e6a912929753",
+          "dealerGame": "82d70b73-4b7f-46ac-9d41-08befb3ef2d5",
+          "round": "aa03133b-521f-44f7-8729-0a6feec8fa01",
+          "winner": "8e36ca32-e18a-49cb-8ad4-98c9814f05c6",
+          "before": {
+            "5029e09a-02a5-4f53-a6b0-9850bf2e8a80": 0,
+            "8e36ca32-e18a-49cb-8ad4-98c9814f05c6": 0
+          },
+          "after": {
+            "5029e09a-02a5-4f53-a6b0-9850bf2e8a80": -5,
+            "8e36ca32-e18a-49cb-8ad4-98c9814f05c6": 5
+          },
+          "transferBatch": {
+            "id": "84542916-4162-46f5-b6df-bca3df47f66d",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "c75a5503-41b4-4c34-b0a9-e6a912929753",
+            "transfers": [
+              {
+                "id": "c75a5503-41b4-4c34-b0a9-e6a912929753:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "8e36ca32-e18a-49cb-8ad4-98c9814f05c6"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "5029e09a-02a5-4f53-a6b0-9850bf2e8a80"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.501705-05:00",
+            "dealer_game_id": "82d70b73-4b7f-46ac-9d41-08befb3ef2d5",
+            "closing_balances": {
+              "player:5029e09a-02a5-4f53-a6b0-9850bf2e8a80": -5,
+              "player:8e36ca32-e18a-49cb-8ad4-98c9814f05c6": 5
+            },
+            "opening_balances": {
+              "player:5029e09a-02a5-4f53-a6b0-9850bf2e8a80": 0,
+              "player:8e36ca32-e18a-49cb-8ad4-98c9814f05c6": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "87c6303f-dfec-4e85-af13-8205af805c35",
+          "snapshotCount": 2
+        }
+      ],
+      "errors": []
+    },
+    "corrected-immutability-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Browser cannot rewrite terminal result",
+          "status": "PASS",
+          "error": "permission denied for table game_results"
+        },
+        {
+          "name": "Browser cannot rewrite final snapshots",
+          "status": "PASS",
+          "error": "permission denied for table session_player_snapshots"
+        },
+        {
+          "name": "Browser cannot rewrite committed transfer batch",
+          "status": "PASS",
+          "error": "permission denied for table gameplay_transfer_batches"
+        },
+        {
+          "name": "Browser cannot directly invoke deferred journal trigger",
+          "status": "PASS",
+          "error": "trigger functions can only be called as triggers"
+        },
+        {
+          "name": "Rejected historical writes preserve all financial rows",
+          "status": "PASS"
+        }
+      ],
+      "errors": []
+    },
+    "profile-authority-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Disabled participant rejected before profile change",
+          "status": "PASS",
+          "error": "farkle:active_account_required"
+        },
+        {
+          "name": "Inactive non-admin cannot self-reactivate through actual profile authority",
+          "status": "PASS",
+          "error": "profile_authority:admin_required"
+        }
+      ],
+      "errors": []
+    },
+    "pending-deactivation-result": {
+      "database": "farkle_audit_empty_1792096975400",
+      "productionWrites": 0,
+      "cases": [
+        {
+          "name": "Deactivation after authorized action preserves atomic deferred settlement",
+          "status": "PASS",
+          "game": "ebacd92f-253b-47ed-b3c9-1c37895d67f4",
+          "dealerGame": "b26638ed-1792-48aa-af2f-cb2dd73a0350",
+          "round": "a60555a2-979a-4153-833c-3e399ccfbfb3",
+          "winner": "db6f6c71-03c4-4b5a-9599-08e679866572",
+          "before": {
+            "572ddac0-6be2-4687-8e58-0bd99eb0bc57": 0,
+            "db6f6c71-03c4-4b5a-9599-08e679866572": 0
+          },
+          "after": {
+            "572ddac0-6be2-4687-8e58-0bd99eb0bc57": -5,
+            "db6f6c71-03c4-4b5a-9599-08e679866572": 5
+          },
+          "transferBatch": {
+            "id": "dc236d8e-b73b-4051-a3f0-4228e67fdfc3",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "ebacd92f-253b-47ed-b3c9-1c37895d67f4",
+            "transfers": [
+              {
+                "id": "ebacd92f-253b-47ed-b3c9-1c37895d67f4:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "db6f6c71-03c4-4b5a-9599-08e679866572"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "572ddac0-6be2-4687-8e58-0bd99eb0bc57"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:42:58.620902-05:00",
+            "dealer_game_id": "b26638ed-1792-48aa-af2f-cb2dd73a0350",
+            "closing_balances": {
+              "player:572ddac0-6be2-4687-8e58-0bd99eb0bc57": -5,
+              "player:db6f6c71-03c4-4b5a-9599-08e679866572": 5
+            },
+            "opening_balances": {
+              "player:572ddac0-6be2-4687-8e58-0bd99eb0bc57": 0,
+              "player:db6f6c71-03c4-4b5a-9599-08e679866572": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "b94fbb6d-4a00-4d51-8889-6f9e78a366d1",
+          "snapshotCount": 2
+        },
+        {
+          "name": "Trusted postgame completes after actor deactivation",
+          "status": "PASS"
+        }
+      ],
+      "errors": []
+    },
+    "race-fixed": {
+      "fixed": true,
+      "fixture": {
+        "game": "66215708-4a4f-4717-be7c-2e99244be85b",
+        "users": [
+          "ac7d674f-403b-454f-a3d7-c9502082e659",
+          "f6429390-3858-40bb-b36f-6bb648f6aa41",
+          "dfbab314-f823-41f5-91d1-4b62baa24db0"
+        ],
+        "players": [
+          "25327a65-e4c2-431d-886c-ce6d959dbf85",
+          "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+        ],
+        "dg": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674",
+        "round": "40284959-c53d-4208-a474-e7cba977aecc"
+      },
+      "pids": [
+        11672,
+        7240
+      ],
+      "dependencies": [
+        {
+          "pid": 11672,
+          "wait_event_type": "Lock",
+          "wait_event": "transactionid",
+          "blockers": [
+            21020
+          ],
+          "query": "select public.farkle_apply_action($1,$2,$3,$4,$5,$6) v"
+        },
+        {
+          "pid": 7240,
+          "wait_event_type": "Client",
+          "wait_event": "ClientRead",
+          "blockers": [],
+          "query": "COMMIT"
+        }
+      ],
+      "locks": [
+        {
+          "pid": 11672,
+          "locktype": "transactionid",
+          "relation": null,
+          "page": null,
+          "tuple": null,
+          "transactionid": "18655",
+          "mode": "ShareLock",
+          "granted": false
+        },
+        {
+          "pid": 11672,
+          "locktype": "transactionid",
+          "relation": null,
+          "page": null,
+          "tuple": null,
+          "transactionid": "18656",
+          "mode": "ExclusiveLock",
+          "granted": true
+        },
+        {
+          "pid": 11672,
+          "locktype": "tuple",
+          "relation": "games",
+          "page": 0,
+          "tuple": 136,
+          "transactionid": null,
+          "mode": "AccessExclusiveLock",
+          "granted": true
+        }
+      ],
+      "outcomes": [
+        {
+          "state": {
+            "dice": [],
+            "stage": "roll",
+            "config": {
+              "rules": {
+                "ofAKind": {
+                  "3": [
+                    1000,
+                    200,
+                    300,
+                    400,
+                    500,
+                    600
+                  ],
+                  "4": [
+                    1000,
+                    1000,
+                    1000,
+                    1000,
+                    1000,
+                    1000
+                  ],
+                  "5": [
+                    2000,
+                    2000,
+                    2000,
+                    2000,
+                    2000,
+                    2000
+                  ],
+                  "6": [
+                    3000,
+                    3000,
+                    3000,
+                    3000,
+                    3000,
+                    3000
+                  ]
+                },
+                "singles": {
+                  "1": 100,
+                  "5": 50
+                },
+                "version": 1,
+                "straight": 1500,
+                "threePairs": 1500,
+                "twoTriplets": 2500,
+                "fourPlusPair": 1500
+              },
+              "endgame": "immediate",
+              "version": 1,
+              "testOnly": false,
+              "botPolicy": "balanced",
+              "botDelayMs": 2000,
+              "ante_amount": 5,
+              "targetScore": 100,
+              "turnSeconds": 60,
+              "botBankThreshold": 500
+            },
+            "events": [
+              {
+                "type": "banked",
+                "points": 150,
+                "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+              },
+              {
+                "type": "turn_completed",
+                "banked": 150,
+                "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+                "completedTurns": 1
+              },
+              {
+                "type": "target_reached",
+                "endgame": "immediate",
+                "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+              },
+              {
+                "type": "terminal_result",
+                "scores": {
+                  "25327a65-e4c2-431d-886c-ce6d959dbf85": {
+                    "banked": 0,
+                    "completedTurns": 0
+                  },
+                  "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": {
+                    "banked": 150,
+                    "completedTurns": 1
+                  }
+                },
+                "winnerPlayerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+              }
+            ],
+            "version": 1,
+            "eligible": [
+              "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+              "25327a65-e4c2-431d-886c-ce6d959dbf85"
+            ],
+            "thisTurn": 0,
+            "available": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "gamePhase": "complete",
+            "turnOrder": [
+              "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+              "25327a65-e4c2-431d-886c-ce6d959dbf85"
+            ],
+            "finalQueue": [],
+            "legalHolds": [],
+            "rollNumber": 0,
+            "playerStates": {
+              "25327a65-e4c2-431d-886c-ce6d959dbf85": {
+                "banked": 0,
+                "completedTurns": 0
+              },
+              "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": {
+                "banked": 150,
+                "completedTurns": 1
+              }
+            },
+            "scoringCycle": 1,
+            "tiebreakTurn": 0,
+            "turnDeadline": null,
+            "actionSequence": 3,
+            "scoringVersion": 1,
+            "winnerPlayerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "_authorityScope": "40284959-c53d-4208-a474-e7cba977aecc",
+            "targetReachedBy": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "currentTurnPlayerId": null
+          },
+          "deduped": false,
+          "outcome": "applied",
+          "settlement": {
+            "outcome": "settled",
+            "result_id": "23ad659f-7e02-4e0d-8abf-10dc6e66b061",
+            "amount_per_loser": 5,
+            "winner_player_id": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "total_winner_gain": 5,
+            "terminal_disposition": "game_over"
+          },
+          "action_sequence": 3
+        },
+        {
+          "failed": 0,
+          "outcome": "completed",
+          "processed": 0
+        }
+      ],
+      "timers": [
+        {
+          "timer_kind": "ante_phase",
+          "state": "cancelled",
+          "attempt_count": 0,
+          "last_error": null
+        },
+        {
+          "timer_kind": "config_timeout",
+          "state": "cancelled",
+          "attempt_count": 0,
+          "last_error": null
+        },
+        {
+          "timer_kind": "farkle_postgame",
+          "state": "scheduled",
+          "attempt_count": 0,
+          "last_error": null
+        },
+        {
+          "timer_kind": "farkle_turn",
+          "state": "cancelled",
+          "attempt_count": 0,
+          "last_error": null
+        },
+        {
+          "timer_kind": "farkle_turn",
+          "state": "cancelled",
+          "attempt_count": 0,
+          "last_error": null
+        },
+        {
+          "timer_kind": "farkle_turn",
+          "state": "cancelled",
+          "attempt_count": 0,
+          "last_error": null
+        }
+      ],
+      "beforeRetry": {
+        "round": {
+          "dice": [],
+          "stage": "roll",
+          "config": {
+            "rules": {
+              "ofAKind": {
+                "3": [
+                  1000,
+                  200,
+                  300,
+                  400,
+                  500,
+                  600
+                ],
+                "4": [
+                  1000,
+                  1000,
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "5": [
+                  2000,
+                  2000,
+                  2000,
+                  2000,
+                  2000,
+                  2000
+                ],
+                "6": [
+                  3000,
+                  3000,
+                  3000,
+                  3000,
+                  3000,
+                  3000
+                ]
+              },
+              "singles": {
+                "1": 100,
+                "5": 50
+              },
+              "version": 1,
+              "straight": 1500,
+              "threePairs": 1500,
+              "twoTriplets": 2500,
+              "fourPlusPair": 1500
+            },
+            "endgame": "immediate",
+            "version": 1,
+            "testOnly": false,
+            "botPolicy": "balanced",
+            "botDelayMs": 2000,
+            "ante_amount": 5,
+            "targetScore": 100,
+            "turnSeconds": 60,
+            "botBankThreshold": 500
+          },
+          "events": [
+            {
+              "type": "banked",
+              "points": 150,
+              "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+            },
+            {
+              "type": "turn_completed",
+              "banked": 150,
+              "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+              "completedTurns": 1
+            },
+            {
+              "type": "target_reached",
+              "endgame": "immediate",
+              "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+            },
+            {
+              "type": "terminal_result",
+              "scores": {
+                "25327a65-e4c2-431d-886c-ce6d959dbf85": {
+                  "banked": 0,
+                  "completedTurns": 0
+                },
+                "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": {
+                  "banked": 150,
+                  "completedTurns": 1
+                }
+              },
+              "winnerPlayerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+            }
+          ],
+          "version": 1,
+          "eligible": [
+            "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "25327a65-e4c2-431d-886c-ce6d959dbf85"
+          ],
+          "thisTurn": 0,
+          "available": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "gamePhase": "complete",
+          "turnOrder": [
+            "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "25327a65-e4c2-431d-886c-ce6d959dbf85"
+          ],
+          "finalQueue": [],
+          "legalHolds": [],
+          "rollNumber": 0,
+          "playerStates": {
+            "25327a65-e4c2-431d-886c-ce6d959dbf85": {
+              "banked": 0,
+              "completedTurns": 0
+            },
+            "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": {
+              "banked": 150,
+              "completedTurns": 1
+            }
+          },
+          "scoringCycle": 1,
+          "tiebreakTurn": 0,
+          "turnDeadline": null,
+          "actionSequence": 3,
+          "scoringVersion": 1,
+          "winnerPlayerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+          "_authorityScope": "40284959-c53d-4208-a474-e7cba977aecc",
+          "targetReachedBy": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+          "currentTurnPlayerId": null
+        },
+        "events": 4,
+        "status": "game_over",
+        "batches": [
+          {
+            "id": "a98f8d78-4205-4f55-8feb-615e023f2933",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "66215708-4a4f-4717-be7c-2e99244be85b",
+            "transfers": [
+              {
+                "id": "66215708-4a4f-4717-be7c-2e99244be85b:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "25327a65-e4c2-431d-886c-ce6d959dbf85"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.939739-05:00",
+            "dealer_game_id": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674",
+            "closing_balances": {
+              "player:25327a65-e4c2-431d-886c-ce6d959dbf85": -5,
+              "player:d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 5
+            },
+            "opening_balances": {
+              "player:25327a65-e4c2-431d-886c-ce6d959dbf85": 0,
+              "player:d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 0
+            },
+            "unmatched_deltas": {}
+          }
+        ],
+        "pending": 0,
+        "results": [
+          {
+            "id": "23ad659f-7e02-4e0d-8abf-10dc6e66b061",
+            "game_id": "66215708-4a4f-4717-be7c-2e99244be85b",
+            "pot_won": 5,
+            "game_type": "farkle",
+            "created_at": "2026-10-15T15:43:06.939739-05:00",
+            "event_kind": null,
+            "is_chopped": false,
+            "hand_number": 1,
+            "dealer_game_id": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674",
+            "settlement_key": "farkle_terminal",
+            "winner_username": "Audit f6429390",
+            "winner_player_id": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "player_chip_changes": {
+              "25327a65-e4c2-431d-886c-ce6d959dbf85": -5,
+              "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 5
+            },
+            "winning_hand_description": "Score: 150"
+          }
+        ],
+        "balances": {
+          "25327a65-e4c2-431d-886c-ce6d959dbf85": -5,
+          "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 5
+        },
+        "handoffs": 0,
+        "receipts": 3,
+        "snapshots": [
+          {
+            "id": "3f921ee1-b512-4120-bddc-b674b4f3faa3",
+            "chips": -5,
+            "is_bot": false,
+            "game_id": "66215708-4a4f-4717-be7c-2e99244be85b",
+            "user_id": "ac7d674f-403b-454f-a3d7-c9502082e659",
+            "username": "Audit ac7d674f",
+            "player_id": "25327a65-e4c2-431d-886c-ce6d959dbf85",
+            "created_at": "2026-10-15T15:43:06.939739-05:00",
+            "hand_number": 1,
+            "dealer_game_id": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674"
+          },
+          {
+            "id": "0df2643d-b72d-4a54-95b3-6a5dc64dbc89",
+            "chips": 5,
+            "is_bot": false,
+            "game_id": "66215708-4a4f-4717-be7c-2e99244be85b",
+            "user_id": "f6429390-3858-40bb-b36f-6bb648f6aa41",
+            "username": "Audit f6429390",
+            "player_id": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+            "created_at": "2026-10-15T15:43:06.939739-05:00",
+            "hand_number": 1,
+            "dealer_game_id": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674"
+          }
+        ],
+        "roundStatus": "completed",
+        "transactions": []
+      },
+      "financial": [
+        {
+          "name": "Corrected recovery/action ordering settles once",
+          "status": "PASS",
+          "game": "66215708-4a4f-4717-be7c-2e99244be85b",
+          "dealerGame": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674",
+          "round": "40284959-c53d-4208-a474-e7cba977aecc",
+          "winner": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29",
+          "before": {
+            "25327a65-e4c2-431d-886c-ce6d959dbf85": 0,
+            "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 0
+          },
+          "after": {
+            "25327a65-e4c2-431d-886c-ce6d959dbf85": -5,
+            "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 5
+          },
+          "transferBatch": {
+            "id": "a98f8d78-4205-4f55-8feb-615e023f2933",
+            "cursor": 1,
+            "reason": "transfer",
+            "game_id": "66215708-4a4f-4717-be7c-2e99244be85b",
+            "transfers": [
+              {
+                "id": "66215708-4a4f-4717-be7c-2e99244be85b:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "25327a65-e4c2-431d-886c-ce6d959dbf85"
+                },
+                "amount": 5
+              }
+            ],
+            "created_at": "2026-10-15T15:43:06.939739-05:00",
+            "dealer_game_id": "1dbd1c2c-0aee-4004-ba60-49ec54c3b674",
+            "closing_balances": {
+              "player:25327a65-e4c2-431d-886c-ce6d959dbf85": -5,
+              "player:d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 5
+            },
+            "opening_balances": {
+              "player:25327a65-e4c2-431d-886c-ce6d959dbf85": 0,
+              "player:d08c7a1a-36a1-4dd7-9220-cbe2f03b6a29": 0
+            },
+            "unmatched_deltas": {}
+          },
+          "resultId": "23ad659f-7e02-4e0d-8abf-10dc6e66b061",
+          "snapshotCount": 2
+        }
+      ]
+    },
+    "candidate-metadata-proof": {
+      "baselineFunctions": 179,
+      "productionDefinitionDrift": 0,
+      "functionChanges": [
+        {
+          "signature": "private.farkle_claim_v1(uuid,uuid,uuid,text)",
+          "original": "fe9bd036beaa268be65d593b389091ef",
+          "candidate": "67d21bf8f9fbff95471b4c993715d6bb"
+        },
+        {
+          "signature": "farkle_advance_postgame(uuid,uuid,uuid,integer)",
+          "original": "8349700190717dcd40e814bfcf490797",
+          "candidate": "7a91f9df414410d6fdaa6ac441caa51a"
+        },
+        {
+          "signature": "farkle_apply_action(uuid,uuid,text,bigint,uuid,jsonb)",
+          "original": "54b2ef0f284857e4df624f967f732f95",
+          "candidate": "a265d4492773a9a008e7cb47f949f6a9"
+        },
+        {
+          "signature": "private.advance_due_canonical_game_timers(integer)",
+          "original": "354df9a2a5244d7c1df1c64ed65ee189",
+          "candidate": "e6a5040550c194284986f9a8de248eb5"
+        },
+        {
+          "signature": "configure_dealer_game(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+          "original": "10b9deabf9032df33c5319adff96f948",
+          "candidate": "cd7e21dc835c35e3df967482022ca598"
+        },
+        {
+          "signature": "set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)",
+          "original": "9e6d59a69f0c828a4ed84481258662e3",
+          "candidate": "a69f39fefb234c3b01114c8049fdbbb6"
+        },
+        {
+          "signature": "set_game_paused(uuid,boolean,uuid,bigint)",
+          "original": "101f170b8e61d2528cee3b0a93abad1a",
+          "candidate": "1fa2220c33734d1cf14c11f3eaef432b"
+        },
+        {
+          "signature": "set_session_player_intent(uuid,uuid,bigint,uuid,text,boolean)",
+          "original": "96d62d83ae5212e97ef12b5d6bb09290",
+          "candidate": "0ac84e381210d0395b93e09feaf2b1db"
+        },
+        {
+          "signature": "advance_ante_phase(uuid,uuid)",
+          "original": "dd6a4516d67a562166788076208eb32c",
+          "candidate": "e9f1b6b65a404f94d68d535ed9f6ecb2"
+        },
+        {
+          "signature": "submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)",
+          "original": "64c589ab0fcd545ab1ccd9d5f29a0e32",
+          "candidate": "c633a318c7f2605104c92e03d3b3b09a"
+        }
+      ],
+      "schema": {
+        "constraints": 341,
+        "triggers": 167,
+        "indexes": 258
+      },
+      "columnGrants": 31,
+      "existingRoutinePrivilegesUnchanged": true
+    }
+  }
+}

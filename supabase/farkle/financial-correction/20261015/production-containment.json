@@ -1,0 +1,134 @@
+{
+  "at": "2026-10-15T19:00:09Z",
+  "operation": "Exclusive admission advisory lock; UPDATE private.farkle_release SET creation_enabled=false WHERE singleton; no other writes",
+  "evidence": {
+    "cron": [
+      {
+        "jobid": 33,
+        "active": true,
+        "command": "CALL private.run_game_recovery_batch();",
+        "schedule": "1 second"
+      }
+    ],
+    "gate": {
+      "singleton": true,
+      "admin_only": false,
+      "creation_enabled": false,
+      "production_defaults_approved": true
+    },
+    "rounds": [
+      {
+        "id": "11e218b3-d9a8-484c-b9c3-bb23bd1ab2a2",
+        "hash": "70b12d4aae398f323bf6747ba6b42ed4",
+        "status": "completed"
+      },
+      {
+        "id": "29e40fc9-1077-42b2-82cf-88233ee9ff72",
+        "hash": "824440addf8e96cb8e33a5ff5cbbe343",
+        "status": "completed"
+      },
+      {
+        "id": "2d5c110a-c617-473c-974f-7c22bde11003",
+        "hash": "4c13e9ba57fa7935bbfa12206530f1de",
+        "status": "completed"
+      },
+      {
+        "id": "53326e94-ce85-4b9b-9122-e0bcbf6b0e9d",
+        "hash": "23f315116cf4587b993d5fc91206c600",
+        "status": "completed"
+      },
+      {
+        "id": "5ba032c2-7d88-46b6-aea8-b65106f7fd02",
+        "hash": "594a90b4ac4eab005bacdc5f3efcfb91",
+        "status": "betting"
+      },
+      {
+        "id": "683b395f-4fa2-4a73-a5d0-134ba1462b11",
+        "hash": "012997e71f5a1edd3c2cdd065d46f3a9",
+        "status": "betting"
+      },
+      {
+        "id": "6a3cf950-69f1-4f27-b6f7-040f97fc2ee8",
+        "hash": "d0bf604d26c0315c95980461a909b564",
+        "status": "completed"
+      },
+      {
+        "id": "7a3f6092-f5f6-4d87-bf88-c3c942053993",
+        "hash": "9d44b964077af28a5c751dc5b5c05e07",
+        "status": "completed"
+      },
+      {
+        "id": "9c58ffb0-256e-4eea-822e-911bb6ac8034",
+        "hash": "a56dc75badd21c0b9ec59078c27bd0d0",
+        "status": "completed"
+      },
+      {
+        "id": "9ea25b7c-4591-4878-974f-823d15c6bd40",
+        "hash": "aab753d0eee43a7dc0c6e1118e8ff968",
+        "status": "completed"
+      },
+      {
+        "id": "a582a290-727d-4d69-aa18-28dac3749b68",
+        "hash": "da2dd963b7064e044fafa2a15997b48e",
+        "status": "betting"
+      },
+      {
+        "id": "b22b08db-7da4-4865-b0b2-c286e7e1fcd9",
+        "hash": "1ba37df67006bd17e5d46c5a0dfcc0f3",
+        "status": "completed"
+      },
+      {
+        "id": "b6e8c747-7da2-410f-ac3d-dbd91437a8e6",
+        "hash": "ec6bf9dd2937cd802a5e3e89ac2ba5e2",
+        "status": "completed"
+      },
+      {
+        "id": "c286afb0-f09a-43a5-8e17-d4ee0c9310d8",
+        "hash": "a5c34b7e2f55700caa394b7b5df5dec2",
+        "status": "completed"
+      },
+      {
+        "id": "cca95caf-b63f-482a-aa97-a59059e06e5b",
+        "hash": "7f8cced64acc297c277c38397257600c",
+        "status": "completed"
+      },
+      {
+        "id": "d3b8d3ae-52e6-4fcd-84bd-daab9b404f2a",
+        "hash": "f579143670d441bf6156ce7f5eb9835e",
+        "status": "completed"
+      },
+      {
+        "id": "d5a8905b-1405-47a4-b4b3-0c7dfa4c9525",
+        "hash": "e231995a9e34d4914730bf516c241051",
+        "status": "betting"
+      },
+      {
+        "id": "db92fce0-4073-4fcf-a3f8-ed4fc0510a04",
+        "hash": "51c00825ce7c50dc68e5f10f1ea13fef",
+        "status": "completed"
+      },
+      {
+        "id": "e5613602-7054-4029-85d9-f03820d73dbd",
+        "hash": "333d18cfd90dc8994f79459ca1e654ee",
+        "status": "completed"
+      },
+      {
+        "id": "e5c6ee37-bdfb-4610-a187-e0ad5b3cd1c9",
+        "hash": "7a3f1cb7e4b648d55cef6957f4b72c84",
+        "status": "completed"
+      }
+    ],
+    "dispatch": {
+      "singleton": true,
+      "last_outcome": "completed",
+      "safety_cursor": 6,
+      "last_duration_ms": 45,
+      "last_safety_task": "three_five_seven",
+      "last_completed_at": "2026-10-15T19:00:09.039672+00:00",
+      "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+      "last_safety_task_at": "2026-10-15T19:00:08.994631+00:00",
+      "consecutive_partial_failures": 0
+    },
+    "financialFingerprint": "474775bac436ecc13d42a0dc21395843"
+  }
+}

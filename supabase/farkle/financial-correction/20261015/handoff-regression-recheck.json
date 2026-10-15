@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-15T20:47:31.577Z",
+  "testsPassed": 13,
+  "testsFailed": 36,
+  "files": [
+    {
+      "file": "C:/Users/jerem/source/repos/rule-your-poker/src/components/DealerGameSetup.runBack.test.tsx",
+      "status": "failed",
+      "failed": 34,
+      "firstFailure": "TypeError: Cannot read properties of undefined (reading 'onAuthStateChange')"
+    },
+    {
+      "file": "C:/Users/jerem/source/repos/rule-your-poker/src/lib/gameTimerAuthority.test.ts",
+      "status": "failed",
+      "failed": 1,
+      "firstFailure": "AssertionError: expected 'import { withH1r3H2r1Diagnostics } fr…' to contain 'setAnteDialogIdentity({'"
+    },
+    {
+      "file": "C:/Users/jerem/source/repos/rule-your-poker/src/lib/systemSettingsRollbackProofIsolation.test.ts",
+      "status": "failed",
+      "failed": 1,
+      "firstFailure": "AssertionError: holm_chucky_secure_randomness_rollback_proof.sql must begin a transaction before mutating system_settings: expected -1 to be greater than or equal to 0"
+    }
+  ]
+}

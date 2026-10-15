@@ -1,0 +1,159 @@
+{
+  "at": "2026-10-15T21:20:36.026Z",
+  "productionWrites": 0,
+  "proofSha256": "633a55bd879e0373f06b126ed91e01980094ab7e98131721939e1a008de0d7ab",
+  "results": [
+    [
+      {
+        "status": "passed",
+        "kind": "same-id",
+        "examined": "32",
+        "distinct_cards": "32",
+        "old_md5_matches": "0"
+      },
+      {
+        "status": "passed",
+        "kind": "solo",
+        "examined": "32",
+        "distinct_cards": "32",
+        "old_md5_matches": "0"
+      },
+      {
+        "status": "passed",
+        "kind": "tied-showdown",
+        "examined": "32",
+        "distinct_cards": "32",
+        "old_md5_matches": "0"
+      }
+    ]
+  ],
+  "commands": [
+    "BEGIN",
+    "INSERT",
+    "UPDATE",
+    "INSERT",
+    "UPDATE",
+    "INSERT",
+    "UPDATE",
+    "INSERT",
+    "UPDATE",
+    "INSERT",
+    "INSERT",
+    "SET",
+    "SET",
+    "CREATE",
+    "CREATE",
+    "DO",
+    "DO",
+    "CREATE",
+    "CREATE",
+    "DO",
+    "DO",
+    "DO",
+    "SET",
+    "SELECT",
+    "ROLLBACK"
+  ],
+  "rollbackExecuted": true,
+  "before": {
+    "auth.users": {
+      "count": 2,
+      "hash": "8f7635d135f2138fd3dc857a350fc680"
+    },
+    "public.profiles": {
+      "count": 2,
+      "hash": "f492a4e00a5b0e373c8b9484d8e2bbcd"
+    },
+    "public.user_roles": {
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.games": {
+      "count": 17,
+      "hash": "e7883aa6b6643a1ca1086841ab1c84c3"
+    },
+    "public.players": {
+      "count": 34,
+      "hash": "cf2c02e818b878021d62bb6513670e53"
+    },
+    "public.rounds": {
+      "count": 26,
+      "hash": "22c452833470943fc8e8b6a486ecb1ea"
+    },
+    "public.game_results": {
+      "count": 18,
+      "hash": "90e2d41ea7df1693b21508b30c7701d7"
+    },
+    "public.session_player_snapshots": {
+      "count": 36,
+      "hash": "3d6f5b7969a6bd25d76f99ea586404a8"
+    },
+    "public.gameplay_transfer_batches": {
+      "count": 18,
+      "hash": "b6753b3dff63744ab2cf4b4804a34cc5"
+    },
+    "public.player_transactions": {
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.system_settings": {
+      "count": 3,
+      "hash": "e38487ee89a715d7fd191c6fcdca6a6b"
+    },
+    "public.game_defaults": {
+      "count": 10,
+      "hash": "8321d62c96f083046537f7a4484704d8"
+    }
+  },
+  "after": {
+    "auth.users": {
+      "count": 2,
+      "hash": "8f7635d135f2138fd3dc857a350fc680"
+    },
+    "public.profiles": {
+      "count": 2,
+      "hash": "f492a4e00a5b0e373c8b9484d8e2bbcd"
+    },
+    "public.user_roles": {
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.games": {
+      "count": 17,
+      "hash": "e7883aa6b6643a1ca1086841ab1c84c3"
+    },
+    "public.players": {
+      "count": 34,
+      "hash": "cf2c02e818b878021d62bb6513670e53"
+    },
+    "public.rounds": {
+      "count": 26,
+      "hash": "22c452833470943fc8e8b6a486ecb1ea"
+    },
+    "public.game_results": {
+      "count": 18,
+      "hash": "90e2d41ea7df1693b21508b30c7701d7"
+    },
+    "public.session_player_snapshots": {
+      "count": 36,
+      "hash": "3d6f5b7969a6bd25d76f99ea586404a8"
+    },
+    "public.gameplay_transfer_batches": {
+      "count": 18,
+      "hash": "b6753b3dff63744ab2cf4b4804a34cc5"
+    },
+    "public.player_transactions": {
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.system_settings": {
+      "count": 3,
+      "hash": "e38487ee89a715d7fd191c6fcdca6a6b"
+    },
+    "public.game_defaults": {
+      "count": 10,
+      "hash": "8321d62c96f083046537f7a4484704d8"
+    }
+  },
+  "rollbackRestoredAllTrackedState": true
+}

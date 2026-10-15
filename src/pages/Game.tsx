@@ -404,7 +404,6 @@ import { FarkleGameTable } from '@/components/farkle/FarkleGameTable';
 import { advanceFarklePostgame } from '@/lib/farkle/authority';
 import { admitFarkleSnapshot } from '@/lib/farkle/presentation';
 import type { FarkleState } from '@/lib/farkle/types';
-import { NeutralInterstitial } from '@/lib/canonicalShell/NeutralInterstitial';
 import { getTotalScore as getYahtzeeTotalScore } from '@/lib/yahtzeeScoring';
 import { useLocalTerminalPresentation } from '@/lib/canonicalShell/localTerminalPresentation';
 import { advanceCribbagePostgame } from "@/lib/cribbageAuthority";
@@ -14520,9 +14519,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onTerminalPresentationComplete={handleFarkleTerminalPresentationComplete}
                 activeTab={mobileActiveTab} onActiveTabChange={setMobileActiveTab} onRefetch={fetchGameData} />;
             }
-            return <NeutralInterstitial gameId={gameId} gameKind={_sessionEndedTableActive ? null : 'farkle'}
-              anteAmount={game.ante_amount ?? 0} participants={players} currentUserId={user?.id}
-              participantGameType="farkle" activeTab={mobileActiveTab} onActiveTabChange={setMobileActiveTab} />;
+            // Outside the exact live/presenting Farkle round, fall through to
+            // the existing canonical table below. It owns the neutral HUD,
+            // History, session controls and the authoritative Session Ended
+            // phase. NeutralInterstitial alone has no HUD or pane host.
           }
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
