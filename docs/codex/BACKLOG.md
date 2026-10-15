@@ -1,5 +1,13 @@
 # Backlog
 
+## Queued — cinematic table-to-fullscreen transition — October 15, 2026
+
+- Jeremy requested retaining this as a separate future polish task while
+  approving the five Run21 fullscreen corrections. Improve the visual transition
+  from the canonical table to fullscreen gameplay; preserve the route-stable shell.
+- No implementation or investigation is included in the Run21 polish release.
+- Provenance: Jeremy's October 15 Run21 fullscreen approval and duplicate-flight report.
+
 ## Implemented — deployed, admission open — Farkle financial correction — October 15, 2026
 
 - All local release gates pass: 100 database assertions, 72 focused tests,
