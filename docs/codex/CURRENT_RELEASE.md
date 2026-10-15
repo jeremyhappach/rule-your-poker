@@ -1,3 +1,23 @@
+# TriTowers — 2026-10-14 — inactive client release, database held
+
+Phase 3 adds sequential multiplayer TriTowers in isolated modules, using the
+accepted fullscreen shell. PostgreSQL owns deals, legal moves, timing, scores,
+turns and final settlement through existing financial helpers. Spectators use
+the same redacted board. Run21 source and table geometry are unchanged.
+
+Production has no TriTowers catalog entry; selector/Run Back admission is closed.
+The additive SQL candidate and service installation remain unapplied because
+shared-table locks and production Realtime/scheduler/shared-trigger behavior are
+not qualified for tonight's real-money session. No production session or money
+was mutated. Only inactive application code is eligible for publication.
+
+Validation: 345 focused tests in 42 files, TypeScript, Vite build, SQL rollback
+proofs, local PostgreSQL DDL and
+concurrency/financial tests, two-browser SQL-backed gameplay, and five requested
+responsive viewports. Details, limitations and manual acceptance are in
+`TRITOWERS_QUALIFICATION.md`; sourced rules and explicit assumptions are in
+`TRITOWERS_RULES.md`. Release checkpoint tag: `tri-towers-inactive-2026-10-14`.
+
 # Run21 fullscreen presentation — 2026-10-14 — qualified, gameplay smoke pending
 
 Phase 2 consumes `game_defaults.presentation_mode` with one read per session

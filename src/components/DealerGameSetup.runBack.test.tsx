@@ -71,6 +71,12 @@ function button() {
   expect(control).toBeTruthy(); return control!;
 }
 describe('the actual Run Back button across all seven games', () => {
+  it('never exposes TriTowers or its Run Back before activation', async () => {
+    await mount('tri-towers', { ante_amount: 5 });
+    expect(document.querySelector('[data-dealer-game-option="tri-towers"]')).toBeNull();
+    expect([...document.querySelectorAll('button')].some(node=>/Run Back/.test(node.textContent??''))).toBe(false);
+    expect(configureDealerGame).not.toHaveBeenCalled();
+  });
   it.each(cases)('submits the exact %s snapshot despite conflicting form defaults: %j', async (gameType, config) => {
     await mount(gameType, config);
     await act(async () => { button().click(); button().click(); });

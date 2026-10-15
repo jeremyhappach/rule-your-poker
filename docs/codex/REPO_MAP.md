@@ -1,5 +1,13 @@
 # Repository map
 
+TriTowers: `supabase/tri-towers/authority.sql` and `services.sql` are unapplied
+database candidates. `src/lib/triTowers` defines redacted projections/client
+contracts and an offline-only reference engine; `useTriTowers.ts` owns live
+revision synchronization. `src/components/triTowers` fills the existing fullscreen
+slots and shared terminal callbacks. `dev/tri-towers` and SQL proofs cover local
+database, live multiplayer and responsive qualification. Both production
+selection and real-money admission remain closed. See `TRITOWERS_QUALIFICATION.md`.
+
 Game presentation metadata: `public.game_defaults.game_type` is the unique
 per-game catalog key. Migration `20261014224724_game_catalog_presentation_mode.sql`
 adds the constrained `presentation_mode` field; the rollback proof is

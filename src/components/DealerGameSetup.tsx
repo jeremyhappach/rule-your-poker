@@ -3,6 +3,7 @@ import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/local
 import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
+import { TRI_TOWERS } from '@/lib/triTowers/model';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -187,6 +188,7 @@ const DealerGameSetupInner = ({
   onSitOut,
 }: DealerGameSetupProps) => {
   const run21Allowed = useRun21AppTestAccess(gameId);
+  const otherAllowed = run21Allowed || TRI_TOWERS.publicSelection;
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
@@ -831,6 +833,7 @@ const DealerGameSetupInner = ({
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
       case 'run21': return 'Run21';
+      case 'tri-towers': return 'TriTowers';
       default: return gameType;
     }
   };
@@ -840,7 +843,7 @@ const DealerGameSetupInner = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21';
+    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id;
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -857,6 +860,7 @@ const DealerGameSetupInner = ({
       setSelectedGameType(gameType); setSelectionStep('config'); return;
     }
     if (gameType === 'run21' && !run21Allowed) return;
+    if (gameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
     // Check player count restrictions
     const gameInfo = allGames.find(g => g.id === gameType);
     if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
@@ -958,6 +962,7 @@ const DealerGameSetupInner = ({
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
     { id: 'farkle', name: 'Farkle', description: 'Risk it or bank it', category: 'dice', enabled: true },
     ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
+    ...(TRI_TOWERS.publicSelection ? [{id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',category:'other',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers}] : []),
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -986,12 +991,13 @@ const DealerGameSetupInner = ({
     }
 
     const gameTypeToSubmit = overrideGameType || selectedGameType;
+    if (gameTypeToSubmit === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) { toast.error('TriTowers is not released'); return; }
     if (gameTypeToSubmit === 'run21' && !run21Allowed) {
       toast.error('Run21 is unavailable');
       return;
     }
     const simpleTypes = new Set<DealerGameType>([
-      'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21',
+      'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers',
     ]);
     if (!simpleTypes.has(gameTypeToSubmit as DealerGameType)) {
       toast.error('Select a supported game');
@@ -1067,6 +1073,7 @@ const DealerGameSetupInner = ({
 
   const handleRunBack = async () => {
     if (previousGameType === 'run21' && !run21Allowed) return;
+    if (previousGameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
@@ -1108,6 +1115,7 @@ const DealerGameSetupInner = ({
   // Determine which tab to default to based on previous game
   const getDefaultTab = () => {
     if (previousGameType === 'run21' && run21Allowed) return 'other';
+    if (previousGameType === TRI_TOWERS.id && TRI_TOWERS.publicSelection) return 'other';
     if (previousGameType) {
       return isDiceGame(previousGameType) ? 'dice' : 'cards';
     }
@@ -1144,7 +1152,7 @@ const DealerGameSetupInner = ({
 
             {/* Tabbed Game Selection */}
             <Tabs defaultValue={getDefaultTab()} className="w-full">
-              <TabsList className={`grid w-full ${run21Allowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
+              <TabsList className={`grid w-full ${otherAllowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
                 <TabsTrigger 
                   value="cards" 
                   className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
@@ -1159,7 +1167,7 @@ const DealerGameSetupInner = ({
                   <Dice5 className="w-4 h-4" />
                   Dice Games
                 </TabsTrigger>
-                {run21Allowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
+                {otherAllowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
               </TabsList>
 
               {/* Card Games Tab */}
@@ -1234,19 +1242,22 @@ const DealerGameSetupInner = ({
                   ))}
                 </div>
               </TabsContent>
-              {run21Allowed && (
+              {otherAllowed && (
                 <TabsContent value="other" className="mt-4">
-                  <button type="button" data-dealer-game-option="run21" onClick={() => handleGameSelect('run21')}
+                  {run21Allowed && <button type="button" data-dealer-game-option="run21" onClick={() => handleGameSelect('run21')}
                     disabled={activePlayerCount > 2}
                     className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
                     <span className="font-bold">Run21</span>{activeHarnessMap.run21?.active && <HarnessBadge/>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
-                  </button>
+                  </button>}
+                  {TRI_TOWERS.publicSelection && <button type="button" data-dealer-game-option="tri-towers" onClick={()=>handleGameSelect(TRI_TOWERS.id)}
+                    disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
+                    className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
                 </TabsContent>
               )}
             </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== 'run21' || run21Allowed) && (
+            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== TRI_TOWERS.id || TRI_TOWERS.publicSelection) && (previousGameType !== 'run21' || run21Allowed) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
@@ -1333,9 +1344,10 @@ const DealerGameSetupInner = ({
       const isGinRummy = selectedGameType === 'gin-rummy';
       const isYahtzee = selectedGameType === 'yahtzee';
       const isRun21 = selectedGameType === 'run21';
+      const isTriTowers = selectedGameType === TRI_TOWERS.id;
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
-      const gameRulesText = isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
+      const gameDisplayName = isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
+      const gameRulesText = isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
@@ -1360,7 +1372,7 @@ const DealerGameSetupInner = ({
               <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 ? 'match stake' : 'ante'}</p>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || isTriTowers ? 'match stake' : 'ante'}</p>
                   {activeHarnessMap[selectedGameType]?.active && (
                     <p className="mt-1 text-sm font-bold text-red-500">
                       Harness: {activeHarnessMap[selectedGameType].label}

@@ -1,8 +1,8 @@
 import type { DealerGameType } from '@/lib/dealerGameSetupAuthority';
 
-// Run21 is restricted to the fake-money app-test lane. Adding it to dealer
-// discovery must not make it a real-money game or advertise recovery support.
-type RealMoneyDealerGameType = Exclude<DealerGameType, 'run21'>;
+// These games are restricted to fake-money testing. Registration must not
+// advertise real-money recovery support before its separate qualification.
+type RealMoneyDealerGameType = Exclude<DealerGameType, 'run21' | 'tri-towers'>;
 
 export type RecoveryOwner =
   | 'canonical_timers'

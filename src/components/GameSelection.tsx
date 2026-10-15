@@ -4,6 +4,7 @@ import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveHarnessMap } from "@/lib/debugHarness/activeHarnessWarning";
 import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
+import { TRI_TOWERS } from '@/lib/triTowers/model';
 
 /** Red "H" badge — shown only when a game's harness would actually execute. */
 const HarnessBadge = ({ label }: { label: string }) => (
@@ -39,6 +40,7 @@ export const GameSelection = ({
   sessionId = null,
 }: GameSelectionProps) => {
   const run21Allowed = useRun21AppTestAccess(sessionId);
+  const otherAllowed = run21Allowed || TRI_TOWERS.publicSelection;
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
     'run21',
@@ -108,11 +110,13 @@ export const GameSelection = ({
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
       case 'run21': return 'Run21';
+      case 'tri-towers': return 'TriTowers';
       default: return gameType;
     }
   };
 
   const handleRunBack = () => {
+    if (lastGameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
     if (lastGameType === 'run21' && !run21Allowed) return;
     if (lastGameType) {
       onSelectGame(lastGameType);
@@ -146,6 +150,7 @@ export const GameSelection = ({
 
   // Determine which tab to default to based on last game type
   const getDefaultTab = () => {
+    if (lastGameType === TRI_TOWERS.id && TRI_TOWERS.publicSelection) return 'other';
     if (lastGameType === 'run21' && run21Allowed) return 'other';
     if (lastGameType) {
       return lastGameType === 'horses' || lastGameType === 'ship-captain-crew' || lastGameType === 'yahtzee' ? 'dice' : 'cards';
@@ -164,7 +169,7 @@ export const GameSelection = ({
 
           {/* Tabbed Game Selection */}
           <Tabs defaultValue={getDefaultTab()} className="w-full">
-            <TabsList className={`grid w-full ${run21Allowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
+            <TabsList className={`grid w-full ${otherAllowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
               <TabsTrigger 
                 value="cards" 
                 className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
@@ -179,7 +184,7 @@ export const GameSelection = ({
                 <Dice5 className="w-4 h-4" />
                 Dice Games
               </TabsTrigger>
-              {run21Allowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
+              {otherAllowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
             </TabsList>
 
             {/* Card Games Tab */}
@@ -255,20 +260,24 @@ export const GameSelection = ({
                 ))}
               </div>
             </TabsContent>
-            {run21Allowed && (
+            {otherAllowed && (
               <TabsContent value="other" className="mt-4">
-                <button type="button" data-dealer-game-option="run21"
+                {run21Allowed && <button type="button" data-dealer-game-option="run21"
                   disabled={activePlayerCount > 2}
                   onClick={() => handleGameSelect({ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', enabled: run21Allowed, maxPlayers: 2 })}
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
                   <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
-                </button>
+                </button>}
+                {TRI_TOWERS.publicSelection && <button type="button" data-dealer-game-option="tri-towers"
+                  disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
+                  onClick={()=>handleGameSelect({id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers})}
+                  className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
               </TabsContent>
             )}
           </Tabs>
 
           {/* Run Back option - only show on 2nd+ game of session */}
-          {!isFirstHand && lastGameType && (lastGameType !== 'run21' || run21Allowed) && (
+          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || TRI_TOWERS.publicSelection) && (lastGameType !== 'run21' || run21Allowed) && (
             <div className="pt-3 border-t border-poker-gold/30">
               <button
                 onClick={handleRunBack}

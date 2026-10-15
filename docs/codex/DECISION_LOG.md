@@ -1,5 +1,21 @@
 # Durable decision log
 
+## October 14 — TriTowers authority is isolated and production admission is closed
+
+TriTowers uses PostgreSQL for cryptographic independent deals, sequential turns,
+scoring, redacted snapshots, duplicate/CAS protection and deadline recovery.
+Final competition settlement reuses the canonical chip transfer/journal and
+whole-chip split functions. No client reducer or separate wallet owns gameplay.
+The TypeScript reference engine is test-only. Existing fullscreen slots and
+terminal callbacks remain the presentation owners.
+
+Original Merit manuals verify the core mechanic, standard two rounds and normal
+80,000-point bonus threshold, but not the complete score/time/wrap formulas.
+Those are versioned PTown adaptation assumptions, documented for acceptance.
+Inactive application code can ship independently; no production catalog entry
+or database installation is included. Shared-table lock exposure and deployed
+Realtime/scheduler/shared-trigger qualification defer the database release.
+
 ## October 14 — fullscreen is a layout within the existing session shell
 
 Catalog metadata selects presentation, never gameplay authority. The stable

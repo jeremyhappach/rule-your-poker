@@ -1,0 +1,29 @@
+.tri-game{height:100%;min-height:0;display:flex;flex-direction:column;gap:.3rem;color:#e5efef;container:tri-game/size}
+.tri-status{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;font-size:.8rem;min-height:1.3rem;color:#bbd4d5}
+.tri-status strong{color:#f4ce82}
+.tri-tableau-space{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.tri-tableau{position:relative;width:min(100%,calc(100cqh * 2.6));aspect-ratio:2.8;max-height:100%;isolation:isolate}
+.tri-card{position:absolute;left:calc(var(--x)*10%);top:calc(5% + var(--y)*17.5%);width:9.7%;height:42%;padding:0;border:0;border-radius:.35rem;background:transparent;z-index:calc(1 + var(--y));touch-action:manipulation;transition:filter .12s;animation:tri-reveal .15s ease-out}
+.tri-card[data-legal=true]:enabled{filter:drop-shadow(0 0 .22rem #cce5a859);cursor:pointer}
+.tri-card:focus-visible,.tri-stock:focus-visible{outline:3px solid #ffdc89;outline-offset:1px}
+.tri-card-art{display:flex;width:100%;height:100%;align-items:center;justify-content:center;pointer-events:none}
+.tri-peak-label{position:absolute;top:-.7rem;transform:translateX(-50%);font-size:clamp(.5rem,1.5cqw,.75rem);letter-spacing:.12em;color:#c4a969}
+.tri-deck-row{flex:0 0 24%;min-height:4.5rem;max-height:11rem;display:flex;gap:clamp(.75rem,5cqw,4rem);align-items:stretch;justify-content:center;padding:.3rem 0 1rem}
+.tri-stock,.tri-waste{position:relative;width:clamp(2.5rem,12cqw,7rem);min-width:0;padding:0;border:0;background:transparent;color:inherit}
+.tri-stock>span:last-child,.tri-waste>span:last-child{position:absolute;bottom:-.9rem;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;letter-spacing:.05em}
+.tri-stock:enabled{cursor:pointer}.tri-stock:disabled{opacity:.65}
+.tri-run{display:flex;flex-direction:column;justify-content:center;text-align:center;min-width:5.5rem}
+.tri-run>small{font-size:.65rem;letter-spacing:.18em;color:#c4a969}.tri-run>strong{font-size:clamp(1.5rem,7cqw,3rem);line-height:1.2;color:#f4ce82}.tri-run>span{font-size:.7rem;color:#bbd4d5}
+.tri-scores{display:flex;gap:.3rem;overflow-x:auto;scrollbar-width:thin;padding-bottom:.15rem}
+.tri-scores>div{flex:1 0 6.5rem;min-width:0;display:grid;grid-template-columns:1fr auto;gap:.15rem .4rem;padding:.3rem .5rem;background:#172e36;border:1px solid #ffffff20;border-radius:.5rem;font-size:.75rem}
+.tri-scores>div[data-active=true]{border-color:#e4c47b;background:#28414a}.tri-scores span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tri-scores strong{color:#f4ce82}.tri-scores small{font-size:.55rem;color:#a3bec4}
+.tri-clock{font-variant-numeric:tabular-nums;color:#f4ce82;white-space:nowrap}.tri-clock small{font-size:.6rem;color:#bbd4d5}
+.tri-actions{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;justify-content:flex-end;flex:1;font-size:.7rem}
+.tri-actions button{min-height:2.5rem;padding:.4rem .7rem;border:1px solid #e4c47b70;border-radius:.5rem;background:#28414a;font-weight:600}.tri-actions button:disabled{opacity:.55}
+.tri-rules{font-size:.9rem;line-height:1.5}.tri-rules>*{margin-bottom:1rem}.tri-rules h3{font-weight:700}
+.tri-complete{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:1rem}.tri-complete>span{letter-spacing:.15em;font-size:.65rem;color:#c4a969}.tri-complete h2{font-size:clamp(1.5rem,5cqw,3rem);color:#f4ce82}
+.tri-error{font-size:.75rem;background:#522f2f;padding:.3rem;border-radius:.3rem}
+@container fullscreen-board (min-aspect-ratio:2){.tri-game{display:grid;grid-template-columns:minmax(0,1fr) minmax(7rem,20%);grid-template-rows:auto minmax(0,1fr)}.tri-status{grid-column:1/-1}.tri-tableau-space{grid-row:2}.tri-deck-row{grid-row:2;flex-wrap:wrap;gap:.35rem;min-height:0;max-height:none;padding:0 .5rem}.tri-stock,.tri-waste{width:42%;height:60%}.tri-run{width:100%;height:30%;min-width:0;flex-direction:row;gap:.4rem;align-items:center}.tri-run>strong{font-size:1.3rem}.tri-run>span{display:none}.tri-tableau{width:min(100%,calc(100cqh * 2.3))}}
+@keyframes tri-reveal{from{opacity:.7;transform:translateY(-2%)}to{opacity:1;transform:translateY(0)}}
+@container fullscreen-board (min-aspect-ratio:2){.tri-tableau{width:100%;height:100%;aspect-ratio:auto}.tri-card{top:calc(var(--y)*12%);height:64%}.tri-peak-label{top:-.6rem}}
+@media(prefers-reduced-motion:reduce){.tri-card{animation:none;transition:none}}
