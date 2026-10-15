@@ -1,5 +1,19 @@
 # Durable decision log
 
+## October 15, 2026 — perfect boards finish in authority; dissolves stay in the shell
+
+The accepted placement transaction auto-collects a qualified, unbusted configured
+ceiling. It uses the existing board finish and score hold; it neither issues a
+second client command nor changes match settlement. Foreground and recovery
+workers must ship the same engine.
+
+The persistent shell retains a single outgoing tree during the visual dissolve.
+The existing terminal hold admits the boundary, and committed surface readiness
+admits the incoming reveal. Timing controls opacity only and shares the slot's
+450 ms budget. Financial providers and the session shell remain mounted; games
+publish readiness through the common fullscreen layout. No animation event may
+advance authoritative lifecycle state.
+
 ## October 15, 2026 — Run21 observes canonical financial presentation
 
 The Run21 terminal adapter must not dispatch its settlement receipt as another

@@ -1,11 +1,13 @@
 # Backlog
 
-## Queued — cinematic table-to-fullscreen transition — October 15, 2026
+## Implemented — cinematic table-to-fullscreen transition — October 15, 2026
 
 - Jeremy requested retaining this as a separate future polish task while
   approving the five Run21 fullscreen corrections. Improve the visual transition
   from the canonical table to fullscreen gameplay; preserve the route-stable shell.
-- No implementation or investigation is included in the Run21 polish release.
+- Jeremy subsequently approved the shared transition in the coordinated Run21
+  final polish release. `CinematicPresentation` now owns the visual boundary;
+  qualification and owner acceptance are recorded in `CURRENT_RELEASE.md`.
 - Provenance: Jeremy's October 15 Run21 fullscreen approval and duplicate-flight report.
 
 ## Implemented — deployed, admission open — Farkle financial correction — October 15, 2026

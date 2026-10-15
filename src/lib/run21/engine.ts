@@ -1,5 +1,5 @@
 import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
-import { aggregate, cardKey, duration, legalColumns, canFinish, speedAt, standardDeck, total, multiplierAt } from './rules.js';
+import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt } from './rules.js';
 
 function clock(match: Match, at: number) {
   if (!Number.isSafeInteger(at) || at < match.updatedAt) throw new Error('non_monotonic_authority_clock');
@@ -185,6 +185,7 @@ export function applyCommand(input: Match, command: Command, principal: Principa
       {card, column: command.intent.column, speed: speedAt(board, match.config, at),
         totals: board.columns.map(c => total(c, match.config.target))});
     if (board.columns.some(c => total(c, match.config.target).bust)) finish(match, round, board, 'bust', at, command.requestId);
+    else if (type === 'place' && isPerfectBoard(board, match.config)) finish(match, round, board, 'collect', at, command.requestId);
     else present(match, round, board, at, command.requestId);
   } else return reject('invalid_intent');
   // Timestamp on timeout is the exact deadline, while the commit clock remains monotonic.

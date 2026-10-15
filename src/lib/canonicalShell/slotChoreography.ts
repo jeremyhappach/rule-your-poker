@@ -22,6 +22,8 @@
 
 export const SLOT_CHOREOGRAPHY = {
   interstitialDwellMs: 450,
+  dissolveOutMs: 170,
+  dissolveInMs: 200,
   teardownGraceMs: 0,
   mountStaggerMs: 0,
 } as const;

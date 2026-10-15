@@ -16,6 +16,9 @@ export function total(cards: readonly Card[], target: number) {
   return { value, elevated, bust: value > target, complete: value === target && elevated === 0 };
 }
 export const aggregate = (board: Board, config: Config) => board.columns.reduce((sum, cards) => sum + total(cards, config.target).value, 0);
+export const perfectAggregate = (config: Config) => config.columns * config.target;
+export const isPerfectBoard = (board: Board, config: Config) =>
+  aggregate(board, config) === perfectAggregate(config) && canCollect(board, config);
 export function speedAt(board: Board, config: Config, at: number): number {
   if (board.startedAt === null) return config.speed.start;
   return Math.max(0, config.speed.start - Math.floor(Math.max(0, at - board.startedAt) / config.speed.intervalMs) * config.speed.decrement);

@@ -53,16 +53,20 @@ describe('PersistentTableShell', () => {
     expect(container.querySelector('[data-canonical-felt-interaction-layer]')).not.toBeNull();
   });
   it('switches presentation without remounting the shell or game owner', () => {
+    vi.useFakeTimers();
     const mount=vi.fn(),unmount=vi.fn();
     function GameOwner(){useEffect(()=>{mount();return unmount;},[]);return <div data-owner/>;}
     act(()=>root.render(<PersistentTableShell gameType="run21"><GameOwner/></PersistentTableShell>));
     const shell=container.querySelector('[data-canonical-shell-root]'),owner=container.querySelector('[data-owner]');
     act(()=>root.render(<PersistentTableShell gameType="run21" presentationMode="fullscreen"><GameOwner/></PersistentTableShell>));
+    expect(shell?.getAttribute('data-shell-transition')).toBe('outgoing');
+    act(()=>vi.advanceTimersByTime(170));
     expect(container.querySelector('[data-canonical-shell-root]')).toBe(shell);
     expect(container.querySelector('[data-owner]')).toBe(owner);
     expect(container.querySelector('[data-canonical-felt-interaction-layer]')).toBeNull();
     expect(container.querySelector('[data-canonical-felt-surface]')).toBeNull();
     expect(mount).toHaveBeenCalledTimes(1);expect(unmount).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
   it('mounts and removes registered tabs without changing hook order', () => {
     const errors = vi.spyOn(console, 'error');

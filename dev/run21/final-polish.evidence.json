@@ -1,0 +1,1196 @@
+{
+  "scope": "Run21 final polish and shared cinematic boundary",
+  "financialSqlChanged": false,
+  "regressionTests": 2383,
+  "initialStake": 1,
+  "settlement": {
+    "at": 1792107953440,
+    "key": "run21:891e9788-5c94-48b0-9bdd-811908c23ca5:1",
+    "amount": 1,
+    "loserId": "1254181c-cbbf-495f-bc73-5f32362df46b",
+    "resultId": "d8dc7150-cfe4-4483-b6df-2152431f82da",
+    "winnerId": "fc99c3f9-31db-4f5c-8e90-aad3adc57173",
+    "transferBatchId": "19156eae-e0c0-4109-90d2-f15e184efb6a"
+  },
+  "batch": {
+    "id": "19156eae-e0c0-4109-90d2-f15e184efb6a",
+    "game_id": "e0008453-9139-414f-90d4-eedcf141dd33",
+    "dealer_game_id": "891e9788-5c94-48b0-9bdd-811908c23ca5",
+    "cursor": 1,
+    "reason": "win",
+    "transfers": [
+      {
+        "id": "e0008453-9139-414f-90d4-eedcf141dd33:1:1",
+        "to": {
+          "kind": "player",
+          "playerId": "fc99c3f9-31db-4f5c-8e90-aad3adc57173"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "1254181c-cbbf-495f-bc73-5f32362df46b"
+        },
+        "amount": 1
+      }
+    ],
+    "opening_balances": {
+      "player:1254181c-cbbf-495f-bc73-5f32362df46b": 0,
+      "player:fc99c3f9-31db-4f5c-8e90-aad3adc57173": 0
+    },
+    "closing_balances": {
+      "player:1254181c-cbbf-495f-bc73-5f32362df46b": -1,
+      "player:fc99c3f9-31db-4f5c-8e90-aad3adc57173": 1
+    },
+    "unmatched_deltas": {},
+    "created_at": "2026-10-15T23:45:53.484Z"
+  },
+  "boards": [
+    {
+      "round": 1,
+      "results": {
+        "1254181c-cbbf-495f-bc73-5f32362df46b": {
+          "at": 1792107914172,
+          "score": 0,
+          "speed": 250,
+          "reason": "collect",
+          "totals": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "aggregate": 0,
+          "multiplier": 0,
+          "aceElevations": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "fc99c3f9-31db-4f5c-8e90-aad3adc57173": {
+          "at": 1792107905198,
+          "score": 249000,
+          "speed": 249,
+          "reason": "collect",
+          "totals": [
+            21,
+            21,
+            21,
+            21,
+            21
+          ],
+          "aggregate": 105,
+          "multiplier": 1000,
+          "aceElevations": [
+            1,
+            1,
+            1,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "round": 2,
+      "results": {
+        "1254181c-cbbf-495f-bc73-5f32362df46b": {
+          "at": 1792107931261,
+          "score": 0,
+          "speed": 250,
+          "reason": "collect",
+          "totals": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "aggregate": 0,
+          "multiplier": 0,
+          "aceElevations": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "fc99c3f9-31db-4f5c-8e90-aad3adc57173": {
+          "at": 1792107921794,
+          "score": 249000,
+          "speed": 249,
+          "reason": "collect",
+          "totals": [
+            21,
+            21,
+            21,
+            21,
+            21
+          ],
+          "aggregate": 105,
+          "multiplier": 1000,
+          "aceElevations": [
+            1,
+            1,
+            1,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "round": 3,
+      "results": {
+        "1254181c-cbbf-495f-bc73-5f32362df46b": {
+          "at": 1792107948436,
+          "score": 0,
+          "speed": 250,
+          "reason": "collect",
+          "totals": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "aggregate": 0,
+          "multiplier": 0,
+          "aceElevations": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "fc99c3f9-31db-4f5c-8e90-aad3adc57173": {
+          "at": 1792107938927,
+          "score": 249000,
+          "speed": 249,
+          "reason": "collect",
+          "totals": [
+            21,
+            21,
+            21,
+            21,
+            21
+          ],
+          "aggregate": 105,
+          "multiplier": 1000,
+          "aceElevations": [
+            1,
+            1,
+            1,
+            1,
+            0
+          ]
+        }
+      }
+    }
+  ],
+  "flights": [
+    [
+      {
+        "id": "e0008453-9139-414f-90d4-eedcf141dd33:1:1",
+        "variant": "canonicalWinTransfer",
+        "text": "$1",
+        "at": 1792107953975,
+        "keyframes": [
+          {
+            "offset": 0,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px) scale(1) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0
+          },
+          {
+            "offset": 0.05,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px, -22px) scale(1.25) rotate(-4deg)",
+            "filter": "brightness(1.2)",
+            "opacity": "1",
+            "computedOffset": 0.05
+          },
+          {
+            "offset": 0.22,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-158.402px, -38px) scale(1.18) rotate(3deg)",
+            "filter": "brightness(1.25)",
+            "opacity": "1",
+            "computedOffset": 0.22
+          },
+          {
+            "offset": 0.48,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-443.527px, -26px) scale(1.1) rotate(-2deg)",
+            "filter": "brightness(1.1)",
+            "opacity": "1",
+            "computedOffset": 0.48
+          },
+          {
+            "offset": 0.65,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1.04) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0.65
+          },
+          {
+            "offset": 0.71,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -14px) scale(1.22)",
+            "opacity": "1",
+            "computedOffset": 0.71
+          },
+          {
+            "offset": 0.78,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.78
+          },
+          {
+            "offset": 0.84,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -9px) scale(1.14)",
+            "opacity": "1",
+            "computedOffset": 0.84
+          },
+          {
+            "offset": 0.9,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.96)",
+            "opacity": "1",
+            "computedOffset": 0.9
+          },
+          {
+            "offset": 0.94,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -3px) scale(1.04)",
+            "opacity": "1",
+            "computedOffset": 0.94
+          },
+          {
+            "offset": 0.97,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.97
+          },
+          {
+            "offset": 1,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.5)",
+            "filter": "none",
+            "opacity": "0",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "e0008453-9139-414f-90d4-eedcf141dd33:1:1",
+        "variant": "canonicalWinTransfer",
+        "text": "$1",
+        "at": 1792107953972,
+        "keyframes": [
+          {
+            "offset": 0,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px) scale(1) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0
+          },
+          {
+            "offset": 0.05,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(0px, -22px) scale(1.25) rotate(-4deg)",
+            "filter": "brightness(1.2)",
+            "opacity": "1",
+            "computedOffset": 0.05
+          },
+          {
+            "offset": 0.22,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-158.402px, -38px) scale(1.18) rotate(3deg)",
+            "filter": "brightness(1.25)",
+            "opacity": "1",
+            "computedOffset": 0.22
+          },
+          {
+            "offset": 0.48,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-443.527px, -26px) scale(1.1) rotate(-2deg)",
+            "filter": "brightness(1.1)",
+            "opacity": "1",
+            "computedOffset": 0.48
+          },
+          {
+            "offset": 0.65,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1.04) rotate(0deg)",
+            "filter": "brightness(1)",
+            "opacity": "1",
+            "computedOffset": 0.65
+          },
+          {
+            "offset": 0.71,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -14px) scale(1.22)",
+            "opacity": "1",
+            "computedOffset": 0.71
+          },
+          {
+            "offset": 0.78,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.78
+          },
+          {
+            "offset": 0.84,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -9px) scale(1.14)",
+            "opacity": "1",
+            "computedOffset": 0.84
+          },
+          {
+            "offset": 0.9,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.96)",
+            "opacity": "1",
+            "computedOffset": 0.9
+          },
+          {
+            "offset": 0.94,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px, -3px) scale(1.04)",
+            "opacity": "1",
+            "computedOffset": 0.94
+          },
+          {
+            "offset": 0.97,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(1)",
+            "opacity": "1",
+            "computedOffset": 0.97
+          },
+          {
+            "offset": 1,
+            "easing": "ease-in-out",
+            "composite": "auto",
+            "transform": "translate(-633.609px) scale(0.5)",
+            "filter": "none",
+            "opacity": "0",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ]
+  ],
+  "arrivals": [
+    [
+      "4"
+    ],
+    [
+      "4"
+    ]
+  ],
+  "closeResponses": [
+    {
+      "client": 1,
+      "status": 200,
+      "at": 1792107956418
+    },
+    {
+      "client": 0,
+      "status": 200,
+      "at": 1792107956422
+    }
+  ],
+  "handoff": {
+    "status": "game_selection",
+    "dealerPosition": 4,
+    "finished": true
+  },
+  "successor": {
+    "dealerGameId": "df249dee-41d9-4d45-b2ef-512ed999675c",
+    "players": [
+      {
+        "id": "1254181c-cbbf-495f-bc73-5f32362df46b",
+        "user_id": "6e262009-fa1c-4ec2-b12d-1de713b11fdc",
+        "chips": -1,
+        "position": 1
+      },
+      {
+        "id": "fc99c3f9-31db-4f5c-8e90-aad3adc57173",
+        "user_id": "8cfc0b40-6083-46a2-99b4-bdcba86dee5a",
+        "chips": 1,
+        "position": 4
+      }
+    ]
+  },
+  "transitions": [
+    [
+      {
+        "at": 1792107958888,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "table",
+        "transition": "stable",
+        "shell": true,
+        "replaced": false,
+        "hud": 0,
+        "felts": 1,
+        "neutral": 0,
+        "run21": 0,
+        "fullscreen": 0
+      },
+      {
+        "at": 1792107959070,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "fullscreen",
+        "transition": "stable",
+        "shell": true,
+        "replaced": true,
+        "hud": 0,
+        "felts": 0,
+        "neutral": 0,
+        "run21": 1,
+        "fullscreen": 1
+      },
+      {
+        "at": 1792107959088,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "fullscreen",
+        "transition": "stable",
+        "shell": true,
+        "replaced": false,
+        "hud": 0,
+        "felts": 0,
+        "neutral": 0,
+        "run21": 1,
+        "fullscreen": 1
+      }
+    ],
+    [
+      {
+        "at": 1792107959401,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "table",
+        "transition": "stable",
+        "shell": true,
+        "replaced": false,
+        "hud": 0,
+        "felts": 1,
+        "neutral": 0,
+        "run21": 0,
+        "fullscreen": 0
+      },
+      {
+        "at": 1792107959554,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "fullscreen",
+        "transition": "stable",
+        "shell": true,
+        "replaced": true,
+        "hud": 0,
+        "felts": 0,
+        "neutral": 0,
+        "run21": 1,
+        "fullscreen": 1
+      },
+      {
+        "at": 1792107959571,
+        "path": "/game/e0008453-9139-414f-90d4-eedcf141dd33",
+        "mode": "fullscreen",
+        "transition": "stable",
+        "shell": true,
+        "replaced": false,
+        "hud": 0,
+        "felts": 0,
+        "neutral": 0,
+        "run21": 1,
+        "fullscreen": 1
+      }
+    ]
+  ],
+  "pageErrors": [],
+  "rollbackProofs": [
+    {
+      "productionWrites": 0,
+      "rolledBack": true,
+      "isolatedDatabaseDropped": true,
+      "checks": [
+        "Active non-admin account is already authorized without Run21 allowlist",
+        "Unqualified release rejects configuration",
+        "Revoked player rejects configuration",
+        "Outsider cannot configure",
+        "Wrong dealer cannot configure",
+        "Paused session rejects setup",
+        "Pending session end rejects setup",
+        "Outstanding pot rejects setup",
+        "One competitor rejects setup",
+        "Three competitors reject setup",
+        "Zero stake rejects setup",
+        "Stale configuration identity rejects setup",
+        "Fake-money setup admits one human and one bot",
+        "Concurrent configuration commits exactly one dealer-game and deduplicates its replay",
+        "Non-admin two-human configuration succeeds",
+        "Browser role cannot submit a fabricated score or settlement to the service authority",
+        "Competing database recovery workers claim a dispatch only once",
+        "Recovery RPCs reject browser roles and forged dispatch tokens",
+        "Failed recovery remains observable and its acknowledgement cannot replay",
+        "Durable recovery excludes historical version-one matches",
+        "Pause before initialization preserves an empty match; resume safely opens its first board",
+        "Reconnect and repeated reads preserve the first-placement deadline",
+        "Fresh durable worker claims and recovers the expired turn through actual SQL RPCs",
+        "Zero-client fake-money timeout uses bot logic and publishes automatic-play identity",
+        "Canonical automatic-play control lets the human take back their board",
+        "Fresh worker expires a started gameplay clock from persisted state without clients",
+        "Failure after transfer and result insertion rolls back every financial artifact",
+        "Two service workers race: exactly one settlement commits",
+        "Replayed terminal revision cannot transfer twice",
+        "Completed match settles canonical balances +5/-5 exactly once",
+        "Final snapshots match canonical balances",
+        "Immutable receipt references canonical balanced transfer batch",
+        "Reconnect replays terminal state without another transfer",
+        "Duplicate close and reconnect do not duplicate canonical financial settlement",
+        "Run Back accepts a settled predecessor; late close preserves the successor",
+        "Timeout/action race commits one revision without an additional transfer"
+      ]
+    },
+    {
+      "productionWrites": 0,
+      "rolledBack": true,
+      "isolatedDatabaseDropped": true,
+      "checks": [
+        "Active non-admin account is already authorized without Run21 allowlist",
+        "Unqualified release rejects configuration",
+        "Revoked player rejects configuration",
+        "Outsider cannot configure",
+        "Wrong dealer cannot configure",
+        "Paused session rejects setup",
+        "Pending session end rejects setup",
+        "Outstanding pot rejects setup",
+        "One competitor rejects setup",
+        "Three competitors reject setup",
+        "Zero stake rejects setup",
+        "Stale configuration identity rejects setup",
+        "Fake-money setup admits one human and one bot",
+        "Concurrent configuration commits exactly one dealer-game and deduplicates its replay",
+        "Non-admin two-human configuration succeeds",
+        "Browser role cannot submit a fabricated score or settlement to the service authority",
+        "Competing database recovery workers claim a dispatch only once",
+        "Recovery RPCs reject browser roles and forged dispatch tokens",
+        "Failed recovery remains observable and its acknowledgement cannot replay",
+        "Durable recovery excludes historical version-one matches",
+        "Pause before initialization preserves an empty match; resume safely opens its first board",
+        "Reconnect and repeated reads preserve the first-placement deadline",
+        "Fresh durable worker claims and recovers the expired turn through actual SQL RPCs",
+        "Zero-client fake-money timeout uses bot logic and publishes automatic-play identity",
+        "Canonical automatic-play control lets the human take back their board",
+        "Fresh worker expires a started gameplay clock from persisted state without clients",
+        "Failure after transfer and result insertion rolls back every financial artifact",
+        "Two service workers race: exactly one settlement commits",
+        "Replayed terminal revision cannot transfer twice",
+        "Completed match settles canonical balances +5/-5 exactly once",
+        "Final snapshots match canonical balances",
+        "Immutable receipt references canonical balanced transfer batch",
+        "Reconnect replays terminal state without another transfer",
+        "Duplicate close and reconnect do not duplicate canonical financial settlement",
+        "Pending terminal session ends after canonical settlement"
+      ]
+    }
+  ],
+  "responsive": [
+    {
+      "width": 1440,
+      "height": 900,
+      "frames": [
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 2849.199999999255
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2980
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 3623
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 3839.699999999255
+        },
+        {
+          "phase": "outgoing",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 4022.7999999988824
+        },
+        {
+          "phase": "bridge",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 4206.299999998882
+        },
+        {
+          "phase": "incoming",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 4272.699999999255
+        },
+        {
+          "phase": "stable",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": false,
+          "replaced": false,
+          "at": 4472.5999999996275
+        },
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 4490.199999999255
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 4672.699999999255
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 4739.199999999255
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 4956
+        }
+      ],
+      "helpGap": 392.375,
+      "passed": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "frames": [
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 271.90000000037253
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 443.80000000074506
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1073.9000000003725
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 1290.5999999996275
+        },
+        {
+          "phase": "outgoing",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1404.800000000745
+        },
+        {
+          "phase": "bridge",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1588
+        },
+        {
+          "phase": "incoming",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1656
+        },
+        {
+          "phase": "stable",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": false,
+          "replaced": false,
+          "at": 1871.0999999996275
+        },
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1887.5999999996275
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2058.5
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2154.5
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 2354.5999999996275
+        }
+      ],
+      "helpGap": 46.765625,
+      "passed": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "frames": [
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 305.7999999988824
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 487.3999999985099
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1120.5999999996275
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 1322.7999999988824
+        },
+        {
+          "phase": "outgoing",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1420.5
+        },
+        {
+          "phase": "bridge",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1588.199999999255
+        },
+        {
+          "phase": "incoming",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1670.2999999988824
+        },
+        {
+          "phase": "stable",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": false,
+          "replaced": false,
+          "at": 1887.5
+        },
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1903.5999999996275
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2074.7999999988824
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2170.0999999996275
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 2370.2999999988824
+        }
+      ],
+      "helpGap": 193.6875,
+      "passed": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "frames": [
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 265.19999999925494
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 462.69999999925494
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1080.199999999255
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 1295.8999999985099
+        },
+        {
+          "phase": "outgoing",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 1362.3999999985099
+        },
+        {
+          "phase": "bridge",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1548.5999999996275
+        },
+        {
+          "phase": "incoming",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1612.5
+        },
+        {
+          "phase": "stable",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": false,
+          "replaced": false,
+          "at": 1813.2999999988824
+        },
+        {
+          "phase": "outgoing",
+          "mode": "table",
+          "felts": 1,
+          "fullscreens": 0,
+          "inert": true,
+          "replaced": false,
+          "at": 1829.0999999996275
+        },
+        {
+          "phase": "bridge",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2012.699999999255
+        },
+        {
+          "phase": "incoming",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": true,
+          "replaced": false,
+          "at": 2095.5999999996275
+        },
+        {
+          "phase": "stable",
+          "mode": "fullscreen",
+          "felts": 0,
+          "fullscreens": 1,
+          "inert": false,
+          "replaced": false,
+          "at": 2297.39999999851
+        }
+      ],
+      "helpGap": 24.09375,
+      "passed": true
+    }
+  ],
+  "twoBrowser": [
+    {
+      "next": "farkle",
+      "makeItTakeIt": true,
+      "batch": "c65083a3-82dc-4d2c-9c48-75a9c9532981",
+      "transfer": {
+        "id": "7b8e389d-8787-4bb7-b219-3dfb54c43bdd:1:1",
+        "to": {
+          "kind": "player",
+          "playerId": "090e7b6d-5ce5-4409-813b-21c2da05b112"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "d6cacaf4-345b-4f22-a057-20f0f15d908c"
+        },
+        "amount": 1
+      },
+      "flights": [
+        1,
+        1
+      ],
+      "continuation": "game_selection",
+      "dealerPosition": 7,
+      "snapshots": [
+        {
+          "player_id": "090e7b6d-5ce5-4409-813b-21c2da05b112",
+          "chips": 1
+        },
+        {
+          "player_id": "d6cacaf4-345b-4f22-a057-20f0f15d908c",
+          "chips": -1
+        }
+      ],
+      "pageErrors": [],
+      "closeResponses": [
+        {
+          "client": 0,
+          "status": 200,
+          "at": 1792108026498
+        },
+        {
+          "client": 1,
+          "status": 200,
+          "at": 1792108026888
+        }
+      ]
+    },
+    {
+      "next": "run21",
+      "makeItTakeIt": false,
+      "batch": "19156eae-e0c0-4109-90d2-f15e184efb6a",
+      "transfer": {
+        "id": "e0008453-9139-414f-90d4-eedcf141dd33:1:1",
+        "to": {
+          "kind": "player",
+          "playerId": "fc99c3f9-31db-4f5c-8e90-aad3adc57173"
+        },
+        "from": {
+          "kind": "player",
+          "playerId": "1254181c-cbbf-495f-bc73-5f32362df46b"
+        },
+        "amount": 1
+      },
+      "flights": [
+        1,
+        1
+      ],
+      "continuation": "game_selection",
+      "dealerPosition": 4,
+      "snapshots": [
+        {
+          "player_id": "1254181c-cbbf-495f-bc73-5f32362df46b",
+          "chips": -1
+        },
+        {
+          "player_id": "fc99c3f9-31db-4f5c-8e90-aad3adc57173",
+          "chips": 1
+        }
+      ],
+      "pageErrors": [],
+      "closeResponses": [
+        {
+          "client": 1,
+          "status": 200,
+          "at": 1792107956418
+        },
+        {
+          "client": 0,
+          "status": 200,
+          "at": 1792107956422
+        }
+      ]
+    }
+  ],
+  "workerSha256": "f8520cec57447c9a3762acf338e96c2c3a3919222b03862203f9936d27d07b7d"
+}

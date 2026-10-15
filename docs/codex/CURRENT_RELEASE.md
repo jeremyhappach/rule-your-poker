@@ -1,4 +1,47 @@
-# Run21 fullscreen polish — 2026-10-15 — qualified release candidate
+# Run21 final polish and shared dissolve — 2026-10-15 — qualified release
+
+The approved follow-up separates the score and help control, displays aggregate
+over the frozen configuration's ceiling (105), and keeps qualification at the
+configured multiplier threshold (97). The denominator remains neutral.
+
+A legal perfect placement now finishes that board in the trusted engine through
+the existing Collect semantics, at the placement timestamp, before another card
+is presented. Bust and deadline precedence, score holds, remaining turns, rounds,
+settlement and continuation retain their owners. The same engine is bundled into
+the existing recovery worker; financial SQL and transfer presentation are unchanged.
+
+`CinematicPresentation` coordinates table/fullscreen boundaries inside the
+persistent shell: 170 ms out, readiness-gated warm-white bridge, 200 ms in, sharing
+the existing 450 ms slot budget. It retains one outgoing tree, respects the route's
+terminal hold, makes outgoing content inert and supports reduced motion. Actual
+fullscreen snapshots and the existing table slot contract publish readiness.
+Table/table changes keep their existing choreography; ordinary gameplay updates
+do not trigger a dissolve. TriTowers uses the same fullscreen boundary without
+changing its closed production admission.
+
+Validation: 2,383 regression tests, typecheck and production build pass; 231
+focused checks cover 104/105, legal combinations, bust/deadline priority,
+duplicate/competing placements, restart during the score hold, human/bot turns,
+remaining rounds, readiness, terminal blocking and reduced motion. Responsive
+Chrome checks cover 1440×900, 768×1024, 390×844, 320×568, 844×390 and rotation.
+The rollback financial and terminal proofs pass against actual financial triggers;
+the deployed commit/close routine hashes still match the qualification baseline.
+
+Both isolated two-browser scenarios pass: Run21 → neutral → Run21 with dealer
+rotation, and Run21 → neutral → Farkle with make-it-take-it. Each viewer sees
+one canonical $1 flight and arrival, one successful continuation, matching
+snapshots and no flight replay on reload. Three 105 boards auto-finish per match.
+Evidence: [final-polish.evidence.json](../../dev/run21/final-polish.evidence.json).
+Repeat via `polish.browser.config.ts`, `fullscreen.preview.mjs` and
+`transition.preview.mjs` under `dev/run21/`. Sequential transition frames and
+responsive screenshots are retained in ignored `qualification.local/run21-transition/`.
+
+Release checkpoint: `run21-final-polish-transition-2026-10-15`. Production owner
+acceptance remains pending. Phone smoke: cross 96→97, reach 105 without pressing
+Take Win, observe the special celebration and next turn; finish a $1 match and
+confirm one chip flight, correct History, and the dissolve through neutral setup.
+
+# Run21 fullscreen polish — 2026-10-15 — deployed
 
 Five approved presentation corrections preserve the existing server authority:
 stable card-above-columns composition at every aspect ratio; active-card glow

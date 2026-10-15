@@ -38,6 +38,7 @@ import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
+import {useCinematicTransitionActive, usePresentationSurfaceReady} from './CinematicPresentation';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
@@ -141,7 +142,7 @@ type SlotPhase = 'cold' | 'active' | 'neutral';
 
 export function PlayfieldSlotController({
   desiredIdentity,
-  interstitialDwellMs = SLOT_CHOREOGRAPHY.interstitialDwellMs,
+  interstitialDwellMs: configuredDwellMs = SLOT_CHOREOGRAPHY.interstitialDwellMs,
   gameId,
   readyToMount: readyToMountProp = true,
   readinessScope = null,
@@ -159,6 +160,8 @@ export function PlayfieldSlotController({
   children,
 
 }: PlayfieldSlotControllerProps) {
+  const cinematicActive = useCinematicTransitionActive();
+  const interstitialDwellMs = cinematicActive ? 0 : configuredDwellMs;
   useLifecycleMount('PlayfieldSlotController');
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
   useWaitingMount('PlayfieldSlotController', { gameId: gameId ?? null });
@@ -195,6 +198,7 @@ export function PlayfieldSlotController({
   const [phase, setPhase] = useState<SlotPhase>(
     desiredIdentity === null || !readyToMount ? 'cold' : 'active',
   );
+  usePresentationSurfaceReady('table', readyToMount && slotIdentityEquals(mountedIdentity, desiredIdentity));
   const [neutralReason, setNeutralReason] = useState<string>(
     desiredIdentity === null
       ? 'pre-session'

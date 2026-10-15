@@ -5,7 +5,7 @@ import type { Suit as DisplaySuit } from '@/lib/cardUtils';
 import { applyGeometryOverrides, useDraftedGeometryOverrides } from '@/lib/geometryLab/store';
 import { getRun21ArtifactDescriptors, type Run21Geometry } from '@/lib/run21/geometry';
 import type { Card, Intent, Projection } from '@/lib/run21/model';
-import { aggregate, legalColumns, multiplierAt, total } from '@/lib/run21/rules';
+import { aggregate, legalColumns, multiplierAt, perfectAggregate, total } from '@/lib/run21/rules';
 import {outcomePresentation, qualificationThreshold} from '@/lib/run21/outcomePresentation';
 import {useCardFrontDesign} from '@/lib/cardFrontDesign/config';
 import {useVisualPreferences} from '@/hooks/useVisualPreferences';
@@ -84,7 +84,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
-    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{qualificationThreshold(view.config)}</small></output>}<Run21ScoringHelp/></>)}
+    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp/></>)}
     {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;

@@ -23,7 +23,8 @@ describe('server-only, all-player score harness decks',()=>{
       const human=PLAYERS[0].id,bot=PLAYERS[1].id;
       match=act(match,human,{type:'ready'},0);
       for(const column of [0,1,2,3,0,1,2,3,4,4,4])match=act(match,human,{type:'place',column},match.updatedAt+1);
-      match=act(match,human,{type:'collect'},match.updatedAt+1);
+      if(score===104)match=act(match,human,{type:'collect'},match.updatedAt+1);
+      else expect(match.rounds[0].boards[human].current).toBeNull();
       expect(match.rounds[0].boards[human].result).toMatchObject({aggregate:score,totals:[21,21,21,21,score-84],multiplier:score===105?1000:500});
       const phase=match.rounds[0].scorePresentation!;
       expect(phase.endsAt-phase.startedAt).toBe(5000);

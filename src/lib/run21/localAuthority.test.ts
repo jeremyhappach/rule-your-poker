@@ -41,6 +41,21 @@ function command(row: StoredMatch, intent: Intent, playerId = human): Command {
   return {identity: state.identity, roundId: round.id, playerId, requestId: uuid(sequence++), revision: round.boards[playerId].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it('serializes competing perfect placements and survives disconnect during the score hold',async()=>{
+    const f=fixture(false,'always_105',true);let a=f.make();await a.read(game,user);
+    for(const column of [0,1,2,3,0,1,2,3,4,4])await a.act(game,user,command(f.row,{type:'place',column}));
+    const final=command(f.row,{type:'place',column:4});
+    const outcomes=await Promise.allSettled([a.act(game,user,final),a.act(game,user,{...final,requestId:uuid(99001)})]);
+    expect(outcomes.map(x=>x.status)).toEqual(['fulfilled','rejected']);
+    expect((await a.act(game,user,final)).status).toBe('duplicate');
+    const score=f.row.state!.cumulative[human];
+    expect(f.row.state!.events.filter(e=>e.type==='collect'&&e.actorId===human)).toHaveLength(1);
+    a.dispose();a=f.make();await a.read(game,user);
+    expect(f.row.state!.rounds[0].scorePresentation?.playerId).toBe(human);
+    f.tick(5000);await a.recoverOne(game);
+    expect(f.row.state!.rounds[0].active_player_id).toBe(PLAYERS[1].id);
+    expect(f.row.state!.cumulative[human]).toBe(score);
+  });
   it.each([104,105])('lets both authenticated humans earn %i through a tie, recovery, settlement and replay',async score=>{
     const f=fixture(false,`always_${score}`,true);let a=f.make();await a.read(game,user);
     let late: Command | undefined;
@@ -57,10 +72,13 @@ describe('persisted local Run21 authority', () => {
         expect(f.row.bot_due_at).toBeNull();
         expect(f.row.state!.rounds.at(-1)!.boards[id].presented).toHaveLength(1);
         const stale=command(f.row,{type:'place',column:0},id);
-        for(const column of [0,1,2,3,0,1,2,3,4,4,4])await a.act(game,actor.userId,command(f.row,{type:'place',column},id));
-        await expect(a.act(game,actor.userId,stale)).rejects.toThrow('stale_revision');
-        if(number===4&&turn===1)f.tick(1000);
-        const collect=command(f.row,{type:'collect'},id);await a.act(game,actor.userId,collect);
+        let collect!: Command;
+        for(const [index,column] of [0,1,2,3,0,1,2,3,4,4,4].entries()){
+          if(number===4&&turn===1&&index===10)f.tick(1000);
+          collect=command(f.row,{type:'place',column},id);await a.act(game,actor.userId,collect);
+        }
+        await expect(a.act(game,actor.userId,stale)).rejects.toThrow(score===105?'not_your_turn':'stale_revision');
+        if(score===104){collect=command(f.row,{type:'collect'},id);await a.act(game,actor.userId,collect);}
         expect((await a.act(game,actor.userId,collect)).status).toBe('duplicate');
         if(!late)late=collect;
         const r=f.row.state!.rounds.at(-1)!;
@@ -96,8 +114,9 @@ describe('persisted local Run21 authority', () => {
     const f=fixture(false,`always_${score}`);let a=f.make();await a.read(game,user);
     for(let roundNumber=1;roundNumber<=3;roundNumber++){
       expect(f.row.state!.rounds.at(-1)!.number).toBe(roundNumber);
-      for(const column of [0,1,2,3,0,1,2,3,4,4,4])await a.act(game,user,command(f.row,{type:'place',column}));
-      const collect=command(f.row,{type:'collect'});await a.act(game,user,collect);
+      let collect!: Command;
+      for(const column of [0,1,2,3,0,1,2,3,4,4,4]){collect=command(f.row,{type:'place',column});await a.act(game,user,collect);}
+      if(score===104){collect=command(f.row,{type:'collect'});await a.act(game,user,collect);}
       expect((await a.act(game,user,collect)).status).toBe('duplicate');
       const phase=f.row.state!.rounds.at(-1)!.scorePresentation!;expect(phase.endsAt-phase.startedAt).toBe(5000);
       a.dispose();a=f.make();await a.read(game,user);

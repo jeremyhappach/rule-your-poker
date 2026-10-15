@@ -98,6 +98,7 @@ function LobbyAnnouncementReset({ lobbyMode }: { lobbyMode: boolean }) {
 import { ShellTabBarProvider } from './ShellTabBar';
 import { ShellTimerProvider } from './ShellTimerRail';
 import type { PresentationMode } from './presentationMode';
+import {CinematicPresentationContext, useCinematicPresentation} from './CinematicPresentation';
 import './fullscreenGameShell.css';
 
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
@@ -118,6 +119,7 @@ import {
 
 export interface PersistentTableShellProps {
   presentationMode?: PresentationMode;
+  presentationTransitionBlocked?: boolean;
   gameId?: string;
   gameType?: string;
   anteAmount?: number | string;
@@ -165,7 +167,9 @@ export interface PersistentTableShellProps {
 
 // (preHandIntent removed in P9.6 — gameplay surfaces own felt geometry.)
 
-export function PersistentTableShell({
+export function PersistentTableShell(props: PersistentTableShellProps) {
+  const cinematic = useCinematicPresentation(props, props.presentationTransitionBlocked ?? false);
+  const {
   presentationMode = 'table',
   gameId,
   gameType,
@@ -178,7 +182,7 @@ export function PersistentTableShell({
   lobbyMode = false,
   header,
   children,
-}: PersistentTableShellProps) {
+  } = cinematic.frame;
 
   const geometry = useGeometryTokensOptional();
   const shellRootRef = useRef<HTMLDivElement>(null);
@@ -265,6 +269,8 @@ export function PersistentTableShell({
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
       data-shell-presentation-mode={presentationMode}
+      data-shell-transition={cinematic.phase}
+      aria-busy={cinematic.active || undefined}
       // Shell root height must track the SAME viewport unit as its
       // interior geometry tokens (`--shell-header-h`, `--shell-flex-h`,
       // `--shell-hud-*`) — every one of those is expressed against
@@ -285,6 +291,8 @@ export function PersistentTableShell({
     >
       {/* CSHELL provenance badge removed — canonical shell migration validated. */}
       <div
+        ref={cinematic.columnRef}
+        tabIndex={-1}
         data-canonical-shell-column=""
         style={{
           position: 'relative',
@@ -407,6 +415,8 @@ export function PersistentTableShell({
         </div>
       </div>
 
+      {cinematic.active && <div className="shell-cinematic-bridge" role="status" aria-live="polite"><span className="sr-only">Preparing game surface…</span></div>}
+
 
       <CanonicalAnnouncementDebugTrigger
         dealerGameId={gameId ?? null}
@@ -487,7 +497,7 @@ export function PersistentTableShell({
               <ShellTimerProvider>
                 <ShellFeltContextProvider>
                   <LobbyAnnouncementReset lobbyMode={lobbyMode} />
-                  {body}
+                  <CinematicPresentationContext.Provider value={cinematic.context}>{body}</CinematicPresentationContext.Provider>
                 </ShellFeltContextProvider>
               </ShellTimerProvider>
             </ShellTabBarProvider>

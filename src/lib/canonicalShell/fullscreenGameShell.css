@@ -1,4 +1,12 @@
 /* Scoped presentation variant. No table-mode selectors or global token changes. */
+[data-shell-transition=outgoing]>[data-canonical-shell-column]{animation:shell-dissolve-out 170ms ease-in-out both}
+[data-shell-transition=bridge]>[data-canonical-shell-column]{opacity:0}
+[data-shell-transition=incoming]>[data-canonical-shell-column]{animation:shell-dissolve-in 200ms ease-out both}
+[data-shell-transition]:not([data-shell-transition=stable]){background:#f7f7f5}
+.shell-cinematic-bridge{position:absolute;inset:0;z-index:0;background:#f7f7f5;pointer-events:none}
+@keyframes shell-dissolve-out{from{opacity:1}to{opacity:0}}
+@keyframes shell-dissolve-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){[data-shell-transition]>[data-canonical-shell-column]{animation:none}}
 [data-shell-presentation-mode="fullscreen"]{height:100dvh;min-height:0!important;box-sizing:border-box;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 [data-shell-presentation-mode="fullscreen"] [data-canonical-shell-header]>div{height:100%;min-width:0}
 .fullscreen-game{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:.35rem .65rem .5rem;gap:.3rem;background:radial-gradient(ellipse at top,#172b36,#0c171e 80%);color:#f5f1df;--hud-h-announcement:1.75rem}

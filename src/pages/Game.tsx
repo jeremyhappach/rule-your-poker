@@ -15448,6 +15448,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameType={_routeShellGameType ?? undefined}
             presentationMode={presentationMode}
             anteAmount={_routeShellAnteAmount}
+            presentationTransitionBlocked={_terminalPresentationHold}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}

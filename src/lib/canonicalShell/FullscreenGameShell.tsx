@@ -3,8 +3,10 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import type { ShellTabId } from './ShellTabBar';
 import './fullscreenGameShell.css';
+import {usePresentationSurfaceReady} from './CinematicPresentation';
 
 interface Props {
+  ready?: boolean;
   title: string;
   description: string;
   activeTab: ShellTabId;
@@ -18,7 +20,8 @@ interface Props {
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children}: Props) {
+export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children}: Props) {
+  usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
   return <section className="fullscreen-game" data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
     <header className="fullscreen-game-toolbar">

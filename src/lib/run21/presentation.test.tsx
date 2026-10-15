@@ -15,6 +15,16 @@ const ready=()=>act(fixtureMatch(),self,{type:'ready'},0);
 const render=(m=ready())=>renderToStaticMarkup(<Run21Felt view={project(m,self)} now={0} drawRect={{x:.4,y:.7,width:.2,height:.19}} onIntent={()=>{}}/>);
 const pane=(m=ready())=>renderToStaticMarkup(<Run21PlayerPane view={project(m,self)} now={0} onIntent={()=>{}}/>);
 describe('Run21 player presentation',()=>{
+  it.each([96,97,104,105])('displays %i /105 with qualification independent of the ceiling',sum=>{
+    const m=ready(),board=m.rounds[0].boards[self];
+    board.startedAt=0;
+    board.columns=sum<100
+      ? Array.from({length:5},(_,i)=>[{rank:'10' as const,suit:'clubs' as const},{rank:String(i===4?sum-90:10) as '10',suit:'hearts' as const}])
+      : Array.from({length:5},(_,i)=>i===4&&sum===104?[{rank:'K' as const,suit:'clubs' as const},{rank:'Q' as const,suit:'hearts' as const}]:[{rank:'A' as const,suit:'clubs' as const},{rank:'K' as const,suit:'hearts' as const}]);
+    const html=renderToStaticMarkup(<Run21Felt layout="fullscreen" view={project(m,self)} now={0}/>);
+    expect(html).toContain(`<strong>${sum}</strong><small>/105</small>`);
+    expect(html).toContain(`data-qualified="${sum>=97}"`);
+  });
   it('shows the bot board and frozen speed while the human controls remain inactive',()=>{
     const m=act(prepareRound(createMatch(IDENTITY,[...PLAYERS].reverse(),5,DEFAULT_CONFIG,0),uuid(100),null,fixtureDeck(),0),other,{type:'ready'},0);
     const html=render(m);

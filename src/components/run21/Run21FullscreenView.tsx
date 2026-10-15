@@ -29,7 +29,7 @@ interface Props {
 export function Run21FullscreenView(props: Props) {
   const {snapshot, now, sessionEnded, replay} = props;
   const view = snapshot?.view;
-  return <FullscreenGameShell title="Run21"
+  return <FullscreenGameShell title="Run21" ready={!!view}
     description={sessionEnded ? 'Session ended' : view ? `Round ${view.roundNumber} · Stake ${view.stake}` : 'Connecting…'}
     activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={props.panel} sessionEnded={sessionEnded}
     scores={view && <Run21Scoreboard view={view} now={now} transportBalances={snapshot.balances}/>}

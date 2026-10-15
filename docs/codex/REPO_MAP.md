@@ -1,5 +1,11 @@
 # Repository map
 
+Shared table/fullscreen dissolve: `src/lib/canonicalShell/CinematicPresentation.tsx`
+coordinates `PersistentTableShell` opacity and terminal admission. Readiness is
+published by `FullscreenGameShell` (hydrated game view) and `PlayfieldSlotController`
+(existing table readiness). Timing shares `slotChoreography.ts`; representative
+browser proofs live in `dev/run21/transition.preview.mjs` and `polish.browser.spec.ts`.
+
 Run21 production authority: migration `20261015133432_run21_production_authority`
 installs financial, recovery, admission and pause/participation bridges;
 `20261015133715_activate_run21_production` opens qualified new-match admission.
