@@ -1,3 +1,6 @@
+> Phase 3B supersedes the database hold below. Production fake-money activation
+> is applied; see [TRITOWERS_ACTIVATION.md](TRITOWERS_ACTIVATION.md).
+
 # TriTowers qualification and inactive release
 
 This release implements the game but does **not** activate it. `tri-towers` has

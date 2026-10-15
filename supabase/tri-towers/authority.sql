@@ -1,5 +1,4 @@
--- Additive candidate. No catalog insertion, existing function replacement, or
--- activation. Every production entry is closed until a separate release.
+-- Additive authority source. Activation is in the versioned migration.
 SET LOCAL lock_timeout = '100ms';
 SET LOCAL statement_timeout = '10s';
 CREATE TABLE private.tri_towers_release (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), enabled boolean NOT NULL DEFAULT false);
@@ -8,8 +7,8 @@ ALTER TABLE private.tri_towers_release ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.tri_towers_release FROM PUBLIC,anon,authenticated,service_role;
 
 CREATE TABLE private.tri_towers_matches (
- dealer_game_id uuid PRIMARY KEY REFERENCES public.dealer_games(id),
- game_id uuid NOT NULL REFERENCES public.games(id), round_id uuid NOT NULL REFERENCES public.rounds(id),
+ dealer_game_id uuid PRIMARY KEY,
+ game_id uuid NOT NULL, round_id uuid NOT NULL,
  state jsonb NOT NULL, revision bigint NOT NULL DEFAULT 0, stake integer NOT NULL CHECK(stake>0),
  settlement jsonb, finished boolean NOT NULL DEFAULT false, paused_at bigint,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
@@ -31,13 +30,29 @@ ALTER TABLE private.tri_towers_history ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.tri_towers_matches,private.tri_towers_requests,private.tri_towers_history FROM PUBLIC,anon,authenticated,service_role;
 CREATE TABLE public.tri_towers_revisions (
  dealer_game_id uuid PRIMARY KEY REFERENCES private.tri_towers_matches(dealer_game_id),
- game_id uuid NOT NULL REFERENCES public.games(id), revision bigint NOT NULL
+ game_id uuid NOT NULL, revision bigint NOT NULL
 );
 ALTER TABLE public.tri_towers_revisions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.tri_towers_revisions FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT ON public.tri_towers_revisions TO authenticated;
 CREATE POLICY tri_towers_member_read ON public.tri_towers_revisions FOR SELECT TO authenticated
  USING(EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=tri_towers_revisions.game_id AND p.user_id=(SELECT auth.uid()) AND p.status<>'left'));
+
+-- Same approved-account eligibility as Run21; independent game release gate.
+CREATE FUNCTION private.tri_towers_actor_allowed(actor uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT actor IS NOT NULL AND EXISTS(SELECT 1 FROM public.profiles WHERE id=actor AND is_active)
+  AND EXISTS(SELECT 1 FROM private.tri_towers_release WHERE singleton AND enabled)
+$$;
+CREATE FUNCTION public.tri_towers_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE actor uuid:=auth.uid(); allowed boolean:=private.tri_towers_actor_allowed(actor);
+BEGIN
+ IF p_session_id IS NOT NULL THEN
+  allowed:=allowed AND EXISTS(SELECT 1 FROM public.games WHERE id=p_session_id AND real_money=false)
+   AND EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=actor AND status<>'left')
+   AND NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND status<>'left' AND NOT is_bot AND NOT private.tri_towers_actor_allowed(user_id));
+ END IF;
+ RETURN jsonb_build_object('version',1,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',true);
+END $$;
 
 CREATE FUNCTION private.tri_towers_rules() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$
  SELECT '{"version":"ptown-tritowers/1","stages":2,"bonusThreshold":80000,"maxBonusStages":1,"runStep":1000,"peakBonuses":[5000,10000,15000],"stageMs":120000,"readyMs":30000,"holdMs":5000,"timePerSecond":100,"wrap":true}'::jsonb
@@ -132,7 +147,7 @@ DECLARE m private.tri_towers_matches; viewer uuid; paused boolean;
 BEGIN
  SELECT * INTO STRICT m FROM private.tri_towers_matches WHERE dealer_game_id=p_dealer_game_id;
  SELECT id INTO viewer FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND status<>'left' AND NOT is_bot;
- IF viewer IS NULL THEN RAISE EXCEPTION 'tri_towers:membership_required' USING ERRCODE='42501'; END IF;
+ IF viewer IS NULL OR NOT private.tri_towers_actor_allowed(auth.uid()) THEN RAISE EXCEPTION 'tri_towers:membership_required' USING ERRCODE='42501'; END IF;
  SELECT is_paused INTO paused FROM public.games WHERE id=m.game_id;
  RETURN private.tri_towers_visible(m.state)||jsonb_build_object('revision',m.revision,'viewerId',viewer,
   'canAct',NOT coalesce(paused,false) AND m.state->>'phase'<>'complete' AND m.state->'players'->(m.state->>'turnIndex')::integer->>'id'=viewer::text,
@@ -197,7 +212,7 @@ BEGIN
  SELECT * INTO STRICT m FROM private.tri_towers_matches WHERE dealer_game_id=p_dealer_game_id FOR UPDATE;
  SELECT id INTO player FROM public.players WHERE game_id=m.game_id AND user_id=actor AND status<>'left' AND NOT is_bot;
  at_ms:=floor(extract(epoch FROM clock_timestamp())*1000);
- IF player IS NULL OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m.state->'players') p WHERE p->>'id'=player::text) THEN RAISE EXCEPTION 'tri_towers:participant_required' USING ERRCODE='42501'; END IF;
+ IF player IS NULL OR NOT private.tri_towers_actor_allowed(actor) OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m.state->'players') p WHERE p->>'id'=player::text) THEN RAISE EXCEPTION 'tri_towers:participant_required' USING ERRCODE='42501'; END IF;
  IF p_request_id IS NULL OR p_revision IS NULL OR p_action IS NULL OR p_action NOT IN ('start','remove','draw','continue','give_up') THEN RAISE EXCEPTION 'tri_towers:invalid_command'; END IF;
  SELECT * INTO prior FROM private.tri_towers_requests WHERE dealer_game_id=p_dealer_game_id AND request_id=p_request_id;
  IF FOUND THEN
@@ -238,7 +253,7 @@ CREATE FUNCTION public.tri_towers_configure(p_game_id uuid,p_dealer_player_id uu
 DECLARE g public.games; d public.players; dg public.dealer_games; r uuid:=gen_random_uuid(); actor uuid:=auth.uid();
  claim private.dealer_game_setup_commits; hash text; stake_i integer; people jsonb; s jsonb; result jsonb; setup_players jsonb;
 BEGIN
- IF NOT EXISTS(SELECT 1 FROM private.tri_towers_release WHERE enabled) OR actor IS NULL OR p_game_type IS DISTINCT FROM 'tri-towers' THEN RAISE EXCEPTION 'tri_towers:release_closed' USING ERRCODE='42501';END IF;
+ IF NOT private.tri_towers_actor_allowed(actor) OR p_game_type IS DISTINCT FROM 'tri-towers' THEN RAISE EXCEPTION 'tri_towers:release_closed' USING ERRCODE='42501';END IF;
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game_id FOR UPDATE;
  SELECT * INTO STRICT d FROM public.players WHERE id=p_dealer_player_id AND game_id=g.id;
  IF d.user_id IS DISTINCT FROM actor OR d.is_bot THEN RAISE EXCEPTION 'tri_towers:dealer_required' USING ERRCODE='42501';END IF;
@@ -256,12 +271,19 @@ BEGIN
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'tri_towers:setup_identity';END IF;
  PERFORM 1 FROM public.players WHERE game_id=g.id ORDER BY id FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.tri_towers_actor_allowed(user_id)) THEN RAISE EXCEPTION 'tri_towers:tester_required' USING ERRCODE='42501';END IF;
  IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND is_bot) THEN RAISE EXCEPTION 'tri_towers:humans_only';END IF;
  SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position)
  ORDER BY CASE WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,p.position DESC,p.id) INTO people
  FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=g.id AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL;
  IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'tri_towers:player_count';END IF;
  IF coalesce(g.pot,0)<>0 THEN RAISE EXCEPTION 'tri_towers:unfinished_pot';END IF;
+ -- Established setup-authority handoff flags, scoped to this validated RPC.
+ PERFORM set_config('app.cribbage_authoritative_write','on',true);
+ PERFORM set_config('app.gin_rummy_authoritative_write','on',true);
+ PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
+ PERFORM set_config('app.yahtzee_authoritative_write','on',true);
+ IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;
  INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'tri-towers',jsonb_build_object('ante_amount',stake_i,'rules',private.tri_towers_rules())) RETURNING * INTO dg;
  UPDATE public.players SET ante_decision='ante_up',current_decision=NULL,decision_locked=false,auto_fold=false WHERE game_id=g.id AND id IN(SELECT (p->>'id')::uuid FROM jsonb_array_elements(people) p);
  UPDATE public.games SET game_type='tri-towers',current_game_uuid=dg.id,config_complete=true,config_deadline=NULL,ante_decision_deadline=NULL,status='in_progress',ante_amount=stake_i,current_round=1,total_hands=1,replay_contract_version=NULL,all_decisions_in=false,all_decisions_in_round_id=NULL WHERE id=g.id RETURNING * INTO g;
@@ -282,7 +304,7 @@ BEGIN
  PERFORM 1 FROM public.rounds WHERE id=m.round_id FOR UPDATE;
  SELECT * INTO STRICT g FROM public.games WHERE id=m.game_id FOR UPDATE;
  SELECT * INTO STRICT m FROM private.tri_towers_matches WHERE dealer_game_id=p_dealer_game_id FOR UPDATE;
- IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND status<>'left' AND NOT is_bot)
+ IF NOT private.tri_towers_actor_allowed(auth.uid()) OR NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND status<>'left' AND NOT is_bot)
  OR m.settlement IS NULL THEN RAISE EXCEPTION 'tri_towers:close_denied' USING ERRCODE='42501';END IF;
  IF m.finished THEN RETURN;END IF;
  IF g.current_game_uuid IS DISTINCT FROM m.dealer_game_id OR g.game_type IS DISTINCT FROM 'tri-towers' OR g.status NOT IN ('game_over','session_ended') THEN RAISE EXCEPTION 'tri_towers:close_identity';END IF;
@@ -327,16 +349,20 @@ BEGIN
  ELSE UPDATE private.tri_towers_matches SET state=jsonb_set(state,'{deadline}',to_jsonb((state->>'deadline')::bigint+at_ms-paused_at)),paused_at=NULL,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND paused_at IS NOT NULL AND settlement IS NULL;END IF;
  RETURN NEW;
 END $$;
--- Install only in the isolated qualification/activation workflow: shared table
--- trigger creation needs a production lock review even though its body is gated.
-CREATE TRIGGER tri_towers_pause AFTER UPDATE OF is_paused ON public.games FOR EACH ROW
- WHEN(NEW.game_type='tri-towers') EXECUTE FUNCTION private.tri_towers_pause();
-
 -- Explicit grants only. All raw state/decks/helpers remain private.
 DO $$ DECLARE f record;BEGIN
  FOR f IN SELECT p.oid::regprocedure signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('private','public') AND p.proname LIKE 'tri_towers_%' LOOP
   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);
  END LOOP;
 END $$;
-GRANT EXECUTE ON FUNCTION public.tri_towers_snapshot(uuid),public.tri_towers_history(uuid),public.tri_towers_action(uuid,uuid,bigint,text,integer),public.tri_towers_configure(uuid,uuid,integer,text,jsonb,timestamptz),public.tri_towers_close(uuid) TO authenticated;
--- Publication/recovery scheduling are activation steps, deliberately absent here.
+GRANT EXECUTE ON FUNCTION public.tri_towers_capabilities(uuid),public.tri_towers_snapshot(uuid),public.tri_towers_history(uuid),public.tri_towers_action(uuid,uuid,bigint,text,integer),public.tri_towers_configure(uuid,uuid,integer,text,jsonb,timestamptz),public.tri_towers_close(uuid) TO authenticated;
+
+-- Acquire shared-table locks last. NOWAIT never queues behind live writes.
+LOCK TABLE public.games,public.dealer_games,public.rounds IN SHARE ROW EXCLUSIVE MODE NOWAIT;
+ALTER TABLE private.tri_towers_matches
+ ADD FOREIGN KEY(dealer_game_id) REFERENCES public.dealer_games(id),
+ ADD FOREIGN KEY(game_id) REFERENCES public.games(id),
+ ADD FOREIGN KEY(round_id) REFERENCES public.rounds(id);
+ALTER TABLE public.tri_towers_revisions ADD FOREIGN KEY(game_id) REFERENCES public.games(id);
+CREATE TRIGGER tri_towers_pause AFTER UPDATE OF is_paused ON public.games FOR EACH ROW
+ WHEN(NEW.game_type='tri-towers') EXECUTE FUNCTION private.tri_towers_pause();

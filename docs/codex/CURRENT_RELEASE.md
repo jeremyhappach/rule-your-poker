@@ -1,4 +1,27 @@
-# TriTowers — 2026-10-14 — inactive client release, database held
+# TriTowers activation — 2026-10-14 — production database verified
+
+Phase 3B installs migration `20261015003637_activate_tri_towers_test_play`
+on production `xvhmbuppghwmwpwrkzao`. The catalog now includes
+`tri-towers` / `fullscreen`. Active approved accounts use the normal app in
+fake-money sessions with 2–7 humans: Other → TriTowers. Account, membership,
+dealer, revision and money-mode checks are enforced server-side.
+
+The unchanged nine catalog rows compare identically. No existing function,
+session, round, result or financial record was changed by the migration.
+Shared locks are acquired last with NOWAIT; contention rolls back the entire
+installation. The dedicated five-second worker has successful production runs;
+the published revision table accepts a Realtime subscription. Actual multiplayer
+event delivery and scoring acceptance remain Jeremy's production smoke.
+
+Qualification: 97 focused client tests, TypeScript, Vite build, engine/adapter
+rollback proofs, concurrent complete competitions with 88 deployed shared
+triggers, gameplay foreign keys and player RLS, all nine prior-game handoffs,
+seven-player admission, revoked-account rejection and two-browser gameplay.
+Only selection admission changes in the client. Run21 and oval-table rendering
+are unchanged. Publication follows this scoped commit; checkpoint tag
+`tri-towers-activation-2026-10-14`. See `TRITOWERS_ACTIVATION.md`.
+
+# TriTowers — 2026-10-14 — prior inactive client release, superseded by Phase 3B
 
 Phase 3 adds sequential multiplayer TriTowers in isolated modules, using the
 accepted fullscreen shell. PostgreSQL owns deals, legal moves, timing, scores,

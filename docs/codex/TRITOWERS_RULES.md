@@ -16,8 +16,9 @@ The available original manuals do **not** establish the complete numerical
 score table, exact timer, ace wrapping, stock penalties, or continuous-bonus
 formula. Contemporary lookalikes conflict and are not treated as original
 authority. This is an explicitly versioned PTown adaptation, not a claim of
-ROM-exact reproduction. Owner acceptance of the assumptions below is required
-before public activation; production stays closed.
+ROM-exact reproduction. Phase 3B enables production fake-money acceptance for
+active approved accounts. The assumptions below still need hands-on acceptance;
+real-money activation remains closed.
 
 ## `ptown-tritowers/1` configuration
 
@@ -50,6 +51,7 @@ act. History contains only exposed snapshots/events. Reconnect reloads authority
 request UUID + exact dealer-game/revision reject duplicates, stale and concurrent
 actions. A game-specific database recovery function owns abandoned deadlines.
 
-Production admission is closed, the catalog has no `tri-towers` row, and real-money
-setup is rejected. Activation is a separate owner-approved release requiring rules
-acceptance, multiplayer smoke, scheduler and pause/lifecycle qualification.
+Production fake-money admission is enabled by Phase 3B, with a `tri-towers`
+catalog entry and server-side approved-account checks. Real-money setup is
+rejected. Rules and multiplayer acceptance remain pending; see
+`TRITOWERS_ACTIVATION.md` for installation evidence and owner steps.

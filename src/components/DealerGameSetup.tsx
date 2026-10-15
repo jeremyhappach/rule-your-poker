@@ -2,6 +2,7 @@ import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/f
 import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/localQualification';
 import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTriTowersTestAccess } from '@/hooks/useTriTowersTestAccess';
 import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
 import { TRI_TOWERS } from '@/lib/triTowers/model';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
@@ -188,7 +189,8 @@ const DealerGameSetupInner = ({
   onSitOut,
 }: DealerGameSetupProps) => {
   const run21Allowed = useRun21AppTestAccess(gameId);
-  const otherAllowed = run21Allowed || TRI_TOWERS.publicSelection;
+  const triTowersAllowed = useTriTowersTestAccess(gameId);
+  const otherAllowed = run21Allowed || triTowersAllowed;
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
@@ -860,7 +862,7 @@ const DealerGameSetupInner = ({
       setSelectedGameType(gameType); setSelectionStep('config'); return;
     }
     if (gameType === 'run21' && !run21Allowed) return;
-    if (gameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
+    if (gameType === TRI_TOWERS.id && !triTowersAllowed) return;
     // Check player count restrictions
     const gameInfo = allGames.find(g => g.id === gameType);
     if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
@@ -962,7 +964,7 @@ const DealerGameSetupInner = ({
     { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
     { id: 'farkle', name: 'Farkle', description: 'Risk it or bank it', category: 'dice', enabled: true },
     ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
-    ...(TRI_TOWERS.publicSelection ? [{id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',category:'other',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers}] : []),
+    ...(triTowersAllowed ? [{id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',category:'other',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers}] : []),
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -991,7 +993,7 @@ const DealerGameSetupInner = ({
     }
 
     const gameTypeToSubmit = overrideGameType || selectedGameType;
-    if (gameTypeToSubmit === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) { toast.error('TriTowers is not released'); return; }
+    if (gameTypeToSubmit === TRI_TOWERS.id && !triTowersAllowed) { toast.error('TriTowers is not released'); return; }
     if (gameTypeToSubmit === 'run21' && !run21Allowed) {
       toast.error('Run21 is unavailable');
       return;
@@ -1073,7 +1075,7 @@ const DealerGameSetupInner = ({
 
   const handleRunBack = async () => {
     if (previousGameType === 'run21' && !run21Allowed) return;
-    if (previousGameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
+    if (previousGameType === TRI_TOWERS.id && !triTowersAllowed) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
@@ -1115,7 +1117,7 @@ const DealerGameSetupInner = ({
   // Determine which tab to default to based on previous game
   const getDefaultTab = () => {
     if (previousGameType === 'run21' && run21Allowed) return 'other';
-    if (previousGameType === TRI_TOWERS.id && TRI_TOWERS.publicSelection) return 'other';
+    if (previousGameType === TRI_TOWERS.id && triTowersAllowed) return 'other';
     if (previousGameType) {
       return isDiceGame(previousGameType) ? 'dice' : 'cards';
     }
@@ -1249,7 +1251,7 @@ const DealerGameSetupInner = ({
                     className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
                     <span className="font-bold">Run21</span>{activeHarnessMap.run21?.active && <HarnessBadge/>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                   </button>}
-                  {TRI_TOWERS.publicSelection && <button type="button" data-dealer-game-option="tri-towers" onClick={()=>handleGameSelect(TRI_TOWERS.id)}
+                  {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers" onClick={()=>handleGameSelect(TRI_TOWERS.id)}
                     disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
                     className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
                 </TabsContent>
@@ -1257,7 +1259,7 @@ const DealerGameSetupInner = ({
             </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== TRI_TOWERS.id || TRI_TOWERS.publicSelection) && (previousGameType !== 'run21' || run21Allowed) && (
+            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== TRI_TOWERS.id || triTowersAllowed) && (previousGameType !== 'run21' || run21Allowed) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}

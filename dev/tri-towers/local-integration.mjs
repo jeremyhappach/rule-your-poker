@@ -13,7 +13,7 @@ async function actor(user,sql,args=[],role='authenticated'){
 }
 const snapshot=(f,user=f.users[0])=>actor(user,'SELECT public.tri_towers_snapshot($1) v',[f.dealer]);
 const action=(f,user,revision,type,index=null,request=uuid())=>actor(user,'SELECT public.tri_towers_action($1,$2,$3,$4,$5) v',[f.dealer,request,revision,type,index]);
-async function fixture(count=2){
+async function fixture(count=2,previousType=null){
  const id=uuid(),users=Array.from({length:count},uuid),players=Array.from({length:count},uuid);
  const deadline=new Date(Date.now()+600000).toISOString();
  await admin.query("INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES($1,'game_selection',false,$2,$3,0,false,false)",[id,count,deadline]);
@@ -22,6 +22,13 @@ async function fixture(count=2){
   await admin.query('INSERT INTO public.players(id,game_id,user_id,position,chips) VALUES($1,$2,$3,$4,0)',[players[i],id,users[i],count-i]);
  }
  const setupArgs=[id,players[0],count,deadline];
+ if(previousType){
+  await admin.query('BEGIN');
+  await admin.query("SELECT set_config('app.cribbage_authoritative_write','on',true),set_config('app.gin_rummy_authoritative_write','on',true),set_config('app.three_five_seven_authoritative_write','on',true),set_config('app.yahtzee_authoritative_write','on',true)");
+  if(previousType==='farkle')await admin.query("SELECT private.farkle_claim_v1($1,NULL,NULL,'configure')",[id]);
+  if(previousType==='run21')await admin.query("INSERT INTO private.run21_app_test_release(singleton,enabled,qualified,project_ref) VALUES(true,true,true,'local') ON CONFLICT(singleton) DO UPDATE SET enabled=true,qualified=true,project_ref='local'");
+  await admin.query('UPDATE public.games SET game_type=$2 WHERE id=$1',[id,previousType]);await admin.query('COMMIT');
+ }
  const setup=await actor(users[0],"SELECT public.tri_towers_configure($1,$2,$3,'tri-towers','{\"ante_amount\":5}',$4) v",setupArgs);
  return {id,users,players,setupArgs,dealer:setup.dealer_game.id};
 }
@@ -39,6 +46,20 @@ try{
  await admin.query('UPDATE private.tri_towers_release SET enabled=false');
  await assert.rejects(fixture(),/release_closed/);await admin.query('UPDATE private.tri_towers_release SET enabled=true');
  point('ACLs deny raw decks/helpers/anonymous RPCs; release gate rejects direct configuration');
+
+ for(const previous of ['3-5-7','cribbage','farkle','gin-rummy','holm','horses','run21','ship-captain-crew','yahtzee']){
+  const prior=await fixture(2,previous);
+  assert.equal((await snapshot(prior)).identity.sessionId,prior.id);
+ }
+ point('All nine existing game families can hand off through their unchanged authority guards');
+ const seven=await fixture(7);assert.equal((await snapshot(seven)).players.length,7);
+ assert.equal((await actor(seven.users[0],'SELECT public.tri_towers_capabilities($1) v',[seven.id])).enabled,true);
+ await admin.query('UPDATE public.profiles SET is_active=false WHERE id=$1',[seven.users[0]]);
+ assert.equal((await actor(seven.users[0],'SELECT public.tri_towers_capabilities($1) v',[seven.id])).enabled,false);
+ await assert.rejects(snapshot(seven),/membership_required/);
+ await assert.rejects(action(seven,seven.users[0],0,'start'),/participant_required/);
+ await admin.query('UPDATE public.profiles SET is_active=true WHERE id=$1',[seven.users[0]]);
+ point('Seven-player setup and revoked-account server-side capability/snapshot/action denial');
 
  const f=await fixture();let m=await state(f),s=m.state,view=await snapshot(f,currentUser(s));
  assert.equal(s.players[0].id,f.players[1]);assert.equal(new Set(s.deck).size,52);

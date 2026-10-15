@@ -908,3 +908,10 @@ Legacy id `opponent_instant_knock` resolves read-only to
   canonical local terminal hold. `FarkleTerminalPresentation` admits only the
   exact committed chip batch and reports its completion to the route; the
   isolated `advanceFarklePostgame` transport calls the applied server owner.
+
+## TriTowers production activation
+
+- `supabase/migrations/20261015003637_activate_tri_towers_test_play.sql`: installed authority, catalog, publication, recovery job and final NOWAIT lock boundary.
+- `src/hooks/useTriTowersTestAccess.ts`: server capability discovery for selection/Run Back; every RPC authorizes independently.
+- `dev/tri-towers/local-{shared,constraints,activation,integration}.mjs`: isolated shared-trigger, RLS, financial and lock qualification.
+- `docs/codex/TRITOWERS_ACTIVATION.md`: production evidence, recovery and owner acceptance.

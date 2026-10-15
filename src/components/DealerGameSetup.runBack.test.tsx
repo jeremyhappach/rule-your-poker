@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const triAccess = vi.hoisted(() => ({allowed:false}));
+vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>triAccess.allowed}));
 vi.mock('@/lib/canonicalShell/lifecycleDebug', () => ({ useLifecycleMount: vi.fn() }));
 vi.mock('@/lib/canonicalShell/waitingTableFlight', () => ({ useWaitingMount: vi.fn(), recordSurfaceOwnership: vi.fn(), recordWaitingLifecycle: vi.fn() }));
 vi.mock('@/lib/debugHarness/activeHarnessWarning', () => ({ useActiveHarnessMap: () => ({}), useActiveHarnessInfo: () => ({ active: false }) }));
@@ -50,7 +52,7 @@ const deadline = new Date(Date.now() + 120_000).toISOString();
 const onComplete = vi.fn();
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  vi.useFakeTimers(); vi.clearAllMocks();
+  vi.useFakeTimers(); vi.clearAllMocks(); triAccess.allowed=false;
   vi.mocked(configureDealerGame).mockResolvedValue({ dealer_game: { id: 'new-dealer-game' }, game: { status: 'ante_decision' }, deduped: false } as any);
   container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
 });
@@ -76,6 +78,12 @@ describe('the actual Run Back button across all seven games', () => {
     expect(document.querySelector('[data-dealer-game-option="tri-towers"]')).toBeNull();
     expect([...document.querySelectorAll('button')].some(node=>/Run Back/.test(node.textContent??''))).toBe(false);
     expect(configureDealerGame).not.toHaveBeenCalled();
+  });
+  it('starts an authorized TriTowers Run Back through the setup authority', async () => {
+    triAccess.allowed=true;
+    await mount('tri-towers', {ante_amount:5});
+    await act(async () => button().click());
+    expect(configureDealerGame).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'dealer-player',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'tri-towers',config:{ante_amount:5}});
   });
   it.each(cases)('submits the exact %s snapshot despite conflicting form defaults: %j', async (gameType, config) => {
     await mount(gameType, config);

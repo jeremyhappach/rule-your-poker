@@ -1,5 +1,20 @@
 # Durable decision log
 
+## October 14 — TriTowers production acceptance uses approved accounts and fake money
+
+Phase 3B supersedes the prior database hold. Add only game-owned tables, RPCs,
+a scoped pause trigger, publication membership and a separate five-second job.
+Acquire shared-table locks at the transaction end with NOWAIT. Reuse the
+established setup authority flags and Farkle's validated configure claim when
+retiring an earlier game; change no shared authority definition.
+
+Match Run21's active-profile eligibility through an independent TriTowers gate.
+Validate money mode, every human's eligibility and exact dealer/session identity
+on configuration; validate account and membership on reads/actions/close.
+Existing session authorization continues to own invitations and joining.
+The normal production selector uses a server capability; real-money TriTowers
+remains closed. Versioned scoring assumptions await hands-on acceptance.
+
 ## October 14 — TriTowers authority is isolated and production admission is closed
 
 TriTowers uses PostgreSQL for cryptographic independent deals, sequential turns,

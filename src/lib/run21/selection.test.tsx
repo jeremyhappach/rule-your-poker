@@ -2,6 +2,7 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
 import {render,fireEvent,cleanup} from '@testing-library/react';
 import {GameSelection} from '@/components/GameSelection';
+vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>false}));
 const access=vi.hoisted(()=>({allowed:false}));
 vi.mock('@/hooks/useRun21AppTestAccess',()=>({useRun21AppTestAccess:()=>access.allowed}));
 vi.mock('@/lib/debugHarness/activeHarnessWarning',()=>({useActiveHarnessMap:()=>({})}));

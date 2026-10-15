@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveHarnessMap } from "@/lib/debugHarness/activeHarnessWarning";
+import { useTriTowersTestAccess } from '@/hooks/useTriTowersTestAccess';
 import { useRun21AppTestAccess } from '@/hooks/useRun21AppTestAccess';
 import { TRI_TOWERS } from '@/lib/triTowers/model';
 
@@ -40,7 +41,8 @@ export const GameSelection = ({
   sessionId = null,
 }: GameSelectionProps) => {
   const run21Allowed = useRun21AppTestAccess(sessionId);
-  const otherAllowed = run21Allowed || TRI_TOWERS.publicSelection;
+  const triTowersAllowed = useTriTowersTestAccess(sessionId);
+  const otherAllowed = run21Allowed || triTowersAllowed;
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
     'run21',
@@ -116,7 +118,7 @@ export const GameSelection = ({
   };
 
   const handleRunBack = () => {
-    if (lastGameType === TRI_TOWERS.id && !TRI_TOWERS.publicSelection) return;
+    if (lastGameType === TRI_TOWERS.id && !triTowersAllowed) return;
     if (lastGameType === 'run21' && !run21Allowed) return;
     if (lastGameType) {
       onSelectGame(lastGameType);
@@ -150,7 +152,7 @@ export const GameSelection = ({
 
   // Determine which tab to default to based on last game type
   const getDefaultTab = () => {
-    if (lastGameType === TRI_TOWERS.id && TRI_TOWERS.publicSelection) return 'other';
+    if (lastGameType === TRI_TOWERS.id && triTowersAllowed) return 'other';
     if (lastGameType === 'run21' && run21Allowed) return 'other';
     if (lastGameType) {
       return lastGameType === 'horses' || lastGameType === 'ship-captain-crew' || lastGameType === 'yahtzee' ? 'dice' : 'cards';
@@ -268,7 +270,7 @@ export const GameSelection = ({
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
                   <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                 </button>}
-                {TRI_TOWERS.publicSelection && <button type="button" data-dealer-game-option="tri-towers"
+                {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers"
                   disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
                   onClick={()=>handleGameSelect({id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers})}
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
@@ -277,7 +279,7 @@ export const GameSelection = ({
           </Tabs>
 
           {/* Run Back option - only show on 2nd+ game of session */}
-          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || TRI_TOWERS.publicSelection) && (lastGameType !== 'run21' || run21Allowed) && (
+          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || triTowersAllowed) && (lastGameType !== 'run21' || run21Allowed) && (
             <div className="pt-3 border-t border-poker-gold/30">
               <button
                 onClick={handleRunBack}
