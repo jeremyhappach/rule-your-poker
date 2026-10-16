@@ -17,11 +17,30 @@ export function reduce(prior:State,intent:Intent|{type:'tick'},now:number,nextDe
     if(s.turnIndex===s.players.length){s.phase='complete';s.deadline=0;s.event={label:'Competition complete',points:0};return s;}
     return deal(s,nextDeck(),now);
   };
-  if((now>=s.deadline&&s.phase!=='stage_complete')||intent.type==='give_up')return finishPlayer();
-  if(s.phase==='stage_complete'&&(intent.type==='continue'||now>=s.deadline))return deal({...s,stage:s.stage+1},nextDeck(),now);
+  const finishStage=(reason:string,bonus=0)=>{
+    if(s.stages.some(r=>r.playerId===player.id&&r.stage===s.stage))throw Error('stage_already_final');
+    const before=s.stages.filter(r=>r.playerId===player.id&&r.stage<s.stage).at(-1)?.score??0;
+    s.score+=bonus;
+    s.stages.push({id:[s.identity.dealerGameId,s.identity.roundId,player.id,s.stage].join(':'),playerId:player.id,
+      stage:s.stage,score:s.score,scoreBefore:before,stageScore:s.score-before,timeBonus:bonus,reason,completedAt:now,
+      finishTurn:['timeout','give_up'].includes(reason)||!(s.stage<RULES.stages||s.stage===RULES.stages&&s.score>=RULES.bonusThreshold)});
+    s.phase='stage_complete';s.deadline=now+RULES.holdMs;
+    s.event={label:reason==='cleared'?'All Three Towers Cleared!':reason==='take_score'?'Score taken':reason==='timeout'?'Time expired':reason==='give_up'?'Turn given up':'Stage complete',points:bonus};
+    return s;
+  };
+  if(s.phase==='stage_complete'){
+    if(now<s.deadline){if(intent.type==='tick'||intent.type==='continue')return s;throw Error('phase');}
+    const result=s.stages.at(-1);
+    if(result?.finishTurn??!(s.stage<RULES.stages||s.stage===RULES.stages&&s.score>=RULES.bonusThreshold))return finishPlayer();
+    const next=deal({...s,stage:s.stage+1},nextDeck(),now);
+    return {...next,phase:'playing',deadline:now+RULES.stageMs,event:{label:'Stage started',points:0}};
+  }
+  if(now>=s.deadline)return s.phase==='playing'?finishStage('timeout'):finishPlayer();
+  if(intent.type==='give_up')return s.phase==='playing'?finishStage('give_up'):finishPlayer();
   if(intent.type==='tick')return s;
   if(s.phase==='ready'&&intent.type==='start'){s.phase='playing';s.deadline=now+RULES.stageMs;s.event={label:'Stage started',points:0};return s;}
   if(s.phase!=='playing')throw Error('phase');
+  if(intent.type==='take_score')return finishStage('take_score');
   if(intent.type==='remove'){
     if(!Number.isInteger(intent.index)||!exposed(s.removed,intent.index)||!adjacent(s.deck[intent.index],s.waste))throw Error('illegal');
     s.removed.push(intent.index);s.waste=s.deck[intent.index];s.run++;
@@ -33,10 +52,8 @@ export function reduce(prior:State,intent:Intent|{type:'tick'},now:number,nextDe
   }else throw Error('intent');
   if(s.removed.length===28||s.cursor===52&&!legalMoves(s).length){
     const cleared=s.removed.length===28;
-    const bonus=cleared?Math.max(0,Math.floor((s.deadline-now)/1000))*RULES.timePerSecond:0;s.score+=bonus;
-    s.stages.push({playerId:player.id,stage:s.stage,score:s.score,reason:cleared?'cleared':'exhausted'});
-    if(s.stage<RULES.stages||s.stage===RULES.stages&&s.score>=RULES.bonusThreshold){s.phase='stage_complete';s.deadline=now+RULES.holdMs;s.event={label:cleared?'Three towers cleared':'Stage complete',points:bonus};}
-    else return finishPlayer();
+    const bonus=cleared?Math.max(0,Math.floor((s.deadline-now)/1000))*RULES.timePerSecond:0;
+    return finishStage(cleared?'cleared':'exhausted',bonus);
   }
   return s;
 }

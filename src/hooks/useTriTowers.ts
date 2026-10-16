@@ -10,7 +10,7 @@ export function useTriTowers(dealerGameId:string){
   const accept=useCallback((incoming:Projection)=>{
     if(scope.current!==dealerGameId)return;
     const value=acceptSnapshot(latest.current,incoming,dealerGameId);if(value!==incoming)return;
-    latest.current=value;setView(value);clock.current={server:value.serverAt,local:performance.now()};setError('');
+    latest.current=value;setView(value);clock.current={server:value.serverAt,local:performance.now()};setNow(value.serverAt);setError('');
   },[dealerGameId]);
   useEffect(()=>{
     let alive=true,busy=false,dirty=false,subscribed=false;

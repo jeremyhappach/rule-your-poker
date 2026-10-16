@@ -3,9 +3,10 @@ export const TRI_TOWERS = {id:'tri-towers',label:'TriTowers',presentationMode:'f
 export const RULES = {version:'ptown-tritowers/1',stages:2,bonusThreshold:80000,maxBonusStages:1,
   runStep:1000,peakBonuses:[5000,10000,15000],stageMs:120000,readyMs:30000,holdMs:5000,timePerSecond:100,wrap:true} as const;
 export interface Player {id:string;userId:string;name:string;seat:number}
-export type Intent = {type:'start'|'draw'|'continue'|'give_up'} | {type:'remove';index:number};
+export type Intent = {type:'start'|'draw'|'continue'|'give_up'|'take_score'} | {type:'remove';index:number};
 export interface Command {dealerGameId:string;requestId:string;revision:number;intent:Intent}
-export interface StageResult {playerId:string;stage:number;score:number;reason:string}
+export interface StageResult {playerId:string;stage:number;score:number;reason:string;
+  id?:string;scoreBefore?:number;stageScore?:number;timeBonus?:number;completedAt?:number;finishTurn?:boolean}
 export interface State {
   identity:{sessionId:string;dealerGameId:string;roundId:string};
   players:Player[];rules:typeof RULES;turnIndex:number;stage:number;
@@ -15,7 +16,7 @@ export interface State {
 }
 export interface Projection extends Omit<State,'deck'> {
   cards:(number|null)[];stockRemaining:number;activePlayerId:string|null;viewerId:string|null;
-  canAct:boolean;revision:number;serverAt:number;settlement:Record<string,number>|null;paused:boolean;finished:boolean;
+  canAct:boolean;revision:number;serverAt:number;settlement:Record<string,number>|null;paused:boolean;pausedAt?:number|null;finished:boolean;
 }
 export const children=(i:number):number[] => i<3?[3+i*2,4+i*2]:i<9?
   [9+Math.floor((i-3)/2)*3+(i-3)%2,10+Math.floor((i-3)/2)*3+(i-3)%2]:i<18?[18+i-9,19+i-9]:[];

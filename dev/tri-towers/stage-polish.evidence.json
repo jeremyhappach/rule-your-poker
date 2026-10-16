@@ -1,0 +1,577 @@
+{
+  "qualifiedAt": "2026-10-16T01:15:26.349Z",
+  "migration": {
+    "name": "tri_towers_stage_results",
+    "version": "20261016011439"
+  },
+  "migrationSHA256": "2e8a94dc04763ad79257d191873adb1a5e4a65166c4afef81b0243d60aef9141",
+  "database": {
+    "database": "tri_polish_1792113087070",
+    "migration": "20261016010000_tri_towers_stage_results",
+    "passed": [
+      "Migration preserves existing matches, history, financial records, all unrelated routines and actual shared triggers",
+      "Take Score, duplicate UUID, replay/stale/actor checks and legacy actions preserve one immutable five-second result",
+      "Concurrent actions serialize; same-player stage auto-starts; final result precedes next-human 30-second Ready",
+      "Legacy ready, playing and completed-stage snapshots survive without historical rewrites or deadline resets",
+      "Last-card clear awards its time bonus once; earned bonus starts automatically and final bonus receives its hold",
+      "Give Up and timeout retain full-turn abandonment; deadline/action races produce one stage result",
+      "Empty stock without legal moves produces exactly one exhausted result",
+      "Financial rollback: actual +5/-5 balances, one balanced canonical batch/result, matching snapshots, replay-safe continuation; rollback restores all"
+    ],
+    "productionWrites": 0
+  },
+  "financial": {
+    "passed": [
+      "Rollback winner, partial tie and all-player tie: balanced canonical transfers, one result, matching snapshots, repeated/late settlement and full restoration",
+      "Injected snapshot failure rolls back chips, ledger, result and terminal state atomically with existing financial triggers enabled",
+      "Unauthorized/private settlement, early continuation and invalid stake rejected",
+      "Pending Session Ended remains terminal through duplicate close; rollback leaves no financial artifacts"
+    ],
+    "actualFinancialTriggers": true,
+    "productionWrites": 0
+  },
+  "baseline": {
+    "matched": 22,
+    "mismatches": []
+  },
+  "integration": {
+    "passed": [
+      "ACLs deny raw decks/helpers/anonymous RPCs; release gate rejects direct configuration",
+      "All nine existing game families can hand off through their unchanged authority guards",
+      "Seven-player setup and revoked-account server-side capability/snapshot/action denial",
+      "Clockwise player order, same redacted spectator board, spectator rejection, membership RLS",
+      "Independent connections serialize duplicates and competing actions; reconnect resumes exact board",
+      "Pause blocks actions and resume extends the exact authoritative deadline",
+      "Complete two-player competition, independent stage deals, immutable scores, one balanced settlement, snapshots/history, idempotent continuation",
+      "Partial ties split indivisible chips clockwise; all-player ties move zero chips",
+      "Continuation honors the canonical make-it-take-it dealer setting",
+      "Zero-client timeout recovery, stale prior-player rejection, concurrent timeout/terminal race settles once",
+      "Real-money configuration remains closed and deployed financial journal has zero unmatched deltas"
+    ],
+    "productionWrites": 0
+  },
+  "browser": {
+    "passed": [
+      "Active/watcher roles, stock 23/10/1/0, draw visibility, disabled spectator inputs",
+      "Both viewers count one immutable stage result; duplicate snapshots preserve node; reload resumes progress; stage 2 auto-starts",
+      "Clear celebration/time bonus on both viewers; earned bonus auto-starts; final bonus hold completes before next human Ready",
+      "Full competition: one canonical balanced batch/result, correct balances, both final views, idempotent return to normal setup",
+      "Zero connected browsers: full five-second holds, automatic stage start, timeout/handoff, next-player Ready expiry and one settlement"
+    ],
+    "evidence": {
+      "clearResult": {
+        "id": "b99e71d6-4026-4710-b73a-e39990f46cf2:58c0d791-6bb2-4173-af23-5d4fa7c22bb7:b9e1e107-f8af-4a6f-974b-44c4cfd56f2e:2",
+        "score": 89000,
+        "stage": 2,
+        "reason": "cleared",
+        "playerId": "b9e1e107-f8af-4a6f-974b-44c4cfd56f2e",
+        "timeBonus": 10000,
+        "finishTurn": false,
+        "stageScore": 65000,
+        "completedAt": 1792113182776,
+        "scoreBefore": 24000
+      },
+      "stages": [
+        {
+          "id": "b99e71d6-4026-4710-b73a-e39990f46cf2:58c0d791-6bb2-4173-af23-5d4fa7c22bb7:b9e1e107-f8af-4a6f-974b-44c4cfd56f2e:1",
+          "score": 24000,
+          "stage": 1,
+          "reason": "take_score",
+          "playerId": "b9e1e107-f8af-4a6f-974b-44c4cfd56f2e",
+          "timeBonus": 0,
+          "finishTurn": false,
+          "stageScore": 24000,
+          "completedAt": 1792113176546,
+          "scoreBefore": 0
+        },
+        {
+          "id": "b99e71d6-4026-4710-b73a-e39990f46cf2:58c0d791-6bb2-4173-af23-5d4fa7c22bb7:b9e1e107-f8af-4a6f-974b-44c4cfd56f2e:2",
+          "score": 89000,
+          "stage": 2,
+          "reason": "cleared",
+          "playerId": "b9e1e107-f8af-4a6f-974b-44c4cfd56f2e",
+          "timeBonus": 10000,
+          "finishTurn": false,
+          "stageScore": 65000,
+          "completedAt": 1792113182776,
+          "scoreBefore": 24000
+        },
+        {
+          "id": "b99e71d6-4026-4710-b73a-e39990f46cf2:58c0d791-6bb2-4173-af23-5d4fa7c22bb7:b9e1e107-f8af-4a6f-974b-44c4cfd56f2e:3",
+          "score": 89000,
+          "stage": 3,
+          "reason": "take_score",
+          "playerId": "b9e1e107-f8af-4a6f-974b-44c4cfd56f2e",
+          "timeBonus": 0,
+          "finishTurn": true,
+          "stageScore": 0,
+          "completedAt": 1792113192626,
+          "scoreBefore": 89000
+        },
+        {
+          "id": "b99e71d6-4026-4710-b73a-e39990f46cf2:58c0d791-6bb2-4173-af23-5d4fa7c22bb7:d2a62c8e-87d4-4fc0-a7d9-9a27c429b52b:1",
+          "score": 0,
+          "stage": 1,
+          "reason": "give_up",
+          "playerId": "d2a62c8e-87d4-4fc0-a7d9-9a27c429b52b",
+          "timeBonus": 0,
+          "finishTurn": true,
+          "stageScore": 0,
+          "completedAt": 1792113203070,
+          "scoreBefore": 0
+        }
+      ]
+    },
+    "transport": "Production hook and authenticated SQL RPCs; local commit notifications replace Supabase Realtime. Existing recovery SQL scheduled by loopback harness.",
+    "productionWrites": 0
+  },
+  "layout": {
+    "passed": [
+      {
+        "width": 320,
+        "height": 568,
+        "result": "cleared",
+        "reducedMotion": true
+      },
+      {
+        "width": 320,
+        "height": 568,
+        "result": "take_score",
+        "reducedMotion": true
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "result": "cleared",
+        "reducedMotion": true
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "result": "take_score",
+        "reducedMotion": true
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "result": "cleared",
+        "reducedMotion": true
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "result": "take_score",
+        "reducedMotion": true
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "result": "cleared",
+        "reducedMotion": true
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "result": "take_score",
+        "reducedMotion": true
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "result": "cleared",
+        "reducedMotion": true
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "result": "take_score",
+        "reducedMotion": true
+      }
+    ],
+    "stock": [
+      23,
+      10,
+      1,
+      0
+    ],
+    "rotation": true
+  },
+  "playingLayout": [
+    {
+      "width": 390,
+      "height": 844,
+      "cards": [
+        {
+          "x": 10.390625,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 47.3125,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 84.234375,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 121.15625,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 158.078125,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 195,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 231.921875,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 268.84375,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 305.765625,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        },
+        {
+          "x": 342.6875,
+          "y": 430.167724609375,
+          "w": 35.8125,
+          "h": 55.375
+        }
+      ],
+      "passed": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "cards": [
+        {
+          "x": 10.390625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 75.765625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 141.140625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 206.515625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 271.890625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 337.28125,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 402.65625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 468.03125,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 533.40625,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        },
+        {
+          "x": 598.78125,
+          "y": 249.88819885253906,
+          "w": 63.40625,
+          "h": 81.95310974121094
+        }
+      ],
+      "passed": true
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "cards": [
+        {
+          "x": 10.390625,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 85.109375,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 159.828125,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 234.546875,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 309.265625,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 384,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 458.71875,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 533.4375,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 608.15625,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        },
+        {
+          "x": 682.875,
+          "y": 514.3007202148438,
+          "w": 72.46875,
+          "h": 112.078125
+        }
+      ],
+      "passed": true
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "cards": [
+        {
+          "x": 10.390625,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 110.703125,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 211.03125,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 311.34375,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 411.671875,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 512,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 612.3125,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 712.640625,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 812.953125,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        },
+        {
+          "x": 913.28125,
+          "y": 416.84478759765625,
+          "w": 97.296875,
+          "h": 150.46875
+        }
+      ],
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "cards": [
+        {
+          "x": 10.390625,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 123.4375,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 236.5,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 349.5625,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 462.609375,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 575.671875,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 688.734375,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 801.78125,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 914.84375,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        },
+        {
+          "x": 1027.90625,
+          "y": 429.4281005859375,
+          "w": 109.65625,
+          "h": 408.359375
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "engineRollback": "PASS",
+  "adapterRollback": "PASS",
+  "regression": {
+    "source": 2151,
+    "harness": 241,
+    "total": 2392,
+    "typecheck": "PASS",
+    "productionBuild": "PASS"
+  },
+  "deployedFunctions": [
+    {
+      "name": "tri_towers_snapshot",
+      "body_hash": "7cb64ac19a4c07c9a20422845a9488a2"
+    },
+    {
+      "name": "tri_towers_finish_stage",
+      "body_hash": "d64e2dc5c2e33426615f4543130cf9a9"
+    },
+    {
+      "name": "tri_towers_reduce",
+      "body_hash": "b6f0b2ad59a1ad29b89587f3d23f8333"
+    },
+    {
+      "name": "tri_towers_action",
+      "body_hash": "940b94a4bc155dad900ad96ff5b5cf35"
+    }
+  ],
+  "preservation": {
+    "catalog": "6bcf792785911331e53be4e9d4d3207d",
+    "history": "b8b9ceceda467465119f1457e0503b36",
+    "matches": "13b3a6e33c95435dacaa61eea460f017",
+    "release": "0b8f88affef279d4ddf1a28735ae126a",
+    "results": "db0ea5699788b43cecb4fd0b2ab37d0c",
+    "requests": "4a2ab7378f11fff20e0decaa0d2fb4e8",
+    "snapshots": "489dd9936c91fe420fe4fa85efbdf54c",
+    "unrelated_functions": "79d9efa9a88ab772247b1df544f0072e"
+  },
+  "helperAuthenticated": false,
+  "actionAuthenticated": true,
+  "productionFinancialWrites": 0,
+  "ownerGameplaySmoke": "PENDING"
+}

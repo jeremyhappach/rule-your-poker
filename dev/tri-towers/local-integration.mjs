@@ -2,7 +2,7 @@ import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/i
 import {readFile,writeFile} from 'node:fs/promises';
 import {randomUUID as uuid} from 'node:crypto';
 import assert from 'node:assert/strict';
-const options={host:'127.0.0.1',port:55439,user:'tri_test',database:'postgres'};
+const options={host:'127.0.0.1',port:55439,user:'tri_test',database:process.env.TRI_TEST_DATABASE||'postgres'};
 const admin=new pg.Client(options);await admin.connect();
 const passed=[];
 async function actor(user,sql,args=[],role='authenticated'){
@@ -91,10 +91,11 @@ try{
   m=await state(f);s=m.state;if(s.phase==='complete')break;
   for(const [id,score]of Object.entries(completed))assert.equal(s.scores[id],score);
   completed={...s.scores};lastUser=currentUser(s);lastReq=uuid();lastRev=m.revision;lastIdx=null;
+  if(s.phase==='stage_complete'){await admin.query("UPDATE private.tri_towers_matches SET state=jsonb_set(state,'{deadline}','0') WHERE dealer_game_id=$1",[f.dealer]);}
   if(s.phase==='ready')lastType='start';else if(s.phase==='stage_complete')lastType='continue';
   else {lastIdx=(await admin.query('SELECT i FROM generate_series(0,27)i WHERE private.tri_towers_legal($1,i) ORDER BY i LIMIT 1',[s])).rows[0]?.i??null;lastType=lastIdx===null?'draw':'remove';}
   await action(f,lastUser,lastRev,lastType,lastIdx,lastReq);
-  const next=await state(f);if(next.state.phase==='ready')deals.add(JSON.stringify(next.state.deck));
+  const next=await state(f);deals.add(JSON.stringify(next.state.deck));
   if(next.state.phase!=='complete')assert.equal(next.settlement,null);
  }
  m=await state(f);assert.equal(m.state.phase,'complete');assert.equal(Object.keys(m.state.scores).length,2);assert(deals.size>=4);

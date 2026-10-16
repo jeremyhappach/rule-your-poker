@@ -30,13 +30,13 @@ export function TriTowersGame(props:Props){
   useEffect(()=>{if(props.activeTab!=='history')return;let alive=true;
     void triTowersRpc<typeof history>('tri_towers_history',{p_dealer_game_id:props.dealerGameId}).then(rows=>{if(alive)setHistory(rows);}).catch(e=>{if(alive)setError(e.message);});
     return()=>{alive=false;};
-  },[props.activeTab,props.dealerGameId]);
+  },[props.activeTab,props.dealerGameId,game.view?.stages.length]);
   if(!game.view)return <div role="status" className="p-4">{game.error||'Connecting to TriTowers…'} <button onClick={game.reconnect}>Reconnect</button></div>;
   const view=game.view;
   const close=async()=>{if(closing)return;setClosing(true);try{await triTowersRpc('tri_towers_close',{p_dealer_game_id:props.dealerGameId});complete(view);
   }catch(e){setError((e as Error).message);}finally{setClosing(false);}};
   const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:
-    props.activeTab==='history'?<div className="space-y-2">{history.map(row=><p key={row.revision}>#{row.revision} · {row.frame.event.label} · {row.frame.score.toLocaleString()}</p>)}</div>:
+    props.activeTab==='history'?<div className="space-y-2">{view.stages.map(r=><p key={`${r.playerId}:${r.stage}`}>{view.players.find(p=>p.id===r.playerId)?.name} · Stage {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore!==undefined?`+${r.stageScore.toLocaleString()} · `:''}Total {r.score.toLocaleString()}</p>)}{history.map(row=><p key={row.revision}>#{row.revision} · {row.frame.event.label} · {row.frame.score.toLocaleString()}</p>)}</div>:
     <><TriTowersRules/><div>{view.players.map(p=><p key={p.id}>{p.name} · {p.id in view.scores?view.scores[p.id].toLocaleString():'Turn pending'}</p>)}</div></>;
   return <TriTowersView {...game} view={view} onIntent={game.act} activeTab={props.activeTab} setActiveTab={props.setActiveTab}
     panel={panel} sessionEnded={props.sessionEnded} onContinue={view.settlement&&!closing?()=>void close():undefined}

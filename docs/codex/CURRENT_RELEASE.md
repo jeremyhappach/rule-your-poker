@@ -1,3 +1,22 @@
+# TriTowers stage results and presentation — 2026-10-15 — qualified release
+
+Financial/release gate: **PASS**. The five approved corrections add clear turn
+treatment, authoritative five-second results/count-ups (including final/bonus),
+automatic same-player stages, a prominent stock count and authenticated Take
+Score. The next human retains initial Ready; timeout/Give Up retain full-turn
+abandonment. No financial, admission or shared-shell ownership changes.
+
+Compatibility proofs preserve existing matches/history and all unrelated
+routines. Twenty-two unchanged TriTowers/financial bodies match production.
+Actual financial-trigger rollback, SQL engine/adapter, independent-connection
+integration, two browsers, zero-client recovery, responsive/reduced-motion,
+regression, typecheck and build pass. Production gameplay acceptance is pending.
+Migration `20261016011439_tri_towers_stage_results` is applied with production
+record/routine preservation verified. Full regression: 2,392 passing tests.
+Release checkpoint: `tri-towers-stage-polish-2026-10-15`.
+See [qualification and owner smoke](TRITOWERS_STAGE_POLISH.md) and
+[evidence](../../dev/tri-towers/stage-polish.evidence.json).
+
 # Run21 final polish and shared dissolve — 2026-10-15 — qualified release
 
 The approved follow-up separates the score and help control, displays aggregate
@@ -17,7 +36,7 @@ terminal hold, makes outgoing content inert and supports reduced motion. Actual
 fullscreen snapshots and the existing table slot contract publish readiness.
 Table/table changes keep their existing choreography; ordinary gameplay updates
 do not trigger a dissolve. TriTowers uses the same fullscreen boundary without
-changing its closed production admission.
+changing its approved-account, fake-money-only production admission.
 
 Validation: 2,383 regression tests, typecheck and production build pass; 231
 focused checks cover 104/105, legal combinations, bust/deadline priority,

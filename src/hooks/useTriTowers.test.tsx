@@ -13,6 +13,11 @@ const players=[{id:'a',userId:'u1',name:'A',seat:1},{id:'b',userId:'u2',name:'B'
 const initial=create({sessionId:'s',dealerGameId:'d',roundId:'r'},players,Array.from({length:52},(_,i)=>i),Date.now());
 beforeEach(()=>{vi.clearAllMocks();mock.channels.length=0;mock.rpc.mockResolvedValue(project(initial,'a'));});
 afterEach(cleanup);
+it('aligns the first result frame to server time even when the client clock differs',async()=>{
+ const snapshot=project(initial,'a',1,1234);mock.rpc.mockResolvedValue(snapshot);
+ const {result}=renderHook(()=>useTriTowers('d'));await waitFor(()=>expect(result.current.view?.revision).toBe(1));
+ expect(result.current.now).toBeGreaterThanOrEqual(1234);expect(result.current.now).toBeLessThan(2000);
+});
 it('spectators receive each board revision through realtime and resume after channel reconnect',async()=>{
  mock.rpc.mockResolvedValue(project(initial,'b'));const {result}=renderHook(()=>useTriTowers('d'));
  await waitFor(()=>expect(result.current.connected).toBe(true));

@@ -27,6 +27,6 @@ try{
  const page=await browser.newPage({viewport:{width:390,height:844}});
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:5179)/,r=>r.fulfill({status:200,contentType:'application/json',body:'[]'}));
  await page.goto('http://127.0.0.1:5179/dev/tri-towers/fullscreen.html?observer=1');await page.locator('[data-tri-card="27"]').waitFor();
- assert.equal(await page.locator('.tri-card:enabled,.tri-stock:enabled').count(),0);assert(await page.getByText('Jeremy · Watching live').isVisible());
+ assert.equal(await page.locator('.tri-card:enabled,.tri-stock:enabled').count(),0);assert(await page.getByText('Watching Jeremy').isVisible());
  await writeFile(`${out}/layout-results.json`,JSON.stringify(results,null,2));console.log(JSON.stringify(results));
 }finally{await browser.close();await server.close();}

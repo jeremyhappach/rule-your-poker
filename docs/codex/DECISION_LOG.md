@@ -2230,3 +2230,14 @@ never leave broad authority active until commit or trust arbitrary definers.
 Keep shared transfer calculations/timing unchanged and capture exact executable
 forward recovery before applying a new additive migration. See
 [terminal correction evidence](FARKLE_TERMINAL_COMMIT_20260921.md).
+
+## October 15 — TriTowers authoritative stage presentation
+
+Every completed stage, including final/bonus and playing abandonment, commits
+one immutable result and a five-second server deadline. The existing recovery
+owner advances it; legacy Continue cannot shorten the window. Same-player stages
+auto-start, while the next human retains initial Ready. Take Score records earned
+cumulative points without re-adding them, with normal bonus eligibility. UI
+count-up derives from the result identity and server clock, never a progression
+callback. Existing rows and equal-revision snapshot shapes need no rewrite.
+See [stage-polish qualification](TRITOWERS_STAGE_POLISH.md).

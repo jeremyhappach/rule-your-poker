@@ -33,9 +33,9 @@ real-money activation remains closed.
 | Clock | 120 seconds per stage; clear bonus `100 × whole seconds remaining` | Explicit assumption; server clock only |
 | Stages | Two standard stages, regardless of clearing the previous one | Two-round count verified; continuation policy assumption |
 | Bonus | One third stage if cumulative score after stage two is at least 80,000 | Threshold verified; one-stage cap selected |
-| End stage | All cards removed, or stock empty and no legal exposed move | Explicit selected rule |
+| End stage | All cards removed, stock empty with no legal exposed move, or Take Score retaining only earned points | Approved stage policy |
 | Abandonment | 30-second Ready deadline; timeout or Give up ends that player's entire turn, retaining earned score | PTown multiplayer policy |
-| Interstage | Five-second result hold; active player may Continue sooner | Presentation/continuation policy |
+| Interstage | Every completed stage has a server-owned five-second result hold; the next eligible stage starts automatically. No early Continue. The next human retains initial Ready. | Approved presentation/continuation policy |
 | Undo / wildcards | None | No unverified extra mechanics |
 
 The server persists each completed player's score once. No chips move for an

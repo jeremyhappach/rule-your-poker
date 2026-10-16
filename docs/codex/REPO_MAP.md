@@ -928,6 +928,10 @@ Legacy id `opponent_instant_knock` resolves read-only to
 
 ## TriTowers production activation
 
+- `src/lib/triTowers/stagePresentation.ts` and `TriTowersStageResult.tsx`: result-identity/server-clock count-up, with no progression or financial authority.
+- `supabase/tri-towers/authority.sql`: stage results and Take Score remain in the game-owned reducer; existing recovery owns the result deadline.
+- `docs/codex/TRITOWERS_STAGE_POLISH.md`: compatibility, financial rollback and two-browser evidence for the five-correction release.
+
 - `supabase/migrations/20261015003637_activate_tri_towers_test_play.sql`: installed authority, catalog, publication, recovery job and final NOWAIT lock boundary.
 - `src/hooks/useTriTowersTestAccess.ts`: server capability discovery for selection/Run Back; every RPC authorizes independently.
 - `dev/tri-towers/local-{shared,constraints,activation,integration}.mjs`: isolated shared-trigger, RLS, financial and lock qualification.

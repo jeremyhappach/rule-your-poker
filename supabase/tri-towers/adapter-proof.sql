@@ -35,6 +35,7 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',s->'players'->(s->>'turnIndex')::integer->>'userId',true);
   idx:=NULL;IF s->>'phase'='ready' THEN action:='start';ELSIF s->>'phase'='stage_complete' THEN action:='continue';
   ELSE SELECT q.card INTO idx FROM generate_series(0,27)q(card) WHERE pg_temp.tri_towers_legal(s,q.card) ORDER BY q.card LIMIT 1;action:=CASE WHEN idx IS NULL THEN 'draw' ELSE 'remove' END;END IF;
+  IF s->>'phase'='stage_complete' THEN UPDATE pg_temp.tri_towers_matches SET state=jsonb_set(state,'{deadline}','0') WHERE dealer_game_id=dealer_id;END IF;
   old_request:=gen_random_uuid();old_rev:=revision_i;view:=pg_temp.tri_towers_action(dealer_id,old_request,revision_i,action,idx);
  END LOOP;
  PERFORM pg_temp.check_adapter((SELECT count(*)=1 FROM pg_temp.game_results WHERE dealer_game_id=dealer_id),'one_result');
