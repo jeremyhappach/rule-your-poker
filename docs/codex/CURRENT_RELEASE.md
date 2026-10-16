@@ -1,3 +1,30 @@
+# TriTowers multiplayer v2 — 2026-10-16 — qualified correction
+
+Approved `tri-towers/2` introduces atomic first-action Ready admission, alternating
+participant rounds, the accepted scoring and one qualified bonus round, one active
+human Take Score, shared Run21-style timer presentation and canonical balances/chip
+transfers. V1 matches and the failed Pedro Strop evidence remain frozen. Real-money
+TriTowers remains prohibited. Solo TriTowers follows multiplayer smoke acceptance.
+
+Migration `tri_towers_v2` is installed; all 30 TriTowers function hashes match the
+qualified candidate. Every other database function and all preserved historical
+hashes are unchanged. The full installed financial and boundary proofs pass:
+actual chips, balanced transfers/results/snapshots, four payout outcomes, concurrent
+workers, failure rollback, replay, Run Back and Session Ended carryover.
+
+The zero-browser seven-player/six-bot competition completed 16 rounds, including
+two earned bonuses, in 13m 36s with exactly one settlement. Mixed-human/bot play also
+completed. Browser phone/landscape/desktop qualification passed first actions,
+progressive bot moves, one chip flight, reload and continuation. Full regression:
+2,299 application plus 241 harness tests, final focused checks, TypeScript and build.
+Worker clean-window p95: 31.4 ms; production idle average: 8.8 ms, zero failures/backlog.
+
+The separate admission flag remains closed through compatible publication and is
+authorized to reopen only after Vercel READY and final worker verification. Existing
+actor release/recovery stays enabled throughout. Checkpoint:
+`tri-towers-v2-2026-10-16`. Jeremy's production smoke is pending; follow
+[qualification and exact smoke steps](TRITOWERS_V2.md).
+
 # Arcade completion, score audio and individual-score boards — 2026-10-16
 
 Approved focused correction: immediate atomic completion with immutable prior-best

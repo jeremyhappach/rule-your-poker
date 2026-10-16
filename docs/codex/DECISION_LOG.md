@@ -1,3 +1,14 @@
+# 2026-10-16 — TriTowers v2 shared rules and first-action admission
+
+Approved `tri-towers/2` freezes the accepted scoring and a mode-independent SQL
+board core. Multiplayer alternates full participant rounds, then one qualified
+bonus round. Each human round admits its clock and first valid action atomically.
+Timeout ends only that round. V1 dispatch and frozen evidence remain intact.
+Canonical snapshot balances and the existing shared chip ledger present the
+unchanged settlement authority. New admission remains separately gated through
+qualification and compatible publication. Solo follows multiplayer acceptance.
+See [contract, proof and owner smoke](TRITOWERS_V2.md).
+
 # 2026-10-16 — Arcade artwork is isolated presentation metadata
 
 Approved admin-managed artwork uses a separate private Storage bucket with

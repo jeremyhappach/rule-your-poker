@@ -1,0 +1,10 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const rules=JSON.parse(await readFile('src/lib/triTowers/rules-v2.json','utf8'));
+let sql="SET LOCAL lock_timeout='2s';\nSET LOCAL statement_timeout='15s';\n";
+sql+=await readFile('supabase/tri-towers/legacy-v1.sql','utf8');
+sql+="CREATE OR REPLACE FUNCTION private.tri_towers_rules() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$ SELECT '"+JSON.stringify(rules)+"'::jsonb $$;\n";
+sql+=await readFile('supabase/tri-towers/v2.sql','utf8');
+sql+="\nREVOKE ALL ON FUNCTION public.tri_towers_snapshot_v1(uuid) FROM PUBLIC,anon,authenticated,service_role;\n";
+for(const sig of ['tri_towers_deal_v1(jsonb,bigint)','tri_towers_reduce_v1(jsonb,text,integer,bigint)','tri_towers_bot_choice_v1(jsonb,bigint)','tri_towers_board_deal_v2(jsonb,bigint)','tri_towers_board_finish_v2(jsonb,text,bigint)','tri_towers_board_reduce_v2(jsonb,text,integer,bigint)'])sql+='REVOKE ALL ON FUNCTION private.'+sig+' FROM PUBLIC,anon,authenticated,service_role;\n';
+await writeFile('supabase/migrations/20261016233453_tri_towers_v2.sql',sql);
+console.log('Packaged v2; admission remains closed; legacy bodies preserved.');

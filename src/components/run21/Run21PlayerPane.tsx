@@ -3,6 +3,7 @@ import {aggregate, canFinish, duration, speedAt} from '@/lib/run21/rules';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import {multiplierAt} from '@/lib/run21/rules';
 import {roundIntro} from '@/lib/run21/roundIntro';
+import {RoundTimeBar} from '@/lib/canonicalShell/RoundTimeBar';
 
 /** The shell owns the active pane; only the viewing player can issue intents. */
 export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projection;now:number;onIntent?:(intent:Intent)=>void;pending?:boolean}) {
@@ -31,10 +32,6 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
   }
   const full=duration(view.config);
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??at)));
-  const percent=100*remaining/full;
   const speed=speedAt(board,view.config,board.result?.at??at);
-  return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><div className="run21-timer" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
-    aria-valuetext={board.startedAt===null?`Speed ${speed}, waiting for first placement`:`${(remaining/1000).toFixed(1)} seconds remaining`} data-run21-time-remaining={remaining}>
-    <span className={`run21-timer-fill ${percent>10?'bg-green-500':percent>5?'bg-yellow-500':'bg-destructive'}`} data-run21-time-tone={percent>10?'success':percent>5?'warning':'danger'} style={{width:`${percent}%`}}/>
-  </div></div>;
+  return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><RoundTimeBar remaining={remaining} full={full} waiting={board.startedAt===null} speed={speed}/></div>;
 }

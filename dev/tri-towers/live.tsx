@@ -10,7 +10,7 @@ import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import '@/index.css';
 function Live(){const game=useTriTowers(new URLSearchParams(location.search).get('dealer')!),[tab,setTab]=useState<ShellTabId>('cards');
  if(!game.view)return <div>{game.error||'Connecting'}</div>;
- return <TriTowersView {...game} view={game.view} activeTab={tab} setActiveTab={setTab} panel={<TriTowersRules/>} onIntent={game.act}
+ return <TriTowersView {...game} view={game.view} activeTab={tab} setActiveTab={setTab} panel={<TriTowersRules rules={game.view.rules}/>} onIntent={game.act}
   onContinue={game.view.settlement?()=>void triTowersRpc('tri_towers_close',{p_dealer_game_id:game.view!.identity.dealerGameId}):undefined} error={game.error||null}/>;
 }
-createRoot(document.getElementById('root')!).render(<VisualPreferencesProvider><ResponsiveGeometryProvider><PersistentTableShell gameType="tri-towers" presentationMode="fullscreen"><Live/></PersistentTableShell></ResponsiveGeometryProvider></VisualPreferencesProvider>);
+createRoot(document.getElementById('root')!).render(<VisualPreferencesProvider><ResponsiveGeometryProvider><PersistentTableShell gameId={new URLSearchParams(location.search).get('session')??undefined} gameType="tri-towers" presentationMode="fullscreen"><Live/></PersistentTableShell></ResponsiveGeometryProvider></VisualPreferencesProvider>);

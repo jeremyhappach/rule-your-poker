@@ -7,7 +7,8 @@ export function acceptSnapshot(prior:Projection|null,incoming:Projection,dealerG
   if(incoming.identity.dealerGameId!==dealerGameId)return prior;
   if(prior&&incoming.revision<prior.revision)return prior;
   if(prior&&incoming.revision===prior.revision){
-    const {serverAt:a,...before}=prior,{serverAt:b,...after}=incoming;
+    // Financial transport has its own canonical cursor; it is not gameplay progress.
+    const {serverAt:a,financial:af,...before}=prior,{serverAt:b,financial:bf,...after}=incoming;
     if(JSON.stringify(before)!==JSON.stringify(after))throw Error('Conflicting TriTowers state. Reconnect required.');
   }
   return incoming;

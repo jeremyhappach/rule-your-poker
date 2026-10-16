@@ -1,0 +1,355 @@
+{
+  "date": "2026-10-16",
+  "gate": "PASS",
+  "version": "tri-towers/2",
+  "migration": "20261016233453_tri_towers_v2.sql",
+  "definitions": [
+    {
+      "signature": "private.tri_towers_actor_allowed(uuid)",
+      "hash": "49919f66e63da9855fb946acaa293bc0"
+    },
+    {
+      "signature": "private.tri_towers_board_deal_v2(jsonb,bigint)",
+      "hash": "79991782d054524d01174867ebd24f3f"
+    },
+    {
+      "signature": "private.tri_towers_board_finish_v2(jsonb,text,bigint)",
+      "hash": "1a3011da6a4c8029b25f24632e985e94"
+    },
+    {
+      "signature": "private.tri_towers_board_reduce_v2(jsonb,text,integer,bigint)",
+      "hash": "e53200bd25a0987d81b93d4203f99121"
+    },
+    {
+      "signature": "private.tri_towers_bot_choice(jsonb,bigint)",
+      "hash": "f420880dc302ab4b57632a1edbaacb87"
+    },
+    {
+      "signature": "private.tri_towers_bot_choice_v1(jsonb,bigint)",
+      "hash": "da1739c371d3153dcc6f0a2c6be9d220"
+    },
+    {
+      "signature": "private.tri_towers_children(integer)",
+      "hash": "22c09ac6b43674a87701cbce88b1a406"
+    },
+    {
+      "signature": "private.tri_towers_deal(jsonb,bigint)",
+      "hash": "b61c88f3395d564b16564c56730fbf53"
+    },
+    {
+      "signature": "private.tri_towers_deal_v1(jsonb,bigint)",
+      "hash": "3961886b7d09d2cb64926883e52d5a8d"
+    },
+    {
+      "signature": "private.tri_towers_exposed(jsonb,integer)",
+      "hash": "0d73a25860b315fcdb4bef74a347d44d"
+    },
+    {
+      "signature": "private.tri_towers_finish_player(jsonb,bigint)",
+      "hash": "6862a1b83adaa08a4c70477f7fa05e20"
+    },
+    {
+      "signature": "private.tri_towers_finish_stage(jsonb,text,integer,bigint)",
+      "hash": "771acbb7b2f7122cb6a249264c75d014"
+    },
+    {
+      "signature": "private.tri_towers_legal(jsonb,integer)",
+      "hash": "cfca8e06031e09a18f048f8bc3e02947"
+    },
+    {
+      "signature": "private.tri_towers_pause()",
+      "hash": "6d4f0888c8d045f41daf187cbd512a0c"
+    },
+    {
+      "signature": "private.tri_towers_publish()",
+      "hash": "30012dccc1e8c258753fc835fccf3655"
+    },
+    {
+      "signature": "private.tri_towers_recover()",
+      "hash": "12381899412cbdcd3ce53a9491130c03"
+    },
+    {
+      "signature": "private.tri_towers_reduce(jsonb,text,integer,bigint)",
+      "hash": "3245de9eba7dc45996582dd3e60ce62a"
+    },
+    {
+      "signature": "private.tri_towers_reduce_v1(jsonb,text,integer,bigint)",
+      "hash": "d916fb41002d864f1d24f0b97b230803"
+    },
+    {
+      "signature": "private.tri_towers_rules()",
+      "hash": "fde595a417bac8825b675faacc848273"
+    },
+    {
+      "signature": "private.tri_towers_schedule_bot()",
+      "hash": "5ea766de9ceb583cfd32ee195c802796"
+    },
+    {
+      "signature": "private.tri_towers_settle(uuid)",
+      "hash": "4c24f4af6836f4e3ba6f127076b8851c"
+    },
+    {
+      "signature": "private.tri_towers_shuffle()",
+      "hash": "efc100fd31ee7cacdd67efc308097591"
+    },
+    {
+      "signature": "private.tri_towers_visible(jsonb)",
+      "hash": "db79d749e030bd173c84786a02084acb"
+    },
+    {
+      "signature": "tri_towers_action(uuid,uuid,bigint,text,integer)",
+      "hash": "381dfbcad3fa52f1e9541a5ed9c16e19"
+    },
+    {
+      "signature": "tri_towers_capabilities(uuid)",
+      "hash": "40e76cf9ed10cd90e24ee72049cb4154"
+    },
+    {
+      "signature": "tri_towers_close(uuid)",
+      "hash": "a262eff2d195691e93cb6d94faf18370"
+    },
+    {
+      "signature": "tri_towers_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "hash": "434648750518cfa2935b03792cf080ce"
+    },
+    {
+      "signature": "tri_towers_history(uuid)",
+      "hash": "2ebb88c68a47d796234921eb961f944c"
+    },
+    {
+      "signature": "tri_towers_snapshot(uuid)",
+      "hash": "bb095d44f42807a861dc9683a72fb2e0"
+    },
+    {
+      "signature": "tri_towers_snapshot_v1(uuid)",
+      "hash": "d60f413ed2d533efffdb8135ba8e4dee"
+    }
+  ],
+  "proof": [
+    "Exact streak schedule, draw/clamp, peak + clear stock/time, whole-second Take Score, first-action clock and timeout semantics",
+    "2–7 participants alternate complete base rounds; 79,999/80,000/80,001 qualification freezes once; bonus timeout cannot award another round",
+    "Authenticated first action, duplicate UUID, stale revision, spectator and private-core authorization",
+    "Four canonical financial outcomes, exact chips/ledger/results/snapshots, duplicate settlement, continuation, Run Back, late replay and rollback",
+    "Actual financial trigger failure rollback, terminal Session Ended carryover and competing independent worker settlement exactly once",
+    "Equivalent visible state produces identical bot choices; private deck input rejected"
+  ],
+  "financial": [
+    {
+      "case": "human-win",
+      "initial": [
+        100,
+        110,
+        120
+      ],
+      "deltas": [
+        10,
+        -5,
+        -5
+      ],
+      "actual": [
+        110,
+        105,
+        115
+      ],
+      "balanced": true,
+      "resultCount": 1,
+      "snapshotCount": 3,
+      "transferCount": 1
+    },
+    {
+      "case": "bot-win",
+      "initial": [
+        100,
+        110,
+        120
+      ],
+      "deltas": [
+        -5,
+        10,
+        -5
+      ],
+      "actual": [
+        95,
+        120,
+        115
+      ],
+      "balanced": true,
+      "resultCount": 1,
+      "snapshotCount": 3,
+      "transferCount": 1
+    },
+    {
+      "case": "mixed-tie",
+      "initial": [
+        100,
+        110,
+        120
+      ],
+      "deltas": [
+        2,
+        3,
+        -5
+      ],
+      "actual": [
+        102,
+        113,
+        115
+      ],
+      "balanced": true,
+      "resultCount": 1,
+      "snapshotCount": 3,
+      "transferCount": 1
+    },
+    {
+      "case": "all-tie",
+      "initial": [
+        100,
+        110,
+        120
+      ],
+      "deltas": [
+        0,
+        0,
+        0
+      ],
+      "actual": [
+        100,
+        110,
+        120
+      ],
+      "balanced": true,
+      "resultCount": 1,
+      "snapshotCount": 3,
+      "transferCount": 0
+    }
+  ],
+  "edges": [
+    "Concurrent first actions admit exactly once; pause/resume preserves the active clock and board",
+    "Lock-delayed first action uses post-lock time; expired Ready cannot start a clock or consume stock",
+    "Actual authenticated admission denies invalid stakes, real money, revoked accounts and the closed flag without financial changes",
+    "Frozen v1 draw, Take Score and Give Up retain identical legacy authority"
+  ],
+  "browser": [
+    "Progressive bot moves on phone/desktop; spectators have no Take Score",
+    "Round 1: first action admits full clock, real card touch succeeds, Take Score holds five seconds",
+    "Round 2: first action admits full clock, real card touch succeeds, Take Score holds five seconds",
+    "Canonical balances and one chip flight; reload does not replay it; Continue and Run Back preserve balances"
+  ],
+  "competitions": [
+    {
+      "participants": 7,
+      "bots": 6,
+      "rounds": 16,
+      "bonusRounds": 2,
+      "scores": [
+        0,
+        29400,
+        36900,
+        40700,
+        56910,
+        152250,
+        134090
+      ],
+      "opening": [
+        100,
+        110,
+        120,
+        130,
+        140,
+        150,
+        160
+      ],
+      "closing": [
+        95,
+        105,
+        115,
+        125,
+        135,
+        180,
+        155
+      ],
+      "results": 1,
+      "batches": 1,
+      "snapshots": 7
+    },
+    {
+      "participants": 5,
+      "bots": 2,
+      "rounds": 10,
+      "bonusRounds": 0,
+      "scores": [
+        0,
+        0,
+        43300,
+        0,
+        66990
+      ],
+      "opening": [
+        100,
+        110,
+        120,
+        130,
+        140
+      ],
+      "closing": [
+        95,
+        105,
+        115,
+        125,
+        160
+      ],
+      "results": 1,
+      "batches": 1,
+      "snapshots": 5
+    }
+  ],
+  "elapsedMs": 816127,
+  "maxProgressGapMs": 30254,
+  "worker": {
+    "calls": 473,
+    "meanMs": 14.798548837209216,
+    "p95Ms": 31.385999999998603,
+    "maxMs": 57.86999999999534,
+    "processed": 1050,
+    "qualificationAdapterErrors": 12,
+    "unresolvedErrors": 0
+  },
+  "regression": {
+    "application": 2299,
+    "harness": 241,
+    "finalFocused": 23,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "additionalTerminalGuard": "PASS"
+  },
+  "limitations": [
+    "Authenticated PostgreSQL roles and commit-notification SSE substitute for Supabase Auth/Realtime in the loopback browser proof.",
+    "A local notification-adapter error was corrected before the final successful browser run; production was never affected.",
+    "Jeremy production smoke remains acceptance truth."
+  ],
+  "production": {
+    "migration": "tri_towers_v2",
+    "installedDefinitionsMatch": 30,
+    "otherFunctionsUnchanged": true,
+    "historicalHashes": {
+      "games": "844f83bf5cc74408f6deae8fa7919cfd",
+      "batches": "0e8c0aff5c9a22a54d8387b3456b2334",
+      "dealers": "b93d0144128fd7397b8d1b5f75b52874",
+      "history": "65299ecbfc0ba069c7c5ad5c9e6710d6",
+      "matches": "b826ba990319d4e14830a88c07a7c19b",
+      "players": "d4c7df47b6fc7dca6405b14f8d163e17",
+      "results": "f40bc04b778f02ca542affd6c0b6034a",
+      "requests": "4a2ab7378f11fff20e0decaa0d2fb4e8",
+      "snapshots": "6f0ed8a92a1ce9f8c345c2c8c93d98fc"
+    },
+    "installedProof": "PASS",
+    "admissionBeforePublication": false,
+    "worker": {
+      "runs": 177,
+      "max_ms": 19.294,
+      "mean_ms": 8.755022598870056,
+      "failures": 0
+    },
+    "backlog": 0
+  }
+}

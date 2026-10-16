@@ -6,13 +6,19 @@ import {useGameChatContext} from '@/hooks/GameChatContext';
 import {MobileChatPanel} from '@/components/MobileChatPanel';
 import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
-import type {Projection} from '@/lib/triTowers/model';
+import {isV2,type Projection} from '@/lib/triTowers/model';
+import {useChipPresentationCursorState} from '@/lib/canonicalShell/ChipTransportProvider';
+import {isTriTowersTerminalBatch} from './useTriTowersFinancialPresentation';
 interface Props {dealerGameId:string;userId:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;
  sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(id:string)=>void}
 export function TriTowersGame(props:Props){
   const game=useTriTowers(props.dealerGameId),chat=useGameChatContext(),announcements=useAnnouncements();
   const [history,setHistory]=useState<{revision:number;frame:Projection}[]>([]),[error,setError]=useState(''),[closing,setClosing]=useState(false);
   const terminal=useRef<string|null>(null),completed=useRef<string|null>(null),callbacks=useRef(props);callbacks.current=props;
+  const batch=game.view?.financial?.batch;
+  const validBatch=!!batch&&!!game.view&&isTriTowersTerminalBatch(batch,game.view);
+  const cursor=useChipPresentationCursorState(validBatch?batch.cursor:null);
+  const financialReady=!game.view?.financial||!!game.view.settlement&&(game.view.players.every(p=>(game.view!.settlement![p.id]??0)===0)||validBatch&&['settled','reconciled'].includes(cursor));
   const complete=(view:Projection)=>{
     if(completed.current===view.identity.dealerGameId)return;
     completed.current=view.identity.dealerGameId;
@@ -21,12 +27,12 @@ export function TriTowersGame(props:Props){
   };
   useEffect(()=>{
     if(!game.view?.settlement||terminal.current===props.dealerGameId||props.sessionEnded)return;
-    if(game.view.finished){complete(game.view);return;}
+    if(game.view.finished&&financialReady){complete(game.view);return;}
     terminal.current=props.dealerGameId;callbacks.current.onTerminalActive(true);
     announcements.emit({id:`match_win:tri-towers:${props.dealerGameId}`,type:'match_win',scope:{dealerGameId:game.view.identity.sessionId,roundId:game.view.identity.roundId},
       payload:{text:`TriTowers complete · ${game.view.players.map(p=>`${p.name}: ${game.view!.scores[p.id].toLocaleString()}`).join(' · ')}`},ttlMs:10000});
-  },[game.view,props.dealerGameId,props.sessionEnded,announcements]);
-  useEffect(()=>{if(game.view?.finished)complete(game.view);},[game.view]);
+  },[game.view,props.dealerGameId,props.sessionEnded,announcements,financialReady]);
+  useEffect(()=>{if(game.view?.finished&&financialReady)complete(game.view);},[game.view,financialReady]);
   useEffect(()=>{if(props.activeTab!=='history')return;let alive=true;
     void triTowersRpc<typeof history>('tri_towers_history',{p_dealer_game_id:props.dealerGameId}).then(rows=>{if(alive)setHistory(rows);}).catch(e=>{if(alive)setError(e.message);});
     return()=>{alive=false;};
@@ -36,8 +42,8 @@ export function TriTowersGame(props:Props){
   const close=async()=>{if(closing)return;setClosing(true);try{await triTowersRpc('tri_towers_close',{p_dealer_game_id:props.dealerGameId});complete(view);
   }catch(e){setError((e as Error).message);}finally{setClosing(false);}};
   const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:
-    props.activeTab==='history'?<div className="space-y-2">{view.stages.map(r=><p key={`${r.playerId}:${r.stage}`}>{view.players.find(p=>p.id===r.playerId)?.name} · Stage {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore!==undefined?`+${r.stageScore.toLocaleString()} · `:''}Total {r.score.toLocaleString()}</p>)}{history.map(row=><p key={row.revision}>#{row.revision} · {row.frame.event.label} · {row.frame.score.toLocaleString()}</p>)}</div>:
-    <><TriTowersRules/><div>{view.players.map(p=><p key={p.id}>{p.name} · {p.id in view.scores?view.scores[p.id].toLocaleString():'Turn pending'}</p>)}</div></>;
+    props.activeTab==='history'?<div className="space-y-2">{view.stages.map(r=><p key={`${r.playerId}:${r.stage}`}>{view.players.find(p=>p.id===r.playerId)?.name} · {isV2(view.rules)?'Round':'Stage'} {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore!==undefined?`${r.stageScore>=0?'+':''}${r.stageScore.toLocaleString()} · `:''}Total {r.score.toLocaleString()}</p>)}{history.map(row=><p key={row.revision}>#{row.revision} · {row.frame.event.label} · {row.frame.score.toLocaleString()}</p>)}</div>:
+    <><TriTowersRules rules={view.rules}/><div>{view.players.map(p=><p key={p.id}>{p.name} · {p.id in view.scores?view.scores[p.id].toLocaleString():'Turn pending'}</p>)}</div></>;
   return <TriTowersView {...game} view={view} onIntent={game.act} activeTab={props.activeTab} setActiveTab={props.setActiveTab}
     panel={panel} sessionEnded={props.sessionEnded} onContinue={view.settlement&&!closing?()=>void close():undefined}
     error={(error||game.error||!game.connected)&&<div role="status" className="tri-error">{error||game.error||'Reconnecting…'} <button onClick={game.reconnect}>Reconnect</button></div>}/>;

@@ -44,6 +44,15 @@ selectable; the new default board uses `run21/2`. No score history is rewritten.
 
 ## Qualification and release
 
+TriTowers now defines `tri-towers/2` in `src/lib/triTowers/rules-v2.json`, generated
+into its immutable admitted match configuration. The board functions in
+`supabase/tri-towers/v2.sql` are the sole mode-independent dealing, action, scoring
+and clock authority. Multiplayer wraps that core for seat order, round scheduling,
+bonus eligibility and canonical settlement. Future Arcade must reuse these exact
+functions/configuration; no Solo implementation is part of this correction.
+V1 bodies and historical interpretation remain separately dispatched.
+See [TriTowers qualification](TRITOWERS_V2.md).
+
 `sharedRules.test.ts` compares both adapters through 50 identical deals, legal
 actions, every tick transition, untouched timeouts and per-participant intro starts.
 The complete `financial-authority.proof.mjs --migration --independent-decks

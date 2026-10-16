@@ -44,6 +44,8 @@
 .tri-scores>div{flex:1 0 6.5rem;min-width:0;display:grid;grid-template-columns:1fr auto;gap:.15rem .4rem;padding:.3rem .5rem;background:#172e36;border:1px solid #ffffff20;border-radius:.5rem;font-size:.75rem}
 .tri-scores>div[data-active=true]{border-color:#e4c47b;background:#28414a}.tri-scores span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tri-scores strong{color:#f4ce82}.tri-scores small{font-size:.55rem;color:#a3bec4}
 .tri-clock{font-variant-numeric:tabular-nums;color:#f4ce82;white-space:nowrap}.tri-clock small{font-size:.6rem;color:#bbd4d5}
+.tri-timer{display:flex;align-items:center;gap:.5rem;flex:1;min-width:0}.tri-timer>small{font-size:.7rem;color:#bbd4d5;white-space:nowrap}
+.tri-timer .run21-timer{flex:1;height:.5rem;overflow:hidden;border-radius:999px;background:#ffffff25;outline:1px solid #ffffff30}.tri-timer .run21-timer-fill{height:100%;display:block;border-radius:inherit}.tri-scores .tri-balance{font-size:.7rem;color:#f4ce82;text-align:right}
 .tri-actions{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;justify-content:flex-end;flex:1;font-size:.7rem}
 .tri-actions button{min-height:2.5rem;padding:.4rem .7rem;border:1px solid #e4c47b70;border-radius:.5rem;background:#28414a;font-weight:600}.tri-actions button:disabled{opacity:.55}
 .tri-rules{font-size:.9rem;line-height:1.5}.tri-rules>*{margin-bottom:1rem}.tri-rules h3{font-weight:700}

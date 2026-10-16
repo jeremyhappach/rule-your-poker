@@ -984,6 +984,13 @@ Legacy id `opponent_instant_knock` resolves read-only to
 
 ### TriTowers bot support
 
+TriTowers v2: `rules-v2.json` and `supabase/tri-towers/v2.sql` own the shared
+versioned configuration and mode-independent board core. `legacy-v1.sql` preserves
+the original dispatch bodies; `dev/tri-towers/build-v2.mjs` builds the migration.
+`useTriTowersFinancialPresentation.ts` consumes the canonical financial envelope
+and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
+`dev/tri-towers/v2.*` and `TRITOWERS_V2.md` contain qualification and smoke steps.
+
 `supabase/tri-towers/authority.sql` owns the redacted bot policy, persistent bot schedule and indexed recovery. `dev/tri-towers/bots.*.mjs` and `collect-bots-evidence.mjs` qualify canonical finances, boundaries, browsers and zero-client competitions. `docs/codex/TRITOWERS_BOTS.md` documents the release and production smoke.
 
 ### Arcade completion and shared score audio (2026-10-16)
