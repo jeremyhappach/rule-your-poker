@@ -1,0 +1,14 @@
+{
+  "passed": [
+    "transactional DDL rollback",
+    "admin/normal/ineligible/anonymous access",
+    "path and upload existence",
+    "compare-and-swap conflict",
+    "immutable objects",
+    "referenced image deletion denied",
+    "current/legacy rules help",
+    "proof rollback removes all synthetic data"
+  ],
+  "scope": "Disposable database with inspected production role helpers and Storage policy boundary; no Storage byte service",
+  "productionWrites": 0
+}

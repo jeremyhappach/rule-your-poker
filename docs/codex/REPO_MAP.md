@@ -8,7 +8,11 @@ registry and frozen match configuration bind both adapters to the same version.
 `dev/run21/build-shared-rules.mjs` generates the SQL registry snapshot from source.
 
 Arcade: `src/pages/Arcade.tsx` owns the switchboard, game leaderboard and solo
-screen; `useArcadeRun.ts` accepts safe authoritative revisions. `api/arcade.ts`
+screen. `src/components/arcade/ArcadeInfo.tsx` owns rules/info and admin
+artwork controls; `src/lib/arcade/artwork.ts` owns authenticated Storage reads and
+replacement. The private `arcade-artwork` bucket and `arcade_game_artwork` mapping
+are presentation metadata, separate from competitive settings.
+`useArcadeRun.ts` accepts safe authoritative revisions. `api/arcade.ts`
 authenticates requests, `server/arcade/service.ts` coordinates CAS/receipts, and
 `src/lib/arcade/run21.ts` adapts shared Run21 rules to three solo rounds.
 `supabase/arcade/phase-one.sql` defines isolated private authority and public

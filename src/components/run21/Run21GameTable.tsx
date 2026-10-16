@@ -88,7 +88,7 @@ export function Run21GameTable(props: Props) {
       : props.activeTab === 'chat' ? <MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>
       : props.activeTab === 'lobby' ? <div className="p-3 text-sm">{view.players.map(p => <p key={p.id}>{p.name} · {snapshot.balances[p.id]}</p>)}
           {props.presentationMode === 'fullscreen' && <div className="mt-4 space-y-3"><h3 className="font-semibold">Run21 rules</h3>
-            <p>Place each card into one of five columns. Aim for 21 in every column without going over.</p><Run21ScoringReference/></div>}</div>
+            <p>Place each card into one of five columns. Aim for 21 in every column without going over.</p><Run21ScoringReference config={view.config}/></div>}</div>
       : props.sessionEnded ? null
       : <div className="run21-player-pane">
           {errorPane}

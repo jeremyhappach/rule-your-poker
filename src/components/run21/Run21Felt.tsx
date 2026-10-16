@@ -55,9 +55,10 @@ interface Props {
   drawLayer?: HTMLElement | null;
   drawRect?: Rect;
   hideScoring?: boolean;
+  solo?: boolean;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
+export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,solo=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
   const feedback=useRef(new Exact21Feedback());
   const [pulses,setPulses]=useState<Record<number,number>>({});
   const scope=JSON.stringify([view.identity??view.presentationKey,view.roundId,playerId]);
@@ -86,7 +87,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
-    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp/></>)}
+    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp config={view.config} solo={solo}/></>)}
     {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;
@@ -108,7 +109,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
       })}
     </div>)}
     {drawLayer?createPortal(draw,drawLayer):draw}
-    <Run21RoundIntro view={view} now={now}/>
+    <Run21RoundIntro view={view} now={now} solo={solo}/>
     {reason&&outcome&&!view.revealed&&!hideScoring&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring data-outcome={outcome.kind}>
       {outcome.kind==='bust'&&<svg className="run21-failure-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 36 3 22 13 9 25 5 22 18 28 25 18 33 22 43Z" fill="#8b9299"/><path d="m29 7 12 9 5 20-18 8-4-10 11-9-7-8Z" fill="#b2bac0"/></svg>}
       {outcome.kind==='no-qualify'&&<span className="run21-failure-icon" aria-hidden="true">💩</span>}

@@ -1,0 +1,29 @@
+{
+  "database": "arcade_phase1_1792188308652",
+  "productionWrites": 0,
+  "passed": [
+    "candidate DDL rolls back without artifacts",
+    "idempotent start and one unfinished run",
+    "authorization and private schema deny browser access",
+    "revocation and immutable rules",
+    "duplicate, mismatched replay and stale revision",
+    "competing independent connections commit once",
+    "atomic final state/result, failure rollback and exactly once completion",
+    "late start replay and successor isolation",
+    "abandonment excluded",
+    "zero-client expiry recovery and single-use dispatch",
+    "fresh worker process finalizes third round with zero browsers",
+    "top ten distinct players, outside-ten rank and permanent personal best",
+    "rolling eligibility, equal-score ranks, lifetime best and incompatible-version separation",
+    "redacted projection",
+    "scoring migration rolls back, is idempotent, and preserves every existing run/result and active legacy launch",
+    "new launches freeze version two; reconnect keeps the same intro origin and deadline",
+    "database lock rejects a precomputed qualifying action after expiry; synchronization records zero at the original deadline",
+    "API deadline-race path persists the timeout before rejecting the stale action",
+    "fresh recovery process completes three untouched rounds exactly once; late replay cannot alter the successor",
+    "new leaderboard is default; legacy board and bests remain separately selectable with unchanged authorization",
+    "Shared version is Arcade default; frozen legacy boards stay separate and zero-client recovery completes exactly three rounds",
+    "zero writes across 97 non-Arcade tables with canonical triggers enabled"
+  ],
+  "at": "2026-10-16T22:05:11.770Z"
+}

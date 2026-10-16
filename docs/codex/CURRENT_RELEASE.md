@@ -1,3 +1,19 @@
+# Arcade presentation and artwork — 2026-10-16
+
+Approved compact switchboard and leaderboard, Solo round-only introductions,
+Rules/abandonment controls and admin-managed game artwork. Rules/help render the
+applicable frozen configuration. Shared `run21/2` rules, scoring, timing, dealing,
+legacy versions, automatic progression and financial isolation are preserved.
+TriTowers and Yahtzee remain Coming Soon; the TriTowers workstream confirmed no
+active shared-file overlap.
+
+Artwork migration `20261016220546_arcade_artwork` is installed. Authorization
+and replacement proofs pass locally and against production inside rollback.
+TypeScript, 2,521 tests, build and the full Arcade authority/isolation proof pass.
+Evidence, storage boundary and owner smoke: [Arcade presentation](ARCADE_PRESENTATION.md).
+Checkpoint: `arcade-presentation-2026-10-16`. Jeremy will smoke scoring and polish
+together after publication.
+
 # Shared Run21 gameplay rules — 2026-10-16 — qualified correction
 
 `run21/2` is the mode-neutral gameplay version for new multiplayer matches and

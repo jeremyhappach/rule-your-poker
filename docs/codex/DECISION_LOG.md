@@ -1,3 +1,12 @@
+# 2026-10-16 — Arcade artwork is isolated presentation metadata
+
+Approved admin-managed artwork uses a separate private Storage bucket with
+eligible-user reads, existing admin-role writes, immutable object paths and
+compare-and-swap publication. Competitive configuration is unchanged. Solo
+presentation options default to the existing multiplayer behavior; all Run21
+help reads the applicable frozen configuration rather than legacy defaults.
+See [scope and validation](ARCADE_PRESENTATION.md).
+
 # 2026-10-16 — One versioned gameplay rule base across modes
 
 Jeremy made shared gameplay a standing requirement for every game available in

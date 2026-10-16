@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      arcade_game_artwork: {
+        Row: {game:string;object_path:string|null;updated_at:string;updated_by:string|null}
+        Insert: {game:string;object_path?:string|null;updated_at?:string;updated_by?:string|null}
+        Update: {object_path?:string|null}
+        Relationships: []
+      }
       chat_diagnostic_sessions: {
         Row: {
           armed_at: string
@@ -3251,6 +3257,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      arcade_rules_help: {Args:{p_ruleset?:string|null};Returns:Json}
       account_statement: {
         Args: {
           p_before_date?: string

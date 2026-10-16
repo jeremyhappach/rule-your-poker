@@ -20,10 +20,11 @@ interface Props {
   navigation?: ReactNode;
   announcement?: ReactNode;
   panelTitle?: string;
+  panelDescription?: string;
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle}: Props) {
+export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, panelDescription = 'Game clocks continue while this panel is open.'}: Props) {
   usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
   return <section className="fullscreen-game" data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
@@ -45,9 +46,9 @@ export function FullscreenGameShell({ready = true, title, description, activeTab
       {timer}{actions}
     </footer>
     <Sheet open={activeTab !== 'cards'} onOpenChange={open => { if (!open) setActiveTab('cards'); }}>
-      <SheetContent className="fullscreen-game-panel" onCloseAutoFocus={event => { event.preventDefault(); sessionButton.current?.focus(); }}>
+      <SheetContent className="fullscreen-game-panel" onCloseAutoFocus={event => { if (sessionButton.current) { event.preventDefault(); sessionButton.current.focus(); } }}>
         <SheetTitle>{title} · {panelTitle ?? (activeTab === 'lobby' ? 'Session & rules' : activeTab === 'chat' ? 'Chat' : 'History')}</SheetTitle>
-        <SheetDescription>Game clocks continue while this panel is open.</SheetDescription>
+        <SheetDescription>{panelDescription}</SheetDescription>
         <div className="fullscreen-game-panel-body">{panel}</div>
       </SheetContent>
     </Sheet>

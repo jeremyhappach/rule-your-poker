@@ -2,6 +2,9 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Gamepad2,ArrowLeft,Trophy,Play,RotateCcw} from 'lucide-react';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
+import {useIsAdmin} from '@/hooks/useIsAdmin';
+import {ArcadeInfo,ArcadeArtwork} from '@/components/arcade/ArcadeInfo';
+import {loadArtwork,type Artwork} from '@/lib/arcade/artwork';
 import {useArcadeRun} from '@/hooks/useArcadeRun';
 import {arcadeRequest} from '@/lib/arcade/client';
 import type {ArcadeSnapshot,Leaderboard} from '@/lib/arcade/model';
@@ -17,18 +20,35 @@ import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import '@/lib/arcade/arcade.css';
-const games=[{id:'run21',name:'Run21',description:'Five columns. Three rounds. Your best run.',ready:true},
+const games=[{id:'run21',name:'Run21',description:'5 columns, 3 rounds, make 21s',ready:true},
  {id:'tri-towers',name:'TriTowers',description:'Clear the towers.',ready:false},
- {id:'yahtzee',name:'Yahtzee',description:'Make every roll count.',ready:false}];
+ {id:'yahtzee',name:'Yahtzee',description:'Make every roll count.',ready:false}] as const;
 export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
- if(!game)return <main className="arcade-page"><Link className="arcade-back" to="/"><ArrowLeft size={18}/>Main Lobby</Link>
-  <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><p>Pick a game. Chase your personal best.</p></div></header>
-  <div className="arcade-tiles">{games.map(g=><article key={g.id} className="arcade-tile"><Gamepad2 aria-hidden="true"/><h2>{g.name}</h2><p>{g.description}</p>
-   {g.ready?<Link className="arcade-primary" to={'/arcade/'+g.id}>Play {g.name}</Link>:<span className="arcade-soon">Coming Soon</span>}</article>)}</div></main>;
+ if(!game)return <Switchboard userId={user.id}/>;
  if(game!=='run21')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?<SoloRun key={runId} runId={runId} userId={user.id}/>:<GameBoard/>;
+}
+function Switchboard({userId}:{userId:string}){
+ const {isAdmin}=useIsAdmin(userId),[artwork,setArtwork]=useState<Artwork[]>([]),[error,setError]=useState('');
+ const generation=useRef(0);
+ const refresh=useCallback(()=>{
+  const ticket=++generation.current;
+  void loadArtwork().then(rows=>{if(ticket===generation.current){setArtwork(rows);setError('');}}).catch(e=>{if(ticket===generation.current)setError(e.message);});
+ },[]);
+ useEffect(()=>{refresh();window.addEventListener('focus',refresh);return()=>{generation.current++;window.removeEventListener('focus',refresh);};},[refresh]);
+ const updated=(row:Artwork)=>{generation.current++;setArtwork(rows=>rows.map(old=>old.game===row.game?row:old));};
+ return <main className="arcade-page"><Link className="arcade-back" to="/"><ArrowLeft size={18}/>Main Lobby</Link>
+  <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><p>Pick a game. Chase your personal best.</p></div></header>
+  <div className="arcade-tiles">{games.map(g=>{
+   const row=artwork.find(item=>item.game===g.id);
+   return <article key={g.id} className="arcade-tile">
+    <div className="arcade-tile-copy"><h2>{g.ready?<Link className="arcade-card-link" to={'/arcade/'+g.id} aria-label={g.name+' leaderboard'}>{g.name}</Link>:g.name}</h2><p>{g.description}</p>{!g.ready&&<span className="arcade-soon">Coming Soon</span>}</div>
+    <ArcadeArtwork path={row?.object_path??null}/>
+    <ArcadeInfo game={g.id} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>
+   </article>;
+  })}</div>{error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;
 }
 function GameBoard(){
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
@@ -42,24 +62,28 @@ function GameBoard(){
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
- <header className="arcade-heading"><Trophy size={36}/><div><h1>Run21</h1><p>Three rounds. One score.</p></div></header>
+ <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>Run21</h1>
+ <ArcadeInfo game="run21" name="Run21" ruleset={board?.ruleset}>
+  <p>One best run per player. Equal scores share rank. Last 30 Days uses runs completed in that period; personal best shows All Time for the selected rules.</p>
+  {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
+  <p>Scores from different rules stay separate. New runs use the current rules.</p>
+  {!!board?.previousBests.length&&<details><summary>Personal bests under other rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
+ </ArcadeInfo>
+ {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/run21/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
+ <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
+ </header>
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Run complete':'Run ended · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
- <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded on '+board.latestResult.ruleset+'.':board.latestResult.status==='completed'&&board.personalBest!==null&&board.latestResult.score<board.personalBest?'Your personal best remains '+board.personalBest.toLocaleString()+'.':board.latestResult.status!=='completed'?'This run does not enter the leaderboard.':'Your verified score is recorded.'}</p></div>}
+ <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.self?'Your rank · #'+board.self.rank.toLocaleString():'Score recorded'}</p></div>}
  <div className="arcade-summary"><div><span>Personal best · All Time</span><strong>{board?.personalBest?.toLocaleString()??'—'}</strong></div>
  <div><span>Your rank · {window==='30'?'Last 30 Days':'All Time'}</span><strong>{board?.self?'#'+board.self.rank:'—'}</strong></div></div>
- {board?.activeRun?<div className="arcade-play"><Link className="arcade-primary" to={'/arcade/run21/run/'+board.activeRun}><Play size={18}/>Resume Run</Link><p>Your clocks keep running. Open the run to resume or abandon.</p></div>:
- <button className="arcade-primary arcade-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={18}/>:<Play size={18}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
- <p className="arcade-note">No pauses. Leaving the game does not stop its clocks.</p>
- {!!board?.availableRulesets?.length&&<label>Leaderboard rules <select className="bg-background text-foreground border border-border rounded px-2 py-1" aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
- {board?.currentRuleset&&board.ruleset!==board.currentRuleset&&<p>Viewing legacy scores. New games use {board.currentRuleset}.</p>}
- <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} role="tab" aria-selected={window===value} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
+ {board?.currentRuleset&&board.ruleset!==board.currentRuleset&&<p className="arcade-note">Legacy leaderboard</p>}
+ <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} id={'arcade-period-'+value} role="tab" aria-controls="arcade-ranking" tabIndex={window===value?0:-1} aria-selected={window===value} onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'30':event.key==='End'?'all':value==='30'?'all':'30';setWindow(next);document.getElementById('arcade-period-'+next)?.focus();}}} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
  {error&&<p role="alert">{error}</p>}
- <section className="arcade-leaderboard" aria-label="Run21 leaderboard"><h2>Top 10 players</h2>
+ <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 players</h2>
  {!board?<p role="status">Loading scores…</p>:board.rows.length===0?<p>No qualifying runs yet. Set the first score.</p>:
  <table><thead><tr><th>Rank</th><th>Player</th><th>Best score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.userId} data-self={row.userId===board.self?.userId}><td>{position}</td><td>{row.name}</td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
  {board?.self&&!board.rows.some(row=>row.userId===board.self?.userId)&&<p className="arcade-your-rank">You · #{board.self.rank.toLocaleString()} · {board.self.score.toLocaleString()}</p>}
- </section><p className="arcade-note">One best run per player. Equal scores share rank. Rules: {board?.ruleset??'Run21'}</p>
- {!!board?.previousBests.length&&<details><summary>Personal bests under previous rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
+ </section>
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
@@ -82,15 +106,15 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  },[snapshot,view,now,completedOnEntry,navigate,runId]);
  const onIntent=(intent:{type:string;column?:number})=>{if(intent.type==='place')void act({type:'place',column:intent.column!});else if(intent.type==='pass'||intent.type==='collect')void act({type:intent.type});};
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
- <FullscreenGameShell title="Run21" panelTitle="Rules" description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
- activeTab={tab} setActiveTab={setTab} panel={<><Run21ScoringReference/><p>Exactly three rounds. Rounds advance automatically. All clocks continue while this panel is open or you are away. First-placement expiry or abandoning the run is unranked.</p></>}
- navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button><Link to="/arcade/run21">Leaderboard</Link><button onClick={()=>setAbandon(true)}>Abandon</button></nav>}
- announcement={<div className="arcade-run-notice" role="status">{view?.scorePresentation?'Round score recorded · Continuing automatically':'Solo Arcade · No pauses'}</div>}
+ <FullscreenGameShell title="Run21" panelTitle="Rules" panelDescription="Scoring for this run." description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
+ activeTab={tab} setActiveTab={setTab} panel={view&&<Run21ScoringReference config={view.config} solo/>}
+ navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button><button onClick={()=>setAbandon(true)}>Abandon</button></nav>}
+ announcement={false}
  scores={<div className="arcade-run-score"><span>Total score</span><strong>{view?displayedScore(view,userId,now).toLocaleString():0}</strong></div>}
  actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/></div></div>}>
  {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh()}>Reconnect</button></div>}
- {view?<Run21Felt layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>:<p role="status">Restoring your run…</p>}
- <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon run?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. The clock is still running.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>void act({type:'abandon'})}>Abandon Run</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+ {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>:<p role="status">Restoring your run…</p>}
+ <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon run?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>void act({type:'abandon'})}>Abandon Run</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </FullscreenGameShell>{celebration&&<Run21ScoreCelebration receipt={celebration} onRetire={retire}/>}</div>;
 }
 

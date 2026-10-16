@@ -2,7 +2,7 @@ import type {BoardProjection as Projection} from '@/lib/run21/model';
 import {roundIntro} from '@/lib/run21/roundIntro';
 
 /** Board-local information only. Persisted authority determines when play is released. */
-export function Run21RoundIntro({view, now}: {view: Projection; now: number}) {
+export function Run21RoundIntro({view, now, solo = false}: {view: Projection; now: number; solo?: boolean}) {
   const intro = roundIntro(view, now);
   if (!intro) return null;
   return <div className="run21-round-intro" data-run21-round-intro data-fading={intro.remaining <= 200 && view.pausedAt == null}>
@@ -16,7 +16,7 @@ export function Run21RoundIntro({view, now}: {view: Projection; now: number}) {
         <path d="m74 49 14 17" stroke="#ab8460" strokeWidth="6" strokeLinecap="round"/>
         <path d="m70 44 8 9" stroke="#ead7a6" strokeWidth="10" strokeLinecap="round"/>
       </svg>
-      <strong>ROUND {intro.round}</strong><span>{intro.label}</span>
+      <strong>ROUND {intro.round}</strong>{!solo && <span>{intro.label}</span>}
     </div>
   </div>;
 }

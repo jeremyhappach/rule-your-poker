@@ -1,0 +1,20 @@
+{
+  "project": "xvhmbuppghwmwpwrkzao",
+  "migration": "20261016220546_arcade_artwork",
+  "proof": "artwork.proof.sql",
+  "result": "PASS",
+  "rollback": {
+    "objects": 0,
+    "assigned": 0
+  },
+  "bucket": {
+    "public": false,
+    "file_size_limit": 2097152,
+    "allowed_mime_types": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ]
+  },
+  "securityReview": "RLS enabled; intentional authenticated SECURITY DEFINER read-only rules RPC validates active profile before returning selected private registry config; no new financial or gameplay writers"
+}
