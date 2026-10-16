@@ -1,0 +1,15 @@
+.arcade-page{max-width:64rem;margin:auto;padding:clamp(1rem,4%,3rem);color:#f5f1df;min-height:100%;background:radial-gradient(ellipse at top,#172b36,#0c171e 85%)}
+.arcade-back{display:inline-flex;align-items:center;gap:.5rem;color:#c9d3d7;margin-bottom:1.5rem}
+.arcade-heading{display:flex;align-items:center;gap:1rem;margin-bottom:2rem;color:#eac16d}.arcade-heading h1{font-size:2rem;font-weight:800}.arcade-heading p{font-size:1rem;color:#b9c7cc}
+.arcade-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem}.arcade-tile,.arcade-leaderboard{background:#ffffff08;border:1px solid #eac16d33;border-radius:1rem;padding:1.4rem}
+.arcade-tile h2{font-size:1.5rem;font-weight:700;margin:.7rem 0}.arcade-tile p{color:#b9c7cc;margin-bottom:1.5rem}.arcade-soon{display:block;color:#b9c7cc;padding:.7rem 0}
+.arcade-primary{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.4rem;border-radius:.65rem;background:#edc56e;color:#152027;font-weight:800;min-height:2.75rem}
+.arcade-primary:disabled{opacity:.5}.arcade-summary{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}.arcade-summary>div{flex:1;min-width:12rem;border:1px solid #ffffff22;border-radius:.8rem;padding:1rem}.arcade-summary span{display:block;color:#bac9ce;font-size:.85rem}.arcade-summary strong{font-size:1.9rem}
+.arcade-play{margin:.5rem 0}.arcade-play p,.arcade-note{font-size:.85rem;color:#b9c7cc;margin:.7rem 0 1.2rem}.arcade-tabs{display:flex;gap:.5rem;margin:1.5rem 0 1rem}.arcade-tabs button{padding:.65rem 1rem;border-radius:.5rem;border:1px solid #ffffff33}.arcade-tabs [aria-selected=true]{background:#eac16d;color:#172b36;font-weight:700}
+.arcade-leaderboard{overflow:auto}.arcade-leaderboard h2{font-size:1.1rem;font-weight:700;margin-bottom:1rem}.arcade-leaderboard table{width:100%;border-collapse:collapse;text-align:left}.arcade-leaderboard th{font-size:.8rem;color:#b9c7cc}.arcade-leaderboard td,.arcade-leaderboard th{padding:.8rem .4rem;border-bottom:1px solid #ffffff15}.arcade-leaderboard td:last-child,.arcade-leaderboard th:last-child{text-align:right}.arcade-leaderboard [data-self=true]{color:#edc56e}.arcade-your-rank{padding:1rem 0;color:#edc56e}
+.arcade-result{border:1px solid #edc56e77;border-radius:1rem;padding:1rem;margin-bottom:1.2rem;text-align:center}.arcade-result strong{display:block;font-size:2.5rem;font-weight:800;color:#edc56e}
+.arcade-run{display:flex;flex-direction:column;overflow:hidden;background:#0c171e}.arcade-run-score{display:flex;justify-content:center;align-items:center;gap:.75rem}.arcade-run-score span{font-size:.85rem;color:#c4d2d7}.arcade-run-score strong{font-size:1.8rem;color:#edc56e;font-weight:800}.arcade-run-notice{text-align:center;font-size:.75rem;min-height:1.2rem;color:#b9c7cc}
+.arcade-run nav a{display:inline-flex;align-items:center;font-size:.75rem;padding:.35rem .5rem;min-height:2.5rem;border:1px solid #ffffff26;border-radius:.5rem}
+.arcade-error{position:relative;z-index:25;background:#452b27;padding:.5rem}
+.arcade-page :focus-visible,.arcade-run :focus-visible{outline:2px solid #edc56e;outline-offset:3px}
+

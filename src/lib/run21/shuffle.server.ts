@@ -11,7 +11,7 @@ export async function commitmentFor(identity: Identity, roundId: string, evidenc
   return Array.from(new Uint8Array(digest), n => n.toString(16).padStart(2, '0')).join('');
 }
 /** Server CSPRNG only. Rejection sampling avoids biased shuffle indices. No seed goes to clients. */
-export async function shuffleRound(identity: Identity, roundId: string, playerId?: string): Promise<DeckEvidence> {
+export function shuffleCards() {
   const cards = standardDeck();
   for (let i = cards.length - 1; i > 0; i--) {
     const bound = i + 1;
@@ -21,6 +21,10 @@ export async function shuffleRound(identity: Identity, roundId: string, playerId
     const j = n % bound;
     [cards[i], cards[j]] = [cards[j], cards[i]];
   }
+  return cards;
+}
+export async function shuffleRound(identity: Identity, roundId: string, playerId?: string): Promise<DeckEvidence> {
+  const cards = shuffleCards();
   const salt = Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2, '0')).join('');
   return {cards, salt, commitment: await commitmentFor(identity, roundId, {cards, salt}, playerId)};
 }

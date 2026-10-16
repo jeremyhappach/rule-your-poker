@@ -1,4 +1,4 @@
-import { type Board, type Card, type Config, type Rank, type Suit } from './model.js';
+import { type Board, type Card, type Config, type Rank, type Suit, type Result } from './model.js';
 export const RANKS: Rank[] = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 export const SUITS: Suit[] = ['hearts','diamonds','clubs','spades'];
 export const standardDeck = (): Card[] => SUITS.flatMap(suit => RANKS.map(rank => ({rank, suit})));
@@ -34,4 +34,11 @@ export function legalColumns(board: Board, config: Config): number[] {
   if (board.result || !board.current) return [];
   // A busting placement is legal and ends the round; only completed columns are locked.
   return board.columns.flatMap((cards, i) => total(cards, config.target).complete ? [] : [i]);
+}
+/** Shared authoritative round scoring, independent of any match or financial lifecycle. */
+export function scoreBoard(board:Board,config:Config,reason:Result['reason'],at:number):Result {
+  const totals=board.columns.map(c=>total(c,config.target)),sum=aggregate(board,config),speed=speedAt(board,config,at);
+  const rule=reason==='timeout'?config.expiration:reason==='bust'?config.bust:reason==='exhausted'?config.exhausted:'score';
+  const multiplier=totals.some(t=>t.bust)?0:multiplierAt(sum,config);
+  return {reason,at,aggregate:sum,totals:totals.map(t=>t.value),aceElevations:totals.map(t=>t.elevated),multiplier,speed,score:rule==='zero'?0:multiplier*speed};
 }

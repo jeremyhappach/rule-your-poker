@@ -4,7 +4,7 @@ import { PlayingCard } from '@/components/PlayingCard';
 import type { Suit as DisplaySuit } from '@/lib/cardUtils';
 import { applyGeometryOverrides, useDraftedGeometryOverrides } from '@/lib/geometryLab/store';
 import { getRun21ArtifactDescriptors, type Run21Geometry } from '@/lib/run21/geometry';
-import type { Card, Intent, Projection } from '@/lib/run21/model';
+import type { Card, Intent, BoardProjection as Projection } from '@/lib/run21/model';
 import { aggregate, legalColumns, multiplierAt, perfectAggregate, total } from '@/lib/run21/rules';
 import {outcomePresentation, qualificationThreshold} from '@/lib/run21/outcomePresentation';
 import {useCardFrontDesign} from '@/lib/cardFrontDesign/config';
@@ -13,7 +13,7 @@ import {cardFan} from '@/lib/run21/cardFan';
 import type {Rect} from '@/lib/run21/safeFelt';
 import './run21.css';
 import {Run21ScoringHelp} from './Run21ScoringHelp';
-import type {VisibleEvent} from '@/lib/run21/history';
+import type {BoardFeedbackEvent} from '@/lib/run21/exact21Feedback';
 import {Exact21Feedback} from '@/lib/run21/exact21Feedback';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
@@ -49,7 +49,7 @@ function Run21ColumnCards({cards}:{cards:Card[]}){
 }
 interface Props {
   layout?: 'table' | 'fullscreen';
-  acceptedEvents?: VisibleEvent[];
+  acceptedEvents?: BoardFeedbackEvent[];
   view: Projection; now: number; onIntent?: (intent: Intent)=>void;
   pending?: boolean; geometry?: Run21Geometry; playerId?: string;
   drawLayer?: HTMLElement | null;
@@ -60,7 +60,7 @@ interface Props {
 export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geometry,drawLayer,drawRect,hideScoring=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
   const feedback=useRef(new Exact21Feedback());
   const [pulses,setPulses]=useState<Record<number,number>>({});
-  const scope=JSON.stringify([view.identity,view.roundId,playerId]);
+  const scope=JSON.stringify([view.identity??view.presentationKey,view.roundId,playerId]);
   useLayoutEffect(()=>{
     const next=feedback.current.accept(scope,playerId,acceptedEvents??[]);
     if(next!==null)setPulses(current=>Object.keys(next).length?{...current,...next}:{});

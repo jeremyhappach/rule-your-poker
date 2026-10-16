@@ -1,4 +1,4 @@
-import type {Intent, Projection} from '@/lib/run21/model';
+import type {Intent, BoardProjection as Projection} from '@/lib/run21/model';
 import {aggregate, canFinish, duration} from '@/lib/run21/rules';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import {multiplierAt} from '@/lib/run21/rules';

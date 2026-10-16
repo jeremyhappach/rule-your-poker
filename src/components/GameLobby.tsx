@@ -1,4 +1,5 @@
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
+import { Gamepad2 } from "lucide-react";
 import { useState } from "react";
 import { useLobbyGames } from "@/hooks/useLobbyGames";
 import { supabase } from "@/integrations/supabase/client";
@@ -259,18 +260,23 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
           </div>
           
           {/* Buttons section - at bottom */}
-          <div className="flex gap-2 w-full sm:w-auto sm:justify-end mt-auto">
+          <div className="flex flex-col items-end gap-2 w-full mt-auto">
             {isSuperuser && (
               <Button 
                 onClick={() => setShowDefaultsConfig(true)} 
                 size="sm"
                 variant="outline"
-                className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs sm:text-sm"
+                className="border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs"
               >
                 <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Defaults
               </Button>
             )}
+            <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={() => navigate('/arcade')} disabled={isBlocked} size="sm"
+              className="flex-1 sm:flex-none bg-slate-800/90 border border-amber-500/40 text-amber-100">
+              <Gamepad2 className="h-4 w-4 mr-2" />Arcade Mode
+            </Button>
             <Button 
               onClick={() => setShowCreateDialog(true)} 
               size="sm"
@@ -279,6 +285,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
             >
               Create New Game
             </Button>
+            </div>
           </div>
         </div>
       </div>

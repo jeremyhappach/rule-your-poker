@@ -32,6 +32,16 @@ requires a material judgment, stop and report it.
 
 ## Mandatory financial release gate
 
+The approved nonfinancial Arcade scope is separate from multiplayer admission.
+Arcade creates no session, seats, stakes, chips, wallet or settlement. Before
+activation it must prove authoritative rules/scores, private randomness, current
+authenticated ownership, frozen competitive settings, atomic results/receipts,
+replay and concurrency safety, autonomous recovery and complete financial/session
+write isolation. It uses the canonical presentation shell and returns to its
+game-specific leaderboard. This clarification does not exempt any multiplayer
+game or money mode from the financial proof below. Qualification and exact
+Run21 timeout/progression policy: [Arcade Phase 1](ARCADE_PHASE_ONE.md).
+
 No new game may be activated for production gameplay, including fake-money
 testing, until atomic, server-authoritative settlement through the existing
 canonical financial infrastructure is proven. This permanent owner policy

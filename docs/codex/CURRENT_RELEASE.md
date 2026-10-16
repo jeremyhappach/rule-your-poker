@@ -1,3 +1,28 @@
+# Nonfinancial Arcade Phase 1 — 2026-10-16 — qualified release
+
+Approved Arcade foundation and Solo Run21: separate routes and game-specific
+versioned leaderboards, exactly three automatic rounds, no pause, frozen settings,
+existing Run21 scoring/presentation and independent zero-client recovery.
+TriTowers and Yahtzee tiles remain Coming Soon; their solo policies are deferred.
+Multiplayer rules, session authority and financial writers are unchanged.
+
+Nonfinancial release gate: **PASS**. Migration `20261016202435_arcade_phase_one`
+is installed; `arcade-recovery` version 1 is active with a healthy heartbeat.
+Installed function hashes and indexes match the complete local database proof.
+The proof guards 97 non-Arcade tables while retaining canonical financial triggers,
+and covers authorization/privacy, CAS, replay, injected atomicity failure,
+immutable results, fresh-process recovery, leaderboards and successor isolation.
+No synthetic production runs or results were created.
+
+Qualification: 2,264 application tests and 241 harness tests on the integrated
+TriTowers containment baseline, TypeScript and production bundle. Phone,
+desktop and landscape proof covers actual gameplay, unchanged reload deadline,
+three-round automatic completion and explicit abandonment. The narrow shared
+scoring extraction matches multiplayer outcomes across 50 deterministic decks.
+Evidence and owner smoke: [Arcade Phase 1](ARCADE_PHASE_ONE.md).
+Release checkpoint: `arcade-phase-one-2026-10-16`. Jeremy's authenticated
+production smoke remains pending.
+
 # Waiting-room Start / Ready continuity — 2026-10-16 — qualified correction
 
 ## TriTowers admission containment — 2026-10-16

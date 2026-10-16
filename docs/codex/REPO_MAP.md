@@ -1,5 +1,13 @@
 # Repository map
 
+Arcade: `src/pages/Arcade.tsx` owns the switchboard, game leaderboard and solo
+screen; `useArcadeRun.ts` accepts safe authoritative revisions. `api/arcade.ts`
+authenticates requests, `server/arcade/service.ts` coordinates CAS/receipts, and
+`src/lib/arcade/run21.ts` adapts shared Run21 rules to three solo rounds.
+`supabase/arcade/phase-one.sql` defines isolated private authority and public
+owner-only revision notifications. `supabase/functions/arcade-recovery/index.ts`
+recovers due runs. Proofs live in `dev/arcade`; policy in `ARCADE_PHASE_ONE.md`.
+
 Application audio: `src/lib/audio/audioManager.ts` owns the single reusable Web
 Audio context, early gesture listeners, readiness, preference gating, event
 receipts, expiry and interruption cleanup. `platformAudio.ts` binds profile I/O;

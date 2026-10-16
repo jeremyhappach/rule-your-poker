@@ -1,0 +1,23 @@
+{
+  "database": "arcade_phase1_1792182300252",
+  "productionWrites": 0,
+  "passed": [
+    "candidate DDL rolls back without artifacts",
+    "installed production function hashes and indexes match complete proof authority",
+    "idempotent start and one unfinished run",
+    "authorization and private schema deny browser access",
+    "revocation and immutable rules",
+    "duplicate, mismatched replay and stale revision",
+    "competing independent connections commit once",
+    "atomic final state/result, failure rollback and exactly once completion",
+    "late start replay and successor isolation",
+    "abandonment excluded",
+    "zero-client expiry recovery and single-use dispatch",
+    "fresh worker process finalizes third round with zero browsers",
+    "top ten distinct players, outside-ten rank and permanent personal best",
+    "rolling eligibility, equal-score ranks, lifetime best and incompatible-version separation",
+    "redacted projection",
+    "zero writes across 97 non-Arcade tables with canonical triggers enabled"
+  ],
+  "at": "2026-10-16T20:25:02.315Z"
+}

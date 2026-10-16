@@ -1,4 +1,4 @@
-import type {Projection} from './model';
+import type {Projection,BoardProjection} from './model';
 
 /** Never announce or animate a recipient that contradicts the frozen scoreboard. */
 export function assertFinalScores(view:Projection):void {
@@ -12,7 +12,7 @@ export function assertFinalScores(view:Projection):void {
 }
 
 /** One public board on the canonical felt, including its terminal presentation. */
-export function displayedPlayerId(view: Projection): string {
+export function displayedPlayerId(view: BoardProjection): string {
   if (!view.liveBoards) return view.viewerId ?? view.players[0].id;
   return view.scorePresentation?.playerId ?? view.active_player_id ??
     view.players.filter(p => view.boards[p.id]?.result).sort((a,b) =>
@@ -20,7 +20,7 @@ export function displayedPlayerId(view: Projection): string {
 }
 
 /** Presentation only: authoritative totals and money balances are never rewritten. */
-export function displayedScore(view: Projection, playerId: string, at: number): number {
+export function displayedScore(view: BoardProjection, playerId: string, at: number): number {
   at = view.pausedAt ?? at;
   const phase = view.scorePresentation;
   if (!phase || phase.playerId !== playerId) return view.cumulative[playerId];

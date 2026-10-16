@@ -1,11 +1,12 @@
-import type {VisibleEvent} from './history';
+import type {BoardProjection} from './model';
+export interface BoardFeedbackEvent {sequence:number;type:string;actorId:string|null;operands:Record<string,unknown>;frame:Pick<BoardProjection,'config'|'boards'>}
 import {total} from './rules';
 
 /** Accepted event frames only. Optimistic board renders cannot trigger feedback. */
 export class Exact21Feedback {
   private scope: string | null = null;
   private sequence = 0;
-  accept(scope: string, playerId: string, events: VisibleEvent[]): Record<number,number> | null {
+  accept(scope: string, playerId: string, events: BoardFeedbackEvent[]): Record<number,number> | null {
     if(this.scope!==scope){
       this.scope=scope;this.sequence=Math.max(0,...events.map(e=>e.sequence));return {};
     }

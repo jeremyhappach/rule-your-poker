@@ -47,7 +47,7 @@ function useReleaseVersionContext(): ReleaseVersionContextValue {
 }
 
 function isGameRoute(pathname: string): boolean {
-  return /^\/game\/[^/]+/.test(pathname);
+  return /^\/game\/[^/]+/.test(pathname) || /^\/arcade\/[^/]+\/run\/[^/]+/.test(pathname);
 }
 
 function ReloadBuildDialog({ unavailable = false }: { unavailable?: boolean }) {
@@ -88,10 +88,10 @@ function ReleaseCheckScreen({ unavailable = false }: { unavailable?: boolean }) 
  */
 export function ReleaseProtectedGameRoute({ children }: { children: ReactNode }) {
   const { status } = useReleaseVersionContext();
-  const { gameId } = useParams();
+  const { gameId, runId } = useParams();
 
   return (
-    <GameRouteEntryCheck key={gameId ?? "unknown-game"} ambientStatus={status}>
+    <GameRouteEntryCheck key={gameId ?? runId ?? "unknown-game"} ambientStatus={status}>
       {children}
     </GameRouteEntryCheck>
   );

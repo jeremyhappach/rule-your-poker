@@ -1,4 +1,4 @@
-import type {Projection} from '@/lib/run21/model';
+import type {BoardProjection as Projection} from '@/lib/run21/model';
 import {roundIntro} from '@/lib/run21/roundIntro';
 
 /** Board-local information only. Persisted authority determines when play is released. */

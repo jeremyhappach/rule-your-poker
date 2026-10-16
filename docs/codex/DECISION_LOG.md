@@ -1,5 +1,17 @@
 # Durable decision log
 
+## October 16, 2026 — Nonfinancial Arcade owns a separate solo lifecycle
+
+Approved Phase 1 isolates Arcade runs, commands, immutable results and versioned
+leaderboards from multiplayer sessions and finances. Run21 shares pure rules,
+scoring and board presentation; it has exactly three automatic rounds, no pause,
+and immutable competitive configuration. Started-round timeouts retain existing
+scoring; first-placement expiry and explicit abandonment end unranked. A durable
+worker advances deadlines and finalizes without clients. Incompatible versions
+have separate boards and retain historical personal bests. TriTowers and Yahtzee
+remain Coming Soon, with their solo policies deferred. See [qualification and
+ownership](ARCADE_PHASE_ONE.md).
+
 ## October 16, 2026 — TriTowers admission is separate from match authority
 
 The failed production smoke closes new TriTowers configuration, selection and

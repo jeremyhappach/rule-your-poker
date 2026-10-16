@@ -119,6 +119,12 @@ export interface Projection extends Omit<Frame, 'boards'> {
   /** Public phase only; excludes cards, results, timestamps and score details. */
   playStatus: Record<string, 'waiting' | 'playing' | 'finished'>;
 }
+/** Presentation-only board contract. Solo runs have their own identity, no session or seats. */
+export type BoardProjection = Pick<Projection, 'config'|'roundId'|'roundNumber'|'viewerId'|'boards'|'active_player_id'|'liveBoards'|'revealed'|'cumulative'|'scorePresentation'> & {
+  players: {id:string;name:string}[];
+  identity?: Identity; presentationKey?: string;
+  pausedAt?: number|null; automaticPlayers?: string[]; settlement?: SettlementReceipt|null;
+};
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export function assertConfig(config: Config): void {
   if (config.roundIntroMs !== undefined && (config.roundIntroMs !== 2500 || config.firstPlacementSeconds === undefined)) throw new Error('invalid_round_intro');

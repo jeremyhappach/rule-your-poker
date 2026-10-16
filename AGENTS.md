@@ -141,6 +141,16 @@ When these disagree, stop and report the discrepancy.
 
 ### Atomic financial release gate
 
+Arcade is an explicitly nonfinancial solo lifecycle: no multiplayer sessions,
+seats, dealers, stakes, chips, wallets or settlement. Its release gate proves
+server-authoritative rules and scores, private randomness, authenticated ownership,
+atomic immutable results and receipts, replay/concurrency safety, disconnect and
+zero-client recovery, and zero writes to multiplayer or financial state. It reuses
+canonical presentation without mounting multiplayer lifecycle/financial owners.
+Arcade completion returns to that game's leaderboard. The financial gate and
+Session Ended contract below remain mandatory for multiplayer in every money mode.
+See `docs/codex/ARCADE_PHASE_ONE.md` for approved scope and qualification.
+
 No new game may be activated for production gameplay, including fake-money
 testing, without first proving atomic, server-authoritative settlement through
 the existing canonical financial infrastructure. Design and implement financial

@@ -1,5 +1,5 @@
 import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type RoundEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
-import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt } from './rules.js';
+import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt, scoreBoard } from './rules.js';
 import {turnReleaseAt} from './roundIntro.js';
 
 function clock(match: Match, at: number) {
@@ -91,13 +91,7 @@ function startTurn(match: Match, round: Round, board: Board, at: number, request
   present(match, round, board, at, requestId);
 }
 function finish(match: Match, round: Round, board: Board, reason: NonNullable<Board['result']>['reason'], at: number, requestId: string, transferAt = at) {
-  const totals = board.columns.map(c => total(c, match.config.target));
-  const sum = aggregate(board, match.config);
-  const speed = speedAt(board, match.config, at);
-  const rule = reason === 'timeout' ? match.config.expiration : reason === 'bust' ? match.config.bust : reason === 'exhausted' ? match.config.exhausted : 'score';
-  const multiplier = totals.some(t => t.bust) ? 0 : multiplierAt(sum, match.config);
-  board.result = {reason, at, aggregate: sum, totals: totals.map(t => t.value), aceElevations: totals.map(t => t.elevated),
-    multiplier, speed, score: rule === 'zero' ? 0 : multiplier * speed};
+  board.result = scoreBoard(board, match.config, reason, at);
   round.active_player_id = null;
   const from = match.cumulative[board.playerId];
   match.cumulative[board.playerId] += board.result.score;

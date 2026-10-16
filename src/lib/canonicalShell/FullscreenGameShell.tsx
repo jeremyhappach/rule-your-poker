@@ -17,23 +17,26 @@ interface Props {
   actions?: ReactNode;
   sessionEnded?: boolean;
   children: ReactNode;
+  navigation?: ReactNode;
+  announcement?: ReactNode;
+  panelTitle?: string;
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children}: Props) {
+export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle}: Props) {
   usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
   return <section className="fullscreen-game" data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
     <header className="fullscreen-game-toolbar">
       <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
-      <nav aria-label="Game information">
+      {navigation ?? <nav aria-label="Game information">
         <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>Session</button>
         <button onClick={() => setActiveTab('chat')}>Chat</button>
         <button onClick={() => setActiveTab('history')}>History</button>
-      </nav>
+      </nav>}
     </header>
     {scores && <div className="fullscreen-game-scores">{scores}</div>}
-    <ShellAnnouncementRail />
+    {announcement ?? <ShellAnnouncementRail />}
     <main className="fullscreen-game-board" data-fullscreen-board-slot>
       {children}
       <div data-canonical-felt-interaction-layer="" className="fullscreen-game-interaction-layer" />
@@ -43,7 +46,7 @@ export function FullscreenGameShell({ready = true, title, description, activeTab
     </footer>
     <Sheet open={activeTab !== 'cards'} onOpenChange={open => { if (!open) setActiveTab('cards'); }}>
       <SheetContent className="fullscreen-game-panel" onCloseAutoFocus={event => { event.preventDefault(); sessionButton.current?.focus(); }}>
-        <SheetTitle>{title} · {activeTab === 'lobby' ? 'Session & rules' : activeTab === 'chat' ? 'Chat' : 'History'}</SheetTitle>
+        <SheetTitle>{title} · {panelTitle ?? (activeTab === 'lobby' ? 'Session & rules' : activeTab === 'chat' ? 'Chat' : 'History')}</SheetTitle>
         <SheetDescription>Game clocks continue while this panel is open.</SheetDescription>
         <div className="fullscreen-game-panel-body">{panel}</div>
       </SheetContent>

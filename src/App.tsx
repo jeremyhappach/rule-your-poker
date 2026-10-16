@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { toast } from "sonner";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
+import Arcade from "./pages/Arcade";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Game from "./pages/Game";
@@ -199,6 +200,9 @@ const App = () => {
               <WartimeAdminGateMount />
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/arcade" element={<Arcade />} />
+                <Route path="/arcade/:game" element={<Arcade />} />
+                <Route path="/arcade/:game/run/:runId" element={<ReleaseProtectedGameRoute><RouteErrorBoundary title="Arcade screen crashed"><Arcade /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route
                   path="/game/:gameId"
