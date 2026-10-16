@@ -10,6 +10,7 @@ import { install357RuntimeGlobalErrorHandlers } from "@/lib/threeFiveSeven/runti
 // phases hook behavioral instrumentation into this scaffold.
 import "@/lib/threeFiveSeven/wartime";
 import { supabase } from "@/integrations/supabase/client";
+import { platformAudio } from '@/lib/audio/platformAudio';
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
 import { bootstrapDealTiming } from "@/lib/geometryLab/dealTimingStore";
@@ -41,6 +42,8 @@ import { startVoicePresenceHeartbeat } from "@/lib/runtimeInstrumentation/voiceP
 // Server-first: start the presence heartbeat as soon as the app boots.
 // Every tab visible to the server publishes route + active voice op every ~4s.
 startVoicePresenceHeartbeat();
+const disposeAudio = platformAudio.install();
+if (import.meta.hot) import.meta.hot.dispose(disposeAudio);
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other
 // module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
@@ -69,6 +72,7 @@ bootstrapTableDemo();
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
 supabase.auth.onAuthStateChange((event, session) => {
+  platformAudio.setUser(session?.user?.id ?? null);
   try {
     recordAuthStateChange({
       previousState: null,

@@ -55,7 +55,7 @@ export function Run21GameTable(props: Props) {
   const [participationError, setParticipationError] = useState<string | null>(null);
   const view = snapshot?.view;
   const intro = view && !props.sessionEnded && !replay ? roundIntro(view, now) : null;
-  useRun21Bell(props.userId, view?.pausedAt == null ? intro?.key ?? null : null);
+  useRun21Bell(props.userId, view?.pausedAt == null ? intro?.key ?? null : null, intro?.remaining ?? 0);
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
   const {error:closeError,retry:retryTerminal}=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete,props.firstRoundId);

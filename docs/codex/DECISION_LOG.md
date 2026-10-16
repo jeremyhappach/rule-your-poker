@@ -1,5 +1,23 @@
 # Durable decision log
 
+## October 16, 2026 — Audio unlock belongs to the application
+
+The Run21 bell failure exposed game-mounted unlock listeners and attempted-event
+receipts written before scheduling. The shared application manager is installed
+before routing, creates/resumes synchronously during existing trusted gestures,
+and persists across every game/remount. Game cues supply synthesis and expiry;
+they cannot create competing contexts or unlock listeners. Existing platform
+effects retain their triggers/waveforms as thin consumers. Music controls remain
+separate because they use HTML media and an explicit user toggle.
+
+Unknown or failed preference loads stay silent. A successful local preference
+save wins over a late initial response. Presentation events may retry readiness
+only while enough time remains for the complete cue; no expired catch-up is
+allowed. Deduplication records successful scheduling, not audible output, which
+browsers cannot prove. Mute/background/interruption cancels active sources and
+preserves successful receipts to prevent replay. Hardware restrictions remain
+browser-owned. No gameplay or financial ownership moved.
+
 ## October 16, 2026 — Run21 intro releases from the persisted turn deadline
 
 New match configurations freeze a 2.5-second intro. Release is derived from the

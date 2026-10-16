@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-10-16T18:09:12.954Z",
+  "results": [
+    {
+      "browser": "Chrome desktop",
+      "version": "155.0.8059.40",
+      "passed": true,
+      "firstRound": {
+        "starts": [
+          0,
+          0,
+          0,
+          0,
+          0.32,
+          0.32,
+          0.32,
+          0.32
+        ],
+        "state": "running",
+        "contexts": 1
+      },
+      "blockedState": "suspended"
+    },
+    {
+      "browser": "Chrome touch emulation",
+      "version": "155.0.8059.40",
+      "passed": true,
+      "firstRound": {
+        "starts": [
+          0,
+          0,
+          0,
+          0,
+          0.32,
+          0.32,
+          0.32,
+          0.32
+        ],
+        "state": "running",
+        "contexts": 1
+      },
+      "blockedState": "suspended"
+    },
+    {
+      "browser": "Edge desktop",
+      "version": "155.0.4283.45",
+      "passed": true,
+      "firstRound": {
+        "starts": [
+          0,
+          0,
+          0,
+          0,
+          0.32,
+          0.32,
+          0.32,
+          0.32
+        ],
+        "state": "running",
+        "contexts": 1
+      },
+      "blockedState": "suspended"
+    }
+  ],
+  "physicalSafari": "Not available on this Windows host; device mute/background interruption require production smoke."
+}

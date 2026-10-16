@@ -1,3 +1,37 @@
+# Shared audio / Run21 Round 1 bell — 2026-10-16 — qualified correction
+
+Production smoke found that the old Run21 hook consumed intro receipts before
+verifying a running context; a suspended context silently scheduled nothing.
+Unlock listeners mounted with the game, too late for lobby interactions, and
+each intro independently fetched the sound preference.
+
+One application audio manager now installs before React mounts. Existing lobby
+and pregame pointer, touch and keyboard gestures create/resume one persistent
+Web Audio context. The existing auth notification loads the preference once;
+successful preference saves update the manager immediately. Doorbell, Gin knock
+and Gin scratch retain their existing trigger sites and waveforms through small
+cue adapters. All effects honor the saved sound preference; music retains its
+separate HTML audio controls.
+
+Run21 schedules two strikes 320 ms apart only with a running context and enough
+remaining authoritative intro time for the full 970 ms cue. Memory/session
+receipts are written only after complete successful scheduling. Pending cues
+expire or withdraw with their presentation; mute/interruption cancels active
+sources so they cannot resume late. Game remounts do not own or close the context.
+No engine, timer authority, first-placement allowance, scoring, financial,
+settlement, recovery, schema or lifecycle changes.
+
+Validation: typecheck, 2,445 regression tests and production build pass.
+Chrome desktop, Chrome touch emulation and Edge browser fixtures verify early
+gesture unlock, Round 1/two strikes, later rounds, remount/refresh suppression,
+other existing cues sharing one context, mute and delayed preferences, and
+expired suspended-context playback. Unit coverage includes Safari-style
+interruption and partial scheduling failure. Evidence and repeatable browser
+runner: [dev/audio](../../dev/audio/browser.evidence.json).
+Checkpoint: `shared-audio-run21-bell-2026-10-16`.
+Physical Mobile Safari, hardware mute and Jeremy's fresh-match production smoke
+remain acceptance checks; automation proves scheduling, not speaker audibility.
+
 # Run21 presentation polish — 2026-10-16 — qualified release
 
 The total is larger (18.4–41.6 px numerator), the footer lets the timer expand

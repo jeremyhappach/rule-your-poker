@@ -1,4 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { platformAudio } from '@/lib/audio/platformAudio';
+import { ginScratchCue } from '@/lib/audio/platformCues';
 
 interface GinRummyGinOverlayProps {
   winnerName: string;
@@ -11,54 +13,7 @@ interface GinRummyGinOverlayProps {
  */
 export const GinRummyGinOverlay = ({ winnerName, onComplete }: GinRummyGinOverlayProps) => {
   const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
-  const audioRef = useRef<AudioContext | null>(null);
-
-  // Play record scratch sound effect
-  useEffect(() => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      audioRef.current = ctx;
-      const now = ctx.currentTime;
-
-      // Record scratch = descending noise burst with bandpass filter
-      const duration = 0.4;
-      const bufferSize = Math.floor(ctx.sampleRate * duration);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        // Amplitude envelope: sharp attack, medium decay
-        const t = i / ctx.sampleRate;
-        const env = Math.exp(-t * 6) * 0.9;
-        data[i] = (Math.random() * 2 - 1) * env;
-      }
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      // Pitch sweep down for scratch feel
-      source.playbackRate.setValueAtTime(2.5, now);
-      source.playbackRate.exponentialRampToValueAtTime(0.4, now + duration);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(2000, now);
-      filter.frequency.exponentialRampToValueAtTime(300, now + duration);
-      filter.Q.setValueAtTime(3, now);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.6, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      source.start(now);
-      source.stop(now + duration);
-
-      console.log('[GIN-OVERLAY] Played record scratch');
-    } catch (e) {
-      console.log('[GIN-OVERLAY] Audio failed:', e);
-    }
-  }, []);
+  useEffect(() => { platformAudio.play(ginScratchCue); }, []);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('show'), 80);

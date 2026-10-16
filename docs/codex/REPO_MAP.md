@@ -1,9 +1,19 @@
 # Repository map
 
+Application audio: `src/lib/audio/audioManager.ts` owns the single reusable Web
+Audio context, early gesture listeners, readiness, preference gating, event
+receipts, expiry and interruption cleanup. `platformAudio.ts` binds profile I/O;
+`main.tsx` installs it before React and supplies auth identity. `VisualPreferences`
+publishes successful saves. `platformCues.ts` preserves doorbell/knock/scratch
+synthesis; existing hooks and the Gin overlay request those cues. New effects
+provide an `AudioCue` and use `request` with user/event identity and a monotonic
+presentation deadline. `play` is reserved for existing instantaneous cues, with
+no deferred playback. Background music keeps its existing HTML audio owner.
+
 Run21 round intro: `src/lib/run21/roundIntro.ts` derives the authoritative release
 from the existing deadline. `engine.ts` rejects early commands; the authority
 holds bot scheduling. `Run21RoundIntro.tsx` paints the board overlay and
-`useRun21Bell.ts` owns optional, preference-aware sound via `boxingBell.ts`.
+`useRun21Bell.ts` requests optional sound from the shared owner via `boxingBell.ts`.
 The full match/hand/round/player identity prevents replay across refreshes.
 
 Shared table/fullscreen dissolve: `src/lib/canonicalShell/CinematicPresentation.tsx`

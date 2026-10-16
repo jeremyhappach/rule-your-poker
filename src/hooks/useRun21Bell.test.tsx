@@ -1,39 +1,46 @@
 // @vitest-environment jsdom
-import {cleanup, renderHook, waitFor} from '@testing-library/react';
-import {afterEach, beforeEach, expect, it, vi} from 'vitest';
-const mock=vi.hoisted(()=>({preference:vi.fn(),strike:vi.fn()}));
-vi.mock('@/integrations/supabase/client',()=>({supabase:{from:()=>({select:()=>({eq:()=>({maybeSingle:mock.preference})})})}}));
-vi.mock('@/lib/run21/boxingBell',()=>({strikeBoxingBell:mock.strike}));
-import {useRun21Bell} from './useRun21Bell';
-beforeEach(()=>{
-  mock.preference.mockResolvedValue({data:{play_sounds:true}});
-  vi.stubGlobal('AudioContext',class {state='running';close=()=>Promise.resolve();});
+import { cleanup, renderHook } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { audioHarness } from '@/lib/audio/audioTestHarness';
+const mock = vi.hoisted(() => ({ request: vi.fn() }));
+vi.mock('@/lib/audio/platformAudio', () => ({ platformAudio: mock }));
+import { useRun21Bell } from './useRun21Bell';
+
+let h: ReturnType<typeof audioHarness>;
+beforeEach(async () => {
+  vi.useFakeTimers(); sessionStorage.clear(); h = audioHarness();
+  vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+  mock.request.mockImplementation(event => h.manager.request(event));
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 });
-afterEach(()=>{cleanup();sessionStorage.clear();vi.clearAllMocks();vi.unstubAllGlobals();});
-it('rings once across rerenders and remount/reconnect, then rings for the next player identity',async()=>{
-  const first=renderHook(({key})=>useRun21Bell('user',key),{initialProps:{key:'round:player-a'}});
-  await waitFor(()=>expect(mock.strike).toHaveBeenCalledTimes(1));
-  first.rerender({key:'round:player-a'});first.unmount();
-  const second=renderHook(({key})=>useRun21Bell('user',key),{initialProps:{key:'round:player-a'}});
-  expect(mock.strike).toHaveBeenCalledTimes(1);
-  second.rerender({key:'round:player-b'});
-  await waitFor(()=>expect(mock.strike).toHaveBeenCalledTimes(2));
+afterEach(() => { cleanup(); h.dispose(); vi.useRealTimers(); vi.restoreAllMocks(); mock.request.mockReset(); });
+
+it('rings twice for Round 1 after pregame unlock, survives strict remounts, and rings for each next identity', () => {
+  h.manager.unlock();
+  const first = renderHook(({id}) => useRun21Bell('user', id, 2500), {initialProps: {id: 'session:game:hand:round1:player1'}, wrapper: StrictMode});
+  expect(h.starts()).toHaveLength(8);
+  first.rerender({id: 'session:game:hand:round1:player1'}); first.unmount();
+  const second = renderHook(({id}) => useRun21Bell('user', id, 2500), {initialProps: {id: 'session:game:hand:round1:player1'}});
+  expect(h.starts()).toHaveLength(8);
+  for (const id of ['session:game:hand:round1:player2','session:game:hand:round2:player1','session:game:hand:round3:player1']) second.rerender({id});
+  expect(h.starts()).toHaveLength(32); expect(h.createContext).toHaveBeenCalledTimes(1);
 });
-it('honors mute and checks a changed preference on the next round',async()=>{
-  mock.preference.mockResolvedValue({data:{play_sounds:false}});
-  const h=renderHook(({key})=>useRun21Bell('user',key),{initialProps:{key:'one'}});
-  await waitFor(()=>expect(mock.preference).toHaveBeenCalledTimes(1));expect(mock.strike).not.toHaveBeenCalled();
-  mock.preference.mockResolvedValue({data:{play_sounds:true}});h.rerender({key:'two'});
-  await waitFor(()=>expect(mock.strike).toHaveBeenCalledTimes(1));
+
+it('withdraws a still-blocked cue when the intro disappears', () => {
+  h.ctx.state = 'suspended';
+  const hook = renderHook(({id}: {id: string | null}) => useRun21Bell('user', id, 2500), {initialProps: {id: 'round1' as string | null}});
+  hook.rerender({id: null}); h.state('running'); expect(h.starts()).toEqual([]);
 });
-it('does not play late when preference loading completes after the overlay releases',async()=>{
-  let resolve!:(value:unknown)=>void;mock.preference.mockReturnValue(new Promise(r=>{resolve=r;}));
-  const h=renderHook(({key}:{key:string|null})=>useRun21Bell('user',key),{initialProps:{key:'one' as string|null}});
-  h.rerender({key:null});resolve({data:{play_sounds:true}});
-  await Promise.resolve();expect(mock.strike).not.toHaveBeenCalled();
+
+it('repeated snapshots do not extend an expired window', () => {
+  h.ctx.state = 'suspended';
+  const hook = renderHook(({remaining}) => useRun21Bell('user', 'round1', remaining), {initialProps: {remaining: 2500}});
+  vi.advanceTimersByTime(2400); hook.rerender({remaining: 2500});
+  vi.advanceTimersByTime(101); h.state('running'); expect(h.starts()).toEqual([]);
 });
-it('fails silently when the preference request fails',async()=>{
-  mock.preference.mockRejectedValue(new Error('offline'));
-  renderHook(()=>useRun21Bell('user','one'));
-  await waitFor(()=>expect(mock.preference).toHaveBeenCalledTimes(1));expect(mock.strike).not.toHaveBeenCalled();
+
+it('a spectator first observing an eligible round uses the same two-strike path', () => {
+  renderHook(() => useRun21Bell('user', 'session:game:hand:round1:another-player', 2000));
+  expect(h.starts()).toEqual([10,10,10,10,10.32,10.32,10.32,10.32]);
 });

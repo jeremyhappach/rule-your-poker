@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { platformAudio } from '@/lib/audio/platformAudio';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -86,6 +87,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
     if (error) {
       toast.error('Failed to save preferences');
     } else {
+      platformAudio.setPreference(userId, playSounds);
       // Refresh the shared provider so every CanonicalCardBack /
       // table-felt consumer picks up the new colors immediately.
       // The profile control request bypasses the impairment layer, so this
