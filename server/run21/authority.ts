@@ -5,6 +5,7 @@ import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
 import { roundDeck, playerRoundDecks } from './harness.js';
 import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
 import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
+import {ROUND_INTRO_MS, turnReleaseAt} from '../../src/lib/run21/roundIntro.js';
 
 export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;
@@ -109,7 +110,7 @@ export class Run21Authority {
       const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
         ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake,
-        row.financial_version === 2 ? {...DEFAULT_CONFIG, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at, row.deck_version ?? 1);
+        row.financial_version === 2 ? {...DEFAULT_CONFIG, roundIntroMs: ROUND_INTRO_MS, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at, row.deck_version ?? 1);
       state = await this.openRound(state, row.first_round_id, at, row.debug_harness);
     }
     state = advanceScorePresentation(state, at);
@@ -128,7 +129,7 @@ export class Run21Authority {
     }
     round = state.rounds.at(-1)!;
     const actor = state.players.find(p => p.id === round.active_player_id);
-    if (!round.revealed && actor && (actor.kind === 'bot' || state.automaticPlayers?.includes(actor.id)) && due !== null && at >= due && !round.boards[actor.id].result) {
+    if (!round.revealed && actor && (actor.kind === 'bot' || state.automaticPlayers?.includes(actor.id)) && due !== null && at >= due && at >= (turnReleaseAt(round.boards[actor.id], state.config) ?? 0) && !round.boards[actor.id].result) {
       const action = chooseAction(project(state, actor.id), at);
       if (action) state = this.command(state, actor.id, action.intent, at);
       due = null;
@@ -150,7 +151,8 @@ export class Run21Authority {
     }
     const nextActor = state.players.find(p => p.id === state.rounds.at(-1)!.active_player_id);
     const choice = nextActor && (nextActor.kind === 'bot' || state.automaticPlayers?.includes(nextActor.id)) ? chooseAction(project(state, nextActor.id), at) : null;
-    due = choice ? due ?? at + choice.delayMs : null;
+    const releaseAt = nextActor ? turnReleaseAt(state.rounds.at(-1)!.boards[nextActor.id], state.config) : null;
+    due = choice ? Math.max(due ?? at + choice.delayMs, releaseAt === null ? 0 : releaseAt + choice.delayMs) : null;
     if (state !== row.state || due !== row.bot_due_at) row = await this.store.commit(row, state, due, verifiedUserId);
     this.committed.set(row.game_id,row);
     this.schedule(row);

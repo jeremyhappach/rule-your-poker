@@ -275,7 +275,8 @@ try {
   const before=await scalar('SELECT state v FROM private.run21_matches WHERE dealer_game_id=$1',[dg]);
   const active=before.rounds.at(-1).active_player_id;
   assert.equal(before.config.firstPlacementSeconds,30);
-  assert.equal(before.rounds.at(-1).boards[active].firstPlacementDeadline-before.updatedAt,30000);
+  assert.equal(before.config.roundIntroMs,2500);
+  assert.equal(before.rounds.at(-1).boards[active].firstPlacementDeadline-before.updatedAt,32500);
   await inactive.read(game,users[0]);await inactive.read(game,users[1]);
   assert.equal((await scalar('SELECT state v FROM private.run21_matches WHERE dealer_game_id=$1',[dg])).rounds.at(-1).boards[active].firstPlacementDeadline,before.rounds.at(-1).boards[active].firstPlacementDeadline);
   pass('Reconnect and repeated reads preserve the first-placement deadline');
@@ -340,6 +341,9 @@ try {
  const overdue=new Run21Authority(store,Date.now,undefined,undefined,false);
  try{
   const initial=await overdue.read(game,users[0]),id=initial.view.active_player_id;
+  await assert.rejects(()=>overdue.act(game,users[players.indexOf(id)],{identity:initial.view.identity,roundId:initial.view.roundId,playerId:id,
+   requestId:randomUUID(),revision:initial.view.boards[id].revision,intent:{type:'place',column:0}}),/round_intro/);
+  await new Promise(resolve=>setTimeout(resolve,2505));
   await overdue.act(game,users[players.indexOf(id)],{identity:initial.view.identity,roundId:initial.view.roundId,playerId:id,
    requestId:randomUUID(),revision:initial.view.boards[id].revision,intent:{type:'place',column:0}});
   const persisted=await scalar('SELECT state v FROM private.run21_matches WHERE dealer_game_id=$1',[dg]);
@@ -376,6 +380,7 @@ try {
   // Only deterministic server shuffle is injected; every score comes from legal player commands.
   for(let round=1;round<=(suddenDeath?4:3);round++)for(let turn=0;turn<2;turn++){
    const id=view.view.active_player_id;const user=users[players.indexOf(id)];
+   if(view.view.config.roundIntroMs)now=Math.max(now,view.view.boards[id].firstPlacementDeadline-view.view.config.firstPlacementSeconds*1000);
    for(const intent of [...[0,1,2,3,0,1,2,3,4,4,4].map(column=>({type:'place',column})),{type:'collect'}]){
     if(intent.type==='collect'&&turn===1&&(!suddenDeath||round===4))now+=1000;
     const cmd={identity:view.view.identity,roundId:view.view.roundId,playerId:id,requestId:randomUUID(),revision:view.view.boards[id].revision,intent};

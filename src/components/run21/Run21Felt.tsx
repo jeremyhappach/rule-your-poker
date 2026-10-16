@@ -16,6 +16,8 @@ import {Run21ScoringHelp} from './Run21ScoringHelp';
 import type {VisibleEvent} from '@/lib/run21/history';
 import {Exact21Feedback} from '@/lib/run21/exact21Feedback';
 import {displayedPlayerId} from '@/lib/run21/presentation';
+import {roundIntro} from '@/lib/run21/roundIntro';
+import {Run21RoundIntro} from './Run21RoundIntro';
 
 const SUITS: Record<Card['suit'],DisplaySuit>={hearts:'♥',diamonds:'♦',clubs:'♣',spades:'♠'};
 export function Run21Card({card}:{card:Card|null}) {
@@ -66,7 +68,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
   const overrides=useDraftedGeometryOverrides();
   const descriptors=applyGeometryOverrides(getRun21ArtifactDescriptors(geometry),overrides);
   const board=view.boards[playerId];
-  const live=view.pausedAt==null && !view.revealed && !view.scorePresentation && !view.automaticPlayers?.includes(playerId) && playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !!onIntent;
+  const live=!roundIntro(view,now) && view.pausedAt==null && !view.revealed && !view.scorePresentation && !view.automaticPlayers?.includes(playerId) && playerId===view.viewerId && playerId===view.active_player_id && !!board?.current && !board.result && (board.deadline===null||now<board.deadline) && !!onIntent;
   const active=live&&!pending;
   const legal=board?legalColumns(board,view.config):[];
   const player=view.players.find(p=>p.id===playerId)!;
@@ -106,6 +108,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,geomet
       })}
     </div>)}
     {drawLayer?createPortal(draw,drawLayer):draw}
+    <Run21RoundIntro view={view} now={now}/>
     {reason&&outcome&&!view.revealed&&!hideScoring&&slot('resultOverlay',<div className="run21-result" role="status" data-run21-scoring data-outcome={outcome.kind}>
       {outcome.kind==='bust'&&<svg className="run21-failure-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 36 3 22 13 9 25 5 22 18 28 25 18 33 22 43Z" fill="#8b9299"/><path d="m29 7 12 9 5 20-18 8-4-10 11-9-7-8Z" fill="#b2bac0"/></svg>}
       {outcome.kind==='no-qualify'&&<span className="run21-failure-icon" aria-hidden="true">💩</span>}

@@ -2,6 +2,8 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 export interface Card { rank: Rank; suit: Suit }
 export interface Config {
+  /** Frozen for new matches only. Existing matches keep their original release. */
+  roundIntroMs?: number;
   /** Frozen when a production match starts; absent on historical matches. */
   firstPlacementSeconds?: number;
   preset: string;
@@ -119,6 +121,7 @@ export interface Projection extends Omit<Frame, 'boards'> {
 }
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export function assertConfig(config: Config): void {
+  if (config.roundIntroMs !== undefined && (config.roundIntroMs !== 2500 || config.firstPlacementSeconds === undefined)) throw new Error('invalid_round_intro');
   if (config.firstPlacementSeconds !== undefined && (!Number.isSafeInteger(config.firstPlacementSeconds) || config.firstPlacementSeconds < 5 || config.firstPlacementSeconds > 60)) throw new Error('invalid_first_placement_timer');
   for (const n of [config.rounds, config.columns, config.target, config.speed.start, config.speed.decrement, config.speed.intervalMs]) {
     if (!Number.isSafeInteger(n) || n <= 0) throw new Error('invalid_config');

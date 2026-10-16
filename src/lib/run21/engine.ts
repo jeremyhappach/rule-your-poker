@@ -1,5 +1,6 @@
 import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type RoundEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
 import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt } from './rules.js';
+import {turnReleaseAt} from './roundIntro.js';
 
 function clock(match: Match, at: number) {
   if (!Number.isSafeInteger(at) || at < match.updatedAt) throw new Error('non_monotonic_authority_clock');
@@ -84,7 +85,7 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
 function startTurn(match: Match, round: Round, board: Board, at: number, requestId: string) {
   round.active_player_id = board.playerId;
   if (match.config.firstPlacementSeconds !== undefined)
-    board.firstPlacementDeadline = at + match.config.firstPlacementSeconds * 1000;
+    board.firstPlacementDeadline = at + (match.config.roundIntroMs ?? 0) + match.config.firstPlacementSeconds * 1000;
   board.revision++;
   event(match, 'turn_started', at, null, requestId, {active_player_id: board.playerId});
   present(match, round, board, at, requestId);
@@ -179,6 +180,8 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   else if (type === 'ready') {
     if (original.presented.length) return reject('already_ready');
   } else if (!original.presented.length) return reject('not_ready');
+  const releaseAt = turnReleaseAt(original, input.config);
+  if (type !== 'ready' && type !== 'acknowledge' && releaseAt !== null && at < releaseAt) return reject('round_intro');
   const expired = original.deadline !== null && at >= original.deadline && !original.result;
   if (!expired) {
     if (type === 'place' && !legalColumns(original, input.config).includes(command.intent.type === 'place' ? command.intent.column : -1)) return reject('column_locked');

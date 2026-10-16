@@ -1,5 +1,16 @@
 # Durable decision log
 
+## October 16, 2026 — Run21 intro releases from the persisted turn deadline
+
+New match configurations freeze a 2.5-second intro. Release is derived from the
+existing first-placement deadline minus its configured usable allowance. The
+engine gates commands and bot scheduling uses that release; the browser only
+projects the remaining window. Existing pause/resume shifting therefore applies
+without another timestamp or SQL owner. Rerenders and reconnects cannot extend
+the intro, and initialized historical configurations are unchanged. Audio is
+optional, muted by profile preference and deduplicated by full match/round/actor
+identity in the viewing tab. No financial or continuation ownership changes.
+
 ## October 16, 2026 — Run21 continuation is independent of browser presentation
 
 New lifecycle-version-two matches continue atomically after canonical settlement.

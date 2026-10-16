@@ -1,5 +1,11 @@
 # Repository map
 
+Run21 round intro: `src/lib/run21/roundIntro.ts` derives the authoritative release
+from the existing deadline. `engine.ts` rejects early commands; the authority
+holds bot scheduling. `Run21RoundIntro.tsx` paints the board overlay and
+`useRun21Bell.ts` owns optional, preference-aware sound via `boxingBell.ts`.
+The full match/hand/round/player identity prevents replay across refreshes.
+
 Shared table/fullscreen dissolve: `src/lib/canonicalShell/CinematicPresentation.tsx`
 coordinates `PersistentTableShell` opacity and terminal admission. Readiness is
 published by `FullscreenGameShell` (hydrated game view) and `PlayfieldSlotController`

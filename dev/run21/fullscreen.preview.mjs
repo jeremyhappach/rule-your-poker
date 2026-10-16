@@ -27,7 +27,14 @@ try{
     assert(Math.abs(card.x+card.width/2-(bounds.x+bounds.width/2))<2);
     assert(pass.x+pass.width<=card.x+2&&help.x>=card.x+card.width-2);
     const end=await page.locator('.run21-collect-button').boundingBox();
-    assert(Math.abs(end.x+end.width/2-(bounds.x+bounds.width/2))<2);
+    const footer=await page.locator('.run21-fullscreen-actions').boundingBox();
+    assert(Math.abs(end.x+end.width-(footer.x+footer.width))<2);
+    const speed=await page.locator('.run21-speed').boundingBox();
+    assert(speed.width>footer.width*.55);
+    assert(await page.getByText('Round 1 · $1',{exact:true}).isVisible());
+    const total=await page.locator('.run21-running-total').boundingBox(),helpButton=await page.locator('.run21-help button').boundingBox();
+    assert(total.x+total.width<=helpButton.x,JSON.stringify({width,total,helpButton}));
+    assert(parseFloat(await page.locator('.run21-running-total strong').evaluate(el=>getComputedStyle(el).fontSize))>=18);
     assert.equal(await page.locator('[data-run21-turn-state]').getAttribute('data-run21-turn-state'),'active');
     assert.equal(await page.locator('.run21-running-total').getAttribute('data-qualified'),'false');
     await page.screenshot({path:`${out}/active-${width}x${height}.png`,animations:'disabled'});
@@ -61,6 +68,9 @@ try{
     await page.locator('[data-fullscreen-game-shell]').waitFor();
     if(scene==='observer'||scene==='inactive'||scene==='reveal')assert.equal(await page.locator('.run21-column:enabled').count(),0);
     if(scene==='observer'||scene==='inactive'){
+      const timer=await page.locator('.run21-speed').boundingBox(),footer=await page.locator('.run21-fullscreen-actions').boundingBox();
+      assert.equal(await page.locator('.run21-collect-button').count(),0);
+      assert(Math.abs(timer.width-footer.width)<2);
       assert.equal(await page.locator('[data-run21-turn-state]').getAttribute('data-run21-turn-state'),'watching');
       assert.equal(await page.locator('.run21-live-card').evaluate(el=>getComputedStyle(el).filter),'grayscale(1)');
     }
@@ -78,6 +88,24 @@ try{
     }
     results.push({scene,passed:true});
   }
+  for(const [width,height] of [[390,844],[844,390],[1440,900]]){
+    await page.setViewportSize({width,height});
+    for(const scene of ['intro-local','intro-opponent']){
+      await page.goto(`http://127.0.0.1:5179/dev/run21/fullscreen.html?scene=${scene}`);
+      const intro=page.locator('[data-run21-round-intro]');await intro.waitFor();
+      assert((await intro.innerText()).includes(scene==='intro-local'?'YOUR TURN':'YOU IS UP'));
+      assert.equal(await page.locator('.run21-column:enabled').count(),0);
+      await page.screenshot({path:`${out}/${scene}-${width}x${height}.png`});
+      await intro.waitFor({state:'hidden',timeout:5000});
+      assert((await page.locator('.run21-timer-caption').innerText()).includes('30s'));
+      if(scene==='intro-local')assert.equal(await page.locator('.run21-column:enabled').count(),5);
+      results.push({scene,width,height,release:true});
+    }
+  }
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('http://127.0.0.1:5179/dev/run21/fullscreen.html?scene=intro-local');
+  assert.equal(await page.locator('.run21-boxing-bell').evaluate(el=>getComputedStyle(el).animationName),'none');
+  await page.locator('[data-run21-round-intro]').waitFor({state:'hidden'});
   await page.goto('http://127.0.0.1:5179/dev/run21/fullscreen.html');
   // Resize the same live surface across the former aspect-ratio breakpoint.
   for(const [width,height] of [[1200,600],[600,900],[900,600],[390,844]]){

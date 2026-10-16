@@ -8,12 +8,13 @@ import type {Command, Intent} from './model';
 
 const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
-function fixture(botFirst = false, harness = 'none', twoHumans = false) {
+function fixture(botFirst = false, harness = 'none', twoHumans = false, production = false) {
   let now = 1000;
   const journal: import('./model').Event[] = [];
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
     revision: 0, state: null, bot_due_at: null, finished: false, debug_harness:harness, deck_version:2};
+  if(production){row.financial_version=2;row.first_placement_seconds=30;}
   if (twoHumans) row.participants.forEach(p => {p.kind = 'human';});
   // Deliberately opposite seat order: the persisted dealer identity must decide.
   if (!botFirst) row.participants.reverse();
@@ -40,6 +41,24 @@ function command(row: StoredMatch, intent: Intent, playerId = human): Command {
   return {identity: state.identity, roundId: round.id, playerId, requestId: uuid(sequence++), revision: round.boards[playerId].revision, intent};
 }
 describe('persisted local Run21 authority', () => {
+  it('persists the new human release across workers and rejects early authenticated play',async()=>{
+    const f=fixture(false,'none',true,true);let a=f.make();await a.read(game,user);
+    const initial=f.row.state!.rounds[0].boards[human];
+    expect(initial.firstPlacementDeadline).toBe(33500);
+    await expect(a.act(game,user,command(f.row,{type:'place',column:0}))).rejects.toThrow('round_intro');
+    f.tick(2499);a.dispose();a=f.make();await a.read(game,user);
+    expect(f.row.state!.rounds[0].boards[human].firstPlacementDeadline).toBe(33500);
+    await expect(a.act(game,user,command(f.row,{type:'place',column:0}))).rejects.toThrow('round_intro');
+    f.tick(1);await a.act(game,user,command(f.row,{type:'place',column:0}));
+    expect(f.row.state!.rounds[0].boards[human]).toMatchObject({startedAt:3500,deadline:253500});
+  });
+  it('holds the bot through the intro without postponing its due action on repeated reads',async()=>{
+    const f=fixture(true,'none',false,true),a=f.make();await a.read(game,user);
+    expect(f.row.bot_due_at).toBe(4250);
+    f.tick(2000);await a.read(game,user);expect(f.row.bot_due_at).toBe(4250);
+    f.tick(1250);await a.recoverOne(game);
+    expect(f.row.state!.rounds[0].boards[PLAYERS[1].id].cardIndex).toBe(1);
+  });
   it('serializes competing perfect placements and survives disconnect during the score hold',async()=>{
     const f=fixture(false,'always_105',true);let a=f.make();await a.read(game,user);
     for(const column of [0,1,2,3,0,1,2,3,4,4])await a.act(game,user,command(f.row,{type:'place',column}));

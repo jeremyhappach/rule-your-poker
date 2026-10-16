@@ -1,3 +1,30 @@
+# Run21 presentation polish — 2026-10-16 — qualified release
+
+The total is larger (18.4–41.6 px numerator), the footer lets the timer expand
+beside a right-aligned action or fill the row while watching, and the header uses
+`Round N · $1`. A board-local boxing-gong intro shows the actual round and actor,
+fades within its 2.5-second window and optionally plays two identical bell strikes.
+Mute, autoplay restrictions and reduced motion are respected.
+
+Newly initialized version-two matches freeze `roundIntroMs=2500`. The existing
+persisted first-placement deadline includes the intro plus the full configured
+allowance. The engine rejects early actions; bot due times respect the release.
+Scoring still starts with the first accepted placement. Existing initialized
+matches, pause shifting, independent decks, finances, terminal retention and the
+shared dissolve keep their owners. No schema migration or historical mutation.
+
+Validation: 2,419 regression checks plus six additional authority/audio checks;
+installed TypeScript compiler and final production build pass. Responsive browser
+checks cover portrait, landscape, desktop, active/watching, both intro variants,
+reduced motion and eight existing table layouts. Six isolated database scenarios
+cover fake/real settlement, ties, terminal closure, historical matches and a cold
+zero-client worker, including replay, authorization, History data and Run Back.
+Evidence: [intro.evidence.json](../../dev/run21/intro.evidence.json).
+Release checkpoint: `run21-presentation-intro-2026-10-16`.
+Publication must pair the matching Vercel commit and recovery bundle. Jeremy's
+production smoke remains acceptance truth. Start a new match, check both turn intros and
+phone layouts, then complete it and confirm one transfer, History and Run Back.
+
 # Run21 independent decks and terminal continuation — 2026-10-16 — qualified correction
 
 All correction gates pass: independent player decks; exactly-once canonical

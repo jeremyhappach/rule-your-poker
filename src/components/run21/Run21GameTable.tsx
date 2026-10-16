@@ -26,6 +26,8 @@ import { Run21FullscreenView } from './Run21FullscreenView';
 import { Run21ScoringReference } from './Run21ScoringHelp';
 import type { PresentationMode } from '@/lib/canonicalShell/presentationMode';
 import {setAutomaticPlay, setSessionPlayerIntent} from '@/lib/sessionPlayerIntent';
+import {roundIntro} from '@/lib/run21/roundIntro';
+import {useRun21Bell} from '@/hooks/useRun21Bell';
 
 interface Props {
   presentationMode?: PresentationMode;
@@ -52,6 +54,8 @@ export function Run21GameTable(props: Props) {
   const [participationPending, setParticipationPending] = useState(false);
   const [participationError, setParticipationError] = useState<string | null>(null);
   const view = snapshot?.view;
+  const intro = view && !props.sessionEnded && !replay ? roundIntro(view, now) : null;
+  useRun21Bell(props.userId, view?.pausedAt == null ? intro?.key ?? null : null);
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
   const {error:closeError,retry:retryTerminal}=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete,props.firstRoundId);

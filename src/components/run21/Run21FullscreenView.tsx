@@ -30,10 +30,10 @@ export function Run21FullscreenView(props: Props) {
   const {snapshot, now, sessionEnded, replay} = props;
   const view = snapshot?.view;
   return <FullscreenGameShell title="Run21" ready={!!view}
-    description={sessionEnded ? 'Session ended' : view ? `Round ${view.roundNumber} · Stake ${view.stake}` : 'Connecting…'}
+    description={sessionEnded ? 'Session ended' : view ? `Round ${view.roundNumber} · $${view.stake.toLocaleString('en-US')}` : 'Connecting…'}
     activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={props.panel} sessionEnded={sessionEnded}
     scores={view && <Run21Scoreboard view={view} now={now} transportBalances={snapshot.balances}/>}
-    actions={view && !sessionEnded && !replay && <div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={props.onIntent} pending={props.pending}/><div>{props.participationControls}</div></div>}>
+    actions={view && !sessionEnded && !replay && <div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={props.onIntent} pending={props.pending}/></div>{props.participationControls}</div>}>
     {props.error}
     {!sessionEnded && (view ? replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <div className="run21-fullscreen-replay">
       <Run21Felt layout="fullscreen" view={frame} now={at}/>

@@ -5,6 +5,7 @@ import {eventSnapshot,LivePresentation,optimisticPlacement,presentationPhase} fr
 import {legalColumns} from '@/lib/run21/rules';
 import type {Command,Intent} from '@/lib/run21/model';
 import {ScoreCelebrations} from '@/lib/run21/scoreCelebration';
+import {roundIntro} from '@/lib/run21/roundIntro';
 export function useRun21Local(gameId:string,dealerGameId:string,authoritativeComplete=false) {
   const [snapshot,setSnapshot]=useState<Run21Snapshot|null>(null),latest=useRef<Run21Snapshot|null>(null);
   const presentation=useRef(new LivePresentation());
@@ -94,6 +95,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     const current=latest.current;
     if(!current?.view.viewerId||inFlight.current||celebrations.current.pending)return;
     const view=current.view,board=view.boards[view.viewerId]!;
+    if(roundIntro(view,clock.current.server+performance.now()-clock.current.local))return;
     if(intent.type==='place'&&(view.active_player_id!==view.viewerId||!legalColumns(board,view.config).includes(intent.column)))return;
     const command:Command={identity:view.identity,roundId:view.roundId!,playerId:view.viewerId,requestId:crypto.randomUUID(),revision:board.revision,intent};
     inFlight.current=true;setPending(true);setError(null);setOptimistic(command);
