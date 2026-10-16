@@ -2,6 +2,8 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 export interface Card { rank: Rank; suit: Suit }
 export interface Config {
+  /** Missing means the historical first-placement clock. Frozen per run. */
+  clockStart?: 'first_placement' | 'intro_end';
   /** Frozen for new matches only. Existing matches keep their original release. */
   roundIntroMs?: number;
   /** Frozen when a production match starts; absent on historical matches. */
@@ -12,7 +14,7 @@ export interface Config {
   target: number;
   passes: number;
   multipliers: Record<number, number>;
-  speed: { start: number; decrement: number; intervalMs: number };
+  speed: { start: number; decrement: number; intervalMs: number; bands?: {until:number;intervalMs:number}[] };
   expiration: 'zero' | 'score';
   bust: 'zero' | 'score';
   exhausted: 'zero' | 'score';
@@ -33,7 +35,7 @@ export interface Board {
   current: Card | null;
   cardIndex: number;
   revision: number;
-  /** First accepted placement time; admission and Pass leave both fields null. */
+  /** Authoritative clock origin; intro-end configurations persist the future release. */
   startedAt: number | null;
   deadline: number | null;
   firstPlacementDeadline?: number | null;
@@ -127,7 +129,9 @@ export type BoardProjection = Pick<Projection, 'config'|'roundId'|'roundNumber'|
 };
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export function assertConfig(config: Config): void {
-  if (config.roundIntroMs !== undefined && (config.roundIntroMs !== 2500 || config.firstPlacementSeconds === undefined)) throw new Error('invalid_round_intro');
+  if (config.clockStart !== undefined && !['first_placement','intro_end'].includes(config.clockStart)) throw new Error('invalid_clock_start');
+  if (config.roundIntroMs !== undefined && (config.roundIntroMs !== 2500 || (config.clockStart !== 'intro_end' && config.firstPlacementSeconds === undefined))) throw new Error('invalid_round_intro');
+  if (config.clockStart === 'intro_end' && config.firstPlacementSeconds !== undefined) throw new Error('invalid_first_placement_timer');
   if (config.firstPlacementSeconds !== undefined && (!Number.isSafeInteger(config.firstPlacementSeconds) || config.firstPlacementSeconds < 5 || config.firstPlacementSeconds > 60)) throw new Error('invalid_first_placement_timer');
   for (const n of [config.rounds, config.columns, config.target, config.speed.start, config.speed.decrement, config.speed.intervalMs]) {
     if (!Number.isSafeInteger(n) || n <= 0) throw new Error('invalid_config');
@@ -139,5 +143,15 @@ export function assertConfig(config: Config): void {
     if (!Number.isSafeInteger(+aggregate) || +aggregate < 0 || +aggregate > config.columns * config.target ||
         !Number.isSafeInteger(multiplier) || multiplier <= 0 ||
         !Number.isSafeInteger(multiplier * config.speed.start * config.rounds)) throw new Error('invalid_scoring');
+  }
+  if (config.speed.bands) {
+    let value=config.speed.start;
+    for(const band of config.speed.bands){
+      if(!Number.isSafeInteger(band.until)||band.until<0||band.until>=value||
+        !Number.isSafeInteger(band.intervalMs)||band.intervalMs<=0||
+        (value-band.until)%config.speed.decrement!==0)throw new Error('invalid_speed_bands');
+      value=band.until;
+    }
+    if(value!==0)throw new Error('invalid_speed_bands');
   }
 }

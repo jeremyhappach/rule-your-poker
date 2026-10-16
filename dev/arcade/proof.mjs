@@ -18,7 +18,7 @@ const rpcFor=client=>async(name,args)=>{const keys=Object.keys(args);return (awa
 const rpc=rpcFor(db);
 try{
  await db.query("CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY); CREATE SCHEMA IF NOT EXISTS cron; CREATE TABLE IF NOT EXISTS cron.job(jobid bigserial,jobname text,schedule text,active boolean); CREATE OR REPLACE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE SQL AS $$ INSERT INTO cron.job(jobname,schedule,active) VALUES($1,$2,true) RETURNING jobid $$");
- const sql=readFileSync('supabase/arcade/phase-one.sql','utf8');
+ const sql=readFileSync('supabase/arcade/phase-one.sql','utf8').replace(/\r\n/g,'\n');
  await db.query('BEGIN');await db.query(sql);await db.query('ROLLBACK');pass('candidate DDL rolls back without artifacts');
  assert.equal(await scalar("SELECT to_regclass('private.arcade_runs') value"),null);
  await db.query(sql);
@@ -132,7 +132,11 @@ try{
  assert.equal(versions.personalBest,9999);assert.equal(versions.previousBests[0].score,100000);
  pass('rolling eligibility, equal-score ranks, lifetime best and incompatible-version separation');
  const safe=soloProjection({...row,state,server_at:Date.now()},'You',Date.now());assert.equal('deck' in safe,false);assert.equal('deck' in safe.view,false);pass('redacted projection');
+ if(process.argv.includes('--scoring')){
+  const {proveScoring}=await import('./scoring.proof.mjs');
+  await proveScoring({db,rpc,scalar,users,begin,commit,vite,database,pass});
+ }
  assert.ok(targets.length>50);pass('zero writes across '+targets.length+' non-Arcade tables with canonical triggers enabled');
- mkdirSync('dev/arcade',{recursive:true});writeFileSync('dev/arcade/proof.evidence.json',JSON.stringify({database,productionWrites:0,passed:cases,at:new Date().toISOString()},null,2));
+ mkdirSync('dev/arcade',{recursive:true});writeFileSync(process.argv.includes('--scoring')?'dev/arcade/scoring.proof.evidence.json':'dev/arcade/proof.evidence.json',JSON.stringify({database,productionWrites:0,passed:cases,at:new Date().toISOString()},null,2));
 }finally{await vite.close();await db.end();await root.query('DROP DATABASE '+database+' WITH (FORCE)');await root.end();}
 

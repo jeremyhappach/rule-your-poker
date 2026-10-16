@@ -2,8 +2,9 @@ import type {Board, Config, BoardProjection} from './model.js';
 
 export const ROUND_INTRO_MS = 2500;
 
-/** Uses the persisted, pause-shifted first-placement deadline; no client release RPC. */
+/** Uses the frozen clock origin or legacy pause-shifted allowance; no client release RPC. */
 export function turnReleaseAt(board: Board | null | undefined, config: Config): number | null {
+  if(config.clockStart==='intro_end')return board&&!board.result?board.startedAt:null;
   if (!config.roundIntroMs || !config.firstPlacementSeconds || !board || board.result ||
       board.startedAt !== null || board.cardIndex !== 0 || board.firstPlacementDeadline == null) return null;
   return board.firstPlacementDeadline - config.firstPlacementSeconds * 1000;

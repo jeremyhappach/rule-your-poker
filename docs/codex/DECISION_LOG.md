@@ -1,3 +1,7 @@
+# 2026-10-16 — Arcade Run21 accepted clock approximation
+
+Jeremy approved immutable `run21/arcade-2`: clock starts at intro end; completed ticks subtract 2 every 420 ms from 280 to 200, then every 900 ms to zero (106.8 seconds). Display and scoring share the frozen configuration calculation. A database lock-time deadline check gives timeout precedence over crossing actions. All three rounds progress automatically with zero-client recovery; no first-placement allowance, pause, or tie extension applies. Multipliers are preserved. Legacy frozen runs and boards remain separate. Exact intervals are an accepted P-Town approximation; further historical timing research is closed. Multiplayer defaults/admission and the separate presentation/artwork proposal are outside this approval. See [Arcade policy](ARCADE_PHASE_ONE.md).
+
 # Durable decision log
 
 ## October 16, 2026 — Nonfinancial Arcade owns a separate solo lifecycle

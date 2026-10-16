@@ -16,7 +16,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  throw Error('arcade:concurrent_action');
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string,body:Record<string,any>){
- if(body.op==='leaderboard')return rpc('arcade_leaderboard',{p_actor:userId,p_game:body.game,p_window:body.window,p_result:body.result??null});
+ if(body.op==='leaderboard')return rpc('arcade_leaderboard',{p_actor:userId,p_game:body.game,p_window:body.window,p_result:body.result??null,...(body.ruleset?{p_ruleset:body.ruleset}:{})});
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
@@ -36,6 +36,10 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string,body:Rec
    if(row.revision!==body.revision||row.state?.roundId!==body.roundId)throw Error('arcade:stale_action');
    const state=applySolo(row.state!,intent,Number(row.server_at));
    const committed=await rpc('arcade_commit',{p_actor:userId,p_run:row.id,p_revision:row.revision,p_state:state,p_due:nextDue(state),p_request:body.requestId,p_fingerprint:fingerprint});
+   if(committed.outcome==='deadline'){
+    await synchronize(rpc,committed.record,userId);
+    throw Error('arcade:stale_action');
+   }
    if(committed.outcome==='conflict')throw Error('arcade:stale_action');
    row={...committed.record,server_at:row.server_at};
   }

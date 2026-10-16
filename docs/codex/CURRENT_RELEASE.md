@@ -1,3 +1,21 @@
+# Arcade Run21 scoring — 2026-10-16 — qualified correction
+
+Approved immutable `run21/arcade-2` starts its 106.8-second clock at intro end:
+280 → 200 in completed 420 ms ticks, then → 0 in 900 ms ticks, subtracting 2
+per tick. One shared calculation drives display and scoring. A database lock-time
+check gives expiry precedence; all three rounds automatically progress, including
+untouched rounds. Existing multipliers, multiplayer rules/admission, legacy frozen
+runs, and presentation/artwork are preserved. Current and legacy boards are separate.
+
+Qualification: 2,271 application tests plus 241 harness tests, TypeScript, production
+build, and complete rollback-contained database proof with 97 non-Arcade write guards.
+Migration `20261016212907_arcade_run21_scoring` stages the ruleset disabled;
+recovery worker version 2 is deployed. Release publishes compatible app code, then
+activates it atomically with `supabase/arcade/activate-run21-scoring.sql`.
+Installed-definition evidence and phone/reload/three-round/leaderboard browser proof
+are in `dev/arcade/scoring*`. Checkpoint: `arcade-run21-scoring-2026-10-16`.
+Jeremy's authenticated production smoke remains pending; see [policy and smoke](ARCADE_PHASE_ONE.md).
+
 # Nonfinancial Arcade Phase 1 — 2026-10-16 — qualified release
 
 Approved Arcade foundation and Solo Run21: separate routes and game-specific

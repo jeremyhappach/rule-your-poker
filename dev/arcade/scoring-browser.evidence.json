@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "clock starts at intro end before any placement and displays the configured ticks",
+    "phone action and reload preserve actual deadline, no pause or Next Round",
+    "automatic round progression uses authoritative hold and normal intro",
+    "exactly three rounds, one result, same leaderboard and Play Again",
+    "legacy and current leaderboards are independently selectable",
+    "explicit abandonment returns unranked without a result"
+  ],
+  "productionWrites": 0,
+  "transport": "Loopback SQL with substitute authentication and realtime notifications",
+  "errors": []
+}

@@ -10,7 +10,19 @@ The Vercel API validates the current Supabase user and active profile. Service-o
 
 The shared Run21 extraction is limited to pure scoreBoard, cryptographic shuffleCards and the board presentation type. Multiplayer match initialization, opponents, bot pacing, tie extensions, pause, settlement and continuation remain with their existing owners.
 
-## Frozen competitive policy
+## Current frozen competitive policy — run21/arcade-2
+
+Accepted P-Town timing approximation, not a claim of recovered Merit machine timing: the clock begins when the 2.5-second intro ends, before any placement. Speed starts at 280, loses 2 per completed 420 ms tick until 200 at 16,800 ms, then loses 2 per completed 900 ms tick until zero at 106,800 ms. Shared configuration-driven `speedAt` drives both display and scoring; animation never pauses this clock. Multipliers remain 97→50, 98→100, 99→150, 100→200, 101→250, 102→300, 103→400, 104→500, 105→1,000.
+
+The database checks the saved deadline after acquiring the run lock. A new action arriving at or beyond that deadline cannot earn points or replace the timeout; the service catches up to a zero-point timeout. Three rounds progress automatically, including untouched rounds, with the existing result hold and intro. No pause, first-placement allowance/expiry branch, or tie extension applies. Explicit Abandon remains the existing unranked exit.
+
+The migration stages arcade-2 disabled. Publish the compatible app and bundled recovery worker, then execute `supabase/arcade/activate-run21-scoring.sql`. This switches defaults atomically while preserving frozen historical and active arcade-1 runs. The leaderboard defaults to the enabled version and provides an explicit legacy selector. No multiplayer ruleset or admission default changes.
+
+Qualification: `node dev/arcade/proof.mjs --installed --scoring --scoring-installed` covers the installed definitions, rollback/idempotence, history preservation, deadline races, cold recovery, replay and board separation; `node dev/arcade/browser.mjs --scoring` covers the real page flow. Evidence is stored in `dev/arcade/scoring.*.json` and `dev/arcade/scoring-browser.evidence.json`.
+
+Owner smoke: start a new Arcade run and confirm arcade-2, speed 280 after the intro, no first-placement allowance, speed 200 at 16.8 seconds, and automatic zero at 106.8 seconds. Reload mid-round and verify the same clock; leave the run unattended and confirm exactly three results. Switch to the legacy leaderboard and verify prior scores remain there. Presentation/artwork changes are deferred.
+
+## Legacy frozen competitive policy — run21/arcade-1
 
 A run freezes its entire configuration and immutable ruleset identity at creation: exactly three rounds, five columns, target 21, one pass, existing multipliers and speed scoring, 250-second started-round duration, 30-second first-placement allowance after each 2.5-second intro, and a five-second result hold. The existing 104/105 medals receive their full 2.8/3.8 seconds before the five-second score presentation.
 

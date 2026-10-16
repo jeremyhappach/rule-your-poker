@@ -21,9 +21,23 @@ export const isPerfectBoard = (board: Board, config: Config) =>
   aggregate(board, config) === perfectAggregate(config) && canCollect(board, config);
 export function speedAt(board: Board, config: Config, at: number): number {
   if (board.startedAt === null) return config.speed.start;
-  return Math.max(0, config.speed.start - Math.floor(Math.max(0, at - board.startedAt) / config.speed.intervalMs) * config.speed.decrement);
+  return clockAt(config,at-board.startedAt).speed;
 }
-export const duration = (config: Config) => Math.ceil(config.speed.start / config.speed.decrement) * config.speed.intervalMs;
+/** Completed ticks only; the same frozen bands drive display, scoring and deadline. */
+function clockAt(config:Config,elapsed:number) {
+  let value=config.speed.start,remaining=Math.max(0,elapsed),duration=0,speed=config.speed.start,resolved=false;
+  for(const band of config.speed.bands??[{until:0,intervalMs:config.speed.intervalMs}]){
+    const ms=Math.ceil((value-band.until)/config.speed.decrement)*band.intervalMs;
+    if(!resolved){
+      speed=Math.max(band.until,value-Math.floor(Math.min(remaining,ms)/band.intervalMs)*config.speed.decrement);
+      if(remaining<ms)resolved=true;
+      else remaining-=ms;
+    }
+    duration+=ms;value=band.until;
+  }
+  return {speed,duration};
+}
+export const duration = (config: Config) => clockAt(config,0).duration;
 export const multiplierAt = (value: number, config: Config) => config.multipliers[value] ?? 0;
 export const canCollect = (board: Board, config: Config) => !board.result && board.startedAt !== null &&
   board.columns.every(c => !total(c, config.target).bust) && multiplierAt(aggregate(board, config), config) > 0;

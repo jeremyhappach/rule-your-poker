@@ -34,7 +34,8 @@ function GameBoard(){
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const createId=useRef<string|null>(null);
- useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game:'run21',window,result}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[window,result]);
+ const [ruleset,setRuleset]=useState<string|null>(null);
+ useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game:'run21',window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
   try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game:'run21',requestId:createId.current});navigate('/arcade/run21/run/'+run.id);}
@@ -43,12 +44,14 @@ function GameBoard(){
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
  <header className="arcade-heading"><Trophy size={36}/><div><h1>Run21</h1><p>Three rounds. One score.</p></div></header>
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Run complete':'Run ended · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
- <p>{board.latestResult.status==='completed'&&board.personalBest!==null&&board.latestResult.score<board.personalBest?'Your personal best remains '+board.personalBest.toLocaleString()+'.':board.latestResult.status!=='completed'?'This run does not enter the leaderboard.':'Your verified score is recorded.'}</p></div>}
+ <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded on '+board.latestResult.ruleset+'.':board.latestResult.status==='completed'&&board.personalBest!==null&&board.latestResult.score<board.personalBest?'Your personal best remains '+board.personalBest.toLocaleString()+'.':board.latestResult.status!=='completed'?'This run does not enter the leaderboard.':'Your verified score is recorded.'}</p></div>}
  <div className="arcade-summary"><div><span>Personal best · All Time</span><strong>{board?.personalBest?.toLocaleString()??'—'}</strong></div>
  <div><span>Your rank · {window==='30'?'Last 30 Days':'All Time'}</span><strong>{board?.self?'#'+board.self.rank:'—'}</strong></div></div>
  {board?.activeRun?<div className="arcade-play"><Link className="arcade-primary" to={'/arcade/run21/run/'+board.activeRun}><Play size={18}/>Resume Run</Link><p>Your clocks keep running. Open the run to resume or abandon.</p></div>:
  <button className="arcade-primary arcade-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={18}/>:<Play size={18}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
  <p className="arcade-note">No pauses. Leaving the game does not stop its clocks.</p>
+ {!!board?.availableRulesets?.length&&<label>Leaderboard rules <select className="bg-background text-foreground border border-border rounded px-2 py-1" aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
+ {board?.currentRuleset&&board.ruleset!==board.currentRuleset&&<p>Viewing legacy scores. New games use {board.currentRuleset}.</p>}
  <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} role="tab" aria-selected={window===value} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
  {error&&<p role="alert">{error}</p>}
  <section className="arcade-leaderboard" aria-label="Run21 leaderboard"><h2>Top 10 players</h2>

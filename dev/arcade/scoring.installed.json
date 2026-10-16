@@ -1,0 +1,152 @@
+{
+  "runs": {
+    "count": 1,
+    "latest_write": "2026-10-16T20:55:18.050551+00:00",
+    "legacy_config_preserved": true
+  },
+  "rules": [
+    {
+      "id": "run21/arcade-1",
+      "game": "run21",
+      "config": {
+        "bust": "zero",
+        "speed": {
+          "start": 250,
+          "decrement": 1,
+          "intervalMs": 1000
+        },
+        "passes": 1,
+        "preset": "run21/1",
+        "rounds": 3,
+        "target": 21,
+        "columns": 5,
+        "exhausted": "score",
+        "expiration": "zero",
+        "multipliers": {
+          "97": 50,
+          "98": 100,
+          "99": 150,
+          "100": 200,
+          "101": 250,
+          "102": 300,
+          "103": 400,
+          "104": 500,
+          "105": 1000
+        },
+        "roundIntroMs": 2500,
+        "roundDurationMs": 250000,
+        "goldCelebrationMs": 3800,
+        "scorePresentationMs": 5000,
+        "silverCelebrationMs": 2800,
+        "firstPlacementSeconds": 30
+      },
+      "enabled": true
+    },
+    {
+      "id": "run21/arcade-2",
+      "game": "run21",
+      "config": {
+        "bust": "zero",
+        "speed": {
+          "bands": [
+            {
+              "until": 200,
+              "intervalMs": 420
+            },
+            {
+              "until": 0,
+              "intervalMs": 900
+            }
+          ],
+          "start": 280,
+          "decrement": 2,
+          "intervalMs": 420
+        },
+        "passes": 1,
+        "preset": "run21/arcade-2",
+        "rounds": 3,
+        "target": 21,
+        "columns": 5,
+        "exhausted": "score",
+        "clockStart": "intro_end",
+        "expiration": "zero",
+        "multipliers": {
+          "97": 50,
+          "98": 100,
+          "99": 150,
+          "100": 200,
+          "101": 250,
+          "102": 300,
+          "103": 400,
+          "104": 500,
+          "105": 1000
+        },
+        "roundIntroMs": 2500,
+        "roundDurationMs": 106800,
+        "goldCelebrationMs": 3800,
+        "scorePresentationMs": 5000,
+        "silverCelebrationMs": 2800
+      },
+      "enabled": false
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX arcade_command_receipts_pkey ON private.arcade_command_receipts USING btree (user_id, request_id)",
+    "CREATE INDEX arcade_due ON private.arcade_runs USING btree (due_at, id) WHERE (status = 'active'::text)",
+    "CREATE UNIQUE INDEX arcade_one_unfinished ON private.arcade_runs USING btree (user_id, game) WHERE (status = 'active'::text)",
+    "CREATE UNIQUE INDEX arcade_recovery_state_pkey ON private.arcade_recovery_state USING btree (singleton)",
+    "CREATE INDEX arcade_results_best ON private.arcade_results USING btree (game, ruleset, user_id, score DESC, completed_at)",
+    "CREATE UNIQUE INDEX arcade_results_pkey ON private.arcade_results USING btree (run_id)",
+    "CREATE INDEX arcade_results_window ON private.arcade_results USING btree (game, ruleset, completed_at DESC, user_id, score DESC)",
+    "CREATE UNIQUE INDEX arcade_revisions_pkey ON public.arcade_revisions USING btree (run_id)",
+    "CREATE UNIQUE INDEX arcade_rulesets_pkey ON private.arcade_rulesets USING btree (id)",
+    "CREATE UNIQUE INDEX arcade_runs_pkey ON private.arcade_runs USING btree (id)"
+  ],
+  "results": {
+    "hash": "bbe5cc3ab5963689692c9dcb19062fc8",
+    "count": 1
+  },
+  "recovery": {
+    "failure": null,
+    "last_completed_at": "2026-10-16T21:29:39.76142+00:00"
+  },
+  "functions": [
+    {
+      "hash": "3e60214f8f2b236b3799a4f5afa42fc4",
+      "signature": "arcade_commit(uuid,uuid,bigint,jsonb,bigint,uuid,text,uuid)"
+    },
+    {
+      "hash": "283d90b4db891cde7be0055d98e96f41",
+      "signature": "arcade_leaderboard(uuid,text,text,uuid,text)"
+    },
+    {
+      "hash": "62afac4f12c11806894196d79f633638",
+      "signature": "arcade_load(uuid,uuid,uuid)"
+    },
+    {
+      "hash": "08fbb344c0cd1493b5160203c4630e26",
+      "signature": "arcade_recovery_claim(uuid)"
+    },
+    {
+      "hash": "9735913de8c556eceef326e7aa2a3d32",
+      "signature": "arcade_recovery_complete(uuid,text)"
+    },
+    {
+      "hash": "65f54365dee3059f8cf34e39104c66c3",
+      "signature": "arcade_start(uuid,uuid,text)"
+    },
+    {
+      "hash": "13dfa2faecc106360ca1270d0ca5cb96",
+      "signature": "private.arcade_allowed(uuid)"
+    },
+    {
+      "hash": "a2557ac4a3c000ad76ed6500569e4cab",
+      "signature": "private.arcade_dispatch_recovery()"
+    },
+    {
+      "hash": "8e5523a0fc49bd8f3401319c6fb0e9ce",
+      "signature": "private.arcade_immutable()"
+    }
+  ],
+  "migration": "20261016212907"
+}

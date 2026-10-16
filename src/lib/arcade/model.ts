@@ -15,6 +15,7 @@ export interface ArcadeSnapshot {id:string;game:string;ruleset:string;revision:n
  serverAt:number;score:number;view:BoardProjection;dueAt:number|null;events:BoardFeedbackEvent[]}
 export interface RankedPlayer {userId:string;name:string;score:number;rank:number;completedAt:string}
 export interface Leaderboard {ruleset:string;rows:RankedPlayer[];self:RankedPlayer|null;personalBest:number|null;
+ availableRulesets?:string[];currentRuleset?:string;
  previousBests:{ruleset:string;score:number}[];activeRun:string|null;
- latestResult:{id:string;score:number;status:RunStatus}|null}
+ latestResult:{id:string;score:number;status:RunStatus;ruleset?:string}|null}
 

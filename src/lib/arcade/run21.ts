@@ -1,15 +1,18 @@
 import {aggregate,canFinish,duration,isPerfectBoard,legalColumns,total,scoreBoard} from '../run21/rules.js';
 import {shuffleCards} from '../run21/shuffle.server.js';
-import type {Board,Card,Result} from '../run21/model.js';
+import {assertConfig,type Board,type Card,type Result} from '../run21/model.js';
+import {turnReleaseAt} from '../run21/roundIntro.js';
 import type {ArcadeConfig,ArcadeIntent,ArcadeSnapshot,RunRecord,SoloState} from './model.js';
 export type Deal = ()=>Card[];
 function board(userId:string,config:ArcadeConfig,at:number,deck:Card[]):Board {
+ const start=config.clockStart==='intro_end'?at+(config.roundIntroMs??0):null;
  return {playerId:userId,columns:Array.from({length:config.columns},()=>[]),passesUsed:0,presented:[deck[0]],
- current:deck[0],cardIndex:0,revision:0,startedAt:null,deadline:null,
- firstPlacementDeadline:at+config.roundIntroMs!+config.firstPlacementSeconds!*1000,result:null};
+ current:deck[0],cardIndex:0,revision:0,startedAt:start,deadline:start===null?null:start+duration(config),
+ firstPlacementDeadline:start===null?at+config.roundIntroMs!+config.firstPlacementSeconds!*1000:null,result:null};
 }
 export function createSoloRun(row:RunRecord,at:number,deal:Deal=shuffleCards):SoloState {
  const config=structuredClone(row.config);
+ assertConfig(config);
  if(config.rounds!==3||duration(config)!==config.roundDurationMs)throw Error('arcade:invalid_ruleset');
  const deck=deal();
  return {runId:row.id,userId:row.user_id,config,round:1,roundId:crypto.randomUUID(),
@@ -45,7 +48,7 @@ export function applySolo(input:SoloState,intent:ArcadeIntent,at:number):SoloSta
  if(s.status!=='active')throw Error('arcade:run_ended');
  if(intent.type==='abandon'){s.status='abandoned';s.board.current=null;s.updatedAt=at;return s;}
  if(s.presentation||!s.board.current)throw Error('arcade:result_presentation');
- const release=s.board.startedAt===null?s.board.firstPlacementDeadline!-s.config.firstPlacementSeconds!*1000:null;
+ const release=turnReleaseAt(s.board,s.config);
  if(release!==null&&at<release)throw Error('arcade:round_intro');
  const b=s.board;
  if(intent.type==='collect'){if(!canFinish(b,s.config))throw Error('arcade:collect_unavailable');finish(s,'collect',at);}
