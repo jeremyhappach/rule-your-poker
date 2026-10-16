@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTriTowersTestAccess } from '@/hooks/useTriTowersTestAccess';
 import { useRun21Access } from '@/hooks/useRun21Access';
 import { TRI_TOWERS } from '@/lib/triTowers/model';
-import { TRI_TOWERS_HUMANS_ONLY_MESSAGE, triTowersSetupFailureMessage } from '@/lib/triTowers/setupMessages';
+import { triTowersSetupFailureMessage } from '@/lib/triTowers/setupMessages';
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -192,7 +192,6 @@ const DealerGameSetupInner = ({
   const run21Allowed = useRun21Access(gameId);
   const triTowersAllowed = useTriTowersTestAccess(gameId);
   const otherAllowed = run21Allowed || triTowersAllowed;
-  const hasActiveBots = activePlayerCount > activeHumanCount;
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
@@ -1254,11 +1253,8 @@ const DealerGameSetupInner = ({
                     <span className="font-bold">Run21</span>{activeHarnessMap.run21?.active && <HarnessBadge/>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                   </button>}
                   {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers" onClick={()=>handleGameSelect(TRI_TOWERS.id)}
-                    disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
+                    disabled={activeHumanCount<1||activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
                     className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
-                  {triTowersAllowed && hasActiveBots && (
-                    <p role="alert" className="mt-2 text-sm text-amber-100">{TRI_TOWERS_HUMANS_ONLY_MESSAGE}</p>
-                  )}
                 </TabsContent>
               )}
             </Tabs>
@@ -1399,10 +1395,6 @@ const DealerGameSetupInner = ({
 
               {/* Simple Game Config */}
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-
-                {isTriTowers && hasActiveBots && (
-                  <p role="alert" className="text-sm text-amber-100">{TRI_TOWERS_HUMANS_ONLY_MESSAGE}</p>
-                )}
 
                 <div className="space-y-1">
                   <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 ? 'Match stake ($)' : 'Ante ($)'}</Label>

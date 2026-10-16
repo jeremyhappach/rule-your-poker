@@ -1,5 +1,12 @@
 # Waiting-room Start / Ready continuity — 2026-10-16 — qualified correction
 
+## TriTowers autonomous bots — 2026-10-16
+
+Approved release: fake-money TriTowers supports 2–7 eligible participants with at least one approved human. Existing PostgreSQL recovery owns paced bot Ready/actions, stages and handoff; the strategy sees only the redacted board. Migration `20261016194159` is applied and installed definitions match qualification. Historical TriTowers state, canonical settlement functions and Run21 are unchanged.
+
+Financial rollback proofs passed before migration and again against installed definitions: exact chips, balanced transfers, snapshots/results, human/bot wins, ties, duplicate/concurrent execution, injected failure, Run Back/continuation and Session Ended. One human plus six bots completed without browsers in 997.6 seconds. Full regression: 2,491 tests, typecheck and production build passed. Phone/desktop progressive play passed. Evidence: `dev/tri-towers/bots.evidence.json`; architecture and owner smoke: `docs/codex/TRITOWERS_BOTS.md`. Jeremy production gameplay smoke remains pending.
+
+
 Three-second recovery snapshots replaced player/game object references without
 changing eligibility. Reference-based blocker proof matching hid Start and
 briefly published false Waiting. A changing announcement API wrapper caused a

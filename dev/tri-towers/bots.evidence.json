@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-16",
+  "gate": "PASS",
+  "productionWrites": 0,
+  "migration": "20261016194159_tri_towers_bots.sql",
+  "qualifiedDefinitions": [
+    {
+      "proname": "tri_towers_bot_choice",
+      "hash": "ba0ce3f59d91abb2a44b33af8069d445"
+    },
+    {
+      "proname": "tri_towers_configure",
+      "hash": "0be4838777429b6dabbc23ef71a30d8f"
+    },
+    {
+      "proname": "tri_towers_recover",
+      "hash": "12381899412cbdcd3ce53a9491130c03"
+    },
+    {
+      "proname": "tri_towers_schedule_bot",
+      "hash": "5ea766de9ceb583cfd32ee195c802796"
+    }
+  ],
+  "proofs": [
+    "115 deployed authority/dependency definitions and 67 actual financial/session triggers restored exactly",
+    "Financial and concurrency proof uses captured installed production bot/admission definitions",
+    "Exact packaged migration preserves existing match rows; private bot functions have no browser grants",
+    "human-win: exact canonical balances, balanced journal, snapshots, one result, continuation/Run Back/late replay carryover and rollback",
+    "bot-win: exact canonical balances, balanced journal, snapshots, one result, continuation/Run Back/late replay carryover and rollback",
+    "mixed-tie: exact canonical balances, balanced journal, snapshots, one result, continuation/Run Back/late replay carryover and rollback",
+    "all-tie: exact canonical balances, balanced journal, snapshots, one result, continuation/Run Back/late replay carryover and rollback",
+    "Injected financial failure rolls back balances, receipt, results, snapshots and terminal state",
+    "Session Ended and duplicate recovery retain human and bot canonical balances",
+    "100 equivalent-visible hidden-card/stock permutations give identical decisions; private input rejected",
+    "Competing independent workers commit one bot transition; stale actions and bot impersonation rejected",
+    "Pause suppresses bot work; resume shifts stage deadline and rearms cadence",
+    "Seven mixed participants preserve canonical clockwise order with dealer last",
+    "Human-only setup and initial Ready remain functional",
+    "Due selection uses partial index; bounded worker timings recorded"
+  ],
+  "boundaries": [
+    "One/eight players, no eligible human, revoked dealer and real money denied without admission or chip movement",
+    "Policy selects visible productive followups, Ready, stock draw and deadline-aware Take Score",
+    "Complete clear awards time/peak/run points; third stage qualifies; Give Up and timeout retain full-turn abandonment",
+    "Concurrent final workers settle once; injected worker failure rolls back actual financial writes; stale actions and replay preserve balances",
+    "Fake-money game results/snapshots do not create real-money SessionResult wallet transactions",
+    "Mixed human seats retain clockwise dealer rotation and make-it-take-it bot-win fallback with unchanged balances"
+  ],
+  "browser": [
+    "Phone and desktop show progressive one-second bot moves with disabled spectator actions",
+    "Live pause/resume and authenticated mid-stage reload retain authority",
+    "With every browser closed, worker completes bot stages, bonus if earned, final score and next-human Ready",
+    "Actual bot win settles +5/-5 once; Continue and Run Back preserve both opening balances",
+    "Run Back reconnect resolves the new match identity"
+  ],
+  "zeroClient": [
+    "One human + six bots and mixed human/bot positions finish complete competitions with zero browsers at one-second cadence",
+    "Duplicate post-settlement recovery and stale requests cannot change canonical balances or revisions",
+    "Every autonomous competition has exact score-derived canonical payouts, matching human/bot snapshots, one result and balanced actual transfer batches"
+  ],
+  "normalSpeedDurationMs": 997580,
+  "worker": [
+    {
+      "calls": 182,
+      "maxMs": 103.85500000001048,
+      "p95Ms": 40.8747000000003,
+      "meanMs": 24.06322802197755,
+      "processed": 902
+    },
+    {
+      "calls": 989,
+      "maxMs": 79.22869999999966,
+      "p95Ms": 38.78149999998277,
+      "meanMs": 18.101140242667324,
+      "processed": 2952
+    }
+  ],
+  "regression": {
+    "application": 2250,
+    "harness": 241,
+    "typecheck": "PASS",
+    "build": "PASS"
+  },
+  "limitations": [
+    "Loopback authenticated SQL roles and commit-notification/SSE transport substitute for Supabase Auth/Realtime in browser qualification.",
+    "Jeremy production gameplay smoke remains acceptance truth."
+  ],
+  "zeroClientMaxProgressGapMs": 30294,
+  "competitions": [
+    {
+      "participants": [
+        {
+          "bot": false,
+          "opening": 100,
+          "score": 0,
+          "delta": -5,
+          "closing": 95
+        },
+        {
+          "bot": true,
+          "opening": 110,
+          "score": 247300,
+          "delta": -5,
+          "closing": 105
+        },
+        {
+          "bot": true,
+          "opening": 120,
+          "score": 255000,
+          "delta": 30,
+          "closing": 150
+        },
+        {
+          "bot": true,
+          "opening": 130,
+          "score": 207300,
+          "delta": -5,
+          "closing": 125
+        },
+        {
+          "bot": true,
+          "opening": 140,
+          "score": 221600,
+          "delta": -5,
+          "closing": 135
+        },
+        {
+          "bot": true,
+          "opening": 150,
+          "score": 242800,
+          "delta": -5,
+          "closing": 145
+        },
+        {
+          "bot": true,
+          "opening": 160,
+          "score": 223900,
+          "delta": -5,
+          "closing": 155
+        }
+      ],
+      "settlementCount": 1
+    },
+    {
+      "participants": [
+        {
+          "bot": false,
+          "opening": 100,
+          "score": 0,
+          "delta": -5,
+          "closing": 95
+        },
+        {
+          "bot": false,
+          "opening": 110,
+          "score": 0,
+          "delta": -5,
+          "closing": 105
+        },
+        {
+          "bot": true,
+          "opening": 120,
+          "score": 310700,
+          "delta": 20,
+          "closing": 140
+        },
+        {
+          "bot": false,
+          "opening": 130,
+          "score": 0,
+          "delta": -5,
+          "closing": 125
+        },
+        {
+          "bot": true,
+          "opening": 140,
+          "score": 260400,
+          "delta": -5,
+          "closing": 135
+        }
+      ],
+      "settlementCount": 1
+    }
+  ],
+  "production": {
+    "migration": "20261016194159",
+    "installedDefinitions": "MATCH",
+    "unchangedAuthorityDefinitions": 113,
+    "historicalMatchHash": "UNCHANGED",
+    "privateBrowserGrants": false,
+    "run21Schedule": "UNCHANGED",
+    "installedFinancialProof": "PASS"
+  }
+}

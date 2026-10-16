@@ -9,7 +9,7 @@ vi.mock('@/lib/debugHarness/activeHarnessWarning',()=>({useActiveHarnessMap:()=>
 afterEach(()=>{cleanup();access.allowed=true;});
 describe('TriTowers production selection',()=>{
  it('selects the canonical game key under Other after server admission',()=>{
-  const select=vi.fn(),ui=render(<GameSelection onSelectGame={select} activePlayerCount={2}/>);
+  const select=vi.fn(),ui=render(<GameSelection onSelectGame={select} activePlayerCount={2} activeHumanCount={1}/>);
   expect(ui.getByRole('tab',{name:'Card Games'})).toBeTruthy();
   expect(ui.getByRole('tab',{name:'Dice Games'})).toBeTruthy();
   fireEvent.mouseDown(ui.getByRole('tab',{name:'Other'}),{button:0,ctrlKey:false});

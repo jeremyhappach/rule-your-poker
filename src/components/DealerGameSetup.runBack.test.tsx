@@ -136,7 +136,7 @@ describe('Cribbage configuration rejection messages', () => {
 });
 
 describe('TriTowers setup validation messages', () => {
-  const humansOnly = 'TriTowers currently requires 2–7 human players. Remove or sit out any bots before starting.';
+  const humanRequired = 'TriTowers needs at least one eligible human player.';
   async function openSetup(counts = {players: 2, humans: 2}) {
     triAccess.allowed = true;
     await mount('tri-towers', {ante_amount: 5}, 'tri-towers', counts);
@@ -147,14 +147,14 @@ describe('TriTowers setup validation messages', () => {
   }
 
   it.each([
-    ['Supabase plain object', {code: 'P0001', message: 'tri_towers:humans_only', details: null, hint: null}],
-    ['Error instance', new Error('tri_towers:humans_only')],
-  ])('shows the humans-only guidance for a %s and permits a corrected retry', async (_label, error) => {
-    // The UI can be stale when a bot joins; the authoritative RPC still decides.
+    ['Supabase plain object', {code: 'P0001', message: 'tri_towers:human_required', details: null, hint: null}],
+    ['Error instance', new Error('tri_towers:human_required')],
+  ])('shows the human-required guidance for a %s and permits a corrected retry', async (_label, error) => {
+    // The UI can be stale when the human roster changes; the authoritative RPC still decides.
     vi.mocked(configureDealerGame).mockRejectedValueOnce(error);
     const start = await openSetup();
     await act(async () => start.click());
-    expect(toast.error).toHaveBeenLastCalledWith(humansOnly);
+    expect(toast.error).toHaveBeenLastCalledWith(humanRequired);
     expect(onComplete).not.toHaveBeenCalled();
     expect(start.disabled).toBe(false);
     await act(async () => start.click());
@@ -164,16 +164,16 @@ describe('TriTowers setup validation messages', () => {
 
   it('uses the same actionable error for Run Back', async () => {
     triAccess.allowed = true;
-    vi.mocked(configureDealerGame).mockRejectedValueOnce({message: 'tri_towers:humans_only'});
+    vi.mocked(configureDealerGame).mockRejectedValueOnce({message: 'tri_towers:human_required'});
     await mount('tri-towers', {ante_amount: 5});
     await act(async () => button().click());
-    expect(toast.error).toHaveBeenLastCalledWith(humansOnly);
+    expect(toast.error).toHaveBeenLastCalledWith(humanRequired);
     expect(onComplete).not.toHaveBeenCalled();
     expect(button().disabled).toBe(false);
   });
 
   it.each([
-    ['player_count', 'Have 2–7 human players take active seats before starting TriTowers.'],
+    ['player_count', 'Have 2–7 players, including at least one human, take active seats before starting TriTowers.'],
     ['real_money_closed', 'TriTowers currently supports fake-money sessions only. Create a session with Real Money turned off.'],
     ['tester_required', 'Every human in the session needs an active approved account for TriTowers. Ask the host to check player access.'],
     ['release_closed', 'TriTowers is currently unavailable. Ask the host to check game access before trying again.'],
@@ -193,12 +193,12 @@ describe('TriTowers setup validation messages', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('warns before submit and removes the warning when bots are no longer active', async () => {
+  it('accepts mixed participants without a bot restriction warning', async () => {
     triAccess.allowed = true;
     await mount('tri-towers', {ante_amount: 5}, 'tri-towers', {players: 3, humans: 2});
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe(humansOnly);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
     await act(async () => document.querySelector<HTMLButtonElement>('[data-dealer-game-option="tri-towers"]')!.click());
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe(humansOnly);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
     expect(configureDealerGame).not.toHaveBeenCalled();
     await mount('tri-towers', {ante_amount: 5});
     expect(document.querySelector('[role="alert"]')).toBeNull();

@@ -1,11 +1,8 @@
-export const TRI_TOWERS_HUMANS_ONLY_MESSAGE =
-  'TriTowers currently requires 2–7 human players. Remove or sit out any bots before starting.';
-
 // Only known setup exceptions become user-facing guidance. Unknown failures
 // retain the shared fallback instead of exposing raw server messages.
 const setupMessages = new Map<string, string>([
-  ['tri_towers:humans_only', TRI_TOWERS_HUMANS_ONLY_MESSAGE],
-  ['tri_towers:player_count', 'Have 2–7 human players take active seats before starting TriTowers.'],
+  ['tri_towers:human_required', 'TriTowers needs at least one eligible human player.'],
+  ['tri_towers:player_count', 'Have 2–7 players, including at least one human, take active seats before starting TriTowers.'],
   ['tri_towers:real_money_closed', 'TriTowers currently supports fake-money sessions only. Create a session with Real Money turned off.'],
   ['tri_towers:tester_required', 'Every human in the session needs an active approved account for TriTowers. Ask the host to check player access.'],
   ['tri_towers:release_closed', 'TriTowers is currently unavailable. Ask the host to check game access before trying again.'],

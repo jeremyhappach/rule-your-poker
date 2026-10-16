@@ -11,10 +11,12 @@ CREATE TABLE private.tri_towers_matches (
  game_id uuid NOT NULL, round_id uuid NOT NULL,
  state jsonb NOT NULL, revision bigint NOT NULL DEFAULT 0, stake integer NOT NULL CHECK(stake>0),
  settlement jsonb, finished boolean NOT NULL DEFAULT false, paused_at bigint,
+ bot_due_at bigint,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE INDEX tri_towers_matches_session ON private.tri_towers_matches(game_id);
 CREATE INDEX tri_towers_matches_pending ON private.tri_towers_matches(((state->>'deadline')::bigint)) WHERE NOT finished AND settlement IS NULL;
+CREATE INDEX tri_towers_matches_due ON private.tri_towers_matches(least((state->>'deadline')::bigint,bot_due_at),dealer_game_id) WHERE NOT finished AND settlement IS NULL AND paused_at IS NULL;
 CREATE TABLE private.tri_towers_requests (
  dealer_game_id uuid NOT NULL REFERENCES private.tri_towers_matches(dealer_game_id),
  request_id uuid NOT NULL, actor uuid NOT NULL, command jsonb NOT NULL,
@@ -254,24 +256,102 @@ BEGIN
 END $$;
 
 -- Called by the game's recovery job, not browsers. It makes progress with zero clients.
-CREATE FUNCTION private.tri_towers_recover() RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE candidate record; m private.tri_towers_matches; g public.games; at_ms bigint:=floor(extract(epoch FROM clock_timestamp())*1000); count_i integer:=0;
+-- Private policy receives only tri_towers_visible(state), never the private deck.
+CREATE FUNCTION private.tri_towers_bot_choice(v jsonb,at_ms bigint) RETURNS jsonb
+LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
+DECLARE i integer; j integer; k integer; r jsonb; rr jsonb; uncovered integer; options integer; followups integer;
+ value_i integer; best_value integer:=-1; best_i integer; rank_i integer; peak_count integer;
 BEGIN
- FOR candidate IN SELECT candidate_match.dealer_game_id,candidate_match.game_id,candidate_match.round_id
-  FROM private.tri_towers_matches candidate_match JOIN public.games live_game ON live_game.id=candidate_match.game_id
-  WHERE NOT candidate_match.finished AND candidate_match.settlement IS NULL AND candidate_match.paused_at IS NULL AND (candidate_match.state->>'deadline')::bigint<=at_ms
-   AND live_game.real_money=false AND live_game.status='in_progress' AND live_game.current_game_uuid=candidate_match.dealer_game_id AND live_game.game_type='tri-towers' AND NOT live_game.is_paused
-  ORDER BY candidate_match.created_at LIMIT 20 LOOP
+ IF v ? 'deck' THEN RAISE EXCEPTION 'tri_towers:bot_private_input';END IF;
+ IF v->>'phase'='ready' THEN RETURN jsonb_build_object('action','start');END IF;
+ IF v->>'phase'<>'playing' THEN RETURN NULL;END IF;
+ -- Points cannot be lost by drawing. Bank before timeout forfeits later stages.
+ IF (v->>'deadline')::bigint-at_ms<=5000 THEN RETURN jsonb_build_object('action','take_score');END IF;
+ FOR i IN 0..27 LOOP
+  IF v->'cards'->i='null'::jsonb OR v->'cards'->i IS NULL OR v->'removed' @> to_jsonb(i) THEN CONTINUE;END IF;
+  rank_i:=(v->'cards'->>i)::integer%13;
+  IF abs(rank_i-(v->>'waste')::integer%13) NOT IN (1,12) THEN CONTINUE;END IF;
+  r:=v||jsonb_build_object('removed',(v->'removed')||to_jsonb(i));
+  SELECT count(*) INTO uncovered FROM generate_series(0,27) x WHERE private.tri_towers_exposed(r,x) AND NOT private.tri_towers_exposed(v,x);
+  options:=0;followups:=0;
+  FOR j IN 0..27 LOOP
+   IF j=i OR v->'cards'->j='null'::jsonb OR v->'cards'->j IS NULL OR v->'removed' @> to_jsonb(j) THEN CONTINUE;END IF;
+   IF abs((v->'cards'->>j)::integer%13-rank_i) NOT IN (1,12) THEN CONTINUE;END IF;
+   options:=options+1;
+   rr:=r||jsonb_build_object('removed',(r->'removed')||to_jsonb(j));
+   SELECT count(*) INTO k FROM generate_series(0,27) x
+    WHERE x<>i AND x<>j AND v->'cards'->x<>'null'::jsonb AND private.tri_towers_exposed(rr,x)
+     AND abs((v->'cards'->>x)::integer%13-(v->'cards'->>j)::integer%13) IN (1,12);
+   followups:=greatest(followups,k);
+  END LOOP;
+  value_i:=((v->>'run')::integer+1)*(v#>>'{rules,runStep}')::integer+uncovered*2000+options*900+followups*400;
+  IF i<3 THEN
+   SELECT count(*) INTO peak_count FROM jsonb_array_elements_text(v->'removed') x WHERE x::integer<3;
+   value_i:=value_i+(v->'rules'->'peakBonuses'->>peak_count)::integer;
+  END IF;
+  IF value_i>best_value THEN best_value:=value_i;best_i:=i;END IF;
+ END LOOP;
+ IF best_i IS NOT NULL THEN RETURN jsonb_build_object('action','remove','index',best_i);END IF;
+ RETURN jsonb_build_object('action',CASE WHEN (v->>'stockRemaining')::integer>0 THEN 'draw' ELSE 'take_score' END);
+END $$;
+
+CREATE FUNCTION private.tri_towers_schedule_bot() RETURNS trigger
+LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+ IF NEW.finished OR NEW.settlement IS NOT NULL OR NEW.paused_at IS NOT NULL
+  OR NEW.state->>'phase' NOT IN ('ready','playing')
+  OR NOT coalesce((NEW.state->'players'->(NEW.state->>'turnIndex')::integer->>'isBot')::boolean,false) THEN
+  NEW.bot_due_at:=NULL;
+ ELSIF TG_OP='INSERT' THEN NEW.bot_due_at:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+750;
+ ELSIF OLD.paused_at IS NOT NULL OR NEW.state IS DISTINCT FROM OLD.state THEN
+  NEW.bot_due_at:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+750;
+ ELSE NEW.bot_due_at:=OLD.bot_due_at;
+ END IF;
+ RETURN NEW;
+END $$;
+
+CREATE FUNCTION private.tri_towers_recover() RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE candidate record; m private.tri_towers_matches; g public.games; at_ms bigint:=floor(extract(epoch FROM clock_timestamp())*1000); count_i integer:=0; choice jsonb; actor uuid;
+BEGIN
+ FOR candidate IN SELECT work.dealer_game_id,work.game_id,work.round_id,work.revision,work.state->>'phase' phase,work.state->>'stage' stage,
+   work.state->'players'->(work.state->>'turnIndex')::integer->>'id' player_id
+  FROM private.tri_towers_matches work JOIN public.games live ON live.id=work.game_id
+  WHERE NOT work.finished AND work.settlement IS NULL AND work.paused_at IS NULL
+   AND least((work.state->>'deadline')::bigint,work.bot_due_at)<=at_ms
+   AND live.real_money=false AND live.status='in_progress' AND live.game_type='tri-towers'
+   AND live.current_game_uuid=work.dealer_game_id AND NOT live.is_paused
+  ORDER BY least((work.state->>'deadline')::bigint,work.bot_due_at),work.dealer_game_id LIMIT 20 LOOP
   PERFORM 1 FROM public.rounds WHERE id=candidate.round_id FOR UPDATE SKIP LOCKED;IF NOT FOUND THEN CONTINUE;END IF;
-  SELECT * INTO g FROM public.games WHERE id=candidate.game_id FOR UPDATE SKIP LOCKED;IF NOT FOUND OR g.is_paused OR g.status<>'in_progress' OR g.current_game_uuid IS DISTINCT FROM candidate.dealer_game_id THEN CONTINUE;END IF;
-  SELECT * INTO STRICT m FROM private.tri_towers_matches WHERE dealer_game_id=candidate.dealer_game_id FOR UPDATE;
-  IF m.settlement IS NOT NULL OR (m.state->>'deadline')::bigint>at_ms THEN CONTINUE; END IF;
-  m.state:=private.tri_towers_reduce(m.state,'tick',NULL,at_ms);
-  UPDATE private.tri_towers_matches SET state=m.state,revision=revision+1 WHERE dealer_game_id=m.dealer_game_id;
-  IF m.state->>'phase'='complete' THEN PERFORM private.tri_towers_settle(m.dealer_game_id);END IF;count_i:=count_i+1;
+  SELECT * INTO g FROM public.games WHERE id=candidate.game_id FOR UPDATE SKIP LOCKED;
+  IF NOT FOUND OR g.real_money IS DISTINCT FROM false OR g.is_paused OR g.status<>'in_progress'
+   OR g.game_type IS DISTINCT FROM 'tri-towers' OR g.current_game_uuid IS DISTINCT FROM candidate.dealer_game_id THEN CONTINUE;END IF;
+  SELECT * INTO m FROM private.tri_towers_matches WHERE dealer_game_id=candidate.dealer_game_id FOR UPDATE SKIP LOCKED;
+  IF NOT FOUND THEN CONTINUE;END IF;
+  at_ms:=floor(extract(epoch FROM clock_timestamp())*1000);
+  IF m.finished OR m.settlement IS NOT NULL OR m.paused_at IS NOT NULL OR m.revision<>candidate.revision
+   OR m.game_id<>candidate.game_id OR m.round_id<>candidate.round_id OR m.state->>'phase' IS DISTINCT FROM candidate.phase
+   OR m.state->>'stage' IS DISTINCT FROM candidate.stage
+   OR m.state->'players'->(m.state->>'turnIndex')::integer->>'id' IS DISTINCT FROM candidate.player_id
+   OR least((m.state->>'deadline')::bigint,m.bot_due_at)>at_ms THEN CONTINUE;END IF;
+  IF (m.state->>'deadline')::bigint<=at_ms THEN
+   m.state:=private.tri_towers_reduce(m.state,'tick',NULL,at_ms);
+  ELSE
+   actor:=candidate.player_id::uuid;
+   IF m.bot_due_at IS NULL OR m.bot_due_at>at_ms
+    OR NOT coalesce((m.state->'players'->(m.state->>'turnIndex')::integer->>'isBot')::boolean,false)
+    OR NOT EXISTS(SELECT 1 FROM public.players WHERE id=actor AND game_id=m.game_id AND is_bot) THEN CONTINUE;END IF;
+   choice:=private.tri_towers_bot_choice(private.tri_towers_visible(m.state),at_ms);
+   IF choice IS NULL THEN CONTINUE;END IF;
+   m.state:=private.tri_towers_reduce(m.state,choice->>'action',(choice->>'index')::integer,at_ms);
+  END IF;
+  UPDATE private.tri_towers_matches SET state=m.state,revision=revision+1 WHERE dealer_game_id=m.dealer_game_id AND revision=candidate.revision;
+  IF m.state->>'phase'='complete' THEN PERFORM private.tri_towers_settle(m.dealer_game_id);END IF;
+  count_i:=count_i+1;
  END LOOP;
  RETURN count_i;
 END $$;
+
+CREATE TRIGGER tri_towers_schedule_bot BEFORE INSERT OR UPDATE ON private.tri_towers_matches FOR EACH ROW EXECUTE FUNCTION private.tri_towers_schedule_bot();
 
 CREATE FUNCTION public.tri_towers_configure(p_game_id uuid,p_dealer_player_id uuid,p_expected_dealer_position integer,p_game_type text,p_config jsonb,p_expected_config_deadline timestamptz) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE g public.games; d public.players; dg public.dealer_games; r uuid:=gen_random_uuid(); actor uuid:=auth.uid();
@@ -296,8 +376,8 @@ BEGIN
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'tri_towers:setup_identity';END IF;
  PERFORM 1 FROM public.players WHERE game_id=g.id ORDER BY id FOR UPDATE;
  IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.tri_towers_actor_allowed(user_id)) THEN RAISE EXCEPTION 'tri_towers:tester_required' USING ERRCODE='42501';END IF;
- IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND is_bot) THEN RAISE EXCEPTION 'tri_towers:humans_only';END IF;
- SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position)
+ IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND NOT waiting AND position IS NOT NULL AND NOT is_bot) THEN RAISE EXCEPTION 'tri_towers:human_required';END IF;
+ SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position,'isBot',p.is_bot)
  ORDER BY CASE WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,p.position DESC,p.id) INTO people
  FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=g.id AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL;
  IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'tri_towers:player_count';END IF;

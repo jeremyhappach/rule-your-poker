@@ -271,7 +271,7 @@ export const GameSelection = ({
                   <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                 </button>}
                 {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers"
-                  disabled={activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
+                  disabled={activeHumanCount<1||activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
                   onClick={()=>handleGameSelect({id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers})}
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
               </TabsContent>

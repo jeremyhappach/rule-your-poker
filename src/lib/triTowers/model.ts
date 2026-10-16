@@ -2,7 +2,7 @@ export const TRI_TOWERS = {id:'tri-towers',label:'TriTowers',presentationMode:'f
 /** Unverified arcade details are explicit adaptation choices; see TRITOWERS_RULES.md. */
 export const RULES = {version:'ptown-tritowers/1',stages:2,bonusThreshold:80000,maxBonusStages:1,
   runStep:1000,peakBonuses:[5000,10000,15000],stageMs:120000,readyMs:30000,holdMs:5000,timePerSecond:100,wrap:true} as const;
-export interface Player {id:string;userId:string;name:string;seat:number}
+export interface Player {id:string;userId:string;name:string;seat:number;isBot?:boolean}
 export type Intent = {type:'start'|'draw'|'continue'|'give_up'|'take_score'} | {type:'remove';index:number};
 export interface Command {dealerGameId:string;requestId:string;revision:number;intent:Intent}
 export interface StageResult {playerId:string;stage:number;score:number;reason:string;

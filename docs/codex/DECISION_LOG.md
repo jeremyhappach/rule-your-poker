@@ -2291,3 +2291,7 @@ cumulative points without re-adding them, with normal bonus eligibility. UI
 count-up derives from the result identity and server clock, never a progression
 callback. Existing rows and equal-revision snapshot shapes need no rewrite.
 See [stage-polish qualification](TRITOWERS_STAGE_POLISH.md).
+
+## 2026-10-16 — TriTowers autonomous bots
+
+Extend the existing PostgreSQL recovery worker at one second. Persist a due time and use indexed, bounded, concurrency-safe work selection. The policy receives only the human-visible board and feeds the existing reducer and atomic settlement owner. Preserve human Ready, clocks, stage/bonus rules, dealer order and continuation. Real-money admission remains closed. See `TRITOWERS_BOTS.md` and `dev/tri-towers/bots.evidence.json`.

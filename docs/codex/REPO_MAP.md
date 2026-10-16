@@ -962,3 +962,7 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - `src/hooks/useTriTowersTestAccess.ts`: server capability discovery for selection/Run Back; every RPC authorizes independently.
 - `dev/tri-towers/local-{shared,constraints,activation,integration}.mjs`: isolated shared-trigger, RLS, financial and lock qualification.
 - `docs/codex/TRITOWERS_ACTIVATION.md`: production evidence, recovery and owner acceptance.
+
+### TriTowers bot support
+
+`supabase/tri-towers/authority.sql` owns the redacted bot policy, persistent bot schedule and indexed recovery. `dev/tri-towers/bots.*.mjs` and `collect-bots-evidence.mjs` qualify canonical finances, boundaries, browsers and zero-client competitions. `docs/codex/TRITOWERS_BOTS.md` documents the release and production smoke.
