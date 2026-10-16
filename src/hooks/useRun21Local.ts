@@ -5,7 +5,7 @@ import {eventSnapshot,LivePresentation,optimisticPlacement,presentationPhase} fr
 import {legalColumns} from '@/lib/run21/rules';
 import type {Command,Intent} from '@/lib/run21/model';
 import {ScoreCelebrations} from '@/lib/run21/scoreCelebration';
-export function useRun21Local(gameId:string,dealerGameId:string) {
+export function useRun21Local(gameId:string,dealerGameId:string,authoritativeComplete=false) {
   const [snapshot,setSnapshot]=useState<Run21Snapshot|null>(null),latest=useRef<Run21Snapshot|null>(null);
   const presentation=useRef(new LivePresentation());
   const celebrations=useRef(new ScoreCelebrations());
@@ -56,7 +56,7 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
       while(!controller.signal.aborted){
         let renewed=false;
         try{
-          const response=await run21Fetch(gameId,`events?after=${presentation.current.received}`,{signal:controller.signal});
+          const response=await run21Fetch(gameId,`events?dealerGameId=${dealerGameId}&after=${presentation.current.received}`,{signal:controller.signal});
           if(!response.ok||!response.body)throw new Error('Run21 transport unavailable');
           setConnected(true);
           const reader=response.body.getReader(),decoder=new TextDecoder();let text='',baseline=true;
@@ -80,6 +80,16 @@ export function useRun21Local(gameId:string,dealerGameId:string) {
     };
     void run();return()=>controller.abort();
   },[gameId,dealerGameId,accept,retry]);
+  useEffect(()=>{
+    if(!authoritativeComplete)return;
+    let cancelled=false;
+    // The session's authoritative advance proves that this match committed.
+    // Catch up its immutable identity once, even if its final SSE notice was lost.
+    void run21Request<Run21Snapshot>(gameId,`state?dealerGameId=${dealerGameId}&after=${presentation.current.received}`)
+      .then(value=>{if(!cancelled)accept(value);})
+      .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:'Could not recover Run21 result.');});
+    return()=>{cancelled=true;};
+  },[gameId,dealerGameId,authoritativeComplete,accept,retry]);
   const onIntent=useCallback(async(intent:Intent)=>{
     const current=latest.current;
     if(!current?.view.viewerId||inFlight.current||celebrations.current.pending)return;

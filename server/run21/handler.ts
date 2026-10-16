@@ -96,11 +96,15 @@ export function createRun21Handler(options: AuthorityOptions) {
       if (!Number.isSafeInteger(cursor) || cursor < 0) throw new AuthorityError('run21:invalid_cursor', 400);
       if (!route) throw new AuthorityError('run21:route', 404);
       [, gameId] = route; const operation = route[2];
+      const dealerGameId = url.searchParams.get('dealerGameId') ?? undefined;
+      if (dealerGameId && !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(dealerGameId))
+        throw new AuthorityError('run21:invalid_identity', 400);
       if ((['action', 'close'].includes(operation) ? 'POST' : 'GET') !== req.method) throw new AuthorityError('run21:method', 405);
       if (operation === 'events') {
         let channel: ReturnType<typeof db.channel> | undefined;
         let expiry: ReturnType<typeof setTimeout> | undefined;
         let stopped = false;
+        let transportReady = false;
         let refreshing=false,dirty=false;
         const refresh = () => {
           dirty=true;
@@ -108,11 +112,12 @@ export function createRun21Handler(options: AuthorityOptions) {
           refreshing=true;
           void (async()=>{while(dirty&&!stopped){
             dirty=false;
-            const value=await authority.observe(gameId!,userId,cursor);
+            const value=await authority.observe(gameId!,userId,cursor,dealerGameId);
             if(!stopped){res.write(`data: ${JSON.stringify(value)}\n\n`);cursor=Math.max(cursor,value.eventSequence);}
           }})().catch(()=>res.end()).finally(()=>{refreshing=false;});
         };
-        const cleanup = () => { stopped = true; clearTimeout(expiry); if (channel) void db.removeChannel(channel); };
+        const unsubscribe = authority.subscribe(gameId, refresh);
+        const cleanup = () => { stopped = true; unsubscribe(); clearTimeout(expiry); if (channel) void db.removeChannel(channel); };
         res.once('close', cleanup);
         try {
           // Cross-instance notifications contain a revision only. Subscribe before reading.
@@ -120,11 +125,16 @@ export function createRun21Handler(options: AuthorityOptions) {
             event: '*', schema: 'public', table: 'run21_revisions', filter: `game_id=eq.${gameId}`,
           }, refresh);
           await new Promise<void>((resolve, reject) => channel!.subscribe(status => {
-            if (status === 'SUBSCRIBED') resolve();
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new AuthorityError('run21:transport_unavailable', 503));
+            if (status === 'SUBSCRIBED') { transportReady = true; resolve(); }
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              transportReady = false;
+              if (res.headersSent) res.end();
+              else reject(new AuthorityError('run21:transport_unavailable', 503));
+            }
           }));
-          const initial = await authority.read(gameId, userId, cursor);
+          const initial = await authority.read(gameId, userId, cursor, dealerGameId);
           if (stopped) return;
+          if (!transportReady) throw new AuthorityError('run21:transport_unavailable', 503);
           res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive'});
           res.write(`data: ${JSON.stringify(initial)}\n\n`); cursor = initial.eventSequence;
           if(dirty)refresh();
@@ -134,9 +144,9 @@ export function createRun21Handler(options: AuthorityOptions) {
         } finally { cleanup(); }
         return;
       }
-      if (operation === 'state') return send(res, 200, await authority.read(gameId, userId, cursor));
+      if (operation === 'state') return send(res, 200, await authority.read(gameId, userId, cursor, dealerGameId));
       if (operation === 'history') return send(res, 200, await authority.history(gameId, userId));
-      if (operation === 'close') { await authority.close(gameId, userId); return send(res, 200, {closed: true}); }
+      if (operation === 'close') { await authority.close(gameId, userId, dealerGameId); return send(res, 200, {closed: true}); }
       let body = '';
       if (req.body !== undefined) body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
       else for await (const chunk of req) { body += chunk; if (body.length > 4096) throw new AuthorityError('run21:request_size', 413); }

@@ -1,4 +1,4 @@
-import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
+import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type RoundEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
 import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt } from './rules.js';
 
 function clock(match: Match, at: number) {
@@ -9,7 +9,10 @@ export function frameOf(match: Match): Frame {
   return structuredClone({ identity: match.identity, config: match.config, players: match.players, stake: match.stake,
     ...(match.automaticPlayers ? {automaticPlayers: match.automaticPlayers} : {}),
     ...(match.pausedAt !== undefined ? {pausedAt: match.pausedAt} : {}),
-    roundId: round?.id ?? null, roundNumber: round?.number ?? 0, commitment: round?.secret.commitment ?? null,
+    roundId: round?.id ?? null, roundNumber: round?.number ?? 0,
+    commitment: round && !('version' in round.secret) ? round.secret.commitment : null,
+    ...(match.dealingVersion === 2 ? {dealingVersion: 2 as const,
+      commitments: round && 'version' in round.secret ? Object.fromEntries(Object.entries(round.secret.decks).map(([id, deck]) => [id, deck.commitment])) : {}} : {}),
     active_player_id: round?.active_player_id ?? null,
     liveBoards: round?.liveBoards ?? false, scorePresentation: round?.scorePresentation ?? null,
     boards: round?.boards ?? {}, revealed: round?.revealed ?? false, acknowledged: round?.acknowledged ?? [],
@@ -30,19 +33,19 @@ function event(match: Match, type: string, at: number, actorId: string | null = 
   match.events.push({ sequence: match.eventSequence, type, at, roundId: match.rounds.at(-1)?.id ?? null,
     actorId, requestId, operands: structuredClone(operands), frame: frameOf(match) });
 }
-export function createMatch(identity: Identity, players: Player[], stake: number, config: Config, at: number): Match {
+export function createMatch(identity: Identity, players: Player[], stake: number, config: Config, at: number, dealingVersion: 1 | 2 = 2): Match {
   assertConfig(config);
   if (!isUuid(identity.sessionId) || !isUuid(identity.dealerGameId) || !Number.isSafeInteger(identity.handNumber) || identity.handNumber < 1 ||
       players.length !== 2 || players.some(p => !isUuid(p.id) || !Number.isSafeInteger(p.seat) || p.seat < 0) ||
       new Set(players.map(p => p.id)).size !== 2 || new Set(players.map(p => p.seat)).size !== 2 ||
       !Number.isSafeInteger(stake) || stake < 0 || !Number.isSafeInteger(at) || at < 0) throw new Error('invalid_match');
-  const match: Match = structuredClone({ identity, players, stake, config, rounds: [],
+  const match: Match = structuredClone({ identity, players, stake, config, rounds: [], ...(dealingVersion === 2 ? {dealingVersion: 2 as const} : {}),
     cumulative: Object.fromEntries(players.map(p => [p.id, 0])), winnerId: null, settlement: null, receipts: {}, events: [], updatedAt: at });
   event(match, 'match_created', at);
   return match;
 }
 /** Trusted server entry point. The future persistence adapter locks match identity first. */
-export function prepareRound(input: Match, id: string, predecessorId: string | null, deck: DeckEvidence, at: number): Match {
+export function prepareRound(input: Match, id: string, predecessorId: string | null, deck: RoundEvidence, at: number): Match {
   const prior = input.rounds.at(-1);
   const existing = input.rounds.find(r => r.id === id);
   if (existing) {
@@ -53,9 +56,19 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
   clock(input, at);
   if (!isUuid(id) || (prior?.id ?? null) !== predecessorId || input.winnerId ||
       (prior && (!prior.revealed || prior.acknowledged.length !== input.players.length))) throw new Error('round_boundary');
-  const expected = new Set(standardDeck().map(cardKey));
-  if (deck.cards.length !== expected.size || new Set(deck.cards.map(cardKey)).size !== expected.size ||
-      deck.cards.some(c => !expected.has(cardKey(c))) || !/^[0-9a-f]{64}$/.test(deck.commitment) || !/^[0-9a-f]{64}$/.test(deck.salt)) throw new Error('invalid_deck_evidence');
+  if (input.dealingVersion === 2) {
+    if (!('version' in deck) || deck.version !== 2 || Object.keys(deck.decks).length !== input.players.length) throw new Error('deck_version_conflict');
+    for (const player of input.players) {
+      const evidence = deck.decks[player.id];
+      if (!evidence || evidence.playerId !== player.id || evidence.roundId !== id ||
+          evidence.identity.sessionId !== input.identity.sessionId || evidence.identity.dealerGameId !== input.identity.dealerGameId ||
+          evidence.identity.handNumber !== input.identity.handNumber) throw new Error('deck_identity_conflict');
+      validateDeck(evidence);
+    }
+  } else {
+    if ('version' in deck) throw new Error('deck_version_conflict');
+    validateDeck(deck);
+  }
   const match = structuredClone(input);
   // Persisted participant order is canonical for every round.
   const starter = match.players[0].id;
@@ -115,11 +128,29 @@ export function advanceScorePresentation(input: Match, at: number): Match {
   return match;
 }
 function present(match: Match, round: Round, board: Board, at: number, requestId: string) {
-  board.current = round.secret.cards[board.cardIndex] ?? null;
+  const deck = deckForPlayer(match, round, board.playerId);
+  board.current = deck.cards[board.cardIndex] ?? null;
   if (board.current) {
     board.presented.push(structuredClone(board.current));
     event(match, 'card_presented', at, board.playerId, requestId, {card: board.current, cardIndex: board.cardIndex});
   } else finish(match, round, board, 'exhausted', at, requestId);
+}
+function validateDeck(deck: DeckEvidence) {
+  const expected = new Set(standardDeck().map(cardKey));
+  if (deck.cards.length !== expected.size || new Set(deck.cards.map(cardKey)).size !== expected.size ||
+      deck.cards.some(c => !expected.has(cardKey(c))) || !/^[0-9a-f]{64}$/.test(deck.commitment) || !/^[0-9a-f]{64}$/.test(deck.salt)) throw new Error('invalid_deck_evidence');
+}
+/** Private selection also rejects a swapped persisted player/round identity. */
+export function deckForPlayer(match: Match, round: Round, playerId: string): DeckEvidence {
+  if (match.dealingVersion !== 2) {
+    if ('version' in round.secret) throw new Error('deck_version_conflict');
+    return round.secret;
+  }
+  if (!('version' in round.secret) || round.secret.version !== 2) throw new Error('deck_version_conflict');
+  const deck = round.secret.decks[playerId];
+  if (!deck || deck.playerId !== playerId || deck.roundId !== round.id || deck.identity.sessionId !== match.identity.sessionId ||
+      deck.identity.dealerGameId !== match.identity.dealerGameId || deck.identity.handNumber !== match.identity.handNumber) throw new Error('deck_identity_conflict');
+  return deck;
 }
 export interface ActionResult { state: Match; status: 'accepted' | 'duplicate' | 'rejected'; reason?: string }
 /** Pure transactional specification. Only an authenticated server supplies principal and at. */

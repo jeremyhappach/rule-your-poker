@@ -1,11 +1,10 @@
 // @vitest-environment node
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {Run21Authority, type StoredMatch, type Store} from '../../../server/run21/authority';
+import {Run21Authority, AuthorityError, type StoredMatch, type Store} from '../../../server/run21/authority';
 import {fixtureDeck, IDENTITY, PLAYERS, uuid} from './fixtures';
 import {chooseAction} from './bot';
-import {project} from './engine';
+import {project, deckForPlayer} from './engine';
 import type {Command, Intent} from './model';
-import {shuffleRound} from './shuffle.server';
 
 const workers: Run21Authority[] = [];
 afterEach(() => workers.splice(0).forEach(w => w.dispose()));
@@ -14,13 +13,13 @@ function fixture(botFirst = false, harness = 'none', twoHumans = false) {
   const journal: import('./model').Event[] = [];
   let row: StoredMatch = {dealer_game_id: IDENTITY.dealerGameId, game_id: IDENTITY.sessionId, first_round_id: uuid(20), dealer_user_id:uuid(botFirst?30:31),
     participants: PLAYERS.map((p, i) => ({...p, userId: uuid(30 + i), chips: 0})), stake: 5, balances: {[PLAYERS[0].id]: 0, [PLAYERS[1].id]: 0},
-    revision: 0, state: null, bot_due_at: null, finished: false, debug_harness:harness};
+    revision: 0, state: null, bot_due_at: null, finished: false, debug_harness:harness, deck_version:2};
   if (twoHumans) row.participants.forEach(p => {p.kind = 'human';});
   // Deliberately opposite seat order: the persisted dealer identity must decide.
   if (!botFirst) row.participants.reverse();
   const store: Store = {load: async (_game, history, afterSequence) => [structuredClone(row.state && (history||afterSequence!==undefined)
     ? {...row,state:{...row.state,events:journal.filter(e=>history||e.sequence>afterSequence!)}} : row)], commit: async (old, state, due) => {
-    if (old.revision !== row.revision) throw Error('CAS conflict');
+    if (old.revision !== row.revision) throw new AuthorityError('run21:concurrent_commit');
     const events=state.events.filter(e=>e.sequence>journal.length);
     journal.push(...structuredClone(events));
     row = {...row, state: {...structuredClone(state),events:[]}, revision: row.revision + 1, bot_due_at: due};
@@ -29,7 +28,7 @@ function fixture(botFirst = false, harness = 'none', twoHumans = false) {
     const committed={...structuredClone(row),state:{...structuredClone(row.state!),events:structuredClone(events)}};
     await new Promise<void>(resolve=>setImmediate(resolve));return committed;
   }, confirm: async old => {if(old.revision!==row.revision)throw Error('CAS conflict');return structuredClone(row);}, close: async () => {row.finished = true;}};
-  const shuffle = vi.fn(twoHumans ? shuffleRound : async () => fixtureDeck([], 17));
+  const shuffle = vi.fn(async (_identity: typeof IDENTITY, _round: string, playerId?: string) => fixtureDeck([], playerId === PLAYERS[0].id ? 17 : 29));
   const make = () => {const w = new Run21Authority(store, () => now, shuffle); workers.push(w); return w;};
   return {make, shuffle, get row() {return row.state?{...row,state:{...row.state,events:journal}}:row;},
     staleBotDue: () => {row.bot_due_at = 1;}, tick: (ms: number) => {now += ms;}};
@@ -102,13 +101,32 @@ describe('persisted local Run21 authority', () => {
     await a.close(game,user);expect(f.row.finished).toBe(true);
     await expect(a.act(game,user,command(f.row,{type:'collect'}))).rejects.toThrow('finished');
   });
-  it('uses the unchanged CSPRNG shuffle for harness-off two-human matches',async()=>{
+  it('invokes the supplied shuffle once per player for harness-off two-human matches',async()=>{
     const a=fixture(false,'none',true),b=fixture(false,'none',true);
     await a.make().read(game,user);await b.make().read(game,user);
-    expect(a.shuffle).toHaveBeenCalledExactlyOnceWith(IDENTITY,uuid(20));
-    expect(b.shuffle).toHaveBeenCalledExactlyOnceWith(IDENTITY,uuid(20));
-    expect(a.row.state!.rounds[0].secret.cards).not.toEqual(b.row.state!.rounds[0].secret.cards);
+    for (const f of [a,b]) {
+      expect(f.shuffle).toHaveBeenCalledTimes(2);
+      for (const p of PLAYERS) expect(f.shuffle).toHaveBeenCalledWith(IDENTITY,uuid(20),p.id);
+      for (const p of PLAYERS) expect(deckForPlayer(f.row.state!,f.row.state!.rounds[0],p.id).cards).toEqual(fixtureDeck([],p.id===human?17:29).cards);
+    }
     expect(a.row.bot_due_at).toBeNull();expect(b.row.bot_due_at).toBeNull();
+  });
+  it('retains the winning deck commit across competing initializers and restarts in both human turns',async()=>{
+    const f=fixture(false,'none',true),a=f.make(),b=f.make();
+    await Promise.all([a.read(game,user),b.read(game,user)]);
+    const evidence=JSON.stringify(f.row.state!.rounds[0].secret),calls=f.shuffle.mock.calls.length;
+    expect(f.row.revision).toBe(1);
+    for(const id of PLAYERS.map(p=>p.id)){
+      a.dispose();b.dispose();const restarted=f.make();
+      const actor=f.row.participants.find(p=>p.id===id)!;
+      const before=structuredClone(f.row.state!.rounds[0].boards[id]);
+      await restarted.recoverOne(game);await restarted.read(game,actor.userId);
+      expect(f.row.state!.rounds[0].boards[id]).toEqual(before);
+      expect(JSON.stringify(f.row.state!.rounds[0].secret)).toBe(evidence);
+      expect(f.shuffle).toHaveBeenCalledTimes(calls);
+      await restarted.act(game,actor.userId,command(f.row,{type:'collect'},id));
+      if(id===human){f.tick(5000);await restarted.recoverOne(game);}
+    }
   });
   it.each([104,105])('retains the frozen %i deck for both players through recovery and every normal round',async score=>{
     const f=fixture(false,`always_${score}`);let a=f.make();await a.read(game,user);
@@ -126,7 +144,7 @@ describe('persisted local Run21 authority', () => {
       }
       const round=f.row.state!.rounds.at(-1)!;
       for(const p of PLAYERS)expect(round.boards[p.id].result?.aggregate).toBe(score);
-      expect(round.boards[PLAYERS[0].id].presented.slice(0,11)).toEqual(round.boards[PLAYERS[1].id].presented.slice(0,11));
+      for (const p of PLAYERS) expect(round.boards[p.id].presented.slice(0,11)).toEqual(deckForPlayer(f.row.state!,round,p.id).cards.slice(0,11));
       f.tick(5000);await a.read(game,user);
     }
     expect(f.row.state!.settlement).toBeTruthy();
@@ -232,7 +250,7 @@ describe('persisted local Run21 authority', () => {
     expect((await a.read(game,user)).view.boards[bot]?.result).toBeTruthy();
     f.tick(5000); const humanTurn=await a.read(game,user);
     expect(humanTurn.view.active_player_id).toBe(human);
-    expect(humanTurn.view.boards[human]).toMatchObject({current:round.boards[bot].presented[0],startedAt:null,deadline:null});
+    expect(humanTurn.view.boards[human]).toMatchObject({current:deckForPlayer(f.row.state!,round,human).cards[0],startedAt:null,deadline:null});
     await a.act(game,user,command(f.row,{type:'place',column:0}));
     expect(JSON.stringify(f.row.state!.rounds[0].boards[bot])).toBe(completed);
     f.tick(250000); expect((await a.read(game,user)).view.revealed).toBe(false);

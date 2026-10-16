@@ -15,7 +15,9 @@ export function fixtureDeck(prefix: Card[] = [], seed = 21): DeckEvidence {
   return {cards: [...prefix, ...rest], salt: '0'.repeat(64), commitment: 'f'.repeat(64)};
 }
 export function fixtureMatch(config: Config = DEFAULT_CONFIG, prefix: Card[] = [], seed = 21, stake = 10): Match {
-  return prepareRound(createMatch(IDENTITY, PLAYERS, stake, config, 0), uuid(100), null, fixtureDeck(prefix, seed), 0);
+  // Historical fixtures retain their recorded single-deck format. New-deal
+  // authority and structural proofs explicitly exercise version two.
+  return prepareRound(createMatch(IDENTITY, PLAYERS, stake, config, 0, 1), uuid(100), null, fixtureDeck(prefix, seed), 0);
 }
 export function act(match: Match, playerId: string, intent: Intent, at: number): Match {
   const round = match.rounds.at(-1)!;

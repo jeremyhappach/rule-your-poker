@@ -52,15 +52,15 @@ it.each(['table','fullscreen'] as const)('does not reopen terminal presentation 
   ui.unmount();ui=render(<Run21GameTable {...props}/>);
   expect(mock.close).not.toHaveBeenCalled();
   terminal.cursor='settled';ui.rerender(<Run21GameTable {...props}/>);
-  await waitFor(() => expect(onTerminalComplete).toHaveBeenCalledWith(`run21|winseq|${IDENTITY.sessionId}|${IDENTITY.dealerGameId}|1`));
+  await waitFor(() => expect(onTerminalComplete).toHaveBeenCalledWith(`run21|winseq|${IDENTITY.sessionId}|${IDENTITY.dealerGameId}|1|${view.settlement.resultId}|${view.roundId}`));
   mock.snapshot = JSON.parse(JSON.stringify({...mock.snapshot, finished: true}));
   ui.rerender(<Run21GameTable {...props}/>);
   expect(onTerminalActive.mock.calls).toEqual([[true], [true], [false]]);
-  expect(mock.close).toHaveBeenCalledWith(IDENTITY.sessionId, 'close', {});
+  expect(mock.close).toHaveBeenCalledWith(IDENTITY.sessionId, `close?dealerGameId=${IDENTITY.dealerGameId}`, {});
   ui.rerender(<Run21GameTable {...props} sessionEnded/>);
   expect(screen.queryByRole('button', {name: 'Finish match'})).toBeNull();
   ui.unmount();render(<Run21GameTable {...props}/>);
-  expect(mock.close).toHaveBeenCalledTimes(1);expect(onTerminalComplete).toHaveBeenCalledTimes(1);
+  expect(mock.close).toHaveBeenCalledTimes(1);expect(onTerminalComplete).toHaveBeenCalledTimes(2);
 }, 15000);
 
 it('retains the same HUD element and fixed felt allocation from preparation into play',()=>{
@@ -69,4 +69,20 @@ it('retains the same HUD element and fixed felt allocation from preparation into
  const fixed=ui.container.querySelector('[style*="--shell-felt-h"]') as HTMLElement;
  mock.snapshot={view:project(fixtureMatch(),PLAYERS[0].id),revision:1,serverAt:0,finished:false,balances:{}};ui.rerender(<Run21GameTable {...props}/>);
  expect(screen.getByTestId('hud')).toBe(hud);expect(ui.container.querySelector('[style*="--shell-felt-h"]')).toBe(fixed);
+});
+
+it('reuses an in-flight close promise after remount and completes only the current viewer callback',async()=>{
+ terminal.cursor='settled';mock.close.mockClear();
+ let resolve!:()=>void;mock.close.mockImplementationOnce(()=>new Promise<void>(done=>{resolve=done;}));
+ const view=project(fixtureMatch(),PLAYERS[0].id);view.revealed=true;view.winnerId=PLAYERS[1].id;
+ view.cumulative={[PLAYERS[0].id]:105000,[PLAYERS[1].id]:135850};
+ view.settlement={key:'pending-receipt',resultId:uuid(700),transferBatchId:uuid(701),winnerId:PLAYERS[1].id,loserId:PLAYERS[0].id,amount:5,at:10};
+ mock.snapshot={view,revision:2,serverAt:10,finished:true,balances:{}};
+ const old=vi.fn(),current=vi.fn();
+ const props={gameId:IDENTITY.sessionId,dealerGameId:IDENTITY.dealerGameId,userId:uuid(30),dealerPosition:1,activeTab:'cards' as const,setActiveTab:vi.fn(),sessionEnded:false,onTerminalActive:vi.fn(),onTerminalComplete:old};
+ const first=render(<Run21GameTable {...props}/>);await waitFor(()=>expect(mock.close).toHaveBeenCalledTimes(1));
+ first.unmount();render(<Run21GameTable {...props} onTerminalComplete={current}/>);
+ await waitFor(()=>expect(mock.close).toHaveBeenCalledTimes(1));resolve();
+ await waitFor(()=>expect(current).toHaveBeenCalledTimes(1));expect(old).not.toHaveBeenCalled();
+ expect(mock.close).toHaveBeenCalledTimes(1);
 });

@@ -26,7 +26,7 @@ describe('Run21 player presentation',()=>{
     expect(html).toContain(`data-qualified="${sum>=97}"`);
   });
   it('shows the bot board and frozen speed while the human controls remain inactive',()=>{
-    const m=act(prepareRound(createMatch(IDENTITY,[...PLAYERS].reverse(),5,DEFAULT_CONFIG,0),uuid(100),null,fixtureDeck(),0),other,{type:'ready'},0);
+    const m=act(prepareRound(createMatch(IDENTITY,[...PLAYERS].reverse(),5,DEFAULT_CONFIG,0,1),uuid(100),null,fixtureDeck(),0),other,{type:'ready'},0);
     const html=render(m);
     expect(html.match(/disabled=""/g)).toHaveLength(6);
     expect(html).toContain('data-playing-card-face');

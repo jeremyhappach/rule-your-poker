@@ -49,8 +49,13 @@ export interface Result {
 }
 /** Private server-only input; never serialize this type to a client. */
 export interface DeckEvidence { cards: Card[]; salt: string; commitment: string }
+export interface PlayerDeckEvidence extends DeckEvidence {
+  identity: Identity; roundId: string; playerId: string;
+}
+export interface IndependentDecks { version: 2; decks: Record<string, PlayerDeckEvidence> }
+export type RoundEvidence = DeckEvidence | IndependentDecks;
 export interface Round {
-  id: string; number: number; secret: DeckEvidence;
+  id: string; number: number; secret: RoundEvidence;
   starting_player_id: string; active_player_id: string | null;
   liveBoards?: boolean;
   scorePresentation?: ScorePresentation | null;
@@ -73,6 +78,8 @@ export interface SettlementReceipt extends SettlementIntent {
   resultId: string; transferBatchId: string; at: number;
 }
 export interface Frame {
+  dealingVersion?: 2;
+  commitments?: Record<string, string>;
   automaticPlayers?: string[];
   pausedAt?: number | null;
   identity: Identity; config: Config; players: Player[]; stake: number;
@@ -90,6 +97,8 @@ export interface Event {
   operands: Record<string, unknown>; frame: Frame;
 }
 export interface Match {
+  /** Missing on historical single-deck matches; never upgrade a persisted match. */
+  dealingVersion?: 2;
   automaticPlayers?: string[];
   pausedAt?: number | null;
   identity: Identity; config: Config; players: Player[]; stake: number;

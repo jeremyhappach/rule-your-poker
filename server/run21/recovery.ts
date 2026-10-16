@@ -31,7 +31,16 @@ export async function recoverRun21(rpc: RecoveryRpc, token: string) {
   try {
     for (const gameId of claim.games ?? []) {
       if (Date.now() - started > 15_000) { failures.push('run21:recovery_budget'); break; }
-      try { await authority.recoverOne(gameId); processed++; }
+      try {
+        const rows=await rpc<StoredMatch[]>('run21_recovery_load',{p_token:token,p_game_id:gameId});
+        const row=rows.at(-1);
+        if(row){
+          if(row.lifecycle_version===2&&row.state?.settlement)
+            await rpc('run21_recovery_finish',{p_token:token,p_dealer_game_id:row.dealer_game_id});
+          else await authority.recoverOne(gameId);
+        }
+        processed++;
+      }
       catch (error) { failures.push(error instanceof AuthorityError ? error.code : 'run21:recovery_failed'); }
     }
     await rpc('run21_recovery_complete', {p_token: token, p_failure: failures[0] ?? null});

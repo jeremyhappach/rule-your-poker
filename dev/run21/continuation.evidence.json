@@ -1,0 +1,268 @@
+{
+  "status": "qualified",
+  "productionAdmission": false,
+  "cases": [
+    {
+      "run": "run21-lifecycle-streamed",
+      "next": "farkle",
+      "game": "5594dc2e-ab05-4130-97fa-3867188cbbb2",
+      "dealerGame": "1c5f169d-b476-4cd8-9ab0-0b8e6262de12",
+      "revision": 43,
+      "lifecycleVersion": 2,
+      "rounds": 3,
+      "finishedAtSettlement": true,
+      "statusAtSettlement": "game_selection",
+      "flights": [
+        1,
+        1
+      ],
+      "closes": [
+        {
+          "client": 0,
+          "status": 200,
+          "at": 1792160049874
+        },
+        {
+          "client": 1,
+          "status": 200,
+          "at": 1792160050186
+        }
+      ],
+      "streams": [
+        {
+          "count": 0,
+          "terminal": []
+        },
+        {
+          "count": 0,
+          "terminal": []
+        }
+      ],
+      "errors": []
+    },
+    {
+      "run": "run21-lifecycle-streamed",
+      "next": "run21",
+      "game": "fa872938-cc7e-441c-a8f0-0f23cb77b23d",
+      "dealerGame": "362d4910-6af7-41b9-bc06-48f261afeb82",
+      "revision": 43,
+      "lifecycleVersion": 2,
+      "rounds": 3,
+      "finishedAtSettlement": true,
+      "statusAtSettlement": "game_selection",
+      "flights": [
+        1,
+        1
+      ],
+      "closes": [
+        {
+          "client": 0,
+          "status": 200,
+          "at": 1792159899014
+        },
+        {
+          "client": 1,
+          "status": 200,
+          "at": 1792159899387
+        }
+      ],
+      "streams": [
+        {
+          "count": 1,
+          "terminal": []
+        },
+        {
+          "count": 1,
+          "terminal": []
+        }
+      ],
+      "errors": []
+    },
+    {
+      "run": "run21-lifecycle-faults",
+      "next": "run21",
+      "game": "07de4081-01c3-4c80-9bf2-a27bbf3f5bcc",
+      "dealerGame": "91e51f7c-fc3d-4550-a281-6a0452ac70e8",
+      "revision": 43,
+      "lifecycleVersion": 2,
+      "rounds": 3,
+      "finishedAtSettlement": true,
+      "statusAtSettlement": "game_selection",
+      "flights": [
+        1,
+        1
+      ],
+      "closes": [
+        {
+          "client": 0,
+          "status": 200,
+          "at": 1792160320587
+        },
+        {
+          "client": 1,
+          "status": 200,
+          "at": 1792160321523
+        }
+      ],
+      "catchup": [
+        {
+          "client": 1,
+          "status": 200
+        },
+        {
+          "client": 0,
+          "status": 200
+        }
+      ],
+      "faults": {
+        "dropped": 4,
+        "disconnected": 1,
+        "reordered": 58
+      },
+      "streams": [
+        {
+          "count": 1,
+          "terminal": []
+        },
+        {
+          "count": 1,
+          "terminal": []
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "terminalCapture": {
+    "game": "d3ff9a7d-46b9-47a8-ae76-7702ce1316d6",
+    "dealer": "72bf6bf9-71f2-4b16-bb36-88ccc4a88f5b",
+    "flights": [
+      1,
+      1
+    ],
+    "faults": {
+      "dropped": 4,
+      "disconnected": 1,
+      "reordered": 81
+    },
+    "states": [
+      {
+        "client": 1,
+        "status": 200
+      },
+      {
+        "client": 0,
+        "status": 200
+      }
+    ],
+    "streams": [
+      {
+        "frames": 83,
+        "terminal": [
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          }
+        ]
+      },
+      {
+        "frames": 90,
+        "terminal": [
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          },
+          {
+            "revision": 43,
+            "eventSequence": 109,
+            "resultId": "b17fa71e-50d8-4e7a-ab8b-7d07474dfe1f",
+            "transferBatchId": "37d5972b-95c3-453d-9474-ea0b27808478"
+          }
+        ]
+      }
+    ]
+  },
+  "installedProofCases": [
+    "real",
+    "fake",
+    "tie",
+    "terminal",
+    "legacy"
+  ],
+  "productionMigrations": [
+    "20261016142441",
+    "20261016142505"
+  ],
+  "workerVersion": 4,
+  "protectedMatch": {
+    "revision": 68,
+    "paused": true,
+    "settled": false,
+    "deckVersion": 1,
+    "lifecycleVersion": 1
+  },
+  "productionFinancialTestWrites": 0
+}

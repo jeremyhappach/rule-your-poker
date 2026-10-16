@@ -9,6 +9,19 @@ const mock=vi.hoisted(()=>({fetch:vi.fn(),request:vi.fn()}));
 vi.mock('@/lib/run21/localClient',async importOriginal=>({...await importOriginal<object>(),run21Fetch:mock.fetch,run21Request:mock.request}));
 import {useRun21Local} from './useRun21Local';
 afterEach(()=>{cleanup();sessionStorage.clear();vi.clearAllMocks();});
+it('recovers the pinned completed identity once after authoritative advance despite a silent stream',async()=>{
+ const state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0);
+ const snapshot={revision:1,serverAt:0,view:project(state,PLAYERS[0].id),balances:{},finished:false,eventSequence:1};
+ let stream!:ReadableStreamDefaultController<Uint8Array>;
+ mock.fetch.mockImplementation(async()=>({ok:true,body:new ReadableStream({start(c){stream=c;c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(snapshot)}\n\n`));}})}));
+ const final={...snapshot,revision:2,finished:true,eventSequence:2};mock.request.mockResolvedValue(final);
+ const {result,rerender}=renderHook(({complete})=>useRun21Local(IDENTITY.sessionId,IDENTITY.dealerGameId,complete),{initialProps:{complete:false}});
+ await waitFor(()=>expect(result.current.snapshot?.revision).toBe(1));expect(mock.request).not.toHaveBeenCalled();
+ rerender({complete:true});await waitFor(()=>expect(result.current.snapshot?.revision).toBe(2));
+ expect(mock.request).toHaveBeenCalledWith(IDENTITY.sessionId,`state?dealerGameId=${IDENTITY.dealerGameId}&after=1`);
+ act(()=>stream.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(snapshot)}\n\n`)));
+ rerender({complete:true});expect(result.current.snapshot?.revision).toBe(2);expect(mock.request).toHaveBeenCalledTimes(1);
+});
 it('keeps one subscription across revisions and admits commands while the spectator stream reconnects',async()=>{
  const state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0);
  const events=visibleHistory(state,PLAYERS[0].id);
@@ -55,7 +68,7 @@ it('paints pending placement before the response, suppresses repeats, rolls back
  expect(result.current.snapshot!.view.boards[PLAYERS[0].id]!.columns[0]).toHaveLength(0);
  act(()=>result.current.reconnect());expect(result.current.snapshot).not.toBeNull();
  await waitFor(()=>expect(mock.fetch).toHaveBeenCalledTimes(2));
- expect(mock.fetch.mock.calls[1][1]).toBe(`events?after=${snapshot.eventSequence}`);
+ expect(mock.fetch.mock.calls[1][1]).toBe(`events?dealerGameId=${IDENTITY.dealerGameId}&after=${snapshot.eventSequence}`);
 });
 it('renders the accepted next upcard in the same response without another fetch or animation wait',async()=>{
  const state=play(fixtureMatch(),PLAYERS[0].id,{type:'ready'},0),events=visibleHistory(state,PLAYERS[0].id);

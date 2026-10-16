@@ -41,7 +41,7 @@ describe('Run21 rules', () => {
   });
 });
 describe('Run21 authority specification', () => {
-  it('admits one board without a clock and transfers the same first card after scoring completes', () => {
+  it('preserves the original single-deck handoff when recovering historical version-one evidence', () => {
     let m=fixtureMatch(); expect(m.rounds[0].boards[a].deadline).toBeNull();
     m=act(m,a,{type:'ready'},10000);const first=m.rounds[0].boards[a].current;
     expect(m.rounds[0].boards[a]).toMatchObject({startedAt:null,deadline:null});

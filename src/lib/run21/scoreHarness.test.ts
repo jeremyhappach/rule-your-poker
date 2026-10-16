@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {describe,it,expect,vi} from 'vitest';
-import {roundDeck} from '../../../server/run21/harness';
+import {roundDeck,playerRoundDecks} from '../../../server/run21/harness';
 import {commitmentFor} from './shuffle.server';
 import {act,fixtureDeck,IDENTITY,PLAYERS,uuid} from './fixtures';
 import {createMatch,prepareRound,advanceScorePresentation,project} from './engine';
@@ -16,9 +16,11 @@ describe('server-only, all-player score harness decks',()=>{
   });
   it.each([104,105])('produces %i by legal placement and normal bot play across round identities',async score=>{
     for(let n=0;n<16;n++){
-      const roundId=uuid(80+n),deck=await roundDeck(IDENTITY,roundId,`always_${score}`);
-      expect(new Set(deck.cards.map(cardKey)).size).toBe(52);
-      expect(deck.commitment).toBe(await commitmentFor(IDENTITY,roundId,deck));
+      const roundId=uuid(80+n),deck=await playerRoundDecks(IDENTITY,roundId,PLAYERS,`always_${score}`);
+      for (const p of PLAYERS) {
+        expect(new Set(deck.decks[p.id].cards.map(cardKey)).size).toBe(52);
+        expect(deck.decks[p.id].commitment).toBe(await commitmentFor(IDENTITY,roundId,deck.decks[p.id],p.id));
+      }
       let match=prepareRound(createMatch(IDENTITY,PLAYERS,1,DEFAULT_CONFIG,0),roundId,null,deck,0);
       const human=PLAYERS[0].id,bot=PLAYERS[1].id;
       match=act(match,human,{type:'ready'},0);
@@ -34,7 +36,7 @@ describe('server-only, all-player score harness decks',()=>{
         match=act(match,bot,choice.intent,match.updatedAt+choice.delayMs);
       }
       expect(match.rounds[0].boards[bot].result?.aggregate).toBe(score);
-      expect(match.rounds[0].boards[bot].presented.slice(0,11)).toEqual(match.rounds[0].boards[human].presented.slice(0,11));
+      for (const p of PLAYERS) expect(match.rounds[0].boards[p.id].presented.slice(0,11)).toEqual(deck.decks[p.id].cards.slice(0,11));
     }
   });
 });

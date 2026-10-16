@@ -12,7 +12,7 @@ const workers:ReturnType<typeof createRun21Handler>[]=[];
 afterEach(()=>{workers.splice(0).forEach(w=>w.dispose());vi.resetAllMocks();});
 function fixture(){
  const user=uuid(30),now=Date.now();
- let state=prepareRound(createMatch(IDENTITY,PLAYERS,5,DEFAULT_CONFIG,now),uuid(20),null,fixtureDeck([],17),now);
+ let state=prepareRound(createMatch(IDENTITY,PLAYERS,5,DEFAULT_CONFIG,now,1),uuid(20),null,fixtureDeck([],17),now);
  state=applyCommand(state,{identity:IDENTITY,roundId:uuid(20),playerId:PLAYERS[0].id,requestId:uuid(90),revision:0,intent:{type:'ready'}},{kind:'service'},now).state;
  let row:StoredMatch={dealer_game_id:IDENTITY.dealerGameId,game_id:IDENTITY.sessionId,first_round_id:uuid(20),dealer_user_id:uuid(31),participants:PLAYERS.map((p,i)=>({...p,userId:uuid(30+i),chips:0})),stake:5,balances:{},revision:1,state,bot_due_at:null,finished:false};
  const runtime=createRun21Handler({url:'https://example.invalid',key:'server-only'});workers.push(runtime);runtime.authority.admit(row);

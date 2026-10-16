@@ -406,6 +406,7 @@ import { admitFarkleSnapshot } from '@/lib/farkle/presentation';
 import type { FarkleState } from '@/lib/farkle/types';
 import { getTotalScore as getYahtzeeTotalScore } from '@/lib/yahtzeeScoring';
 import { useLocalTerminalPresentation } from '@/lib/canonicalShell/localTerminalPresentation';
+import {useRun21PresentationRetention} from '@/hooks/useRun21PresentationRetention';
 import { advanceCribbagePostgame } from "@/lib/cribbageAuthority";
 import { advanceGinPostgame } from "@/lib/ginRummyRoundLogic";
 import { advanceHolmPostgame } from "@/lib/holmPostgameAuthority";
@@ -6090,6 +6091,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       dealerPosition: game.dealer_position ?? 1, isRealMoney: game.real_money === true } : null,
   });
   const heldFarkle = farkleTerminal.pending?.snapshot ?? null;
+  const run21Terminal = useRun21PresentationRetention(gameId ?? null,
+    game?.game_type === 'run21' && game.status === 'in_progress' && game.current_game_uuid
+      && currentRound?.dealer_game_id === game.current_game_uuid ? {
+        dealerGameId: game.current_game_uuid, firstRoundId: currentRound.id, players,
+        anteAmount: game.ante_amount ?? 0, dealerPosition: game.dealer_position ?? 1,
+      } : null);
+  const heldRun21 = run21Terminal.pending?.snapshot ?? null;
+
 
   // Normal post-game lifecycle closure can arrive after the dealer-game
   // presentation has already retired into setup/waiting. Keep a continuously
@@ -6101,7 +6110,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      liveTerminalPresentationPending || heldYahtzee || heldFarkle
+      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldRun21
     ) return;
     setSessionEndedTableAdmitted(true);
   }, [
@@ -6112,6 +6121,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     liveTerminalPresentationPending,
     heldYahtzee,
     heldFarkle,
+    heldRun21,
   ]);
 
   // Redirect to lobby when session ends.
@@ -6127,7 +6137,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      liveTerminalPresentationPending || heldYahtzee || heldFarkle
+      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldRun21
     ) return;
     // Transient Session Ended table: this client stayed through the live
     // terminal presentation, so navigation is now user-owned (Back to Lobby).
@@ -6158,7 +6168,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     })();
     return () => { cancelled = true; };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted, heldYahtzee, heldFarkle]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted, heldYahtzee, heldFarkle, heldRun21]);
 
   const { acceptCompletion: accept357TerminalCompletion, canAdvance: canAdvance357Postgame } =
     useThreeFiveSevenTerminalCompletion({
@@ -12020,6 +12030,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleGameOverCompleteRef = useRef(handleGameOverComplete);
   handleGameOverCompleteRef.current = handleGameOverComplete;
 
+  const handleRun21TerminalPresentationComplete = useCallback((token: string) => {
+    if (run21Terminal.complete(token)) markTerminalPresentationComplete(token);
+  }, [run21Terminal.complete, markTerminalPresentationComplete]);
+
   const handleFarkleTerminalPresentationComplete = useCallback((token: string) => {
     const scope = farkleTerminal.complete(token);
     if (!scope) return;
@@ -12918,7 +12932,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // gate that would otherwise release the gameplay surface at
   // either terminal status consults it. No status rewrite, no timer, no
   // duplicate surface.
-  const _terminalPresentationHold = !!heldFarkle || !!heldYahtzee || shouldHoldTerminalSeatOwnership(
+  const _terminalPresentationHold = !!heldRun21 || !!heldFarkle || !!heldYahtzee || shouldHoldTerminalSeatOwnership(
     game.status,
     terminalPresentationActive,
     holmLastHandPresentationPending,
@@ -12932,7 +12946,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // the canonical terminal presentation to have already completed and this
   // predicate is only reachable after that completion token landed.
   const _sessionEndedTableActive =
-    sessionEndedTableAdmitted && !heldYahtzee && !heldFarkle &&
+    sessionEndedTableAdmitted && !heldRun21 && !heldYahtzee && !heldFarkle &&
     (game.status as string) === 'session_ended' &&
     !terminalPresentationActive &&
     !holmLastHandPresentationPending &&
@@ -12975,7 +12989,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const sessionHostUserId = currentHost ?? sessionHostPlayer?.user_id ?? null;
   const sessionHostName = sessionHostPlayer?.profiles?.username ?? 'the session host';
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-  const isWaitingTableStatus = !heldFarkle && !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
+  const isWaitingTableStatus = !heldRun21 && !heldFarkle && !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -12996,7 +13010,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const enableOuterShell =
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
   const presentationMode = enableOuterShell
-    ? resolvePresentationMode(presentationCatalog, game.game_type, game.current_game_uuid, game.status, _sessionEndedTableActive)
+    ? resolvePresentationMode(presentationCatalog, heldRun21 ? 'run21' : game.game_type, heldRun21?.dealerGameId ?? game.current_game_uuid, heldRun21 ? 'game_over' : game.status, _sessionEndedTableActive)
     : 'table';
   const isFullscreenPresentation = presentationMode === 'fullscreen';
 
@@ -13017,9 +13031,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // canonical-route by default — every game family currently selectable
   // in the setup modal is a canonical-shell family, so this is safe.
   const _routeShellGameType =
-    heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+    heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
   const _routeShellAnteAmount =
-    heldFarkle?.anteAmount ?? heldYahtzee?.anteAmount ?? game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
+    heldRun21?.anteAmount ?? heldFarkle?.anteAmount ?? heldYahtzee?.anteAmount ?? game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
   const _isConfiguringContext =
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
@@ -13524,7 +13538,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!heldFarkle && !heldYahtzee && !is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
+            {(!heldRun21 && !heldFarkle && !heldYahtzee && !is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -13849,7 +13863,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
-            readinessScope={!heldFarkle && !heldYahtzee && game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
+            readinessScope={!heldRun21 && !heldFarkle && !heldYahtzee && game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
             // ORDINARY-WIN CONTINUITY (Defect A owner). This flag makes the
             // slot controller render NeutralInterstitial *exclusively* —
@@ -13882,7 +13896,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
-            preGameOverlay={!heldFarkle && !heldYahtzee && (_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
+            preGameOverlay={!heldRun21 && !heldFarkle && !heldYahtzee && (_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
                     selection for any persistent shell (poker-variant
@@ -13969,7 +13983,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
-              if (heldYahtzee || heldFarkle) return true;
+              if (heldRun21 || heldYahtzee || heldFarkle) return true;
               // Phase 7 readiness gate (narrow scope): only answer
               // "is the intended gameplay surface ready to paint a
               // stable first frame?". Default true for statuses where
@@ -14013,14 +14027,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
           >
             {(() => {
-          const isInProgress = !heldFarkle && !heldYahtzee && game.status === 'in_progress';
-          const renderGameType = heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type;
+          const isInProgress = !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'in_progress';
+          const renderGameType = heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type;
           const isYahtzeeGameOver =
             !!heldYahtzee || (renderGameType === 'yahtzee' &&
             (game.status === 'game_over' || _terminalPresentationHold));
-          const isAnteDecision = !heldFarkle && !heldYahtzee && game.status === 'ante_decision';
-          const isCribbageDealerSelection = !heldFarkle && !heldYahtzee && game.status === 'cribbage_dealer_selection';
-          const isGinRummyDealerSelection = !heldFarkle && !heldYahtzee && game.status === 'dealer_selection' && renderGameType === 'gin-rummy';
+          const isAnteDecision = !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'ante_decision';
+          const isCribbageDealerSelection = !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'cribbage_dealer_selection';
+          const isGinRummyDealerSelection = !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'dealer_selection' && renderGameType === 'gin-rummy';
           // LAST-HAND terminal presentation hold: on a final-hand win the
           // authoritative status goes straight to `session_ended` (never
           // through `game_over`), which previously dropped the cribbage
@@ -14273,13 +14287,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             key={game.current_game_uuid} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
             activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive}
             onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={markTerminalPresentationComplete}/>;
-          if (renderGameType === 'run21' && game.current_game_uuid) return <Run21GameTable
+          if (renderGameType === 'run21' && (heldRun21?.dealerGameId ?? game.current_game_uuid)) return <Run21GameTable
             presentationMode={presentationMode}
             sittingOut={players.find(p => p.user_id === user?.id)?.sitting_out}
-            key={game.current_game_uuid} gameId={gameId!} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
-            dealerPosition={game.dealer_position || 1} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace}
+            key={heldRun21?.dealerGameId ?? game.current_game_uuid} gameId={gameId!}
+            dealerGameId={(heldRun21?.dealerGameId ?? game.current_game_uuid)!} userId={user?.id ?? ''}
+            firstRoundId={heldRun21?.firstRoundId ?? run21Terminal.snapshot?.firstRoundId}
+            authoritativeComplete={!!heldRun21}
+            dealerPosition={heldRun21?.dealerPosition ?? game.dealer_position ?? 1} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace}
             sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange}
-            onTerminalComplete={markTerminalPresentationComplete}/>;
+            onTerminalComplete={handleRun21TerminalPresentationComplete}/>;
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
           if (renderGameType === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
@@ -15112,8 +15129,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellSeatRosterMember = (p: { status?: string | null }) =>
     p.status !== 'observer' && p.status !== 'left';
   // Stable-identity shell seat roster (see hook-rule note below).
-  const shellPresentationPlayers = heldFarkle?.players ?? heldYahtzee?.players ?? players;
-  const shellPresentationViewer = heldYahtzee || heldFarkle
+  const shellPresentationPlayers = heldRun21?.players ?? heldFarkle?.players ?? heldYahtzee?.players ?? players;
+  const shellPresentationViewer = heldRun21 || heldYahtzee || heldFarkle
     ? shellPresentationPlayers.find(player => player.user_id === user?.id) : currentPlayer;
   const _shellSeatRosterKey = shellAnchorEligible
     ? shellPresentationPlayers

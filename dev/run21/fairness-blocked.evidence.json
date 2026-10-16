@@ -1,0 +1,71 @@
+{
+  "qualified": false,
+  "terminalInvestigation": {
+    "confirmedBlocker": "Durable recovery excludes settled matches; postgame continuation requires a browser close",
+    "localProofAt": "2026-10-16T02:29:39.867Z",
+    "validRecoveryClaims": 2,
+    "settledMatchSelected": false,
+    "frozenMatch": {"revision": 43, "status": "game_over", "finished": false, "results": 1, "transfers": 1},
+    "transactionRolledBack": true,
+    "matchUnchanged": true,
+    "priorProofLimitation": "Zero-client proof established settlement, then called close manually",
+    "browserBoundary": "No receipt-specific batch lookup or close in either failed trace; streamed SSE bodies unavailable, so original delivery/acceptance cause remains unproven",
+    "scopeDecision": "Server-owned Run21 continuation and per-viewer terminal retention require the requested broader-scope approval",
+    "productionRecheckAt": "2026-10-16T02:31:43.285336Z",
+    "productionMatchRevision": 68,
+    "productionMatchPaused": true,
+    "productionMatchSettled": false,
+    "admissionOpen": false,
+    "productionWrites": 0
+  },
+  "reason": "Intermittent expanded two-browser final-score-to-terminal handoff timeout; isolated retry passed without a product correction",
+  "production": {
+    "qualified": false,
+    "checked_at": "2026-10-16T02:17:04.892863+00:00",
+    "worker_active": true,
+    "worker_failure": null,
+    "affected_real_match": {
+      "paused": true,
+      "settled": false,
+      "finished": false,
+      "revision": 68,
+      "dealer_game_id": "26e46f50-3c1f-4c98-99d4-bfbcf7dcf756"
+    },
+    "deck_migration_applied": false,
+    "worker_last_completed_at": "2026-10-16T02:17:01.350454+00:00"
+  },
+  "regression": {
+    "src": 2159,
+    "harness": 241,
+    "additionalInitializerRace": 1
+  },
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "database": "Local canonical $1, replay, authorization, concurrency, tie, legacy, zero-client and terminal proofs passed; synthetic production financial writes: zero",
+  "browser": {
+    "isolatedRetry": "Passed in 1.5 minutes; both clients accepted settled revision 43/event 109; cause of earlier failure remains unresolved",
+    "expandedSuite": {
+      "passed": 1,
+      "failed": 1
+    },
+    "passedScenario": "Run Back with in-turn reloads",
+    "failedScenario": "Next-game handoff to Farkle after in-turn reloads",
+    "failure": {
+      "sessionId": "7897e425-09fb-48fb-b8ce-d3176a17c337",
+      "dealerGameId": "a77fdd6f-c25b-4e06-90a9-7e84bc19b857",
+      "rounds": 3,
+      "canonicalSettlement": 1,
+      "closeRequests": 0,
+      "timeoutSeconds": 75,
+      "pageErrors": 0
+    },
+    "frozenEvidence": "qualification.local/run21-production/fairness-frozen-handoff-failure"
+  },
+  "release": {
+    "migrationApplied": false,
+    "workerDeployed": false,
+    "committed": false,
+    "pushed": false,
+    "reopened": false
+  }
+}

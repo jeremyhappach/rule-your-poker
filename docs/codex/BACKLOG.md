@@ -1,5 +1,18 @@
 # Backlog
 
+## Implemented — P0 Run21 fairness and continuation; owner smoke pending — October 16, 2026
+
+- Independent player decks and immutable commitments preserve historical matches.
+- Jeremy approved the Run21-only authoritative continuation and retained terminal
+  presentation extension. Local and installed-authority qualification pass,
+  including zero clients, cold worker restart, concurrent completion, two browsers,
+  stream loss/reordering, Run Back and Farkle handoff.
+- The original frozen failure is retained. The exact receipt-admission boundary
+  and limits of its original trace are documented in the fairness report.
+- The affected real-money match stays paused and unsettled at revision 68 for
+  Jeremy's separate disposition decision. No retroactive financial correction.
+- [Qualification and release](RUN21_FAIRNESS_CORRECTION.md).
+
 ## Implemented — cinematic table-to-fullscreen transition — October 15, 2026
 
 - Jeremy requested retaining this as a separate future polish task while

@@ -14,7 +14,7 @@ import {visibleHistory,exportReplay,seekReplay} from './history';
 const [human,bot]=PLAYERS.map(p=>p.id);
 function command(m:ReturnType<typeof fixtureMatch>,id:string,intent:Intent,n=9000){return {identity:m.identity,roundId:m.rounds.at(-1)!.id,playerId:id,requestId:uuid(n),revision:m.rounds.at(-1)!.boards[id].revision,intent};}
 const admit=(reverse=false)=>{
- const m=prepareRound(createMatch(IDENTITY,reverse?[...PLAYERS].reverse():PLAYERS,5,DEFAULT_CONFIG,0),uuid(100),null,fixtureDeck(),0);
+ const m=prepareRound(createMatch(IDENTITY,reverse?[...PLAYERS].reverse():PLAYERS,5,DEFAULT_CONFIG,0,1),uuid(100),null,fixtureDeck(),0);
  return act(m,m.rounds[0].active_player_id!,{type:'ready'},0);
 };
 describe('Run21 live sequential turn flow',()=>{

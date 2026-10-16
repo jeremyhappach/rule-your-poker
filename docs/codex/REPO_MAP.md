@@ -16,6 +16,16 @@ provides bounded fresh-worker execution through service RPCs, bundled by
 `src/lib/run21/access.ts` own production capability discovery. Local SQL and
 two-browser proofs live in `supabase/tests/run21/`; current release gates and
 evidence are in `RUN21_PRODUCTION_QUALIFICATION.md`.
+Run21 independent dealing: `playerRoundDecks` in `server/run21/harness.ts`
+prepares both private player decks using `shuffle.server.ts`; `deckForPlayer`
+in the engine binds the board cursor to player/round identity. The independent
+deck migration freezes `deck_version` and installs `private.run21_preserve_decks`.
+Compatibility and containment evidence: `RUN21_FAIRNESS_CORRECTION.md`.
+Run21 terminal continuation: `private.run21_finish_postgame` is shared by settlement,
+close and durable recovery. `useRun21PresentationRetention.ts` adapts the canonical
+local terminal hold; `useRun21Local.ts` reads the retained identity after authoritative
+advance. `terminalTransport.test.ts` and `recovery-process.mjs` cover stream failure
+and cold worker execution.
 
 TriTowers: `supabase/tri-towers/authority.sql` and `services.sql` are unapplied
 database candidates. `src/lib/triTowers` defines redacted projections/client

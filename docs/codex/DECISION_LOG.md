@@ -1,5 +1,26 @@
 # Durable decision log
 
+## October 16, 2026 — Run21 continuation is independent of browser presentation
+
+New lifecycle-version-two matches continue atomically after canonical settlement.
+Browser close and token-scoped recovery use the same immutable receipt-verified
+private owner. Connected viewers retain their exact match through the existing
+local terminal presentation hook; authoritative advance triggers scoped snapshot
+catch-up when a final stream notice is missing. Historical lifecycle policy stays
+version one. No browser decides session status or dealer rotation.
+
+
+## October 15, 2026 — Run21 uses immutable independent player decks
+
+Each newly admitted Run21 match freezes dealing version two. At round preparation,
+the server independently shuffles and commits a complete deck for each player.
+Commitments include player and round UUID identity; each board draws only from its
+own persisted deck. PostgreSQL rejects evidence replacement or version changes.
+Recovery and turn handoff reuse committed decks. Existing version-one matches and
+their replay evidence remain unchanged, including future rounds of those matches.
+The compromised paused real-money match stays paused for Jeremy's review. See
+[containment, compatibility and qualification](RUN21_FAIRNESS_CORRECTION.md).
+
 ## October 15, 2026 — perfect boards finish in authority; dissolves stay in the shell
 
 The accepted placement transaction auto-collects a qualified, unbusted configured

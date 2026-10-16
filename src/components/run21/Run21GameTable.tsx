@@ -31,6 +31,8 @@ interface Props {
   presentationMode?: PresentationMode;
   sittingOut?: boolean;
   gameId: string; dealerGameId: string; userId: string; dealerPosition: number;
+  firstRoundId?: string;
+  authoritativeComplete?: boolean;
   activeTab: ShellTabId; setActiveTab: (tab: ShellTabId) => void; sessionEnded: boolean;
   onTerminalActive: (active: boolean) => void; onTerminalComplete: (identity: string) => void;
 }
@@ -44,7 +46,7 @@ function Felt({view, now, onIntent, pending, events,hideScoring}: {events?: Visi
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
-  const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration} = useRun21Local(props.gameId, props.dealerGameId);
+  const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
   const [participationPending, setParticipationPending] = useState(false);
@@ -52,7 +54,7 @@ export function Run21GameTable(props: Props) {
   const view = snapshot?.view;
   const {onTerminalActive, onTerminalComplete} = props;
   useShellTabBar({cardsIcon: 'spade', activeTab: props.activeTab, setActiveTab: props.setActiveTab});
-  const {error:closeError,retry:retryTerminal}=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete);
+  const {error:closeError,retry:retryTerminal}=useRun21Terminal(view,props.sessionEnded,onTerminalActive,onTerminalComplete,props.firstRoundId);
   useEffect(()=>{if(props.sessionEnded)setReplay(null);},[props.sessionEnded]);
   const returnToPlay = async () => {
     if (!view?.viewerId || participationPending) return;

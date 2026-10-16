@@ -21,7 +21,7 @@ export function isRun21TerminalBatch(batch:ChipPresentationBatch,view:Projection
 }
 
 /** Observe the canonical flight; completion still closes through the existing server owner. */
-export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,onActive:(v:boolean)=>void,onComplete:(id:string)=>void) {
+export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,onActive:(v:boolean)=>void,onComplete:(id:string)=>void,firstRoundId?:string) {
   const announcements=useAnnouncements();
   const receipt=view?.settlement;
   const key=receipt&&view?`${view.identity.sessionId}:${view.identity.dealerGameId}:${receipt.resultId}:${receipt.transferBatchId}`:null;
@@ -46,7 +46,7 @@ export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,
     try{assertFinalScores(view);}catch(e){setError((e as Error).message);return;}
     let terminal=terminals.get(key);
     if(!terminal){terminal={announced:false,completed:false};terminals.set(key,terminal);}
-    if(terminal.completed)return;
+    if(terminal.completed){callbacks.current.onComplete(`run21|winseq|${view.identity.sessionId}|${view.identity.dealerGameId}|${view.identity.handNumber}|${receipt.resultId}|${firstRoundId??view.roundId}`);return;}
     callbacks.current.onActive(true);
     if(!terminal.announced){
       terminal.announced=true;
@@ -77,8 +77,8 @@ export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,
     const terminal=terminals.get(key);
     if(!terminal||terminal.completed)return;
     let cancelled=false;
-    const identity=`run21|winseq|${view.identity.sessionId}|${view.identity.dealerGameId}|${view.identity.handNumber}`;
-    terminal.close??=run21Request(view.identity.sessionId,'close',{});
+    const identity=`run21|winseq|${view.identity.sessionId}|${view.identity.dealerGameId}|${view.identity.handNumber}|${view.settlement!.resultId}|${firstRoundId??view.roundId}`;
+    terminal.close??=run21Request(view.identity.sessionId,`close?dealerGameId=${view.identity.dealerGameId}`,{});
     void terminal.close.then(()=>{
       if(cancelled||terminal.completed)return;
       terminal.completed=true;

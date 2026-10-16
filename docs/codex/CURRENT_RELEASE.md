@@ -1,3 +1,27 @@
+# Run21 independent decks and terminal continuation — 2026-10-16 — qualified correction
+
+All correction gates pass: independent player decks; exactly-once canonical
+settlement and authoritative continuation; retained terminal presentation;
+zero-client recovery in a separate worker process; concurrency, authorization,
+historical matches, Run Back and Farkle handoff. Normal and injected delivery-fault
+two-browser runs show one canonical $1 flight per viewer. Actual terminal SSE
+payloads are preserved. Full regression: 2,410 tests including focused additions.
+Typecheck and production build pass. Jeremy's production gameplay smoke is pending.
+
+Migrations 20261016142441_run21_independent_decks and
+20261016142505_run21_authoritative_continuation are installed. The complete
+financial/recovery matrix passed again using their deployed function definitions.
+Recovery worker version 4 uses the same engine and continuation RPC. Existing
+26 matches retain deck/lifecycle version 1; no historical financial correction
+was made. The affected real-money match remains paused, unsettled, revision 68.
+
+Release checkpoint: run21-independent-decks-2026-10-16. New admission and Run Back
+may reopen only after the matching application manifest and healthy production
+recovery are verified. Frozen failure evidence is retained; the report distinguishes
+the proven missing-receipt boundary from the unavailable original SSE bodies.
+See [root cause and proof](RUN21_FAIRNESS_CORRECTION.md) and
+[qualification evidence](../../dev/run21/fairness.evidence.json).
+
 # TriTowers stage results and presentation — 2026-10-15 — qualified release
 
 Financial/release gate: **PASS**. The five approved corrections add clear turn

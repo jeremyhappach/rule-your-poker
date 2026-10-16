@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { advanceScorePresentation, applyCommand, createMatch, expireFirstPlacement, prepareRound, project, recordSettlement, settlementIntent } from '../../src/lib/run21/engine.js';
 import { chooseAction } from '../../src/lib/run21/bot.js';
 import { shuffleRound } from '../../src/lib/run21/shuffle.server.js';
-import { roundDeck } from './harness.js';
+import { roundDeck, playerRoundDecks } from './harness.js';
 import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
 import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
 
@@ -11,6 +11,8 @@ export interface StoredMatch {
   dealer_user_id: string;
   debug_harness?: string;
   financial_version?: number;
+  deck_version?: 1 | 2;
+  lifecycle_version?: 1 | 2;
   real_money?: boolean;
   first_placement_seconds?: number;
   paused_at?: number | null;
@@ -62,11 +64,13 @@ export class Run21Authority {
     const set = this.listeners.get(gameId) ?? new Set(); set.add(listener); this.listeners.set(gameId, set);
     return () => { set.delete(listener); if (!set.size) this.listeners.delete(gameId); };
   }
-  private async latest(gameId: string, afterSequence?: number) {
-    const row = (await this.store.load(gameId, false, afterSequence)).at(-1);
+  private async latest(gameId: string, afterSequence?: number, dealerGameId?: string) {
+    const rows = await this.store.load(gameId, false, afterSequence);
+    const row = dealerGameId ? rows.find(row => row.dealer_game_id === dealerGameId) : rows.at(-1);
     if (!row) throw new AuthorityError('run21:not_configured', 404);
     const prior=this.committed.get(gameId);
-    if(!prior||prior.dealer_game_id!==row.dealer_game_id||row.revision>=prior.revision)this.committed.set(gameId,row);
+    if((!dealerGameId||!prior||prior.dealer_game_id===row.dealer_game_id)&&
+      (!prior||prior.dealer_game_id!==row.dealer_game_id||row.revision>=prior.revision))this.committed.set(gameId,row);
     return row;
   }
   private player(row: StoredMatch, userId: string) {
@@ -84,7 +88,10 @@ export class Run21Authority {
     return result.state;
   }
   private async openRound(state: Match, id: string, at: number, harness?: string) {
-    state = prepareRound(state, id, state.rounds.at(-1)?.id ?? null, await roundDeck(state.identity, id, harness, this.shuffle), at);
+    const evidence = state.dealingVersion === 2
+      ? await playerRoundDecks(state.identity, id, state.players, harness, this.shuffle)
+      : await roundDeck(state.identity, id, harness, this.shuffle);
+    state = prepareRound(state, id, state.rounds.at(-1)?.id ?? null, evidence, at);
     state = this.command(state, state.rounds.at(-1)!.active_player_id!, {type: 'ready'}, at);
     return state;
   }
@@ -102,7 +109,7 @@ export class Run21Authority {
       const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
         ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake,
-        row.financial_version === 2 ? {...DEFAULT_CONFIG, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at);
+        row.financial_version === 2 ? {...DEFAULT_CONFIG, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at, row.deck_version ?? 1);
       state = await this.openRound(state, row.first_round_id, at, row.debug_harness);
     }
     state = advanceScorePresentation(state, at);
@@ -188,9 +195,9 @@ export class Run21Authority {
     return {revision: row.revision, serverAt: this.now(), view: project(row.state!, playerId), balances: row.balances, finished: row.finished,
       eventSequence: row.state!.eventSequence ?? row.state!.events.at(-1)?.sequence ?? 0, events: visibleHistory(row.state!, playerId, afterSequence)};
   }
-  async read(gameId: string, userId: string, afterSequence = 0) {
+  async read(gameId: string, userId: string, afterSequence = 0, dealerGameId?: string) {
     return this.serial(gameId, async () => {
-      const initial = await this.latest(gameId, afterSequence); const player = this.player(initial, userId);
+      const initial = await this.latest(gameId, afterSequence, dealerGameId); const player = this.player(initial, userId);
       const row = await this.advance(initial);
       // Recovery may accept a timeout/bot transition while catching up. Keep the
       // requested committed prefix as well as this transition's new events.
@@ -200,10 +207,10 @@ export class Run21Authority {
     });
   }
   /** Revision notifications observe committed state; they never queue gameplay work. */
-  async observe(gameId: string, userId: string, afterSequence = 0) {
-    const row = await this.latest(gameId, afterSequence);
+  async observe(gameId: string, userId: string, afterSequence = 0, dealerGameId?: string) {
+    const row = await this.latest(gameId, afterSequence, dealerGameId);
     const player = this.player(row, userId);
-    if (!row.state) return this.read(gameId, userId, afterSequence);
+    if (!row.state) return this.read(gameId, userId, afterSequence, dealerGameId);
     return this.snapshot(row, player.id, afterSequence);
   }
   async act(gameId: string, userId: string, command: Command, afterSequence = 0) {
@@ -241,13 +248,17 @@ export class Run21Authority {
         replay: row.state ? exportReplay(row.state, player.id) : null};
     });
   }
-  async close(gameId: string, userId: string) {
+  async close(gameId: string, userId: string, dealerGameId?: string) {
     return this.serial(gameId, async () => {
-      const row = await this.latest(gameId); this.player(row, userId);
+      const row = await this.latest(gameId, undefined, dealerGameId); this.player(row, userId);
       if (!row.state?.settlement) throw new AuthorityError('run21:not_settled');
-      await this.store.close(row.dealer_game_id, userId); clearTimeout(this.timers.get(gameId));
-      this.committed.delete(gameId);
-      this.pending.get(gameId)?.resolve(); this.pending.delete(gameId); this.notify(gameId);
+      await this.store.close(row.dealer_game_id, userId);
+      if(this.committed.get(gameId)?.dealer_game_id===row.dealer_game_id){
+        clearTimeout(this.timers.get(gameId));this.timers.delete(gameId);
+        this.committed.delete(gameId);
+        this.pending.get(gameId)?.resolve();this.pending.delete(gameId);
+      }
+      this.notify(gameId);
     });
   }
   async drain(gameId: string) {

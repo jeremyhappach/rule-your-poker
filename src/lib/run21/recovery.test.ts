@@ -10,7 +10,7 @@ afterEach(() => vi.restoreAllMocks());
 
 function fixture(started: boolean, firstPlacementSeconds?: number, realMoney = false) {
   const config = firstPlacementSeconds === undefined ? DEFAULT_CONFIG : {...DEFAULT_CONFIG, firstPlacementSeconds};
-  let state = prepareRound(createMatch(IDENTITY, PLAYERS, 5, config, 1000), uuid(20), null, fixtureDeck([], 17), 1000);
+  let state = prepareRound(createMatch(IDENTITY, PLAYERS, 5, config, 1000, 1), uuid(20), null, fixtureDeck([], 17), 1000);
   const intents: Intent[] = [{type: 'ready'}];
   if (started) intents.push({type: 'place', column: 0});
   for (const intent of intents) {

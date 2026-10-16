@@ -12,6 +12,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `RUN21_PRODUCTION_QUALIFICATION.md` | Run21 financial authority, recovery, inactivity policy, release evidence and owner smoke |
+| `RUN21_FAIRNESS_CORRECTION.md` | Run21 shared-deck containment, independent player decks, historical compatibility and qualification |
 | `PERFORMANCE_COST_REDUCTION_PLAN.md` | September 8 cost-reduction work, benchmark gates, idle recovery optimization, and lower-tier eligibility |
 | `STABLE_CHECKPOINTS.md` | Before touching previously stable behavior |
 | `BACKLOG.md` | Planning post-release work or choosing the next task |

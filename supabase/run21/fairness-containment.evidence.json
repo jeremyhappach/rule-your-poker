@@ -1,0 +1,317 @@
+{
+  "containment": {
+    "qualified": false,
+    "checked_at": "2026-10-16T01:55:08.124209+00:00",
+    "worker_active": true,
+    "worker_failure": null,
+    "worker_last_completed_at": "2026-10-16T01:55:05.050358+00:00",
+    "unfinished_real_money_paused": true
+  },
+  "scope": {
+    "jobs": [
+      {
+        "name": "run21-recovery",
+        "active": true,
+        "schedule": "5 seconds"
+      }
+    ],
+    "scope": [
+      {
+        "matches": 10,
+        "finished": false,
+        "real_money": false,
+        "last_created": "2026-09-29T21:52:52.835781+00:00",
+        "first_created": "2026-09-22T03:50:20.053992+00:00",
+        "uninitialized": 0,
+        "financial_version": 1,
+        "shared_deck_matches": 10
+      },
+      {
+        "matches": 11,
+        "finished": true,
+        "real_money": false,
+        "last_created": "2026-10-14T23:39:45.378747+00:00",
+        "first_created": "2026-09-22T17:25:58.9113+00:00",
+        "uninitialized": 0,
+        "financial_version": 1,
+        "shared_deck_matches": 11
+      },
+      {
+        "matches": 1,
+        "finished": false,
+        "real_money": false,
+        "last_created": "2026-10-15T22:00:40.416278+00:00",
+        "first_created": "2026-10-15T22:00:40.416278+00:00",
+        "uninitialized": 0,
+        "financial_version": 2,
+        "shared_deck_matches": 1
+      },
+      {
+        "matches": 1,
+        "finished": true,
+        "real_money": false,
+        "last_created": "2026-10-16T00:25:57.031525+00:00",
+        "first_created": "2026-10-16T00:25:57.031525+00:00",
+        "uninitialized": 0,
+        "financial_version": 2,
+        "shared_deck_matches": 1
+      },
+      {
+        "matches": 1,
+        "finished": false,
+        "real_money": true,
+        "last_created": "2026-10-15T23:24:49.214056+00:00",
+        "first_created": "2026-10-15T23:24:49.214056+00:00",
+        "uninitialized": 0,
+        "financial_version": 2,
+        "shared_deck_matches": 1
+      },
+      {
+        "matches": 2,
+        "finished": true,
+        "real_money": true,
+        "last_created": "2026-10-16T01:02:39.618162+00:00",
+        "first_created": "2026-10-15T21:37:31.568395+00:00",
+        "uninitialized": 0,
+        "financial_version": 2,
+        "shared_deck_matches": 2
+      }
+    ],
+    "health": {
+      "failure": null,
+      "last_completed_at": "2026-10-16T01:54:04.81659+00:00"
+    },
+    "unfinished": [
+      {
+        "boards": [
+          {
+            "deadline": 1792101892036,
+            "player_id": "0b96bf64-3cce-4638-a86b-08d56b45f48e",
+            "card_index": 17,
+            "result_reason": "collect",
+            "presented_count": 18,
+            "first_placement_deadline": null
+          },
+          {
+            "deadline": 1792101913695,
+            "player_id": "f9571628-b898-4ac3-8232-4f25de5b2ea4",
+            "card_index": 3,
+            "result_reason": null,
+            "presented_count": 4,
+            "first_placement_deadline": null
+          }
+        ],
+        "paused": true,
+        "rounds": 1,
+        "status": "in_progress",
+        "finished": false,
+        "revealed": "false",
+        "revision": 24,
+        "round_id": "c1fbbb75-7bbb-447b-84ad-a838b2ec70fb",
+        "winner_id": null,
+        "created_at": "2026-10-15T22:00:40.416278+00:00",
+        "real_money": false,
+        "session_id": "f8da786f-7566-4021-9b20-ec8523b4fb2b",
+        "has_receipt": false,
+        "pending_end": false,
+        "shared_deck": true,
+        "dealer_game_id": "cf94fd77-6adf-4ea6-9eb1-37e07b0eafec",
+        "active_player_id": "f9571628-b898-4ac3-8232-4f25de5b2ea4",
+        "current_identity": true,
+        "financial_version": 2
+      },
+      {
+        "boards": [
+          {
+            "deadline": 1792107085332,
+            "player_id": "c1b52cff-dafe-4933-8801-c03d1d954abf",
+            "card_index": 6,
+            "result_reason": "bust",
+            "presented_count": 6,
+            "first_placement_deadline": null
+          },
+          {
+            "deadline": null,
+            "player_id": "cfc372e3-5649-4332-8e47-74ea543c9b73",
+            "card_index": 0,
+            "result_reason": null,
+            "presented_count": 1,
+            "first_placement_deadline": 1792106904164
+          }
+        ],
+        "paused": true,
+        "rounds": 3,
+        "status": "in_progress",
+        "finished": false,
+        "revealed": "false",
+        "revision": 68,
+        "round_id": "0d74e6a5-4217-478c-b296-f7ac5890be81",
+        "winner_id": null,
+        "created_at": "2026-10-15T23:24:49.214056+00:00",
+        "real_money": true,
+        "session_id": "56524fff-ba04-41f5-be01-969e1d9abb0b",
+        "has_receipt": false,
+        "pending_end": false,
+        "shared_deck": true,
+        "dealer_game_id": "26e46f50-3c1f-4c98-99d4-bfbcf7dcf756",
+        "active_player_id": "cfc372e3-5649-4332-8e47-74ea543c9b73",
+        "current_identity": true,
+        "financial_version": 2
+      }
+    ],
+    "gate_callers": [
+      {
+        "name": "run21_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+        "hash": "a3bf098872ef32862cc08e020b454fa8"
+      }
+    ]
+  },
+  "fingerprints": [
+    {
+      "name": "run21_dispatch_recovery",
+      "signature": "private.run21_dispatch_recovery()",
+      "hash": "d6ff64051f4356f5b2045981b66bc423"
+    },
+    {
+      "name": "run21_assert_recovery_health",
+      "signature": "private.run21_assert_recovery_health(uuid)",
+      "hash": "93cb5150a0a713e521ff09da08c1c28a"
+    },
+    {
+      "name": "run21_pause",
+      "signature": "private.run21_pause()",
+      "hash": "168f8075f2185eb76cc2fd334e8d254c"
+    },
+    {
+      "name": "run21_sitting_out",
+      "signature": "private.run21_sitting_out()",
+      "hash": "e28c5fafdeb7a694572ae280ad4731fd"
+    },
+    {
+      "name": "run21_return_player",
+      "signature": "private.run21_return_player()",
+      "hash": "1ef673482f0bd78c1e3ccaa063b1f5ea"
+    },
+    {
+      "name": "run21_automatic_play",
+      "signature": "private.run21_automatic_play()",
+      "hash": "828419794baaafbf9c416f4122b7c571"
+    },
+    {
+      "name": "run21_require_production",
+      "signature": "private.run21_require_production()",
+      "hash": "523c87c0728a58905358d66c27c9c822"
+    },
+    {
+      "name": "run21_guard_browser",
+      "signature": "private.run21_guard_browser()",
+      "hash": "5753b8b82c1b1bd69ee887ed6333c704"
+    },
+    {
+      "name": "run21_actor_allowed",
+      "signature": "private.run21_actor_allowed(uuid)",
+      "hash": "a90b052677ffc72fbb2c8efcf8dcec86"
+    },
+    {
+      "name": "run21_require_local",
+      "signature": "private.run21_require_local()",
+      "hash": "4b06e326bb4a2217cd066067241eea88"
+    },
+    {
+      "name": "run21_release_write_guard",
+      "signature": "private.run21_release_write_guard()",
+      "hash": "5d0891e0f7066ba72737e9c2710b0b1d"
+    },
+    {
+      "name": "run21_publish_revision",
+      "signature": "private.run21_publish_revision()",
+      "hash": "4409820d709e6841861b951f7baa9445"
+    },
+    {
+      "name": "run21_append_events",
+      "signature": "private.run21_append_events()",
+      "hash": "e1bd92b18a64b84dcbbcd0634ea40a83"
+    },
+    {
+      "name": "run21_capture_harness",
+      "signature": "private.run21_capture_harness()",
+      "hash": "f532ce87a9ceac07b68064f699e11d9f"
+    },
+    {
+      "name": "run21_recovery_load",
+      "signature": "run21_recovery_load(uuid,uuid)",
+      "hash": "f9781f1d3c36f30ce459594a62329566"
+    },
+    {
+      "name": "run21_recovery_complete",
+      "signature": "run21_recovery_complete(uuid,text)",
+      "hash": "1cdc9f8f659d9996f787689c5c76ef5c"
+    },
+    {
+      "name": "run21_recovery_claim",
+      "signature": "run21_recovery_claim(uuid)",
+      "hash": "ed5180600a1b54baf7eaa29b21a800fa"
+    },
+    {
+      "name": "run21_configure",
+      "signature": "run21_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "hash": "a3bf098872ef32862cc08e020b454fa8"
+    },
+    {
+      "name": "run21_capabilities",
+      "signature": "run21_capabilities(uuid)",
+      "hash": "8b69b9d1f1adf8cdcf5f86f55795102f"
+    },
+    {
+      "name": "run21_configure_local",
+      "signature": "run21_configure_local(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "hash": "c25f8cc9b25d95a2209792f52ab8eb2a"
+    },
+    {
+      "name": "run21_server_load",
+      "signature": "run21_server_load(uuid)",
+      "hash": "40f15f021a656bf836fcf6e1215b32cf"
+    },
+    {
+      "name": "run21_server_commit",
+      "signature": "run21_server_commit(uuid,bigint,jsonb,bigint)",
+      "hash": "ba04872109c092c278f2d620acd361b8"
+    },
+    {
+      "name": "run21_server_close",
+      "signature": "run21_server_close(uuid,uuid)",
+      "hash": "e57f2fcd24eee243f38c9696c7ac1e54"
+    },
+    {
+      "name": "run21_server_authorize",
+      "signature": "run21_server_authorize(uuid)",
+      "hash": "47398a477f1df78a76b9683975f20054"
+    },
+    {
+      "name": "run21_app_test_capabilities",
+      "signature": "run21_app_test_capabilities(uuid)",
+      "hash": "f106c5661a6be1cdf075a29279b017a3"
+    },
+    {
+      "name": "run21_session_visible",
+      "signature": "run21_session_visible(uuid)",
+      "hash": "0b35bd17231f4f23752cb12951635113"
+    },
+    {
+      "name": "run21_server_load_current",
+      "signature": "run21_server_load_current(uuid,bigint)",
+      "hash": "c97824d329d7b8a48fdd7862c6b1ebbb"
+    },
+    {
+      "name": "run21_server_admit",
+      "signature": "run21_server_admit(uuid,uuid)",
+      "hash": "9dd9808da3171f9a7d573472c0016cfd"
+    },
+    {
+      "name": "run21_server_commit_admitted",
+      "signature": "run21_server_commit_admitted(uuid,uuid,bigint,jsonb,bigint)",
+      "hash": "52163d4db99f2b51e3e9882940cd8513"
+    }
+  ],
+  "ownerDisposition": "Leave unfinished real-money match paused for owner review; no match or financial mutations authorized."
+}

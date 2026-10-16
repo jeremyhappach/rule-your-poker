@@ -1,16 +1,17 @@
 // Qualification only: fresh loopback clone, deployed definitions, rollback fixtures.
 import pg from '../../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {createServer} from 'vite';
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
 const options={host:'127.0.0.1',port:55439,user:'tri_test',database:'postgres'};
-const root=new pg.Client(options);await root.connect();
+const root=new pg.Client({...options,database:'template1'});await root.connect();
 const database='run21_release_proof_'+Date.now();
 await root.query('CREATE DATABASE '+database+' TEMPLATE postgres');await root.end();
 const c=new pg.Client({...options,database});await c.connect();
-const vite=await createServer({configFile:false,resolve:{alias:{'@':resolve('src')}},esbuild:{jsx:'automatic'},server:{middlewareMode:true},appType:'custom',optimizeDeps:process.argv.includes('--browser')?{entries:['supabase/tests/run21/browser-proof.tsx'],include:['react','react-dom/client','react/jsx-runtime']}:{noDiscovery:true,entries:[]}});
+const vite=await createServer({configFile:false,resolve:{alias:{'@':resolve('src')}},esbuild:{jsx:'automatic'},server:{middlewareMode:true,watch:null,hmr:false},appType:'custom',optimizeDeps:process.argv.includes('--browser')?{entries:['supabase/tests/run21/browser-proof.tsx'],include:['react','react-dom/client','react/jsx-runtime']}:{noDiscovery:true,entries:[]}});
 const source=JSON.parse(readFileSync('qualification.local/run21-production/current-capture.json','utf8'));
 const financial=JSON.parse(readFileSync('qualification.local/run21-production/finance-capture.json','utf8'));
 const result={database,productionWrites:0,tests:[]};
@@ -19,6 +20,9 @@ const terminal=process.argv.includes('--terminal');
 const realMoney=process.argv.includes('--real-money');
 const disconnectFinal=process.argv.includes('--disconnect-final');
 const legacy=process.argv.includes('--legacy');
+const independent=process.argv.includes('--independent-decks');
+const continuation=process.argv.includes('--continuation');
+const stake=independent?1:5;
 const pass=(name,data)=>{result.tests.push({name,...data});console.log('PASS',name,data??'');};
 try {
  await c.query('BEGIN; SET LOCAL check_function_bodies=off');
@@ -52,7 +56,20 @@ try {
   // keeps the exact migration transactional in the Windows metadata clone.
   await c.query("CREATE SCHEMA IF NOT EXISTS cron; CREATE TABLE cron.job(jobid bigserial,jobname text,schedule text,active boolean); CREATE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE SQL AS $$ INSERT INTO cron.job(jobname,schedule,active) VALUES($1,$2,true) RETURNING jobid $$");
   await c.query(readFileSync('supabase/migrations/20261015133432_run21_production_authority.sql','utf8'));
- }else for(const name of ['financial-authority','recovery','pause','admission'])await c.query(readFileSync('supabase/run21/'+name+'.candidate.sql','utf8'));
+ }else for(const name of ['financial-authority','recovery','pause','admission'])await c.query(readFileSync('supabase/run21/'+name+'.candidate.sql','utf8').replace(/\r\n/g,'\n'));
+ if(independent){
+  const packaged=readdirSync('supabase/migrations').filter(name=>name.endsWith('_run21_independent_decks.sql'));
+  assert.equal(packaged.length,1);
+  await c.query(readFileSync('supabase/migrations/'+packaged[0],'utf8').replace(/\r\n/g,'\n'));
+ }
+ if(continuation){
+  const packaged=readdirSync('supabase/migrations').filter(name=>name.endsWith('_run21_authoritative_continuation.sql'));
+  assert.equal(packaged.length,1);
+  await c.query(readFileSync('supabase/migrations/'+packaged[0],'utf8').replace(/\r\n/g,'\n'));
+  if(process.argv.includes('--installed-continuation'))for(const f of JSON.parse(readFileSync('qualification.local/run21-production/installed-continuation.json','utf8')).functions)await c.query(f.definition);
+  if(legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN lifecycle_version SET DEFAULT 1');
+ }
+ if(independent&&legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN deck_version SET DEFAULT 1');
  // Only the isolated proof opts in. Scheduler catalog/heartbeat are fixture inputs;
  // this exercises admission policy, not installation of pg_cron on Windows.
  await c.query("UPDATE private.run21_production_release SET qualified=true");
@@ -71,8 +88,11 @@ try {
  assert.equal(await scalar('SELECT private.run21_actor_allowed($1) v',[users[0]]),true);
  pass('Active non-admin account is already authorized without Run21 allowlist');
  const setupSql="SELECT public.run21_configure_local($1,$2,1,'run21',$3,$4) v";
- const setupArgs=[game,players[0],{ante_amount:5},deadline];
+ const setupArgs=[game,players[0],{ante_amount:stake},deadline];
  const rejectsSetup=async(name,mutation,args,pattern,request=setupArgs)=>{
+  // Each negative case starts from a healthy scheduler. The liveness-negative
+  // cases below then deliberately replace this fixture baseline inside savepoint.
+  await c.query("UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed'; UPDATE private.run21_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL");
   await c.query('SAVEPOINT rejected_setup');
   if(mutation)await c.query(mutation,args);
   await c.query('SET LOCAL ROLE authenticated');
@@ -154,27 +174,54 @@ try {
    assert.equal(await scalar('SELECT count(*)::int v FROM private.run21_settlements WHERE dealer_game_id=$1',[dg]),0);
    assert.equal(await scalar('SELECT sum(abs(chips))::int v FROM public.players WHERE game_id=$1',[game]),0);
    pass('Failure after transfer and result insertion rolls back every financial artifact');
+   if(continuation){
+    // Fault injection inside a rollback scope: persist real canonical settlement
+    // while suppressing only automatic continuation, then start a fresh worker.
+    await c.query('SAVEPOINT missed_continuation');
+    await c.query('ALTER TABLE private.run21_matches DISABLE TRIGGER zz_run21_continue');
+    await scalar(sql,args);
+    await c.query('ALTER TABLE private.run21_matches ENABLE TRIGGER zz_run21_continue');
+    assert.equal(await scalar('SELECT finished v FROM private.run21_matches WHERE dealer_game_id=$1',[dg]),false);
+    assert.deepEqual(await recoverFresh(),{processed:1,failures:[]});
+    assert.equal(await scalar('SELECT finished v FROM private.run21_matches WHERE dealer_game_id=$1',[dg]),true);
+    assert.deepEqual(await recoverFresh(),{processed:0,failures:[]});
+    assert.equal(await scalar('SELECT count(*)::int v FROM public.gameplay_transfer_batches WHERE game_id=$1',[game]),1);
+    await c.query('ROLLBACK TO SAVEPOINT missed_continuation');
+    pass('A restarted worker completes a settled unfinished match without any browser; repeated wake preserves one transfer');
+   }
    // Only this disposable local database commits fixtures, so distinct connections can race.
    await c.query('COMMIT');
    const peers=[new pg.Client({...options,database}),new pg.Client({...options,database})];
    try{
     for(const peer of peers){await peer.connect();await peer.query('SET ROLE service_role');}
-    const responses=await Promise.all(peers.map(peer=>peer.query(sql,args).then(r=>r.rows[0].v)));
+    const responses=await Promise.all(peers.map(peer=>peer.query(sql,args).then(r=>r.rows[0].v).catch(error=>{
+     if(continuation&&error.message==='run21:inactive_identity')return {outcome:'conflict'};throw error;
+    })));
     assert.deepEqual(responses.map(r=>r.outcome).sort(),['committed','conflict']);
     v=responses.find(r=>r.outcome==='committed');pass('Two service workers race: exactly one settlement commits');
    }finally{for(const peer of peers)await peer.end();}
    await c.query('BEGIN');
-   assert.equal((await scalar(sql,args)).outcome,'conflict');pass('Replayed terminal revision cannot transfer twice');
+   if(continuation){
+    await c.query('SAVEPOINT retired_replay');
+    await assert.rejects(()=>scalar(sql,args),/run21:inactive_identity/);
+    await c.query('ROLLBACK TO SAVEPOINT retired_replay');
+   }else assert.equal((await scalar(sql,args)).outcome,'conflict');
+   pass('Replayed terminal revision cannot transfer twice');
   }else v=await scalar(sql,args);
   assert.equal(v.outcome,'committed');return {...v.record,dealer_user_id:users[0]};
  };
  const store={load,commit,confirm:(old,user)=>commit(old,null,old.bot_due_at,user),close:async(d,user)=>scalar('SELECT public.run21_server_close($1,$2) v',[d,user])};
  const {recoverRun21}=await vite.ssrLoadModule('/server/run21/recovery.ts');
- const recoverFresh=async()=>{
+ const recoverFresh=async(separateProcess=false)=>{
   const token=randomUUID();
   await c.query("UPDATE private.run21_recovery_state SET token=$1,expires_at=clock_timestamp()+interval '25 seconds',claimed=false",[token]);
+  if(separateProcess){
+   await c.query('COMMIT');
+   const child=spawnSync(process.execPath,['supabase/tests/run21/recovery-process.mjs',database,token],{encoding:'utf8',timeout:30000});
+   assert.equal(child.status,0,child.stderr);await c.query('BEGIN');return JSON.parse(child.stdout);
+  }
   const signatures={run21_recovery_claim:['p_token'],run21_recovery_load:['p_token','p_game_id'],
-   run21_server_commit:['p_dealer_game_id','p_expected_revision','p_state','p_bot_due_at'],run21_recovery_complete:['p_token','p_failure']};
+   run21_recovery_finish:['p_token','p_dealer_game_id'],run21_server_commit:['p_dealer_game_id','p_expected_revision','p_state','p_bot_due_at'],run21_recovery_complete:['p_token','p_failure']};
   await c.query('SET LOCAL ROLE service_role');
   try{return await recoverRun21(async(name,args)=>{
    const keys=signatures[name];assert(keys,'unexpected recovery RPC');
@@ -303,10 +350,28 @@ try {
   pass('Fresh worker expires a started gameplay clock from persisted state without clients');
  }finally{overdue.dispose();await c.query('ROLLBACK TO SAVEPOINT gameplay_deadline');}
  if(legacy)await c.query('UPDATE private.run21_matches SET financial_version=1 WHERE dealer_game_id=$1',[dg]);
- const worker=new Run21Authority(store,()=>now,(identity,round)=>roundDeck(identity,round,'always_104'));
+ const worker=new Run21Authority(store,()=>now,(identity,round,player)=>roundDeck(identity,round,'always_104',undefined,player,Math.max(0,players.indexOf(player))));
  let browserProof;
  try {
   let view=await worker.read(game,users[0]);
+  if(independent){
+   const original=(await load())[0];
+   assert.equal(original.deck_version,legacy?1:2);
+   assert.equal(original.state.dealingVersion,legacy?undefined:2);
+   for(const change of [
+    state=>{state.rounds[0].secret=structuredClone(state.rounds[0].secret);if(legacy)state.rounds[0].secret.salt='a'.repeat(64);else state.rounds[0].secret.decks[players[0]].salt='a'.repeat(64);},
+    state=>{state.rounds[0].id=randomUUID();},
+    state=>{state.rounds=[];},
+    state=>{state.dealingVersion=legacy?2:1;},
+   ]){
+    await c.query('SAVEPOINT deck_immutability');
+    const bad=structuredClone(original.state);change(bad);
+    await assert.rejects(()=>c.query('UPDATE private.run21_matches SET state=$2 WHERE dealer_game_id=$1',[dg,bad]),/deck_|rounds_cannot_regress/);
+    await c.query('ROLLBACK TO SAVEPOINT deck_immutability');
+   }
+   assert.deepEqual((await load())[0].state,original.state);
+   pass('Database preserves historical and player deck evidence and rejects replacements, reset and version changes');
+  }
   if(process.argv.includes('--browser'))browserProof=await (await import('./browser-proof.mjs')).openBrowserProof(vite,worker,game,users);
   // Only deterministic server shuffle is injected; every score comes from legal player commands.
   for(let round=1;round<=(suddenDeath?4:3);round++)for(let turn=0;turn<2;turn++){
@@ -323,9 +388,9 @@ try {
     assert.equal(persisted.settlement,null);
     const delay=Math.max(0,persisted.rounds.at(-1).scorePresentation.endsAt-Date.now()+20);
     assert(delay<60000);await new Promise(resolve=>setTimeout(resolve,delay));
-    assert.deepEqual(await recoverFresh(),{processed:1,failures:[]});
+    assert.deepEqual(await recoverFresh(true),{processed:1,failures:[]});
     assert.equal(await scalar('SELECT count(*)::int v FROM public.gameplay_transfer_batches WHERE game_id=$1',[game]),1);
-    assert.deepEqual(await recoverFresh(),{processed:0,failures:[]});
+    assert.deepEqual(await recoverFresh(true),{processed:0,failures:[]});
     pass('With every client disposed, a fresh durable worker settles and a repeated wake transfers nothing');
    }
    view=await worker.read(game,user);
@@ -342,16 +407,36 @@ try {
    resultCount:await scalar('SELECT count(*)::int v FROM public.game_results WHERE game_id=$1',[game]),
    transferCount:await scalar('SELECT count(*)::int v FROM public.gameplay_transfer_batches WHERE game_id=$1',[game]),
    privateBalances:view.balances,privateReceipt:view.view.settlement};
-  assert.deepEqual(Object.values(before.canonicalBalances).sort((a,b)=>a-b),legacy?[0,0]:[-5,5]);
+  assert.deepEqual(Object.values(before.canonicalBalances).sort((a,b)=>a-b),legacy?[0,0]:[-stake,stake]);
   assert.equal(before.resultCount,legacy?0:1);assert.equal(before.transferCount,legacy?0:1);
-  assert.deepEqual(Object.values(before.privateBalances).sort((a,b)=>a-b),[-5,5]);
-  pass(legacy?'Historical version-one completion keeps private balances without retroactive canonical transfers':'Completed match settles canonical balances +5/-5 exactly once',before);
+  assert.deepEqual(Object.values(before.privateBalances).sort((a,b)=>a-b),[-stake,stake]);
+  pass(legacy?'Historical version-one completion keeps private balances without retroactive canonical transfers':`Completed match settles canonical balances +${stake}/-${stake} exactly once`,before);
   const snapshots=await scalar('SELECT jsonb_object_agg(player_id,chips) v FROM public.session_player_snapshots WHERE game_id=$1 AND dealer_game_id=$2',[game,dg]);
   assert.deepEqual(snapshots,legacy?null:before.canonicalBalances);pass(legacy?'Historical completion creates no new final snapshots':'Final snapshots match canonical balances');
   const batch=legacy?null:await scalar('SELECT to_jsonb(b) v FROM public.gameplay_transfer_batches b WHERE game_id=$1',[game]);
   if(!legacy){assert.equal(batch.id,view.view.settlement.transferBatchId);assert.equal(Object.keys(batch.unmatched_deltas).length,0);pass('Immutable receipt references canonical balanced transfer batch');}
   await worker.read(game,users[0]);await worker.read(game,users[1]);pass('Reconnect replays terminal state without another transfer');
-  await worker.close(game,users[0]);await worker.close(game,users[0]);
+  if(continuation&&!legacy){
+   assert.equal(await scalar('SELECT finished v FROM private.run21_matches WHERE dealer_game_id=$1',[dg]),true);
+   assert.equal(await scalar('SELECT status v FROM public.games WHERE id=$1',[game]),terminal?'session_ended':'game_selection');
+   pass('Authoritative continuation completed before any browser close');
+   const settledGame=await scalar('SELECT to_jsonb(g) v FROM public.games g WHERE id=$1',[game]);
+   const token=randomUUID();
+   await c.query("UPDATE private.run21_recovery_state SET token=$1,expires_at=clock_timestamp()+interval '25 seconds',claimed=true,games=ARRAY[$2::uuid]",[token,game]);
+   await c.query('COMMIT');
+   const closers=[new pg.Client({...options,database}),new pg.Client({...options,database}),new pg.Client({...options,database})];
+   try{
+    await Promise.all(closers.map(async(peer,index)=>{
+     await peer.connect();await peer.query('SET ROLE service_role');
+     await peer.query(index===2?'SELECT public.run21_recovery_finish($1,$2)':'SELECT public.run21_server_close($1,$2)',index===2?[token,dg]:[dg,users[index]]);
+    }));
+   }finally{for(const peer of closers)await peer.end();}
+   await c.query('BEGIN');
+   assert.deepEqual(await scalar('SELECT to_jsonb(g) v FROM public.games g WHERE id=$1',[game]),settledGame);
+   assert.equal(await scalar('SELECT count(*)::int v FROM public.dealer_games WHERE session_id=$1',[game]),1);
+   pass('Concurrent browser closes and recovery preserve the exact continuation row and one dealer game');
+  }
+  await Promise.all([worker.close(game,users[0]),worker.close(game,users[1])]);await worker.close(game,users[0]);
   assert.equal(await scalar('SELECT count(*)::int v FROM public.gameplay_transfer_batches WHERE game_id=$1',[game]),legacy?0:1);
   assert.equal(await scalar('SELECT count(*)::int v FROM public.game_results WHERE game_id=$1',[game]),legacy?0:1);
   pass('Duplicate close and reconnect do not duplicate canonical financial settlement');
@@ -394,17 +479,30 @@ try {
    try{
     const raced=await Promise.all(racers.map(async(peer,index)=>{
      await peer.connect();await peer.query('SET ROLE service_role');
-     return (await peer.query('SELECT public.run21_server_commit($1,$2,$3,NULL) v',[persisted.dealer_game_id,persisted.revision,index===0?placement.state:expiry])).rows[0].v;
+     try{return (await peer.query('SELECT public.run21_server_commit($1,$2,$3,NULL) v',[persisted.dealer_game_id,persisted.revision,index===0?placement.state:expiry])).rows[0].v;}
+     catch(error){
+      // Real-money expiry atomically pauses the session. If it wins, the
+      // losing placement reaches the lifecycle guard before the revision guard.
+      if(realMoney&&index===0&&error.message==='run21:inactive_identity')return {outcome:'paused_rejection'};
+      throw error;
+     }
     }));
-    assert.deepEqual(raced.map(r=>r.outcome).sort(),['committed','conflict']);
+    assert.equal(raced.filter(r=>r.outcome==='committed').length,1);
+    assert(raced.some(r=>r.outcome==='conflict'||r.outcome==='paused_rejection'));
+    const expiryWon=raced[1].outcome==='committed';
+    // The admitted timeout also invokes the existing pause/automatic-play
+    // trigger, which persists a second revision in the same transaction.
+    assert.equal(await scalar('SELECT revision::int v FROM private.run21_matches WHERE dealer_game_id=$1',[persisted.dealer_game_id]),Number(persisted.revision)+(expiryWon?2:1));
+    assert.equal(await scalar("SELECT count(*)::int v FROM private.run21_events WHERE dealer_game_id=$1 AND event->>'type'='first_placement_timeout'",[persisted.dealer_game_id]),expiryWon?1:0);
+    if(raced.some(r=>r.outcome==='paused_rejection'))assert.equal(await scalar('SELECT is_paused v FROM public.games WHERE id=$1',[game]),true);
     assert.deepEqual(await scalar('SELECT jsonb_object_agg(id,chips) v FROM public.players WHERE game_id=$1',[game]),before.canonicalBalances);
-    pass('Timeout/action race commits one revision without an additional transfer');
+    pass('Timeout/action race admits one command; its canonical pause/automatic-play trigger adds only the expected revision and no transfer');
    }finally{for(const peer of racers)await peer.end();}
    await c.query('BEGIN');
   }
  }finally{await browserProof?.close();worker.dispose();}
  await c.query('ROLLBACK');
- result.fixtureTransactionRolledBack=true;result.isolatedDatabaseWillBeDropped=true;writeFileSync('qualification.local/run21-production/'+(legacy?'legacy':disconnectFinal?'disconnected':terminal?'terminal':suddenDeath?'sudden-death':'financial')+'-result.json',JSON.stringify(result,null,2));
+ result.fixtureTransactionRolledBack=true;result.isolatedDatabaseWillBeDropped=true;writeFileSync('qualification.local/run21-production/'+(continuation?'continuation-'+(realMoney?'real-':'fake-'):'')+(legacy?'legacy':disconnectFinal?'disconnected':terminal?'terminal':suddenDeath?'sudden-death':'financial')+'-result.json',JSON.stringify(result,null,2));
 }catch(e){await c.query('ROLLBACK');throw e;}finally{await vite.close();await c.end();
  const cleanup=new pg.Client(options);await cleanup.connect();
  if(!/^run21_release_proof_[0-9]+$/.test(database))throw Error('unsafe cleanup');
