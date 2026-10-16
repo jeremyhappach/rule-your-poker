@@ -77,6 +77,14 @@ function button() {
   expect(control).toBeTruthy(); return control!;
 }
 describe('the actual Run Back button across all seven games', () => {
+  it('explains server admission denial from a previously loaded Run Back', async () => {
+    triAccess.allowed=true;
+    vi.mocked(configureDealerGame).mockRejectedValueOnce({message:'tri_towers:admission_closed'});
+    await mount('tri-towers', {ante_amount:5});
+    await act(async () => button().click());
+    expect(toast.error).toHaveBeenCalledWith('New TriTowers games are temporarily unavailable. Choose another game.');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
   it('never exposes TriTowers or its Run Back before activation', async () => {
     await mount('tri-towers', { ante_amount: 5 });
     expect(document.querySelector('[data-dealer-game-option="tri-towers"]')).toBeNull();

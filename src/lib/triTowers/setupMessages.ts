@@ -1,6 +1,7 @@
 // Only known setup exceptions become user-facing guidance. Unknown failures
 // retain the shared fallback instead of exposing raw server messages.
 const setupMessages = new Map<string, string>([
+  ['tri_towers:admission_closed', 'New TriTowers games are temporarily unavailable. Choose another game.'],
   ['tri_towers:human_required', 'TriTowers needs at least one eligible human player.'],
   ['tri_towers:player_count', 'Have 2–7 players, including at least one human, take active seats before starting TriTowers.'],
   ['tri_towers:real_money_closed', 'TriTowers currently supports fake-money sessions only. Create a session with Real Money turned off.'],

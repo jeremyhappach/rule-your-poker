@@ -1,10 +1,18 @@
 # Waiting-room Start / Ready continuity — 2026-10-16 — qualified correction
 
-## TriTowers autonomous bots — 2026-10-16
+## TriTowers admission containment — 2026-10-16
+
+Jeremy's production smoke failed; new TriTowers games are closed pending v2 qualification. Migration `20261016202211` adds the private, default-false `admission_enabled` flag. Discovery and new configuration/Run Back deny admission; already-committed setup retries still work. The existing release flag remains enabled. Match actions, history, recovery, settlement and close/continuation are unchanged. No scoring or v2 gameplay changes are included; the proposed 200-point run increment is not approved and awaits the separate historical audit.
+
+Containment compatibility gate: **PASS**, before migration and against captured installed definitions. Rollback proofs exercise actual canonical triggers for human-win, bot-win, mixed-tie, all-tie, duplicate settlement, stale actions, concurrent recovery, injected failure, continuation and Session Ended. Run Back is now denied while balances persist. The authenticated production setup RPC returns `tri_towers:admission_closed`; existing snapshot/history remain accessible. The complete Oct 16 - Pedro Strop evidence and all TriTowers history/financial hashes are unchanged. Only capabilities/configure changed among the 461 pre-existing public/private functions; Run21 and all pre-existing cron jobs are unchanged. A concurrent, separately owned Arcade migration added its own functions/job.
+
+Validation: 2,493 tests (2,252 application + 241 harness), typecheck and production build pass. Worker sample: 177 calls, zero failures, 8.89 ms mean / 23.21 ms maximum, zero backlog. Evidence: `dev/tri-towers/containment.evidence.json`; proof: `node dev/tri-towers/bots.proof.mjs --containment --installed`. Checkpoint: `tri-towers-admission-containment-2026-10-16`. Production publication must match that commit. Existing matches retain the known v1 gameplay/presentation limitations; this release only prevents new admission.
+
+## TriTowers autonomous bots — 2026-10-16 — superseded admission
 
 Approved release: fake-money TriTowers supports 2–7 eligible participants with at least one approved human. Existing PostgreSQL recovery owns paced bot Ready/actions, stages and handoff; the strategy sees only the redacted board. Migration `20261016194159` is applied and installed definitions match qualification. Historical TriTowers state, canonical settlement functions and Run21 are unchanged.
 
-Financial rollback proofs passed before migration and again against installed definitions: exact chips, balanced transfers, snapshots/results, human/bot wins, ties, duplicate/concurrent execution, injected failure, Run Back/continuation and Session Ended. One human plus six bots completed without browsers in 997.6 seconds. Full regression: 2,491 tests, typecheck and production build passed. Phone/desktop progressive play passed. Evidence: `dev/tri-towers/bots.evidence.json`; architecture and owner smoke: `docs/codex/TRITOWERS_BOTS.md`. Jeremy production gameplay smoke remains pending.
+Financial rollback proofs passed before migration and again against installed definitions: exact chips, balanced transfers, snapshots/results, human/bot wins, ties, duplicate/concurrent execution, injected failure, Run Back/continuation and Session Ended. One human plus six bots completed without browsers in 997.6 seconds. Full regression: 2,491 tests, typecheck and production build passed. Phone/desktop progressive play passed. Evidence: `dev/tri-towers/bots.evidence.json`; architecture and owner smoke: `docs/codex/TRITOWERS_BOTS.md`. Jeremy's subsequent production gameplay smoke failed; admission is contained above.
 
 
 Three-second recovery snapshots replaced player/game object references without

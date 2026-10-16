@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-/** Discovery only; the server independently checks every gameplay entry. */
+/** New-game discovery only; existing matches use their separate gameplay authority. */
 export function useTriTowersTestAccess(sessionId: string | null = null): boolean {
   const [access, setAccess] = useState<{ sessionId: string | null; allowed: boolean } | null>(null);
   useEffect(() => {

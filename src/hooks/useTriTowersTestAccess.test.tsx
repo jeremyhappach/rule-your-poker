@@ -24,6 +24,12 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
 describe('TriTowers capability lifetime', () => {
+  it('denies a valid account when new-game admission is closed', async () => {
+    auth.rpc.mockResolvedValue({ ...response, data: { ...response.data, enabled: false } });
+    const { result } = renderHook(() => useTriTowersTestAccess(session));
+    await waitFor(() => expect(auth.rpc).toHaveBeenCalledOnce());
+    expect(result.current).toBe(false);
+  });
   it('admits the matching account and session capability', async () => {
     const {result} = renderHook(() => useTriTowersTestAccess(session));
     await waitFor(() => expect(result.current).toBe(true));

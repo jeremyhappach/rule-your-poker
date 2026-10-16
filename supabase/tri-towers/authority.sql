@@ -1,7 +1,7 @@
 -- Additive authority source. Activation is in the versioned migration.
 SET LOCAL lock_timeout = '100ms';
 SET LOCAL statement_timeout = '10s';
-CREATE TABLE private.tri_towers_release (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), enabled boolean NOT NULL DEFAULT false);
+CREATE TABLE private.tri_towers_release (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), enabled boolean NOT NULL DEFAULT false, admission_enabled boolean NOT NULL DEFAULT false);
 INSERT INTO private.tri_towers_release DEFAULT VALUES;
 ALTER TABLE private.tri_towers_release ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.tri_towers_release FROM PUBLIC,anon,authenticated,service_role;
@@ -48,6 +48,7 @@ $$;
 CREATE FUNCTION public.tri_towers_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 DECLARE actor uuid:=auth.uid(); allowed boolean:=private.tri_towers_actor_allowed(actor);
 BEGIN
+ allowed:=allowed AND EXISTS(SELECT 1 FROM private.tri_towers_release WHERE singleton AND admission_enabled);
  IF p_session_id IS NOT NULL THEN
   allowed:=allowed AND EXISTS(SELECT 1 FROM public.games WHERE id=p_session_id AND real_money=false)
    AND EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=actor AND status<>'left')
@@ -371,6 +372,8 @@ BEGIN
   IF g.current_game_uuid IS DISTINCT FROM claim.dealer_game_id THEN RAISE EXCEPTION 'tri_towers:setup_retired';END IF;
   RETURN claim.result||'{"outcome":"already_configured","deduped":true}'::jsonb;
  END IF;
+ -- Admission controls creation only; existing setup retries and match authority remain live.
+ IF NOT EXISTS(SELECT 1 FROM private.tri_towers_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'tri_towers:admission_closed' USING ERRCODE='42501';END IF;
  IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'tri_towers:setup_identity';END IF;

@@ -1,5 +1,16 @@
 # Durable decision log
 
+## October 16, 2026 — TriTowers admission is separate from match authority
+
+The failed production smoke closes new TriTowers configuration, selection and
+Run Back through a private default-false admission flag. The existing release
+flag and approved-account checks remain the authority for existing matches;
+they must stay enabled so actions, recovery, settlement, history and close can
+finish. Completed setup receipts remain replayable. Admission closure does not
+change historical matches or financial records. Reopening requires separate v2
+qualification; corrected scoring awaits the historical audit, and a 200-point
+run increment is not approved.
+
 ## October 16, 2026 — Audio unlock belongs to the application
 
 The Run21 bell failure exposed game-mounted unlock listeners and attempted-event
