@@ -150,7 +150,7 @@ BEGIN
   END IF;
   RETURN coalesce((SELECT jsonb_agg(to_jsonb(m)||jsonb_build_object('dealer_user_id',d.dealer_user_id) ORDER BY m.created_at)
     FROM private.run21_matches m JOIN public.games g ON g.id=m.game_id JOIN public.dealer_games d ON d.id=m.dealer_game_id
-    WHERE m.game_id=p_game_id AND m.financial_version=2 
+    WHERE m.game_id=p_game_id AND m.financial_version=2
       AND ((g.current_game_uuid=m.dealer_game_id AND g.status IN ('in_progress','game_over','session_ended'))
         OR (m.lifecycle_version=2 AND m.finished AND g.current_game_uuid IS NULL)) AND NOT g.is_paused),'[]'::jsonb);
 END $function$;
