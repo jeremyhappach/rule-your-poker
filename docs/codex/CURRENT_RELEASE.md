@@ -1,3 +1,27 @@
+# Arcade completion, score audio and individual-score boards — 2026-10-16
+
+Approved focused correction: immediate atomic completion with immutable prior-best
+classification; a presentation-only 2.5-second final total and prominent NEW PERSONAL
+BEST for strictly improved existing records. First scores and ties do not celebrate.
+Shared Run21 score audio follows visible transfers, with cancellation and replay
+protection through the existing audio manager. All Arcade boards now show the top
+ten verified individual scores; duplicate players qualify and competition ties,
+rolling windows, frozen versions and own-entry rank are consistent.
+
+Architecture and standing policy: [Arcade Phase 1](ARCADE_PHASE_ONE.md). Candidate
+and production rollback proofs pass for classification, authorization, replay,
+injected atomic failure, ranking and historical preservation. The unchanged
+recovery worker continues through the same commit RPC; no worker redeploy is needed.
+Gameplay, scoring, clocks, progression, multiplayer settlement and financial
+isolation are unchanged. Migration 20261016231008_arcade_completion_scores is
+installed; its function hashes match the qualified candidate and the full installed
+rollback proof passes with zero synthetic rows left behind. Full application and
+harness regression, final TypeScript/build, 38 focused checks and phone/landscape/
+desktop browser flows pass. The final hold starts at its first displayed frame,
+ensuring the full 2.5 seconds even after a late paint. Evidence: dev/arcade/completion*.
+Checkpoint: arcade-completion-scores-2026-10-16. Jeremy's combined production smoke
+remains pending after publication.
+
 # Arcade presentation and artwork — 2026-10-16
 
 Approved compact switchboard and leaderboard, Solo round-only introductions,

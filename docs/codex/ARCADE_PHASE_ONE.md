@@ -42,7 +42,13 @@ A five-second database dispatch invokes arcade-recovery with a short-lived, sing
 
 ## Leaderboards
 
-Only immutable completed results qualify. The default rolling 30-day window uses server completion time. Each player contributes their best eligible score; ties share rank, with completion time and UUID giving deterministic display order. Top 10 plus the current player's rank outside that list. The permanent personal best is for the current competitive version, and previous-version bests remain visible separately. Incompatible rules never share a board. Lower subsequent scores do not overwrite a personal best.
+Only immutable completed results qualify. The default rolling 30-day window uses server completion time. All Arcade games rank individual verified results, including multiple entries from one player. Show at most ten entries, ordered by score descending, then completion time ascending and run UUID. Equal scores share competition rank (1, 1, 3); the same deterministic ordering resolves a tie crossing the ten-entry display cutoff. Outside the top ten, show the current user's highest-ranked qualifying entry, identified by run UUID. Completion feedback reports that run's rank separately from the user's best-entry rank. The permanent personal best is for the current competitive version, and previous-version bests remain visible separately. Incompatible rules never share a board. Lower subsequent scores do not overwrite a personal best.
+
+## Completion presentation and records
+
+The completion transaction freezes a record receipt against the prior compatible all-time maximum, explicitly excluding the current run. First scores establish the baseline; equal scores match but do not break a record. Only a strictly higher score with an existing prior best earns NEW PERSONAL BEST. Old immutable results retain null metadata and still qualify for ranking and future comparisons.
+
+Solo Run21 finalizes immediately at round three. After the existing medal/score transfer, live connected presentation shows TOTAL SCORE for 2.5 seconds, with a prominent record treatment when applicable. Refresh/reconnect catch-up skips this presentation; interruption retires it. It never gates persistence or recovery. Shared Run21 count-up audio follows the displayed score phase through the application audio manager, honors saved sound/unlock policy, and cancels on unmount, mute, backgrounding or interruption. Missed ticks are never replayed.
 
 ## Qualification
 

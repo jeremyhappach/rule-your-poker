@@ -1,0 +1,9 @@
+.arcade-completion{position:fixed;inset:0;container-type:inline-size;display:grid;place-items:center;background:radial-gradient(ellipse at center,#33250df5,#090b0ff5);color:#f7d682;pointer-events:none;padding:1.5rem;text-align:center}
+.arcade-completion-content{max-width:40rem;width:100%;text-shadow:0 3px 16px #000}
+.arcade-final-total{font-size:clamp(1.3rem,5cqi,2.2rem);font-weight:800;letter-spacing:.06em;margin:0}
+.arcade-final-total strong{display:block;font-size:clamp(3rem,12cqi,6rem);line-height:1.2;letter-spacing:0}
+.arcade-completion h2{font-size:clamp(1.4rem,5cqi,2.8rem);font-weight:900;line-height:1.15;margin:0 0 1.2rem}
+.arcade-record-star{display:block;font-size:5rem;line-height:1.1;color:#ffe9a3;filter:drop-shadow(0 0 24px #edb92c);animation:arcade-record-glow .7s ease-in-out infinite alternate}
+.arcade-completion-record{background:radial-gradient(ellipse at center,#68460ff7,#0c0b10f5)}
+@keyframes arcade-record-glow{to{transform:scale(1.12);filter:drop-shadow(0 0 40px #ffd15a)}}
+@media(prefers-reduced-motion:reduce){.arcade-record-star{animation:none}}

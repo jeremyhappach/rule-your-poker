@@ -68,7 +68,7 @@ export function applySolo(input:SoloState,intent:ArcadeIntent,at:number):SoloSta
 /** Explicit allowlist. Decks and future cards never enter browser snapshots. */
 export function soloProjection(row:RunRecord,name:string,now:number):ArcadeSnapshot {
  const s=row.state;if(!s)throw Error('arcade:not_initialized');
- const snapshot:ArcadeSnapshot={id:row.id,game:row.game,ruleset:row.ruleset,revision:row.revision,status:s.status,serverAt:now,score:s.score,dueAt:nextDue(s),events:[],
+ const snapshot:ArcadeSnapshot={completion:row.completion??null,id:row.id,game:row.game,ruleset:row.ruleset,revision:row.revision,status:s.status,serverAt:now,score:s.score,dueAt:nextDue(s),events:[],
  view:{presentationKey:s.runId,config:s.config,roundId:s.roundId,roundNumber:s.round,players:[{id:s.userId,name}],
  viewerId:s.userId,boards:{[s.userId]:structuredClone(s.board)},active_player_id:s.presentation||s.status!=='active'?null:s.userId,
  liveBoards:true,revealed:false,cumulative:{[s.userId]:s.score},

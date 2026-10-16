@@ -2,6 +2,7 @@ import {createServer} from 'vite';import react from '@vitejs/plugin-react-swc';i
 import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';import {resolve} from 'node:path';import {randomUUID} from 'node:crypto';import assert from 'node:assert/strict';
 import {artworkTransport} from './artwork.transport.mjs';
+const completion=process.argv.includes('--completion');
 const shared=process.argv.includes('--shared-rules'),scoring=shared||process.argv.includes('--scoring'),currentRules=shared?'run21/2':'run21/arcade-2',prefix='presentation-';
 const database='arcade_browser_'+Date.now(),opts={host:'127.0.0.1',port:55439,user:'tri_test'},root=new pg.Client({...opts,database:'template1'});await root.connect();await root.query('CREATE DATABASE '+database+' TEMPLATE postgres');
 const db=new pg.Client({...opts,database});await db.connect();const user=randomUUID();
@@ -9,6 +10,7 @@ await db.query("CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);CREAT
 await db.query(readFileSync('supabase/arcade/phase-one.sql','utf8'));await db.query('INSERT INTO auth.users(id) VALUES($1)',[user]);await db.query("INSERT INTO public.profiles(id,username,is_active) VALUES($1,'Arcade Browser',true)",[user]);
 if(scoring){await db.query(readFileSync('supabase/arcade/run21-scoring.sql','utf8'));await db.query(readFileSync('supabase/arcade/activate-run21-scoring.sql','utf8'));}
 if(shared){await db.query(readFileSync('supabase/run21/shared-rules-base.sql','utf8').replace(/\r\n/g,'\n'));await db.query(readFileSync('supabase/run21/shared-rules.candidate.sql','utf8'));await db.query(readFileSync('supabase/run21/activate-shared-rules.sql','utf8'));}
+if(completion)await db.query(readFileSync('supabase/arcade/completion.sql','utf8'));
 await db.query("UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp();CREATE FUNCTION private.arcade_local_notify() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_notify('arcade_local',NEW.run_id::text);RETURN NEW;END$$;CREATE TRIGGER arcade_local AFTER UPDATE ON public.arcade_revisions FOR EACH ROW EXECUTE FUNCTION private.arcade_local_notify()");
 const listener=new pg.Client({...opts,database});await listener.connect();await listener.query('LISTEN arcade_local');
 const streams=new Set();listener.on('notification',()=>{for(const res of streams)res.write('data: revision\n\n');});
@@ -30,6 +32,7 @@ try{
  mkdirSync('dev/arcade/evidence',{recursive:true});
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});page.on('requestfailed',r=>console.error('failed',r.url(),r.failure()));
  await page.route(url=>url.host!=='127.0.0.1:5187',route=>route.fulfill({status:200,body:'[]'}));
+ await page.addInitScript(()=>{window.__TOTAL_HOLDS__=[];let current=null;new MutationObserver(()=>{const visible=!!document.querySelector('[data-arcade-completion]');if(visible&&current===null){current=performance.now();}else if(!visible&&current!==null){window.__TOTAL_HOLDS__.push(performance.now()-current);current=null;}}).observe(document,{childList:true,subtree:true});});
  await page.goto('http://127.0.0.1:5187/arcade',{waitUntil:'domcontentloaded',timeout:60000});await page.getByRole('heading',{name:'Arcade Mode'}).waitFor();assert.equal(await page.getByText('Coming Soon',{exact:true}).count(),2);
  await page.getByRole('button',{name:'Run21 rules and info'}).click();
  await page.getByText('The 106.8-second speed timer starts when the round introduction ends.',{exact:true}).waitFor();
@@ -97,9 +100,27 @@ try{
  await page.waitForTimeout(2600);await page.locator('.run21-column').first().click();await page.getByRole('button',{name:/Give Up/}).click();
  await page.waitForTimeout(5500);await page.getByText('Round 3 of 3',{exact:true}).waitFor();
  await page.waitForTimeout(2600);await page.locator('.run21-column').first().click();await page.getByRole('button',{name:/Give Up/}).click();
+ if(completion){await page.locator('[data-arcade-completion]').waitFor({timeout:10000});const appeared=Date.now();assert.equal(await page.getByText('NEW PERSONAL BEST!',{exact:true}).count(),0);assert.equal((await db.query('SELECT status FROM private.arcade_runs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1',[user])).rows[0].status,'completed');await page.screenshot({path:'dev/arcade/evidence/completion-first.png'});await page.locator('[data-arcade-completion]').waitFor({state:'detached'});assert((await page.evaluate(()=>window.__TOTAL_HOLDS__.at(-1)))>=2400);passed.push('first-score total holds 2.5 seconds after immediate persistence, without record celebration');}
  await page.getByRole('button',{name:'Play Again'}).waitFor({timeout:15000});assert.equal(await page.getByText('Run complete',{exact:true}).count(),1);
  assert.equal((await db.query('SELECT count(*)::int count FROM private.arcade_results WHERE user_id=$1',[user])).rows[0].count,1);
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(350);await page.screenshot({path:'dev/arcade/evidence/'+prefix+'leaderboard.png',fullPage:true});passed.push('exactly three rounds, one result, same leaderboard and Play Again');
+ if(completion){
+  for(const scenario of ['broken','matched','reload','reconnect']){
+   await page.getByRole('button',{name:'Play Again'}).click();await page.locator('[data-run21-gameplay]').waitFor();
+   const run=(await db.query("SELECT * FROM private.arcade_runs WHERE user_id=$1 AND status='active'",[user])).rows[0];
+   const state=structuredClone(run.state);state.round=3;state.roundId=run.id+':3';state.status='completed';state.score=100;
+   const result={reason:'collect',score:100,at:Date.now(),aggregate:100,totals:[20,20,20,20,20],aceElevations:[],multiplier:200,speed:.5};
+   state.results=[{...result,score:0},{...result,score:0},result];state.board.result=result;
+   state.presentation={startedAt:Date.now(),endsAt:Date.now()+1200,from:0,to:100};
+   await rpc('arcade_commit',{p_actor:user,p_run:run.id,p_revision:run.revision,p_state:state,p_due:null});
+   if(scenario==='reload'){await page.reload();await page.getByRole('button',{name:'Play Again'}).waitFor();assert.equal(await page.locator('[data-arcade-completion]').count(),0);continue;}
+   if(scenario==='reconnect'){await page.evaluate(()=>window.dispatchEvent(new Event('online')));await page.getByRole('button',{name:'Play Again'}).waitFor();assert.equal(await page.locator('[data-arcade-completion]').count(),0);continue;}
+   await page.locator('[data-arcade-completion]').waitFor();assert.equal(await page.getByText('NEW PERSONAL BEST!',{exact:true}).count(),scenario==='broken'?1:0);
+   if(scenario==='broken'){for(const size of [{width:320,height:640},{width:844,height:390}]){await page.setViewportSize(size);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'dev/arcade/evidence/completion-record-'+size.width+'.png'});}}
+   await page.getByRole('button',{name:'Play Again'}).waitFor();
+  }
+  passed.push('prominent strict new record, tied-score suppression, phone/landscape overlay, refresh and reconnect do not replay');
+ }
  if(scoring){
   await page.getByRole('button',{name:'Run21 rules and info'}).click();
   await page.getByRole('combobox',{name:'Leaderboard rules'}).selectOption('run21/arcade-1');
@@ -113,10 +134,10 @@ try{
  await page.goto('http://127.0.0.1:5187/arcade/run21');await page.getByRole('link',{name:'Resume',exact:true}).click();await page.locator('[data-run21-gameplay]').waitFor();passed.push('header Resume restores the existing run');
  await page.getByRole('button',{name:'Abandon',exact:true}).click();await page.getByRole('button',{name:'Abandon Run',exact:true}).click();
  await page.getByText('Run ended · Unranked',{exact:true}).waitFor();passed.push('explicit abandonment returns unranked without a result');
- await page.route('**/api/arcade',async route=>{if(route.request().postDataJSON().op!=='leaderboard')return route.continue();const response=await route.fetch(),data=await response.json();data.self={userId:user,name:'Arcade Browser',score:0,rank:14};data.rows=Array.from({length:10},(_,i)=>({userId:'fixture-'+i,name:i===0?'A long player name for layout coverage':'Player '+(i+1),score:10000-i*100,rank:i+1}));await route.fulfill({response,json:data});});
+ await page.route('**/api/arcade',async route=>{if(route.request().postDataJSON().op!=='leaderboard')return route.continue();const response=await route.fetch(),data=await response.json();data.self={runId:'self',userId:user,name:'Arcade Browser',score:0,rank:14};data.rows=Array.from({length:10},(_,i)=>({runId:'row-'+i,userId:'fixture-'+i,name:i===0?'A long player name for layout coverage':'Player '+(i+1),score:10000-i*100,rank:i+1}));await route.fulfill({response,json:data});});
  await page.reload();await page.getByText('You · #14 · 0',{exact:true}).waitFor();
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'dev/arcade/evidence/presentation-dense-'+width+'.png',fullPage:true});}
  await page.getByRole('tab',{name:'Last 30 Days'}).focus();await page.keyboard.press('ArrowRight');assert.equal(await page.getByRole('tab',{name:'All Time'}).getAttribute('aria-selected'),'true');passed.push('dense 10-row display, long names, own rank outside top 10 and keyboard period switching');
- assert.deepEqual(errors,[]);writeFileSync('dev/arcade/presentation-browser.evidence.json',JSON.stringify({passed,productionWrites:0,transport:'Loopback SQL with substitute authentication, Storage bytes and realtime notifications',errors},null,2));console.log(passed);
+ assert.deepEqual(errors,[]);writeFileSync(completion?'dev/arcade/completion-browser.evidence.json':'dev/arcade/presentation-browser.evidence.json',JSON.stringify({passed,productionWrites:0,transport:'Loopback SQL with substitute authentication, Storage bytes and realtime notifications',errors},null,2));console.log(passed);
 }catch(e){console.error(e);console.error(errors);for(const context of browser.contexts())for(const page of context.pages()){console.error(await page.locator('body').innerText());await page.screenshot({timeout:5000,animations:'disabled',path:'dev/arcade/evidence/'+prefix+'failure.png'});}throw e;}finally{clearInterval(worker);while(recovering)await new Promise(r=>setTimeout(r,100));await browser.close();for(const res of streams)res.end();await server.close();await listener.end();await db.end();await root.query('DROP DATABASE '+database+' WITH(FORCE)');await root.end();}
 

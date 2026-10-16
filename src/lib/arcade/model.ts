@@ -9,13 +9,14 @@ export interface SoloState {
  presentation:{startedAt:number;endsAt:number;from:number;to:number}|null;
  lastPlacement?:{sequence:number;column:number;roundId:string};
 }
-export interface RunRecord {id:string;user_id:string;game:string;ruleset:string;config:ArcadeConfig;
+export interface CompletionRecord {priorBest:number|null;kind:"first"|"broken"|"matched"|"lower"}
+export interface RunRecord {completion?:CompletionRecord|null;id:string;user_id:string;game:string;ruleset:string;config:ArcadeConfig;
  revision:number;state:SoloState|null;status:RunStatus;created_at:string;server_at:number}
-export interface ArcadeSnapshot {id:string;game:string;ruleset:string;revision:number;status:RunStatus;
+export interface ArcadeSnapshot {completion?:CompletionRecord|null;id:string;game:string;ruleset:string;revision:number;status:RunStatus;
  serverAt:number;score:number;view:BoardProjection;dueAt:number|null;events:BoardFeedbackEvent[]}
-export interface RankedPlayer {userId:string;name:string;score:number;rank:number;completedAt:string}
+export interface RankedPlayer {runId:string;userId:string;name:string;score:number;rank:number;completedAt:string}
 export interface Leaderboard {ruleset:string;rows:RankedPlayer[];self:RankedPlayer|null;personalBest:number|null;
  availableRulesets?:string[];currentRuleset?:string;
  previousBests:{ruleset:string;score:number}[];activeRun:string|null;
- latestResult:{id:string;score:number;status:RunStatus;ruleset?:string}|null}
+ latestResult:{rank?:number|null;id:string;score:number;status:RunStatus;ruleset?:string}|null}
 

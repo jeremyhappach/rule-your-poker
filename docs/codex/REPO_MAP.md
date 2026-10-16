@@ -985,3 +985,10 @@ Legacy id `opponent_instant_knock` resolves read-only to
 ### TriTowers bot support
 
 `supabase/tri-towers/authority.sql` owns the redacted bot policy, persistent bot schedule and indexed recovery. `dev/tri-towers/bots.*.mjs` and `collect-bots-evidence.mjs` qualify canonical finances, boundaries, browsers and zero-client competitions. `docs/codex/TRITOWERS_BOTS.md` documents the release and production smoke.
+
+### Arcade completion and shared score audio (2026-10-16)
+
+- supabase/arcade/completion.sql: immutable prior-best receipt and shared individual-result ranking.
+- src/hooks/useArcadeRun.ts and src/components/run21/ArcadeCompletion.tsx: live completion admission and presentation-only final total.
+- src/hooks/useRun21ScoreAudio.ts, src/lib/run21/scoreCountCue.ts and src/lib/audio/audioManager.ts: shared presented-score cue with cancellable ownership.
+- dev/arcade/completion.proof.sql and completion.proof.mjs: rollback proof and installed authority evidence.

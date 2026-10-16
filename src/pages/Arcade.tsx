@@ -16,6 +16,8 @@ import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
 import {AlertDialog,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogAction,AlertDialogCancel,AlertDialogFooter} from '@/components/ui/alert-dialog';
 import {displayedScore} from '@/lib/run21/presentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
+import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
+import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
@@ -64,7 +66,7 @@ function GameBoard(){
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
  <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>Run21</h1>
  <ArcadeInfo game="run21" name="Run21" ruleset={board?.ruleset}>
-  <p>One best run per player. Equal scores share rank. Last 30 Days uses runs completed in that period; personal best shows All Time for the selected rules.</p>
+  <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses runs completed in that period; personal best shows All Time for the selected rules.</p>
   {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
   <p>Scores from different rules stay separate. New runs use the current rules.</p>
   {!!board?.previousBests.length&&<details><summary>Personal bests under other rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
@@ -73,25 +75,34 @@ function GameBoard(){
  <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
  </header>
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Run complete':'Run ended · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
- <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.self?'Your rank · #'+board.self.rank.toLocaleString():'Score recorded'}</p></div>}
+ <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.latestResult.rank!=null?'This run · #'+board.latestResult.rank.toLocaleString():'Score recorded'}</p></div>}
  <div className="arcade-summary"><div><span>Personal best · All Time</span><strong>{board?.personalBest?.toLocaleString()??'—'}</strong></div>
  <div><span>Your rank · {window==='30'?'Last 30 Days':'All Time'}</span><strong>{board?.self?'#'+board.self.rank:'—'}</strong></div></div>
  {board?.currentRuleset&&board.ruleset!==board.currentRuleset&&<p className="arcade-note">Legacy leaderboard</p>}
  <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} id={'arcade-period-'+value} role="tab" aria-controls="arcade-ranking" tabIndex={window===value?0:-1} aria-selected={window===value} onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'30':event.key==='End'?'all':value==='30'?'all':'30';setWindow(next);document.getElementById('arcade-period-'+next)?.focus();}}} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
  {error&&<p role="alert">{error}</p>}
- <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 players</h2>
+ <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 verified scores</h2>
  {!board?<p role="status">Loading scores…</p>:board.rows.length===0?<p>No qualifying runs yet. Set the first score.</p>:
- <table><thead><tr><th>Rank</th><th>Player</th><th>Best score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.userId} data-self={row.userId===board.self?.userId}><td>{position}</td><td>{row.name}</td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
- {board?.self&&!board.rows.some(row=>row.userId===board.self?.userId)&&<p className="arcade-your-rank">You · #{board.self.rank.toLocaleString()} · {board.self.score.toLocaleString()}</p>}
+ <table><thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.runId} data-self={row.userId===board.self?.userId}><td>{position}</td><td>{row.name}</td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
+ {board?.self&&!board.rows.some(row=>row.runId===board.self?.runId)&&<p className="arcade-your-rank">You · #{board.self.rank.toLocaleString()} · {board.self.score.toLocaleString()}</p>}
  </section>
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
- const {snapshot,error,pending,now,act,refresh,completedOnEntry}=useArcadeRun(runId),navigate=useNavigate();
+ const {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive}=useArcadeRun(runId),navigate=useNavigate();
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[celebration,setCelebration]=useState<ScoreCelebrationReceipt|null>(null);
+ const [finalUntil,setFinalUntil]=useState<number|null>(null);
  const seen=useRef<string|null>(null),retire=useCallback(()=>setCelebration(null),[]);
  const view=snapshot?.view,intro=view?roundIntro(view,now):null;
  useRun21Bell(userId,intro?.key??null,intro?.remaining??0);
+ useRun21ScoreAudio(userId,runId,view,now,!celebration&&(snapshot?.status==='active'||completionLive));
+ const finalAt=view?.scorePresentation?.endsAt;
+ const showFinal=snapshot?.status==='completed'&&completionLive&&finalUntil!==null&&performance.now()<finalUntil;
+ useEffect(()=>setFinalUntil(null),[runId]);
+ useEffect(()=>{
+  if(snapshot?.status==='completed'&&completionLive&&finalAt!=null&&now>=finalAt&&finalUntil===null)
+   setFinalUntil(performance.now()+2500);
+ },[snapshot?.status,completionLive,finalAt,finalUntil,now]);
  useEffect(()=>{
   if(!snapshot)return;
   const result=view?.boards[userId]?.result,key=result?runId+':'+view?.roundId:null;
@@ -101,9 +112,9 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
   if(view?.scorePresentation&&now>=view.scorePresentation.startedAt)setCelebration(null);
  },[snapshot,view,userId,runId,completedOnEntry,now]);
  useEffect(()=>{
-  if(snapshot&&snapshot.status!=='active'&&(completedOnEntry||!view?.scorePresentation||now>=view.scorePresentation.endsAt))
+  if(snapshot&&snapshot.status!=='active'&&(snapshot.status!=='completed'||!completionLive||!view?.scorePresentation||(finalUntil!==null&&performance.now()>=finalUntil)))
    navigate('/arcade/run21?result='+runId,{replace:true});
- },[snapshot,view,now,completedOnEntry,navigate,runId]);
+ },[snapshot,view,now,completionLive,finalUntil,navigate,runId]);
  const onIntent=(intent:{type:string;column?:number})=>{if(intent.type==='place')void act({type:'place',column:intent.column!});else if(intent.type==='pass'||intent.type==='collect')void act({type:intent.type});};
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
  <FullscreenGameShell title="Run21" panelTitle="Rules" panelDescription="Scoring for this run." description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
@@ -115,6 +126,6 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh()}>Reconnect</button></div>}
  {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>:<p role="status">Restoring your run…</p>}
  <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon run?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>void act({type:'abandon'})}>Abandon Run</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
- </FullscreenGameShell>{celebration&&<Run21ScoreCelebration receipt={celebration} onRetire={retire}/>}</div>;
+ </FullscreenGameShell>{showFinal&&<ArcadeCompletion score={snapshot.score} record={snapshot.completion}/>}{celebration&&!showFinal&&<Run21ScoreCelebration receipt={celebration} onRetire={retire}/>}</div>;
 }
 

@@ -12,6 +12,20 @@ interface AudioEvent {
   cue: AudioCue;
 }
 
+export interface AudioTimeline {
+  userId: string;
+  id: string;
+  startedAt: number;
+  expiresAt: number;
+  cueAt: (elapsedMs: number, remainingMs: number) => AudioCue;
+}
+interface TimelineOwner {
+  event: AudioTimeline;
+  owners: Set<object>;
+  timer: ReturnType<typeof setTimeout>;
+  stop?: () => void;
+}
+
 interface AudioEnvironment {
   createContext: () => AudioContext;
   loadPreference: (userId: string) => Promise<boolean | null>;
@@ -29,6 +43,7 @@ export class AudioManager {
   private played = new Set<string>();
   private pending = new Map<string, { event: AudioEvent; owners: Set<object>; timer: ReturnType<typeof setTimeout> }>();
   private active = new Set<() => void>();
+  private timelines = new Map<string, TimelineOwner>();
   private uninstall: (() => void) | null = null;
 
   constructor(private env: AudioEnvironment) {}
@@ -124,12 +139,53 @@ export class AudioManager {
     };
   }
 
+  /** Cancellable presentation audio. Unlock skips elapsed ticks; interruption retires the event. */
+  follow(event: AudioTimeline) {
+    const key = `ptown-audio:${event.userId}:${event.id}`;
+    if (event.userId !== this.userId || event.expiresAt <= this.env.now() || this.env.document().hidden) return () => {};
+    let entry = this.timelines.get(key);
+    if (!entry) {
+      if (this.hasPlayed(key)) return () => {};
+      this.unlock();
+      entry = {event, owners: new Set(), timer: setTimeout(() => this.retireTimeline(key), event.expiresAt - this.env.now())};
+      this.timelines.set(key, entry);
+    }
+    const owner = {};
+    entry.owners.add(owner);
+    this.flush();
+    return () => {
+      entry.owners.delete(owner);
+      // React's effect rehearsal may reacquire the same event in this microtask.
+      queueMicrotask(() => { if (!entry.owners.size && this.timelines.get(key) === entry) this.retireTimeline(key); });
+    };
+  }
+
+  private remember(key: string) {
+    this.played.add(key);
+    try { this.env.storage().setItem(key, '1'); } catch { /* In-memory receipt remains. */ }
+  }
+  private retireTimeline(key: string) {
+    const entry = this.timelines.get(key);
+    if (!entry) return;
+    this.timelines.delete(key);
+    clearTimeout(entry.timer);
+    entry.stop?.();
+    this.remember(key);
+  }
+
   private stateChanged = () => {
     if (this.context?.state !== 'running') this.stopActive();
     else this.flush();
   };
 
   private flush() {
+    for (const [key, entry] of this.timelines) {
+      const remaining = entry.event.expiresAt - this.env.now();
+      if (remaining <= 0) { this.retireTimeline(key); continue; }
+      if (entry.stop || !entry.owners.size || this.env.now() < entry.event.startedAt) continue;
+      const cue = entry.event.cueAt(this.env.now() - entry.event.startedAt, remaining);
+      this.schedule(cue, entry.event.expiresAt, stop => { entry.stop = stop; this.remember(key); });
+    }
     for (const [key, { event }] of this.pending) {
       if (event.expiresAt - this.env.now() < event.cue.durationMs) {
         this.removePending(key);
@@ -142,7 +198,7 @@ export class AudioManager {
     }
   }
 
-  private schedule(cue: AudioCue, expiresAt: number) {
+  private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void) {
     const ctx = this.context;
     if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.env.document().hidden) return false;
     if (expiresAt - this.env.now() < cue.durationMs) return false;
@@ -167,6 +223,7 @@ export class AudioManager {
       output.connect(ctx.destination);
       this.active.add(stop);
       timer = setTimeout(stop, Math.min(cue.durationMs, expiresAt - this.env.now()));
+      scheduled?.(stop);
       return true;
     } catch {
       stop();
@@ -178,7 +235,10 @@ export class AudioManager {
     if (this.played.has(key)) return true;
     try { return this.env.storage().getItem(key) === '1'; } catch { return false; }
   }
-  private stopActive() { for (const stop of this.active) stop(); }
+  private stopActive() {
+    for (const key of this.timelines.keys()) this.retireTimeline(key);
+    for (const stop of this.active) stop();
+  }
   private removePending(key: string) {
     clearTimeout(this.pending.get(key)?.timer);
     this.pending.delete(key);

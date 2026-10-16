@@ -2342,3 +2342,12 @@ See [stage-polish qualification](TRITOWERS_STAGE_POLISH.md).
 ## 2026-10-16 — TriTowers autonomous bots
 
 Extend the existing PostgreSQL recovery worker at one second. Persist a due time and use indexed, bounded, concurrency-safe work selection. The policy receives only the human-visible board and feeds the existing reducer and atomic settlement owner. Preserve human Ready, clocks, stage/bonus rules, dealer order and continuation. Real-money admission remains closed. See `TRITOWERS_BOTS.md` and `dev/tri-towers/bots.evidence.json`.
+
+## 2026-10-16 — Arcade ranks scores, with atomic personal-record receipts
+
+All future Arcade games inherit the top-ten-individual-verified-results policy in
+ARCADE_PHASE_ONE.md. Repeated players are allowed; equal scores share competition
+rank, with completion time/run UUID determining display order and cutoff. Record
+classification is frozen at completion against prior compatible all-time scores.
+First results and ties do not trigger record-breaking presentation. Presentation
+receipts and cancellable audio never delay or own authoritative completion.

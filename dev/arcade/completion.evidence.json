@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-16T23:09:05.457Z",
+  "functions": [
+    {
+      "signature": "arcade_commit(uuid,uuid,bigint,jsonb,bigint,uuid,text,uuid)",
+      "hash": "fd2da7bdcf58df286f28e8598fa80e76"
+    },
+    {
+      "signature": "arcade_leaderboard(uuid,text,text,uuid,text)",
+      "hash": "e7ed49b094a55b6e11a441562d6d4192"
+    },
+    {
+      "signature": "arcade_load(uuid,uuid,uuid)",
+      "hash": "f06be670696b821e9e2e1dcbd88345f7"
+    },
+    {
+      "signature": "private.arcade_record(private.arcade_runs)",
+      "hash": "d1d1b44e415e52756a088e1af55e17f0"
+    }
+  ],
+  "legacyPreserved": true,
+  "productionWrites": 0
+}
