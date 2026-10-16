@@ -10,7 +10,17 @@ The Vercel API validates the current Supabase user and active profile. Service-o
 
 The shared Run21 extraction is limited to pure scoreBoard, cryptographic shuffleCards and the board presentation type. Multiplayer match initialization, opponents, bot pacing, tie extensions, pause, settlement and continuation remain with their existing owners.
 
-## Current frozen competitive policy — run21/arcade-2
+## Current shared policy — run21/2
+
+Both new Arcade runs and multiplayer matches now freeze the mode-neutral `run21/2`
+gameplay definition. Common board actions, card drawing, CSPRNG shuffle, scoring
+and gameplay timing live under `src/lib/run21`; Arcade owns solo progression only.
+The earlier Arcade board versions below remain separately readable and unchanged.
+See [shared gameplay contract](SHARED_GAMEPLAY_RULES.md) for the standing rule and
+qualification. This supersedes the earlier Arcade-only default without changing
+the approved segmented clock or multipliers.
+
+## Prior frozen competitive policy — run21/arcade-2
 
 Accepted P-Town timing approximation, not a claim of recovered Merit machine timing: the clock begins when the 2.5-second intro ends, before any placement. Speed starts at 280, loses 2 per completed 420 ms tick until 200 at 16,800 ms, then loses 2 per completed 900 ms tick until zero at 106,800 ms. Shared configuration-driven `speedAt` drives both display and scoring; animation never pauses this clock. Multipliers remain 97→50, 98→100, 99→150, 100→200, 101→250, 102→300, 103→400, 104→500, 105→1,000.
 

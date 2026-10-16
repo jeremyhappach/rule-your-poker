@@ -22,6 +22,7 @@ const disconnectFinal=process.argv.includes('--disconnect-final');
 const legacy=process.argv.includes('--legacy');
 const independent=process.argv.includes('--independent-decks');
 const continuation=process.argv.includes('--continuation');
+const shared=process.argv.includes('--shared-rules');
 const stake=independent?1:5;
 const pass=(name,data)=>{result.tests.push({name,...data});console.log('PASS',name,data??'');};
 try {
@@ -55,7 +56,7 @@ try {
   // Platform cadence is separately verified against deployed pg_cron. This stub
   // keeps the exact migration transactional in the Windows metadata clone.
   await c.query("CREATE SCHEMA IF NOT EXISTS cron; CREATE TABLE cron.job(jobid bigserial,jobname text,schedule text,active boolean); CREATE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE SQL AS $$ INSERT INTO cron.job(jobname,schedule,active) VALUES($1,$2,true) RETURNING jobid $$");
-  await c.query(readFileSync('supabase/migrations/20261015133432_run21_production_authority.sql','utf8'));
+  await c.query(readFileSync('supabase/migrations/20261015133432_run21_production_authority.sql','utf8').replace(/\r\n/g,'\n'));
  }else for(const name of ['financial-authority','recovery','pause','admission'])await c.query(readFileSync('supabase/run21/'+name+'.candidate.sql','utf8').replace(/\r\n/g,'\n'));
  if(independent){
   const packaged=readdirSync('supabase/migrations').filter(name=>name.endsWith('_run21_independent_decks.sql'));
@@ -68,6 +69,23 @@ try {
   await c.query(readFileSync('supabase/migrations/'+packaged[0],'utf8').replace(/\r\n/g,'\n'));
   if(process.argv.includes('--installed-continuation'))for(const f of JSON.parse(readFileSync('qualification.local/run21-production/installed-continuation.json','utf8')).functions)await c.query(f.definition);
   if(legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN lifecycle_version SET DEFAULT 1');
+ }
+ if(shared){
+  await c.query('CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY)');
+  await c.query(readFileSync('supabase/arcade/phase-one.sql','utf8').replace(/\r\n/g,'\n'));
+  await c.query(readFileSync('supabase/arcade/run21-scoring.sql','utf8').replace(/\r\n/g,'\n'));
+  const before=JSON.parse(readFileSync('qualification.local/run21-production/shared-before.json','utf8'));
+  for(const f of before.functions)await c.query(f.definition);
+  const candidate=readFileSync('supabase/run21/shared-rules.candidate.sql','utf8').replace(/\r\n/g,'\n');
+  await c.query('SAVEPOINT shared_ddl');await c.query(candidate);await c.query('ROLLBACK TO SAVEPOINT shared_ddl');
+  await c.query(candidate);await c.query(candidate);
+  if(process.argv.includes('--shared-installed')){
+   const installed=JSON.parse(readFileSync('qualification.local/run21-production/shared-installed.json','utf8'));
+   for(const f of installed.functions)assert.equal((await c.query('SELECT md5(pg_get_functiondef($1::regprocedure)) hash',[f.signature])).rows[0].hash,f.hash,f.signature);
+  }
+  await c.query(readFileSync('supabase/run21/activate-shared-rules.sql','utf8').replace('BEGIN;','').replace('COMMIT;',''));
+  if(legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN gameplay_ruleset DROP DEFAULT');
+  pass('Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested');
  }
  if(independent&&legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN deck_version SET DEFAULT 1');
  // Only the isolated proof opts in. Scheduler catalog/heartbeat are fixture inputs;
@@ -267,6 +285,8 @@ try {
   assert((await unstarted.read(game,users[0])).view.roundId);
   pass('Pause before initialization preserves an empty match; resume safely opens its first board');
  }finally{unstarted.dispose();await c.query('ROLLBACK TO SAVEPOINT pause_before_initialization');}
+ if(shared&&!legacy)await (await import('./shared-rules.proof.mjs')).proveSharedRules({c,scalar,game,dg,users,players,store,vite,Run21Authority,recoverFresh,pass});
+ if(!shared||legacy){
  await c.query('SAVEPOINT inactivity');
  let clock=Date.now();
  const inactive=new Run21Authority(store,()=>clock,undefined,undefined,false);
@@ -337,6 +357,7 @@ try {
    pass('Canonical automatic-play control lets the human take back their board');
   }
  }finally{inactive.dispose();await c.query('ROLLBACK TO SAVEPOINT inactivity');}
+ }
  await c.query('SAVEPOINT gameplay_deadline');
  const overdue=new Run21Authority(store,Date.now,undefined,undefined,false);
  try{
@@ -380,7 +401,7 @@ try {
   // Only deterministic server shuffle is injected; every score comes from legal player commands.
   for(let round=1;round<=(suddenDeath?4:3);round++)for(let turn=0;turn<2;turn++){
    const id=view.view.active_player_id;const user=users[players.indexOf(id)];
-   if(view.view.config.roundIntroMs)now=Math.max(now,view.view.boards[id].firstPlacementDeadline-view.view.config.firstPlacementSeconds*1000);
+   if(view.view.config.roundIntroMs)now=Math.max(now,view.view.boards[id].startedAt??(view.view.boards[id].firstPlacementDeadline-view.view.config.firstPlacementSeconds*1000));
    for(const intent of [...[0,1,2,3,0,1,2,3,4,4,4].map(column=>({type:'place',column})),{type:'collect'}]){
     if(intent.type==='collect'&&turn===1&&(!suddenDeath||round===4))now+=1000;
     const cmd={identity:view.view.identity,roundId:view.view.roundId,playerId:id,requestId:randomUUID(),revision:view.view.boards[id].revision,intent};
@@ -459,6 +480,7 @@ try {
    assert.equal(await scalar('SELECT current_game_uuid::text v FROM public.games WHERE id=$1',[game]),next.dealer_game.id);
    assert.equal(await scalar('SELECT financial_version v FROM private.run21_matches WHERE dealer_game_id=$1',[next.dealer_game.id]),2);
    pass('Run Back accepts a settled predecessor; late close preserves the successor');
+   if(!shared||legacy){
    // Race a legal last-moment placement against the durable expiry, using
    // distinct service connections and the same persisted revision.
    const raceStore={...store,commit:async(row,state,due)=>{
@@ -504,10 +526,11 @@ try {
     pass('Timeout/action race admits one command; its canonical pause/automatic-play trigger adds only the expected revision and no transfer');
    }finally{for(const peer of racers)await peer.end();}
    await c.query('BEGIN');
+   }
   }
  }finally{await browserProof?.close();worker.dispose();}
  await c.query('ROLLBACK');
- result.fixtureTransactionRolledBack=true;result.isolatedDatabaseWillBeDropped=true;writeFileSync('qualification.local/run21-production/'+(continuation?'continuation-'+(realMoney?'real-':'fake-'):'')+(legacy?'legacy':disconnectFinal?'disconnected':terminal?'terminal':suddenDeath?'sudden-death':'financial')+'-result.json',JSON.stringify(result,null,2));
+ result.fixtureTransactionRolledBack=true;result.isolatedDatabaseWillBeDropped=true;writeFileSync('qualification.local/run21-production/'+(shared?'shared-':'')+(continuation?'continuation-'+(realMoney?'real-':'fake-'):'')+(legacy?'legacy':disconnectFinal?'disconnected':terminal?'terminal':suddenDeath?'sudden-death':'financial')+'-result.json',JSON.stringify(result,null,2));
 }catch(e){await c.query('ROLLBACK');throw e;}finally{await vite.close();await c.end();
  const cleanup=new pg.Client(options);await cleanup.connect();
  if(!/^run21_release_proof_[0-9]+$/.test(database))throw Error('unsafe cleanup');

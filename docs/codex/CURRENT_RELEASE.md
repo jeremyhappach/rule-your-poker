@@ -1,3 +1,28 @@
+# Shared Run21 gameplay rules — 2026-10-16 — qualified correction
+
+`run21/2` is the mode-neutral gameplay version for new multiplayer matches and
+new Arcade runs. Common board actions, card advancement, CSPRNG shuffle, scoring
+and segmented timing replace independently selected mode defaults. Both start
+the 280→200→0 clock at intro end; deadline expiry awards zero. Multiplayer retains
+authorized pause/resume, participant order, ties, canonical settlement and continuation.
+Historical/in-progress configurations and the protected paused match remain frozen.
+Arcade legacy boards remain separate. Admission eligibility and artwork are unchanged.
+
+Financial gate: **PASS** in disposable databases using actual canonical triggers:
+winner, tie/sudden death, authorization, invalid stakes, atomic failure rollback,
+concurrent settlement, replay, cold-process real-money recovery, Session Ended,
+Run Back and late predecessor close. Additional proofs cover shared-rule parity,
+pause/resume, lock-time deadline races, immutable configuration and Arcade recovery.
+Qualification passed 2,274 application tests, 241 harness tests, TypeScript,
+production build, two independent multiplayer browsers and Arcade phone/reload flows.
+Migration `20261016214911_run21_shared_gameplay_rules` preserves all 30 existing
+matches and the legacy Arcade result. Installed definitions pass the full proof matrix.
+Recovery workers: multiplayer version 6 and Arcade version 3. The release stages
+shared defaults until the API and both workers are compatible, then executes
+`supabase/run21/activate-shared-rules.sql`.
+Checkpoint: `run21-shared-rules-2026-10-16`. See [contract and qualification](SHARED_GAMEPLAY_RULES.md).
+Jeremy's authenticated production smoke remains pending.
+
 # Arcade Run21 scoring — 2026-10-16 — qualified correction
 
 Approved immutable `run21/arcade-2` starts its 106.8-second clock at intro end:

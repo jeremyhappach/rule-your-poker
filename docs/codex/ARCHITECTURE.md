@@ -1,5 +1,14 @@
 # Architecture and engineering invariants
 
+## Shared versioned gameplay across Arcade and multiplayer
+
+All dual-mode games use one mode-neutral, versioned rule base for legal actions,
+scoring, bonuses, randomness/dealing and gameplay timing. Separate formulas or
+independently tuned mode configurations are prohibited. Adapters own orchestration
+only; frozen historical configurations remain supported by the same implementation.
+This standing rule applies to Run21 and future TriTowers, Yahtzee and other Arcade
+adapters. See [shared gameplay contract](SHARED_GAMEPLAY_RULES.md).
+
 ## 1. Authoritative → Optimistic → Presentation
 
 PostgreSQL/Supabase owns legal game state, current actor, decisions/locks, balances, pot, settlement, participants, snapshots, terminal disposition, and persistent lifecycle state.

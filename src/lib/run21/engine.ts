@@ -1,6 +1,7 @@
 import { assertConfig, isUuid, SCORE_PRESENTATION_MS, type Match, type Identity, type Config, type Player, type Round, type Board, type Command, type Principal, type DeckEvidence, type RoundEvidence, type Frame, type Projection, type SettlementIntent, type SettlementReceipt } from './model.js';
 import { aggregate, cardKey, duration, legalColumns, canFinish, isPerfectBoard, speedAt, standardDeck, total, multiplierAt, scoreBoard } from './rules.js';
 import {turnReleaseAt} from './roundIntro.js';
+import {emptyBoard,startBoardClock,presentBoardCard,boardActionError,moveBoardCard} from './board.js';
 
 function clock(match: Match, at: number) {
   if (!Number.isSafeInteger(at) || at < match.updatedAt) throw new Error('non_monotonic_authority_clock');
@@ -76,16 +77,14 @@ export function prepareRound(input: Match, id: string, predecessorId: string | n
   const round: Round = { id, number: match.rounds.length + 1, secret: structuredClone(deck), revealed: false, acknowledged: [],
     starting_player_id: starter, active_player_id: starter,
     liveBoards: true, scorePresentation: null,
-    boards: Object.fromEntries(match.players.map(p => [p.id, { playerId: p.id, columns: Array.from({length: match.config.columns}, () => []),
-      passesUsed: 0, presented: [], current: null, cardIndex: 0, revision: 0, startedAt: null, deadline: null, result: null }])) };
+    boards: Object.fromEntries(match.players.map(p => [p.id, emptyBoard(p.id,match.config)])) };
   match.rounds.push(round);
   event(match, 'round_prepared', at);
   return match;
 }
 function startTurn(match: Match, round: Round, board: Board, at: number, requestId: string) {
   round.active_player_id = board.playerId;
-  if (match.config.firstPlacementSeconds !== undefined)
-    board.firstPlacementDeadline = at + (match.config.roundIntroMs ?? 0) + match.config.firstPlacementSeconds * 1000;
+  startBoardClock(board,match.config,at);
   board.revision++;
   event(match, 'turn_started', at, null, requestId, {active_player_id: board.playerId});
   present(match, round, board, at, requestId);
@@ -124,9 +123,7 @@ export function advanceScorePresentation(input: Match, at: number): Match {
 }
 function present(match: Match, round: Round, board: Board, at: number, requestId: string) {
   const deck = deckForPlayer(match, round, board.playerId);
-  board.current = deck.cards[board.cardIndex] ?? null;
-  if (board.current) {
-    board.presented.push(structuredClone(board.current));
+  if (presentBoardCard(board,deck.cards)) {
     event(match, 'card_presented', at, board.playerId, requestId, {card: board.current, cardIndex: board.cardIndex});
   } else finish(match, round, board, 'exhausted', at, requestId);
 }
@@ -178,9 +175,9 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   if (type !== 'ready' && type !== 'acknowledge' && releaseAt !== null && at < releaseAt) return reject('round_intro');
   const expired = original.deadline !== null && at >= original.deadline && !original.result;
   if (!expired) {
-    if (type === 'place' && !legalColumns(original, input.config).includes(command.intent.type === 'place' ? command.intent.column : -1)) return reject('column_locked');
-    if (type === 'pass' && original.passesUsed >= input.config.passes) return reject('pass_used');
-    if (type === 'collect' && !canFinish(original, input.config)) return reject('collect_unavailable');
+    if(command.intent.type==='place'||command.intent.type==='pass'||command.intent.type==='collect'){
+      const error=boardActionError(original,input.config,command.intent.type==='place'?command.intent:{type:command.intent.type},at);if(error)return reject(error);
+    }
     if (type === 'expire') return reject('before_deadline');
   }
   const match = structuredClone(input);
@@ -197,23 +194,12 @@ export function applyCommand(input: Match, command: Command, principal: Principa
   } else if (type === 'collect') finish(match, round, board, 'collect', at, command.requestId);
   else if (type === 'place' || type === 'pass') {
     const card = board.current!;
-    if (command.intent.type === 'place') {
-      if (board.startedAt === null) {
-        board.startedAt = at;
-        board.deadline = at + duration(match.config);
-        if (board.firstPlacementDeadline !== undefined) board.firstPlacementDeadline = null;
-      }
-      board.columns[command.intent.column].push(card);
-    }
-    else board.passesUsed++;
-    board.current = null;
-    board.cardIndex++;
+    const reason=moveBoardCard(board,match.config,command.intent as {type:'place';column:number}|{type:'pass'},at);
     if (command.intent.type === 'pass') event(match, 'pass_used', at, board.playerId, command.requestId, {});
     else if (command.intent.type === 'place') event(match, 'card_placed', at, board.playerId, command.requestId,
       {card, column: command.intent.column, speed: speedAt(board, match.config, at),
         totals: board.columns.map(c => total(c, match.config.target))});
-    if (board.columns.some(c => total(c, match.config.target).bust)) finish(match, round, board, 'bust', at, command.requestId);
-    else if (type === 'place' && isPerfectBoard(board, match.config)) finish(match, round, board, 'collect', at, command.requestId);
+    if(reason)finish(match,round,board,reason,at,command.requestId);
     else present(match, round, board, at, command.requestId);
   } else return reject('invalid_intent');
   // Timestamp on timeout is the exact deadline, while the commit clock remains monotonic.

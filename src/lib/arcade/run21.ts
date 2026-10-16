@@ -2,17 +2,17 @@ import {aggregate,canFinish,duration,isPerfectBoard,legalColumns,total,scoreBoar
 import {shuffleCards} from '../run21/shuffle.server.js';
 import {assertConfig,type Board,type Card,type Result} from '../run21/model.js';
 import {turnReleaseAt} from '../run21/roundIntro.js';
+import {emptyBoard,startBoardClock,presentBoardCard,boardActionError,moveBoardCard} from '../run21/board.js';
+import {RUN21_RULESET,assertSharedRules} from '../run21/rulesets.js';
 import type {ArcadeConfig,ArcadeIntent,ArcadeSnapshot,RunRecord,SoloState} from './model.js';
 export type Deal = ()=>Card[];
 function board(userId:string,config:ArcadeConfig,at:number,deck:Card[]):Board {
- const start=config.clockStart==='intro_end'?at+(config.roundIntroMs??0):null;
- return {playerId:userId,columns:Array.from({length:config.columns},()=>[]),passesUsed:0,presented:[deck[0]],
- current:deck[0],cardIndex:0,revision:0,startedAt:start,deadline:start===null?null:start+duration(config),
- firstPlacementDeadline:start===null?at+config.roundIntroMs!+config.firstPlacementSeconds!*1000:null,result:null};
+ const b=emptyBoard(userId,config);startBoardClock(b,config,at);presentBoardCard(b,deck);return b;
 }
 export function createSoloRun(row:RunRecord,at:number,deal:Deal=shuffleCards):SoloState {
  const config=structuredClone(row.config);
  assertConfig(config);
+ if(config.preset===RUN21_RULESET)assertSharedRules(config);
  if(config.rounds!==3||duration(config)!==config.roundDurationMs)throw Error('arcade:invalid_ruleset');
  const deck=deal();
  return {runId:row.id,userId:row.user_id,config,round:1,roundId:crypto.randomUUID(),
@@ -51,18 +51,17 @@ export function applySolo(input:SoloState,intent:ArcadeIntent,at:number):SoloSta
  const release=turnReleaseAt(s.board,s.config);
  if(release!==null&&at<release)throw Error('arcade:round_intro');
  const b=s.board;
- if(intent.type==='collect'){if(!canFinish(b,s.config))throw Error('arcade:collect_unavailable');finish(s,'collect',at);}
+ if(intent.type==='collect'||intent.type==='place'||intent.type==='pass'){
+  const error=boardActionError(b,s.config,intent.type==='place'?intent:{type:intent.type},at);if(error)throw Error('arcade:'+error);
+ }
+ if(intent.type==='collect'){finish(s,'collect',at);}
  else if(intent.type==='place'||intent.type==='pass'){
   if(intent.type==='place'){
-   if(!Number.isInteger(intent.column)||!legalColumns(b,s.config).includes(intent.column))throw Error('arcade:column_locked');
-   if(b.startedAt===null){b.startedAt=at;b.deadline=at+s.config.roundDurationMs;b.firstPlacementDeadline=null;}
-   b.columns[intent.column].push(b.current!);
    s.lastPlacement={sequence:(s.lastPlacement?.sequence??0)+1,column:intent.column,roundId:s.roundId};
-  }else {if(b.passesUsed>=s.config.passes)throw Error('arcade:pass_used');b.passesUsed++;}
-  b.cardIndex++;b.current=null;
-  if(b.columns.some(c=>total(c,s.config.target).bust))finish(s,'bust',at);
-  else if(intent.type==='place'&&isPerfectBoard(b,s.config))finish(s,'collect',at);
-  else {b.current=s.deck[b.cardIndex]??null;if(b.current)b.presented.push(b.current);else finish(s,'exhausted',at);}
+  }
+  const reason=moveBoardCard(b,s.config,intent.type==='place'?intent:{type:'pass'},at);
+  if(reason)finish(s,reason,at);
+  else if(!presentBoardCard(b,s.deck))finish(s,'exhausted',at);
  }else throw Error('arcade:invalid_action');
  b.revision++;s.updatedAt=at;return s;
 }

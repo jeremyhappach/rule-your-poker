@@ -6,6 +6,8 @@ import { roundDeck, playerRoundDecks } from './harness.js';
 import { DEFAULT_CONFIG, isUuid, type Command, type Intent, type Match, type Player } from '../../src/lib/run21/model.js';
 import { exportReplay, visibleHistory } from '../../src/lib/run21/history.js';
 import {ROUND_INTRO_MS, turnReleaseAt} from '../../src/lib/run21/roundIntro.js';
+import {assertSharedRules} from '../../src/lib/run21/rulesets.js';
+import type {Config} from '../../src/lib/run21/model.js';
 
 export interface StoredMatch {
   dealer_game_id: string; game_id: string; first_round_id: string;
@@ -16,6 +18,8 @@ export interface StoredMatch {
   lifecycle_version?: 1 | 2;
   real_money?: boolean;
   first_placement_seconds?: number;
+  gameplay_ruleset?: string|null;
+  gameplay_config?: Config|null;
   paused_at?: number | null;
   participants: (Player & {userId: string; chips: number})[];
   stake: number; balances: Record<string, number>; revision: number;
@@ -108,9 +112,10 @@ export class Run21Authority {
       const dealer = row.participants.find(p => p.userId === row.dealer_user_id);
       if (!dealer) throw new AuthorityError('run21:dealer_identity_required');
       const ordered = [...row.participants.filter(p => p.id !== dealer.id), dealer];
+      if(row.gameplay_config)assertSharedRules(row.gameplay_config);
       state = createMatch({sessionId: row.game_id, dealerGameId: row.dealer_game_id, handNumber: 1},
         ordered.map(({id, seat, name, kind}) => ({id, seat, name, kind})), row.stake,
-        row.financial_version === 2 ? {...DEFAULT_CONFIG, roundIntroMs: ROUND_INTRO_MS, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG, at, row.deck_version ?? 1);
+        row.gameplay_config ?? (row.financial_version === 2 ? {...DEFAULT_CONFIG, roundIntroMs: ROUND_INTRO_MS, firstPlacementSeconds: row.first_placement_seconds ?? 30} : DEFAULT_CONFIG), at, row.deck_version ?? 1);
       state = await this.openRound(state, row.first_round_id, at, row.debug_harness);
     }
     state = advanceScorePresentation(state, at);

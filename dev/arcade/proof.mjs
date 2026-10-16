@@ -136,7 +136,8 @@ try{
   const {proveScoring}=await import('./scoring.proof.mjs');
   await proveScoring({db,rpc,scalar,users,begin,commit,vite,database,pass});
  }
+ if(process.argv.includes('--shared-rules'))await (await import('./shared-rules.proof.mjs')).proveSharedArcade({db,rpc,scalar,users,begin,commit,vite,pass});
  assert.ok(targets.length>50);pass('zero writes across '+targets.length+' non-Arcade tables with canonical triggers enabled');
- mkdirSync('dev/arcade',{recursive:true});writeFileSync(process.argv.includes('--scoring')?'dev/arcade/scoring.proof.evidence.json':'dev/arcade/proof.evidence.json',JSON.stringify({database,productionWrites:0,passed:cases,at:new Date().toISOString()},null,2));
+ mkdirSync('dev/arcade',{recursive:true});writeFileSync(process.argv.includes('--shared-rules')?'dev/arcade/shared.proof.evidence.json':process.argv.includes('--scoring')?'dev/arcade/scoring.proof.evidence.json':'dev/arcade/proof.evidence.json',JSON.stringify({database,productionWrites:0,passed:cases,at:new Date().toISOString()},null,2));
 }finally{await vite.close();await db.end();await root.query('DROP DATABASE '+database+' WITH (FORCE)');await root.end();}
 

@@ -1,5 +1,12 @@
 # Repository map
 
+Shared gameplay: `src/lib/run21/rulesets.ts` owns mode-neutral versions;
+`board.ts` owns board admission, legal actions and card advancement; `rules.ts`
+owns totals, multipliers, segmented ticks and scoring; `shuffle.server.ts` owns
+the shared CSPRNG/dealing algorithm. The immutable `private.gameplay_rulesets`
+registry and frozen match configuration bind both adapters to the same version.
+`dev/run21/build-shared-rules.mjs` generates the SQL registry snapshot from source.
+
 Arcade: `src/pages/Arcade.tsx` owns the switchboard, game leaderboard and solo
 screen; `useArcadeRun.ts` accepts safe authoritative revisions. `api/arcade.ts`
 authenticates requests, `server/arcade/service.ts` coordinates CAS/receipts, and

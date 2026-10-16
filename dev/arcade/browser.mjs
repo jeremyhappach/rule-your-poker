@@ -1,12 +1,13 @@
 import {createServer} from 'vite';import react from '@vitejs/plugin-react-swc';import {chromium} from '@playwright/test';
 import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';import {resolve} from 'node:path';import {randomUUID} from 'node:crypto';import assert from 'node:assert/strict';
-const scoring=process.argv.includes('--scoring'),prefix=scoring?'scoring-':'';
+const shared=process.argv.includes('--shared-rules'),scoring=shared||process.argv.includes('--scoring'),currentRules=shared?'run21/2':'run21/arcade-2',prefix=shared?'shared-':scoring?'scoring-':'';
 const database='arcade_browser_'+Date.now(),opts={host:'127.0.0.1',port:55439,user:'tri_test'},root=new pg.Client({...opts,database:'template1'});await root.connect();await root.query('CREATE DATABASE '+database+' TEMPLATE postgres');
 const db=new pg.Client({...opts,database});await db.connect();const user=randomUUID();
 await db.query("CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);CREATE SCHEMA IF NOT EXISTS cron;CREATE TABLE IF NOT EXISTS cron.job(jobid bigserial,jobname text,schedule text,active boolean);CREATE OR REPLACE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE SQL AS $$INSERT INTO cron.job(jobname,schedule,active) VALUES($1,$2,true) RETURNING jobid$$");
 await db.query(readFileSync('supabase/arcade/phase-one.sql','utf8'));await db.query('INSERT INTO auth.users(id) VALUES($1)',[user]);await db.query("INSERT INTO public.profiles(id,username,is_active) VALUES($1,'Arcade Browser',true)",[user]);
 if(scoring){await db.query(readFileSync('supabase/arcade/run21-scoring.sql','utf8'));await db.query(readFileSync('supabase/arcade/activate-run21-scoring.sql','utf8'));}
+if(shared){await db.query(readFileSync('supabase/run21/shared-rules-base.sql','utf8').replace(/\r\n/g,'\n'));await db.query(readFileSync('supabase/run21/shared-rules.candidate.sql','utf8'));await db.query(readFileSync('supabase/run21/activate-shared-rules.sql','utf8'));}
 await db.query("UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp();CREATE FUNCTION private.arcade_local_notify() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_notify('arcade_local',NEW.run_id::text);RETURN NEW;END$$;CREATE TRIGGER arcade_local AFTER UPDATE ON public.arcade_revisions FOR EACH ROW EXECUTE FUNCTION private.arcade_local_notify()");
 const listener=new pg.Client({...opts,database});await listener.connect();await listener.query('LISTEN arcade_local');
 const streams=new Set();listener.on('notification',()=>{for(const res of streams)res.write('data: revision\n\n');});
@@ -59,8 +60,8 @@ try{
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(350);await page.screenshot({path:'dev/arcade/evidence/'+prefix+'leaderboard.png',fullPage:true});passed.push('exactly three rounds, one result, same leaderboard and Play Again');
  if(scoring){
   await page.getByRole('combobox',{name:'Leaderboard rules'}).selectOption('run21/arcade-1');
-  await page.getByText('Viewing legacy scores. New games use run21/arcade-2.',{exact:true}).waitFor();
-  await page.getByRole('combobox',{name:'Leaderboard rules'}).selectOption('run21/arcade-2');
+  await page.getByText('Viewing legacy scores. New games use '+currentRules+'.',{exact:true}).waitFor();
+  await page.getByRole('combobox',{name:'Leaderboard rules'}).selectOption(currentRules);
   await page.waitForTimeout(200);passed.push('legacy and current leaderboards are independently selectable');
  }
  await page.getByRole('button',{name:'Play Again'}).click();await page.locator('[data-run21-gameplay]').waitFor();

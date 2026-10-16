@@ -1,0 +1,823 @@
+{
+  "checkedAt": "2026-10-16",
+  "migration": {
+    "name": "run21_shared_gameplay_rules",
+    "version": "20261016214911"
+  },
+  "installedFunctions": [
+    {
+      "signature": "arcade_start(uuid,uuid,text)",
+      "hash": "65f54365dee3059f8cf34e39104c66c3"
+    },
+    {
+      "signature": "private.gameplay_rules_immutable()",
+      "hash": "8995a15641f59a994a2506b31d54588e"
+    },
+    {
+      "signature": "private.run21_freeze_gameplay_rules()",
+      "hash": "194147228d39d2cf2973c051bbf76520"
+    },
+    {
+      "signature": "private.run21_pause()",
+      "hash": "168f8075f2185eb76cc2fd334e8d254c"
+    },
+    {
+      "signature": "run21_recovery_load(uuid,uuid)",
+      "hash": "20753fd0bbc40cac37cbab74c7ee15fd"
+    },
+    {
+      "signature": "run21_server_admit(uuid,uuid)",
+      "hash": "9dd9808da3171f9a7d573472c0016cfd"
+    },
+    {
+      "signature": "run21_server_commit_admitted(uuid,uuid,bigint,jsonb,bigint)",
+      "hash": "52163d4db99f2b51e3e9882940cd8513"
+    },
+    {
+      "signature": "run21_server_commit(uuid,bigint,jsonb,bigint)",
+      "hash": "183a8bde084c5db1433be52b413f0636"
+    },
+    {
+      "signature": "run21_server_load_current(uuid,bigint)",
+      "hash": "c97824d329d7b8a48fdd7862c6b1ebbb"
+    }
+  ],
+  "history": {
+    "hash": "a1d6a237b2b2be5eb403f78f2108705a",
+    "count": 30
+  },
+  "arcade_results": {
+    "hash": "bbe5cc3ab5963689692c9dcb19062fc8",
+    "count": 1
+  },
+  "protected": {
+    "finished": false,
+    "revision": 68,
+    "paused_at": 1792106874255
+  },
+  "release": {
+    "qualified": true,
+    "singleton": true
+  },
+  "workers": {
+    "multiplayer": {
+      "id": "e068bb79-7a3a-45dd-9bfd-79befe616dce",
+      "slug": "run21-recovery",
+      "name": "run21-recovery",
+      "status": "ACTIVE",
+      "version": 6,
+      "created_at": 1792071270159,
+      "updated_at": 1792187463948,
+      "verify_jwt": false,
+      "import_map": false,
+      "entrypoint_path": "file:///tmp/user_fn_xvhmbuppghwmwpwrkzao_e068bb79-7a3a-45dd-9bfd-79befe616dce_6/source/index.ts",
+      "ezbr_sha256": "9a0234b6a9da3f357a436e31717ab7f156cdce85cfeb230f97c276525cc061ba"
+    },
+    "arcade": {
+      "id": "899ae7d5-5e13-4fe7-a146-3a0001b00023",
+      "slug": "arcade-recovery",
+      "name": "arcade-recovery",
+      "status": "ACTIVE",
+      "version": 3,
+      "created_at": 1792182273687,
+      "updated_at": 1792187453493,
+      "verify_jwt": false,
+      "import_map": false,
+      "entrypoint_path": "file:///tmp/user_fn_xvhmbuppghwmwpwrkzao_899ae7d5-5e13-4fe7-a146-3a0001b00023_3/source/index.ts",
+      "ezbr_sha256": "b18323b0221a99f59a8b55732d719e5cbaadc0564f70defccd6d27af65c47b86"
+    }
+  },
+  "validation": {
+    "applicationTests": 2274,
+    "harnessTests": 241,
+    "typecheck": "pass",
+    "productionBuild": "pass",
+    "multiplayerBrowsers": "two independent browsers passed",
+    "arcadeBrowser": "shared-browser.evidence.json",
+    "arcadeDatabase": "shared.proof.evidence.json",
+    "productionGameplayWrites": 0
+  },
+  "financialMatrix": [
+    {
+      "file": "shared-continuation-fake-financial-result.json",
+      "database": "run21_release_proof_1792187393091",
+      "productionWrites": 0,
+      "tests": [
+        {
+          "name": "Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested"
+        },
+        {
+          "name": "Active non-admin account is already authorized without Run21 allowlist"
+        },
+        {
+          "name": "Unqualified release rejects configuration"
+        },
+        {
+          "name": "Revoked player rejects configuration"
+        },
+        {
+          "name": "Outsider cannot configure"
+        },
+        {
+          "name": "Wrong dealer cannot configure"
+        },
+        {
+          "name": "Paused session rejects setup"
+        },
+        {
+          "name": "Pending session end rejects setup"
+        },
+        {
+          "name": "Outstanding pot rejects setup"
+        },
+        {
+          "name": "One competitor rejects setup"
+        },
+        {
+          "name": "Three competitors reject setup"
+        },
+        {
+          "name": "Zero stake rejects setup"
+        },
+        {
+          "name": "Stale configuration identity rejects setup"
+        },
+        {
+          "name": "Fake-money setup admits one human and one bot"
+        },
+        {
+          "name": "Concurrent configuration commits exactly one dealer-game and deduplicates its replay"
+        },
+        {
+          "name": "Non-admin two-human configuration succeeds",
+          "realMoney": false
+        },
+        {
+          "name": "Browser role cannot submit a fabricated score or settlement to the service authority"
+        },
+        {
+          "name": "Competing database recovery workers claim a dispatch only once"
+        },
+        {
+          "name": "Recovery RPCs reject browser roles and forged dispatch tokens"
+        },
+        {
+          "name": "Failed recovery remains observable and its acknowledgement cannot replay"
+        },
+        {
+          "name": "Durable recovery excludes historical version-one matches"
+        },
+        {
+          "name": "Pause before initialization preserves an empty match; resume safely opens its first board"
+        },
+        {
+          "name": "Shared gameplay identity/config freeze at setup; untouched clock and reconnect retain intro-end origin"
+        },
+        {
+          "name": "Canonical authorized pause/resume shifts intro origin and deadline equally, preserving completed ticks and worker exclusion"
+        },
+        {
+          "name": "Database lock-time deadline defeats qualifying late collect; zero-client recovery scores zero without premature settlement"
+        },
+        {
+          "name": "Fresh worker expires a started gameplay clock from persisted state without clients"
+        },
+        {
+          "name": "Database preserves historical and player deck evidence and rejects replacements, reset and version changes"
+        },
+        {
+          "name": "Failure after transfer and result insertion rolls back every financial artifact"
+        },
+        {
+          "name": "A restarted worker completes a settled unfinished match without any browser; repeated wake preserves one transfer"
+        },
+        {
+          "name": "Two service workers race: exactly one settlement commits"
+        },
+        {
+          "name": "Replayed terminal revision cannot transfer twice"
+        },
+        {
+          "name": "Completed match settles canonical balances +1/-1 exactly once",
+          "canonicalBalances": {
+            "420ee147-d067-4536-9137-16f9a262e34f": -1,
+            "8f30d68d-1f28-4202-bd26-74530fe1c8a5": 1
+          },
+          "resultCount": 1,
+          "transferCount": 1,
+          "privateBalances": {
+            "420ee147-d067-4536-9137-16f9a262e34f": -1,
+            "8f30d68d-1f28-4202-bd26-74530fe1c8a5": 1
+          },
+          "privateReceipt": {
+            "at": 1792187442133,
+            "key": "run21:b31c798b-f7ff-47c0-a461-56c0b067e7a3:1",
+            "amount": 1,
+            "loserId": "420ee147-d067-4536-9137-16f9a262e34f",
+            "resultId": "9eb46e6d-38ce-4edd-b11f-36e37d97be68",
+            "winnerId": "8f30d68d-1f28-4202-bd26-74530fe1c8a5",
+            "transferBatchId": "256cba91-e0f1-4f42-aa8d-03675516d4a3"
+          }
+        },
+        {
+          "name": "Final snapshots match canonical balances"
+        },
+        {
+          "name": "Immutable receipt references canonical balanced transfer batch"
+        },
+        {
+          "name": "Reconnect replays terminal state without another transfer"
+        },
+        {
+          "name": "Authoritative continuation completed before any browser close"
+        },
+        {
+          "name": "Concurrent browser closes and recovery preserve the exact continuation row and one dealer game"
+        },
+        {
+          "name": "Duplicate close and reconnect do not duplicate canonical financial settlement"
+        },
+        {
+          "name": "Run Back accepts a settled predecessor; late close preserves the successor"
+        }
+      ],
+      "fixtureTransactionRolledBack": true,
+      "isolatedDatabaseWillBeDropped": true
+    },
+    {
+      "file": "shared-continuation-fake-legacy-result.json",
+      "database": "run21_release_proof_1792187419912",
+      "productionWrites": 0,
+      "tests": [
+        {
+          "name": "Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested"
+        },
+        {
+          "name": "Active non-admin account is already authorized without Run21 allowlist"
+        },
+        {
+          "name": "Unqualified release rejects configuration"
+        },
+        {
+          "name": "Revoked player rejects configuration"
+        },
+        {
+          "name": "Outsider cannot configure"
+        },
+        {
+          "name": "Wrong dealer cannot configure"
+        },
+        {
+          "name": "Paused session rejects setup"
+        },
+        {
+          "name": "Pending session end rejects setup"
+        },
+        {
+          "name": "Outstanding pot rejects setup"
+        },
+        {
+          "name": "One competitor rejects setup"
+        },
+        {
+          "name": "Three competitors reject setup"
+        },
+        {
+          "name": "Zero stake rejects setup"
+        },
+        {
+          "name": "Stale configuration identity rejects setup"
+        },
+        {
+          "name": "Fake-money setup admits one human and one bot"
+        },
+        {
+          "name": "Concurrent configuration commits exactly one dealer-game and deduplicates its replay"
+        },
+        {
+          "name": "Non-admin two-human configuration succeeds",
+          "realMoney": false
+        },
+        {
+          "name": "Browser role cannot submit a fabricated score or settlement to the service authority"
+        },
+        {
+          "name": "Competing database recovery workers claim a dispatch only once"
+        },
+        {
+          "name": "Recovery RPCs reject browser roles and forged dispatch tokens"
+        },
+        {
+          "name": "Failed recovery remains observable and its acknowledgement cannot replay"
+        },
+        {
+          "name": "Durable recovery excludes historical version-one matches"
+        },
+        {
+          "name": "Pause before initialization preserves an empty match; resume safely opens its first board"
+        },
+        {
+          "name": "Reconnect and repeated reads preserve the first-placement deadline"
+        },
+        {
+          "name": "Fresh durable worker claims and recovers the expired turn through actual SQL RPCs"
+        },
+        {
+          "name": "Zero-client fake-money timeout uses bot logic and publishes automatic-play identity"
+        },
+        {
+          "name": "Canonical automatic-play control lets the human take back their board"
+        },
+        {
+          "name": "Fresh worker expires a started gameplay clock from persisted state without clients"
+        },
+        {
+          "name": "Database preserves historical and player deck evidence and rejects replacements, reset and version changes"
+        },
+        {
+          "name": "Historical version-one completion keeps private balances without retroactive canonical transfers",
+          "canonicalBalances": {
+            "5660247c-260e-4c70-9aed-629805467bee": 0,
+            "880dd218-dddd-492b-b5ba-91d1c4fa3636": 0
+          },
+          "resultCount": 0,
+          "transferCount": 0,
+          "privateBalances": {
+            "5660247c-260e-4c70-9aed-629805467bee": -1,
+            "880dd218-dddd-492b-b5ba-91d1c4fa3636": 1
+          },
+          "privateReceipt": {
+            "at": 1792187453913,
+            "key": "run21:e25b097a-8760-4db6-9431-be5ba51e5fe1:1",
+            "amount": 1,
+            "loserId": "5660247c-260e-4c70-9aed-629805467bee",
+            "resultId": "b3005ead-9efd-4e0c-9808-bd3f273a6c86",
+            "winnerId": "880dd218-dddd-492b-b5ba-91d1c4fa3636",
+            "transferBatchId": "dff82cbc-6a8b-4fb1-a909-649fcfd6c345"
+          }
+        },
+        {
+          "name": "Historical completion creates no new final snapshots"
+        },
+        {
+          "name": "Reconnect replays terminal state without another transfer"
+        },
+        {
+          "name": "Duplicate close and reconnect do not duplicate canonical financial settlement"
+        },
+        {
+          "name": "Run Back accepts a settled predecessor; late close preserves the successor"
+        },
+        {
+          "name": "Timeout/action race admits one command; its canonical pause/automatic-play trigger adds only the expected revision and no transfer"
+        }
+      ],
+      "fixtureTransactionRolledBack": true,
+      "isolatedDatabaseWillBeDropped": true
+    },
+    {
+      "file": "shared-continuation-fake-sudden-death-result.json",
+      "database": "run21_release_proof_1792187409124",
+      "productionWrites": 0,
+      "tests": [
+        {
+          "name": "Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested"
+        },
+        {
+          "name": "Active non-admin account is already authorized without Run21 allowlist"
+        },
+        {
+          "name": "Unqualified release rejects configuration"
+        },
+        {
+          "name": "Revoked player rejects configuration"
+        },
+        {
+          "name": "Outsider cannot configure"
+        },
+        {
+          "name": "Wrong dealer cannot configure"
+        },
+        {
+          "name": "Paused session rejects setup"
+        },
+        {
+          "name": "Pending session end rejects setup"
+        },
+        {
+          "name": "Outstanding pot rejects setup"
+        },
+        {
+          "name": "One competitor rejects setup"
+        },
+        {
+          "name": "Three competitors reject setup"
+        },
+        {
+          "name": "Zero stake rejects setup"
+        },
+        {
+          "name": "Stale configuration identity rejects setup"
+        },
+        {
+          "name": "Fake-money setup admits one human and one bot"
+        },
+        {
+          "name": "Concurrent configuration commits exactly one dealer-game and deduplicates its replay"
+        },
+        {
+          "name": "Non-admin two-human configuration succeeds",
+          "realMoney": false
+        },
+        {
+          "name": "Browser role cannot submit a fabricated score or settlement to the service authority"
+        },
+        {
+          "name": "Competing database recovery workers claim a dispatch only once"
+        },
+        {
+          "name": "Recovery RPCs reject browser roles and forged dispatch tokens"
+        },
+        {
+          "name": "Failed recovery remains observable and its acknowledgement cannot replay"
+        },
+        {
+          "name": "Durable recovery excludes historical version-one matches"
+        },
+        {
+          "name": "Pause before initialization preserves an empty match; resume safely opens its first board"
+        },
+        {
+          "name": "Shared gameplay identity/config freeze at setup; untouched clock and reconnect retain intro-end origin"
+        },
+        {
+          "name": "Canonical authorized pause/resume shifts intro origin and deadline equally, preserving completed ticks and worker exclusion"
+        },
+        {
+          "name": "Database lock-time deadline defeats qualifying late collect; zero-client recovery scores zero without premature settlement"
+        },
+        {
+          "name": "Fresh worker expires a started gameplay clock from persisted state without clients"
+        },
+        {
+          "name": "Database preserves historical and player deck evidence and rejects replacements, reset and version changes"
+        },
+        {
+          "name": "Three-round tie opens sudden death without moving chips or writing a result"
+        },
+        {
+          "name": "Failure after transfer and result insertion rolls back every financial artifact"
+        },
+        {
+          "name": "A restarted worker completes a settled unfinished match without any browser; repeated wake preserves one transfer"
+        },
+        {
+          "name": "Two service workers race: exactly one settlement commits"
+        },
+        {
+          "name": "Replayed terminal revision cannot transfer twice"
+        },
+        {
+          "name": "Completed match settles canonical balances +1/-1 exactly once",
+          "canonicalBalances": {
+            "905e17d6-7932-4a1d-9a8f-88f6b25fb603": 1,
+            "c06ed9cf-a457-4b6f-a555-d6454431277a": -1
+          },
+          "resultCount": 1,
+          "transferCount": 1,
+          "privateBalances": {
+            "905e17d6-7932-4a1d-9a8f-88f6b25fb603": 1,
+            "c06ed9cf-a457-4b6f-a555-d6454431277a": -1
+          },
+          "privateReceipt": {
+            "at": 1792187471141,
+            "key": "run21:81a4ed08-d887-411d-baf6-c620f62beecb:1",
+            "amount": 1,
+            "loserId": "c06ed9cf-a457-4b6f-a555-d6454431277a",
+            "resultId": "2893e4e2-1a2b-47ca-b74c-7698c937ee2f",
+            "winnerId": "905e17d6-7932-4a1d-9a8f-88f6b25fb603",
+            "transferBatchId": "18c91b57-2e81-4418-b314-1544ee9280a6"
+          }
+        },
+        {
+          "name": "Final snapshots match canonical balances"
+        },
+        {
+          "name": "Immutable receipt references canonical balanced transfer batch"
+        },
+        {
+          "name": "Reconnect replays terminal state without another transfer"
+        },
+        {
+          "name": "Authoritative continuation completed before any browser close"
+        },
+        {
+          "name": "Concurrent browser closes and recovery preserve the exact continuation row and one dealer game"
+        },
+        {
+          "name": "Duplicate close and reconnect do not duplicate canonical financial settlement"
+        },
+        {
+          "name": "Run Back accepts a settled predecessor; late close preserves the successor"
+        }
+      ],
+      "fixtureTransactionRolledBack": true,
+      "isolatedDatabaseWillBeDropped": true
+    },
+    {
+      "file": "shared-continuation-fake-terminal-result.json",
+      "database": "run21_release_proof_1792187414690",
+      "productionWrites": 0,
+      "tests": [
+        {
+          "name": "Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested"
+        },
+        {
+          "name": "Active non-admin account is already authorized without Run21 allowlist"
+        },
+        {
+          "name": "Unqualified release rejects configuration"
+        },
+        {
+          "name": "Revoked player rejects configuration"
+        },
+        {
+          "name": "Outsider cannot configure"
+        },
+        {
+          "name": "Wrong dealer cannot configure"
+        },
+        {
+          "name": "Paused session rejects setup"
+        },
+        {
+          "name": "Pending session end rejects setup"
+        },
+        {
+          "name": "Outstanding pot rejects setup"
+        },
+        {
+          "name": "One competitor rejects setup"
+        },
+        {
+          "name": "Three competitors reject setup"
+        },
+        {
+          "name": "Zero stake rejects setup"
+        },
+        {
+          "name": "Stale configuration identity rejects setup"
+        },
+        {
+          "name": "Fake-money setup admits one human and one bot"
+        },
+        {
+          "name": "Concurrent configuration commits exactly one dealer-game and deduplicates its replay"
+        },
+        {
+          "name": "Non-admin two-human configuration succeeds",
+          "realMoney": false
+        },
+        {
+          "name": "Browser role cannot submit a fabricated score or settlement to the service authority"
+        },
+        {
+          "name": "Competing database recovery workers claim a dispatch only once"
+        },
+        {
+          "name": "Recovery RPCs reject browser roles and forged dispatch tokens"
+        },
+        {
+          "name": "Failed recovery remains observable and its acknowledgement cannot replay"
+        },
+        {
+          "name": "Durable recovery excludes historical version-one matches"
+        },
+        {
+          "name": "Pause before initialization preserves an empty match; resume safely opens its first board"
+        },
+        {
+          "name": "Shared gameplay identity/config freeze at setup; untouched clock and reconnect retain intro-end origin"
+        },
+        {
+          "name": "Canonical authorized pause/resume shifts intro origin and deadline equally, preserving completed ticks and worker exclusion"
+        },
+        {
+          "name": "Database lock-time deadline defeats qualifying late collect; zero-client recovery scores zero without premature settlement"
+        },
+        {
+          "name": "Fresh worker expires a started gameplay clock from persisted state without clients"
+        },
+        {
+          "name": "Database preserves historical and player deck evidence and rejects replacements, reset and version changes"
+        },
+        {
+          "name": "Failure after transfer and result insertion rolls back every financial artifact"
+        },
+        {
+          "name": "A restarted worker completes a settled unfinished match without any browser; repeated wake preserves one transfer"
+        },
+        {
+          "name": "Two service workers race: exactly one settlement commits"
+        },
+        {
+          "name": "Replayed terminal revision cannot transfer twice"
+        },
+        {
+          "name": "Completed match settles canonical balances +1/-1 exactly once",
+          "canonicalBalances": {
+            "1980953f-3707-4ac3-81ba-b29a88f978a5": -1,
+            "47651b66-f0db-4258-98d9-412daf2b2854": 1
+          },
+          "resultCount": 1,
+          "transferCount": 1,
+          "privateBalances": {
+            "1980953f-3707-4ac3-81ba-b29a88f978a5": -1,
+            "47651b66-f0db-4258-98d9-412daf2b2854": 1
+          },
+          "privateReceipt": {
+            "at": 1792187463691,
+            "key": "run21:649b7d89-a480-47c7-a8fa-18662966e299:1",
+            "amount": 1,
+            "loserId": "1980953f-3707-4ac3-81ba-b29a88f978a5",
+            "resultId": "7762c613-9faa-41e2-beae-709f837406c9",
+            "winnerId": "47651b66-f0db-4258-98d9-412daf2b2854",
+            "transferBatchId": "c2adbebf-4e4f-47dc-8dc8-150754162a8e"
+          }
+        },
+        {
+          "name": "Final snapshots match canonical balances"
+        },
+        {
+          "name": "Immutable receipt references canonical balanced transfer batch"
+        },
+        {
+          "name": "Reconnect replays terminal state without another transfer"
+        },
+        {
+          "name": "Authoritative continuation completed before any browser close"
+        },
+        {
+          "name": "Concurrent browser closes and recovery preserve the exact continuation row and one dealer game"
+        },
+        {
+          "name": "Duplicate close and reconnect do not duplicate canonical financial settlement"
+        },
+        {
+          "name": "Pending terminal session ends after canonical settlement"
+        }
+      ],
+      "fixtureTransactionRolledBack": true,
+      "isolatedDatabaseWillBeDropped": true
+    },
+    {
+      "file": "shared-continuation-real-disconnected-result.json",
+      "database": "run21_release_proof_1792187398915",
+      "productionWrites": 0,
+      "tests": [
+        {
+          "name": "Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested"
+        },
+        {
+          "name": "Active non-admin account is already authorized without Run21 allowlist"
+        },
+        {
+          "name": "Unqualified release rejects configuration"
+        },
+        {
+          "name": "Revoked player rejects configuration"
+        },
+        {
+          "name": "Outsider cannot configure"
+        },
+        {
+          "name": "Wrong dealer cannot configure"
+        },
+        {
+          "name": "Paused session rejects setup"
+        },
+        {
+          "name": "Pending session end rejects setup"
+        },
+        {
+          "name": "Outstanding pot rejects setup"
+        },
+        {
+          "name": "One competitor rejects setup"
+        },
+        {
+          "name": "Three competitors reject setup"
+        },
+        {
+          "name": "Zero stake rejects setup"
+        },
+        {
+          "name": "Stale configuration identity rejects setup"
+        },
+        {
+          "name": "Real money rejects bots"
+        },
+        {
+          "name": "Missing shared heartbeat fails closed"
+        },
+        {
+          "name": "Disabled Run21 scheduler fails closed"
+        },
+        {
+          "name": "Failed worker fails closed"
+        },
+        {
+          "name": "Stale worker heartbeat fails closed"
+        },
+        {
+          "name": "Concurrent configuration commits exactly one dealer-game and deduplicates its replay"
+        },
+        {
+          "name": "Non-admin two-human configuration succeeds",
+          "realMoney": true
+        },
+        {
+          "name": "Browser role cannot submit a fabricated score or settlement to the service authority"
+        },
+        {
+          "name": "Competing database recovery workers claim a dispatch only once"
+        },
+        {
+          "name": "Recovery RPCs reject browser roles and forged dispatch tokens"
+        },
+        {
+          "name": "Failed recovery remains observable and its acknowledgement cannot replay"
+        },
+        {
+          "name": "Durable recovery excludes historical version-one matches"
+        },
+        {
+          "name": "Pause before initialization preserves an empty match; resume safely opens its first board"
+        },
+        {
+          "name": "Shared gameplay identity/config freeze at setup; untouched clock and reconnect retain intro-end origin"
+        },
+        {
+          "name": "Canonical authorized pause/resume shifts intro origin and deadline equally, preserving completed ticks and worker exclusion"
+        },
+        {
+          "name": "Database lock-time deadline defeats qualifying late collect; zero-client recovery scores zero without premature settlement"
+        },
+        {
+          "name": "Fresh worker expires a started gameplay clock from persisted state without clients"
+        },
+        {
+          "name": "Database preserves historical and player deck evidence and rejects replacements, reset and version changes"
+        },
+        {
+          "name": "With every client disposed, a fresh durable worker settles and a repeated wake transfers nothing"
+        },
+        {
+          "name": "Completed match settles canonical balances +1/-1 exactly once",
+          "canonicalBalances": {
+            "6af9ad1b-c24f-4672-a0fe-7d49d2be098c": -1,
+            "c04d32bf-0d88-4d20-9d78-2315f774eef1": 1
+          },
+          "resultCount": 1,
+          "transferCount": 1,
+          "privateBalances": {
+            "6af9ad1b-c24f-4672-a0fe-7d49d2be098c": -1,
+            "c04d32bf-0d88-4d20-9d78-2315f774eef1": 1
+          },
+          "privateReceipt": {
+            "at": 1792187448148,
+            "key": "run21:a22b5251-944b-4d3d-a21b-d5b946187bad:1",
+            "amount": 1,
+            "loserId": "6af9ad1b-c24f-4672-a0fe-7d49d2be098c",
+            "resultId": "b6fb31e9-d885-4ff4-801c-9d79f60c52b6",
+            "winnerId": "c04d32bf-0d88-4d20-9d78-2315f774eef1",
+            "transferBatchId": "fa2d09e4-1902-4c14-ab35-bdf7d7283335"
+          }
+        },
+        {
+          "name": "Final snapshots match canonical balances"
+        },
+        {
+          "name": "Immutable receipt references canonical balanced transfer batch"
+        },
+        {
+          "name": "Reconnect replays terminal state without another transfer"
+        },
+        {
+          "name": "Authoritative continuation completed before any browser close"
+        },
+        {
+          "name": "Concurrent browser closes and recovery preserve the exact continuation row and one dealer game"
+        },
+        {
+          "name": "Duplicate close and reconnect do not duplicate canonical financial settlement"
+        },
+        {
+          "name": "Run Back accepts a settled predecessor; late close preserves the successor"
+        }
+      ],
+      "fixtureTransactionRolledBack": true,
+      "isolatedDatabaseWillBeDropped": true
+    }
+  ]
+}

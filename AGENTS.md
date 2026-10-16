@@ -139,6 +139,20 @@ When these disagree, stop and report the discrepancy.
 
 ## Architecture invariants
 
+### One shared versioned rule base per game
+
+Every game offered in Arcade and multiplayer MUST share one versioned rule base
+for legal actions, scoring, bonuses, randomness/dealing and gameplay timing.
+Never create mode-specific copies, formulas or independently tuned configurations.
+Gameplay rule identity is independent of mode; freeze the version/configuration
+at admission and preserve historical/in-progress versions in the shared implementation.
+Only orchestration differs: Arcade is one player with automatic standard progression
+and no opponents, pauses or finances; multiplayer owns participant sequencing,
+authorized pause/resume, competitive ties, settlement and session continuation.
+These differences must not silently change gameplay rules. This applies to Run21,
+future TriTowers/Yahtzee adapters and every other dual-mode game.
+See `docs/codex/SHARED_GAMEPLAY_RULES.md`.
+
 ### Atomic financial release gate
 
 Arcade is an explicitly nonfinancial solo lifecycle: no multiplayer sessions,

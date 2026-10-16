@@ -1,5 +1,10 @@
 # Game rules and rule-source map
 
+Current cross-mode contract: [one shared versioned gameplay base](SHARED_GAMEPLAY_RULES.md).
+New Run21 games use mode-neutral `run21/2`: 280→200→0 completed ticks, 420 ms then
+900 ms, 106.8 seconds from intro end, no first-placement allowance, zero at expiry.
+Old rules/configurations below remain historical context where superseded.
+
 Status: rules extracted at ingestion; authority ownership reconciled through
 the 2026-09-04 remediation program. Runtime and deployed RPC definitions outrank
 historical discrepancy notes retained below.
