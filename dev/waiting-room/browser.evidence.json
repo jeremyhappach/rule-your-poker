@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-16",
+  "sourceBase": "527ef6476b5e3c119d78fe83f0afbb899be8c58a",
+  "scope": "Four approved product files; no SQL, financial, game-authority or audio changes",
+  "productionWrites": 0,
+  "environment": "Real loopback Supabase Auth/PostgREST/Realtime; production RPC definition hashes matched before correction",
+  "routines": [
+    {
+      "nspname": "public",
+      "proname": "begin_session_dealer_selection",
+      "hash": "1b059ae8ae88ff04e210a6434dbf6f56"
+    },
+    {
+      "nspname": "public",
+      "proname": "get_waiting_start_blocked",
+      "hash": "4b9186443cee4ba98c55eca84831224e"
+    },
+    {
+      "nspname": "private",
+      "proname": "waiting_start_is_blocked",
+      "hash": "6952ad1cb60cc83ca7f27de6d1840bb4"
+    }
+  ],
+  "before": {
+    "refreshCadenceMs": 3000,
+    "nativeFalseWaitingDurationMs": [
+      32,
+      57
+    ],
+    "injectedLatencyMs": 450,
+    "delayedFalseWaitingDurationMs": 500,
+    "chromeAnnouncementEmits": 139114,
+    "edgeAnnouncementEmits": 129913,
+    "competingOwner": "LobbyAnnouncementReset cleared valid current-session waiting ambient after the emit loop stopped"
+  },
+  "after": {
+    "stableWindowMs": 30522,
+    "blockerLatencyMs": [
+      0,
+      450,
+      3500
+    ],
+    "clients": [
+      {
+        "browser": "Chrome desktop 1440x900",
+        "metrics": {
+          "falseWaitingFrames": 0,
+          "missingReadyFrames": 0,
+          "startDisappearances": 0,
+          "announcementEmits": 0,
+          "announcementCleanups": 0,
+          "rpcRechecks": 10,
+          "completedRechecks": 9,
+          "renderCount": 101
+        }
+      },
+      {
+        "browser": "Edge mobile 390x844",
+        "metrics": {
+          "falseWaitingFrames": 0,
+          "missingReadyFrames": 0,
+          "startDisappearances": 0,
+          "announcementEmits": 0,
+          "announcementCleanups": 0,
+          "rpcRechecks": 10,
+          "completedRechecks": 9,
+          "renderCount": 104
+        }
+      }
+    ],
+    "checks": [
+      "fresh authenticated reload reconstructs current waiting eligibility and announcement",
+      "host transfer leaves one authorized starter",
+      "sit-out revocation and authenticated queued rejoin",
+      "server blocker response revokes successful proof",
+      "RPC failure fails closed; explicit Retry restores current authority",
+      "one authorized Start submission after duplicate clicks",
+      "waiting announcement retires on actual dealer-selection transition in both browsers"
+    ],
+    "authorizedStartRequests": 1,
+    "pageErrors": [],
+    "localCleanup": true
+  },
+  "validation": {
+    "focused": 94,
+    "application": 2250,
+    "harness": 241,
+    "total": 2491,
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit (tsgo unavailable; no install)",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "passed": true
+  },
+  "rawEvidence": "qualification.local/waiting-flicker/evidence.json and after/evidence.json",
+  "screenshots": [
+    "qualification.local/waiting-flicker/after/stable-0.png",
+    "qualification.local/waiting-flicker/after/stable-1.png"
+  ],
+  "reproduce": [
+    "node supabase/farkle/financial-correction/20261015/full-stack.mjs start",
+    "node dev/waiting-room/server.mjs",
+    "node dev/waiting-room/verify.mjs"
+  ],
+  "productionOwnerSmoke": "Pending Jeremy"
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveWaitingRoomStartAuthority as derive, type WaitingStartPlayer } from './waitingRoomStartAuthority';
+import { deriveWaitingRoomStartAuthority as derive, waitingRoomStartIdentity, type WaitingStartPlayer } from './waitingRoomStartAuthority';
 import databaseFixtures from '../../supabase/session-start-authority/client-fixtures.json';
 
 const player = (id: string, position: number | null, extra: Partial<WaitingStartPlayer> = {}): WaitingStartPlayer => ({
@@ -7,6 +7,23 @@ const player = (id: string, position: number | null, extra: Partial<WaitingStart
   waiting: false, created_at: `2026-09-29T17:01:0${id === 'a' ? 0 : 1}Z`, ...extra,
 });
 const idle = { status: 'waiting', current_game_uuid: null, pot: 0 };
+
+describe('waiting eligibility identity', () => {
+  const roster = [player('a', 1), player('b', 4)];
+  const key = waitingRoomStartIdentity('session', 'a', roster, 'a', idle);
+  it('ignores allocation, row order and unrelated presentation fields', () => {
+    expect(waitingRoomStartIdentity('session', 'a', roster.map(p => ({ ...p, chips: 50, profiles: { username: 'renamed' } })).reverse(), 'a', { ...idle })).toBe(key);
+  });
+  it('normalizes omitted false/null boundary values', () => {
+    expect(waitingRoomStartIdentity('session', 'a', roster, 'a', { ...idle, is_paused: false, pending_session_end: null, session_ended_at: null })).toBe(key);
+  });
+  it.each([
+    { id: 'other-row' }, { user_id: 'other-user' }, { position: 7 }, { status: 'left' },
+    { is_bot: true }, { sitting_out: true }, { waiting: true }, { created_at: '2026-09-29T18:00:00Z' },
+  ])('includes authoritative player changes %j', changed => {
+    expect(waitingRoomStartIdentity('session', 'a', [{ ...roster[0], ...changed }, roster[1]], 'a', idle)).not.toBe(key);
+  });
+});
 
 describe('waiting start authority mirrors the locked server election', () => {
   it.each(databaseFixtures)('matches the SQL-proven starter after both disconnect/rejoin paths ($boundary.real_money)', fixture => {

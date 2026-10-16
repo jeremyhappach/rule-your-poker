@@ -1,3 +1,36 @@
+# Waiting-room Start / Ready continuity — 2026-10-16 — qualified correction
+
+Three-second recovery snapshots replaced player/game object references without
+changing eligibility. Reference-based blocker proof matching hid Start and
+briefly published false Waiting. A changing announcement API wrapper caused a
+separate emit/cleanup loop. Once that loop stopped, lobby cleanup incorrectly
+cleared the valid waiting announcement; the approved fourth-file guard now
+preserves only the current session's exact waiting-table ambient IDs.
+
+Blocker proof now follows semantic player, host, viewer, session and financial
+boundary values. Equivalent snapshots retain successful proof while server
+rechecks continue. Real changes, blocked/error responses and Retry invalidate
+eligibility; scope generations and completed-request ordering reject stale
+responses, including A-to-B-to-A changes. Waiting announcements use the existing
+stable-reference ownership pattern and retire on phase exit/unmount/session
+change. Stale gameplay announcements still clear in lobby mode. No SQL,
+financial, game-authority, audio or unrelated lifecycle changes.
+
+Validation: 94 focused checks; all 2,491 regression tests (2,250 application +
+241 harness); installed TypeScript compiler and production build pass. Both
+authenticated browsers (Chrome desktop, Edge mobile emulation) reproduce the
+three-second refresh with native, 450 ms and 3,500 ms blocker latency: zero
+Start disappearances, false Waiting or blank Ready frames, and no announcement
+churn while authority is unchanged; nine completed server rechecks per browser.
+Host transfer, sit-out/queued rejoin, blocker failure/Retry, authenticated reload,
+dealer-selection retirement and one submission after duplicate clicks pass.
+Both retained waiting presentation paths have mounted regression coverage.
+Fixture writes were loopback-only and cleanup was verified. Evidence and runner:
+[dev/waiting-room](../../dev/waiting-room/browser.evidence.json).
+Release checkpoint: `waiting-room-flicker-2026-10-16`.
+Production publication must match this commit; Jeremy's production smoke remains
+the final acceptance check.
+
 # Shared audio / Run21 Round 1 bell — 2026-10-16 — qualified correction
 
 Production smoke found that the old Run21 hook consumed intro receipts before

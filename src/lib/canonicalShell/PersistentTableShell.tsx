@@ -73,8 +73,14 @@ import { SettlementRuntime } from './settlement/SettlementRuntime';
  * Lives inside CanonicalAnnouncementProvider so it can dispatch
  * clearAmbient / dismiss against the same context the rail consumes.
  */
-function LobbyAnnouncementReset({ lobbyMode }: { lobbyMode: boolean }) {
+function LobbyAnnouncementReset({ lobbyMode, gameId }: { lobbyMode: boolean; gameId?: string | null }) {
   const ctx = useAnnouncementContext();
+  // Both waiting-table presentations own this scoped ambient until unmount.
+  // Lobby cleanup must retire gameplay messages without stealing that slot.
+  const isCurrentWaitingAmbient = !!gameId && ctx?.ambient?.type === 'waiting_for_players'
+    && ctx.ambient.scope.dealerGameId === gameId
+    && (ctx.ambient.id === `${gameId}:waiting-table:ready`
+      || ctx.ambient.id === `${gameId}:waiting-table:waiting`);
   const prevRef = useRef(false);
   useEffect(() => {
     const wasLobby = prevRef.current;
@@ -83,16 +89,16 @@ function LobbyAnnouncementReset({ lobbyMode }: { lobbyMode: boolean }) {
     // Edge: clear on the transition into lobby. Also clear on the
     // first paint when we mount already in lobby (wasLobby === false).
     if (wasLobby) return;
-    ctx.clearAmbient();
+    if (!isCurrentWaitingAmbient) ctx.clearAmbient();
     if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
-  }, [lobbyMode, ctx]);
+  }, [lobbyMode, ctx, isCurrentWaitingAmbient]);
   // Also reactively dismiss any NEW gameplay ambient/transient that
   // arrives while we're in lobby (late-firing publisher cleanup).
   useEffect(() => {
     if (!lobbyMode || !ctx) return;
-    if (ctx.ambient) ctx.clearAmbient();
+    if (ctx.ambient && !isCurrentWaitingAmbient) ctx.clearAmbient();
     if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
-  }, [lobbyMode, ctx, ctx?.ambient?.id, ctx?.transient?.id]);
+  }, [lobbyMode, ctx, ctx?.ambient?.id, ctx?.transient?.id, isCurrentWaitingAmbient]);
   return null;
 }
 import { ShellTabBarProvider } from './ShellTabBar';
@@ -496,7 +502,7 @@ export function PersistentTableShell(props: PersistentTableShellProps) {
             <ShellTabBarProvider>
               <ShellTimerProvider>
                 <ShellFeltContextProvider>
-                  <LobbyAnnouncementReset lobbyMode={lobbyMode} />
+                  <LobbyAnnouncementReset lobbyMode={lobbyMode} gameId={gameId} />
                   <CinematicPresentationContext.Provider value={cinematic.context}>{body}</CinematicPresentationContext.Provider>
                 </ShellFeltContextProvider>
               </ShellTimerProvider>

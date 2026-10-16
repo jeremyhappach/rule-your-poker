@@ -17,6 +17,28 @@ export interface WaitingStartBoundary {
   is_paused?: boolean | null;
   pending_session_end?: boolean | null;
   session_ended_at?: string | null;
+  chip_transfer_cursor?: number | string | null;
+}
+
+/** Values that can invalidate a waiting check, independent of snapshot allocation/order. */
+export function waitingRoomStartIdentity(
+  gameId: string,
+  viewerUserId: string | undefined,
+  players: readonly WaitingStartPlayer[],
+  currentHost: string | null | undefined,
+  boundary: WaitingStartBoundary,
+): string {
+  const roster = players.map(p => JSON.stringify([
+    p.id ?? null, p.user_id, p.position ?? null, p.status ?? null,
+    !!p.is_bot, !!p.sitting_out, p.waiting === true,
+    p.created_at ? Date.parse(p.created_at) : null,
+  ])).sort();
+  return JSON.stringify([
+    gameId, viewerUserId ?? null, currentHost ?? null, roster,
+    boundary.status, boundary.current_game_uuid ?? null, boundary.pot,
+    !!boundary.is_paused, !!boundary.pending_session_end,
+    boundary.session_ended_at ?? null, boundary.chip_transfer_cursor ?? null,
+  ]);
 }
 
 export function deriveWaitingRoomStartAuthority(

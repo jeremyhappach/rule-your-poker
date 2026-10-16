@@ -16,7 +16,7 @@ import { generateUUID } from "@/lib/uuid";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
-import { deriveWaitingRoomStartAuthority, type WaitingStartBoundary } from "@/lib/waitingRoomStartAuthority";
+import { deriveWaitingRoomStartAuthority, waitingRoomStartIdentity, type WaitingStartBoundary } from "@/lib/waitingRoomStartAuthority";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -143,34 +143,52 @@ export function useWaitingRoomActions({
   // Sitting Out keeps a player's authoritative seat; only observer/left
   // releases it. Start Game must still require an explicit opt-in.
   const start = deriveWaitingRoomStartAuthority(players, currentHost, startBoundary);
-  // Unfinished rounds and pending financial journal entries are server-owned.
-  // Refresh from existing authoritative snapshot changes, never on a poll.
-  const [blockerRead, setBlockerRead] = useState<{
-    gameId: string; players: WaitingRoomActor[]; boundary: WaitingStartBoundary; blocked: boolean; failed: boolean;
-  } | null>(null);
-  const [startCheckAttempt, setStartCheckAttempt] = useState(0);
+  const startIdentity = waitingRoomStartIdentity(gameId, currentUserId, players, currentHost, startBoundary);
+  // Reset before children commit on a real authority change. A fresh scope
+  // also prevents A → B → A from reusing A's previous successful check.
+  const [startCheck, setStartCheck] = useState<{
+    identity: string;
+    scope: object;
+    result: { request: number; blocked: boolean; failed: boolean } | null;
+  }>({ identity: startIdentity, scope: {}, result: null });
+  if (startCheck.identity !== startIdentity) {
+    setStartCheck({ identity: startIdentity, scope: {}, result: null });
+  }
+  const checkScope = startCheck.scope;
+  const blockerRead = startCheck.result;
+  const checkRequestRef = useRef(0);
+  // Unfinished rounds and pending transfers remain server-owned. Keep checking
+  // every incoming snapshot, including no-op recovery reads, but retain a
+  // successful same-scope result while that revalidation is in flight.
   useEffect(() => {
-    let current = true;
     if (!start.readyToStart) return;
+    const request = ++checkRequestRef.current;
+    const publish = (blocked: boolean, failed: boolean) => {
+      if (!mountedRef.current) return;
+      setStartCheck(previous => {
+        if (previous.scope !== checkScope || (previous.result && previous.result.request > request)) return previous;
+        return { ...previous, result: { request, blocked, failed } };
+      });
+    };
     void (async () => {
       try {
         const { data, error } = await supabase.rpc('get_waiting_start_blocked' as any, { p_game_id: gameId } as any);
-        if (current) setBlockerRead({ gameId, players, boundary: startBoundary, blocked: !!error || data !== false, failed: !!error || typeof data !== 'boolean' });
+        publish(!!error || data !== false, !!error || typeof data !== 'boolean');
       } catch {
-        if (current) setBlockerRead({ gameId, players, boundary: startBoundary, blocked: true, failed: true });
+        publish(true, true);
       }
     })();
-    return () => { current = false; };
-  }, [gameId, players, startBoundary, start.readyToStart, startCheckAttempt]);
+    // Do not cancel a same-scope read just because the next snapshot arrived:
+    // latency beyond the refresh cadence must still deliver blocked/errors.
+    // Scope and completed-request order reject obsolete responses instead.
+  }, [gameId, players, startBoundary, start.readyToStart, checkScope]);
   const seatedPlayerCount = start.seatedPlayerCount;
-  const hasEnoughPlayers = start.readyToStart && blockerRead?.gameId === gameId &&
-    blockerRead.players === players && blockerRead.boundary === startBoundary && !blockerRead.blocked;
+  const hasCurrentCheck = startCheck.identity === startIdentity && blockerRead !== null;
+  const hasEnoughPlayers = start.readyToStart && hasCurrentCheck && !blockerRead.blocked;
   const canStartGame = hasEnoughPlayers && !!currentPlayer && start.startAuthorityUserId === currentUserId;
-  const startCheckFailed = start.readyToStart && blockerRead?.gameId === gameId &&
-    blockerRead.players === players && blockerRead.boundary === startBoundary && blockerRead.failed;
+  const startCheckFailed = start.readyToStart && hasCurrentCheck && blockerRead.failed;
   const retryStartCheck = useCallback(() => {
-    setBlockerRead(null);
-    setStartCheckAttempt(attempt => attempt + 1);
+    setStartCheck(previous => ({ identity: previous.identity, scope: {}, result: null }));
   }, []);
   const hasOpenSeats = seatedPlayerCount < 7;
 

@@ -27,7 +27,7 @@
  * second local map.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import type { WaitingStartBoundary } from "@/lib/waitingRoomStartAuthority";
 import {
@@ -359,10 +359,14 @@ function WaitingSurfaceBody({
   // Canonical announcement rail — "Waiting for Players" / "Ready to Start!".
   // Ambient for the whole waiting phase; cleared on unmount.
   const announcements = useAnnouncements();
+  const announcementsRef = useRef(announcements);
+  useEffect(() => {
+    announcementsRef.current = announcements;
+  }, [announcements]);
   useEffect(() => {
     if (!gameId) return;
     const id = `${gameId}:waiting-table:${actions.hasEnoughPlayers ? 'ready' : 'waiting'}`;
-    announcements.emit({
+    announcementsRef.current.emit({
       id,
       type: 'waiting_for_players',
       scope: { dealerGameId: gameId },
@@ -375,9 +379,9 @@ function WaitingSurfaceBody({
       },
     });
     return () => {
-      announcements.clearAmbient('waiting_for_players');
+      announcementsRef.current.clearAmbient('waiting_for_players');
     };
-  }, [announcements, gameId, actions.hasEnoughPlayers, actions.seatedPlayerCount]);
+  }, [gameId, actions.hasEnoughPlayers, actions.seatedPlayerCount]);
 
   return (
     <div

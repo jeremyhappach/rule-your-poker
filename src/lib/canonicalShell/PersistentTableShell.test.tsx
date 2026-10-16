@@ -4,7 +4,7 @@
  * PersistentTableShell — Phase 4 scaffolding tests.
  */
 
-import { act, useEffect } from 'react';
+import { act, useEffect, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -26,6 +26,7 @@ import { recordShellEvent } from './diagnostics';
 import { ShellTabBar, ShellTabBarStateContext, useShellTabBar } from './ShellTabBar';
 import { ShellHudChrome } from './ShellHudChrome';
 import { resolvePresentationMode } from './presentationMode';
+import { useAnnouncementContext, useAnnouncements } from './announcements';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -35,6 +36,86 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
+});
+
+describe('lobby announcement ownership', () => {
+  let context: NonNullable<ReturnType<typeof useAnnouncementContext>>;
+  function Probe() {
+    context = useAnnouncementContext()!;
+    return null;
+  }
+  function WaitingOwner({ gameId }: { gameId: string }) {
+    const api = useAnnouncements();
+    const ref = useRef(api);
+    useEffect(() => { ref.current = api; }, [api]);
+    useEffect(() => {
+      ref.current.emit({ id: `${gameId}:waiting-table:ready`, type: 'waiting_for_players',
+        scope: { dealerGameId: gameId }, payload: { text: 'Ready to Start!' } });
+      return () => ref.current.clearAmbient('waiting_for_players');
+    }, [gameId]);
+    return null;
+  }
+  const tree = (lobbyMode = true, gameId = 'g1', waiting = true) =>
+    <PersistentTableShell gameId={gameId} lobbyMode={lobbyMode}>
+      <Probe />{waiting && <WaitingOwner gameId={gameId} />}
+    </PersistentTableShell>;
+
+  it('preserves an existing waiting announcement on lobby entry and subsequent context updates', () => {
+    act(() => root.render(tree(false)));
+    const ready = context.ambient;
+    expect(ready?.payload?.text).toBe('Ready to Start!');
+    act(() => root.render(tree()));
+    expect(context.ambient).toBe(ready);
+    act(() => context.emit({ id: 'late-win', type: 'match_win', scope: { dealerGameId: 'g1' } }));
+    expect(context.transient).toBeNull();
+    expect(context.ambient).toBe(ready);
+  });
+
+  it('preserves fresh waiting announcements but clears stale gameplay on entry and late arrival', () => {
+    act(() => root.render(tree(false, 'g1', false)));
+    act(() => context.emit({ id: 'ante', type: 'awaiting_ante', scope: { dealerGameId: 'g1' } }));
+    expect(context.ambient?.id).toBe('ante');
+    act(() => root.render(tree(true, 'g1', false)));
+    expect(context.ambient).toBeNull();
+    act(() => context.emit({ id: 'late-ante', type: 'awaiting_ante', scope: { dealerGameId: 'g1' } }));
+    expect(context.ambient).toBeNull();
+    act(() => root.render(tree()));
+    expect(context.ambient?.payload?.text).toBe('Ready to Start!');
+  });
+
+  it.each([
+    { id: 'g1:waiting-table:ready', scope: {} },
+    { id: 'other:waiting-table:ready', scope: { dealerGameId: 'other' } },
+    { id: 'gameplay-wait', scope: { dealerGameId: 'g1' } },
+  ])('does not exempt unrelated waiting messages: $id', event => {
+    act(() => root.render(tree(true, 'g1', false)));
+    act(() => context.emit({ ...event, type: 'waiting_for_players' }));
+    expect(context.ambient).toBeNull();
+  });
+
+  it.each([true, false])('clears the waiting owner on phase exit even when lobbyMode stays %s', lobbyMode => {
+    act(() => root.render(tree()));
+    expect(context.ambient?.payload?.text).toBe('Ready to Start!');
+    act(() => root.render(tree(lobbyMode, 'g1', false)));
+    expect(context.ambient).toBeNull();
+    if (!lobbyMode) {
+      act(() => context.emit({ id: 'selection', type: 'dealer_selection_in_progress', scope: { dealerGameId: 'g1' } }));
+      expect(context.ambient?.id).toBe('selection');
+    }
+  });
+
+  it('drops the departing session and reconstructs waiting on a fresh mount', () => {
+    act(() => root.render(tree()));
+    act(() => root.render(tree(true, 'g2', false)));
+    expect(context.ambient).toBeNull();
+    act(() => root.render(tree(true, 'g2')));
+    expect(context.ambient?.id).toBe('g2:waiting-table:ready');
+    act(() => root.render(null));
+    act(() => root.render(tree(true, 'g2', false)));
+    expect(context.ambient).toBeNull();
+    act(() => root.render(tree(true, 'g2')));
+    expect(context.ambient?.id).toBe('g2:waiting-table:ready');
+  });
 });
 
 afterEach(() => {
