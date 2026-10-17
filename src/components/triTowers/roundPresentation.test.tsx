@@ -28,6 +28,7 @@ describe('shared v3 round presentation in both adapters',()=>{
   Object.defineProperty(Element.prototype,'animate',{configurable:true,value:vi.fn((_frames,options)=>{const animation={cancel:vi.fn(),onfinish:null,options};animations.push(animation);return animation;})});
   const ui=render(<TriTowersBoard {...props} view={{...base,waste:18}}/>);
   ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].options.duration).toBe(120);expect(Element.prototype.animate).toHaveBeenCalledWith([{transform:'translate(0,0)'},{transform:'translate(-80px,300px) scale(1.5,1.5)'}],expect.objectContaining({duration:120}));expect(ui.getByRole('button',{name:'Remove 8 of hearts'}).hasAttribute('disabled')).toBe(false);
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].cancel).not.toHaveBeenCalled();expect(animations).toHaveLength(1);
   ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19,20],waste:20}}/>);expect(animations[0].cancel).toHaveBeenCalled();act(()=>animations[0].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeTruthy();act(()=>animations[1].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeNull();expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();
   delete (Element.prototype as any).animate;vi.restoreAllMocks();
  });

@@ -7,7 +7,9 @@ export function useTriCardFlight(root:RefObject<HTMLDivElement>,v:Board,scope:st
   const board=root.current,p=prior.current;if(!board)return;
   const removed=p?v.removed.filter(i=>!p.v.removed.includes(i)):[];
   const index=removed[0],from=p?.rects.get(index),to=board.querySelector('.tri-waste .tri-card-art')?.getBoundingClientRect();
-  setFlight(active&&!reduced&&p?.active&&p.scope===scope&&p.epoch===epoch&&['ready','playing'].includes(p.v.phase)&&removed.length===1&&p.v.cards[index]===v.waste&&from&&to?{id:++serial.current,card:v.waste,from,to,board:board.getBoundingClientRect()}:null);
+  const continuous=active&&!reduced&&p?.active&&p.scope===scope&&p.epoch===epoch;
+  if(continuous&&['ready','playing'].includes(p.v.phase)&&removed.length===1&&p.v.cards[index]===v.waste&&from&&to)setFlight({id:++serial.current,card:v.waste,from,to,board:board.getBoundingClientRect()});
+  else if(!continuous||removed.length||p?.v.waste!==v.waste||p?.v.phase!==v.phase)setFlight(null);
   const rects=new Map<number,DOMRect>();board.querySelectorAll<HTMLElement>('[data-tri-card]').forEach(el=>rects.set(Number(el.dataset.triCard),el.getBoundingClientRect()));
   prior.current={scope,epoch,active,v,rects};
  },[scope,epoch,active,reduced,v.removed,v.waste]);

@@ -12,7 +12,7 @@ are unchanged. Opt-in local timing reports support Jeremy's phone smoke.
 Full validation/build, focused recovery/input tests, both-mode browser checks
 and deployed rollback proof passed. Controlled local Arcade click-to-paint
 median: 221 ms before / 134 ms after; this is not a production iPhone measurement.
-Checkpoint: `tri-towers-input-polish-2026-10-17`. Jeremy's production smoke remains
+Checkpoint: `tri-towers-input-polish-final-2026-10-17`. Jeremy's production smoke remains
 acceptance. See [implementation, measurements and smoke](TRITOWERS_INPUT_POLISH.md).
 
 # TriTowers round presentation correction — 2026-10-17 — awaiting owner smoke

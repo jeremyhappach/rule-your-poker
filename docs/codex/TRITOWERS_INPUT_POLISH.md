@@ -1,7 +1,7 @@
 # TriTowers ordered input and presentation — 2026-10-17
 
 Owner-approved correction of `ee9a5609aab1df013c083022684ae17b945f0ace`.
-Checkpoint: `tri-towers-input-polish-2026-10-17`.
+Checkpoint: `tri-towers-input-polish-final-2026-10-17`.
 Jeremy's production smoke, including physical iPhone input/audio and rotation,
 remains acceptance. Automated results below do not establish that acceptance.
 
@@ -24,7 +24,8 @@ remains acceptance. Automated results below do not establish that acceptance.
   actual upcard bounds over 120 ms. The original card is already removed by
   the confirmed snapshot; only the matching destination face is suppressed
   during flight. New confirmations replace old flights safely. Input never
-  waits for motion/audio. Reduced motion, recovery and resize cancel flights;
+  waits for motion/audio. Identical realtime/action confirmations preserve an
+  existing flight. Reduced motion, recovery and resize cancel flights;
   resize also refreshes source geometry. No hidden face is synthesized.
 
 ## Input authority and recovery
