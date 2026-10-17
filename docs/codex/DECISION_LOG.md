@@ -2390,3 +2390,12 @@ uses the unchanged v2 dealing/scoring core and all other frozen rule values.
 An explicit v2/v3 score-group mapping keeps leaderboard and personal-best
 comparisons combined; results retain their original version. Presentation never
 extends authoritative holds. See TRITOWERS_SCENE.md for proof and activation.
+
+## 2026-10-17 — Dedicated TriTowers all-clear celebration
+
+Owner approved three seconds of celebration in addition to the normal five-second
+result window. V4 freezes that all-clear-only lifecycle change; v1/v2/v3 remain
+unchanged. The shared SQL wrapper still delegates all scoring/dealing to the v2
+core. Explicit v2/v3/v4 score compatibility keeps leaderboards/PBs combined while
+retaining frozen result versions. Presentation seeks the authoritative eight-second
+window and never owns progression. See TRITOWERS_CELEBRATION_HANDOFF.md.

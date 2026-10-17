@@ -1,9 +1,15 @@
 import {describe,it,expect} from 'vitest';
 import {create,reduce,project} from './referenceEngine';
-import {stagePresentation} from './stagePresentation';
+import {roundResultPresentation,stagePresentation} from './stagePresentation';
 const deck=Array.from({length:52},(_,i)=>i);
 const fresh=()=>reduce(create({sessionId:'s',dealerGameId:'d',roundId:'r'},[{id:'a',userId:'u',seat:1,name:'A'},{id:'b',userId:'v',seat:2,name:'B'}],deck,0),{type:'start'},1,()=>deck);
 describe('authoritative stage results',()=>{
+ it('projects the full authoritative eight-second window, including shifted pause deadlines',()=>{
+  const r={id:'clear',score:1000,scoreBefore:0,stageScore:1000,timeBonus:100,reason:'cleared'};
+  expect(roundResultPresentation(r,10000,5000,2600,3000).elapsed).toBe(600);
+  expect(roundResultPresentation(r,12000,5000,4600,3000).elapsed).toBe(600);
+  expect(roundResultPresentation({...r,reason:'take_score'},7000,5000,2600,3000).elapsed).toBe(600);
+ });
  it.each([1,2,3])('holds stage %i for five seconds, including terminal stages',stage=>{
   let s=fresh();s.stage=stage;s.score=63000;s.stages=stage>1?[{playerId:'a',stage:stage-1,score:24000,reason:'cleared'}]:[];
   s=reduce(s,{type:'take_score'},100,()=>deck);

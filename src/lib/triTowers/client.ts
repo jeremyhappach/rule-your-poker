@@ -3,7 +3,7 @@ import type {Projection,Command} from './model';
 import {UncertainTriAction,RejectedTriAction} from './intentBuffer';
 import {triTiming} from './diagnostics';
 export async function triTowersRpc<T>(name:string,args:Record<string,unknown>):Promise<T>{
-  const endpoint=name==='tri_towers_snapshot'||name==='tri_towers_action'?'tri_towers_present_scene':name;
+  const endpoint=name==='tri_towers_snapshot'||name==='tri_towers_action'?'tri_towers_present_celebration':name;
   const id=String(args.p_request_id??'state'),at=performance.now();triTiming('request-start',id);
   const {data,error,status}=await supabase.rpc(endpoint as never,args as never);triTiming('response-parsed',id,performance.now()-at);
   if(error){if(!error.code||status>=500)throw new UncertainTriAction(error.message);if(/^tri_towers:(stale_revision|inactive|illegal_move|phase|complete|stock_empty)/.test(error.message))throw new RejectedTriAction(error.message);throw Error(error.message);}return data as T;

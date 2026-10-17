@@ -1,4 +1,18 @@
-# TriTowers approved fanfare — 2026-10-17 — awaiting owner smoke
+# TriTowers celebration handoff and swoosh — 2026-10-17 — awaiting owner smoke
+
+Approved correction adds the three-second celebration BEFORE the unchanged
+five-second normal result sequence in both modes. Newly admitted `tri-towers/4`
+games get an eight-second authoritative all-clear window; other endings and
+existing versions retain their timing. Count-up/audio and timer drain run for
+the full 2.8 seconds, finish together, then the pill returns. Confirmed card
+travel now has a short synchronized swoosh with shared mute/replay safeguards.
+V2/v3/v4 retain combined leaderboard/PB comparisons and frozen result versions.
+Candidate/installed database rollback proofs, financial/concurrency checks and
+full validation/build pass. Publication precedes v4 activation. Checkpoint:
+`tri-towers-celebration-handoff-2026-10-17`. Jeremy's production smoke remains
+acceptance. See [evidence and smoke](TRITOWERS_CELEBRATION_HANDOFF.md).
+
+# TriTowers approved fanfare — 2026-10-17 — superseded timing, approved melody retained
 
 Jeremy auditioned and approved the three-second, two-voice brass fanfare: repeated
 lower-note pickups, three ascending trills, a final resolution and the selected

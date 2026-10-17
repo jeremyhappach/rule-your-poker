@@ -24,7 +24,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
  for(let attempt=0;attempt<2;attempt++){
   let response:Response;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
-  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:3}),signal:controller.signal});}
+  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:4}),signal:controller.signal});}
   catch{lostResponse=true;if(attempt===0)continue;throw timed?new UncertainTriAction('Connection lost. Reconnect to restore your game.'):Error('Connection lost. Reconnect to restore your run.');}
   finally{clearTimeout(timeout);}
   if(timed)triTiming('response-headers',id,performance.now()-started,response.headers.get('Server-Timing')??undefined);

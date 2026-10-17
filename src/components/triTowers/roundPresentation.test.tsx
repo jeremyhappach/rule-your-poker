@@ -19,6 +19,18 @@ beforeEach(()=>{vi.clearAllMocks();Object.defineProperty(document,'hidden',{conf
 afterEach(cleanup);
 
 describe('shared v3 round presentation in both adapters',()=>{
+ it.each(['arcade','multiplayer'])('%s: v4 gives the celebration three dedicated seconds before the full normal result sequence',mode=>{
+  const view={...base,rules:{...rules,version:'tri-towers/4',clearCelebrationMs:3000}},scores=mode==='arcade'?props.scores:[...props.scores,{id:'other',score:500,active:false}];
+  const ui=render(<TriTowersBoard {...props} scores={scores} view={view}/>),end={...view,phase:'stage_complete' as const,deadline:10000};
+  const show=(elapsed:number)=>ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={2000+elapsed} result={{...result,elapsed}}/>);
+  show(600);expect(ui.container.querySelector('[data-centered=true]')).toBeNull();expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();
+  show(2900);expect(ui.getByLabelText('Score 100')).toBeTruthy();expect(calls('tri-count:')).toHaveLength(0);expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('119');
+  show(3200);expect(ui.queryByLabelText('All three towers cleared')).toBeNull();expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
+  show(5600);expect(ui.getByLabelText('Score 550')).toBeTruthy();expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('59.5');
+  const count=calls('tri-count:')[0][0];expect(count.expiresAt-count.startedAt).toBeCloseTo(2800,5);
+  show(7000);expect(ui.getByLabelText('Score 1000')).toBeTruthy();expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
+  show(7300);expect(ui.container.querySelector('[data-centered=true]')).toBeNull();expect(ui.container.querySelectorAll('[data-tower-award]')).toHaveLength(2);expect(calls('tri-clear:')).toHaveLength(1);
+ });
  it('keeps the title visible well past the former 550ms cutoff',()=>{
   const ui=render(<TriTowersBoard {...props} now={1700} view={{...base,phase:'intro',deadline:2500}} roundLabel="BONUS ROUND" turnLabel="YOUR TURN"/>);
   expect(ui.getByText('BONUS ROUND')).toBeTruthy();expect(ui.container.querySelector<HTMLElement>('.tri-deal-title')?.style.opacity).not.toBe('0');expect(ui.container.querySelector('[data-run21-round-intro]')?.getAttribute('data-fading')).toBe('false');
@@ -27,9 +39,9 @@ describe('shared v3 round presentation in both adapters',()=>{
   const animations:any[]=[];vi.spyOn(Element.prototype,'getBoundingClientRect').mockImplementation(function(this:Element){return this.closest('.tri-waste')?new DOMRect(20,400,60,90):new DOMRect(100,100,40,60);});
   Object.defineProperty(Element.prototype,'animate',{configurable:true,value:vi.fn((_frames,options)=>{const animation={cancel:vi.fn(),onfinish:null,options};animations.push(animation);return animation;})});
   const ui=render(<TriTowersBoard {...props} view={{...base,waste:18}}/>);
-  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].options.duration).toBe(120);expect(Element.prototype.animate).toHaveBeenCalledWith([{transform:'translate(0,0)'},{transform:'translate(-80px,300px) scale(1.5,1.5)'}],expect.objectContaining({duration:120}));expect(ui.getByRole('button',{name:'Remove 8 of hearts'}).hasAttribute('disabled')).toBe(false);
-  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].cancel).not.toHaveBeenCalled();expect(animations).toHaveLength(1);
-  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19,20],waste:20}}/>);expect(animations[0].cancel).toHaveBeenCalled();act(()=>animations[0].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeTruthy();act(()=>animations[1].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeNull();expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].options.duration).toBe(120);expect(calls('tri-swoosh:')).toHaveLength(1);expect(Element.prototype.animate).toHaveBeenCalledWith([{transform:'translate(0,0)'},{transform:'translate(-80px,300px) scale(1.5,1.5)'}],expect.objectContaining({duration:120}));expect(ui.getByRole('button',{name:'Remove 8 of hearts'}).hasAttribute('disabled')).toBe(false);
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].cancel).not.toHaveBeenCalled();expect(animations).toHaveLength(1);expect(calls('tri-swoosh:')).toHaveLength(1);
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19,20],waste:20}}/>);expect(animations[0].cancel).toHaveBeenCalled();expect(calls('tri-swoosh:')).toHaveLength(2);act(()=>animations[0].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeTruthy();act(()=>animations[1].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeNull();expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();
   delete (Element.prototype as any).animate;vi.restoreAllMocks();
  });
  it.each(['arcade','multiplayer'])('%s: Ready has only text; accepted playing snapshot reveals the full clock',mode=>{

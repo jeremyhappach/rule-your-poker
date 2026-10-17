@@ -18,7 +18,7 @@ export function useTriTowers(dealerGameId:string){
     if(latest.current&&value.revision>latest.current.revision&&(recovery||requestEpoch!==epoch.current))setPresentationEpoch(n=>n+1);
     latest.current=value;setView(value);clock.current={server:value.serverAt,local:performance.now()};setNow(value.serverAt);setError('');
   },[dealerGameId]);
-  const intentView=(v:Projection|null)=>v?.rules?.version==='tri-towers/3'?{scope:[dealerGameId,v.identity.roundId,v.activePlayerId,v.stage].join(':'),actor:v.viewerId??'',roundId:v.identity.roundId,revision:v.revision,phase:v.phase,waste:v.waste,cards:v.cards,removed:v.removed,allowed:connected&&!error&&v.canAct&&!v.paused&&!document.hidden&&navigator.onLine&&clock.current.server+performance.now()-clock.current.local<v.deadline}:null;
+  const intentView=(v:Projection|null)=>v&&['tri-towers/3','tri-towers/4'].includes(v.rules?.version)?{scope:[dealerGameId,v.identity.roundId,v.activePlayerId,v.stage].join(':'),actor:v.viewerId??'',roundId:v.identity.roundId,revision:v.revision,phase:v.phase,waste:v.waste,cards:v.cards,removed:v.removed,allowed:connected&&!error&&v.canAct&&!v.paused&&!document.hidden&&navigator.onLine&&clock.current.server+performance.now()-clock.current.local<v.deadline}:null;
   const buffer=useTriIntentBuffer('multiplayer:'+dealerGameId,()=>intentView(latest.current),async c=>{
     const requestEpoch=epoch.current;
     try{const response=await submit({dealerGameId,requestId:c.requestId,revision:c.revision,intent:c.intent as Intent});accept(response,false,requestEpoch);triTiming('snapshot-accepted',c.requestId,undefined,c.scope+':'+response.revision);return intentView(response)!;}

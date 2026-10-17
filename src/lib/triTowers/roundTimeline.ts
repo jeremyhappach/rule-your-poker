@@ -1,11 +1,14 @@
-/** Presentation offsets within the frozen 2.5s intro / 5s result windows. */
+/** Normal result offsets. V4 all-clear prepends its authoritative celebration window. */
 export const TRI_ROUND_TIMELINE = {countStart:1200,clearCountStart:3100,countEnd:4000,homeAt:4300} as const;
 export const clampUnit=(n:number)=>Math.max(0,Math.min(1,n));
-export function triResultTimeline(elapsed:number,cleared=false){
- const {countEnd,homeAt}=TRI_ROUND_TIMELINE,countStart=cleared?TRI_ROUND_TIMELINE.clearCountStart:TRI_ROUND_TIMELINE.countStart;
+export function triCountWindow(cleared=false,celebrationMs=0){
+ return {start:celebrationMs?celebrationMs+TRI_ROUND_TIMELINE.countStart:cleared?TRI_ROUND_TIMELINE.clearCountStart:TRI_ROUND_TIMELINE.countStart,end:celebrationMs+TRI_ROUND_TIMELINE.countEnd};
+}
+export function triResultTimeline(elapsed:number,cleared=false,celebrationMs=0){
+ const {start:countStart,end:countEnd}=triCountWindow(cleared,celebrationMs),homeAt=celebrationMs+TRI_ROUND_TIMELINE.homeAt;
  return {progress:clampUnit((elapsed-countStart)/(countEnd-countStart)),
-  center:Math.min(clampUnit(elapsed/200),clampUnit((homeAt-elapsed)/(homeAt-countEnd))),
-  crest:clampUnit((countEnd-elapsed)/350)};
+  center:Math.min(clampUnit((elapsed-celebrationMs)/200),clampUnit((homeAt-elapsed)/(homeAt-countEnd))),
+  crest:clampUnit(((celebrationMs||countEnd)-elapsed)/350)};
 }
 export function triDealProgress(elapsed:number,index:number|'stock'|'upcard'){
  const start=index==='stock'?1600:index==='upcard'?1800:300+index*40;

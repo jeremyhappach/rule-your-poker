@@ -38,7 +38,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   try{const value=await arcadeRequest<T>({op:'state',runId,...(trackRoundPresentation?{game:'tri-towers'}:{})});if(current===generation.current)accept(value,recovery,requestEpoch);}
   catch(e){if(current===generation.current){interrupt();setError(e instanceof Error?e.message:'Connection lost.');}}
  },[runId,accept,interrupt,trackRoundPresentation]);
- const intentView=(value:T|null)=>{if(!trackRoundPresentation||!value)return null;const s=value as unknown as TriArcadeSnapshot,v=s.view;if(v.rules?.version!=='tri-towers/3')return null;return {scope:runId+':'+v.roundId,actor:runId,roundId:v.roundId,revision:s.revision,phase:v.phase,waste:v.waste,cards:v.cards,removed:v.removed,allowed:s.status==='active'&&!error&&!document.hidden&&navigator.onLine&&anchor.current.server+performance.now()-anchor.current.local<v.deadline};};
+ const intentView=(value:T|null)=>{if(!trackRoundPresentation||!value)return null;const s=value as unknown as TriArcadeSnapshot,v=s.view;if(!['tri-towers/3','tri-towers/4'].includes(v.rules?.version))return null;return {scope:runId+':'+v.roundId,actor:runId,roundId:v.roundId,revision:s.revision,phase:v.phase,waste:v.waste,cards:v.cards,removed:v.removed,allowed:s.status==='active'&&!error&&!document.hidden&&navigator.onLine&&anchor.current.server+performance.now()-anchor.current.local<v.deadline};};
  const buffer=useTriIntentBuffer('arcade:'+runId,()=>intentView(state.current),async command=>{
   const scope=generation.current,requestEpoch=epoch.current;
   try{const value=await arcadeRequest<T>({op:'action',game:'tri-towers',runId,requestId:command.requestId,revision:command.revision,roundId:command.roundId,intent:command.intent});

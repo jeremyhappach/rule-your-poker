@@ -15,7 +15,7 @@ export function SoloTriTowers({runId,userId}:{runId:string;userId:string}){
  const entry=useRef({runId,live:hasTriStart(runId)});if(entry.current.runId!==runId)entry.current={runId,live:hasTriStart(runId)};
  useEffect(()=>()=>retireTriStart(runId),[runId]);
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[finalUntil,setFinalUntil]=useState<number|null>(null);
- const view=snapshot?.view,result=view?.result?roundResultPresentation(view.result,view.deadline,view.rules.holdMs,now):null;
+ const view=snapshot?.view,result=view?.result?roundResultPresentation(view.result,view.deadline,view.rules.holdMs,now,view.rules.clearCelebrationMs??0):null;
  const phase=view?.scorePresentation;
  useEffect(()=>setFinalUntil(null),[runId]);
  useEffect(()=>{

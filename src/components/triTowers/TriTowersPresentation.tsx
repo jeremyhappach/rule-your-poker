@@ -3,7 +3,7 @@ import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {boxingBellCue} from '@/lib/run21/boxingBell';
 import {TRI_FANFARE_MS,triAllClearCueAt} from '@/lib/triTowers/allClearCue';
-import {TRI_ROUND_TIMELINE,triResultTimeline} from '@/lib/triTowers/roundTimeline';
+import {triCountWindow,triResultTimeline} from '@/lib/triTowers/roundTimeline';
 import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
 import '@/components/run21/run21.css';
 
@@ -23,10 +23,10 @@ export function TriScorePill({item,root,fraction=0,value=item.score}:{item:TriSc
 }
 interface RoundPresentationProps {
  scope:string;phase:string;connected:boolean;paused:boolean;now:number;deadline:number;userId:string;active:boolean;
- modern:boolean;liveEntry:boolean;recoveryEpoch:number;
+ celebrationMs?:number;modern:boolean;liveEntry:boolean;recoveryEpoch:number;
  result:{id:string;elapsed:number;scoreBefore:number;score:number;displayScore:number;reason:string;completedAt?:number}|null;
 }
-export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch}:RoundPresentationProps){
+export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch,celebrationMs=0}:RoundPresentationProps){
  const prior=useRef<{scope:string;phase:string;connected:boolean;active:boolean;epoch:number}|null>(null);
  const initial=useRef(liveEntry&&recoveryEpoch===0&&phase==='intro'?scope:null),seen=useRef(new Set<string>());
  const clock=useRef<{scope:string;deadline:number}|null>(null),[drainFrom,setDrainFrom]=useState(0);
@@ -61,7 +61,7 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
   return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',visible);};
  },[scope]);
  const admitted=!!result&&live===result.id&&active&&connected&&!paused&&!document.hidden;
- const elapsed=result?.elapsed??0,timeline=triResultTimeline(elapsed,result?.reason==='cleared');
+ const elapsed=result?.elapsed??0,timeline=triResultTimeline(elapsed,result?.reason==='cleared',result?.reason==='cleared'?celebrationMs:0);
  const bellKey=modern&&intro===scope&&phase==='intro'&&connected&&active&&!paused&&!document.hidden?scope:null;
  useEffect(()=>{
   if(!bellKey)return;
@@ -69,7 +69,8 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
   return platformAudio.follow({userId,id:'run21-bell:tri:'+bellKey,startedAt:local,expiresAt:local+deadline-now,cueAt:()=>boxingBellCue});
  },[bellKey,userId]);
  const fraction=admitted&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
- const end=modern?TRI_ROUND_TIMELINE.countEnd:2800,start=modern?(result?.reason==='cleared'?TRI_ROUND_TIMELINE.clearCountStart:TRI_ROUND_TIMELINE.countStart):0;
+ const countWindow=triCountWindow(result?.reason==='cleared',result?.reason==='cleared'?celebrationMs:0);
+ const end=modern?countWindow.end:2800,start=modern?countWindow.start:0;
  const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed+start,endsAt:now-elapsed+end}:null;
  usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?'tri-count:'+scope+':'+result.id:null,count,now);
  const clearKey=modern&&admitted&&!reduced&&result.reason==='cleared'&&elapsed<TRI_FANFARE_MS?result.id:null;
