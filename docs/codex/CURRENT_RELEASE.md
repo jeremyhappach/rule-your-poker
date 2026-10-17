@@ -1,10 +1,11 @@
-# TriTowers multiplayer v2 — 2026-10-16 — qualified correction
+# TriTowers multiplayer v2 — 2026-10-16 — production smoke accepted
 
 Approved `tri-towers/2` introduces atomic first-action Ready admission, alternating
 participant rounds, the accepted scoring and one qualified bonus round, one active
 human Take Score, shared Run21-style timer presentation and canonical balances/chip
 transfers. V1 matches and the failed Pedro Strop evidence remain frozen. Real-money
-TriTowers remains prohibited. Solo TriTowers follows multiplayer smoke acceptance.
+TriTowers remains prohibited. Jeremy confirmed the multiplayer v2 production smoke
+is CLEAN on October 16. This accepted implementation is the Solo Arcade baseline.
 
 Migration `tri_towers_v2` is installed; all 30 TriTowers function hashes match the
 qualified candidate. Every other database function and all preserved historical
@@ -19,11 +20,15 @@ progressive bot moves, one chip flight, reload and continuation. Full regression
 2,299 application plus 241 harness tests, final focused checks, TypeScript and build.
 Worker clean-window p95: 31.4 ms; production idle average: 8.8 ms, zero failures/backlog.
 
-The separate admission flag remains closed through compatible publication and is
-authorized to reopen only after Vercel READY and final worker verification. Existing
-actor release/recovery stays enabled throughout. Checkpoint:
-`tri-towers-v2-2026-10-16`. Jeremy's production smoke is pending; follow
-[qualification and exact smoke steps](TRITOWERS_V2.md).
+Production commit `8026ad9da873107147061da3873fb384e0347b69` is Vercel READY;
+migration `20261016235029_tri_towers_v2` is installed. Admission reopened after
+qualification and final worker verification; actor release/recovery remains enabled.
+Checkpoint: `tri-towers-v2-2026-10-16`. See
+[qualification and smoke steps](TRITOWERS_V2.md).
+
+Solo TriTowers Arcade is the next phase. The bounded adapter review is complete;
+implementation, migration and activation await approval of the concrete plan.
+No Solo product code or production state changed during this review.
 
 # Arcade completion, score audio and individual-score boards — 2026-10-16
 

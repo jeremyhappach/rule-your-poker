@@ -1,5 +1,30 @@
 # Backlog
 
+## Awaiting approval — Solo TriTowers Arcade adapter — October 16, 2026
+
+- Jeremy accepted TriTowers multiplayer v2 production smoke as CLEAN and requested
+  a bounded read-only review and concrete Solo plan before implementation.
+- Reuse accepted `tri-towers/2` SQL board authority directly. Extract only the
+  existing bonus-eligibility check into a shared helper used by both modes; do not
+  recreate rules in a TypeScript reducer. Two base rounds, one earned bonus at
+  80,000 after round two, existing Ready/playing deadlines and result holds.
+- Reuse Arcade runs, receipts, immutable results, leaderboard, realtime revisions,
+  ownership and indexed recovery. Add game dispatch and a service-only Solo SQL
+  adapter. Extend the existing atomic commit validator for TriTowers cumulative
+  score chains and conditional third round; preserve Run21 validation unchanged.
+- Reuse the v2 tableau, timer and results through mode-neutral presentation,
+  existing Arcade completion classification/replay protection and shared audio.
+  Enable the existing artwork-backed TriTowers card and game-specific leaderboard.
+- Explicit whole-run abandonment never ranks. Ready/playing timeouts end only
+  their round; autonomous completion remains eligible, including zero scores.
+- Proposed qualification covers core parity, exact bonus boundaries, hidden-card
+  redaction, reconnect/deadline recovery, concurrent/replayed commands, atomic
+  verified completion, ranking/PB presentation and complete session/financial
+  write isolation. Preserve Run21 Arcade, accepted multiplayer and all history.
+- One additive migration and deployment of the compatible API/client and existing
+  recovery bundle are proposed; Solo activation remains disabled until gates pass.
+  No implementation or production mutation is authorized by this review alone.
+
 ## Implemented — P0 Run21 fairness and continuation; owner smoke pending — October 16, 2026
 
 - Independent player decks and immutable commitments preserve historical matches.

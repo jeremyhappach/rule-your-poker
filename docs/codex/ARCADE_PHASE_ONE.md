@@ -1,6 +1,6 @@
 # Arcade Phase 1 — October 16, 2026
 
-Approved scope: nonfinancial Arcade foundation, lobby navigation, Run21 leaderboard and solo Run21. TriTowers and Yahtzee remain Coming Soon. Their gameplay policies are deferred; current TriTowers behavior is not an Arcade baseline.
+Approved Phase 1 scope: nonfinancial Arcade foundation, lobby navigation, Run21 leaderboard and solo Run21. TriTowers and Yahtzee remain Coming Soon. On October 16, Jeremy accepted TriTowers multiplayer v2 production smoke as CLEAN; its `tri-towers/2` core is now the required baseline for the proposed Solo adapter. Solo implementation awaits plan approval. Yahtzee gameplay policies remain deferred.
 
 ## Authority and boundaries
 

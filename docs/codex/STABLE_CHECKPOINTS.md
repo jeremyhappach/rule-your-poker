@@ -1,5 +1,19 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## TriTowers multiplayer v2 — October 16, 2026
+
+- Jeremy explicitly reported the production smoke CLEAN and accepted multiplayer v2.
+- Production commit `8026ad9da873107147061da3873fb384e0347b69`, release tag
+  `tri-towers-v2-2026-10-16`, installed migration `20261016235029_tri_towers_v2`.
+- The accepted `tri-towers/2` core owns first-action Ready admission, legal actions,
+  dealing/redaction, scoring, bonuses and clocks. Solo Arcade must reuse that core.
+- Alternating rounds, autonomous bots, canonical settlement and continuation were
+  qualified before publication. See [release evidence](TRITOWERS_V2.md).
+- V1 interpretation, frozen Pedro Strop evidence and financial history remain
+  preserved. Acceptance authorizes no historical reconciliation. Real-money
+  TriTowers remains disabled.
+- Solo TriTowers is next; its adapter plan requires approval before implementation.
+
 ## Run21 two-human setup/control and 104/105 smoke — September 29
 
 - Runtime `17c9568137a42822b9a9ba6af14069adf3be27e1`, migration

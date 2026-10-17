@@ -1,5 +1,10 @@
 # TriTowers multiplayer v2 — 2026-10-16
 
+Jeremy confirmed the production smoke CLEAN on October 16. Accepted production
+commit: `8026ad9da873107147061da3873fb384e0347b69`; checkpoint:
+`tri-towers-v2-2026-10-16`. This core is the source of truth for the next Solo
+Arcade phase; that adapter remains subject to separate plan approval.
+
 Approved correction: new matches freeze `tri-towers/2`. The first valid removal
 or draw during each 30-second Ready window atomically performs that action and
 starts 120 seconds. An invalid action cannot start the clock. Lock-time expiry
