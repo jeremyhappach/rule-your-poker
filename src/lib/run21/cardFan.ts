@@ -12,11 +12,12 @@ export function rankExposure(width:number,config:CardFrontDesignConfig,mode:Deck
 }
 
 /** Geometry alone fixes card size. Depth changes only the overlap, never the card. */
-export function cardFan(width:number,height:number,count:number,config:CardFrontDesignConfig,mode:DeckFaceMode){
+export function cardFan(width:number,height:number,count:number,config:CardFrontDesignConfig,mode:DeckFaceMode,frontStyle:'canonical'|'cartoon'='canonical'){
   // At most 11 cards can be placed before a standard-deck column locks or busts.
   // Reserve a slim visible edge for that maximum while keeping the newest face whole.
   const cardWidth=Math.max(0,Math.min(width,height/(1.5+10*.06)));
   const cardHeight=cardWidth*1.5,available=Math.max(0,height-cardHeight);
-  const step=Math.min(rankExposure(cardWidth,config,mode),available/Math.max(1,count-1));
+  const exposure=frontStyle==='cartoon'?cardWidth*.48:rankExposure(cardWidth,config,mode);
+  const step=Math.min(exposure,available/Math.max(1,count-1));
   return {width:cardWidth,height:cardHeight,step,contentHeight:cardHeight+Math.max(0,count-1)*step};
 }

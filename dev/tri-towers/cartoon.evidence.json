@@ -1,0 +1,107 @@
+{
+  "migration": "20261017140055",
+  "at": "2026-10-17T14:07:23.371Z",
+  "candidateAndInstalledHashes": {
+    "arcade_tri_high_run": "f606840e2d4ebf36def30ea0dc533be9",
+    "arcade_tri_projection": "06858886c865398fc2fd557cdf3c4dd6",
+    "tri_towers_present": "86847067a4804dc9c1d60db300a59336"
+  },
+  "candidateArcadeRollback": "PASS",
+  "candidateCanonicalFinancialProof": "PASS",
+  "installedArcadeProjectionRollback": "PASS",
+  "applicationTests": 2308,
+  "harnessTests": 241,
+  "typecheck": "PASS",
+  "build": "PASS",
+  "arcade": {
+    "at": "2026-10-17T14:07:00.128Z",
+    "cases": [
+      "shared tableau and legal first removal/draw; one Take Score; no multiplayer/financial controls; phone, landscape and desktop",
+      "reconnect preserves absolute running deadline",
+      "two rounds, automatic five-second holds, atomic verified completion, full 2.5-second total and TriTowers leaderboard return",
+      "Play Again and explicit whole-game abandonment excluded from ranking",
+      "completed reconnect suppresses celebration replay",
+      "Run21 Solo live board and multiplayer maximum-depth presentation use the same Cartoon faces"
+    ],
+    "errors": []
+  },
+  "multiplayer": {
+    "highRun": 2,
+    "requests": [
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "remove"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "draw"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "remove"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "remove"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "draw"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present"
+      },
+      {
+        "name": "tri_towers_present",
+        "action": "take_score"
+      }
+    ],
+    "errors": []
+  },
+  "ownerSmoke": "PENDING"
+}

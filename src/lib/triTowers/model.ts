@@ -18,6 +18,7 @@ export interface State {
   scores:Record<string,number>;stages:StageResult[];event:{label:string;points:number};
 }
 export interface Projection extends Omit<State,'deck'> {
+  highRun?:number;
   financial?:{balances:Record<string,number>;resultId:string|null;batch:import('@/lib/canonicalShell/ChipPresentationLedger').ChipPresentationBatch|null};
   cards:(number|null)[];stockRemaining:number;activePlayerId:string|null;viewerId:string|null;
   canAct:boolean;revision:number;serverAt:number;settlement:Record<string,number>|null;paused:boolean;pausedAt?:number|null;finished:boolean;

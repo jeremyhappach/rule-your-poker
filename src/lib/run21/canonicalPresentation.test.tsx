@@ -26,12 +26,18 @@ describe('Run21 canonical renderer parity',()=>{
     expect(html).toContain('data-canonical-felt-rendered-stakes="$10"');
     if(kind==='run21')expect(html).toContain('$10 RUN 21');
   });
-  it.each(['two_color','four_color'])('matches production PlayingCard markup for all 52 %s faces',mode=>{
+  it.each(['two_color','four_color'])('explicitly selects shared Cartoon PlayingCard for all 52 %s faces',mode=>{
     preference.mode=mode;
     for(const card of standardDeck()){
-      const canonical=renderToStaticMarkup(<PlayingCard card={{rank:card.rank,suit:suits[card.suit] as Suit}} size="sm" faceFillPx={24} style={{width:24,height:36}}/>);
+      const canonical=renderToStaticMarkup(<PlayingCard frontStyle="cartoon" card={{rank:card.rank,suit:suits[card.suit] as Suit}} size="sm" faceFillPx={24} style={{width:24,height:36}}/>);
       expect(renderToStaticMarkup(<Run21Card card={card}/>)).toContain(canonical);
     }
+  });
+  it('leaves ordinary poker fronts canonical and masked Cartoon cards as backs',()=>{
+    const ordinary=renderToStaticMarkup(<PlayingCard card={{rank:'Q',suit:'♥'}}/>);
+    expect(ordinary).toContain('data-card-front-style="canonical"');expect(ordinary).not.toContain('data-cartoon-card-face');
+    const hidden=renderToStaticMarkup(<PlayingCard frontStyle="cartoon" card={{rank:'Q',suit:'♥',masked:true} as any}/>);
+    expect(hidden).toContain('data-playing-card-hidden');expect(hidden).not.toContain('data-cartoon-card-face');
   });
   it.each(['hawks','bulls','bears','cubs','blue'])('inherits the same canonical %s back preference and asset',back=>{
     preference.back=back;

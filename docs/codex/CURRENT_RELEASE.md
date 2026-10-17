@@ -1,3 +1,17 @@
+# TriTowers Cartoon polish — 2026-10-17 — awaiting owner smoke
+
+Approved shared presentation for both TriTowers modes: original castle artwork,
+HI-RUN above the tableau, clear-order persistent awards, dotted deadline display,
+and upcard / CURRENT RUN / stock controls. TriTowers and Run21 explicitly select
+shared Cartoon card fronts; ordinary poker fronts and canonical backs remain.
+
+Migration `20261017140055_tri_towers_cartoon_presentation` is installed. HI-RUN is
+read from authoritative current-round history/receipts, without gameplay/scoring
+changes or historical backfill. Candidate financial/Arcade rollback proofs and
+the installed projection/Arcade proof pass. Full tests, TypeScript and build pass.
+Checkpoint: `tri-towers-cartoon-2026-10-17`. Jeremy's production smoke is pending.
+See [ownership, qualification and smoke](TRITOWERS_POLISH.md).
+
 # Solo TriTowers Arcade — 2026-10-16 — qualified adapter
 
 Approved Solo adapter uses the accepted `tri-towers/2` SQL core directly, shared

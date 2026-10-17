@@ -6,7 +6,6 @@ import type {TriArcadeSnapshot} from '@/lib/arcade/model';
 import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
 import {TriTowersBoard,TriTowersRules} from '@/components/triTowers/TriTowersView';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
-import {RoundTimeBar} from '@/lib/canonicalShell/RoundTimeBar';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
 import {AlertDialog,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogAction,AlertDialogCancel,AlertDialogFooter} from '@/components/ui/alert-dialog';
@@ -30,20 +29,18 @@ export function SoloTriTowers({runId,userId}:{runId:string;userId:string}){
  const score=result?.displayScore??view?.score??0;
  const showFinal=snapshot?.status==='completed'&&completionLive&&finalUntil!==null&&performance.now()<finalUntil;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
-  <FullscreenGameShell title="TriTowers" panelTitle="Rules" panelDescription="Scoring for this run." ready={!!view}
+  <FullscreenGameShell title="TriTowers" panelTitle="Rules" panelDescription="Scoring for this game." ready={!!view}
    description={view?`Round ${view.round}${view.round===3?' · Bonus':' of 2'}`:'Connecting…'} activeTab={tab} setActiveTab={setTab}
    panel={view&&<TriTowersRules rules={view.rules} solo/>} announcement={false}
    navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button>{snapshot?.status==='active'&&<button onClick={()=>setAbandon(true)}>Abandon</button>}</nav>}
    scores={<div className="arcade-run-score"><span>Total score</span><strong><span className="tri-count-animated">{score.toLocaleString()}</span><span className="tri-count-reduced">{(view?.score??0).toLocaleString()}</span></strong></div>}
-   timer={view&&(view.phase==='playing'?<div className="tri-timer"><small>Round time</small><RoundTimeBar remaining={Math.max(0,Math.min(view.rules.stageMs,view.deadline-now))} full={view.rules.stageMs}/></div>:
-    <span className="tri-clock" role="timer">{Math.max(0,Math.ceil((view.deadline-now)/1000))}s <small>{view.phase==='ready'?'to play first card':'result hold'}</small></span>)}
    actions={view&&<div className="tri-actions">{view.phase==='ready'?<span>Play a card or draw to start</span>:view.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:<span>Continuing automatically…</span>}</div>}>
    <div className="tri-game" data-tri-towers data-phase={view?.phase}>
     {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh(true)}>Reconnect</button></div>}
     {view?<><div className="tri-status"><strong aria-live="polite">{view.event.label}{view.event.points?` ${view.event.points>0?'+':''}${view.event.points.toLocaleString()}`:''}</strong></div>
-     <TriTowersBoard view={view} canAct={canAct} roundKey={view.roundId} result={result} onIntent={intent=>{if(intent.type==='remove')void act(intent);else if(intent.type==='draw')void act({type:'draw'});}}/></>:<p role="status">Restoring your run…</p>}
+     <TriTowersBoard now={now} highRun={snapshot?.highRun} view={view} canAct={canAct} roundKey={view.roundId} result={result} onIntent={intent=>{if(intent.type==='remove')void act(intent);else if(intent.type==='draw')void act({type:'draw'});}}/></>:<p role="status">Restoring your game…</p>}
    </div>
-   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon run?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. Clocks continue while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending||snapshot?.status!=='active'} onClick={()=>void act({type:'abandon'})}>Abandon Run</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. Clocks continue while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending||snapshot?.status!=='active'} onClick={()=>void act({type:'abandon'})}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </FullscreenGameShell>{showFinal&&<ArcadeCompletion score={snapshot.score} record={snapshot.completion}/>}
  </div>;
 }

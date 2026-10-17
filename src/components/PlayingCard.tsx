@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
+import { CartoonCardFace } from './CartoonCardFace';
 import {
   useCardFrontDesign,
   resolveCardFrontStyle,
@@ -25,6 +26,7 @@ const TEAM_LOGOS: Record<string, string> = {
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
+  frontStyle?: 'canonical' | 'cartoon';
   card?: CardType;
   isHidden?: boolean;
   size?: CardSize;
@@ -149,6 +151,7 @@ function parsePxLike(v: unknown): number | null {
 const CARD_ASPECT_FALLBACK = 1.4; // height = width * aspect
 
 export const PlayingCard = ({
+  frontStyle = 'canonical',
   card,
   isHidden = false,
   size = 'lg',
@@ -304,7 +307,7 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          <span
+          {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace rank={card.rank} suit={normalizedSuit!}/></span> : <><span
             className={isFourColor ? cardFaceStyle.textColor : ''}
             style={face.rankStyle}
           >
@@ -312,7 +315,7 @@ export const PlayingCard = ({
           </span>
           {face.renderSuit && !isFourColor && face.suitStyle && (
             <span style={face.suitStyle}>{normalizedSuit}</span>
-          )}
+          )}</>}
           {highlightOverlay}
         </Card>
       </div>
@@ -347,12 +350,13 @@ export const PlayingCard = ({
     <Card
       data-playing-card-root=""
       data-playing-card-face=""
+      data-card-front-style={frontStyle}
       data-card-id={`${card.rank}-${card.suit}`}
       className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? `${ACTIVE_HAND_SHELL_BASE_CLASS} ${isFourColor && fourColorConfig ? ACTIVE_HAND_SHELL_FOUR_COLOR_CLASS : ACTIVE_HAND_SHELL_TWO_COLOR_CLASS}` : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
-      <span
+      {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace rank={card.rank} suit={normalizedSuit!}/></span> : <><span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
       >
@@ -360,7 +364,7 @@ export const PlayingCard = ({
       </span>
       {face.renderSuit && !isFourColor && face.suitStyle && (
         <span style={face.suitStyle}>{normalizedSuit}</span>
-      )}
+      )}</>}
       {highlightOverlay}
     </Card>
   );

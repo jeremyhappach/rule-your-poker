@@ -19,7 +19,7 @@ export interface TriArcadeView extends Pick<import('../triTowers/model').Project
  roundId:string;round:number;result:(Omit<import('../triTowers/model').StageResult,'playerId'> & {id:string;scoreBefore:number;stageScore:number;timeBonus:number})|null;
  scorePresentation:{startedAt:number;endsAt:number;from:number;to:number}|null;
 }
-export interface TriArcadeSnapshot extends Omit<ArcadeSnapshot,'view'|'game'> {game:'tri-towers';view:TriArcadeView}
+export interface TriArcadeSnapshot extends Omit<ArcadeSnapshot,'view'|'game'> {game:'tri-towers';view:TriArcadeView;highRun?:number}
 export type ArcadeRunSnapshot=ArcadeSnapshot|TriArcadeSnapshot;
 export interface RankedPlayer {runId:string;userId:string;name:string;score:number;rank:number;completedAt:string}
 export interface Leaderboard {ruleset:string;rows:RankedPlayer[];self:RankedPlayer|null;personalBest:number|null;

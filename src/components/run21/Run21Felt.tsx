@@ -29,7 +29,7 @@ export function Run21Card({card}:{card:Card|null}) {
     observer.observe(ref.current);return()=>observer.disconnect();
   },[]);
   return <span ref={ref} className="run21-card" aria-label={card?`${card.rank} of ${card.suit}`:'Card back'}>
-    <PlayingCard card={card?{rank:card.rank,suit:SUITS[card.suit]}:undefined} isHidden={!card} faceFillPx={width} size="sm" style={{width,height:width*1.5}} />
+    <PlayingCard frontStyle="cartoon" card={card?{rank:card.rank,suit:SUITS[card.suit]}:undefined} isHidden={!card} faceFillPx={width} size="sm" style={{width,height:width*1.5}} />
   </span>;
 }
 function Run21ColumnCards({cards}:{cards:Card[]}){
@@ -37,7 +37,7 @@ function Run21ColumnCards({cards}:{cards:Card[]}){
   const [size,setSize]=useState({width:24,height:36});
   const config=useCardFrontDesign();
   const {getEffectiveDeckColorMode}=useVisualPreferences();
-  const fan=cardFan(size.width,size.height,cards.length,config,getEffectiveDeckColorMode()==='four_color'?'four-color':'two-color');
+  const fan=cardFan(size.width,size.height,cards.length,config,getEffectiveDeckColorMode()==='four_color'?'four-color':'two-color','cartoon');
   useLayoutEffect(()=>{
     if(!ref.current)return;
     const observer=new ResizeObserver(([entry])=>setSize({width:entry.contentRect.width,height:entry.contentRect.height}));

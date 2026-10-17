@@ -1,5 +1,11 @@
 # Repository map
 
+TriTowers presentation polish (2026-10-17): `src/components/triTowers/TriTowersBoard.tsx`
+owns the shared Arcade/multiplayer castle, badges, streak indicators, dots and stock
+layout. `src/components/CartoonCardFace.tsx` supplies opt-in art through PlayingCard
+for TriTowers and Run21. `supabase/tri-towers/presentation.sql` owns the read-only
+HI-RUN projection. See `TRITOWERS_POLISH.md` for the preserved authority boundary.
+
 Solo TriTowers: `supabase/arcade/tri-towers.sql` wraps the shared SQL board core;
 `server/arcade/service.ts` dispatches its API and recovery operations.
 `src/components/arcade/SoloTriTowers.tsx` renders the shared TriTowers board/result

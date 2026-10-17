@@ -2372,3 +2372,13 @@ rank, with completion time/run UUID determining display order and cutoff. Record
 classification is frozen at completion against prior compatible all-time scores.
 First results and ties do not trigger record-breaking presentation. Presentation
 receipts and cancellable audio never delay or own authoritative completion.
+
+## 2026-10-17 — TriTowers display statistics and opt-in Cartoon fronts
+
+Approved presentation remains shared across modes. Round HI-RUN is projected
+from persisted history/committed receipts, scoped to exact identity and revision;
+it is not a scoring reducer or browser counter. Multiplayer opts into a new
+presentation envelope that delegates to unchanged action/snapshot authority.
+Arcade adds top-level metadata so old view equality checks remain compatible.
+Only TriTowers and Run21 select Cartoon fronts; ordinary poker faces and all
+canonical backs retain existing ownership. See TRITOWERS_POLISH.md.
