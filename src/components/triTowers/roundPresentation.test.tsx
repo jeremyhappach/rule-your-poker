@@ -19,6 +19,18 @@ beforeEach(()=>{vi.clearAllMocks();Object.defineProperty(document,'hidden',{conf
 afterEach(cleanup);
 
 describe('shared v3 round presentation in both adapters',()=>{
+ it('keeps the title visible well past the former 550ms cutoff',()=>{
+  const ui=render(<TriTowersBoard {...props} now={1700} view={{...base,phase:'intro',deadline:2500}} roundLabel="BONUS ROUND" turnLabel="YOUR TURN"/>);
+  expect(ui.getByText('BONUS ROUND')).toBeTruthy();expect(ui.container.querySelector<HTMLElement>('.tri-deal-title')?.style.opacity).not.toBe('0');expect(ui.container.querySelector('[data-run21-round-intro]')?.getAttribute('data-fading')).toBe('false');
+ });
+ it('travels for 120ms on confirmation without disabling input; old completion cannot replace a newer upcard',()=>{
+  const animations:any[]=[];vi.spyOn(Element.prototype,'getBoundingClientRect').mockImplementation(function(this:Element){return this.closest('.tri-waste')?new DOMRect(20,400,60,90):new DOMRect(100,100,40,60);});
+  Object.defineProperty(Element.prototype,'animate',{configurable:true,value:vi.fn((_frames,options)=>{const animation={cancel:vi.fn(),onfinish:null,options};animations.push(animation);return animation;})});
+  const ui=render(<TriTowersBoard {...props} view={{...base,waste:18}}/>);
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19],waste:19}}/>);expect(animations[0].options.duration).toBe(120);expect(Element.prototype.animate).toHaveBeenCalledWith([{transform:'translate(0,0)'},{transform:'translate(-80px,300px) scale(1.5,1.5)'}],expect.objectContaining({duration:120}));expect(ui.getByRole('button',{name:'Remove 8 of hearts'}).hasAttribute('disabled')).toBe(false);
+  ui.rerender(<TriTowersBoard {...props} view={{...base,removed:[...base.removed,19,20],waste:20}}/>);expect(animations[0].cancel).toHaveBeenCalled();act(()=>animations[0].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeTruthy();act(()=>animations[1].onfinish());expect(ui.container.querySelector('.tri-card-flight')).toBeNull();expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();
+  delete (Element.prototype as any).animate;vi.restoreAllMocks();
+ });
  it.each(['arcade','multiplayer'])('%s: Ready has only text; accepted playing snapshot reveals the full clock',mode=>{
   const ui=render(<TriTowersBoard {...props} scores={mode==='arcade'?props.scores:[...props.scores,{id:'other',score:500,active:false}]} view={{...base,phase:'ready',deadline:31000}}/>);
   expect(ui.getByText('Play a card or draw · 30s')).toBeTruthy();expect(ui.queryByRole('progressbar')).toBeNull();expect(ui.container.querySelector('.tri-dots')).toBeNull();
@@ -54,9 +66,9 @@ describe('shared v3 round presentation in both adapters',()=>{
   const end={...base,phase:'stage_complete' as const,deadline:7000};
   ui.rerender(<TriTowersBoard {...props} view={end} now={2600} result={result}/>);
   expect(ui.getByLabelText('Score 100')).toBeTruthy();expect(calls('tri-clear:')).toHaveLength(1);expect(calls('tri-count:')).toHaveLength(0);
-  ui.rerender(<TriTowersBoard {...props} view={end} now={4600} result={{...result,elapsed:2600}}/>);
+  ui.rerender(<TriTowersBoard {...props} view={end} now={4900} result={{...result,elapsed:2900}}/>);
   expect(ui.getByLabelText('Score 550')).toBeTruthy();expect(Number(ui.getByRole('progressbar').getAttribute('aria-valuenow'))).toBe(59.5);expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
-  const count=calls('tri-count:')[0]?.[0] as any;expect(count.expiresAt-count.startedAt).toBeCloseTo(2800,6);
+  const count=calls('tri-count:')[0]?.[0] as any;expect(count.expiresAt-count.startedAt).toBeCloseTo(2200,6);
   ui.rerender(<TriTowersBoard {...props} view={end} now={6000} result={{...result,elapsed:4000}}/>);
   expect(ui.getByLabelText('Score 1000')).toBeTruthy();expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
   expect(ui.queryByLabelText('All three towers cleared')).toBeNull();

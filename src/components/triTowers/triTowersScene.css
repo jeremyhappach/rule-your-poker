@@ -37,6 +37,14 @@
 .tri-shared-board[data-dealing=true] .tri-card{animation:none;transition:transform 70ms linear,opacity 70ms linear}
 .tri-shared-board[data-dealing=true] .tri-stock{transition:opacity 70ms linear}
 .tri-deal-title{position:absolute;inset:0;pointer-events:none;z-index:50}
+.tri-deal-title .run21-round-intro{background:#06131133;pointer-events:none;align-items:start;padding-top:8%}
+.tri-deal-title .run21-round-intro-card{width:min(78%,23rem);padding:.65rem 1rem;gap:.3rem}
+.tri-deal-title .run21-boxing-bell{height:clamp(2rem,9cqh,5rem)}
+.tri-card-flight{position:absolute;z-index:45;pointer-events:none;transform-origin:top left}
+.tri-card:active:enabled,.tri-stock:active:enabled{filter:brightness(1.25);outline:2px solid #fff3b1}
+.tri-card[data-pending=true]{outline:2px dashed #f5c32e;outline-offset:2px;filter:saturate(.65)}
+.tri-input-status{position:absolute;bottom:1%;left:5%;width:90%;z-index:55;background:#172c3aeb;color:#fff;padding:.25rem .5rem;text-align:center;font-size:clamp(.7rem,2.3cqw,.95rem)}
+.tri-input-status button{margin-left:.5rem;text-decoration:underline}
 .tri-round-summary{position:absolute;top:60%;left:8%;width:84%;display:flex;flex-direction:column;align-items:center;gap:.2rem;pointer-events:none;z-index:12;color:#fff9d1;text-align:center;text-shadow:0 2px 3px #102b37}
 .tri-round-summary strong{font-size:clamp(.8rem,3cqw,1.3rem);background:#243950e8;border-radius:1rem;padding:.15rem .7rem}.tri-round-summary span{font-size:clamp(.7rem,2.5cqw,1rem);background:#243950e8;border-radius:1rem;padding:0 .5rem}.tri-round-summary span:empty{display:none}
 .tri-all-clear{position:absolute;top:7%;left:50%;transform:translateX(-50%);width:32%;height:20%;z-index:11;pointer-events:none;display:flex;align-items:center;filter:drop-shadow(0 2px 3px #25475580)}

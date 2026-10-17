@@ -1,3 +1,20 @@
+# TriTowers ordered input and presentation — 2026-10-17 — awaiting owner smoke
+
+Approved correction of `ee9a5609a`, whose production smoke was largely clean:
+visible round titles, a fuller 1.7-second original fanfare, nonblocking 120 ms
+confirmed-card travel, bounded ordered intentions and recoverable immutable
+requests. Arcade removes two redundant remote reads only for validated TriTowers
+requests; the existing authoritative RPC retains ownership/access and receipt
+checks. Both modes share the buffer and presentation. No SQL/rules/financial or
+Run21 gameplay change. The existing 2.5-second intro and five-second result hold
+are unchanged. Opt-in local timing reports support Jeremy's phone smoke.
+
+Full validation/build, focused recovery/input tests, both-mode browser checks
+and deployed rollback proof passed. Controlled local Arcade click-to-paint
+median: 221 ms before / 134 ms after; this is not a production iPhone measurement.
+Checkpoint: `tri-towers-input-polish-2026-10-17`. Jeremy's production smoke remains
+acceptance. See [implementation, measurements and smoke](TRITOWERS_INPUT_POLISH.md).
+
 # TriTowers round presentation correction — 2026-10-17 — awaiting owner smoke
 
 Approved correction of 70f5fec12: text-only Ready, authoritative-intro deal, live

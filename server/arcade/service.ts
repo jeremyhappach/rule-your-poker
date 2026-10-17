@@ -2,6 +2,9 @@ import {createSoloRun,advanceSolo,applySolo,nextDue,soloProjection} from '../../
 import {isUuid} from '../../src/lib/run21/model.js';
 import type {ArcadeIntent,RunRecord} from '../../src/lib/arcade/model.js';
 export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
+// A routing hint only. arcade_tri_step independently verifies the stored game,
+// ownership/access, frozen revision/round and immutable receipt under its lock.
+export function triShortcut(body:Record<string,any>){return body.game==='tri-towers'&&body.presentationVersion===3&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['remove','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='remove'||Number.isInteger(body.intent.index)));}
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
  if(input.game==='tri-towers')return (await rpc('arcade_tri_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  let row=input;
@@ -21,6 +24,10 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string,body:Rec
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
+ if(triShortcut(body)){
+  const result=await rpc('arcade_tri_step',{p_actor:userId,p_run:body.runId,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_index:body.intent.type==='remove'?body.intent.index:null}:{})});
+  if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
+ }
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
   await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});

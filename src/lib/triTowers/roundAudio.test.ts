@@ -21,7 +21,7 @@ it('withdraws a locked bell before restoration; mute never briefly schedules it'
 });
 it('seeks a late fanfare inside its existing window, then retires it without replay',async()=>{
  await ready();const cue={userId:'user',id:'tri-clear',startedAt:Date.now()-600,expiresAt:Date.now()+500,cueAt:triAllClearCueAt};
- h.manager.follow(cue);expect(h.starts()).toHaveLength(3);expect(h.starts().every(t=>t===10)).toBe(true);
+ h.manager.follow(cue);const count=h.starts().length;expect(count).toBeGreaterThan(3);expect(h.starts().every(t=>t>=10&&t<10.5)).toBe(true);
  expect(h.nodes.filter(n=>n.kind==='oscillator').every(n=>n.stop.mock.calls[0][0]<=10.5)).toBe(true);
- vi.advanceTimersByTime(500);h.manager.follow({...cue,expiresAt:Date.now()+500});expect(h.starts()).toHaveLength(3);
+ vi.advanceTimersByTime(500);h.manager.follow({...cue,expiresAt:Date.now()+500});expect(h.starts()).toHaveLength(count);
 });

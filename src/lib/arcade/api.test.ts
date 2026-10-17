@@ -1,8 +1,8 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {Readable} from 'node:stream';
-const mocks=vi.hoisted(()=>({getUser:vi.fn(),operation:vi.fn(),createClient:vi.fn()}));
+const mocks=vi.hoisted(()=>({getUser:vi.fn(),operation:vi.fn(),createClient:vi.fn(),shortcut:vi.fn(),from:vi.fn(),rpc:vi.fn()}));
 vi.mock('@supabase/supabase-js',()=>({createClient:mocks.createClient}));
-vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation}));
+vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation,triShortcut:mocks.shortcut}));
 import handler from '../../../api/arcade';
 async function request(headers:Record<string,string>={},body:unknown={op:'state'},method='POST'){
  const req=Object.assign(Readable.from([]),{method,headers:{host:'holm357.com',...headers},body});
@@ -15,10 +15,19 @@ beforeEach(()=>{
  vi.stubEnv('RUN21_SUPABASE_SERVICE_ROLE_KEY','test-only');
  mocks.getUser.mockResolvedValue({data:{user:{id:'verified-user'}},error:null});
  const chain={select:()=>chain,eq:()=>chain,single:async()=>({data:{username:'Verified'}})};
- mocks.createClient.mockReturnValue({auth:{getUser:mocks.getUser},from:()=>chain});
+ mocks.shortcut.mockReturnValue(false);mocks.from.mockReturnValue(chain);mocks.createClient.mockReturnValue({auth:{getUser:mocks.getUser},from:mocks.from,rpc:mocks.rpc});
  mocks.operation.mockResolvedValue({verified:true});
 });
 describe('Arcade HTTP authentication boundary',()=>{
+ it('skips only the display-name query on the qualified shortcut while retaining fresh authentication',async()=>{
+  mocks.shortcut.mockReturnValue(true);const body={op:'action',game:'tri-towers',userId:'forged'};
+  expect((await request({authorization:'Bearer valid'},body)).status).toBe(200);expect(mocks.getUser).toHaveBeenCalledWith('valid');expect(mocks.from).not.toHaveBeenCalled();expect(mocks.operation).toHaveBeenCalledWith(expect.any(Function),'verified-user','You',body);
+ });
+ it('marks a lost database response uncertain while preserving known SQL rejection messages',async()=>{
+  mocks.shortcut.mockReturnValue(true);mocks.operation.mockImplementation((rpc:any)=>rpc('arcade_tri_step',{}));mocks.rpc.mockResolvedValue({error:{code:'',message:'Failed to fetch'},status:0});
+  expect((await request({authorization:'Bearer valid'},{game:'tri-towers'})).status).toBe(503);
+  mocks.rpc.mockResolvedValue({error:{code:'42501',message:'arcade:forbidden'},status:403});const rejected=await request({authorization:'Bearer valid'},{game:'tri-towers'});expect(rejected.status).toBe(409);expect(rejected.body.error).toBe('arcade:forbidden');
+ });
  it('rejects anonymous requests before creating a privileged client',async()=>{
   expect((await request()).status).toBe(401);expect(mocks.createClient).not.toHaveBeenCalled();
  });
