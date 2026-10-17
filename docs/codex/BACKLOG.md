@@ -1,5 +1,21 @@
 # Backlog
 
+## Queued — TriTowers all-clear fanfare interrupted by count-up — October 17, 2026
+
+- Jeremy reported one production occurrence where clearing all three towers
+  started the fanfare, but the score count-up cut it short. Reported after the
+  Run21 shared-audio release `fe17c194a`; the affected mode, round identity and
+  frozen ruleset have not yet been established. Jeremy clarified that it was a
+  newly started game, not one resumed from earlier; his current play has been
+  Arcade, with the exact affected TriTowers mode still to confirm.
+- Expected: the dedicated three-second all-clear celebration completes before
+  the normal round-end score/audio sequence begins, within that game's frozen
+  authoritative lifecycle. Preserve legacy timing, mute and replay safeguards.
+- Queued separately while Run21 responsiveness and a space-theme proposal are
+  investigated. Trace the actual cue cancellation and authoritative timing
+  boundary before proposing a correction; no cause is established yet.
+- Provenance: Jeremy's direct production-smoke report, October 17, 2026.
+
 ## Implemented — Solo TriTowers Arcade adapter; owner smoke pending — October 16, 2026
 
 - Jeremy accepted TriTowers multiplayer v2 production smoke as CLEAN and requested
