@@ -1,7 +1,7 @@
 export type ElevenIntent={type:'group';items:number[]}|{type:'pass'|'take_score'|'abandon'};
 export interface ElevenResult {id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;groupBonus:number;clearBonus:number;stockBonus:number;timeBonus:number;completedAt:number}
 export interface ElevenBoard {
- rules:{version:'eleven-up/1';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
+ rules:{version:'eleven-up/1'|'eleven-up/2';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
  phase:'intro'|'ready'|'playing'|'stage_complete'|'complete';slots:(number|null)[];current:number|null;
  exposed:number[];passSlot:number|null;canPass:boolean;stockRemaining:number;groups:number;score:number;deadline:number;
  result?:ElevenResult|null;event:{label:string;points:number};

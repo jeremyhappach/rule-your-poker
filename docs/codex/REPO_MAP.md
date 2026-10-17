@@ -8,6 +8,9 @@ proofs. `ElevenUpTable.tsx` owns multiplayer presentation admission;
 `SoloElevenUp.tsx` uses Arcade's authenticated API and completion destination.
 `src/lib/elevenUp/client.ts` owns the production transport adapter. See
 `ELEVEN_UP_PRODUCTION_SMOKE.md` and `ELEVEN_UP_FIRST_PLAYABLE.md`.
+Three-minute admission: `20261017220602_eleven_up_three_minute.sql`,
+`supabase/eleven-up/activate-v2.sql` and `timing-v2-proof.sql`; see
+`ELEVEN_UP_THREE_MINUTE.md`. The immutable v1 core remains in `rules.sql`.
 
 TriTowers presentation polish (2026-10-17): `src/components/triTowers/TriTowersBoard.tsx`
 owns the shared Arcade/multiplayer castle, badges, streak indicators, dots and stock

@@ -1,3 +1,11 @@
+# 2026-10-17 — 11 Up three-minute rounds
+
+Owner approved extending the gameplay duration to three minutes after smoke.
+New `eleven-up/2` changes only duration/version; preserve v1 and all scoring,
+including the two-minute speed-bonus cutoff. Both modes freeze the same enabled
+registry configuration. Keep v1/v2 leaderboard groups separate. See
+`ELEVEN_UP_THREE_MINUTE.md`.
+
 # 2026-10-17 — 11 Up production smoke admission
 
 Jeremy requested production deployment after the local milestone. Register

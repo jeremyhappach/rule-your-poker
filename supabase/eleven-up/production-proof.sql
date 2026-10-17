@@ -8,15 +8,15 @@ BEGIN
   INSERT INTO auth.users(id) VALUES(users[case_i]);
   INSERT INTO public.profiles(id,username,is_active) VALUES(users[case_i],'Eleven '||users[case_i]::text,true) ON CONFLICT(id) DO UPDATE SET is_active=true;
  END LOOP;
- b:=private.eleven_up_board_deal(jsonb_build_object('rules',private.eleven_up_rules(),'score',0),1000);
+ b:=private.eleven_up_board_deal(jsonb_build_object('rules',private.eleven_up_admission_rules(),'score',0),1000);
  PERFORM pg_temp.eleven_assert(jsonb_array_length(b->'slots')=22 AND jsonb_array_length(b->'deck')=52,'layout');
  PERFORM pg_temp.eleven_assert(NOT(private.eleven_up_visible(b)?'deck') AND NOT(private.eleven_up_visible(b)?'cursor'),'redaction');
  b:=private.eleven_up_board_reduce(b,'tick',NULL,3500);v:=private.eleven_up_board_reduce(b,'pass',NULL,4000);
- PERFORM pg_temp.eleven_assert(v->'slots'=b->'slots' AND v->'current'=b->'deck'->23 AND (v->>'deadline')::bigint=124000,'full rack pass starts full clock');
+ PERFORM pg_temp.eleven_assert(v->'slots'=b->'slots' AND v->'current'=b->'deck'->23 AND (v->>'deadline')::bigint=4000+(b#>>'{rules,stageMs}')::bigint,'full rack pass starts full clock');
  b:=b||jsonb_build_object('slots','[null,null,null,null,null,null,null,null,16,null,null,null,null,null,null,null,null,20,null,null,null,32]'::jsonb,'current',48,'cursor',52);
  v:=private.eleven_up_board_reduce(b,'group',ARRAY[16,20,32],4000);
  PERFORM pg_temp.eleven_assert((v->>'score')::integer=17600 AND (v->>'deadline')::bigint=12000,'three-ball clear scoring and fanfare');
- PERFORM pg_temp.eleven_assert(private.eleven_up_bonus_qualified(80000,private.eleven_up_rules()) AND NOT private.eleven_up_bonus_qualified(79999,private.eleven_up_rules()),'bonus boundary');
+ PERFORM pg_temp.eleven_assert(private.eleven_up_bonus_qualified(80000,private.eleven_up_admission_rules()) AND NOT private.eleven_up_bonus_qualified(79999,private.eleven_up_admission_rules()),'bonus boundary');
  FOR case_i IN 1..3 LOOP
   game:=gen_random_uuid();proof_players:=ARRAY[gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];deadline:=clock_timestamp()+interval '10 minutes';
   INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES(game,'game_selection',false,3,deadline,0,false,false);
@@ -26,6 +26,7 @@ BEGIN
   v:=public.eleven_up_configure(game,proof_players[1],3,'eleven-up','{"ante_amount":5}',deadline);dealer:=(v#>>'{dealer_game,id}')::uuid;
   PERFORM pg_temp.eleven_assert((public.eleven_up_configure(game,proof_players[1],3,'eleven-up','{"ante_amount":5}',deadline)->>'deduped')::boolean,'setup replay');
   SELECT state INTO terminal FROM private.eleven_up_matches WHERE dealer_game_id=dealer;
+  PERFORM pg_temp.eleven_assert(terminal->'rules'=private.eleven_up_admission_rules(),'multiplayer freezes shared admission rules');
   actor:=(terminal#>>'{players,0,userId}')::uuid;PERFORM set_config('request.jwt.claim.sub',actor::text,true);
   UPDATE private.eleven_up_matches SET state=state||b||jsonb_build_object('phase','ready','deadline',floor(extract(epoch FROM clock_timestamp())*1000)+30000) WHERE dealer_game_id=dealer;
   req:=gen_random_uuid();v:=public.eleven_up_action(dealer,req,0,'group',ARRAY[16,20,32]);rev:=(v->>'revision')::bigint;
@@ -64,6 +65,7 @@ BEGIN
  UPDATE private.arcade_rulesets SET enabled=true WHERE id='eleven-up/1';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
  run:=public.arcade_start(users[1],gen_random_uuid(),'eleven-up');a:=public.arcade_eleven_step(users[1],(run->>'id')::uuid);
  PERFORM pg_temp.eleven_assert(NOT((a#>'{projection,view}')?'deck'),'solo redaction');
+ PERFORM pg_temp.eleven_assert(a#>'{projection,view,rules}'=private.eleven_up_admission_rules(),'Arcade freezes same admission rules');
  UPDATE private.arcade_runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1000000)) WHERE id=(run->>'id')::uuid;
  a:=public.arcade_eleven_step(users[1],(run->>'id')::uuid);again:=public.arcade_eleven_step(users[1],(run->>'id')::uuid);
  PERFORM pg_temp.eleven_assert(a#>>'{record,status}'='completed' AND jsonb_array_length(a#>'{record,state,results}')=2 AND a#>'{record,revision}'=again#>'{record,revision}','solo completion replay');

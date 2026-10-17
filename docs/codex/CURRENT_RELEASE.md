@@ -1,3 +1,15 @@
+# 11 Up — 2026-10-17 — three-minute rounds
+
+Owner smoke confirmed the two-minute duration was too short. Approved new
+`eleven-up/2` games use 180 seconds from the first valid play in both modes.
+V1 stays at 120 seconds; bell, ready time, result/fanfare holds and scoring are
+unchanged, including zero speed bonus after 120 seconds. New duration scores
+use a separate leaderboard. Candidate and installed rollback proofs pass the
+timing boundaries and full existing settlement/replay/recovery matrix.
+TypeScript, 2,402 source tests, 241 harness tests and the production build pass.
+Checkpoint: `eleven-up-three-minute-2026-10-17`; owner smoke remains pending.
+See [three-minute release](ELEVEN_UP_THREE_MINUTE.md).
+
 # 11 Up — 2026-10-17 — production smoke release
 
 Jeremy authorized production publication for smoke. The candidate now includes
