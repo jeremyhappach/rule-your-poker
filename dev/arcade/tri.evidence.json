@@ -1,0 +1,276 @@
+{
+  "at": "2026-10-17T00:20:12.398Z",
+  "database": "arcade_tri_1792196248090",
+  "cases": [
+    "complete candidate rollback proof: admission, ownership, core parity, redaction, clocks, timeout catchup, bonuses, cumulative totals, PB/ranking, atomic failure, abandonment and non-Arcade write isolation",
+    "installed candidate reruns same rollback proof",
+    "concurrent identical command applies once",
+    "concurrent distinct actions serialize with stale rejection",
+    "concurrent zero-client recovery produces one verified completion",
+    "real-time no-browser two-round completion using existing recovery service"
+  ],
+  "metrics": [
+    {
+      "ms": 4.797200000000203,
+      "processed": 1
+    },
+    {
+      "ms": 1.171199999999999,
+      "processed": 0
+    },
+    {
+      "ms": 1.3165000000003602,
+      "processed": 0
+    },
+    {
+      "ms": 1.9113999999999578,
+      "processed": 0
+    },
+    {
+      "ms": 1.4279999999998836,
+      "processed": 0
+    },
+    {
+      "ms": 2.1711000000004788,
+      "processed": 0
+    },
+    {
+      "ms": 2.467999999999847,
+      "processed": 0
+    },
+    {
+      "ms": 1.9203999999999724,
+      "processed": 0
+    },
+    {
+      "ms": 2.5789000000004307,
+      "processed": 0
+    },
+    {
+      "ms": 1.6388999999999214,
+      "processed": 0
+    },
+    {
+      "ms": 0.841100000001461,
+      "processed": 0
+    },
+    {
+      "ms": 1.4889000000002852,
+      "processed": 0
+    },
+    {
+      "ms": 1.4750000000003638,
+      "processed": 0
+    },
+    {
+      "ms": 1.0709999999999127,
+      "processed": 0
+    },
+    {
+      "ms": 1.2076999999990221,
+      "processed": 0
+    },
+    {
+      "ms": 1.3569000000006781,
+      "processed": 0
+    },
+    {
+      "ms": 1.4634000000005472,
+      "processed": 0
+    },
+    {
+      "ms": 1.2884999999987485,
+      "processed": 0
+    },
+    {
+      "ms": 1.245600000002014,
+      "processed": 0
+    },
+    {
+      "ms": 1.6976999999969848,
+      "processed": 0
+    },
+    {
+      "ms": 1.3166999999994005,
+      "processed": 0
+    },
+    {
+      "ms": 1.0358999999989464,
+      "processed": 0
+    },
+    {
+      "ms": 0.9790000000029977,
+      "processed": 0
+    },
+    {
+      "ms": 1.6264999999984866,
+      "processed": 0
+    },
+    {
+      "ms": 2.2281999999977415,
+      "processed": 0
+    },
+    {
+      "ms": 2.7237999999997555,
+      "processed": 0
+    },
+    {
+      "ms": 2.602600000001985,
+      "processed": 0
+    },
+    {
+      "ms": 1.8706999999994878,
+      "processed": 0
+    },
+    {
+      "ms": 2.3510000000023865,
+      "processed": 0
+    },
+    {
+      "ms": 1.6784000000006927,
+      "processed": 0
+    },
+    {
+      "ms": 8.852899999998044,
+      "processed": 1
+    },
+    {
+      "ms": 3.1441999999988184,
+      "processed": 0
+    },
+    {
+      "ms": 2.158400000000256,
+      "processed": 0
+    },
+    {
+      "ms": 1.554599999995844,
+      "processed": 0
+    },
+    {
+      "ms": 2.252200000002631,
+      "processed": 0
+    },
+    {
+      "ms": 6.825199999999313,
+      "processed": 1
+    },
+    {
+      "ms": 2.0838000000003376,
+      "processed": 0
+    },
+    {
+      "ms": 2.13300000000163,
+      "processed": 0
+    },
+    {
+      "ms": 1.8975999999966007,
+      "processed": 0
+    },
+    {
+      "ms": 1.850800000000163,
+      "processed": 0
+    },
+    {
+      "ms": 2.6347999999998137,
+      "processed": 0
+    },
+    {
+      "ms": 2.5540000000037253,
+      "processed": 0
+    },
+    {
+      "ms": 2.246500000001106,
+      "processed": 0
+    },
+    {
+      "ms": 2.8087999999988824,
+      "processed": 0
+    },
+    {
+      "ms": 4.55000000000291,
+      "processed": 0
+    },
+    {
+      "ms": 2.155800000000454,
+      "processed": 0
+    },
+    {
+      "ms": 1.6718999999939115,
+      "processed": 0
+    },
+    {
+      "ms": 2.7461999999941327,
+      "processed": 0
+    },
+    {
+      "ms": 1.526000000005297,
+      "processed": 0
+    },
+    {
+      "ms": 1.4619999999995343,
+      "processed": 0
+    },
+    {
+      "ms": 2.978800000004412,
+      "processed": 0
+    },
+    {
+      "ms": 2.4499999999970896,
+      "processed": 0
+    },
+    {
+      "ms": 2.124199999998382,
+      "processed": 0
+    },
+    {
+      "ms": 2.339400000004389,
+      "processed": 0
+    },
+    {
+      "ms": 2.31079999999929,
+      "processed": 0
+    },
+    {
+      "ms": 2.7255999999979394,
+      "processed": 0
+    },
+    {
+      "ms": 2.295400000002701,
+      "processed": 0
+    },
+    {
+      "ms": 3.0860000000029686,
+      "processed": 0
+    },
+    {
+      "ms": 1.6759000000020023,
+      "processed": 0
+    },
+    {
+      "ms": 2.243799999996554,
+      "processed": 0
+    },
+    {
+      "ms": 1.7660000000032596,
+      "processed": 0
+    },
+    {
+      "ms": 1.2184999999954016,
+      "processed": 0
+    },
+    {
+      "ms": 0.8027000000001863,
+      "processed": 0
+    },
+    {
+      "ms": 0.8827999999994063,
+      "processed": 0
+    },
+    {
+      "ms": 9.402700000006007,
+      "processed": 1
+    }
+  ],
+  "productionWrites": 0,
+  "backlog": 0
+}

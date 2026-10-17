@@ -1,3 +1,4 @@
+import {SoloTriTowers} from '@/components/arcade/SoloTriTowers';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Gamepad2,ArrowLeft,Trophy,Play,RotateCcw} from 'lucide-react';
@@ -23,14 +24,14 @@ import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import '@/lib/arcade/arcade.css';
 const games=[{id:'run21',name:'Run21',description:'5 columns, 3 rounds, make 21s',ready:true},
- {id:'tri-towers',name:'TriTowers',description:'Clear the towers.',ready:false},
+ {id:'tri-towers',name:'TriTowers',description:'Clear the towers.',ready:true},
  {id:'yahtzee',name:'Yahtzee',description:'Make every roll count.',ready:false}] as const;
 export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
  if(!game)return <Switchboard userId={user.id}/>;
- if(game!=='run21')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
- return runId?<SoloRun key={runId} runId={runId} userId={user.id}/>:<GameBoard/>;
+ if(game!=='run21'&&game!=='tri-towers')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
+ return runId?(game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game} game={game}/>;
 }
 function Switchboard({userId}:{userId:string}){
  const {isAdmin}=useIsAdmin(userId),[artwork,setArtwork]=useState<Artwork[]>([]),[error,setError]=useState('');
@@ -52,26 +53,27 @@ function Switchboard({userId}:{userId:string}){
    </article>;
   })}</div>{error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;
 }
-function GameBoard(){
+function GameBoard({game}:{game:'run21'|'tri-towers'}){
+ const name=game==='run21'?'Run21':'TriTowers';
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const createId=useRef<string|null>(null);
  const [ruleset,setRuleset]=useState<string|null>(null);
- useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game:'run21',window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[window,result,ruleset]);
+ useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game,window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[game,window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
-  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game:'run21',requestId:createId.current});navigate('/arcade/run21/run/'+run.id);}
+  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current});navigate('/arcade/'+game+'/run/'+run.id);}
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
- <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>Run21</h1>
- <ArcadeInfo game="run21" name="Run21" ruleset={board?.ruleset}>
+ <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>{name}</h1>
+ <ArcadeInfo game={game} name={name} ruleset={board?.ruleset}>
   <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses runs completed in that period; personal best shows All Time for the selected rules.</p>
   {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
   <p>Scores from different rules stay separate. New runs use the current rules.</p>
   {!!board?.previousBests.length&&<details><summary>Personal bests under other rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
  </ArcadeInfo>
- {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/run21/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
+ {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/'+game+'/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
  <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
  </header>
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Run complete':'Run ended · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>

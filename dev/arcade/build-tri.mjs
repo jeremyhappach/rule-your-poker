@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const baseline=JSON.parse(readFileSync('qualification.local/tri-towers/solo-baseline.json','utf8'));
+const definition=name=>baseline.functions.find(f=>f.signature.replace(/^public\./,'').startsWith(name.replace(/^public\./,'')+'(')).definition;
+let reduce=definition('private.tri_towers_reduce').replace("(s->'scores'->>(p->>'id'))::integer>=(s#>>'{rules,bonusThreshold}')::integer","private.tri_towers_bonus_qualified_v2((s->'scores'->>(p->>'id'))::bigint,s->'rules')");
+let start=definition('public.arcade_start').replace("p_game IS DISTINCT FROM 'run21'","p_game IS NULL OR p_game NOT IN ('run21','tri-towers')");
+let commit=definition('public.arcade_commit');
+commit=commit.replace("IF status_i='completed' AND ((p_state->>'round')", "IF run.game='tri-towers' AND status_i='completed' AND private.arcade_tri_valid_completion(p_state) IS DISTINCT FROM true THEN RAISE EXCEPTION 'arcade:invalid_completion';END IF;\n IF run.game='run21' AND status_i='completed' AND ((p_state->>'round')");
+const help=definition('public.arcade_rules_help').replace("WHERE game='run21' AND (CASE WHEN p_ruleset IS NULL THEN enabled ELSE id=p_ruleset END)","WHERE (CASE WHEN p_ruleset IS NULL THEN game='run21' AND enabled ELSE id=p_ruleset END)");
+for(const [name,changed]of [['start',start!==definition('public.arcade_start')],['commit',commit!==definition('public.arcade_commit')],['reduce',reduce!==definition('private.tri_towers_reduce')],['help',help!==definition('public.arcade_rules_help')]])if(!changed)throw Error('Missing replacement '+name);
+const core=readFileSync('supabase/tri-towers/v2.sql','utf8');
+const helper=core.slice(core.indexOf('CREATE OR REPLACE FUNCTION private.tri_towers_bonus_qualified_v2'),core.indexOf('-- Mode-independent board authority.'));
+const sql=helper+readFileSync('supabase/arcade/tri-towers.sql','utf8')+'\n'+[reduce,start,commit,help].join(';\n')+";\nNOTIFY pgrst,'reload schema';\n";
+writeFileSync('supabase/migrations/20261017001447_solo_tri_towers.sql',sql);

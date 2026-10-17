@@ -1,3 +1,8 @@
+-- Mode-independent bonus eligibility shared by multiplayer and Solo Arcade.
+CREATE OR REPLACE FUNCTION private.tri_towers_bonus_qualified_v2(score bigint,rules jsonb) RETURNS boolean
+LANGUAGE sql IMMUTABLE SET search_path='' AS $$ SELECT score >= (rules->>'bonusThreshold')::bigint $$;
+REVOKE ALL ON FUNCTION private.tri_towers_bonus_qualified_v2(bigint,jsonb) FROM PUBLIC,anon,authenticated,service_role;
+
 -- Mode-independent board authority. No seats, sessions, settlement or mode defaults.
 CREATE OR REPLACE FUNCTION private.tri_towers_board_deal_v2(b jsonb,at_ms bigint) RETURNS jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
 DECLARE deck jsonb:=private.tri_towers_shuffle();
@@ -71,7 +76,7 @@ BEGIN
   IF next_i>=n AND round_i<2 THEN next_i:=0;round_i:=round_i+1;
   ELSIF next_i>=n AND round_i=2 THEN
    SELECT coalesce(jsonb_agg(p->>'id' ORDER BY ord),'[]'::jsonb) INTO qualified FROM jsonb_array_elements(s->'players') WITH ORDINALITY a(p,ord)
-    WHERE (s->'scores'->>(p->>'id'))::integer>=(s#>>'{rules,bonusThreshold}')::integer;
+    WHERE private.tri_towers_bonus_qualified_v2((s->'scores'->>(p->>'id'))::bigint,s->'rules');
    s:=s||jsonb_build_object('qualified',qualified);round_i:=3;next_i:=0;
   END IF;
   IF round_i=3 THEN

@@ -48,8 +48,9 @@ TriTowers now defines `tri-towers/2` in `src/lib/triTowers/rules-v2.json`, gener
 into its immutable admitted match configuration. The board functions in
 `supabase/tri-towers/v2.sql` are the sole mode-independent dealing, action, scoring
 and clock authority. Multiplayer wraps that core for seat order, round scheduling,
-bonus eligibility and canonical settlement. Future Arcade must reuse these exact
-functions/configuration; no Solo implementation is part of this correction.
+canonical settlement. Bonus eligibility is now a shared SQL helper. Solo Arcade
+calls these exact board functions/configuration through `supabase/arcade/tri-towers.sql`;
+its adapter owns only Solo scheduling and existing Arcade persistence.
 V1 bodies and historical interpretation remain separately dispatched.
 See [TriTowers qualification](TRITOWERS_V2.md).
 

@@ -1,14 +1,14 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
-import type {ArcadeIntent,ArcadeSnapshot} from '@/lib/arcade/model';
-export function useArcadeRun(runId:string){
- const [snapshot,setSnapshot]=useState<ArcadeSnapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
- const [now,setNow]=useState(0),state=useRef<ArcadeSnapshot|null>(null),generation=useRef(0),busy=useRef(false);
+import type {ArcadeRunIntent,ArcadeSnapshot,ArcadeRunSnapshot} from '@/lib/arcade/model';
+export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:string){
+ const [snapshot,setSnapshot]=useState<T|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
+ const [now,setNow]=useState(0),state=useRef<T|null>(null),generation=useRef(0),busy=useRef(false);
  const anchor=useRef({server:0,local:0}),initial=useRef(true),[completedOnEntry,setCompletedOnEntry]=useState(false);
  const [completionLive,setCompletionLive]=useState(false),epoch=useRef(0),finishedSeen=useRef(false);
  const interrupt=useCallback(()=>{epoch.current++;setCompletionLive(false);},[]);
- const accept=useCallback((value:ArcadeSnapshot,recovery=false,requestEpoch=epoch.current)=>{
+ const accept=useCallback((value:T,recovery=false,requestEpoch=epoch.current)=>{
   if(value.id!==runId)return;
   const previous=state.current;
   if(previous&&value.revision<previous.revision)return;
@@ -27,7 +27,7 @@ export function useArcadeRun(runId:string){
  },[runId]);
  const refresh=useCallback(async(recovery=false)=>{
   const current=generation.current,requestEpoch=epoch.current;
-  try{const value=await arcadeRequest<ArcadeSnapshot>({op:'state',runId});if(current===generation.current)accept(value,recovery,requestEpoch);}
+  try{const value=await arcadeRequest<T>({op:'state',runId});if(current===generation.current)accept(value,recovery,requestEpoch);}
   catch(e){if(current===generation.current){interrupt();setError(e instanceof Error?e.message:'Connection lost.');}}
  },[runId,accept,interrupt]);
  useEffect(()=>{
@@ -49,10 +49,10 @@ export function useArcadeRun(runId:string){
   const timer=setTimeout(()=>void refresh(),Math.max(0,remaining)+25);
   return()=>clearTimeout(timer);
  },[snapshot?.revision,snapshot?.dueAt,refresh]);
- const act=useCallback(async(intent:ArcadeIntent)=>{
+ const act=useCallback(async(intent:ArcadeRunIntent)=>{
   const current=state.current;if(!current||busy.current)return;
   busy.current=true;setPending(true);const scope=generation.current,requestEpoch=epoch.current;
-  try{const value=await arcadeRequest<ArcadeSnapshot>({op:'action',runId,requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent});if(scope===generation.current)accept(value,false,requestEpoch);}
+  try{const value=await arcadeRequest<T>({op:'action',runId,requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent});if(scope===generation.current)accept(value,false,requestEpoch);}
   catch(e){if(scope===generation.current){interrupt();await refresh(true);setError(e instanceof Error?e.message:'Action failed.');}}
   finally{if(scope===generation.current){busy.current=false;setPending(false);}}
  },[runId,accept,refresh,interrupt]);

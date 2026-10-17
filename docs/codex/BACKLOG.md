@@ -1,6 +1,6 @@
 # Backlog
 
-## Awaiting approval — Solo TriTowers Arcade adapter — October 16, 2026
+## Implemented — Solo TriTowers Arcade adapter; owner smoke pending — October 16, 2026
 
 - Jeremy accepted TriTowers multiplayer v2 production smoke as CLEAN and requested
   a bounded read-only review and concrete Solo plan before implementation.
@@ -21,9 +21,9 @@
   redaction, reconnect/deadline recovery, concurrent/replayed commands, atomic
   verified completion, ranking/PB presentation and complete session/financial
   write isolation. Preserve Run21 Arcade, accepted multiplayer and all history.
-- One additive migration and deployment of the compatible API/client and existing
-  recovery bundle are proposed; Solo activation remains disabled until gates pass.
-  No implementation or production mutation is authorized by this review alone.
+- Jeremy approved the adapter through qualification, migration, compatible
+  publication and gated activation. Implementation and qualification are complete;
+  [release evidence and owner smoke](ARCADE_TRITOWERS.md). Multiplayer remains accepted.
 
 ## Implemented — P0 Run21 fairness and continuation; owner smoke pending — October 16, 2026
 

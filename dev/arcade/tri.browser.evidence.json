@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-17T00:23:01.008Z",
+  "cases": [
+    "shared tableau and legal first removal/draw; one Take Score; no multiplayer/financial controls; phone, landscape and desktop",
+    "reconnect preserves absolute running deadline",
+    "two rounds, automatic five-second holds, atomic verified completion, full 2.5-second total and TriTowers leaderboard return",
+    "Play Again and explicit whole-run abandonment excluded from ranking",
+    "completed reconnect suppresses celebration replay"
+  ],
+  "errors": []
+}

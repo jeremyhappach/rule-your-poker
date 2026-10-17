@@ -1,7 +1,7 @@
 import type {CSSProperties} from 'react';
 import type {stagePresentation} from '@/lib/triTowers/stagePresentation';
 
-export function TriTowersStageResult({result}:{result:NonNullable<ReturnType<typeof stagePresentation>>}){
+export function TriTowersStageResult({result}:{result:Omit<NonNullable<ReturnType<typeof stagePresentation>>,'playerId'>}){
   const title=result.reason==='cleared'?'All Three Towers Cleared!':result.reason==='take_score'?'Score Taken':
     result.reason==='timeout'?'Time Expired':result.reason==='ready_timeout'?'Round Not Started':result.reason==='give_up'?'Turn Ended':'Round Complete';
   return <div className="tri-stage-result" data-stage-result={result.id} data-reason={result.reason}

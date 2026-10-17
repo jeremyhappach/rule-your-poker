@@ -1,3 +1,22 @@
+# Solo TriTowers Arcade — 2026-10-16 — qualified adapter
+
+Approved Solo adapter uses the accepted `tri-towers/2` SQL core directly, shared
+bonus eligibility and existing Arcade persistence/recovery/results. Two base
+rounds plus one earned bonus, cumulative score-chain validation, first-action
+Ready and round-only timeouts are preserved. No session or financial writes.
+The shared tableau, timer, results, audio and authoritative record presentation
+serve the TriTowers leaderboard with existing artwork/admin controls.
+
+Candidate and installed rollback proofs pass, including production guards on 102
+non-Arcade tables. Concurrent/replayed actions and workers complete once. The
+real-time zero-browser run finished two rounds; worker maximum 9.4 ms, no backlog.
+Phone/landscape/desktop Solo and Run21 Arcade browser regressions, full tests,
+TypeScript and build pass. Migration `20261017002318_solo_tri_towers` is installed
+with admission initially disabled; recovery version 4 is deployed. Admission is
+enabled only after compatible production client/API and worker verification.
+Checkpoint: `solo-tritowers-2026-10-16`. Owner smoke remains pending.
+See [qualification, ownership and smoke](ARCADE_TRITOWERS.md).
+
 # TriTowers multiplayer v2 — 2026-10-16 — production smoke accepted
 
 Approved `tri-towers/2` introduces atomic first-action Ready admission, alternating
@@ -26,9 +45,7 @@ qualification and final worker verification; actor release/recovery remains enab
 Checkpoint: `tri-towers-v2-2026-10-16`. See
 [qualification and smoke steps](TRITOWERS_V2.md).
 
-Solo TriTowers Arcade is the next phase. The bounded adapter review is complete;
-implementation, migration and activation await approval of the concrete plan.
-No Solo product code or production state changed during this review.
+Solo TriTowers Arcade was subsequently approved and qualified; see the entry above.
 
 # Arcade completion, score audio and individual-score boards — 2026-10-16
 

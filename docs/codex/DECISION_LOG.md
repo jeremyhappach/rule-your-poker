@@ -1,3 +1,13 @@
+# 2026-10-16 — Solo TriTowers reuses PostgreSQL board authority
+
+Solo calls the accepted v2 SQL board core through a service-only Arcade adapter.
+It never ports gameplay into the Run21 TypeScript reducer. Bonus qualification is
+a shared helper. Arcade completion checks an ordered cumulative score chain and
+two or three results, while Run21 retains its existing three-round sum validator.
+Existing persistence, result classification, recovery, presentation and audio are
+reused. Sessions and financial writes are forbidden and proven with database
+write guards. See [Solo qualification](ARCADE_TRITOWERS.md).
+
 # 2026-10-16 — TriTowers v2 shared rules and first-action admission
 
 Approved `tri-towers/2` freezes the accepted scoring and a mode-independent SQL

@@ -33,7 +33,7 @@ try{
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});page.on('requestfailed',r=>console.error('failed',r.url(),r.failure()));
  await page.route(url=>url.host!=='127.0.0.1:5187',route=>route.fulfill({status:200,body:'[]'}));
  await page.addInitScript(()=>{window.__TOTAL_HOLDS__=[];let current=null;new MutationObserver(()=>{const visible=!!document.querySelector('[data-arcade-completion]');if(visible&&current===null){current=performance.now();}else if(!visible&&current!==null){window.__TOTAL_HOLDS__.push(performance.now()-current);current=null;}}).observe(document,{childList:true,subtree:true});});
- await page.goto('http://127.0.0.1:5187/arcade',{waitUntil:'domcontentloaded',timeout:60000});await page.getByRole('heading',{name:'Arcade Mode'}).waitFor();assert.equal(await page.getByText('Coming Soon',{exact:true}).count(),2);
+ await page.goto('http://127.0.0.1:5187/arcade',{waitUntil:'domcontentloaded',timeout:60000});await page.getByRole('heading',{name:'Arcade Mode'}).waitFor();assert.equal(await page.getByText('Coming Soon',{exact:true}).count(),1);
  await page.getByRole('button',{name:'Run21 rules and info'}).click();
  await page.getByText('The 106.8-second speed timer starts when the round introduction ends.',{exact:true}).waitFor();
  assert.equal(new URL(page.url()).pathname,'/arcade');

@@ -17,13 +17,13 @@ function TowerCard({card}:{card:number|null}){
   return <span ref={ref} className="tri-card-art"><PlayingCard card={card===null?undefined:{rank:ranks[card%13],suit:suits[Math.floor(card/13)]}}
     isHidden={card===null} faceFillPx={width} size="sm" style={{width,height:width*1.5}}/></span>;
 }
-export function TriTowersRules({rules=RULES}:{rules?:Rules}){if(isV2(rules))return <div className="tri-rules"><h3>How to play</h3>
+export function TriTowersRules({rules=RULES,solo=false}:{rules?:Rules;solo?:boolean}){if(isV2(rules))return <div className="tri-rules"><h3>How to play</h3>
   <p>Remove exposed cards one rank above or below the waste. Kings wrap to Aces. Each round has a fresh independent deck and 23 stock draws.</p>
   <p>Consecutive removals award {rules.streakAwards?.map(n=>n.toLocaleString()).join(', ')}, then {rules.streakAwards?.at(-1)?.toLocaleString()} per card. Drawing resets the streak and deducts {rules.drawPenalty} from your cumulative score, with a floor of zero.</p>
   <p>Towers add {rules.peakBonuses.map(n=>n.toLocaleString()).join(' / ')}. Clear or Take Score adds {rules.timePerSecond} per whole second remaining. Only clear adds {rules.stockPerCard?.toLocaleString()} per unused stock card. There is no extra all-clear award.</p>
-  <p>Everyone plays round one, then round two, starting left of the caller with the caller last. A cumulative {rules.bonusThreshold.toLocaleString()} after round two earns exactly one bonus round in that same order. No free replay.</p>
+  <p>{solo?'Play two base rounds.':'Everyone plays round one, then round two, starting left of the caller with the caller last.'} A cumulative {rules.bonusThreshold.toLocaleString()} after round two earns exactly one bonus round{solo?'':' in that same order'}. No free replay.</p>
   <p>Each round allows {rules.readyMs/1000} seconds to play your first valid card or draw; that action starts the full {rules.stageMs/1000}-second clock. Missed Ready or timeout ends only this round. Take Score keeps your total and ends this round. Results hold for {rules.holdMs/1000} seconds.</p>
-  <p>Highest scores share losing stakes; all-player ties move no chips. P-Town accepted scoring · {rules.version}.</p></div>;
+  <p>{solo?'Clocks keep running when you leave or background the game. Abandoning the whole run excludes it from the leaderboard.':'Highest scores share losing stakes; all-player ties move no chips.'} P-Town accepted scoring · {rules.version}.</p></div>;
  return <div className="tri-rules"><h3>How to play · legacy v1</h3>
   <p>Remove an exposed card one rank above or below the waste. Aces connect Kings and Twos. Clear the three peaks. Draw a stock card when you want to start a new run.</p>
   <p>Each run scores 1,000, then 2,000, then 3,000… Drawing resets the run. Capturing the peaks awards 5,000, 10,000 and 15,000. Clear all three for 100 points per remaining second.</p>
@@ -59,18 +59,7 @@ export function TriTowersView({view:v,now,pending=false,connected=true,onIntent,
           <strong aria-live="polite">{v.event.label}{v.event.points?` ${v.event.points>0?'+':''}${v.event.points.toLocaleString()}`:''}</strong></div>
         {v.phase==='complete'?<div className="tri-complete"><span>COMPETITION COMPLETE</span><h2>{v.players.filter(p=>v.scores[p.id]===Math.max(...Object.values(v.scores))).map(p=>p.name).join(' & ')} wins</h2><p>All turns recorded. {v.settlement===null?'Confirming settlement…':'Settlement recorded.'}</p></div>:
         <>
-          <div className="tri-tableau-space">{result?<TriTowersStageResult key={result.id} result={result}/>:<div className="tri-tableau" aria-label="Three towers">
-            {[0,1,2].map(i=><span className="tri-peak-label" key={i} style={{left:`${(i*3+2)*10}%`}}>PEAK {i+1}</span>)}
-            {v.cards.map((card,i)=>{if(v.removed.includes(i))return null;const pos=position(i),legal=card!==null&&adjacent(card,v.waste);
-              return <button key={`${v.turnIndex}:${v.stage}:${i}`} className="tri-card" style={{'--x':pos.x,'--y':pos.y} as CSSProperties}
-                data-tri-card={i} data-exposed={card!==null} data-legal={legal} aria-label={card===null?`Covered card ${i+1}`:`Remove ${cardName(card)}`}
-                disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||!legal} onClick={()=>onIntent({type:'remove',index:i})}><TowerCard card={card}/></button>;
-            })}
-          </div>}</div>
-          <div className="tri-deck-row"><button className="tri-stock" data-empty={v.stockRemaining===0} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||v.stockRemaining===0} onClick={()=>onIntent({type:'draw'})} aria-label={`Draw stock, ${v.stockRemaining} stock cards remaining`}><TowerCard card={null}/><span className="tri-stock-count" aria-hidden="true">{v.stockRemaining}</span></button>
-            <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><TowerCard card={v.waste}/><span>BUILD HERE</span></div>
-            <div className="tri-run"><small>CARD RUN</small><strong>{v.run}</strong><span>Next +{nextRemovalAward(v.rules,v.run).toLocaleString()}</span></div>
-          </div>
+          <TriTowersBoard view={v} canAct={canAct} onIntent={onIntent} result={result} roundKey={`${v.turnIndex}:${v.stage}`}/>
         </>}
       </>}
     </div>
@@ -79,4 +68,22 @@ export function TriTowersView({view:v,now,pending=false,connected=true,onIntent,
 function TriTowersBalance({player,raw}:{player:Projection['players'][number];raw:number|undefined}){
  const balance=usePresentationPlayerChipBalance(player.id,raw??0);
  return <small className="tri-balance" data-chip-center={player.seat} data-chip-reaction-target={player.seat} data-tri-balance={player.id} aria-label={`${player.name} balance ${raw===undefined?'unavailable':balance}`}>{raw===undefined?'—':balance} chips</small>;
+}
+
+export type TriTowersBoardView=Pick<Projection,'rules'|'phase'|'cards'|'removed'|'waste'|'stockRemaining'|'run'>;
+export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey}:{view:TriTowersBoardView;canAct:boolean;onIntent:(intent:Intent)=>void;result:Parameters<typeof TriTowersStageResult>[0]['result']|null;roundKey:string}){
+ const v2=isV2(v.rules);return <>
+          <div className="tri-tableau-space">{result?<TriTowersStageResult key={result.id} result={result}/>:<div className="tri-tableau" aria-label="Three towers">
+            {[0,1,2].map(i=><span className="tri-peak-label" key={i} style={{left:`${(i*3+2)*10}%`}}>PEAK {i+1}</span>)}
+            {v.cards.map((card,i)=>{if(v.removed.includes(i))return null;const pos=position(i),legal=card!==null&&adjacent(card,v.waste);
+              return <button key={`${roundKey}:${i}`} className="tri-card" style={{'--x':pos.x,'--y':pos.y} as CSSProperties}
+                data-tri-card={i} data-exposed={card!==null} data-legal={legal} aria-label={card===null?`Covered card ${i+1}`:`Remove ${cardName(card)}`}
+                disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||!legal} onClick={()=>onIntent({type:'remove',index:i})}><TowerCard card={card}/></button>;
+            })}
+          </div>}</div>
+          <div className="tri-deck-row"><button className="tri-stock" data-empty={v.stockRemaining===0} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||v.stockRemaining===0} onClick={()=>onIntent({type:'draw'})} aria-label={`Draw stock, ${v.stockRemaining} stock cards remaining`}><TowerCard card={null}/><span className="tri-stock-count" aria-hidden="true">{v.stockRemaining}</span></button>
+            <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><TowerCard card={v.waste}/><span>BUILD HERE</span></div>
+            <div className="tri-run"><small>CARD RUN</small><strong>{v.run}</strong><span>Next +{nextRemovalAward(v.rules,v.run).toLocaleString()}</span></div>
+          </div>
+ </>;
 }

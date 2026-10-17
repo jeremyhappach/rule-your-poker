@@ -1,0 +1,206 @@
+{
+  "proof": "PASS",
+  "enabled": false,
+  "recovery": {
+    "claimed": false,
+    "failure": null,
+    "singleton": true,
+    "expires_at": "2026-10-17T00:24:07.024689+00:00",
+    "last_completed_at": "2026-10-17T00:23:42.2799+00:00"
+  },
+  "functions": [
+    {
+      "hash": "771acbb7b2f7122cb6a249264c75d014",
+      "signature": "private.tri_towers_finish_stage(jsonb,text,integer,bigint)"
+    },
+    {
+      "hash": "f420880dc302ab4b57632a1edbaacb87",
+      "signature": "private.tri_towers_bot_choice(jsonb,bigint)"
+    },
+    {
+      "hash": "5ea766de9ceb583cfd32ee195c802796",
+      "signature": "private.tri_towers_schedule_bot()"
+    },
+    {
+      "hash": "13dfa2faecc106360ca1270d0ca5cb96",
+      "signature": "private.arcade_allowed(uuid)"
+    },
+    {
+      "hash": "8e5523a0fc49bd8f3401319c6fb0e9ce",
+      "signature": "private.arcade_immutable()"
+    },
+    {
+      "hash": "a2557ac4a3c000ad76ed6500569e4cab",
+      "signature": "private.arcade_dispatch_recovery()"
+    },
+    {
+      "hash": "08fbb344c0cd1493b5160203c4630e26",
+      "signature": "arcade_recovery_claim(uuid)"
+    },
+    {
+      "hash": "c5fc3de11d5b8b68ca6df933dba5f2bd",
+      "signature": "arcade_start(uuid,uuid,text)"
+    },
+    {
+      "hash": "f06be670696b821e9e2e1dcbd88345f7",
+      "signature": "arcade_load(uuid,uuid,uuid)"
+    },
+    {
+      "hash": "f7d49c3f5298579459881b4e6d71c534",
+      "signature": "arcade_commit(uuid,uuid,bigint,jsonb,bigint,uuid,text,uuid)"
+    },
+    {
+      "hash": "9735913de8c556eceef326e7aa2a3d32",
+      "signature": "arcade_recovery_complete(uuid,text)"
+    },
+    {
+      "hash": "40e76cf9ed10cd90e24ee72049cb4154",
+      "signature": "tri_towers_capabilities(uuid)"
+    },
+    {
+      "hash": "007af369772acb2ab9255f7964d4a058",
+      "signature": "private.arcade_artwork_validate()"
+    },
+    {
+      "hash": "b10a60e84a0656d50f7165eae86effac",
+      "signature": "arcade_rules_help(text)"
+    },
+    {
+      "hash": "d1d1b44e415e52756a088e1af55e17f0",
+      "signature": "private.arcade_record(private.arcade_runs)"
+    },
+    {
+      "hash": "e7ed49b094a55b6e11a441562d6d4192",
+      "signature": "arcade_leaderboard(uuid,text,text,uuid,text)"
+    },
+    {
+      "hash": "79991782d054524d01174867ebd24f3f",
+      "signature": "private.tri_towers_board_deal_v2(jsonb,bigint)"
+    },
+    {
+      "hash": "d60f413ed2d533efffdb8135ba8e4dee",
+      "signature": "tri_towers_snapshot_v1(uuid)"
+    },
+    {
+      "hash": "3961886b7d09d2cb64926883e52d5a8d",
+      "signature": "private.tri_towers_deal_v1(jsonb,bigint)"
+    },
+    {
+      "hash": "d916fb41002d864f1d24f0b97b230803",
+      "signature": "private.tri_towers_reduce_v1(jsonb,text,integer,bigint)"
+    },
+    {
+      "hash": "da1739c371d3153dcc6f0a2c6be9d220",
+      "signature": "private.tri_towers_bot_choice_v1(jsonb,bigint)"
+    },
+    {
+      "hash": "1a3011da6a4c8029b25f24632e985e94",
+      "signature": "private.tri_towers_board_finish_v2(jsonb,text,bigint)"
+    },
+    {
+      "hash": "e53200bd25a0987d81b93d4203f99121",
+      "signature": "private.tri_towers_board_reduce_v2(jsonb,text,integer,bigint)"
+    },
+    {
+      "hash": "f145927e810b902000f22f48f9e1df86",
+      "signature": "private.tri_towers_bonus_qualified_v2(bigint,jsonb)"
+    },
+    {
+      "hash": "e24399aab703f3788f66af2d6da66b3d",
+      "signature": "private.arcade_tri_finish_round(jsonb)"
+    },
+    {
+      "hash": "0207d7c61659edcdde5c6cd767f5c8a3",
+      "signature": "private.arcade_tri_advance(jsonb,bigint)"
+    },
+    {
+      "hash": "64452fdf01082955195a0eae3f7b8931",
+      "signature": "private.arcade_tri_valid_completion(jsonb)"
+    },
+    {
+      "hash": "452712be4a72b1150cbf237b61920262",
+      "signature": "private.arcade_tri_projection(private.arcade_runs,bigint)"
+    },
+    {
+      "hash": "d1deb28766f898eae0d8dea7c0a02417",
+      "signature": "arcade_tri_step(uuid,uuid,bigint,text,uuid,text,integer,uuid)"
+    },
+    {
+      "hash": "12381899412cbdcd3ce53a9491130c03",
+      "signature": "private.tri_towers_recover()"
+    },
+    {
+      "hash": "214c9b5d119a7f62159c33fffc1994ea",
+      "signature": "private.tri_towers_reduce(jsonb,text,integer,bigint)"
+    },
+    {
+      "hash": "fde595a417bac8825b675faacc848273",
+      "signature": "private.tri_towers_rules()"
+    },
+    {
+      "hash": "efc100fd31ee7cacdd67efc308097591",
+      "signature": "private.tri_towers_shuffle()"
+    },
+    {
+      "hash": "bb095d44f42807a861dc9683a72fb2e0",
+      "signature": "tri_towers_snapshot(uuid)"
+    },
+    {
+      "hash": "db79d749e030bd173c84786a02084acb",
+      "signature": "private.tri_towers_visible(jsonb)"
+    },
+    {
+      "hash": "2ebb88c68a47d796234921eb961f944c",
+      "signature": "tri_towers_history(uuid)"
+    },
+    {
+      "hash": "381dfbcad3fa52f1e9541a5ed9c16e19",
+      "signature": "tri_towers_action(uuid,uuid,bigint,text,integer)"
+    },
+    {
+      "hash": "a262eff2d195691e93cb6d94faf18370",
+      "signature": "tri_towers_close(uuid)"
+    },
+    {
+      "hash": "4c24f4af6836f4e3ba6f127076b8851c",
+      "signature": "private.tri_towers_settle(uuid)"
+    },
+    {
+      "hash": "6d4f0888c8d045f41daf187cbd512a0c",
+      "signature": "private.tri_towers_pause()"
+    },
+    {
+      "hash": "49919f66e63da9855fb946acaa293bc0",
+      "signature": "private.tri_towers_actor_allowed(uuid)"
+    },
+    {
+      "hash": "22c09ac6b43674a87701cbce88b1a406",
+      "signature": "private.tri_towers_children(integer)"
+    },
+    {
+      "hash": "434648750518cfa2935b03792cf080ce",
+      "signature": "tri_towers_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)"
+    },
+    {
+      "hash": "b61c88f3395d564b16564c56730fbf53",
+      "signature": "private.tri_towers_deal(jsonb,bigint)"
+    },
+    {
+      "hash": "0d73a25860b315fcdb4bef74a347d44d",
+      "signature": "private.tri_towers_exposed(jsonb,integer)"
+    },
+    {
+      "hash": "6862a1b83adaa08a4c70477f7fa05e20",
+      "signature": "private.tri_towers_finish_player(jsonb,bigint)"
+    },
+    {
+      "hash": "cfca8e06031e09a18f048f8bc3e02947",
+      "signature": "private.tri_towers_legal(jsonb,integer)"
+    },
+    {
+      "hash": "30012dccc1e8c258753fc835fccf3655",
+      "signature": "private.tri_towers_publish()"
+    }
+  ],
+  "migration": "20261017002318"
+}

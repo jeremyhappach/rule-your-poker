@@ -2,6 +2,8 @@ import {useEffect,useId,useState,type ReactNode} from 'react';
 import {Info,Upload} from 'lucide-react';
 import {Dialog,DialogContent,DialogDescription,DialogTitle,DialogTrigger} from '@/components/ui/dialog';
 import {Run21ScoringReference} from '@/components/run21/Run21ScoringHelp';
+import {TriTowersRules} from '@/components/triTowers/TriTowersView';
+import type {Rules} from '@/lib/triTowers/model';
 import {supabase} from '@/integrations/supabase/client';
 import type {Config} from '@/lib/run21/model';
 import {downloadArtwork,replaceArtwork,validateArtwork,type ArcadeGame,type Artwork} from '@/lib/arcade/artwork';
@@ -17,12 +19,12 @@ export function ArcadeArtwork({path}:{path:string|null}){
   return path&&image?.path===path?<img className="arcade-artwork" src={image.url} alt=""/>:null;
 }
 export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArtwork,onOpen}:{game:ArcadeGame;name:string;ruleset?:string;children?:ReactNode;admin?:boolean;artwork?:Artwork;onArtwork?:(row:Artwork)=>void;onOpen?:()=>void}){
-  const [open,setOpen]=useState(false),[config,setConfig]=useState<Config|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+  const [open,setOpen]=useState(false),[config,setConfig]=useState<Config|Rules|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const inputId=useId();
   useEffect(()=>{
-    if(!open||game!=='run21')return;
+    if(!open||game==='yahtzee')return;
     let alive=true;setConfig(null);setError('');
-    void supabase.rpc('arcade_rules_help',{p_ruleset:ruleset??null}).then(({data,error})=>{
+    void supabase.rpc('arcade_rules_help',{p_ruleset:ruleset??(game==='tri-towers'?'tri-towers/2':null)}).then(({data,error})=>{
       if(alive){if(error||!data)setError('Rules could not be loaded. Close and reopen to retry.');else setConfig(data as unknown as Config);}
     });
     return()=>{alive=false;};
@@ -40,8 +42,8 @@ export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArt
   return <Dialog open={open} onOpenChange={value=>{setOpen(value);if(value)onOpen?.();}}>
     <DialogTrigger asChild><button type="button" className="arcade-info-button" aria-label={name+' rules and info'}><Info size={21} aria-hidden="true"/></button></DialogTrigger>
     <DialogContent className="arcade-info"><DialogTitle>{name} · Rules &amp; info</DialogTitle>
-      <DialogDescription>{game==='run21'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>
-      {game==='run21'?(config?<Run21ScoringReference config={config} solo/>:<p role="status">Loading rules…</p>):<p>{game==='tri-towers'?'Clear the towers by matching cards one rank above or below the active card.':'Roll dice to fill a scorecard of combinations.'} Arcade rules will be available when this game launches.</p>}
+      <DialogDescription>{game!=='yahtzee'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>
+      {game!=='yahtzee'?(config?(game==='tri-towers'?<TriTowersRules rules={config as Rules} solo/>:<Run21ScoringReference config={config as Config} solo/>):<p role="status">Loading rules…</p>):<p>Roll dice to fill a scorecard of combinations. Arcade rules will be available when this game launches.</p>}
       {children}
       {admin&&<div className="arcade-upload">
         <label htmlFor={inputId}>{busy?'Uploading…':artwork?.object_path?'Replace artwork':'Upload artwork'}</label>

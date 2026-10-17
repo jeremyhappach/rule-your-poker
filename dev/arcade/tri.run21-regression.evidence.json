@@ -1,0 +1,19 @@
+{
+  "passed": [
+    "compact phone/landscape/desktop cards with and without artwork; isolated info control and focus return; persisted admin upload, replacement, failure preservation and old-file cleanup",
+    "normal user sees persisted image and rules but no upload control",
+    "clock starts at intro end before any placement and displays the configured ticks",
+    "phone action and reload preserve actual deadline, no pause or Next Round",
+    "automatic round progression uses authoritative hold and normal intro",
+    "first-score total holds 2.5 seconds after immediate persistence, without record celebration",
+    "exactly three rounds, one result, same leaderboard and Play Again",
+    "prominent strict new record, tied-score suppression, phone/landscape overlay, refresh and reconnect do not replay",
+    "legacy and current boards remain separate, info reads the selected frozen rules",
+    "header Resume restores the existing run",
+    "explicit abandonment returns unranked without a result",
+    "dense 10-row display, long names, own rank outside top 10 and keyboard period switching"
+  ],
+  "productionWrites": 0,
+  "transport": "Loopback SQL with substitute authentication, Storage bytes and realtime notifications",
+  "errors": []
+}

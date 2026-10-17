@@ -1,5 +1,11 @@
 # Repository map
 
+Solo TriTowers: `supabase/arcade/tri-towers.sql` wraps the shared SQL board core;
+`server/arcade/service.ts` dispatches its API and recovery operations.
+`src/components/arcade/SoloTriTowers.tsx` renders the shared TriTowers board/result
+components. `useArcadeRun` owns transport/replay protection and
+`usePresentedScoreAudio` owns shared count-up audio. See `ARCADE_TRITOWERS.md`.
+
 Shared gameplay: `src/lib/run21/rulesets.ts` owns mode-neutral versions;
 `board.ts` owns board admission, legal actions and card advancement; `rules.ts`
 owns totals, multipliers, segmented ticks and scoring; `shuffle.server.ts` owns
