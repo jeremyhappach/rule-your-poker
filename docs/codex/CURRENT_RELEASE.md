@@ -1,3 +1,18 @@
+# TriTowers approved fanfare — 2026-10-17 — awaiting owner smoke
+
+Jeremy auditioned and approved the three-second, two-voice brass fanfare: repeated
+lower-note pickups, three ascending trills, a final resolution and the selected
+whole-tone-lower pitch. The shared production cue renders byte-for-byte identically
+to that approved browser audition. Late arrival seeks the current phrase/envelope;
+the existing audio manager retains mute, interruption and replay safeguards.
+
+Both modes now reserve 0–3.0 s for the fanfare, then synchronize count audio, score
+and timer drain at 3.1–4.0 s, returning the pill by 4.3 s within the unchanged 5 s
+authoritative hold. Rules, progression and financial authority are unchanged.
+Focused audio/presentation checks and the full test/typecheck/build pass. Checkpoint:
+`tri-towers-approved-fanfare-2026-10-17`. Jeremy's production smoke remains acceptance.
+See [fanfare evidence](TRITOWERS_INPUT_POLISH.md#approved-fanfare-follow-up).
+
 # TriTowers ordered input and presentation — 2026-10-17 — awaiting owner smoke
 
 Approved correction of `ee9a5609a`, whose production smoke was largely clean:

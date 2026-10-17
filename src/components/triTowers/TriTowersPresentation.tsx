@@ -69,7 +69,7 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
   return platformAudio.follow({userId,id:'run21-bell:tri:'+bellKey,startedAt:local,expiresAt:local+deadline-now,cueAt:()=>boxingBellCue});
  },[bellKey,userId]);
  const fraction=admitted&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
- const end=modern?TRI_ROUND_TIMELINE.countEnd:2800,start=modern?(result?.reason==='cleared'?1800:TRI_ROUND_TIMELINE.countStart):0;
+ const end=modern?TRI_ROUND_TIMELINE.countEnd:2800,start=modern?(result?.reason==='cleared'?TRI_ROUND_TIMELINE.clearCountStart:TRI_ROUND_TIMELINE.countStart):0;
  const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed+start,endsAt:now-elapsed+end}:null;
  usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?'tri-count:'+scope+':'+result.id:null,count,now);
  const clearKey=modern&&admitted&&!reduced&&result.reason==='cleared'&&elapsed<TRI_FANFARE_MS?result.id:null;

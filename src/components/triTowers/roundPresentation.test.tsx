@@ -62,18 +62,22 @@ describe('shared v3 round presentation in both adapters',()=>{
   act(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});expect(calls('run21-bell:tri:')).toHaveLength(2);
   ui.unmount();render(<TriTowersBoard {...props} view={intro} now={600}/>);expect(calls('run21-bell:tri:')).toHaveLength(2);
  });
- it('finishes score, sound and remaining-time drain together before returning; awards/cards persist',()=>{
-  const ui=render(<TriTowersBoard {...props} view={base}/>),cards=ui.container.querySelectorAll('[data-tri-card]').length;
+ it.each(['arcade','multiplayer'])('%s: finishes score, sound and timer together after the full fanfare; awards/cards persist',mode=>{
+  const scores=mode==='arcade'?props.scores:[...props.scores,{id:'other',score:500,active:false}];
+  const ui=render(<TriTowersBoard {...props} scores={scores} view={base}/>),cards=ui.container.querySelectorAll('[data-tri-card]').length;
   const end={...base,phase:'stage_complete' as const,deadline:7000};
-  ui.rerender(<TriTowersBoard {...props} view={end} now={2600} result={result}/>);
+  ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={2600} result={result}/>);
   expect(ui.getByLabelText('Score 100')).toBeTruthy();expect(calls('tri-clear:')).toHaveLength(1);expect(calls('tri-count:')).toHaveLength(0);
-  ui.rerender(<TriTowersBoard {...props} view={end} now={4900} result={{...result,elapsed:2900}}/>);
+  ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={4900} result={{...result,elapsed:2900}}/>);
+  expect(ui.getByLabelText('Score 100')).toBeTruthy();expect(calls('tri-count:')).toHaveLength(0);
+  const fanfare=calls('tri-clear:')[0]?.[0] as any;expect(fanfare.expiresAt-fanfare.startedAt).toBeCloseTo(3000,6);
+  ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={5550} result={{...result,elapsed:3550}}/>);
   expect(ui.getByLabelText('Score 550')).toBeTruthy();expect(Number(ui.getByRole('progressbar').getAttribute('aria-valuenow'))).toBe(59.5);expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
-  const count=calls('tri-count:')[0]?.[0] as any;expect(count.expiresAt-count.startedAt).toBeCloseTo(2200,6);
-  ui.rerender(<TriTowersBoard {...props} view={end} now={6000} result={{...result,elapsed:4000}}/>);
+  const count=calls('tri-count:')[0]?.[0] as any;expect(count.expiresAt-count.startedAt).toBeCloseTo(900,6);
+  ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={6000} result={{...result,elapsed:4000}}/>);
   expect(ui.getByLabelText('Score 1000')).toBeTruthy();expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');expect(ui.container.querySelector('[data-centered=true]')).toBeTruthy();
   expect(ui.queryByLabelText('All three towers cleared')).toBeNull();
-  ui.rerender(<TriTowersBoard {...props} view={end} now={6300} result={{...result,elapsed:4300}}/>);expect(ui.container.querySelector('[data-centered=true]')).toBeNull();
+  ui.rerender(<TriTowersBoard {...props} scores={scores} view={end} now={6300} result={{...result,elapsed:4300}}/>);expect(ui.container.querySelector('[data-centered=true]')).toBeNull();
   expect(ui.container.querySelectorAll('[data-tri-card]')).toHaveLength(cards);expect(ui.container.querySelectorAll('[data-tower-award]')).toHaveLength(2);
   expect(calls('tri-clear:')).toHaveLength(1);expect(triResultTimeline(5000)).toEqual({progress:1,center:0,crest:0});
  });

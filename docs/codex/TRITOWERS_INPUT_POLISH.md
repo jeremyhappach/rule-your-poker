@@ -1,5 +1,34 @@
 # TriTowers ordered input and presentation — 2026-10-17
 
+## Approved fanfare follow-up
+
+Jeremy approved the final lower-pitched audio audition for production on October
+17. It replaces the earlier 1.7-second cue with three seconds of two-part harmony,
+repeated lower-note pickups, ascending trills and resolution. The exact selected
+waveform, filters, levels, notes and envelopes are retained in the shared cue.
+The production renderer and approved audition exported identical 48 kHz, mono,
+16-bit WAV bytes (144,000 samples), SHA-256:
+`c1501e2caf8558255c67f05a8db6a1cad52a5efa6bb92031cf4849de41acdd5c`.
+Temporary audition sources/audio remain uncommitted in `qualification.local`.
+
+The existing live admission, mute, reduced-motion, recovery and cancellation
+owners remain. Late cue delivery skips elapsed phrases and seeks their current
+pitch/envelope instead of replaying pickups. Source stops are clipped to the
+remaining authoritative presentation window. No browser-owned gameplay deadline
+is added. For all-clear only, shared count/audio/drain now run from 3.1–4.0 seconds
+after the result; the pill still returns by 4.3 seconds inside the existing five
+second hold. Other result timing remains unchanged. Focused checks cover both
+modes, paired voices, selected pitch, seeking, expiry, mute and interruption.
+
+Validation: all 2,356 application tests and 241 harness tests, installed TypeScript
+check and production build pass. The focused audio/presentation suite has 39
+passing checks. Full-build evidence: `qualification.local/tri-fanfare-build.log`.
+
+Checkpoint: `tri-towers-approved-fanfare-2026-10-17`. Production audibility and
+flow still require Jeremy's smoke; the audition approval does not replace it.
+
+## Original correction pass
+
 Owner-approved correction of `ee9a5609aab1df013c083022684ae17b945f0ace`.
 Checkpoint: `tri-towers-input-polish-final-2026-10-17`.
 Jeremy's production smoke, including physical iPhone input/audio and rotation,
