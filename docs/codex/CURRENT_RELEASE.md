@@ -1,3 +1,15 @@
+# Run21 planet placement and failure audio — 2026-10-17 — awaiting owner smoke
+
+Owner-approved follow-up moves the ringed planet to the left and adds a shared
+1.1-second, two-note muted-brass failure cue for confirmed Busted/No Qualify
+results in Arcade and multiplayer. The existing outcome classifier, audio
+manager and result hold remain authoritative; mount/recovery/hidden results
+stay silent, and mute/interruption cancel without replay. No rules, scoring,
+timing, transport, financial or TriTowers changes. Typecheck, 2,392 source tests,
+241 harness tests, production build, native audio render and both-mode layouts
+pass. Checkpoint: `run21-failure-audio-2026-10-17`. Jeremy's production smoke
+remains acceptance. See [follow-up evidence](RUN21_RESPONSIVE_SPACE.md#planet-and-failure-audio-follow-up).
+
 # Run21 responsiveness and space scene — 2026-10-17 — awaiting owner smoke
 
 Owner-approved shared immediate placement feedback in Arcade and multiplayer,

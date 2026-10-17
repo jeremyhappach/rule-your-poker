@@ -80,3 +80,40 @@ option across navigation. `window.__RUN21_TIMINGS__` holds bounded samples;
 `window.downloadRun21Timing()` exports them from a browser/remote inspector.
 Disable with `?run21Timing=0` (remove any manually set `run21-diagnostics` local
 storage override as well). There is no permanent gameplay debug UI or upload.
+# Planet and failure audio follow-up
+
+Jeremy reported the scene was "very good" and requested the ringed planet move
+left, plus a womp-womp cue for bust/no qualification. He approved the bounded
+proposal. Both modes retain the same shared scene and use
+`useRun21FailureAudio` / `run21/failureCue.ts` for confirmed visible outcomes.
+The existing `outcomePresentation` classifier decides eligibility, including
+zero-score timeout/exhaustion; successful and legacy nonzero outcomes stay on
+their existing audio path. No scoring formula is duplicated.
+
+The original synthesized cue is 1.1 seconds: a short descending muted-brass
+note, a 100 ms gap, then a lower, longer descending note. Admission is once per
+run/dealer-game, round, player and result identity. Initial/recovery snapshots
+establish a silent baseline; hidden/inactive/paused/replayed or late results do
+not sound. The existing audio manager handles saved mute preferences, node
+cancellation and persistent event receipts. Late unlock cannot restart the cue.
+It starts with live confirmed failure presentation and fits in the existing
+five-second hold, without changing progression or command processing.
+
+Validation: typecheck, all 2,392 source and 241 harness tests, and production
+build pass. Nine new focused tests cover both mode scopes, bust/collect/timeout/
+exhaustion, subsequent players/rounds, positive legacy results, duplicate
+snapshots, mount/recovery, pause/visibility, cancellation, hold limits and mute.
+Native Edge OfflineAudioContext rendering establishes two nonzero notes, peak
+0.225 (no clipping), and the final sample above threshold at 1097.92 ms. This
+establishes synthesis and timing, not physical iPhone audibility.
+
+Browser checks use the actual Arcade page and multiplayer fullscreen view with
+controlled transport at 320x640, 390x844, 844x390 and 1440x900. The planet stays
+left of the current total, Pass remains readable, columns remain usable, and
+there is no horizontal overflow. Screenshots/audio and check scripts stay local
+in `.codex/evidence/run21-failure-20261017/`.
+
+Production acceptance: Jeremy checks Saturn placement with actual phone rotation;
+hears one complete cue on Busted and No Qualify in both modes; verifies mute and
+that reconnect/background restoration does not replay it. The separately queued
+TriTowers fanfare interruption remains outside this change.

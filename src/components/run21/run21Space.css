@@ -2,7 +2,7 @@
 .run21-space-theme .fullscreen-game-board{isolation:isolate}
 .run21-space-scene{position:absolute;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
 .run21-stars{position:absolute;inset:0;width:100%;height:100%}
-.run21-ringed-planet{position:absolute;width:clamp(8rem,38cqw,17rem);right:-5%;top:-3%;opacity:.5}
+.run21-ringed-planet{position:absolute;width:clamp(8rem,38cqw,17rem);left:-5%;top:-3%;opacity:.5}
 .run21-distant-planet{position:absolute;width:clamp(8rem,33cqw,15rem);left:-16%;bottom:0;opacity:.42}
 .run21-space-theme .fullscreen-game-toolbar button{background:#101c34cc;border-color:#8ca7ce44}
 .run21-space-theme .run21-fullscreen-board .run21-column{background:linear-gradient(#1b2d49f2,#101d34eb);border-color:#80a4c980;border-radius:.75rem;box-shadow:0 .2rem .8rem #0003,inset 0 1px #dceeff15;isolation:isolate}

@@ -22,6 +22,7 @@ import {roundIntro} from '@/lib/run21/roundIntro';
 import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {useRun21PlacementAudio} from '@/hooks/useRun21PlacementAudio';
+import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {medalDuration} from '@/lib/run21/rulesets';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
@@ -105,6 +106,7 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  useRun21PlacementAudio(userId,runId+':'+view?.roundId,snapshot?.events,presentationEpoch,!error&&tab==='cards');
  useRun21Bell(userId,intro?.key??null,intro?.remaining??0);
  useRun21ScoreAudio(userId,runId,view,now,!celebration&&(snapshot?.status==='active'||completionLive));
+ useRun21FailureAudio(userId,runId,view,now,presentationEpoch,!error&&!celebration&&tab==='cards'&&!completedOnEntry&&(snapshot?.status==='active'||completionLive));
  const finalAt=view?.scorePresentation?.endsAt;
  const showFinal=snapshot?.status==='completed'&&completionLive&&finalUntil!==null&&performance.now()<finalUntil;
  useEffect(()=>setFinalUntil(null),[runId]);
