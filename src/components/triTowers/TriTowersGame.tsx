@@ -44,7 +44,7 @@ export function TriTowersGame(props:Props){
   const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:
     props.activeTab==='history'?<div className="space-y-2">{view.stages.map(r=><p key={`${r.playerId}:${r.stage}`}>{view.players.find(p=>p.id===r.playerId)?.name} · {isV2(view.rules)?'Round':'Stage'} {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore!==undefined?`${r.stageScore>=0?'+':''}${r.stageScore.toLocaleString()} · `:''}Total {r.score.toLocaleString()}</p>)}{history.map(row=><p key={row.revision}>#{row.revision} · {row.frame.event.label} · {row.frame.score.toLocaleString()}</p>)}</div>:
     <><TriTowersRules rules={view.rules}/><div>{view.players.map(p=><p key={p.id}>{p.name} · {p.id in view.scores?view.scores[p.id].toLocaleString():'Turn pending'}</p>)}</div></>;
-  return <TriTowersView {...game} view={view} onIntent={game.act} activeTab={props.activeTab} setActiveTab={props.setActiveTab}
+  return <TriTowersView userId={props.userId} {...game} view={view} onIntent={game.act} activeTab={props.activeTab} setActiveTab={props.setActiveTab}
     panel={panel} sessionEnded={props.sessionEnded} onContinue={view.settlement&&!closing?()=>void close():undefined}
     error={(error||game.error||!game.connected)&&<div role="status" className="tri-error">{error||game.error||'Reconnecting…'} <button onClick={game.reconnect}>Reconnect</button></div>}/>;
 }

@@ -1,7 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import type {Projection,Command} from './model';
 export async function triTowersRpc<T>(name:string,args:Record<string,unknown>):Promise<T>{
-  const endpoint=name==='tri_towers_snapshot'||name==='tri_towers_action'?'tri_towers_present':name;
+  const endpoint=name==='tri_towers_snapshot'||name==='tri_towers_action'?'tri_towers_present_scene':name;
   const {data,error}=await supabase.rpc(endpoint as never,args as never);if(error)throw Error(error.message);return data as T;
 }
 export function acceptSnapshot(prior:Projection|null,incoming:Projection,dealerGameId:string):Projection|null{

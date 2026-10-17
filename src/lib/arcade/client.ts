@@ -1,4 +1,5 @@
 const messages:Record<string,string>={
+ 'arcade:refresh_required':'TriTowers updated. Refresh to continue.',
  'arcade:authentication_required':'Sign in again to restore your run.',
  'arcade:forbidden':'Your account cannot access Arcade.',
  'arcade:not_found':'This run is unavailable for your account.',
@@ -19,7 +20,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
  for(let attempt=0;attempt<2;attempt++){
   let response:Response;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
-  try {response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify(body),signal:controller.signal});}
+  try {response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:3}),signal:controller.signal});}
   catch{if(attempt===0)continue;throw Error('Connection lost. Reconnect to restore your run.');}
   finally{clearTimeout(timeout);}
   const value=await response.json();

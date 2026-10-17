@@ -1,0 +1,35 @@
+.fullscreen-game.tri-scene{padding:0;gap:0;background:linear-gradient(#42baf2,#b6ecf9 48%,#90c74c 72%,#4b822e);color:#17373c}
+.tri-scene .fullscreen-game-toolbar{background:#10232e;color:#f5f1df;padding:.35rem .65rem;min-height:3rem}
+.tri-scene>.fullscreen-game-board{padding:.4rem .55rem .5rem;isolation:isolate}
+.tri-scene>.fullscreen-game-board:before{content:"";position:absolute;inset:40% 0 0;z-index:-1;pointer-events:none;background-image:url('../../assets/cartoon/grass.webp');background-size:100% 100%;background-position:center bottom}
+.tri-scene>.fullscreen-game-actions:empty{display:none}
+.tri-scene>.fullscreen-game-actions:not(:empty){padding:.25rem .65rem;background:#12313c;color:#fff}
+.tri-scene .tri-status{display:none}.tri-shared-board{position:relative}
+.tri-gameplay-top{display:grid;grid-template-columns:minmax(4.5rem,1fr) minmax(0,3fr) minmax(3.5rem,1fr);align-items:center;gap:.35rem;flex-shrink:0;isolation:isolate;z-index:10}
+.tri-take-slot{justify-content:flex-start;min-height:2.75rem;align-self:start}
+.tri-scene .tri-take-slot .tri-take-score{background:linear-gradient(#8349c5,#472478);border:2px solid #f2d36a;color:#fff4ad;padding:.3rem .45rem;font-size:.72rem;min-height:44px;box-shadow:0 2px 4px #153c5070}
+.tri-score-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.25rem;min-width:0;align-items:start}
+.tri-score-group[data-players="1"]{grid-template-columns:minmax(0,1fr);max-width:11rem;width:100%;justify-self:center}
+.tri-score-cell{min-width:0;text-align:center;position:relative;color:#283336;font-variant-numeric:tabular-nums}
+.tri-score-home{position:relative}.tri-score-pill{border:2px solid #f4d765;border-radius:2rem;background:linear-gradient(#8744c6,#432071);box-shadow:inset 0 0 0 1px #c99af3,0 2px 4px #263b6040;color:#ffe882;display:flex;flex-direction:column;align-items:center;padding:.2rem .35rem;line-height:1.1;position:relative;transition:transform 70ms linear;will-change:transform}
+.tri-score-pill>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.63rem;color:#fff2cb}.tri-score-pill>strong{font-size:clamp(1.1rem,4.5cqw,1.8rem);font-weight:900}
+.tri-score-cell[data-active=false] .tri-score-pill{filter:saturate(.55);opacity:.75}.tri-score-cell:has([data-centered=true]){z-index:40}
+.tri-score-cell>.tri-balance{display:block;font-size:.6rem;font-weight:700;color:#153f43;text-shadow:0 1px #e9faff}
+.tri-gameplay-top .tri-high-run{align-self:start;justify-self:end;height:clamp(2.75rem,10cqw,4rem);padding:0;color:#173477;text-shadow:0 1px #d9f3ff}
+.tri-shared-board .tri-tableau-space{align-items:center}.tri-scene .tri-shared-board .tri-tableau{width:min(100%,calc(100cqh * 1.55));aspect-ratio:2;height:auto;max-height:100%}
+.tri-scene .tri-castle{overflow:visible;border-radius:0;background:none}.tri-scene .tri-castle img{height:105%;top:-5%}
+.tri-scene .tri-dot-clock{min-height:1rem;color:#fff;gap:0}.tri-scene .tri-dot-clock small{background:#123b35d9;padding:0 .5rem;border-radius:1rem;color:#fff;font-size:.65rem}
+.tri-scene .tri-dot-clock[data-intro=true]{visibility:hidden}.tri-scene .tri-dots{background:#123b35e8;box-shadow:inset 0 0 0 1px #e2eb8a99;padding:.3rem .4rem;width:98%}
+.tri-scene .tri-shared-board .tri-deck-row{background:linear-gradient(#28bdd6,#075f82);border:2px solid #d8cf70;border-radius:1.1rem;box-shadow:inset 0 0 0 3px #56d1da99,0 2px 5px #19392070;width:min(98%,35rem);padding:.5rem .7rem;max-height:9rem;min-height:5rem;gap:.6rem;grid-template-columns:1.2fr 1fr 1fr}
+.tri-scene .tri-run>strong{color:#fff6ae;text-shadow:0 1px #163846;font-size:clamp(.7rem,2.7cqw,1rem)}.tri-scene .tri-run output{color:#ffe66a;text-shadow:0 2px #28556a}
+.tri-scene .tri-shared-board .tri-stock-count{inset:0 auto auto 0;min-width:1.9em;height:1.9em;font-size:clamp(1.15rem,4.5cqw,1.9rem);z-index:2}
+.tri-scene .tri-waste{animation:none!important;filter:none!important;opacity:1!important}.tri-scene .run21-round-intro{z-index:50}
+@container fullscreen-board (min-aspect-ratio:1.5){
+ .tri-score-group{grid-template-columns:repeat(4,minmax(0,1fr))}.tri-score-group[data-players="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}.tri-score-group[data-players="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .tri-gameplay-top{grid-template-columns:minmax(5rem,1fr) minmax(0,4fr) minmax(3.5rem,1fr)}.tri-gameplay-top .tri-high-run{height:2.5rem}
+ .tri-score-pill{padding:.1rem .4rem}.tri-score-pill>strong{font-size:1.1rem}.tri-score-cell>.tri-balance{font-size:.55rem}
+ .tri-scene .tri-shared-board .tri-tableau{width:min(94%,calc(100cqh * 2.9));height:100%;aspect-ratio:auto}.tri-scene .tri-shared-board .tri-card{top:calc(16% + var(--y)*11%);height:51%}.tri-castle img{object-fit:contain}
+ .tri-scene .tri-shared-board .tri-deck-row{flex-basis:26%;min-height:3.5rem;width:min(60%,30rem);padding:.2rem .65rem;gap:.8rem}.tri-scene .tri-run{flex-direction:row;gap:.5rem}.tri-scene .tri-run output{font-size:1.8rem}.tri-scene .tri-shared-board .tri-stock-count{font-size:.9rem}
+ .tri-scene .tri-dots{width:90%}.tri-scene .tri-dot-clock{flex-direction:row}
+}
+@media(prefers-reduced-motion:reduce){.tri-score-pill{transform:none!important;transition:none;will-change:auto}}

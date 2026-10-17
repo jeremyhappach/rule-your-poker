@@ -5,7 +5,11 @@ import {roundIntro} from '@/lib/run21/roundIntro';
 export function Run21RoundIntro({view, now, solo = false}: {view: Projection; now: number; solo?: boolean}) {
   const intro = roundIntro(view, now);
   if (!intro) return null;
-  return <div className="run21-round-intro" data-run21-round-intro data-fading={intro.remaining <= 200 && view.pausedAt == null}>
+  return <RoundIntroArtwork label={`ROUND ${intro.round}`} turnLabel={solo?undefined:intro.label} fading={intro.remaining<=200&&view.pausedAt==null}/>;
+}
+
+export function RoundIntroArtwork({label,turnLabel,fading}:{label:string;turnLabel?:string;fading:boolean}){
+  return <div className="run21-round-intro" data-run21-round-intro data-fading={fading}>
     <div className="run21-round-intro-card" role="status" aria-live="polite" aria-atomic="true">
       <svg className="run21-boxing-bell" viewBox="0 0 100 80" aria-hidden="true">
         <path d="M19 65h62v7H19z" fill="#533a27"/>
@@ -16,7 +20,7 @@ export function Run21RoundIntro({view, now, solo = false}: {view: Projection; no
         <path d="m74 49 14 17" stroke="#ab8460" strokeWidth="6" strokeLinecap="round"/>
         <path d="m70 44 8 9" stroke="#ead7a6" strokeWidth="10" strokeLinecap="round"/>
       </svg>
-      <strong>ROUND {intro.round}</strong>{!solo && <span>{intro.label}</span>}
+      <strong>{label}</strong>{turnLabel && <span>{turnLabel}</span>}
     </div>
   </div>;
 }

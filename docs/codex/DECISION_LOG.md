@@ -2382,3 +2382,11 @@ presentation envelope that delegates to unchanged action/snapshot authority.
 Arcade adds top-level metadata so old view equality checks remain compatible.
 Only TriTowers and Run21 select Cartoon fronts; ordinary poker faces and all
 canonical backs retain existing ownership. See TRITOWERS_POLISH.md.
+
+## 2026-10-17 — TriTowers introduction version and compatible scores
+
+V3 freezes the approved 2.5-second pre-Ready introduction. Its common wrapper
+uses the unchanged v2 dealing/scoring core and all other frozen rule values.
+An explicit v2/v3 score-group mapping keeps leaderboard and personal-best
+comparisons combined; results retain their original version. Presentation never
+extends authoritative holds. See TRITOWERS_SCENE.md for proof and activation.

@@ -14,3 +14,10 @@ Courts prompt: three equal horizontal square cells containing original Jack,
 Queen and King busts in navy/red/gold; friendly illustrated faces, bold outlines,
 matching framing, transparent background; no suit symbols, ranks, text or cards.
 The equal-thirds atlas is clipped only during display.
+
+Second scene pass: original transparent grass illustration generated with
+imagegen, resized to 1440×480 WebP at quality 88. Prompt: wide hand-painted
+emerald foreground, sunlit grass tufts and rolling banks, transparent upper
+horizon, no buildings/cards/text. It extends the existing towers' scene through
+the gameplay area; the header remains separate. Tableau ranks use a dedicated
+layout variant; upcard and Run21 fronts retain the standard composition.

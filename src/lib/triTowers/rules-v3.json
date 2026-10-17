@@ -1,0 +1,30 @@
+{
+  "version": "tri-towers/3",
+  "stages": 2,
+  "bonusThreshold": 80000,
+  "maxBonusStages": 1,
+  "streakAwards": [
+    100,
+    200,
+    400,
+    600,
+    800,
+    1000,
+    1200,
+    1500,
+    2000
+  ],
+  "drawPenalty": 100,
+  "peakBonuses": [
+    5000,
+    10000,
+    15000
+  ],
+  "stageMs": 120000,
+  "readyMs": 30000,
+  "holdMs": 5000,
+  "timePerSecond": 10,
+  "stockPerCard": 1000,
+  "wrap": true,
+  "roundIntroMs": 2500
+}

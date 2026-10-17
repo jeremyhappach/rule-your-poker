@@ -1011,3 +1011,13 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 - src/hooks/useArcadeRun.ts and src/components/run21/ArcadeCompletion.tsx: live completion admission and presentation-only final total.
 - src/hooks/useRun21ScoreAudio.ts, src/lib/run21/scoreCountCue.ts and src/lib/audio/audioManager.ts: shared presented-score cue with cancellable ownership.
 - dev/arcade/completion.proof.sql and completion.proof.mjs: rollback proof and installed authority evidence.
+
+### TriTowers shared scene and introduction (2026-10-17)
+
+- TriTowersBoard.tsx and TriTowersPresentation.tsx: common scene, all-player pills,
+  retained cards/badges, completion movement and shared intro/audio presentation.
+- supabase/tri-towers/scene.sql: v3 intro wrapper around v2, opt-in presentation
+  projection and explicit Arcade v2/v3 score compatibility; activate-scene.sql
+  enables new admissions after compatible client deployment.
+- dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
+- docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.

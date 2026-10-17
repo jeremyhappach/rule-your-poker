@@ -23,7 +23,7 @@ export interface TriArcadeSnapshot extends Omit<ArcadeSnapshot,'view'|'game'> {g
 export type ArcadeRunSnapshot=ArcadeSnapshot|TriArcadeSnapshot;
 export interface RankedPlayer {runId:string;userId:string;name:string;score:number;rank:number;completedAt:string}
 export interface Leaderboard {ruleset:string;rows:RankedPlayer[];self:RankedPlayer|null;personalBest:number|null;
- availableRulesets?:string[];currentRuleset?:string;
+ compatibleRulesets?:string[];availableRulesets?:string[];currentRuleset?:string;
  previousBests:{ruleset:string;score:number}[];activeRun:string|null;
  latestResult:{rank?:number|null;id:string;score:number;status:RunStatus;ruleset?:string}|null}
 

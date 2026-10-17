@@ -59,6 +59,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const createId=useRef<string|null>(null);
  const [ruleset,setRuleset]=useState<string|null>(null);
+ const displayRuleset=board?.currentRuleset&&board.compatibleRulesets?.includes(board.currentRuleset)?board.currentRuleset:board?.ruleset;
  useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game,window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[game,window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
@@ -67,20 +68,20 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
  <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>{name}</h1>
- <ArcadeInfo game={game} name={name} ruleset={board?.ruleset}>
+ <ArcadeInfo game={game} name={name} ruleset={displayRuleset}>
   <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses games completed in that period; personal best shows All Time for the selected rules.</p>
-  {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={board.ruleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
-  <p>Scores from different rules stay separate. New games use the current rules.</p>
+  {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={displayRuleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
+  <p>{game==='tri-towers'?'Compatible rule versions share scores; other rules stay separate.':'Scores from different rules stay separate.'} New games use the current rules.</p>
   {!!board?.previousBests.length&&<details><summary>Personal bests under other rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
  </ArcadeInfo>
  {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/'+game+'/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
  <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
  </header>
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Game Over':'Game Over · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
- <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.latestResult.rank!=null?'This game · #'+board.latestResult.rank.toLocaleString():'Score recorded'}</p></div>}
+ <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset&&!board.compatibleRulesets?.includes(board.latestResult.ruleset)?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.latestResult.rank!=null?'This game · #'+board.latestResult.rank.toLocaleString():'Score recorded'}</p></div>}
  <div className="arcade-summary"><div><span>Personal best · All Time</span><strong>{board?.personalBest?.toLocaleString()??'—'}</strong></div>
  <div><span>Your rank · {window==='30'?'Last 30 Days':'All Time'}</span><strong>{board?.self?'#'+board.self.rank:'—'}</strong></div></div>
- {board?.currentRuleset&&board.ruleset!==board.currentRuleset&&<p className="arcade-note">Legacy leaderboard</p>}
+ {board?.currentRuleset&&displayRuleset!==board.currentRuleset&&<p className="arcade-note">Legacy leaderboard</p>}
  <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} id={'arcade-period-'+value} role="tab" aria-controls="arcade-ranking" tabIndex={window===value?0:-1} aria-selected={window===value} onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'30':event.key==='End'?'all':value==='30'?'all':'30';setWindow(next);document.getElementById('arcade-period-'+next)?.focus();}}} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
  {error&&<p role="alert">{error}</p>}
  <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 verified scores</h2>

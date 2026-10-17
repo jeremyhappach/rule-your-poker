@@ -27,6 +27,7 @@ export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
   frontStyle?: 'canonical' | 'cartoon';
+  cartoonLayout?: 'standard' | 'tableau';
   card?: CardType;
   isHidden?: boolean;
   size?: CardSize;
@@ -152,6 +153,7 @@ const CARD_ASPECT_FALLBACK = 1.4; // height = width * aspect
 
 export const PlayingCard = ({
   frontStyle = 'canonical',
+  cartoonLayout = 'standard',
   card,
   isHidden = false,
   size = 'lg',
@@ -307,7 +309,7 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+          {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
             className={isFourColor ? cardFaceStyle.textColor : ''}
             style={face.rankStyle}
           >
@@ -356,7 +358,7 @@ export const PlayingCard = ({
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
-      {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+      {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
       >

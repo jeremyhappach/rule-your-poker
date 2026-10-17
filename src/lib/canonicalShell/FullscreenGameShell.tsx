@@ -6,6 +6,7 @@ import './fullscreenGameShell.css';
 import {usePresentationSurfaceReady} from './CinematicPresentation';
 
 interface Props {
+  className?:string;
   ready?: boolean;
   title: string;
   description: string;
@@ -24,10 +25,10 @@ interface Props {
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, panelDescription = 'Game clocks continue while this panel is open.'}: Props) {
+export function FullscreenGameShell({className="", ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, panelDescription = 'Game clocks continue while this panel is open.'}: Props) {
   usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
-  return <section className="fullscreen-game" data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
+  return <section className={`fullscreen-game ${className}`} data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
     <header className="fullscreen-game-toolbar">
       <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
       {navigation ?? <nav aria-label="Game information">

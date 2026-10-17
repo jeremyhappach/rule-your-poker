@@ -1,3 +1,19 @@
+# TriTowers scene and introduction — 2026-10-17 — awaiting owner smoke
+
+Approved second pass shares the full castle/grass scene, all-participant score
+pills, tableau-only ranks, CURRENT RUN / upcard / stock controls and completion
+pill animation across Arcade and multiplayer. Remaining cards/badges persist;
+the pill returns within the unchanged five-second authoritative hold.
+
+The staged `tri_towers_scene_intro` migration adds an authoritative 2.5-second
+pre-Ready introduction for new v3 games. V2/v3 scoring, dealing, qualification and
+full playing duration are compatible and explicitly share leaderboard/PB lookup;
+each immutable result retains its version. Existing v1/v2 games remain frozen.
+Activation follows compatible client publication. Candidate/installed rollback
+proofs, financial proofs, full tests/build and both-mode browser checks pass.
+Checkpoint: `tri-towers-scene-2026-10-17`. Jeremy's production smoke, including
+actual phone rotation, remains pending. See [evidence and smoke](TRITOWERS_SCENE.md).
+
 # TriTowers Cartoon polish — 2026-10-17 — awaiting owner smoke
 
 Approved shared presentation for both TriTowers modes: original castle artwork,

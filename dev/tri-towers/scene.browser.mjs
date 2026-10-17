@@ -1,0 +1,15 @@
+import {readFileSync} from 'node:fs';import {spawnSync} from 'node:child_process';
+let source=readFileSync('dev/arcade/tri.browser.mjs','utf8').replace("const polish=process.env.TRI_CARTOON_PROOF==='1';","const polish=true;").replace("${polish?'cartoon':'solo'}-context.json",'scene-context.json').replaceAll('cartoon-ui','scene-ui');
+source=source.replace("const before=(await db.query",`const cardsBefore=await page.locator('[data-tri-card]').count();
+ const before=(await db.query`);
+source=source.replace("await page.locator('[data-stage-result]').waitFor();await page.locator('[data-phase=ready]').waitFor();",`await page.locator('[data-stage-result]').waitFor();
+ assert.equal(await page.locator('[data-tri-card]').count(),cardsBefore,'completion preserves remaining cards');
+ await page.locator('.tri-score-pill[data-centered=true]').waitFor();await page.waitForTimeout(600);
+ const moving=await page.locator('.tri-score-pill').boundingBox(),field=await page.locator('.tri-shared-board').boundingBox();
+ assert(Math.abs(moving.y+moving.height/2-(field.y+field.height*.48))<12,'pill reaches gameplay center');
+ await page.screenshot({path:'qualification.local/tri-towers/scene-ui/solo-completion.png'});
+ await page.waitForTimeout(3200);assert.equal(await page.locator('.tri-score-pill[data-centered=true]').count(),0,'score returned within hold');
+ assert.equal(await page.locator('[data-phase=stage_complete]').count(),1,'same authoritative hold');
+ await page.locator('[data-phase=intro]').waitFor();const intro=await db.query('SELECT state FROM private.arcade_runs WHERE id=$1',[run]);
+ assert.equal(intro.rows[0].state.board.phase,'intro');await page.reload();await page.locator('[data-phase=ready]').waitFor();`);
+const result=spawnSync(process.execPath,['--input-type=module','-'],{input:source.replace("'../tri-towers/bots-fixture.mjs'","'./dev/tri-towers/bots-fixture.mjs'"),encoding:'utf8',stdio:['pipe','inherit','inherit']});process.exitCode=result.status;
