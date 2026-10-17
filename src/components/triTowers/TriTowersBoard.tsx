@@ -3,6 +3,8 @@ import {PlayingCard} from '@/components/PlayingCard';
 import {adjacent,cardName,position,isV2,type Projection,type Intent} from '@/lib/triTowers/model';
 import {towerAwards,dotClock} from '@/lib/triTowers/polishPresentation';
 import {TriScorePill,TriRoundIntro,useTriRoundPresentation,type TriScore} from './TriTowersPresentation';
+import {TriAllClear} from './TriAllClear';
+import {triDealProgress} from '@/lib/triTowers/roundTimeline';
 import type {TriTowersStageResult} from './TriTowersStageResult';
 import tower from '@/assets/cartoon/tower.webp';
 import './triTowersScene.css';
@@ -14,17 +16,21 @@ function TowerCard({card,tableau=false,badge}:{card:number|null;tableau?:boolean
  return <span ref={ref} className="tri-card-art"><span style={{position:'relative',display:'block',width,height:width*1.5}}><PlayingCard frontStyle="cartoon" cartoonLayout={tableau?'tableau':'standard'} card={card===null?undefined:{rank:ranks[card%13],suit:suits[Math.floor(card/13)]}} isHidden={card===null} faceFillPx={width} size="sm" style={{width,height:width*1.5}}/>{badge}</span></span>;
 }
 export type TriTowersBoardView=Pick<Projection,'rules'|'phase'|'cards'|'removed'|'waste'|'stockRemaining'|'run'|'deadline'|'highRun'>;
-interface Props {view:TriTowersBoardView;canAct:boolean;onIntent:(intent:Intent)=>void;result:Parameters<typeof TriTowersStageResult>[0]['result']|null;roundKey:string;now?:number;paused?:boolean;highRun?:number;scores?:TriScore[];takeScore?:ReactNode;userId?:string;connected?:boolean;presentationActive?:boolean;roundLabel?:string;turnLabel?:string}
-export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,paused=false,highRun=v.highRun,scores=[],takeScore,userId='',connected=true,presentationActive=true,roundLabel='ROUND 1',turnLabel}:Props){
+interface Props {view:TriTowersBoardView;canAct:boolean;onIntent:(intent:Intent)=>void;result:Parameters<typeof TriTowersStageResult>[0]['result']|null;roundKey:string;now?:number;paused?:boolean;highRun?:number;scores?:TriScore[];takeScore?:ReactNode;userId?:string;connected?:boolean;presentationActive?:boolean;roundLabel?:string;turnLabel?:string;liveEntry?:boolean;recoveryEpoch?:number}
+export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,paused=false,highRun=v.highRun,scores=[],takeScore,userId='',connected=true,presentationActive=true,roundLabel='ROUND 1',turnLabel,liveEntry=false,recoveryEpoch=0}:Props){
  const root=useRef<HTMLDivElement>(null),v2=isV2(v.rules),awards=towerAwards(v.removed,v.rules);
  const previous=useRef({roundKey,cleared:v.removed.filter(i=>i<3)});
  const fresh=previous.current.roundKey===roundKey?awards.filter(a=>!previous.current.cleared.includes(a.tower)).map(a=>a.tower):[];
  const [animated,setAnimated]=useState<number[]>([]);
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
- const motion=useTriRoundPresentation({scope:roundKey,phase:v.phase,connected,paused,result,now,userId,active:presentationActive});
- const remaining=Math.max(0,v.deadline-now),full=v.phase==='intro'?v.rules.roundIntroMs??2500:v.phase==='ready'?v.rules.readyMs:v.phase==='stage_complete'?v.rules.holdMs:v.rules.stageMs;
- const dots=dotClock(remaining,full);
- return <div ref={root} className="tri-shared-board" data-round-key={roundKey} data-stage-result={result?.id}>
+ const modern=v.rules.version==='tri-towers/3';
+ const motion=useTriRoundPresentation({scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch});
+ const remaining=Math.max(0,v.deadline-now),full=modern?v.rules.stageMs:v.phase==='intro'?v.rules.roundIntroMs??2500:v.phase==='ready'?v.rules.readyMs:v.phase==='stage_complete'?v.rules.holdMs:v.rules.stageMs;
+ const displayRemaining=modern&&v.phase==='stage_complete'?motion.drainRemaining:remaining,dots=dotClock(displayRemaining,full);
+ const dealing=modern&&v.phase==='intro',dealElapsed=(v.rules.roundIntroMs??2500)-remaining;
+ const deal=(index:number|'stock'|'upcard')=>dealing&&!motion.reduced?triDealProgress(dealElapsed,index):1;
+ const flip=deal('upcard');
+ return <div ref={root} className="tri-shared-board" data-round-key={roundKey} data-stage-result={result?.id} data-dealing={dealing} data-result-elapsed={result?.elapsed}>
   <div className="tri-gameplay-top">
    <div className="tri-take-slot tri-actions">{takeScore}</div>
    <div className="tri-score-group" aria-label="Game scores" data-players={scores.length}>{scores.map(item=><TriScorePill key={item.id} item={item} root={root} fraction={item.active?motion.fraction:0} value={item.active?(motion.displayScore??item.score):item.score}/>)}</div>
@@ -34,18 +40,20 @@ export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,pau
    <div className="tri-castle" aria-hidden="true">{[0,1,2].map(i=><img key={i} src={tower} alt="" draggable={false} style={{left:`${(position(i).x+.485)*10}%`}}/>)}</div>
    {awards.map(a=><span key={`${roundKey}:${a.tower}`} className="tri-tower-award" data-animate={animated.includes(a.tower)} data-tower-award={a.tower} style={{left:`${(position(a.tower).x+.485)*10}%`}} aria-label={`Tower ${a.tower+1} bonus ${a.amount}`}>+{a.amount/1000}k</span>)}
    {v.cards.map((card,i)=>{if(v.removed.includes(i))return null;const pos=position(i),legal=card!==null&&adjacent(card,v.waste);
-    return <button key={`${roundKey}:${i}`} className="tri-card" style={{'--x':pos.x,'--y':pos.y} as CSSProperties} data-tri-card={i} data-exposed={card!==null} data-legal={legal} aria-label={card===null?`Covered card ${i+1}`:`Remove ${cardName(card)}`} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||!legal} onClick={()=>onIntent({type:'remove',index:i})}><TowerCard card={card} tableau/></button>;
+    return <button key={`${roundKey}:${i}`} className="tri-card" style={{'--x':pos.x,'--y':pos.y,opacity:deal(i),...(dealing?{transform:`translateY(${(1-deal(i))*-45}%) scale(${.85+.15*deal(i)})`}:{} )} as CSSProperties} data-tri-card={i} data-exposed={card!==null} data-legal={legal} aria-label={card===null?`Covered card ${i+1}`:`Remove ${cardName(card)}`} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||!legal} onClick={()=>onIntent({type:'remove',index:i})}><TowerCard card={card} tableau/></button>;
    })}
   </div></div>
-  <div className="tri-dot-clock" role="progressbar" aria-label={v.phase==='intro'?'Round introduction':v.phase==='ready'?'Ready time remaining':v.phase==='stage_complete'?'Result hold remaining':'Round time remaining'} aria-valuemin={0} aria-valuemax={full/1000} aria-valuenow={Math.min(full,remaining)/1000} aria-valuetext={`${paused?'Paused · ':''}${Math.ceil(remaining/1000)} seconds remaining`} data-tone={dots.tone} data-intro={v.phase==='intro'}>
+  {modern&&(v.phase==='ready'||v.phase==='intro')?<div className="tri-dot-clock tri-ready-text">{v.phase==='ready'&&<small>{paused?'Paused · ':''}Play a card or draw · {Math.ceil(remaining/1000)}s</small>}</div>:<div className="tri-dot-clock" role="progressbar" aria-label={v.phase==='stage_complete'?'Round timer completion':v.phase==='ready'?'Ready time remaining':'Round time remaining'} aria-valuemin={0} aria-valuemax={full/1000} aria-valuenow={Math.min(full,displayRemaining)/1000} aria-valuetext={`${paused?'Paused · ':''}${Math.ceil(displayRemaining/1000)} seconds remaining`} data-tone={dots.tone} data-intro={v.phase==='intro'}>
    <div aria-hidden="true" className="tri-dots">{Array.from({length:24},(_,i)=><i key={i} data-lit={i<dots.lit} data-zone={i<2?'red':i<4?'yellow':'green'}/>)}</div>
    {(paused||v.phase==='ready')&&<small>{paused?'Paused':`Ready · ${Math.ceil(remaining/1000)}s`}</small>}
-  </div>
+  </div>}
   <div className="tri-deck-row">
    <div className="tri-run"><strong>CURRENT RUN</strong><output aria-label="Current removal streak">{v.run}</output></div>
-   <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><TowerCard card={v.waste}/></div>
-   <button className="tri-stock" data-empty={v.stockRemaining===0} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||v.stockRemaining===0} onClick={()=>onIntent({type:'draw'})} aria-label={`Draw stock, ${v.stockRemaining} stock cards remaining`}><TowerCard card={null} badge={<span className="tri-stock-count" aria-hidden="true">{v.stockRemaining}</span>}/></button>
+   <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><div className="tri-upcard-flip" style={{visibility:flip===0?'hidden':'visible',transform:`scaleX(${Math.abs(1-flip*2)})`}}><TowerCard card={flip<.5?null:v.waste}/></div></div>
+   <button className="tri-stock" style={{opacity:deal('stock')}} data-empty={v.stockRemaining===0} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||v.stockRemaining===0} onClick={()=>onIntent({type:'draw'})} aria-label={`Draw stock, ${v.stockRemaining} stock cards remaining`}><TowerCard card={null} badge={<span className="tri-stock-count" aria-hidden="true">{v.stockRemaining}</span>}/></button>
   </div>
-  {v.phase==='intro'&&<TriRoundIntro key={roundKey} scope={roundKey} remaining={remaining} roundLabel={roundLabel} turnLabel={turnLabel} userId={userId} paused={paused}/>}
+  {modern&&result&&<div className="tri-round-summary" role="status"><strong>{result.reason==='cleared'?'All towers cleared':result.reason==='ready_timeout'?'Round not started':result.reason==='timeout'?'Time expired':'Round complete'}</strong><span>{result.timeBonus>0&&`Time +${result.timeBonus.toLocaleString()}`}{result.timeBonus>0&&!!result.stockBonus?' · ':''}{!!result.stockBonus&&`Stock +${result.stockBonus.toLocaleString()}`}</span></div>}
+  {modern&&motion.admitted&&result?.reason==='cleared'&&motion.elapsed<4000&&<TriAllClear root={root} elapsed={motion.elapsed} opacity={motion.timeline.crest} reduced={motion.reduced}/>}
+  {v.phase==='intro'&&<div className="tri-deal-title" style={{opacity:dealing?Math.max(0,1-dealElapsed/550):1}}><TriRoundIntro key={roundKey} remaining={remaining} roundLabel={roundLabel} turnLabel={turnLabel} paused={paused}/></div>}
  </div>;
 }

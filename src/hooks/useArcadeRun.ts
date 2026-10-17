@@ -2,12 +2,13 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
 import type {ArcadeRunIntent,ArcadeSnapshot,ArcadeRunSnapshot} from '@/lib/arcade/model';
-export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:string){
+export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:string,trackRoundPresentation=false){
  const [snapshot,setSnapshot]=useState<T|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const [now,setNow]=useState(0),state=useRef<T|null>(null),generation=useRef(0),busy=useRef(false);
  const anchor=useRef({server:0,local:0}),initial=useRef(true),[completedOnEntry,setCompletedOnEntry]=useState(false);
  const [completionLive,setCompletionLive]=useState(false),epoch=useRef(0),finishedSeen=useRef(false);
- const interrupt=useCallback(()=>{epoch.current++;setCompletionLive(false);},[]);
+ const [presentationEpoch,setPresentationEpoch]=useState(0);
+ const interrupt=useCallback(()=>{epoch.current++;if(trackRoundPresentation)setPresentationEpoch(n=>n+1);setCompletionLive(false);},[trackRoundPresentation]);
  const accept=useCallback((value:T,recovery=false,requestEpoch=epoch.current)=>{
   if(value.id!==runId)return;
   const previous=state.current;
@@ -15,6 +16,9 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   if(previous&&value.revision===previous.revision&&JSON.stringify(value.view)!==JSON.stringify(previous.view)){
    setError('State changed unexpectedly. Reconnect to verify your run.');return;
   }
+  // Tag the recovered response as well as the interruption. An old playing frame
+  // may remain mounted while the recovery fetch is in flight.
+  if(trackRoundPresentation&&previous&&value.revision>previous.revision&&(recovery||requestEpoch!==epoch.current))setPresentationEpoch(n=>n+1);
   if(initial.current){setCompletedOnEntry(value.status!=='active');initial.current=false;}
   if(value.status==='completed'&&!finishedSeen.current){
    finishedSeen.current=true;
@@ -24,23 +28,23 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
     !!value.view.scorePresentation&&value.serverAt<value.view.scorePresentation.endsAt);
   }else if(recovery&&value.status!=='active')setCompletionLive(false);
   anchor.current={server:value.serverAt,local:performance.now()};state.current=value;setSnapshot(value);setNow(value.serverAt);setError('');
- },[runId]);
+ },[runId,trackRoundPresentation]);
  const refresh=useCallback(async(recovery=false)=>{
   const current=generation.current,requestEpoch=epoch.current;
   try{const value=await arcadeRequest<T>({op:'state',runId});if(current===generation.current)accept(value,recovery,requestEpoch);}
   catch(e){if(current===generation.current){interrupt();setError(e instanceof Error?e.message:'Connection lost.');}}
  },[runId,accept,interrupt]);
  useEffect(()=>{
-  generation.current++;state.current=null;initial.current=true;finishedSeen.current=false;busy.current=false;setSnapshot(null);setPending(false);setCompletedOnEntry(false);setCompletionLive(false);
+  generation.current++;const currentGeneration=generation.current;state.current=null;initial.current=true;finishedSeen.current=false;busy.current=false;setSnapshot(null);setPending(false);setCompletedOnEntry(false);setCompletionLive(false);setPresentationEpoch(0);
   void refresh(true);
   const channel=supabase.channel('arcade:'+runId+':'+crypto.randomUUID()).on('postgres_changes',
-   {event:'UPDATE',schema:'public',table:'arcade_revisions',filter:'run_id=eq.'+runId},()=>void refresh()).subscribe(status=>{if(status==='SUBSCRIBED')void refresh(true);else interrupt();});
+   {event:'UPDATE',schema:'public',table:'arcade_revisions',filter:'run_id=eq.'+runId},()=>{if(!trackRoundPresentation||currentGeneration===generation.current)void refresh();}).subscribe(status=>{if(trackRoundPresentation&&currentGeneration!==generation.current)return;if(status==='SUBSCRIBED')void refresh(true);else interrupt();});
   const recover=()=>{interrupt();void refresh(true);};
   const visible=()=>{interrupt();if(document.visibilityState==='visible')void refresh(true);};
   window.addEventListener('focus',recover);window.addEventListener('online',recover);window.addEventListener('offline',interrupt);document.addEventListener('visibilitychange',visible);
   let frame=0,last=0;const tick=(time:number)=>{if(time-last>=80){last=time;setNow(anchor.current.server+performance.now()-anchor.current.local);}frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);
   return()=>{generation.current++;cancelAnimationFrame(frame);void supabase.removeChannel(channel);window.removeEventListener('focus',recover);window.removeEventListener('online',recover);window.removeEventListener('offline',interrupt);document.removeEventListener('visibilitychange',visible);};
- },[runId,refresh,interrupt]);
+ },[runId,refresh,interrupt,trackRoundPresentation]);
  // A single fetch at the persisted boundary keeps connected intros timely.
  // This never advances local state; the independent worker owns zero-client recovery.
  useEffect(()=>{
@@ -56,6 +60,6 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   catch(e){if(scope===generation.current){interrupt();await refresh(true);setError(e instanceof Error?e.message:'Action failed.');}}
   finally{if(scope===generation.current){busy.current=false;setPending(false);}}
  },[runId,accept,refresh,interrupt]);
- return {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive};
+ return {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive,presentationEpoch,interruptPresentation:interrupt};
 }
 

@@ -1,3 +1,14 @@
+# TriTowers round presentation correction — 2026-10-17 — awaiting owner smoke
+
+Approved correction of 70f5fec12: text-only Ready, authoritative-intro deal, live
+round bell admission, original shield/swords celebration and approved fallback
+fanfare, and synchronized score/audio/timer completion inside the existing hold.
+Both modes share the implementation. SQL, rules, legacy versions, financial
+authority and v2/v3 leaderboard/PB compatibility are unchanged. The reference
+recording was extracted and analyzed locally; no melody match is claimed and no
+reference media is committed. Checkpoint: `tri-towers-round-presentation-2026-10-17`.
+Jeremy's production smoke remains acceptance. See [evidence and smoke](TRITOWERS_ROUND_PRESENTATION.md).
+
 # TriTowers scene and introduction — 2026-10-17 — awaiting owner smoke
 
 Approved second pass shares the full castle/grass scene, all-participant score

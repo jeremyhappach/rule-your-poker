@@ -1,4 +1,5 @@
 import {SoloTriTowers} from '@/components/arcade/SoloTriTowers';
+import {grantTriStart} from '@/lib/triTowers/roundTimeline';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Gamepad2,ArrowLeft,Trophy,Play,RotateCcw} from 'lucide-react';
@@ -63,7 +64,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game,window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[game,window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
-  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current});navigate('/arcade/'+game+'/run/'+run.id);}
+  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current});if(game==='tri-towers'&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>

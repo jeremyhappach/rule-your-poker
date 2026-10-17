@@ -414,6 +414,7 @@ import { advanceHorsesSccPostgame } from "@/lib/horsesSccAuthority";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions } from "@/lib/botPlayer";
 import { Run21GameTable } from '@/components/run21/Run21GameTable';
 import { TriTowersGame } from '@/components/triTowers/TriTowersGame';
+import { useTriLiveEntry } from '@/hooks/useTriLiveEntry';
 import { useGamePresentationCatalog } from '@/hooks/useGamePresentationCatalog';
 import { resolvePresentationMode } from '@/lib/canonicalShell/presentationMode';
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
@@ -1081,6 +1082,7 @@ const Game = () => {
   }, [game?.status, (game as any)?.current_game_uuid, gameId]);
 
   // ── Cribbage entry-mode provenance (persistent owner: Game.tsx route mount) ──
+  const triLiveEntry = useTriLiveEntry(game?.id, game?.current_game_uuid, game?.game_type, game?.status);
   // Captures the canonical (dealerGameId, handNumber) pair present at the first
   // render where the route has hydrated a game record. Any later identity that
   // differs from this baseline was introduced *after* this route instance
@@ -14284,6 +14286,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // CRIBBAGE — unified single instance across ALL session phases
           if (renderGameType === 'tri-towers' && game.current_game_uuid) return <TriTowersGame
+            liveEntry={triLiveEntry}
             key={game.current_game_uuid} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
             activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive}
             onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={markTerminalPresentationComplete}/>;

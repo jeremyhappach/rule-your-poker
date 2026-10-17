@@ -1,6 +1,9 @@
 import {useEffect,useLayoutEffect,useRef,useState,type ReactNode,type RefObject} from 'react';
 import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
-import {useRun21Bell} from '@/hooks/useRun21Bell';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {boxingBellCue} from '@/lib/run21/boxingBell';
+import {triAllClearCueAt} from '@/lib/triTowers/allClearCue';
+import {TRI_ROUND_TIMELINE,triResultTimeline} from '@/lib/triTowers/roundTimeline';
 import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
 import '@/components/run21/run21.css';
 
@@ -18,22 +21,67 @@ export function TriScorePill({item,root,fraction=0,value=item.score}:{item:TriSc
   </div></div>{item.balance}
  </div>;
 }
-export function useTriRoundPresentation({scope,phase,connected,paused,result,now,userId,active}:{scope:string;phase:string;connected:boolean;paused:boolean;result:{id:string;elapsed:number;scoreBefore:number;score:number;displayScore:number}|null;now:number;userId:string;active:boolean}){
- const prior=useRef<{scope:string;phase:string;connected:boolean}|null>(null),[live,setLive]=useState<string|null>(null);
- useLayoutEffect(()=>{const p=prior.current;if(!connected||p?.scope!==scope)setLive(null);
-  else if(result&&p.phase!=='stage_complete'&&p.connected&&active)setLive(result.id);
-  prior.current={scope,phase,connected};
- },[scope,phase,connected,result?.id,active]);
- useEffect(()=>{const retire=()=>setLive(null);const visible=()=>{if(document.hidden)retire();};window.addEventListener('offline',retire);document.addEventListener('visibilitychange',visible);return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',visible);};},[]);
- const admitted=!!result&&live===result.id&&active&&connected;
- const elapsed=result?.elapsed??0;
- const fraction=admitted?Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300)):0;
- const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed,endsAt:now-elapsed+2800}:null;
- usePresentedScoreAudio(userId,admitted&&!paused&&result.score>result.scoreBefore&&elapsed<2800?'tri-count:'+scope+':'+result.id:null,count,now);
- return {fraction,displayScore:admitted&&result.score>result.scoreBefore?result.displayScore:result?.score};
+interface RoundPresentationProps {
+ scope:string;phase:string;connected:boolean;paused:boolean;now:number;deadline:number;userId:string;active:boolean;
+ modern:boolean;liveEntry:boolean;recoveryEpoch:number;
+ result:{id:string;elapsed:number;scoreBefore:number;score:number;displayScore:number;reason:string;completedAt?:number}|null;
 }
-export function TriRoundIntro({scope,remaining,roundLabel,turnLabel,userId,paused}:{scope:string;remaining:number;roundLabel:string;turnLabel?:string;userId:string;paused:boolean}){
- const first=useRef(remaining),fresh=first.current>2150;
- useRun21Bell(userId,!paused&&fresh&&remaining>0?'tri:'+scope:null,remaining);
+export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch}:RoundPresentationProps){
+ const prior=useRef<{scope:string;phase:string;connected:boolean;active:boolean;epoch:number}|null>(null);
+ const initial=useRef(liveEntry&&recoveryEpoch===0&&phase==='intro'?scope:null),seen=useRef(new Set<string>());
+ const clock=useRef<{scope:string;deadline:number}|null>(null),[drainFrom,setDrainFrom]=useState(0);
+ const [live,setLive]=useState<string|null>(null),[intro,setIntro]=useState<string|null>(null);
+ const [reduced,setReduced]=useState(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false);
+ useEffect(()=>{const media=window.matchMedia?.('(prefers-reduced-motion: reduce)');if(!media)return;
+  const update=()=>setReduced(media.matches);media.addEventListener('change',update);return()=>media.removeEventListener('change',update);
+ },[]);
+ useLayoutEffect(()=>{
+  const p=prior.current,interrupted=!!p&&p.epoch!==recoveryEpoch;
+  if(!connected||!active||paused||document.hidden||interrupted){
+   setLive(null);setIntro(null);
+   if(interrupted||!active||paused||document.hidden){seen.current.add(scope);initial.current=null;}
+  }else{
+   if(p?.scope!==scope){setLive(null);setIntro(null);}
+   if(modern&&phase==='intro'&&!seen.current.has(scope)&&(initial.current===scope||!!p&&p.scope!==scope&&p.connected&&p.active)){
+    seen.current.add(scope);setIntro(scope);initial.current=null;
+   }
+   if(result&&p?.scope===scope&&p.phase!=='stage_complete'&&p.connected&&p.active){
+    setLive(result.id);
+    setDrainFrom(clock.current?.scope===scope?Math.max(0,clock.current.deadline-(result.completedAt??now-result.elapsed)):0);
+   }
+  }
+  if(phase==='playing')clock.current={scope,deadline};
+  if(phase!=='intro')setIntro(null);
+  prior.current={scope,phase,connected,active,epoch:recoveryEpoch};
+ },[scope,phase,connected,active,paused,result?.id,recoveryEpoch,deadline,modern]);
+ useEffect(()=>{
+  const retire=()=>{setLive(null);setIntro(null);seen.current.add(scope);initial.current=null;};
+  const visible=()=>{if(document.hidden)retire();};
+  window.addEventListener('offline',retire);document.addEventListener('visibilitychange',visible);
+  return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',visible);};
+ },[scope]);
+ const admitted=!!result&&live===result.id&&active&&connected&&!paused&&!document.hidden;
+ const elapsed=result?.elapsed??0,timeline=triResultTimeline(elapsed);
+ const bellKey=modern&&intro===scope&&phase==='intro'&&connected&&active&&!paused&&!document.hidden?scope:null;
+ useEffect(()=>{
+  if(!bellKey)return;
+  const local=performance.now();
+  return platformAudio.follow({userId,id:'run21-bell:tri:'+bellKey,startedAt:local,expiresAt:local+deadline-now,cueAt:()=>boxingBellCue});
+ },[bellKey,userId]);
+ const fraction=admitted&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
+ const end=modern?TRI_ROUND_TIMELINE.countEnd:2800,start=modern?TRI_ROUND_TIMELINE.countStart:0;
+ const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed+start,endsAt:now-elapsed+end}:null;
+ usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?'tri-count:'+scope+':'+result.id:null,count,now);
+ const clearKey=modern&&admitted&&!reduced&&result.reason==='cleared'&&elapsed<1100?result.id:null;
+ useEffect(()=>{
+  if(!clearKey)return;
+  const local=performance.now();
+  return platformAudio.follow({userId,id:'tri-clear:'+scope+':'+clearKey,startedAt:local-elapsed,expiresAt:local-elapsed+1100,cueAt:triAllClearCueAt});
+ },[clearKey,userId,scope]);
+ return {fraction,admitted,reduced,elapsed,timeline,
+  drainRemaining:admitted&&!reduced?drainFrom*(1-timeline.progress):0,
+  displayScore:admitted&&!reduced&&result.score>result.scoreBefore?(modern?Math.round(result.scoreBefore+(result.score-result.scoreBefore)*timeline.progress):result.displayScore):result?.score};
+}
+export function TriRoundIntro({remaining,roundLabel,turnLabel,paused}:{remaining:number;roundLabel:string;turnLabel?:string;paused:boolean}){
  return remaining>0?<RoundIntroArtwork label={roundLabel} turnLabel={turnLabel} fading={remaining<=200&&!paused}/>:null;
 }
