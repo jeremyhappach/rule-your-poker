@@ -1,3 +1,8 @@
+import {useRun21Action} from './useRun21Action';
+import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
+import {roundIntro} from '@/lib/run21/roundIntro';
+import {legalColumns} from '@/lib/run21/rules';
+import {run21Timing} from '@/lib/run21/diagnostics';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
@@ -47,6 +52,19 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
    return intentView(value)!;
   }catch(e){if(scope===generation.current)await refresh(true);throw e;}
  },trackRoundPresentation);
+ const run21Action=useRun21Action('arcade:'+runId,snapshot?.game==='run21',async command=>{
+  const scope=generation.current,requestEpoch=epoch.current;
+  try{
+   const value=await arcadeRequest<T>({op:'action',game:'run21',runId,requestId:command.requestId,revision:command.runRevision,roundId:command.roundId,intent:command.intent});
+   if(scope===generation.current){accept(value,false,requestEpoch);run21Timing('snapshot-accepted',command.requestId);}
+  }catch(e){
+   if(e instanceof UncertainRun21Action)throw e;
+   // Restore confirmed state before releasing a rejected tentative card.
+   try{const value=await arcadeRequest<T>({op:'state',game:'run21',runId});if(scope===generation.current)accept(value,true);}
+   catch{throw new UncertainRun21Action('Recovery unavailable.');}
+   throw e;
+  }
+ });
  const bufferRef=useRef(buffer);bufferRef.current=buffer;
  interruptInput.current=()=>buffer.interrupt();
  useEffect(()=>{
@@ -71,12 +89,21 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
  const act=useCallback(async(intent:ArcadeRunIntent)=>{
   if(trackRoundPresentation&&intentView(state.current)){buffer.enqueue(intent as import('@/lib/triTowers/intentBuffer').BufferedIntent);return;}
   const current=state.current;if(!current||busy.current)return;
+  if(current.game==='run21'){
+   const view=(current as unknown as ArcadeSnapshot).view,id=view.viewerId,board=id?view.boards[id]:null;
+   const at=anchor.current.server+performance.now()-anchor.current.local;
+   if(!id||!board||current.status!=='active'||document.hidden||!navigator.onLine)return;
+   if(intent.type!=='abandon'&&(roundIntro(view,at)||view.scorePresentation||board.result||!board.current||view.active_player_id!==id||(board.deadline!==null&&at>=board.deadline)))return;
+   if(intent.type==='place'&&!legalColumns(board,view.config).includes(intent.column))return;
+   if(!['place','pass','collect','abandon'].includes(intent.type))return;
+   await run21Action.submit({requestId:crypto.randomUUID(),roundId:view.roundId!,playerId:id,revision:board.revision,runRevision:current.revision,intent:intent as import('@/lib/arcade/model').ArcadeIntent});return;
+  }
   busy.current=true;setPending(true);const scope=generation.current,requestEpoch=epoch.current;
   try{const value=await arcadeRequest<T>({op:'action',runId,requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent});if(scope===generation.current)accept(value,false,requestEpoch);}
   catch(e){if(scope===generation.current){interrupt();await refresh(true);setError(e instanceof Error?e.message:'Action failed.');}}
   finally{if(scope===generation.current){busy.current=false;setPending(false);}}
- },[runId,accept,refresh,interrupt,trackRoundPresentation,buffer]);
+ },[runId,accept,refresh,interrupt,trackRoundPresentation,buffer,run21Action.submit]);
  const input=intentView(snapshot)?buffer:undefined;
- return {snapshot,error,pending:pending||!!input?.busy,now,act,refresh,completedOnEntry,completionLive,presentationEpoch,audioEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
+ return {snapshot,error:error||run21Action.error,pending:pending||!!input?.busy||run21Action.pending,placement:run21Action.placement,now,act,refresh:async()=>{await run21Action.recover();await refresh();},completedOnEntry,completionLive,presentationEpoch,audioEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
 }
 

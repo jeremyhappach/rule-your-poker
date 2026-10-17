@@ -19,6 +19,13 @@ beforeEach(()=>{
  mocks.operation.mockResolvedValue({verified:true});
 });
 describe('Arcade HTTP authentication boundary',()=>{
+ it('overlaps the Run21 display-name lookup with authority while retaining the same resolved name',async()=>{
+  let resolve!:(v:any)=>void;const chain={select:()=>chain,eq:()=>chain,single:()=>new Promise(r=>{resolve=r;})};mocks.from.mockReturnValue(chain);
+  const response=request({authorization:'Bearer valid'},{op:'action',game:'run21'});
+  await vi.waitFor(()=>expect(mocks.operation).toHaveBeenCalledTimes(1));
+  const name=mocks.operation.mock.calls[0][2];expect(name).toBeInstanceOf(Promise);
+  resolve({data:{username:'Verified'}});await expect(name).resolves.toBe('Verified');expect((await response).status).toBe(200);
+ });
  it('skips only the display-name query on the qualified shortcut while retaining fresh authentication',async()=>{
   mocks.shortcut.mockReturnValue(true);const body={op:'action',game:'tri-towers',userId:'forged'};
   expect((await request({authorization:'Bearer valid'},body)).status).toBe(200);expect(mocks.getUser).toHaveBeenCalledWith('valid');expect(mocks.from).not.toHaveBeenCalled();expect(mocks.operation).toHaveBeenCalledWith(expect.any(Function),'verified-user','You',body);

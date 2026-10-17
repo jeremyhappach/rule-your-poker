@@ -51,6 +51,13 @@ holds bot scheduling. `Run21RoundIntro.tsx` paints the board overlay and
 `useRun21Bell.ts` requests optional sound from the shared owner via `boxingBell.ts`.
 The full match/hand/round/player identity prevents replay across refreshes.
 
+Run21 immediate feedback: `useRun21Action.ts` retains one immutable pending
+request across uncertain responses and same-tab recovery. `actionPresentation.ts`
+and `Run21Felt.tsx` render only its known card, keeping confirmed totals separate.
+`Run21SpaceScene.tsx` / `run21Space.css` provide the shared fullscreen space scene;
+`run21/diagnostics.ts` provides opt-in bounded timing capture. Release evidence:
+`RUN21_RESPONSIVE_SPACE.md`.
+
 Shared table/fullscreen dissolve: `src/lib/canonicalShell/CinematicPresentation.tsx`
 coordinates `PersistentTableShell` opacity and terminal admission. Readiness is
 published by `FullscreenGameShell` (hydrated game view) and `PlayfieldSlotController`

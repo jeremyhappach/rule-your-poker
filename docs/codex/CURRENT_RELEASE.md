@@ -1,3 +1,20 @@
+# Run21 responsiveness and space scene — 2026-10-17 — awaiting owner smoke
+
+Owner-approved shared immediate placement feedback in Arcade and multiplayer,
+with a static starfield/planet scene and dominant column wells. Stars are denser
+in unused areas. Pending cards remain distinct; totals, future cards, outcomes
+and clocks remain confirmed. Immutable requests survive uncertain responses and
+same-tab reloads; fresh input waits for resolution. Arcade overlaps display-name
+I/O with the unchanged authenticated state-load/rules/commit path. No migration,
+ruleset, scoring, leaderboard, financial or TriTowers lifecycle change.
+
+Controlled touch-emulation measurements reduce Arcade handler-to-card insertion
+from 280.3 ms to 3.1 ms with the same artificial 250 ms response delay. This does
+not measure physical iPhone or production network latency. Full validation and
+focused recovery/layout checks pass; Jeremy's production smoke, including actual
+rotation, remains acceptance. Checkpoint: `run21-responsive-space-2026-10-17`.
+See [implementation, validation and smoke](RUN21_RESPONSIVE_SPACE.md).
+
 # Run21 shared swoosh and medal fanfare — 2026-10-17 — awaiting owner smoke
 
 Owner-approved Run21 audio reuse in Arcade and multiplayer: confirmed placements

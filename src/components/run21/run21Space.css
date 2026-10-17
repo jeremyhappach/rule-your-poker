@@ -1,0 +1,26 @@
+.fullscreen-game.run21-space-theme{background:radial-gradient(ellipse at 80% 0%,#20294166,transparent 65%),#070e20;color:#edf5ff}
+.run21-space-theme .fullscreen-game-board{isolation:isolate}
+.run21-space-scene{position:absolute;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
+.run21-stars{position:absolute;inset:0;width:100%;height:100%}
+.run21-ringed-planet{position:absolute;width:clamp(8rem,38cqw,17rem);right:-5%;top:-3%;opacity:.5}
+.run21-distant-planet{position:absolute;width:clamp(8rem,33cqw,15rem);left:-16%;bottom:0;opacity:.42}
+.run21-space-theme .fullscreen-game-toolbar button{background:#101c34cc;border-color:#8ca7ce44}
+.run21-space-theme .run21-fullscreen-board .run21-column{background:linear-gradient(#1b2d49f2,#101d34eb);border-color:#80a4c980;border-radius:.75rem;box-shadow:0 .2rem .8rem #0003,inset 0 1px #dceeff15;isolation:isolate}
+/* Extra quiet stars fill the unused lower wells; cards and totals stay above them. */
+.run21-space-theme .run21-column::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(circle at 22% 18%,#c4dafa9c 0 1px,transparent 1.4px),radial-gradient(circle at 72% 64%,#b2c9f07a 0 .8px,transparent 1.3px),radial-gradient(circle at 42% 85%,#dce8ff70 0 .6px,transparent 1px);background-size:4.7rem 7.1rem,6.3rem 5.3rem,3.9rem 8.7rem;mask-image:linear-gradient(transparent 8%,#000 40%)}
+.run21-space-theme .run21-column:nth-child(even)::before{background-position:1.3rem 2.3rem,.5rem 1.7rem,1rem 3.1rem}
+.run21-space-theme .run21-column:has(.run21-column-total[data-complete=true]){border-color:#e4c477a8;background:linear-gradient(#343a46f2,#182437eb)}
+.run21-space-theme .run21-fullscreen-board .run21-column-total{color:#f3f7ff;font-weight:800;top:2%;font-size:clamp(1rem,min(5cqw,8cqh),2.2rem)}
+.run21-space-theme .run21-fullscreen-board .run21-column-stack{top:max(14%,2rem)}
+.run21-space-theme .run21-column-total[data-complete=true]{color:#ffe0a3}
+.run21-space-theme .run21-pass button,.run21-space-theme .run21-help button,.run21-space-theme .run21-player-actions button{background:#15243e;border-color:#89aece66}
+.run21-space-theme .run21-player-actions .run21-collect-button:enabled{background:#edc56e;color:#152027}
+.run21-space-theme .run21-scoreboard>[role=row]{background:#15243ee6;border-color:#7b9fc54d}
+.run21-space-theme .run21-scoreboard>[data-active=true]{background:linear-gradient(120deg,#343a46,#182b45);border-color:#dfba637a}
+.run21-space-theme .run21-round-intro-card{background:linear-gradient(150deg,#223454f5,#101c33f5)}
+.run21-space-theme .run21-fullscreen-board .run21-live-card[data-run21-turn-state=active]{filter:drop-shadow(0 0 .35rem #8ad9ed77);animation:none}
+.run21-felt-content .run21-column:enabled:active{background:#33506d;border-color:#b4e6ff;box-shadow:inset 0 0 0 2px #b4e6ff66}
+.run21-stacked-card[data-pending=true]{filter:drop-shadow(0 0 2px #f2cf83)}
+.run21-stacked-card[data-pending=true]::after{content:'';position:absolute;inset:0;border:2px dashed #d6a33c;border-radius:.35rem;pointer-events:none}
+.run21-awaiting-card{display:grid;place-items:center;height:100%;font-size:clamp(.65rem,2.2cqw,.9rem);color:#e7cb91}
+@media(prefers-reduced-motion:reduce){.run21-felt-content .run21-stacked-card{animation:none}}

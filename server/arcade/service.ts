@@ -19,7 +19,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  }
  throw Error('arcade:concurrent_action');
 }
-export async function arcadeOperation(rpc:Rpc,userId:string,name:string,body:Record<string,any>){
+export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
  if(body.op==='leaderboard')return rpc('arcade_leaderboard',{p_actor:userId,p_game:body.game,p_window:body.window,p_result:body.result??null,...(body.ruleset?{p_ruleset:body.ruleset}:{})});
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
@@ -59,7 +59,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string,body:Rec
    row={...committed.record,server_at:row.server_at};
   }
  }
- return soloProjection(row,name,Number(row.server_at));
+ return soloProjection(row,await name,Number(row.server_at));
 }
 export async function recoverArcade(rpc:Rpc,token:string){
  const runs:RunRecord[]=await rpc('arcade_recovery_claim',{p_token:token});

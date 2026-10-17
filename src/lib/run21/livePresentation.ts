@@ -1,3 +1,4 @@
+import {pendingPlacement} from './actionPresentation';
 import type {VisibleEvent} from './history';
 import type {Command, Projection} from './model';
 import type {Run21Snapshot} from './localClient';
@@ -24,10 +25,7 @@ export class LivePresentation {
   }
 }
 export function optimisticPlacement(view: Projection, command: Command | null): Projection {
-  if (!command || command.intent.type !== 'place' || view.roundId !== command.roundId || view.active_player_id !== command.playerId) return view;
-  const board = view.boards[command.playerId], column = command.intent.column;
-  if (!board?.current || board.result || board.revision !== command.revision) return view;
-  return {...view,boards:{...view.boards,[command.playerId]:{...board,current:null,columns:board.columns.map((cards,i)=>i===column?[...cards,board.current!]:cards)}}};
+  return pendingPlacement(view,command);
 }
 export function presentationPhase(view: Projection | undefined, at: number, eventType?: string) {
   if (!view) return 'turn_preparation';

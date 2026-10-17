@@ -21,9 +21,12 @@ export default async function handler(req:IncomingMessage&{body?:unknown},res:Se
   const rpc=async(name:string,args:Record<string,unknown>)=>{
    const at=performance.now();const {data,error,status}=await db.rpc(name,args);timings.push(`${name};dur=${(performance.now()-at).toFixed(1)}`);if(error){if(!error.code||status>=500)res.statusCode=503;throw Error(error.message.startsWith('arcade:')?error.message:'arcade:database_rejected');}return data;
   };
-  const profile=triShortcut(body)?null:await db.from('profiles').select('username').eq('id',data.user.id).single();
-  const result=await arcadeOperation(rpc,data.user.id,profile?.data?.username??'You',body);
-  if(body.game==='tri-towers')res.setHeader('Server-Timing',[...timings,`total;dur=${(performance.now()-started).toFixed(1)}`].join(', '));
+  const profileAt=performance.now();
+  const name=triShortcut(body)?Promise.resolve('You'):Promise.resolve(db.from('profiles').select('username').eq('id',data.user.id).single()).then(profile=>{timings.push(`profile;dur=${(performance.now()-profileAt).toFixed(1)}`);return profile.data?.username??'You';});
+  // Display name does not admit a command. Auth is complete; RPC access checks stay intact.
+  const displayName=body.game==='run21'?name:await name;
+  const [result]=await Promise.all([arcadeOperation(rpc,data.user.id,displayName,body),name]);
+  if(body.game==='tri-towers'||body.game==='run21')res.setHeader('Server-Timing',[...timings,`total;dur=${(performance.now()-started).toFixed(1)}`].join(', '));
   res.statusCode=200;res.end(JSON.stringify(result));
  }catch(error){
   if(res.statusCode===200)res.statusCode=409;

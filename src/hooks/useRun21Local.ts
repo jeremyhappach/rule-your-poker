@@ -1,7 +1,10 @@
+import {useRun21Action} from './useRun21Action';
+import {run21Timing} from '@/lib/run21/diagnostics';
+import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
 import {acceptRun21Snapshot,run21Fetch,run21Request,type Run21Snapshot} from '@/lib/run21/localClient';
-import {eventSnapshot,LivePresentation,optimisticPlacement,presentationPhase} from '@/lib/run21/livePresentation';
+import {eventSnapshot,LivePresentation,presentationPhase} from '@/lib/run21/livePresentation';
 import {legalColumns} from '@/lib/run21/rules';
 import type {Command,Intent} from '@/lib/run21/model';
 import {ScoreCelebrations} from '@/lib/run21/scoreCelebration';
@@ -11,8 +14,8 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
   const presentation=useRef(new LivePresentation());
   const celebrations=useRef(new ScoreCelebrations());
   const [,refreshPresentation]=useState(0);
-  const [error,setError]=useState<string|null>(null),[connected,setConnected]=useState(false),[pending,setPending]=useState(false);
-  const [optimistic,setOptimistic]=useState<Command|null>(null),inFlight=useRef(false),[retry,setRetry]=useState(0);
+  const [error,setError]=useState<string|null>(null),[connected,setConnected]=useState(false);
+  const [retry,setRetry]=useState(0);
   const clock=useRef({server:0,local:0}),[now,setNow]=useState(0);
   const [audioEpoch,setAudioEpoch]=useState(0);
   const storageKey=`run21-presentation:${gameId}:${dealerGameId}`;
@@ -38,13 +41,13 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     p.queue=[];p.sequence=p.received=accepted.eventSequence??p.received;
     p.event=accepted.events?.at(-1)??p.event;p.shownAt=tick;
     const shown=celebrations.current.frame(accepted,accepted.serverAt,tick);setSnapshot(shown.snapshot);setNow(shown.now);
-    if(actionResponse)setOptimistic(null);
+
     try{sessionStorage.setItem(storageKey,JSON.stringify({sequence:p.sequence,snapshot:accepted}));}catch{}
 
   },[dealerGameId,paint,storageKey]);
   useEffect(()=>{
     latest.current=null;presentation.current=new LivePresentation();celebrations.current=new ScoreCelebrations();setSnapshot(null);setError(null);
-    inFlight.current=false;setPending(false);setOptimistic(null);clock.current={server:0,local:performance.now()};
+    clock.current={server:0,local:performance.now()};
     try{const saved=JSON.parse(sessionStorage.getItem(storageKey)??'null');
       if(saved?.snapshot?.view?.identity?.dealerGameId===dealerGameId&&Number.isSafeInteger(saved.sequence)){
         setSnapshot(saved.snapshot);presentation.current.received=saved.sequence;presentation.current.sequence=saved.sequence;
@@ -101,25 +104,32 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
       .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:'Could not recover Run21 result.');});
     return()=>{cancelled=true;};
   },[gameId,dealerGameId,authoritativeComplete,accept,retry]);
+  const action=useRun21Action('multiplayer:'+gameId+':'+dealerGameId,!!snapshot,async command=>{
+    const path=`action?after=${presentation.current.received}`;
+    try{
+      const response=await run21Request<Run21Snapshot>(gameId,path,command);
+      if(response.requestId!==command.requestId)throw new UncertainRun21Action('Acknowledgment mismatch.');
+      flushSync(()=>accept(response,true));run21Timing('snapshot-accepted',command.requestId);
+    }catch(e){
+      if(e instanceof UncertainRun21Action)throw e;
+      try{accept(await run21Request<Run21Snapshot>(gameId,`state?dealerGameId=${dealerGameId}&after=${presentation.current.received}`),false,true);}
+      catch{throw new UncertainRun21Action('Recovery unavailable.');}
+      throw e;
+    }
+  });
   const onIntent=useCallback(async(intent:Intent)=>{
     const current=latest.current;
-    if(!current?.view.viewerId||inFlight.current||celebrations.current.pending)return;
+    if(!current?.view.viewerId||action.pending||celebrations.current.pending)return;
     const view=current.view,board=view.boards[view.viewerId]!;
-    if(roundIntro(view,clock.current.server+performance.now()-clock.current.local))return;
+    const at=clock.current.server+performance.now()-clock.current.local;
+    if(roundIntro(view,at)||view.pausedAt!=null||view.revealed||view.scorePresentation||board.result||(board.deadline!==null&&at>=board.deadline))return;
     if(intent.type==='place'&&(view.active_player_id!==view.viewerId||!legalColumns(board,view.config).includes(intent.column)))return;
-    const command:Command={identity:view.identity,roundId:view.roundId!,playerId:view.viewerId,requestId:crypto.randomUUID(),revision:board.revision,intent};
-    inFlight.current=true;setPending(true);setError(null);setOptimistic(command);
-    try{let response:Run21Snapshot;const path=`action?after=${presentation.current.received}`;
-      try{response=await run21Request(gameId,path,command);}catch(e){if(!(e instanceof TypeError))throw e;response=await run21Request(gameId,path,command);}
-      if(response.requestId!==command.requestId)throw new Error('Run21 action acknowledgment mismatch.');
-      flushSync(()=>accept(response,true));
-    }catch(e){setOptimistic(null);setError(e instanceof Error?e.message:'Action rejected.');}
-    finally{inFlight.current=false;setPending(false);}
-  },[gameId,accept]);
+    await action.submit({identity:view.identity,roundId:view.roundId!,playerId:view.viewerId,requestId:crypto.randomUUID(),revision:board.revision,intent});
+  },[action.pending,action.submit]);
   const retireCelebration=useCallback((key:string)=>{celebrations.current.retire(key,performance.now());refreshPresentation(n=>n+1);paint();},[paint]);
   const shown=snapshot?.view.identity.dealerGameId===dealerGameId?snapshot:null;
-  return {snapshot:shown?{...shown,view:optimisticPlacement(shown.view,optimistic)}:null,now,
-    phase:presentationPhase(shown?.view,now,presentation.current.event?.type),error,connected,audioEpoch,
+  return {snapshot:shown,placement:action.placement,now,
+    phase:presentationPhase(shown?.view,now,presentation.current.event?.type),error:error||action.error,connected,audioEpoch,
     celebration:celebrations.current.receipt,retireCelebration,
-    pending:pending||presentation.current.queue.length>0||celebrations.current.pending,onIntent,reconnect:()=>setRetry(n=>n+1)};
+    pending:action.pending||presentation.current.queue.length>0||celebrations.current.pending,onIntent,reconnect:()=>{void action.recover();setRetry(n=>n+1);}};
 }

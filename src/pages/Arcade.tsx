@@ -1,3 +1,4 @@
+import {Run21SpaceScene} from '@/components/run21/Run21SpaceScene';
 import {SoloTriTowers} from '@/components/arcade/SoloTriTowers';
 import {grantTriStart} from '@/lib/triTowers/roundTimeline';
 import {useCallback,useEffect,useRef,useState} from 'react';
@@ -95,7 +96,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
- const {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
+ const {snapshot,error,pending,placement,now,act,refresh,completedOnEntry,completionLive,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[celebration,setCelebration]=useState<ScoreCelebrationReceipt|null>(null);
  const [finalUntil,setFinalUntil]=useState<number|null>(null);
  const seen=useRef<string|null>(null),retire=useCallback(()=>setCelebration(null),[]);
@@ -126,14 +127,15 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  },[snapshot,view,now,completionLive,finalUntil,navigate,runId]);
  const onIntent=(intent:{type:string;column?:number})=>{if(intent.type==='place')void act({type:'place',column:intent.column!});else if(intent.type==='pass'||intent.type==='collect')void act({type:intent.type});};
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
- <FullscreenGameShell title="Run21" panelTitle="Rules" panelDescription="Scoring for this game." description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
+ <FullscreenGameShell className="run21-space-theme" title="Run21" panelTitle="Rules" panelDescription="Scoring for this game." description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
  activeTab={tab} setActiveTab={setTab} panel={view&&<Run21ScoringReference config={view.config} solo/>}
  navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button><button onClick={()=>setAbandon(true)}>Abandon</button></nav>}
  announcement={false}
  scores={<div className="arcade-run-score"><span>Total score</span><strong>{view?displayedScore(view,userId,now).toLocaleString():0}</strong></div>}
  actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/></div></div>}>
+ <Run21SpaceScene/>
  {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh()}>Reconnect</button></div>}
- {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>:<p role="status">Restoring your game…</p>}
+ {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} placement={placement} hideScoring={!!celebration}/>:<p role="status">Restoring your game…</p>}
  <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>void act({type:'abandon'})}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </FullscreenGameShell>{showFinal&&<ArcadeCompletion score={snapshot.score} record={snapshot.completion}/>}{celebration&&!showFinal&&<Run21ScoreCelebration userId={userId} receipt={celebration} onRetire={retire}/>}</div>;
 }

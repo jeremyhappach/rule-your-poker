@@ -1,3 +1,4 @@
+import type {PendingRun21Action} from '@/lib/run21/actionPresentation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanonicalFeltInteractionLayerElement } from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
@@ -40,17 +41,17 @@ interface Props {
   activeTab: ShellTabId; setActiveTab: (tab: ShellTabId) => void; sessionEnded: boolean;
   onTerminalActive: (active: boolean) => void; onTerminalComplete: (identity: string) => void;
 }
-function Felt({view, now, onIntent, pending, events,hideScoring}: {events?: VisibleEvent[]; view: Projection; now: number; onIntent?: (intent: Intent) => void; pending?: boolean;hideScoring?:boolean}) {
+function Felt({view, now, onIntent, pending, placement, events,hideScoring}: {placement?:PendingRun21Action|null;events?: VisibleEvent[]; view: Projection; now: number; onIntent?: (intent: Intent) => void; pending?: boolean;hideScoring?:boolean}) {
   const layer = useCanonicalFeltInteractionLayerElement(true);
   const {area, draw} = useSafeFelt(layer, `${displayedPlayerId(view)}:${view.roundId}:${view.revealed}`, RUN21_GEOMETRY_DEFAULTS, !!view.viewerId);
   return layer && area.width > 0 ? createPortal(<div className="run21-felt-safe-area" data-run21-deadline={view.boards[displayedPlayerId(view)]?.deadline ?? undefined}
     style={{left: `${area.x * 100}%`, top: `${area.y * 100}%`, width: `${area.width * 100}%`, height: `${area.height * 100}%`}}>
-    <Run21Felt acceptedEvents={events} view={view} now={now} onIntent={onIntent} pending={pending} drawLayer={layer} drawRect={draw} hideScoring={hideScoring}/>
+    <Run21Felt acceptedEvents={events} view={view} now={now} onIntent={onIntent} pending={pending} placement={placement} drawLayer={layer} drawRect={draw} hideScoring={hideScoring}/>
   </div>, layer) : null;
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
-  const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration,connected,audioEpoch} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
+  const {snapshot, now, error, pending, placement, onIntent, reconnect, phase,celebration,retireCelebration,connected,audioEpoch} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
   const [participationPending, setParticipationPending] = useState(false);
@@ -108,7 +109,7 @@ export function Run21GameTable(props: Props) {
           <Felt view={frame} now={at}/><div className="sr-only">Recorded replay</div>
           {createPortal(<div className="run21-replay-controls">{controls}<button onClick={() => setReplay(null)}>Return to live match</button></div>,
             document.querySelector('[data-hud-row="pane"]') ?? document.createDocumentFragment())}
-        </>}/> : <Felt events={snapshot.events} view={view} now={now} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>)}
+        </>}/> : <Felt events={snapshot.events} view={view} now={now} onIntent={onIntent} pending={pending} placement={placement} hideScoring={!!celebration}/>)}
 </>;
     timer = !props.sessionEnded && !replay ? <Run21Timer view={view} now={now}/> : null;
     identity = self ? <CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={snapshot.balances[self.id]} active={view.active_player_id===self.id}/> : null;
@@ -116,7 +117,7 @@ export function Run21GameTable(props: Props) {
   return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
     {!celebration && view && !view.settlement && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
     {celebration&&!props.sessionEnded&&<Run21ScoreCelebration userId={connected&&!replay?props.userId:undefined} key={celebration.key} receipt={celebration} onRetire={retireCelebration}/>}
-    {props.presentationMode === 'fullscreen' ? <Run21FullscreenView snapshot={snapshot} now={now} pending={pending}
+    {props.presentationMode === 'fullscreen' ? <Run21FullscreenView snapshot={snapshot} now={now} pending={pending} placement={placement}
       onIntent={onIntent} hideScoring={!!celebration} sessionEnded={props.sessionEnded}
       participationControls={participationPane}
       activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={pane}
