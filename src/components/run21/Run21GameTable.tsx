@@ -28,6 +28,7 @@ import type { PresentationMode } from '@/lib/canonicalShell/presentationMode';
 import {setAutomaticPlay, setSessionPlayerIntent} from '@/lib/sessionPlayerIntent';
 import {roundIntro} from '@/lib/run21/roundIntro';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
+import {useRun21PlacementAudio} from '@/hooks/useRun21PlacementAudio';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 
 interface Props {
@@ -49,12 +50,13 @@ function Felt({view, now, onIntent, pending, events,hideScoring}: {events?: Visi
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
-  const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
+  const {snapshot, now, error, pending, onIntent, reconnect, phase,celebration,retireCelebration,connected,audioEpoch} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
   const [participationPending, setParticipationPending] = useState(false);
   const [participationError, setParticipationError] = useState<string | null>(null);
   const view = snapshot?.view;
+  useRun21PlacementAudio(props.userId,props.dealerGameId+':'+view?.roundId,snapshot?.events,audioEpoch,connected&&!replay&&!props.sessionEnded&&!view?.pausedAt&&(props.presentationMode==='fullscreen'||props.activeTab==='cards'));
   const intro = view && !props.sessionEnded && !replay ? roundIntro(view, now) : null;
   useRun21Bell(props.userId, view?.pausedAt == null ? intro?.key ?? null : null, intro?.remaining ?? 0);
   useRun21ScoreAudio(props.userId,props.gameId+':'+props.dealerGameId,view,now,!celebration&&!replay&&!props.sessionEnded&&!view?.settlement&&(props.presentationMode==='fullscreen'||props.activeTab==='cards'));
@@ -113,7 +115,7 @@ export function Run21GameTable(props: Props) {
   }
   return <div className="h-full min-h-0 flex flex-col relative" data-run21-live data-run21-phase={phase ?? 'turn_preparation'}>
     {!celebration && view && !view.settlement && !props.sessionEnded && <Run21Announcement view={view} dealerGameScope={props.gameId}/>}
-    {celebration&&!props.sessionEnded&&<Run21ScoreCelebration key={celebration.key} receipt={celebration} onRetire={retireCelebration}/>}
+    {celebration&&!props.sessionEnded&&<Run21ScoreCelebration userId={connected&&!replay?props.userId:undefined} key={celebration.key} receipt={celebration} onRetire={retireCelebration}/>}
     {props.presentationMode === 'fullscreen' ? <Run21FullscreenView snapshot={snapshot} now={now} pending={pending}
       onIntent={onIntent} hideScoring={!!celebration} sessionEnded={props.sessionEnded}
       participationControls={participationPane}

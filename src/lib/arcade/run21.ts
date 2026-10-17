@@ -3,7 +3,7 @@ import {shuffleCards} from '../run21/shuffle.server.js';
 import {assertConfig,type Board,type Card,type Result} from '../run21/model.js';
 import {turnReleaseAt} from '../run21/roundIntro.js';
 import {emptyBoard,startBoardClock,presentBoardCard,boardActionError,moveBoardCard} from '../run21/board.js';
-import {RUN21_RULESET,assertSharedRules} from '../run21/rulesets.js';
+import {RUN21_RULESETS,assertSharedRules} from '../run21/rulesets.js';
 import type {ArcadeConfig,ArcadeIntent,ArcadeSnapshot,RunRecord,SoloState} from './model.js';
 export type Deal = ()=>Card[];
 function board(userId:string,config:ArcadeConfig,at:number,deck:Card[]):Board {
@@ -12,7 +12,7 @@ function board(userId:string,config:ArcadeConfig,at:number,deck:Card[]):Board {
 export function createSoloRun(row:RunRecord,at:number,deal:Deal=shuffleCards):SoloState {
  const config=structuredClone(row.config);
  assertConfig(config);
- if(config.preset===RUN21_RULESET)assertSharedRules(config);
+ if(RUN21_RULESETS[config.preset])assertSharedRules(config);
  if(config.rounds!==3||duration(config)!==config.roundDurationMs)throw Error('arcade:invalid_ruleset');
  const deck=deal();
  return {runId:row.id,userId:row.user_id,config,round:1,roundId:crypto.randomUUID(),

@@ -40,6 +40,10 @@ synthesis; existing hooks and the Gin overlay request those cues. New effects
 provide an `AudioCue` and use `request` with user/event identity and a monotonic
 presentation deadline. `play` is reserved for existing instantaneous cues, with
 no deferred playback. Background music keeps its existing HTML audio owner.
+`audio/celebrationCue.ts` and `audio/cardSwoosh.ts` share the approved TriTowers
+sounds with Run21. `useRun21PlacementAudio` admits confirmed placement sounds;
+`Run21ScoreCelebration` owns medal audio. Frozen timing and compatibility are
+documented in `RUN21_SHARED_AUDIO.md`.
 
 Run21 round intro: `src/lib/run21/roundIntro.ts` derives the authoritative release
 from the existing deadline. `engine.ts` rejects early commands; the authority

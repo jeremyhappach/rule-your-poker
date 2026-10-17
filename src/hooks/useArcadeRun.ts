@@ -10,9 +10,9 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
  const [now,setNow]=useState(0),state=useRef<T|null>(null),generation=useRef(0),busy=useRef(false);
  const anchor=useRef({server:0,local:0}),initial=useRef(true),[completedOnEntry,setCompletedOnEntry]=useState(false);
  const [completionLive,setCompletionLive]=useState(false),epoch=useRef(0),finishedSeen=useRef(false);
- const [presentationEpoch,setPresentationEpoch]=useState(0);
+ const [presentationEpoch,setPresentationEpoch]=useState(0),[audioEpoch,setAudioEpoch]=useState(0);
  const interruptInput=useRef(()=>{});
- const interrupt=useCallback(()=>{epoch.current++;if(trackRoundPresentation){setPresentationEpoch(n=>n+1);interruptInput.current();}setCompletionLive(false);},[trackRoundPresentation]);
+ const interrupt=useCallback(()=>{epoch.current++;if(trackRoundPresentation){setPresentationEpoch(n=>n+1);interruptInput.current();}else setAudioEpoch(n=>n+1);setCompletionLive(false);},[trackRoundPresentation]);
  const accept=useCallback((value:T,recovery=false,requestEpoch=epoch.current)=>{
   if(value.id!==runId)return;
   const previous=state.current;
@@ -23,6 +23,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   // Tag the recovered response as well as the interruption. An old playing frame
   // may remain mounted while the recovery fetch is in flight.
   if(trackRoundPresentation&&previous&&value.revision>previous.revision&&(recovery||requestEpoch!==epoch.current))setPresentationEpoch(n=>n+1);
+  if(!trackRoundPresentation&&(recovery||requestEpoch!==epoch.current))setAudioEpoch(n=>n+1);
   if(initial.current){setCompletedOnEntry(value.status!=='active');initial.current=false;}
   if(value.status==='completed'&&!finishedSeen.current){
    finishedSeen.current=true;
@@ -76,6 +77,6 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   finally{if(scope===generation.current){busy.current=false;setPending(false);}}
  },[runId,accept,refresh,interrupt,trackRoundPresentation,buffer]);
  const input=intentView(snapshot)?buffer:undefined;
- return {snapshot,error,pending:pending||!!input?.busy,now,act,refresh,completedOnEntry,completionLive,presentationEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
+ return {snapshot,error,pending:pending||!!input?.busy,now,act,refresh,completedOnEntry,completionLive,presentationEpoch,audioEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
 }
 

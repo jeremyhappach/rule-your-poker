@@ -4,8 +4,25 @@ import {cleanup,render,screen,act} from '@testing-library/react';
 import {readFileSync} from 'node:fs';
 import {Run21ScoreCelebration} from './Run21ScoreCelebration';
 import {SHELL_Z} from '@/lib/canonicalShell/zLayers';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {celebrationCueAt} from '@/lib/audio/celebrationCue';
+vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{follow:vi.fn(()=>vi.fn())}}));
 afterEach(()=>{cleanup();vi.useRealTimers();});
 describe('Run21 medal overlay',()=>{
+  it.each([104,105] as const)('gives new %i the identical fanfare without shortening its medal',aggregate=>{
+    vi.useFakeTimers();vi.mocked(platformAudio.follow).mockClear();
+    const retired=vi.fn(),durationMs=aggregate===104?3000:3800;
+    const receipt={key:'new-'+aggregate,aggregate,playerName:'You',durationMs};
+    const {rerender,unmount}=render(<Run21ScoreCelebration userId="user" receipt={receipt} onRetire={retired}/>);
+    expect(platformAudio.follow).toHaveBeenCalledTimes(1);
+    const sound=vi.mocked(platformAudio.follow).mock.calls[0][0];
+    expect(sound.expiresAt-sound.startedAt).toBe(3000);expect(sound.cueAt).toBe(celebrationCueAt);
+    act(()=>vi.advanceTimersByTime(2800));expect(retired).not.toHaveBeenCalled();
+    rerender(<Run21ScoreCelebration userId="user" receipt={receipt} onRetire={retired}/>);
+    expect(platformAudio.follow).toHaveBeenCalledTimes(1);
+    act(()=>vi.advanceTimersByTime(durationMs-2800));expect(retired).toHaveBeenCalledExactlyOnceWith(receipt.key);
+    const cancel=vi.mocked(platformAudio.follow).mock.results[0].value;unmount();expect(cancel).toHaveBeenCalled();
+  });
   it.each([104,105] as const)('renders and retires the %i receipt once',aggregate=>{
     vi.useFakeTimers();const retired=vi.fn();const receipt={key:'receipt',aggregate,playerName:'Opponent'};
     const {container}=render(<Run21ScoreCelebration receipt={receipt} onRetire={retired}/>);

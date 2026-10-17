@@ -71,6 +71,7 @@ try {
   if(legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN lifecycle_version SET DEFAULT 1');
  }
  if(shared){
+  await c.query("CREATE SCHEMA IF NOT EXISTS cron; CREATE TABLE IF NOT EXISTS cron.job(jobid bigserial,jobname text,schedule text,active boolean); CREATE OR REPLACE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE SQL AS $$ INSERT INTO cron.job(jobname,schedule,active) VALUES($1,$2,true) RETURNING jobid $$");
   await c.query('CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY)');
   await c.query(readFileSync('supabase/arcade/phase-one.sql','utf8').replace(/\r\n/g,'\n'));
   await c.query(readFileSync('supabase/arcade/run21-scoring.sql','utf8').replace(/\r\n/g,'\n'));
@@ -86,6 +87,10 @@ try {
   await c.query(readFileSync('supabase/run21/activate-shared-rules.sql','utf8').replace('BEGIN;','').replace('COMMIT;',''));
   if(legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN gameplay_ruleset DROP DEFAULT');
   pass('Shared-rule migration rolls back and repeats safely; installed definition checks pass when requested');
+ }
+ if(process.argv.includes('--audio')){
+  await c.query(readFileSync('supabase/run21/shared-audio.candidate.sql','utf8'));
+  await c.query(readFileSync('supabase/run21/activate-shared-audio.sql','utf8').replace('BEGIN;','').replace('COMMIT;',''));
  }
  if(independent&&legacy)await c.query('ALTER TABLE private.run21_matches ALTER COLUMN deck_version SET DEFAULT 1');
  // Only the isolated proof opts in. Scheduler catalog/heartbeat are fixture inputs;

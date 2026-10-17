@@ -14,6 +14,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
   const [error,setError]=useState<string|null>(null),[connected,setConnected]=useState(false),[pending,setPending]=useState(false);
   const [optimistic,setOptimistic]=useState<Command|null>(null),inFlight=useRef(false),[retry,setRetry]=useState(0);
   const clock=useRef({server:0,local:0}),[now,setNow]=useState(0);
+  const [audioEpoch,setAudioEpoch]=useState(0);
   const storageKey=`run21-presentation:${gameId}:${dealerGameId}`;
   const paint=useCallback((live=false)=>{
     const p=presentation.current,tick=performance.now(),event=p.advance(tick,live);
@@ -24,11 +25,12 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     const liveNow=clock.current.server+tick-clock.current.local;
     if(latest.current){const shown=celebrations.current.frame(latest.current,liveNow,tick);setSnapshot(shown.snapshot);setNow(shown.now);}
   },[storageKey]);
-  const accept=useCallback((value:Run21Snapshot, actionResponse=false,recovery=false)=>{
+  const accept=useCallback((value:Run21Snapshot, actionResponse=false,recovery=false,continuousRenewal=false)=>{
     const accepted=acceptRun21Snapshot(latest.current,value,dealerGameId);
     if(!accepted||accepted!==value)return;
+    if(recovery||!latest.current)setAudioEpoch(n=>n+1);
     latest.current=accepted;
-    celebrations.current.accept(accepted,recovery);
+    celebrations.current.accept(accepted,recovery||document.hidden,continuousRenewal&&!document.hidden);
     const tick=performance.now();clock.current={server:Math.max(accepted.serverAt,clock.current.server+tick-clock.current.local),local:tick};
     // Live transport is a snapshot, not a replay timeline. The authority owns bot pacing
     // and score holds; missed events remain available in History without delaying play.
@@ -54,6 +56,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     // Reconnect preserves the mounted surface and consumes unseen persisted events.
     const controller=new AbortController();
     const run=async()=>{
+      let continuousRenewal=false;
       while(!controller.signal.aborted){
         let renewed=false;
         try{
@@ -66,13 +69,14 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
             while((end=text.indexOf('\n\n'))>=0){
               const frame=text.slice(0,end);text=text.slice(end+2);
               if(frame.startsWith('event: renew'))renewed=true;
-              else if(frame.startsWith('data: ')){accept(JSON.parse(frame.slice(6)),false,baseline);baseline=false;}
+              else if(frame.startsWith('data: ')){accept(JSON.parse(frame.slice(6)),false,baseline,continuousRenewal);baseline=false;}
             }
           }
         }catch{/* The canonical shell owns sustained connectivity presentation. */}
         if(controller.signal.aborted)return;
-        if(renewed)continue;
-        setConnected(false);
+        if(renewed){continuousRenewal=true;continue;}
+        continuousRenewal=false;
+        celebrations.current.silence();setConnected(false);setAudioEpoch(n=>n+1);
         await new Promise<void>(resolve=>{
           const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',done);resolve();};
           const timer=setTimeout(done,1000);controller.signal.addEventListener('abort',done,{once:true});
@@ -81,6 +85,12 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     };
     void run();return()=>controller.abort();
   },[gameId,dealerGameId,accept,retry]);
+  useEffect(()=>{
+    const silence=()=>{celebrations.current.silence();refreshPresentation(n=>n+1);};
+    const hidden=()=>{if(document.hidden)silence();};
+    window.addEventListener('offline',silence);document.addEventListener('visibilitychange',hidden);
+    return()=>{window.removeEventListener('offline',silence);document.removeEventListener('visibilitychange',hidden);};
+  },[dealerGameId]);
   useEffect(()=>{
     if(!authoritativeComplete)return;
     let cancelled=false;
@@ -109,7 +119,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
   const retireCelebration=useCallback((key:string)=>{celebrations.current.retire(key,performance.now());refreshPresentation(n=>n+1);paint();},[paint]);
   const shown=snapshot?.view.identity.dealerGameId===dealerGameId?snapshot:null;
   return {snapshot:shown?{...shown,view:optimisticPlacement(shown.view,optimistic)}:null,now,
-    phase:presentationPhase(shown?.view,now,presentation.current.event?.type),error,connected,
+    phase:presentationPhase(shown?.view,now,presentation.current.event?.type),error,connected,audioEpoch,
     celebration:celebrations.current.receipt,retireCelebration,
     pending:pending||presentation.current.queue.length>0||celebrations.current.pending,onIntent,reconnect:()=>setRetry(n=>n+1)};
 }

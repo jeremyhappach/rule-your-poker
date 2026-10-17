@@ -20,6 +20,8 @@ import {displayedScore} from '@/lib/run21/presentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
 import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
+import {useRun21PlacementAudio} from '@/hooks/useRun21PlacementAudio';
+import {medalDuration} from '@/lib/run21/rulesets';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
@@ -72,7 +74,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  <ArcadeInfo game={game} name={name} ruleset={displayRuleset}>
   <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses games completed in that period; personal best shows All Time for the selected rules.</p>
   {!!board?.availableRulesets?.length&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={displayRuleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
-  <p>{game==='tri-towers'?'Compatible rule versions share scores; other rules stay separate.':'Scores from different rules stay separate.'} New games use the current rules.</p>
+  <p>Compatible rule versions share scores; other rules stay separate. New games use the current rules.</p>
   {!!board?.previousBests.length&&<details><summary>Personal bests under other rules</summary>{board.previousBests.map(item=><p key={item.ruleset}>{item.ruleset}: {item.score.toLocaleString()}</p>)}</details>}
  </ArcadeInfo>
  {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/'+game+'/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
@@ -93,11 +95,13 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
- const {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive}=useArcadeRun(runId),navigate=useNavigate();
+ const {snapshot,error,pending,now,act,refresh,completedOnEntry,completionLive,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[celebration,setCelebration]=useState<ScoreCelebrationReceipt|null>(null);
  const [finalUntil,setFinalUntil]=useState<number|null>(null);
  const seen=useRef<string|null>(null),retire=useCallback(()=>setCelebration(null),[]);
  const view=snapshot?.view,intro=view?roundIntro(view,now):null;
+ const medalEpoch=useRef<number|null>(null);
+ useRun21PlacementAudio(userId,runId+':'+view?.roundId,snapshot?.events,presentationEpoch,!error&&tab==='cards');
  useRun21Bell(userId,intro?.key??null,intro?.remaining??0);
  useRun21ScoreAudio(userId,runId,view,now,!celebration&&(snapshot?.status==='active'||completionLive));
  const finalAt=view?.scorePresentation?.endsAt;
@@ -110,11 +114,12 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  useEffect(()=>{
   if(!snapshot)return;
   const result=view?.boards[userId]?.result,key=result?runId+':'+view?.roundId:null;
+  if(medalEpoch.current!==presentationEpoch){medalEpoch.current=presentationEpoch;seen.current=key;setCelebration(null);return;}
   if(key&&seen.current!==key&&!completedOnEntry&&now-(result?.at??0)<1500&&result!.score>0&&(result!.aggregate===104||result!.aggregate===105))
-   setCelebration({key,aggregate:result!.aggregate as 104|105,playerName:'You'});
+   setCelebration({key,aggregate:result!.aggregate as 104|105,playerName:'You',durationMs:medalDuration(view!.config,result!.aggregate as 104|105),startedAt:performance.now()-(now-result!.at)});
   seen.current=key;
   if(view?.scorePresentation&&now>=view.scorePresentation.startedAt)setCelebration(null);
- },[snapshot,view,userId,runId,completedOnEntry,now]);
+ },[snapshot,view,userId,runId,completedOnEntry,now,presentationEpoch]);
  useEffect(()=>{
   if(snapshot&&snapshot.status!=='active'&&(snapshot.status!=='completed'||!completionLive||!view?.scorePresentation||(finalUntil!==null&&performance.now()>=finalUntil)))
    navigate('/arcade/run21?result='+runId,{replace:true});
@@ -130,6 +135,6 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh()}>Reconnect</button></div>}
  {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} hideScoring={!!celebration}/>:<p role="status">Restoring your game…</p>}
  <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>void act({type:'abandon'})}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
- </FullscreenGameShell>{showFinal&&<ArcadeCompletion score={snapshot.score} record={snapshot.completion}/>}{celebration&&!showFinal&&<Run21ScoreCelebration receipt={celebration} onRetire={retire}/>}</div>;
+ </FullscreenGameShell>{showFinal&&<ArcadeCompletion score={snapshot.score} record={snapshot.completion}/>}{celebration&&!showFinal&&<Run21ScoreCelebration userId={userId} receipt={celebration} onRetire={retire}/>}</div>;
 }
 

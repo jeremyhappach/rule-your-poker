@@ -1,15 +1,25 @@
-import {useEffect} from 'react';
+import {useEffect,useRef} from 'react';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {FANFARE_MS,celebrationCueAt} from '@/lib/audio/celebrationCue';
 import {createPortal} from 'react-dom';
 import {SHELL_Z} from '@/lib/canonicalShell/zLayers';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import './scoreCelebration.css';
 
-export function Run21ScoreCelebration({receipt,onRetire}:{receipt:ScoreCelebrationReceipt;onRetire:(key:string)=>void}){
+export function Run21ScoreCelebration({receipt,onRetire,userId}:{receipt:ScoreCelebrationReceipt;onRetire:(key:string)=>void;userId?:string}){
   const perfect=receipt.aggregate===105;
+  const start=useRef({key:receipt.key,at:receipt.startedAt??performance.now()});
+  if(start.current.key!==receipt.key)start.current={key:receipt.key,at:receipt.startedAt??performance.now()};
+  const duration=receipt.durationMs??(perfect?3800:2800);
   useEffect(()=>{
-    const timer=setTimeout(()=>onRetire(receipt.key),perfect?3800:2800);
+    const timer=setTimeout(()=>onRetire(receipt.key),Math.max(0,start.current.at+duration-performance.now()));
     return()=>clearTimeout(timer);
-  },[receipt.key,perfect,onRetire]);
+  },[receipt.key,duration,onRetire]);
+  useEffect(()=>{
+    if(!userId||receipt.audioEligible===false||duration<FANFARE_MS)return;
+    return platformAudio.follow({userId,id:'run21-fanfare:'+receipt.key,startedAt:start.current.at,
+      expiresAt:start.current.at+FANFARE_MS,cueAt:celebrationCueAt});
+  },[receipt.key,receipt.audioEligible,userId,duration]);
   return createPortal(<div className={`run21-celebration ${perfect?'run21-celebration-gold':'run21-celebration-silver'}`}
     style={{zIndex:SHELL_Z.MODAL_CONTENT}} data-run21-celebration={receipt.key} role="status" aria-live="assertive" aria-atomic="true">
     <div className="run21-celebration-halo" aria-hidden="true"/>

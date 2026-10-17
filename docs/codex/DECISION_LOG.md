@@ -2399,3 +2399,11 @@ unchanged. The shared SQL wrapper still delegates all scoring/dealing to the v2
 core. Explicit v2/v3/v4 score compatibility keeps leaderboards/PBs combined while
 retaining frozen result versions. Presentation seeks the authoritative eight-second
 window and never owns progression. See TRITOWERS_CELEBRATION_HANDOFF.md.
+# 2026-10-17 — Run21 reuses the approved shared card/celebration audio
+
+The approved TriTowers sound generators move to the shared audio directory with
+forwarding exports preserving its call sites. Run21 admits sounds only from live
+confirmed placements/positive banked 104/105 results. New immutable `run21/3`
+extends the 104 medal by 200 ms, preserving 105 and full normal count-up timing.
+V2/v3 scores remain explicitly compatible; frozen versions, gameplay and existing
+multiplayer/Arcade progression owners remain intact. See `RUN21_SHARED_AUDIO.md`.

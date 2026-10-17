@@ -49,4 +49,13 @@ describe('receipt-bound special score presentation',()=>{
   it('does not celebrate a timeout or other zero award',()=>{
     const p=new ScoreCelebrations();baseline(p);const s=snapshot();s.view.boards[PLAYERS[0].id]!.result!.score=0;p.accept(s);expect(p.receipt).toBeNull();
   });
+  it('retires queued audio on recovery while preserving existing presentation receipts',()=>{
+    const p=new ScoreCelebrations();baseline(p);const s=snapshot();p.accept(s);
+    const key=p.receipt!.key;expect(p.receipt!.audioEligible).toBe(true);
+    p.accept(s,true);expect(p.receipt!.key).toBe(key);expect(p.receipt!.audioEligible).toBe(false);
+  });
+  it('does not cut off a live fanfare for a routine uninterrupted stream renewal',()=>{
+    const p=new ScoreCelebrations();baseline(p);const s=snapshot();p.accept(s);p.accept(s,true,true);
+    expect(p.receipt!.audioEligible).toBe(true);
+  });
 });

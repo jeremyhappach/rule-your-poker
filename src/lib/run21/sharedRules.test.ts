@@ -1,12 +1,12 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {RUN21_RULES,RUN21_RULESET,assertSharedRules} from './rulesets';
+import {RUN21_RULES,RUN21_RULESET,RUN21_RULESETS,assertSharedRules} from './rulesets';
 import {fixtureDeck,fixtureMatch,act,PLAYERS,uuid} from './fixtures';
 import {advanceScorePresentation,applyCommand} from './engine';
 import {createSoloRun,applySolo,advanceSolo} from '../arcade/run21';
 import {canCollect,legalColumns,duration,speedAt} from './rules';
 import type {RunRecord} from '../arcade/model';
-const config={...RUN21_RULES,roundDurationMs:duration(RUN21_RULES),scorePresentationMs:5000,silverCelebrationMs:2800,goldCelebrationMs:3800};
+const config={...RUN21_RULES,roundDurationMs:duration(RUN21_RULES),scorePresentationMs:5000,silverCelebrationMs:3000,goldCelebrationMs:3800};
 const row:RunRecord={id:uuid(22),user_id:PLAYERS[0].id,game:'run21',ruleset:RUN21_RULESET,config,revision:0,state:null,status:'active',created_at:new Date(0).toISOString(),server_at:0};
 describe('mode-neutral Run21 rules',()=>{
  it('shares legal actions, card sequence, clock and scores across 50 decks',()=>{
@@ -39,6 +39,6 @@ describe('mode-neutral Run21 rules',()=>{
   for(const [t,n]of [[0,280],[419,280],[420,278],[16799,202],[16800,200],[17699,200],[17700,198],[106799,2],[106800,0]])expect(speedAt(board,RUN21_RULES,2500+t)).toBe(n);
   expect(()=>assertSharedRules({...RUN21_RULES,speed:{...RUN21_RULES.speed,start:282}})).toThrow('ruleset_conflict');
   const sql=readFileSync('supabase/run21/shared-rules.candidate.sql','utf8');
-  expect(JSON.parse(sql.match(/\$rules\$([\s\S]*?)\$rules\$/)![1])).toEqual(RUN21_RULES);
+  expect(JSON.parse(sql.match(/\$rules\$([\s\S]*?)\$rules\$/)![1])).toEqual(RUN21_RULESETS['run21/2']);
  });
 });

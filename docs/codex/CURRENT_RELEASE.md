@@ -1,3 +1,15 @@
+# Run21 shared swoosh and medal fanfare — 2026-10-17 — awaiting owner smoke
+
+Owner-approved Run21 audio reuse in Arcade and multiplayer: confirmed placements
+use the same TriTowers swoosh; banked 104/105 results use the approved three-second
+fanfare with the existing medals. New `run21/3` games give 104 a full three seconds;
+105 retains 3.8 seconds, followed by the complete normal five-second presentation.
+Legacy timing stays frozen and v2/v3 scores/PBs share explicit compatibility.
+Rules, dealing, playing clocks and financial authority are unchanged. Validation,
+database proofs and native browser audio rendering pass. Checkpoint:
+`run21-shared-audio-2026-10-17`. Jeremy's smoke remains acceptance.
+See [release evidence and smoke](RUN21_SHARED_AUDIO.md).
+
 # TriTowers celebration handoff and swoosh — 2026-10-17 — awaiting owner smoke
 
 Approved correction adds the three-second celebration BEFORE the unchanged

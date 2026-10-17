@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 export async function proveSharedRules({c,scalar,game,dg,users,players,store,vite,Run21Authority,recoverFresh,pass}){
- const {RUN21_RULES}=await vite.ssrLoadModule('/src/lib/run21/rulesets.ts');
+ const {RUN21_RULESETS}=await vite.ssrLoadModule('/src/lib/run21/rulesets.ts');
  const engine=await vite.ssrLoadModule('/src/lib/run21/engine.ts');
  const {speedAt}=await vite.ssrLoadModule('/src/lib/run21/rules.ts');
  await c.query('SAVEPOINT shared_clock');
@@ -9,14 +9,14 @@ export async function proveSharedRules({c,scalar,game,dg,users,players,store,vit
  try{
   await authority.recoverOne(game);
   let row=await scalar('SELECT to_jsonb(m) v FROM private.run21_matches m WHERE dealer_game_id=$1',[dg]);
-  assert.equal(row.gameplay_ruleset,'run21/2');assert.deepEqual(row.gameplay_config,RUN21_RULES);
+  const RUN21_RULES=RUN21_RULESETS[row.gameplay_ruleset];assert(RUN21_RULES);assert.deepEqual(row.gameplay_config,RUN21_RULES);
   assert.deepEqual(row.state.config,RUN21_RULES);assert.equal(row.state.config.firstPlacementSeconds,undefined);
   await c.query('INSERT INTO auth.users(id) VALUES($1) ON CONFLICT DO NOTHING',[users[0]]);
   await c.query('UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp()');
   const arcade=await scalar("SELECT public.arcade_start($1,$2,'run21') v",[users[0],randomUUID()]);
   assert.equal(arcade.ruleset,row.gameplay_ruleset);
   for(const key of Object.keys(RUN21_RULES))assert.deepEqual(arcade.config[key],row.gameplay_config[key]);
-  assert.equal((await scalar("SELECT public.arcade_leaderboard($1,'run21','all') v",[users[0]])).ruleset,'run21/2');
+  assert.equal((await scalar("SELECT public.arcade_leaderboard($1,'run21','all') v",[users[0]])).ruleset,row.gameplay_ruleset);
   const id=row.state.rounds.at(-1).active_player_id,b=row.state.rounds.at(-1).boards[id];
   const start=Number(await scalar("SELECT (event->>'at')::bigint v FROM private.run21_events WHERE dealer_game_id=$1 AND event->>'type'='turn_started' ORDER BY sequence LIMIT 1",[dg]));
   assert.equal(b.startedAt,start+2500);assert.equal(b.deadline-b.startedAt,106800);assert.equal(b.firstPlacementDeadline,null);

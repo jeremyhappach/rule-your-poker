@@ -2,6 +2,9 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 export interface Card { rank: Rank; suit: Suit }
 export interface Config {
+  /** Frozen medal presentation allowances; absent on legacy multiplayer matches. */
+  silverCelebrationMs?: number;
+  goldCelebrationMs?: number;
   /** Missing means the historical first-placement clock. Frozen per run. */
   clockStart?: 'first_placement' | 'intro_end';
   /** Frozen for new matches only. Existing matches keep their original release. */

@@ -137,6 +137,7 @@ try{
   await proveScoring({db,rpc,scalar,users,begin,commit,vite,database,pass});
  }
  if(process.argv.includes('--shared-rules'))await (await import('./shared-rules.proof.mjs')).proveSharedArcade({db,rpc,scalar,users,begin,commit,vite,pass});
+ if(process.argv.includes('--audio'))await (await import('./audio.proof.mjs')).proveAudio({db,rpc,scalar,users,begin,commit,vite,pass});
  if(process.argv.includes('--completion'))await (await import('./completion.proof.mjs')).proveCompletion({db,scalar,pass});
  assert.ok(targets.length>50);pass('zero writes across '+targets.length+' non-Arcade tables with canonical triggers enabled');
  mkdirSync('dev/arcade',{recursive:true});writeFileSync(process.argv.includes('--shared-rules')?'dev/arcade/shared.proof.evidence.json':process.argv.includes('--scoring')?'dev/arcade/scoring.proof.evidence.json':'dev/arcade/proof.evidence.json',JSON.stringify({database,productionWrites:0,passed:cases,at:new Date().toISOString()},null,2));
