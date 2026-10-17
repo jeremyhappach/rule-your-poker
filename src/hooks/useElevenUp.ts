@@ -34,7 +34,7 @@ export function useElevenUp(id:string,userId:string,transport:ElevenTransport){
   return()=>{mounted.current=false;generation.current++;unsubscribe();clearInterval(timer);window.removeEventListener('online',recovery);window.removeEventListener('offline',recovery);window.removeEventListener('focus',recovery);document.removeEventListener('visibilitychange',recovery);};
  },[transport,accept,resolve]);
  const act=async(intent:ElevenIntent)=>{
-  const v=latest.current;if(!v||!connected||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||now>=v.board.deadline)return;
+  const v=latest.current;if(!v||!connected||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&now>=v.board.deadline)return;
   const command:ElevenCommand={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };

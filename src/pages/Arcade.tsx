@@ -1,3 +1,4 @@
+import {SoloElevenUp} from '@/components/arcade/SoloElevenUp';
 import {Run21SpaceScene} from '@/components/run21/Run21SpaceScene';
 import {SoloTriTowers} from '@/components/arcade/SoloTriTowers';
 import {grantTriStart} from '@/lib/triTowers/roundTimeline';
@@ -30,13 +31,14 @@ import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import '@/lib/arcade/arcade.css';
 const games=[{id:'run21',name:'Run21',description:'5 columns, 3 rounds, make 21s',ready:true},
  {id:'tri-towers',name:'TriTowers',description:'Clear the towers.',ready:true},
+ {id:'eleven-up',name:'11 Up',description:'Make eleven. Clear the pool balls.',ready:true},
  {id:'yahtzee',name:'Yahtzee',description:'Make every roll count.',ready:false}] as const;
 export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
  if(!game)return <Switchboard userId={user.id}/>;
- if(game!=='run21'&&game!=='tri-towers')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
- return runId?(game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game} game={game}/>;
+ if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
+ return runId?(game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game} game={game}/>;
 }
 function Switchboard({userId}:{userId:string}){
  const {isAdmin}=useIsAdmin(userId),[artwork,setArtwork]=useState<Artwork[]>([]),[error,setError]=useState('');
@@ -58,8 +60,8 @@ function Switchboard({userId}:{userId:string}){
    </article>;
   })}</div>{error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;
 }
-function GameBoard({game}:{game:'run21'|'tri-towers'}){
- const name=game==='run21'?'Run21':'TriTowers';
+function GameBoard({game}:{game:'run21'|'tri-towers'|'eleven-up'}){
+ const name=game==='eleven-up'?'11 Up':game==='run21'?'Run21':'TriTowers';
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const createId=useRef<string|null>(null);
@@ -68,7 +70,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'}){
  useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game,window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[game,window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
-  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current});if(game==='tri-towers'&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
+  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current});if((game==='tri-towers'||game==='eleven-up')&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>

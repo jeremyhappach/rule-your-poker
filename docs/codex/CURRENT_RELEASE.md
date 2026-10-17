@@ -1,4 +1,16 @@
-# 11 Up — 2026-10-17 — local first playable, production closed
+# 11 Up — 2026-10-17 — production smoke release
+
+Jeremy authorized production publication for smoke. The candidate now includes
+authenticated Arcade and multiplayer transports, leaderboard routing, human-only
+2–7-player fake-money setup, canonical financial presentation and Session Ended,
+realtime revisions and server recovery. The candidate and installed production
+rollback proofs passed; the recovery worker adds only the 11 Up dispatch.
+Typecheck, 2,397 source tests, 241 harness tests, 84 final focused checks and the
+production build passed. Checkpoint: `eleven-up-production-smoke-2026-10-17`.
+Owner gameplay/audio smoke remains acceptance. See
+[release and smoke instructions](ELEVEN_UP_PRODUCTION_SMOKE.md).
+
+# 11 Up — 2026-10-17 — prior local first playable
 
 Approved `eleven-up/1` candidate shares one PostgreSQL rules core across solo
 Arcade and multiplayer. Pool-ball presentation omits wild items, preserves the

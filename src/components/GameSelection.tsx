@@ -1,3 +1,4 @@
+import {useElevenUpAccess} from '@/hooks/useElevenUpAccess';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
@@ -42,7 +43,8 @@ export const GameSelection = ({
 }: GameSelectionProps) => {
   const run21Allowed = useRun21Access(sessionId);
   const triTowersAllowed = useTriTowersTestAccess(sessionId);
-  const otherAllowed = run21Allowed || triTowersAllowed;
+  const elevenAllowed = useElevenUpAccess(sessionId);
+  const otherAllowed = run21Allowed || triTowersAllowed || elevenAllowed;
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
     'run21',
@@ -112,6 +114,7 @@ export const GameSelection = ({
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
       case 'run21': return 'Run21';
+      case 'eleven-up': return '11 Up';
       case 'tri-towers': return 'TriTowers';
       default: return gameType;
     }
@@ -270,7 +273,8 @@ export const GameSelection = ({
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
                   <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                 </button>}
-                {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers"
+                {elevenAllowed && <button type="button" data-dealer-game-option="eleven-up" onClick={()=>handleGameSelect({id:'eleven-up',name:'11 Up',description:'Clear the pool balls',enabled:true,maxPlayers:7})} disabled={activeHumanCount!==activePlayerCount||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">11 Up · 2–7 human players</button>}
+                  {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers"
                   disabled={activeHumanCount<1||activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
                   onClick={()=>handleGameSelect({id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers})}
                   className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
@@ -279,7 +283,7 @@ export const GameSelection = ({
           </Tabs>
 
           {/* Run Back option - only show on 2nd+ game of session */}
-          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || triTowersAllowed) && (lastGameType !== 'run21' || run21Allowed) && (
+          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || triTowersAllowed) && (lastGameType !== 'run21' || run21Allowed) && (lastGameType !== 'eleven-up' || elevenAllowed && activeHumanCount===activePlayerCount) && (
             <div className="pt-3 border-t border-poker-gold/30">
               <button
                 onClick={handleRunBack}

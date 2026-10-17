@@ -1,3 +1,4 @@
+import {ElevenUpTable} from '@/components/elevenUp/ElevenUpTable';
 import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { createAuthoritativeRecoveryScheduler } from "@/lib/authoritativeRecoveryScheduler";
 import { createDecisionProvenance, type DecisionInput } from "@/lib/decisionProvenance";
@@ -2076,7 +2077,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // unmount the presentation owner. A fresh terminal mount never observed
   // `in_progress`, so it has no scope and still redirects to the lobby.
   const liveTerminalGameType =
-    game?.game_type === 'run21' || game?.game_type === 'tri-towers' ||
+    game?.game_type === 'run21' || game?.game_type === 'tri-towers' || game?.game_type === 'eleven-up' ||
     game?.game_type === 'cribbage' ||
     game?.game_type === 'gin-rummy' ||
     game?.game_type === 'yahtzee' ||
@@ -14285,6 +14286,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // CRIBBAGE — unified single instance across ALL session phases
+          if (renderGameType === 'eleven-up' && game.current_game_uuid) return <ElevenUpTable liveEntry={triLiveEntry} key={game.current_game_uuid} dealerGameId={game.current_game_uuid} userId={user?.id??''} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={markTerminalPresentationComplete}/>;
           if (renderGameType === 'tri-towers' && game.current_game_uuid) return <TriTowersGame
             liveEntry={triLiveEntry}
             key={game.current_game_uuid} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}

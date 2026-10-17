@@ -1,3 +1,13 @@
+# 2026-10-17 — 11 Up production smoke admission
+
+Jeremy requested production deployment after the local milestone. Register
+11 Up in Arcade and the existing multiplayer selector with 2–7 human players
+and fake-money-only admission. Bots and real money remain explicitly closed.
+The established financial cursor gates Continue; the shared terminal owner
+receives the completion token and removes game artifacts in Session Ended.
+Production rollback proofs precede activation. This changes no accepted game
+rule or transport branch. See `ELEVEN_UP_PRODUCTION_SMOKE.md`.
+
 # 2026-10-17 — 11 Up shared authority and unrestricted opening passes
 
 The approved first playable uses one `eleven-up/1` PostgreSQL board core in both

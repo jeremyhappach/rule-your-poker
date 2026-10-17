@@ -9,7 +9,8 @@ export type DealerGameType =
   | 'ship-captain-crew'
   | 'yahtzee'
   | 'run21'
-  | 'tri-towers';
+  | 'tri-towers'
+  | 'eleven-up';
 
 export interface DealerGameSetupCommitResult {
   outcome: 'configured' | 'already_configured';
@@ -79,7 +80,7 @@ export function parseDealerGameSetupCommitResult(
     && typeof raw.deduped === 'boolean'
     && exactIdentity
     && game.id === expected.gameId
-    && game.status === (expected.gameType === 'run21' || expected.gameType === 'tri-towers' ? 'in_progress' : 'ante_decision')
+    && game.status === (expected.gameType === 'run21' || expected.gameType === 'tri-towers' || expected.gameType === 'eleven-up' ? 'in_progress' : 'ante_decision')
     && game.config_complete === true
     && typeof dealerGame.id === 'string'
     && dealerGame.session_id === expected.gameId
@@ -110,7 +111,7 @@ export async function configureDealerGame(
     await assertRun21CreationAccess(params.gameId);
   }
 
-  const { data, error } = await supabase.rpc((params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
+  const { data, error } = await supabase.rpc((params.gameType === 'eleven-up' ? 'eleven_up_configure' : params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
     p_game_id: params.gameId,
     p_dealer_player_id: params.dealerPlayerId,
     p_expected_dealer_position: params.expectedDealerPosition,

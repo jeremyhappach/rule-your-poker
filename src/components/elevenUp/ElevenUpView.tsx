@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef,useState,type CSSProperties} from 'react';
+import {useLayoutEffect,useRef,useState,type ReactNode,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
@@ -7,17 +7,17 @@ import {ballPosition,ballValue,type ElevenIntent,type ElevenSnapshot} from '@/li
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
-interface Props {view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
-export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish}:Props){
- const [tab,setTab]=useState<ShellTabId>('cards');
+interface Props {onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
+export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
+ const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,r=b.result,hold=b.rules.holdMs+(r?.reason==='cleared'?b.rules.clearCelebrationMs:0);
  const result=r?{...r,id:r.id??v.scope,elapsed:Math.max(0,at-(b.deadline-hold))}:null;
  const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={`${v.solo?'Arcade · ':''}${v.board.phase==='complete'?'Final scores':`Round ${v.round}${v.round===3?' · Bonus':' of 2'}`}`}
-  scores={<div className="eleven-scores" aria-label="Scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&<small>{p.chips} chips</small>}</div>)}</div>}
-  activeTab={tab} setActiveTab={setTab} navigation={<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>}
-  announcement={false} panelTitle="Rules" panelDescription="P-Town scoring · eleven-up/1" panel={<ElevenUpRules/>}>
-  <ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,motion,result}} active={tab==='cards'}/>
+  scores={<div className="eleven-scores" aria-label="Scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>}
+  activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+  announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription="P-Town scoring · eleven-up/1" panel={panel??<ElevenUpRules/>}>
+  {!sessionEnded&&<ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,motion,result}} active={tab==='cards'}/>}
  </FullscreenGameShell>;
 }
 function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,active,motion,result}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){

@@ -36,6 +36,7 @@ export function isPokerVariantFamily(gameType: string | null | undefined): boole
 export const CANONICAL_SHELL_FAMILY = new Set<string>([
   ...POKER_VARIANT_FAMILY,
   'tri-towers',
+  'eleven-up',
   'run21',
   'gin-rummy',
   'cribbage',
