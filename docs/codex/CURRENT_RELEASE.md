@@ -1,3 +1,16 @@
+# 11 Up — 2026-10-17 — local first playable, production closed
+
+Approved `eleven-up/1` candidate shares one PostgreSQL rules core across solo
+Arcade and multiplayer. Pool-ball presentation omits wild items, preserves the
+2.5-second bell/first-action clock, and prepends the accepted three-second
+all-clear fanfare to the normal five-second result hold. Jeremy corrected the
+initial pass model: unrestricted openings remain, and a full rack permits stock
+advancement without a placement penalty. Local authority, rollback, concurrency,
+focused tests and browser checks are documented in
+[11 Up first playable](ELEVEN_UP_FIRST_PLAYABLE.md). Dedicated discovery worktree;
+no production migration, activation, deployment or main integration. Existing
+Run21 and TriTowers implementations remain unchanged.
+
 # Run21 planet placement and failure audio — 2026-10-17 — awaiting owner smoke
 
 Owner-approved follow-up moves the ringed planet to the left and adds a shared

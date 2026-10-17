@@ -1,0 +1,2 @@
+import {build} from 'vite';import react from '@vitejs/plugin-react-swc';import {resolve} from 'node:path';
+await build({configFile:false,plugins:[react()],resolve:{alias:[{find:'@/integrations/supabase/client',replacement:resolve('dev/eleven-up/local-client.ts')},{find:'@',replacement:resolve('src')}]},define:{__DEV__:false,__RUN21_APP_TEST_LANE__:false},build:{outDir:'qualification.local/eleven-up/build',emptyOutDir:true,rollupOptions:{input:resolve('dev/eleven-up/live.html')}}});

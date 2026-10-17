@@ -1,5 +1,11 @@
 # Repository map
 
+11 Up local candidate: `supabase/eleven-up/` owns the shared SQL core and separate
+multiplayer/Arcade orchestration. `src/components/elevenUp/`,
+`src/hooks/useElevenUp.ts` and `src/lib/elevenUp/` own presentation and transport
+contracts. `dev/eleven-up/` contains the isolated local launcher and direct SQL
+proofs. No production route/admission is enabled. See `ELEVEN_UP_FIRST_PLAYABLE.md`.
+
 TriTowers presentation polish (2026-10-17): `src/components/triTowers/TriTowersBoard.tsx`
 owns the shared Arcade/multiplayer castle, badges, streak indicators, dots and stock
 layout. `src/components/CartoonCardFace.tsx` supplies opt-in art through PlayingCard

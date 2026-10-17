@@ -1,3 +1,14 @@
+# 2026-10-17 — 11 Up shared authority and unrestricted opening passes
+
+The approved first playable uses one `eleven-up/1` PostgreSQL board core in both
+modes, with no wild item. It reuses canonical settlement and Arcade immutable
+results, and the accepted bell/fanfare timing. Jeremy explicitly rejected
+reshuffling blocked openings: players must pass. Full-rack passes therefore
+advance stock and discard the current item without a placement penalty;
+available slots still receive a penalized placement. This is supported by the
+related browser implementation, not claimed as verified Megatouch arithmetic.
+Production remains closed. See [11 Up first playable](ELEVEN_UP_FIRST_PLAYABLE.md).
+
 # 2026-10-16 — Solo TriTowers reuses PostgreSQL board authority
 
 Solo calls the accepted v2 SQL board core through a service-only Arcade adapter.
