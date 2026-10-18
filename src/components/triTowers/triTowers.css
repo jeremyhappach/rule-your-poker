@@ -73,10 +73,6 @@
 .tri-result-over-castle .tri-stage-result{width:100%;max-height:100%;gap:.2rem}.tri-result-over-castle .tri-stage-result h2{font-size:clamp(.9rem,3.8cqw,1.6rem)}
 .tri-result-over-castle .tri-clear-towers{display:none}.tri-result-over-castle .tri-count strong{font-size:clamp(1.2rem,5cqw,2rem)}
 .tri-dot-clock{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:.12rem;width:100%;font-variant-numeric:tabular-nums}
-.tri-dots{display:flex;align-items:center;justify-content:space-between;gap:.5%;width:96%;padding:.2rem .25rem;border-radius:2rem;background:#071c20}
-.tri-dots i{width:3%;aspect-ratio:1;max-width:.75rem;border-radius:50%;background:#405456;box-shadow:inset 0 1px 2px #ffffff40}
-.tri-dots i[data-lit=true][data-zone=green]{background:#54d53b}.tri-dots i[data-lit=true][data-zone=yellow]{background:#f5d431}.tri-dots i[data-lit=true][data-zone=red]{background:#ee493f}
-.tri-dot-clock[data-tone=yellow] i[data-lit=true]{background:#f5d431}.tri-dot-clock[data-tone=red] i[data-lit=true]{background:#ee493f}
 .tri-dot-clock small{font-size:.7rem;color:#d5e8e7}
 .tri-shared-board .tri-deck-row{flex:0 0 23%;min-height:4.5rem;max-height:9rem;display:grid;grid-template-columns:minmax(2.75rem,1fr) minmax(5.5rem,1.2fr) minmax(2.75rem,1fr);gap:clamp(.5rem,3cqw,2rem);width:min(88%,28rem);align-self:center;padding:.15rem 0 .35rem;grid-row:auto}
 .tri-shared-board .tri-stock,.tri-shared-board .tri-waste{width:100%;height:100%;min-height:44px;min-width:44px;align-self:stretch}

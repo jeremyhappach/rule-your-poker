@@ -1,5 +1,9 @@
 # 11 Up shared polish — 2026-10-18
 
+Superseded by [corrective polish](ELEVEN_UP_CORRECTIVE_POLISH.md). Owner review
+rejected the stretched rack, scoreboard grouping and numeric active-play timer.
+The separation checks below did not prove the original geometric proportions.
+
 Jeremy approved the attached shared polish brief and Megatouch layout reference.
 Checkpoint: `eleven-up-shared-polish-2026-10-18`. Production iPhone smoke remains
 acceptance; this record does not claim physical Safari or live multiplayer smoke.

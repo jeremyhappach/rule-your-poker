@@ -21,7 +21,8 @@ it('toggles individual balls, resolves a three-ball eleven once, and removes red
  expect(onIntent).toHaveBeenCalledExactlyOnceWith({type:'group',items:[16,20,32]});
  expect(ui.getByLabelText('Selected total 11').textContent).toBe('11');
  expect(ui.queryByRole('button',{name:/Make Eleven|Clear selection/})).toBeNull();
- expect(ui.queryByText(/DRAW ·/)).toBeNull();expect(ui.getByRole('timer').textContent).toBe('3:00');
+ expect(ui.queryByText(/DRAW ·/)).toBeNull();expect(ui.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('180');
+ expect(ui.queryByRole('timer')).toBeNull();expect(ui.getByRole('progressbar').textContent).toBe('');
  expect(ui.getByRole('button',{name:'Pass, 28 draws remaining'})).toBeTruthy();
  expect(ui.queryByText('You')).toBeNull();expect(ui.queryByText(/Arcade/)).toBeNull();
 });
@@ -78,4 +79,46 @@ it('uses one immutable transport request through rapid taps, lost response, relo
  expect(sessionStorage.getItem('ptown:eleven-up:1:user:run')).toBeTruthy();ui.unmount();
  render(<Game/>);await waitFor(()=>expect(commands).toHaveLength(2));
  expect(commands[1]).toEqual(commands[0]);await waitFor(()=>expect(sessionStorage.getItem('ptown:eleven-up:1:user:run')).toBeNull());
+});
+
+it.each([[true,120000],[true,180000],[false,120000],[false,180000]] as const)('maps authoritative remaining time proportionally: solo=%s, duration=%s', (solo,duration)=>{
+ const v=snapshot();v.solo=solo;v.board.rules={...v.board.rules,stageMs:duration,version:duration===120000?'eleven-up/1':'eleven-up/2'};v.board.deadline=1000+duration;
+ const p=props(v),ui=render(<ElevenUpView {...p}/>);
+ for(const [fraction,lit,tone] of [[1,24,'green'],[.4,10,'green'],[.1,3,'yellow'],[.05,2,'red'],[0,0,'red']] as const){
+  const now=v.board.deadline-duration*fraction;
+  ui.rerender(<ElevenUpView {...p} now={now} epoch={1}/>);
+  const timer=ui.getByRole('progressbar');
+  expect(timer.querySelectorAll('i[data-lit=true]')).toHaveLength(lit);
+  expect(timer.querySelector('.tri-dots')?.getAttribute('data-tone')).toBe(tone);
+  expect(timer.getAttribute('aria-valuemax')).toBe(String(duration/1000));
+  expect(timer.getAttribute('aria-valuenow')).toBe(String(duration*fraction/1000));
+  expect(timer.textContent).toBe('');expect(ui.queryByRole('timer')).toBeNull();
+ }
+ const pausedAt=v.board.deadline-duration*.4;
+ ui.rerender(<ElevenUpView {...p} view={{...v,paused:true,pausedAt}} now={v.board.deadline+99999}/>);
+ expect(ui.getByRole('progressbar').querySelectorAll('i[data-lit=true]')).toHaveLength(10);
+ ui.rerender(<ElevenUpView {...p} view={{...v,scope:'next',round:2,board:{...v.board,deadline:duration+500000}}} now={500000}/>);
+ expect(ui.getByRole('progressbar').querySelectorAll('i[data-lit=true]')).toHaveLength(24);
+ expect(p.onIntent).not.toHaveBeenCalled();expect(v.board.deadline).toBe(duration+1000);
+});
+
+it('keeps Take Score in the band, preserves command dispatch, and retires gameplay in Session Ended',()=>{
+ const p=props(),ui=render(<ElevenUpView {...p}/>);
+ const take=ui.getByRole('button',{name:'Take Score'});
+ expect(take.closest('.eleven-score-band')).toBeTruthy();
+ expect(take.closest('[data-canonical-felt-interaction-layer]')).toBeTruthy();
+ fireEvent.click(take);fireEvent.click(ui.getByRole('button',{name:/^Pass,/}));
+ expect(p.onIntent.mock.calls).toEqual([[{type:'take_score'}],[{type:'pass'}]]);
+ ui.rerender(<ElevenUpView {...p} sessionEnded/>);
+ expect(ui.getByLabelText('Scores')).toBeTruthy();expect(ui.queryByRole('progressbar')).toBeNull();
+ expect(ui.queryByRole('button',{name:'Take Score'})).toBeNull();expect(ui.container.querySelector('.eleven-playfield')).toBeNull();
+});
+
+it('puts the active player first and scrolls back to them on a multiplayer turn change',()=>{
+ const v=snapshot();v.solo=false;v.players=Array.from({length:7},(_,i)=>({id:String(i),name:`Player ${i}`,score:i,active:i===4}));
+ const p=props(v),ui=render(<ElevenUpView {...p}/>),scores=ui.getByLabelText('Scores');
+ expect(scores.firstElementChild?.textContent).toBe('Player 44');scores.scrollLeft=100;
+ ui.rerender(<ElevenUpView {...p} view={{...v,players:v.players.map(player=>({...player,active:player.id==='6'}))}}/>);
+ expect(scores.firstElementChild?.textContent).toBe('Player 66');expect(scores.scrollLeft).toBe(0);
+ expect(v.players.map(player=>player.id)).toEqual(['0','1','2','3','4','5','6']);
 });

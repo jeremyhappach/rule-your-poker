@@ -1,5 +1,6 @@
 import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {PlayingCard} from '@/components/PlayingCard';
+import {CountdownDots} from '@/components/ui/CountdownDots';
 import {adjacent,cardName,position,isV2,type Projection,type Intent} from '@/lib/triTowers/model';
 import {towerAwards,dotClock} from '@/lib/triTowers/polishPresentation';
 import {TriScorePill,TriRoundIntro,useTriRoundPresentation,type TriScore} from './TriTowersPresentation';
@@ -50,7 +51,7 @@ export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,pau
    })}
   </div></div>
   {modern&&(v.phase==='ready'||v.phase==='intro')?<div className="tri-dot-clock tri-ready-text">{v.phase==='ready'&&<small>{paused?'Paused · ':''}Play a card or draw · {Math.ceil(remaining/1000)}s</small>}</div>:<div className="tri-dot-clock" role="progressbar" aria-label={v.phase==='stage_complete'?'Round timer completion':v.phase==='ready'?'Ready time remaining':'Round time remaining'} aria-valuemin={0} aria-valuemax={full/1000} aria-valuenow={Math.min(full,displayRemaining)/1000} aria-valuetext={`${paused?'Paused · ':''}${Math.ceil(displayRemaining/1000)} seconds remaining`} data-tone={dots.tone} data-intro={v.phase==='intro'}>
-   <div aria-hidden="true" className="tri-dots">{Array.from({length:24},(_,i)=><i key={i} data-lit={i<dots.lit} data-zone={i<2?'red':i<4?'yellow':'green'}/>)}</div>
+   <CountdownDots remaining={displayRemaining} duration={full}/>
    {(paused||v.phase==='ready')&&<small>{paused?'Paused':`Ready · ${Math.ceil(remaining/1000)}s`}</small>}
   </div>}
   <div className="tri-deck-row">

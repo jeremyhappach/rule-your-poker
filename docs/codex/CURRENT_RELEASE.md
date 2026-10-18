@@ -1,4 +1,23 @@
-# 11 Up — 2026-10-18 — shared polish, awaiting owner smoke
+# 11 Up — 2026-10-18 — corrective polish, awaiting owner smoke
+
+Owner reported that the prior polish stretched the original ball clusters,
+misaligned the scoreboard and retained a numeric active-play clock. The shared
+view restores the pre-polish rack/ball formulas without enlargement, centers
+Round / scores / Take Score in one band, and uses the extracted TriTowers dot
+presentation with 11 Up's own frozen duration and authoritative deadline. Ready
+remains numeric. Jeremy's follow-up stacks the two-player pills; larger tables
+scroll with the active player first and visible at turn changes. Auto-eleven,
+canonical balances, controls and Rules & Info contrast remain. No rules, SQL,
+timing, transport or settlement changes. TypeScript, 2,419 application tests,
+241 harness tests and the production build pass. Checkpoint:
+`eleven-up-corrective-polish-2026-10-18`. See
+[correction evidence and smoke](ELEVEN_UP_CORRECTIVE_POLISH.md).
+
+# 11 Up — 2026-10-18 — prior shared polish, presentation rejected
+
+Superseded by the corrective pass above after owner inspection identified
+stretched clusters, the incorrect scoreboard grouping and timer presentation.
+The original separation checks did not establish preservation of proportions.
 
 Approved shared Arcade/multiplayer layout and automatic exactly-eleven submission
 reuse the existing guarded, immutable command path. Take Score moves upper right;
