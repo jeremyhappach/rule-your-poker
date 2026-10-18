@@ -13,35 +13,58 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,r=b.result,hold=b.rules.holdMs+(r?.reason==='cleared'?b.rules.clearCelebrationMs:0);
  const result=r?{...r,id:r.id??v.scope,elapsed:Math.max(0,at-(b.deadline-hold))}:null;
  const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
- return <FullscreenGameShell className="eleven-scene" title="11 Up" description={`${v.solo?'Arcade · ':''}${v.board.phase==='complete'?'Final scores':`Round ${v.round}${v.round===3?' · Bonus':' of 2'}`}`}
-  scores={<div className="eleven-scores" aria-label="Scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>}
+ return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
+  scores={<div className="eleven-scores" data-multiplayer={!v.solo} aria-label="Scores">{v.players.map(p=><div className="eleven-score-entry" key={p.id}><div className="eleven-score-pill" data-active={p.active}>{!v.solo&&<span title={p.name}>{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>{p.active&&b.phase!=='complete'&&!sessionEnded&&<span className="eleven-round">{v.round===3?'Round 3 / 3 · Bonus':`Round ${v.round} / 2`}</span>}</div>)}</div>}
   activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
   announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription={`P-Town scoring · ${b.rules.version}`} panel={panel??<ElevenUpRules stageMs={b.rules.stageMs}/>}>
   {!sessionEnded&&<ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,motion,result}} active={tab==='cards'}/>}
  </FullscreenGameShell>;
 }
 function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,active,motion,result}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){
- const root=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),[selection,setSelection]=useState<number[]>([]);
+ const root=useRef<HTMLDivElement>(null),rack=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),[selection,setSelection]=useState<number[]>([]);
+ const selected=useRef<number[]>([]),submitted=useRef(false);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
- useLayoutEffect(()=>setSelection([]),[v.scope,v.revision,epoch,active]);
+ useLayoutEffect(()=>{selected.current=[];submitted.current=false;setSelection([]);},[v.scope,v.revision,epoch,active]);
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,remaining=Math.max(0,b.deadline-at);
  const canAct=v.canAct&&!v.paused&&!pending&&!error&&remaining>0&&['ready','playing'].includes(b.phase)&&active;
  const sum=selection.reduce((n,id)=>n+ballValue(id),0);
- const toggle=(id:number)=>setSelection(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);
+ const toggle=(id:number)=>{
+  if(!canAct||submitted.current)return;
+  const next=selected.current.includes(id)?selected.current.filter(x=>x!==id):[...selected.current,id];
+  selected.current=next;setSelection(next);
+  // Submit from the tap, never a render/effect. The transport persists one
+  // immutable request before I/O; this latch also closes the pre-render tap gap.
+  if(next.length>=2&&next.reduce((n,item)=>n+ballValue(item),0)===11){submitted.current=true;onIntent({type:'group',items:[...next]});}
+ };
  const terminal=b.phase==='complete'||v.finished&&b.phase!=='stage_complete';
  const finalReady=terminal||v.finished&&remaining===0;
+ useLayoutEffect(()=>{
+  const field=rack.current;if(!field||!globalThis.ResizeObserver)return;
+  const measure=()=>{
+   const {width,height}=field.getBoundingClientRect();
+   // Bound the modest width increase by the actual nearest diagonal and
+   // same-column spacing in ballPosition. Only this felt container is measured.
+   const diameter=Math.min(width*.117,Math.hypot(width*.06,height*.14)*.94,height*.28*.94);
+   field.style.setProperty('--eleven-ball-diameter',`${diameter}px`);
+  };
+  const observer=new ResizeObserver(measure);observer.observe(field);measure();return()=>observer.disconnect();
+ },[layer,terminal]);
  return <div ref={root} className="eleven-root" data-eleven-up data-phase={b.phase} data-round={v.round}>
   {error&&<div className="eleven-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}
-  {!terminal&&<div className="eleven-table-label">{v.paused?'Paused':b.phase==='ready'?`Make eleven or pass to start · ${Math.ceil(remaining/1000)}s`:b.phase==='playing'?`${Math.ceil(remaining/1000)} seconds`:''}</div>}
   {layer&&createPortal(<div className="eleven-plane">
-   {!terminal&&<><div className="eleven-rack" aria-label="Pool balls on felt">
-    {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`${y}%`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={selection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}
+   {!terminal&&<>
+   {b.phase!=='stage_complete'&&<button className="eleven-take-score" disabled={!canAct||b.phase!=='playing'} onClick={()=>onIntent({type:'take_score'})}>Take Score</button>}
+   <div ref={rack} className="eleven-rack" aria-label="Pool balls on felt">
+    {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),row=(y-10)/70,exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`calc(${row*100}% + ${.5-row} * var(--eleven-ball-diameter, 0px))`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={selection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}
    </div>
-   {b.phase!=='stage_complete'&&<div className="eleven-controls">
-    <div className="eleven-current"><small>DRAW · {b.stockRemaining} LEFT</small>{b.current!==null?<button className="eleven-draw" aria-label={`Draw ball ${ballValue(b.current)}`} aria-pressed={selection.includes(b.current)} disabled={!canAct} onClick={()=>toggle(b.current!)}><Ball id={b.current}/></button>:<span>Empty</span>}</div>
-    <div className="eleven-group"><output aria-label={`Selected total ${sum}`}>{sum} <span>/ 11</span></output><button disabled={!canAct||sum!==11||selection.length<2} onClick={()=>onIntent({type:'group',items:[...selection]})}>Make Eleven</button><button className="eleven-reset" disabled={!selection.length||pending} onClick={()=>setSelection([])}>Clear selection</button></div>
-    <div className="eleven-actions"><button disabled={!canAct||!b.canPass} onClick={()=>onIntent({type:'pass'})}>Pass</button><button disabled={!canAct||b.phase!=='playing'} onClick={()=>onIntent({type:'take_score'})}>Take Score</button></div>
-   </div>}
+   {b.phase!=='stage_complete'&&<>
+    <output className="eleven-selection" aria-label={`Selected total ${sum}`}>{sum}</output>
+    {(b.phase==='ready'||b.phase==='playing')&&<div className="eleven-clock" role="timer" aria-label={b.phase==='ready'?'Time to start':'Time remaining'}><span>{v.paused?'Paused · ':b.phase==='ready'?'Select or pass · ':''}{Math.floor(Math.ceil(remaining/1000)/60)}:{String(Math.ceil(remaining/1000)%60).padStart(2,'0')}</span></div>}
+    <div className="eleven-controls">
+     <div className="eleven-current">{b.current!==null?<button className="eleven-draw" aria-label={`Draw ball ${ballValue(b.current)}`} aria-pressed={selection.includes(b.current)} disabled={!canAct} onClick={()=>toggle(b.current!)}><Ball id={b.current}/></button>:<span>Empty</span>}</div>
+     <button className="eleven-pass" disabled={!canAct||!b.canPass} aria-label={`Pass, ${b.stockRemaining} draws remaining`} onClick={()=>onIntent({type:'pass'})}><span className="eleven-stock-count" aria-hidden="true">{b.stockRemaining}</span>Pass</button>
+    </div>
+   </>}
    </>}
    {b.phase==='intro'&&<div className="eleven-intro"><TriRoundIntro remaining={remaining} roundLabel={v.round===3?'BONUS ROUND':`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${v.players.find(p=>p.active)?.name??'Player'}’S TURN`} paused={v.paused}/></div>}
    {result&&<div className="eleven-result" role="status" data-celebrating={motion.admitted&&result.reason==='cleared'&&motion.elapsed<3000}>

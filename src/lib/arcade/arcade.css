@@ -12,3 +12,11 @@ body:has(.arcade-page),body:has(.arcade-run){background:#0c171e}
 .arcade-result{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .65rem;border:1px solid #edc56e66;border-radius:.6rem;padding:.5rem .75rem;margin-bottom:.6rem;font-size:.8rem}.arcade-result strong{font-size:1.25rem;font-weight:800;color:#edc56e}.arcade-result p{margin-left:auto;color:#c9d3d7}
 .arcade-info{max-height:85%;overflow-y:auto;background:#101f28;color:#f5f1df;border-color:#eac16d55;gap:.8rem}.arcade-info>p,.arcade-info details,.arcade-info label{font-size:.85rem}.arcade-version{display:grid;gap:.3rem}.arcade-version select{background:#172b36;color:#f5f1df;border:1px solid #ffffff33;border-radius:.4rem;padding:.6rem}.arcade-upload{display:grid;grid-template-columns:1fr auto;gap:.5rem;border-top:1px solid #ffffff22;padding-top:.75rem}.arcade-upload input,.arcade-upload small{grid-column:1/-1;min-width:0}.arcade-upload input{max-width:100%;font-size:.8rem;min-height:2.75rem}.arcade-upload input::file-selector-button{padding:.65rem;border-radius:.4rem;background:#edc56e;color:#152027;border:0;margin-right:.5rem}.arcade-upload small{color:#b9c7cc}
 .arcade-run{display:flex;flex-direction:column;overflow:hidden;background:#0c171e}.arcade-run-score{display:flex;justify-content:center;align-items:center;gap:.75rem}.arcade-run-score span{font-size:.85rem;color:#c4d2d7}.arcade-run-score strong{font-size:1.8rem;color:#edc56e;font-weight:800}.arcade-error{position:relative;z-index:25;background:#452b27;padding:.5rem}.arcade-page :focus-visible,.arcade-info :focus-visible,.arcade-run :focus-visible{outline:2px solid #edc56e;outline-offset:3px}
+/* The portaled dialog must own both colors: bg-background is emitted later. */
+.arcade-info[role=dialog]{--foreground:196 30% 15%;--muted-foreground:210 15% 35%;--accent:42 35% 92%;--ring:280 35% 38%;background:#fffdf6;color:#1b3037;border-color:#b8b7a7}
+.arcade-info[role=dialog] :is(h2,h3){color:#172b33}
+.arcade-info[role=dialog]>button{color:#334854;opacity:1;min-width:2rem;min-height:2rem;display:grid;place-items:center}
+.arcade-info[role=dialog] .arcade-upload{border-color:#b8b7a7}
+.arcade-info[role=dialog] .arcade-upload small{color:#4c5c66}
+.arcade-info[role=dialog] .arcade-version select{background:#fff;color:#1b3037;border-color:#a1a8a9}
+.arcade-info[role=dialog] :focus-visible{outline-color:#713c85}

@@ -1,3 +1,16 @@
+# 11 Up — 2026-10-18 — shared polish, awaiting owner smoke
+
+Approved shared Arcade/multiplayer layout and automatic exactly-eleven submission
+reuse the existing guarded, immutable command path. Take Score moves upper right;
+the compact purple sum, deadline timer, centered ball and counted Pass simplify
+the lower controls. Round sits beside the active score; only Arcade loses You
+and its mode subtitle. Rack-relative sizing preserves separation at phone and
+landscape dimensions. Shared Rules & Info now uses dark text on a light surface
+for TriTowers, 11 Up, Run21 and Yahtzee. Rules, timing, SQL, financial authority
+and recovery are unchanged. Full validation/build, 21 final focused checks and
+12 layout/four contrast fixtures pass. Checkpoint:
+`eleven-up-shared-polish-2026-10-18`. See [evidence and smoke](ELEVEN_UP_SHARED_POLISH.md).
+
 # 11 Up — 2026-10-17 — three-minute rounds
 
 Owner smoke confirmed the two-minute duration was too short. Approved new
