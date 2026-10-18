@@ -1,5 +1,14 @@
 # Repository map
 
+11 Up smoke integration: `supabase/eleven-up/smoke.sql` owns private shared score
+facts, the compatible Arcade/multiplayer result view and authenticated own-score
+history. `20261018161030_eleven_up_smoke_corrections.sql` installs it alongside
+versioned manual-stuck rules, the authoritative terminal deadline/recovery and
+Blast FK ownership. `smoke-production-proof.sql` + `smoke-proof.sql` run together
+inside BEGIN/ROLLBACK. `winnerCelebration.ts` shares winner-only presentation
+receipts between Run21 and 11 Up; the existing shell retention adapter accepts
+either game family. `MyGameHistory.tsx` renders each player's finalized scores.
+
 11 Up: `supabase/eleven-up/` owns the shared SQL core and separate
 multiplayer/Arcade orchestration. `src/components/elevenUp/`,
 `src/hooks/useElevenUp.ts` and `src/lib/elevenUp/` own presentation and transport

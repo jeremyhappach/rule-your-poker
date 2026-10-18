@@ -16,7 +16,11 @@
 .eleven-scores[data-stacked=true]{flex-direction:column;gap:.2rem}
 .eleven-scores[data-stacked=true] .eleven-score-pill{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:.4rem;width:100%;max-width:12rem;padding:.15rem .3rem}
 .eleven-scores[data-stacked=true] .eleven-score-pill>span{max-width:100%}
-.eleven-scores[data-stacked=true] small{grid-column:1/-1;text-align:center}
+.eleven-scores[data-stacked=true] small{grid-column:1/-1;text-align:left;justify-self:start}
+.eleven-score-pill[data-winner=true]{animation:eleven-winner-pulse .8s ease-in-out infinite alternate;border-color:#ffdb62}
+@keyframes eleven-winner-pulse{to{box-shadow:0 0 .8rem #ffdc75aa}}
+.eleven-result .eleven-winner-name{font-size:clamp(1.2rem,5cqw,2.2rem)}
+.eleven-achievements{max-height:60%;overflow:auto;pointer-events:auto}
 .eleven-plane{position:absolute;inset:0;container:eleven-plane/size;pointer-events:none}
 .eleven-playfield{position:absolute;inset:3.75rem 0 0;container:eleven-playfield/size;--eleven-field-bottom:calc(52.6% + min(5.5cqw,6cqh))}
 .eleven-plane[data-two-player=true] .eleven-score-band{height:4.75rem}
@@ -46,4 +50,4 @@
 .eleven-finish{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);z-index:5}.eleven-pending{position:absolute;bottom:0;left:0;font-size:.65rem}.eleven-error{position:absolute;inset:14% 5% auto;z-index:6;background:#5f211c;padding:.5rem;pointer-events:auto;font-size:.8rem}
 .eleven-rules{display:grid;gap:1rem;line-height:1.5}
 @container eleven-playfield (min-aspect-ratio: 3/2){.eleven-clock{bottom:calc(max(19%,2.75rem) + .3rem);left:25%;width:32%}.eleven-controls{height:19%}.eleven-controls .eleven-draw{width:max(2.75rem,15cqh);height:max(2.75rem,15cqh)}}
-@media(prefers-reduced-motion:reduce){.eleven-result{box-shadow:none}}
+@media(prefers-reduced-motion:reduce){.eleven-result{box-shadow:none}.eleven-score-pill[data-winner=true]{animation:none}}

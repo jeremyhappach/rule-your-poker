@@ -5,11 +5,12 @@ import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {TriRoundIntro,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {ballPosition,ballValue,type ElevenIntent,type ElevenSnapshot} from '@/lib/elevenUp/model';
+import {scoreAchievementLabels} from '@/lib/arcade/scoreAchievements';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
-interface Props {onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
-export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
+interface Props {terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
+export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,terminalPresenting=false}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const scoreGroup=useRef<HTMLDivElement>(null),activePlayerId=v.players.find(p=>p.active)?.id;
  const scorePlayers=v.players.length>2?[...v.players.filter(p=>p.active),...v.players.filter(p=>!p.active)]:v.players;
@@ -17,7 +18,7 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,r=b.result,hold=b.rules.holdMs+(r?.reason==='cleared'?b.rules.clearCelebrationMs:0);
  const result=r?{...r,id:r.id??v.scope,elapsed:Math.max(0,at-(b.deadline-hold))}:null;
  const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
- const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active}>{!v.solo&&<span title={p.name}>{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
+ const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active} data-winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)}>{!v.solo&&<span title={p.name}>{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
   activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
   announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription={`P-Town scoring · ${b.rules.version}`} panel={panel??<ElevenUpRules stageMs={b.rules.stageMs}/>}>
@@ -70,8 +71,11 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
     <span>{result.reason==='cleared'?'✦ ALL BALLS CLEARED ✦':b.event.label}</span><strong>{(motion.displayScore??result.score).toLocaleString()}</strong>
     {(!motion.admitted||result.reason!=='cleared'||motion.elapsed>=3000)&&<p>Elevens +{result.groupBonus.toLocaleString()}<br/>{result.clearBonus>0&&<>Clear +{result.clearBonus.toLocaleString()} · Stock +{result.stockBonus.toLocaleString()}<br/></>}Speed +{result.timeBonus.toLocaleString()}</p>}
    </div>}
-   {terminal&&<div className="eleven-result"><span>{v.solo?'Game complete':'Competition complete'}</span><strong>{Math.max(...v.players.map(p=>p.score)).toLocaleString()}</strong>{!v.solo&&<p>{v.settled?'Settlement recorded':'Confirming settlement…'}</p>}</div>}
-   {finalReady&&onFinish&&<button className="eleven-finish" onClick={onFinish}>{v.solo?'Leaderboard':'Continue'}</button>}
+   {terminal&&<div className="eleven-result" role="status"><span>{v.solo?'Game complete':'Game Over'}</span>
+    {!v.solo&&v.terminal?<><strong className="eleven-winner-name">{v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name).join(' & ')} {v.terminal.winnerIds.length===1?'wins':'tie'} with {v.terminal.score.toLocaleString()}</strong>
+    <div className="eleven-achievements">{v.players.map(p=>scoreAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>))}</div></>:<strong>{Math.max(...v.players.map(p=>p.score)).toLocaleString()}</strong>}
+    {!v.solo&&!v.settled&&<p>Confirming settlement…</p>}</div>}
+   {finalReady&&v.solo&&onFinish&&<button className="eleven-finish" onClick={onFinish}>Leaderboard</button>}
    {pending&&<span className="eleven-pending" role="status">Confirming play…</span>}
    </div>}
   </div>,layer)}

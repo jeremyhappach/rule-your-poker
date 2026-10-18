@@ -16,8 +16,8 @@ it('retains stale, duplicate and presentation-version behavior',async()=>{
 it('keeps malformed requests and non-TriTowers routing on their existing path',()=>{
  expect(triShortcut({...body,requestId:'bad'})).toBeFalsy();expect(triShortcut({...body,game:'run21'})).toBeFalsy();expect(triShortcut({...body,presentationVersion:2})).toBeFalsy();
 });
-it('rejects a v3 client before a v4 action, while its frozen v3 game remains available',async()=>{
- const rpc=vi.fn(async(name:string)=>name==='arcade_load'?{id:run,game:'tri-towers',ruleset:'tri-towers/4'}:{projection:{revision:8}});
+it.each(['tri-towers/4','tri-towers/5'])('rejects a v3 client before a %s action, while its frozen v3 game remains available',async ruleset=>{
+ const rpc=vi.fn(async(name:string)=>name==='arcade_load'?{id:run,game:'tri-towers',ruleset}:{projection:{revision:8}});
  await expect(arcadeOperation(rpc,actor,'',{...body,presentationVersion:3})).rejects.toThrow('arcade:refresh_required');expect(rpc).toHaveBeenCalledTimes(1);
  rpc.mockImplementation(async(name:string)=>name==='arcade_load'?{id:run,game:'tri-towers',ruleset:'tri-towers/3'}:{projection:{revision:8}});
  expect(await arcadeOperation(rpc,actor,'',{...body,presentationVersion:3})).toEqual({revision:8});

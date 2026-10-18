@@ -108,7 +108,9 @@ export class AudioManager {
         this.context.addEventListener('statechange', this.stateChanged);
       }
       if (this.context.state !== 'running') {
-        this.stopActive(); // Never resume old sources after a suspended/interrupted audio clock.
+        // Retire sources that actually started; a first-gesture unlock must not
+        // consume live timelines still waiting for permission to play.
+        this.stopActive(false);
         void this.context.resume().then(() => this.flush()).catch(() => {});
       }
       this.flush();
@@ -235,8 +237,8 @@ export class AudioManager {
     if (this.played.has(key)) return true;
     try { return this.env.storage().getItem(key) === '1'; } catch { return false; }
   }
-  private stopActive() {
-    for (const key of this.timelines.keys()) this.retireTimeline(key);
+  private stopActive(includeWaiting = true) {
+    for (const [key, entry] of this.timelines) if (includeWaiting || entry.stop) this.retireTimeline(key);
     for (const stop of this.active) stop();
   }
   private removePending(key: string) {

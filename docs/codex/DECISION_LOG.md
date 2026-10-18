@@ -1,3 +1,14 @@
+# 2026-10-18 — 11 Up smoke integration
+
+Owner-directed manual stuck completion is a shared gameplay policy: new 11 Up 3
+and TriTowers 5 admissions preserve older rules and separate score groups. Record
+facts now use one private Arcade/multiplayer comparison boundary; eligible 11 Up
+scores are written with canonical settlement, including losing players. Multiplayer
+presentation uses a server deadline, canonical chip cursor, shared winner receipt
+and shell retention. Blast follows the session dependency graph through cascading
+foreign keys. No historical backfill was performed. See
+[scope and evidence](ELEVEN_UP_SMOKE_CORRECTIONS.md).
+
 # 2026-10-17 — 11 Up three-minute rounds
 
 Owner approved extending the gameplay duration to three minutes after smoke.

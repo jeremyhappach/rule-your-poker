@@ -131,3 +131,12 @@ it('does not catch up existing instantaneous sounds after blocked playback', asy
   await ready(); h.ctx.state = 'suspended';
   expect(h.manager.play(doorbellCue)).toBe(false); h.state('running'); expect(h.starts()).toEqual([]);
 });
+
+it('keeps an unplayed live timeline through repeated mobile unlock gestures, then plays once',async()=>{
+ await ready();h.ctx.state='suspended';
+ const cue={userId:'user',id:'eleven:opponent:round:bell',startedAt:Date.now(),expiresAt:Date.now()+2500,cueAt:()=>boxingBellCue};
+ h.manager.follow(cue);h.manager.unlock();h.manager.unlock();
+ expect(h.starts()).toEqual([]);expect(sessionStorage.length).toBe(0);
+ h.state('running');expect(h.starts()).toHaveLength(8);
+ h.manager.follow(cue);h.manager.unlock();expect(h.starts()).toHaveLength(8);
+});

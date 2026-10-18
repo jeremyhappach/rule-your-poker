@@ -12,6 +12,7 @@ const view:ElevenSnapshot={id:'fixture',scope:'fixture:1',revision:1,serverAt:10
 if(params.get('phase')==='ready'){view.board.phase='ready';view.board.deadline=31000;}
 if(count>2)view.players=view.players.map((p,i)=>({...p,active:i===count-1}));
 if(params.has('large')){view.round=3;view.players=view.players.map(p=>({...p,name:'Alexandria',score:180000,chips:100000}));}
+if(params.get('phase')==='complete'){view.board.phase='complete';view.settled=true;view.players[0].name='Hap';view.players[0].score=103000;view.terminal={resultId:'test-result',startedAt:0,deadline:999999,winnerIds:['player-0'],score:103000,achievements:{'player-0':{kind:'broken',overallKind:'broken',priorBest:50000,overallPriorBest:90000,rank:1,topTen:true}}};}
 const now=view.board.deadline-(view.board.phase==='ready'?view.board.rules.readyMs:view.board.rules.stageMs)*Number(params.get('fraction')??1);
 function Preview(){const [pending,setPending]=useState(false);return info?<main className="arcade-page"><ArcadeInfo game={info} name={info}/></main>:<div className="arcade-run" data-shell-presentation-mode="fullscreen"><ElevenUpView view={view} userId="player-0" now={now} pending={pending} error="" epoch={0} onIntent={()=>setPending(true)} onReconnect={()=>{}}/></div>;}
 createRoot(document.getElementById('root')!).render(<Preview/>);

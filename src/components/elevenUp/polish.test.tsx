@@ -12,6 +12,17 @@ afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 const snapshot=():ElevenSnapshot=>({id:'run',revision:1,serverAt:1000,scope:'run:round:actor:1',round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'user',name:'You',score:0,active:true}],board:{rules:{version:'eleven-up/2',stageMs:180000,introMs:2500,readyMs:30000,holdMs:5000,clearCelebrationMs:3000},phase:'playing',slots:[16,20,32,48],current:44,exposed:[0,1,2,3],passSlot:null,canPass:true,stockRemaining:28,groups:0,score:0,deadline:181000,event:{label:'',points:0}}});
 const props=(v=snapshot(),onIntent=vi.fn())=>({view:v,userId:'user',now:1000,pending:false,error:'',epoch:0,onIntent,onReconnect:vi.fn()});
 
+it('shows named multiplayer achievements and winner pulse without changing Arcade results',()=>{
+ const v=snapshot();v.solo=false;v.settled=true;v.board.phase='complete';v.players=[{id:'user',name:'Hap',score:103000,active:true},{id:'other',name:'Sam',score:90000,active:false}];
+ v.terminal={resultId:'receipt',startedAt:0,deadline:3000,winnerIds:['user'],score:103000,achievements:{user:{kind:'broken',priorBest:100,overallKind:'broken',overallPriorBest:100,rank:1,topTen:true},other:{kind:'broken',priorBest:80,overallKind:'lower',overallPriorBest:100,rank:2,topTen:true}}};
+ const ui=render(<ElevenUpView {...props(v)} onFinish={vi.fn()} terminalPresenting now={4000}/>);
+ expect(ui.getByText('Game Over')).toBeTruthy();expect(ui.getByText('Hap wins with 103,000')).toBeTruthy();
+ expect(ui.getByText(/Sam.*all-time high/)).toBeTruthy();expect(ui.container.querySelectorAll('[data-winner=true]')).toHaveLength(1);
+ expect(ui.queryByRole('button',{name:'Continue'})).toBeNull();
+ ui.rerender(<ElevenUpView {...props({...v,solo:true})}/>);
+ expect(ui.getByText('Game complete')).toBeTruthy();expect(ui.queryByText('Game Over')).toBeNull();expect(ui.queryByText(/Sam.*all-time high/)).toBeNull();expect(ui.container.querySelectorAll('[data-winner=true]')).toHaveLength(0);
+});
+
 it('toggles individual balls, resolves a three-ball eleven once, and removes redundant controls',()=>{
  const onIntent=vi.fn(),ui=render(<StrictMode><ElevenUpView {...props(snapshot(),onIntent)}/></StrictMode>);
  const ball=(n:number)=>ui.getByRole('button',{name:new RegExp(`^Ball ${n},`)});

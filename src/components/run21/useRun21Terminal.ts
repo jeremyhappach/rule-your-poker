@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import confetti from 'canvas-confetti';
+import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {supabase} from '@/integrations/supabase/client';
 import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import {useChipPresentationCursorState,useChipTransferPresentationAdmission} from '@/lib/canonicalShell/ChipTransportProvider';
@@ -55,7 +55,7 @@ export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,
       announcements.emit({id:`match_win:run21:${receipt.resultId}`,type:'match_win',scope:{dealerGameId:view.identity.sessionId,roundId:view.roundId},
         payload:{winnerName:winner.name,text:`${winner.name} Wins! ${view.players.map(p=>`${p.name}: ${view.cumulative[p.id].toLocaleString()}`).join(' • ')}`,
           score:{winner:view.cumulative[receipt.winnerId],loser:view.cumulative[receipt.loserId]}},ttlMs:10000});
-      if(winner.id===view.viewerId)confetti({particleCount:150,spread:70,origin:{y:.6},colors:['#FFD700','#FFA500','#FF6347','#00CED1','#9370DB']});
+      celebrateCanonicalWinner(key,view.viewerId??'',[winner.id],true);
     }
     // Resolve the immutable receipt to its real journal cursor, never a locally
     // synthesized animation id. Cursor state survives child remounts.

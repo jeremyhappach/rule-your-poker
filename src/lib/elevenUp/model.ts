@@ -1,12 +1,14 @@
 export type ElevenIntent={type:'group';items:number[]}|{type:'pass'|'take_score'|'abandon'};
 export interface ElevenResult {id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;groupBonus:number;clearBonus:number;stockBonus:number;timeBonus:number;completedAt:number}
 export interface ElevenBoard {
- rules:{version:'eleven-up/1'|'eleven-up/2';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
+ rules:{version:'eleven-up/1'|'eleven-up/2'|'eleven-up/3';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
  phase:'intro'|'ready'|'playing'|'stage_complete'|'complete';slots:(number|null)[];current:number|null;
  exposed:number[];passSlot:number|null;canPass:boolean;stockRemaining:number;groups:number;score:number;deadline:number;
  result?:ElevenResult|null;event:{label:string;points:number};
 }
 export interface ElevenSnapshot {
+ viewerId?:string;
+ terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number;achievements:Record<string,import('../arcade/scoreAchievements').ScoreAchievements>};
  abandoned?:boolean;
  identity?:{sessionId:string;dealerGameId:string;roundId:string};
  financial?:{balances:Record<string,number>;resultId:string|null;batch:import('../canonicalShell/ChipPresentationLedger').ChipPresentationBatch|null};
@@ -36,7 +38,7 @@ export function acceptElevenSnapshot(old:ElevenSnapshot|null,next:ElevenSnapshot
 export function multiplayerSnapshot(v:any):ElevenSnapshot {
  const id=v.identity.dealerGameId,scope=[id,v.identity.roundId,v.activePlayerId,v.stage].join(':');
  const {rules,phase,slots,current,exposed,passSlot,canPass,stockRemaining,groups,score,deadline,event}=v;
- return {identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,board:{rules,phase,slots,current,exposed,passSlot,canPass,stockRemaining,groups,score,deadline,event,result:v.phase==='stage_complete'?v.stages.at(-1):null},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,solo:false,
+ return {identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,viewerId:v.viewerId,terminal:v.terminal,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,board:{rules,phase,slots,current,exposed,passSlot,canPass,stockRemaining,groups,score,deadline,event,result:v.phase==='stage_complete'?v.stages.at(-1):null},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,solo:false,
  players:v.players.map((p:any)=>({id:p.id,seat:p.seat,name:p.name,score:v.scores[p.id]??0,active:p.id===v.activePlayerId,chips:v.financial?.balances[p.id]}))};
 }
 export function arcadeSnapshot(v:any,userId:string):ElevenSnapshot {

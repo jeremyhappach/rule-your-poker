@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
+import {scoreAchievementLabels,type ScoreAchievements} from '@/lib/arcade/scoreAchievements';
 
 // Format number with thousands separators
 const formatWithCommas = (num: number): string => {
@@ -34,6 +35,7 @@ interface ChatMsg {
   created_at: string;
   username: string;
 }
+interface ScoreHistory {id:string;session_id:string;game:string;ruleset:string;score:number;name:string;record:ScoreAchievements;completed_at:string;real_money:boolean}
 
 interface MyGameHistoryProps {
   userId: string;
@@ -48,6 +50,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [scoreHistory,setScoreHistory]=useState<ScoreHistory[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -60,6 +63,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
 
   const fetchHistory = async () => {
     setLoading(true);
+    const scoreRequest=(supabase.rpc as any)('multiplayer_score_history').then(({data,error}:any)=>{if(!error)setScoreHistory(data??[]);});
     
     // Get all games where this player participated
     const { data: playerData, error } = await supabase
@@ -119,6 +123,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
     setSessions(sortedSessions);
+    await scoreRequest;
     setLoading(false);
   };
 
@@ -228,6 +233,10 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                           {session.chips >= 0 ? '+' : '-'}{session.real_money ? '$' : ''}{formatWithCommas(session.chips)}
                         </div>
                       </div>
+                      {scoreHistory.filter(score=>score.session_id===session.id).map(score=><div key={score.id} className="mt-1 text-xs">
+                        <strong>{score.game==='eleven-up'?'11 Up':score.game} · Your score {score.score.toLocaleString()}</strong>
+                        {scoreAchievementLabels(score.name,score.record).map(label=><p key={label}>{label}</p>)}
+                      </div>)}
                       <div className="flex items-center justify-between mt-0.5">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground">

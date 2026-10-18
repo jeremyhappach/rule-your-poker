@@ -9,21 +9,34 @@ import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import {usePresentationPlayerChipBalance} from '@/lib/canonicalShell/ChipTransportProvider';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ElevenSnapshot} from '@/lib/elevenUp/model';
+import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
+import {scoreAchievementLabels} from '@/lib/arcade/scoreAchievements';
 interface Props {dealerGameId:string;userId:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;liveEntry?:boolean;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(id:string)=>void}
 function Balance({player:p}:{player:ElevenSnapshot['players'][number]}){const chips=usePresentationPlayerChipBalance(p.id,p.chips??0);return <small data-chip-center={p.seat} data-chip-reaction-target={p.seat}>{chips} chips</small>;}
 export function ElevenUpTable(props:Props){
  const transport=useMemo(()=>elevenTransport(props.dealerGameId,props.userId,false),[props.dealerGameId,props.userId]),game=useElevenUp(props.dealerGameId,props.userId,transport);
  const v=game.snapshot,ready=useElevenFinancial(v,props.sessionEnded),chat=useGameChatContext(),announcements=useAnnouncements();
- const [error,setError]=useState(''),[closing,setClosing]=useState(false),terminal=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
- const complete=()=>{if(!v||completed.current)return;completed.current=true;callbacks.current.onTerminalComplete(`eleven-up|winseq|${v.identity!.sessionId}|${v.id}|1`);callbacks.current.onTerminalActive(false);};
+ const [error,setError]=useState(''),closing=useRef(false),terminal=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const sawLive=useRef(false);if(v&&!v.settled)sawLive.current=true;
+ const complete=()=>{if(!v||completed.current)return;completed.current=true;callbacks.current.onTerminalComplete(`eleven-up|winseq|${v.identity!.sessionId}|${v.id}|1|${v.financial?.resultId}|${v.identity!.roundId}`);callbacks.current.onTerminalActive(false);};
  useEffect(()=>{
   if(!v?.settled||props.sessionEnded)return;
-  if(v.finished&&ready){complete();return;}
   if(terminal.current)return;terminal.current=true;callbacks.current.onTerminalActive(true);
-  announcements.emit({id:`match_win:eleven-up:${v.id}`,type:'match_win',scope:{dealerGameId:v.identity!.sessionId,roundId:v.identity!.roundId},payload:{text:`11 Up complete · ${v.players.map(p=>`${p.name}: ${p.score.toLocaleString()}`).join(' · ')}`},ttlMs:10000});
+  if(v.terminal&&game.now<v.terminal.deadline){
+   const winners=v.players.filter(p=>v.terminal!.winnerIds.includes(p.id));
+   const text=`${winners.map(p=>p.name).join(' & ')} ${winners.length===1?'wins':'tie'} with ${v.terminal.score.toLocaleString()}`;
+   announcements.emit({id:`match_win:eleven-up:${v.terminal.resultId}`,type:'match_win',scope:{dealerGameId:v.identity!.sessionId,roundId:v.identity!.roundId},payload:{text},ttlMs:Math.max(1,v.terminal.deadline-game.now)});
+   celebrateCanonicalWinner(v.terminal.resultId,v.viewerId??'',v.terminal.winnerIds,sawLive.current&&game.epoch===0&&(v.settlement?.[v.viewerId??'']??0)>0);
+  }
  },[v,ready,props.sessionEnded,announcements]);
+ useEffect(()=>{
+  if(!v?.settled||!ready||props.sessionEnded||completed.current||game.now<(v.terminal?.deadline??0))return;
+  if(v.finished){complete();return;}
+  if(closing.current)return;
+  closing.current=true;
+  void elevenRpc('eleven_up_close',{p_dealer_game_id:v.id}).then(()=>game.reconnect()).catch(e=>setError((e as Error).message));
+ },[v,ready,props.sessionEnded,game.now]);
  if(!v)return <p role="status">{game.error||'Restoring 11 Up…'} <button onClick={game.reconnect}>Reconnect</button></p>;
- const close=async()=>{if(!ready||closing)return;setClosing(true);try{await elevenRpc('eleven_up_close',{p_dealer_game_id:v.id});complete();}catch(e){setError((e as Error).message);}finally{setClosing(false);}};
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v.results?.map(r=><p key={r.id}>{v.players.find(p=>p.id===r.playerId)?.name} · Round {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore.toLocaleString()} · Total {r.score.toLocaleString()}</p>)}</div>:<ElevenUpRules/>;
- return <ElevenUpView view={v} userId={props.userId} now={game.now} pending={game.pending} error={error||game.error} epoch={game.epoch} liveEntry={props.liveEntry} onIntent={game.act} onReconnect={game.reconnect} onFinish={v.settled&&ready&&!closing&&!props.sessionEnded?()=>void close():undefined} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} panel={panel} balance={p=><Balance player={p}/>}/>;
+ return <ElevenUpView view={v} userId={props.userId} now={game.now} pending={game.pending} error={error||game.error} epoch={game.epoch} liveEntry={props.liveEntry} onIntent={game.act} onReconnect={()=>{closing.current=false;setError('');game.reconnect();}} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} terminalPresenting={v.settled&&!completed.current} panel={<>{panel}{props.activeTab==='history'&&v.terminal&&v.players.map(p=><div key={p.id}>{scoreAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>)}</div>)}</>} balance={p=><Balance player={p}/>}/>;
 }

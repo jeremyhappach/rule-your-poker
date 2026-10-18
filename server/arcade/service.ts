@@ -40,7 +40,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   return result.projection;
  }
  if(row.game==='tri-towers'){
-  if((row.ruleset==='tri-towers/4'&&body.presentationVersion!==4||row.ruleset==='tri-towers/3'&&![3,4].includes(body.presentationVersion)))throw Error('arcade:refresh_required');
+  if((['tri-towers/4','tri-towers/5'].includes(row.ruleset)&&body.presentationVersion!==4||row.ruleset==='tri-towers/3'&&![3,4].includes(body.presentationVersion)))throw Error('arcade:refresh_required');
   if(body.op==='action'&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['remove','draw','take_score','abandon'].includes(body.intent.type)||body.intent.type==='remove'&&!Number.isInteger(body.intent.index)))throw Error('arcade:invalid_command');
   const result=await rpc('arcade_tri_step',{p_actor:userId,p_run:row.id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_index:body.intent.type==='remove'?body.intent.index:null}:{})});
   if(result.outcome==='stale')throw Error('arcade:stale_action');

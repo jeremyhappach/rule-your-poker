@@ -1,3 +1,21 @@
+# 11 Up — 2026-10-18 — smoke corrections, awaiting owner smoke
+
+New shared rules `eleven-up/3` and `tri-towers/5` require manual Take Score when
+stuck, preserving timeout/all-clear and frozen older games. Shared audio keeps
+unplayed timelines through first-gesture unlock. Multiplayer adds left-aligned
+chip rows, server-timed Game Over with named outcomes/record facts, winner-only
+canonical confetti and automatic continuation after chip presentation. Canonical
+shell retention survives the authoritative next-state handoff. Blast now cascades
+the 11 Up/TriTowers dependency graphs. Complete human 11 Up performances enter
+the compatible Arcade leaderboard and each player's history atomically with
+settlement. No historical backfill. Migration `20261018161030` is installed.
+
+TypeScript, 2,423 application tests plus focused terminal/version checks, 241 harness tests,
+production build, browser/audio checks, candidate/installed SQL rollback proofs
+and independent-connection settlement competition pass. Checkpoint:
+`eleven-up-smoke-corrections-2026-10-18`. Physical iPhone Safari and live two-device
+acceptance remain Jeremy's smoke. See [evidence and smoke](ELEVEN_UP_SMOKE_CORRECTIONS.md).
+
 # 11 Up — 2026-10-18 — corrective polish, awaiting owner smoke
 
 Owner reported that the prior polish stretched the original ball clusters,

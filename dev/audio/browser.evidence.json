@@ -1,9 +1,9 @@
 {
-  "recordedAt": "2026-10-16T18:09:12.954Z",
+  "recordedAt": "2026-10-18T16:08:27.069Z",
   "results": [
     {
       "browser": "Chrome desktop",
-      "version": "155.0.8059.40",
+      "version": "155.0.8059.82",
       "passed": true,
       "firstRound": {
         "starts": [
@@ -23,7 +23,7 @@
     },
     {
       "browser": "Chrome touch emulation",
-      "version": "155.0.8059.40",
+      "version": "155.0.8059.82",
       "passed": true,
       "firstRound": {
         "starts": [
@@ -43,7 +43,7 @@
     },
     {
       "browser": "Edge desktop",
-      "version": "155.0.4283.45",
+      "version": "155.0.4283.62",
       "passed": true,
       "firstRound": {
         "starts": [

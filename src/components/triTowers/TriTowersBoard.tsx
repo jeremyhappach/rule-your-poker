@@ -27,7 +27,7 @@ export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,pau
  const fresh=previous.current.roundKey===roundKey?awards.filter(a=>!previous.current.cleared.includes(a.tower)).map(a=>a.tower):[];
  const [animated,setAnimated]=useState<number[]>([]);
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
- const modern=['tri-towers/3','tri-towers/4'].includes(v.rules.version);
+ const modern=['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules.version);
  const motion=useTriRoundPresentation({scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
  const {flight,node}=useTriCardFlight(root,v,roundKey,recoveryEpoch,modern&&connected&&presentationActive&&!paused,motion.reduced,userId);
  useLayoutEffect(()=>{if(!presentationActive||!connected||paused)input?.interrupt();},[input,presentationActive,connected,paused]);
