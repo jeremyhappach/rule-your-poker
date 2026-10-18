@@ -47,8 +47,8 @@ BEGIN
  SELECT NOT EXISTS(SELECT 1 FROM jsonb_array_elements(b->'slots')x WHERE x='null'::jsonb) INTO full_i;
  IF full_i AND reason IN('take_score','exhausted') THEN bonus:=greatest(0,(b->>'deadline')::bigint-at_ms)/1000*(b#>>'{rules,timePerSecond}')::bigint;END IF;
  total:=(b->>'scoreBefore')::bigint+(b->>'handPoints')::bigint+bonus;
- result:=jsonb_build_object('scoreBefore',(b->>'scoreBefore')::bigint,'score',total,'displayScore',total,'stageScore',total-(b->>'scoreBefore')::bigint,'handPoints',(b->>'handPoints')::bigint,'timeBonus',bonus,'reason',reason,'completedAt',at_ms);
- RETURN b||jsonb_build_object('score',total,'result',result,'phase','stage_complete','deadline',at_ms+(b#>>'{rules,holdMs}')::bigint,
+ result:=jsonb_build_object('scoreBefore',(b->>'scoreBefore')::bigint,'score',total,'displayScore',total,'stageScore',total-(b->>'scoreBefore')::bigint,'handPoints',(b->>'handPoints')::bigint,'timeBonus',bonus,'reason',reason,'completedAt',at_ms,'presentationMs',15000,'lines',b->'lines','slots',b->'slots');
+ RETURN b||jsonb_build_object('score',total,'result',result,'phase','stage_complete','deadline',at_ms+greatest(15000,(b#>>'{rules,holdMs}')::bigint),
  'event',jsonb_build_object('label',CASE reason WHEN 'timeout' THEN 'Time expired' WHEN 'ready_timeout' THEN 'Round not started' WHEN 'exhausted' THEN 'Deck complete' ELSE 'Score taken' END,'points',bonus));
 END $$;
 

@@ -27,7 +27,7 @@ export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
   frontStyle?: 'canonical' | 'cartoon';
-  cartoonLayout?: 'standard' | 'tableau';
+  cartoonLayout?: 'standard' | 'tableau' | 'royal';
   card?: CardType;
   isHidden?: boolean;
   size?: CardSize;

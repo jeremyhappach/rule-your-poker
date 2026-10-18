@@ -1,4 +1,18 @@
-# Royal Flash — 2026-10-18 — acceptance audit, owner smoke pending
+# Royal Flash — 2026-10-18 — failed smoke corrected, new owner smoke pending
+
+Initial production smoke failed court-card suit visibility and scoring
+presentation. The correction gives Royal Flash explicit rank/suit court faces,
+removes the small Rows/Columns readout, and presents authoritative rows, columns,
+speed bonus and total while retaining the board. Both modes share the same view.
+New results receive a 15-second server presentation window; the approved
+`royal-flash/1` scoring and Ready/play clocks remain unchanged. Migration
+`20261018192837` and candidate/installed rollback proofs pass. Canonical
+settlement and progression have no animation/audio callback dependency.
+See [correction evidence and smoke checklist](ROYAL_FLASH_PRESENTATION_SMOKE_FIX.md).
+Fake-money multiplayer gates remain in place. Physical iPhone verification is
+Jeremy's remaining acceptance task. Checkpoint: `royal-flash-presentation-2026-10-18`.
+
+# Royal Flash — 2026-10-18 — earlier acceptance audit
 
 The follow-up audit corrected the live multiplayer score display, scrolling
 player balances and crowded short-landscape layout. Rules remain `royal-flash/1`.

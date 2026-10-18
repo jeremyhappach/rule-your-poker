@@ -1,3 +1,12 @@
+# 2026-10-18 — Royal Flash readable result presentation
+
+Jeremy's failed smoke requires explicit court suits and sequential row/column
+scoring in both modes. Preserve `royal-flash/1` scoring and gameplay clocks.
+The shared finish function adds immutable line/card breakdowns and extends only
+new result presentation from five to 15 seconds. Deadline-driven display and
+server recovery own timing; presentation callbacks never award or progress.
+See [qualification](ROYAL_FLASH_PRESENTATION_SMOKE_FIX.md).
+
 # 2026-10-18 — Owner-approved unified TriTowers leaderboard
 
 Jeremy judged the v4/v5 stuck-finish scoring difference insufficient to split

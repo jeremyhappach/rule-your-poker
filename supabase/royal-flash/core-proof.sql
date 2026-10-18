@@ -29,7 +29,7 @@ BEGIN
  s:=s||jsonb_build_object('stage',2,'turnIndex',0,'phase','stage_complete','deadline',10000,'scores',jsonb_build_object(p::text,200000));
  s:=private.royal_flash_reduce(s,'tick',NULL,10000);
  PERFORM pg_temp.royal_assert(s->>'stage'='3' AND s->>'score'='200000' AND s->'qualified'=jsonb_build_array(p::text),'earned bonus starts from cumulative score');
- s:=private.royal_flash_reduce(s,'place',ARRAY[0],12500);s:=private.royal_flash_reduce(s,'take_score',NULL,12501);s:=private.royal_flash_reduce(s,'tick',NULL,17501);
+ s:=private.royal_flash_reduce(s,'place',ARRAY[0],12500);s:=private.royal_flash_reduce(s,'take_score',NULL,12501);s:=private.royal_flash_reduce(s,'tick',NULL,(s->>'deadline')::bigint);
  PERFORM pg_temp.royal_assert(s->>'phase'='complete' AND s->'scores'->>p::text='200000','no fourth round or double counting');
  -- Real consent/bot/recovery owners, synthetic fixture inside caller rollback.
  INSERT INTO auth.users(id) VALUES(u),(other);INSERT INTO public.profiles(id,username,is_active) VALUES(u,'Royal human',true),(other,'Royal bot',true) ON CONFLICT(id) DO UPDATE SET is_active=true;

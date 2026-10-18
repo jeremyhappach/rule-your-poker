@@ -1,5 +1,12 @@
 # Royal Flash — approved P-Town rules
 
+October 18 production-smoke correction: Jeremy explicitly requested sufficient
+time for readable sequential row/column scoring. Newly completed boards now use
+a shared 15-second server presentation window instead of the original five
+seconds below. The frozen `royal-flash/1` rule configuration, point values,
+dealing and Ready/play clocks are unchanged. See
+[presentation qualification](ROYAL_FLASH_PRESENTATION_SMOKE_FIX.md).
+
 October 18, 2026. Approved version: `royal-flash/1`.
 Status: **Jeremy approved these rules; implemented in the shared SQL core**.
 

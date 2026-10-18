@@ -1,5 +1,5 @@
 export type RoyalIntent={type:'place';index:number}|{type:'take_score'|'abandon'};
-export interface RoyalResult {id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;handPoints:number;timeBonus:number;completedAt:number}
+export interface RoyalResult {presentationMs?:number;lines?:{kind:string;points:number}[];slots?:(number|null)[];id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;handPoints:number;timeBonus:number;completedAt:number}
 export interface RoyalBoard {
  rules:{version:'royal-flash/1';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
  phase:'intro'|'ready'|'playing'|'stage_complete'|'complete';slots:(number|null)[];current:number|null;

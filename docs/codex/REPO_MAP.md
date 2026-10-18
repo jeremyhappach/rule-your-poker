@@ -5,8 +5,11 @@ grid, deck, hands, deadlines and bonuses. `multiplayer.sql`, `recovery.sql` and
 `bots.sql` adapt canonical consent, settlement and zero-client progression;
 `arcade.sql` uses solo receipts/results. `src/components/royalFlash/` renders
 both modes through one view. `src/lib/royalFlash/` and `useRoyalFlash` own
-redacted transport/presentation admission. Placement audio uses the shared
-AudioManager. `dev/royal-flash/` contains disposable SQL/browser qualification.
+redacted transport/presentation admission. `scoringPresentation.ts` derives
+row/column/bonus display frames from immutable result metadata and the server
+deadline; `useRoyalScoringPresentation` admits only live score audio. Placement
+and score audio use the shared AudioManager. `dev/royal-flash/` contains
+disposable SQL/browser qualification.
 
 Megatouch consent: `supabase/eleven-up/continued-smoke.sql` adds the private
 accepted-player bootstrap invoked by canonical `advance_ante_phase_exact`;

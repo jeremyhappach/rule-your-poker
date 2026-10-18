@@ -1,5 +1,9 @@
 # Royal Flash acceptance audit — October 18, 2026
 
+This is the earlier acceptance audit. Jeremy's subsequent production smoke
+failed court-suit readability and result presentation; see the scoped correction
+and updated evidence in [presentation smoke fix](ROYAL_FLASH_PRESENTATION_SMOKE_FIX.md).
+
 Scope: Jeremy's eight-item follow-up. The approved `royal-flash/1` rules,
 dealing, scoring, timing, records, financial authority and fake-money admission
 gates are unchanged. This release changes only Royal Flash presentation and
