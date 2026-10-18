@@ -40,8 +40,8 @@ BEGIN
  PERFORM pg_temp.smoke_assert(seen IS NOT NULL AND (SELECT last_seen_at=seen FROM public.profiles WHERE id=u[1]),'server timestamp and throttle');
  SELECT user_id INTO admin_id FROM public.user_roles WHERE role='admin' LIMIT 1;PERFORM set_config('request.jwt.claim.sub',admin_id::text,true);
  PERFORM pg_temp.smoke_assert(EXISTS(SELECT 1 FROM public.admin_recent_activity() WHERE id=u[2] AND last_seen_at IS NULL),'Never is preserved');
- PERFORM pg_temp.smoke_assert((SELECT count(*) FROM public.admin_recent_activity())=(SELECT count(*) FROM public.profiles),'every player listed');
- PERFORM pg_temp.smoke_assert((SELECT array_agg(id) FROM public.admin_recent_activity())=(SELECT array_agg(id ORDER BY last_seen_at DESC NULLS LAST,id) FROM public.profiles),'newest first, Never last, deterministic ties');
+ PERFORM pg_temp.smoke_assert((SELECT count(*) FROM public.admin_recent_activity())=(SELECT count(*) FROM public.profiles p JOIN auth.users a ON a.id=p.id),'every registered player listed');
+ PERFORM pg_temp.smoke_assert((SELECT array_agg(id) FROM public.admin_recent_activity())=(SELECT array_agg(p.id ORDER BY p.last_seen_at DESC NULLS LAST,p.id) FROM public.profiles p JOIN auth.users a ON a.id=p.id),'newest first, Never last, deterministic ties');
  BEGIN
   EXECUTE 'SET LOCAL ROLE authenticated';UPDATE public.profiles SET last_seen_at=clock_timestamp()+interval '1 day' WHERE id=admin_id;
   RAISE EXCEPTION 'missing server timestamp protection';

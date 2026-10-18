@@ -1,3 +1,25 @@
+# Recent logins — 2026-10-18 — registered accounts only
+
+Jeremy requested permanent removal of the E2E Chaos users and exclusion of bots
+from Recent logins. Six exact UUID/email pairs under the reserved
+`ptown-e2e-20260825-*-*@example.invalid` test namespace were verified, then hard
+deleted in one transaction with their profiles, 24 seats and 2,334 auth sessions.
+A rollback rehearsal and the committed transaction both verified preservation
+of every other account/profile/seat, balances, all 450 ledger rows, game state
+and setting values. Historical games remain; obsolete host/updater references
+to the deleted accounts were cleared. No triggers were disabled.
+
+Migration `20261018180003` restricts the admin activity RPC to profiles joined
+to `auth.users` by UUID. Session bots have profiles without registered accounts;
+their names and retained seat records do not determine eligibility. The deployed
+view contains 12 registered accounts and zero unregistered profiles. Admin-only
+authorization, server timestamps, local date display and Never-last ordering
+remain. Candidate and installed rollback proofs pass; see
+`supabase/tests/recent-activity-proof.sql`. TypeScript, 2,441 application tests,
+241 harness tests and the production build pass. Checkpoint:
+`recent-logins-human-accounts-2026-10-18`. Owner smoke: reopen lobby Admin →
+Recent logins and verify the list contains real accounts only.
+
 # TriTowers — 2026-10-18 — one current leaderboard
 
 Jeremy explicitly accepted the v4/v5 scoring difference for leaderboard

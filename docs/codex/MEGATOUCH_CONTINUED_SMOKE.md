@@ -46,6 +46,8 @@ rollback proof passes both before installation and against the deployed definiti
   no delete, rewrite, restoration mutation or backfill was needed.
 - “Recent logins” is an admin-only view of `profiles.last_seen_at`, displayed in
   the viewer's local timezone, newest first, UUID tie-break, NULL/“Never” last.
+  Follow-up migration `20261018180003` limits eligibility to profiles joined to
+  `auth.users` by UUID, excluding session bots independently of their names.
   Earlier values came from lobby entry/foreground events using the client clock
   and are retained as recorded. New values are server timestamps from visible
   authenticated app entry, trusted interaction or foreground return, throttled
@@ -99,6 +101,7 @@ Local evidence is under `.codex/evidence/continued-smoke/` and
 3. Open TriTowers and verify old and new scores share the current standings in
    both Last 30 Days and All Time, with no Classic/current split.
 4. Open main-lobby admin → Recent logins. Verify local dates, recent activity
-   after app use, and Never-last rows. Regular players cannot read the RPC.
+   after app use, and Never-last rows. Bots and the deleted E2E Chaos users must
+   be absent. Regular players cannot read the RPC.
 5. Verify winner-only achievements, a no-achievement winner, tied winners and
    a losing player's personal-best history; observe normal chips/hold/next game.
