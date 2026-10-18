@@ -8,6 +8,11 @@ CREATE OR REPLACE FUNCTION private.royal_flash_rules_v2() RETURNS jsonb LANGUAGE
 $rules_v2$;
 REVOKE ALL ON FUNCTION private.royal_flash_rules_v2() FROM PUBLIC,anon,authenticated,service_role;
 
+CREATE OR REPLACE FUNCTION private.royal_flash_rules_v3() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $rules_v3$
+ SELECT private.royal_flash_rules_v2()||'{"version":"royal-flash/3","allowTakeScore":false}'::jsonb
+$rules_v3$;
+REVOKE ALL ON FUNCTION private.royal_flash_rules_v3() FROM PUBLIC,anon,authenticated,service_role;
+
 CREATE FUNCTION private.royal_flash_hand(cards jsonb,rules jsonb) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
 DECLARE ranks integer[]; counts integer[]; flush_i boolean; straight_i boolean; kind text;
 BEGIN
@@ -41,7 +46,7 @@ CREATE FUNCTION private.royal_flash_bonus_qualified(score bigint,rules jsonb) RE
 CREATE FUNCTION private.royal_flash_board_deal(b jsonb,at_ms bigint) RETURNS jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
 DECLARE deck jsonb:=private.royal_flash_shuffle();slots jsonb:=(SELECT jsonb_agg(NULL::integer) FROM generate_series(1,25));
 BEGIN
- IF b->'rules' IS DISTINCT FROM private.royal_flash_rules() AND b->'rules' IS DISTINCT FROM private.royal_flash_rules_v2() THEN RAISE EXCEPTION 'royal_flash:ruleset_conflict';END IF;
+ IF b->'rules' IS DISTINCT FROM private.royal_flash_rules() AND b->'rules' IS DISTINCT FROM private.royal_flash_rules_v2() AND b->'rules' IS DISTINCT FROM private.royal_flash_rules_v3() THEN RAISE EXCEPTION 'royal_flash:ruleset_conflict';END IF;
  RETURN (b-ARRAY['result','startedAt'])||jsonb_build_object('deck',deck,'slots',slots,'cursor',1,'current',deck->0,'placements',0,'handPoints',0,'lines',private.royal_flash_lines(slots,b->'rules'),
  'scoreBefore',coalesce((b->>'score')::bigint,0),'phase','intro','deadline',at_ms+(b#>>'{rules,introMs}')::bigint,'event',jsonb_build_object('label','Royal Flash','points',0));
 END $$;
@@ -60,6 +65,7 @@ END $$;
 CREATE FUNCTION private.royal_flash_board_reduce(b jsonb,action text,items integer[],at_ms bigint) RETURNS jsonb LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE phase text:=b->>'phase';slot integer;cursor_i integer;lines jsonb;points bigint;
 BEGIN
+ IF action='take_score' AND b#>>'{rules,version}'='royal-flash/3' THEN RAISE EXCEPTION 'royal_flash:invalid_action';END IF;
  IF phase='intro' THEN
   IF at_ms<(b->>'deadline')::bigint THEN IF action='tick' THEN RETURN b;ELSE RAISE EXCEPTION 'royal_flash:intro';END IF;END IF;
   b:=b||jsonb_build_object('phase','ready','deadline',(b->>'deadline')::bigint+(b#>>'{rules,readyMs}')::bigint);phase:='ready';
@@ -77,7 +83,7 @@ BEGIN
  SELECT sum((x->>'points')::bigint) INTO points FROM jsonb_array_elements(lines)x;
  b:=b||jsonb_build_object('lines',lines,'handPoints',points,'score',(b->>'scoreBefore')::bigint+points,'placements',(b->>'placements')::integer+1,
   'current',CASE WHEN cursor_i<52 THEN b->'deck'->cursor_i ELSE 'null'::jsonb END,'cursor',least(52,cursor_i+1),'event',jsonb_build_object('label','Card placed','points',points-(b->>'handPoints')::bigint,'slot',slot));
- IF b#>>'{rules,version}'='royal-flash/2' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(b->'slots') x WHERE x='null'::jsonb) THEN RETURN private.royal_flash_board_finish(b,'full_grid',at_ms);END IF;
+ IF b#>>'{rules,version}' IN('royal-flash/2','royal-flash/3') AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(b->'slots') x WHERE x='null'::jsonb) THEN RETURN private.royal_flash_board_finish(b,'full_grid',at_ms);END IF;
  IF cursor_i=52 THEN RETURN private.royal_flash_board_finish(b,'exhausted',at_ms);END IF;
  RETURN b;
 END $$;

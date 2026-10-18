@@ -38,7 +38,7 @@ BEGIN
   PERFORM pg_temp.royal_assert((public.royal_flash_configure(game,proof_players[1],3,'royal-flash','{"ante_amount":5}',deadline)->>'deduped')::boolean,'setup replay');
   PERFORM pg_temp.royal_accept(game,dealer);
   SELECT state INTO terminal FROM private.royal_flash_matches WHERE dealer_game_id=dealer;
-  PERFORM pg_temp.royal_assert(terminal->'rules'=private.royal_flash_rules_v2(),'multiplayer freezes shared admission rules');
+  PERFORM pg_temp.royal_assert(terminal->'rules'=private.royal_flash_rules_v3(),'multiplayer freezes shared admission rules');
   actor:=(terminal#>>'{players,0,userId}')::uuid;PERFORM set_config('request.jwt.claim.sub',actor::text,true);
   UPDATE private.royal_flash_matches SET state=state||b||jsonb_build_object('phase','ready','deadline',floor(extract(epoch FROM clock_timestamp())*1000)+30000) WHERE dealer_game_id=dealer;
   req:=gen_random_uuid();v:=public.royal_flash_action(dealer,req,0,'place',ARRAY[0]);rev:=(v->>'revision')::bigint;
@@ -76,10 +76,10 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub','',true);PERFORM set_config('request.jwt.claim.role','service_role',true);
  PERFORM private.royal_flash_recover();PERFORM pg_temp.royal_assert((SELECT state->>'phase'='complete' AND settlement IS NOT NULL FROM private.royal_flash_matches WHERE dealer_game_id=dealer),'zero-client recovery');
  SELECT jsonb_build_array((SELECT count(*) FROM public.games),(SELECT count(*) FROM public.players),(SELECT count(*) FROM public.game_results),(SELECT count(*) FROM public.gameplay_transfer_batches)) INTO before_counts;
- UPDATE private.arcade_rulesets SET enabled=true WHERE id='royal-flash/2';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
+ UPDATE private.arcade_rulesets SET enabled=true WHERE id='royal-flash/3';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
  run:=public.arcade_start(users[1],gen_random_uuid(),'royal-flash');a:=public.arcade_royal_step(users[1],(run->>'id')::uuid);
  PERFORM pg_temp.royal_assert(NOT((a#>'{projection,view}')?'deck'),'solo redaction');
- PERFORM pg_temp.royal_assert(a#>'{projection,view,rules}'=private.royal_flash_rules_v2(),'Arcade freezes same admission rules');
+ PERFORM pg_temp.royal_assert(a#>'{projection,view,rules}'=private.royal_flash_rules_v3(),'Arcade freezes same admission rules');
  UPDATE private.arcade_runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1000000)) WHERE id=(run->>'id')::uuid;
  a:=public.arcade_royal_step(users[1],(run->>'id')::uuid);again:=public.arcade_royal_step(users[1],(run->>'id')::uuid);
  PERFORM pg_temp.royal_assert(a#>>'{record,status}'='completed' AND jsonb_array_length(a#>'{record,state,results}')=2 AND a#>'{record,revision}'=again#>'{record,revision}','solo completion replay');

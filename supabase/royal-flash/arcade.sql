@@ -119,3 +119,5 @@ GRANT EXECUTE ON FUNCTION public.arcade_royal_step(uuid,uuid,bigint,text,uuid,te
 INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('royal-flash/1','royal-flash',private.royal_flash_rules(),false) ON CONFLICT(id) DO NOTHING;
 
 INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('royal-flash/2','royal-flash',private.royal_flash_rules_v2(),false) ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('royal-flash/3','royal-flash',private.royal_flash_rules_v3(),false) ON CONFLICT(id) DO NOTHING;

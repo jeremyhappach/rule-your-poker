@@ -1,7 +1,7 @@
-export type RoyalIntent={type:'place';index:number}|{type:'take_score'|'abandon'};
+export type RoyalIntent={type:'place';index:number}|{type:'abandon'};
 export interface RoyalResult {presentationMs?:number;presentationVersion?:number;lines?:{kind:string;points:number}[];slots?:(number|null)[];id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;handPoints:number;timeBonus:number;completedAt:number}
 export interface RoyalBoard {
- rules:{version:'royal-flash/1'|'royal-flash/2';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
+ rules:{version:'royal-flash/1'|'royal-flash/2'|'royal-flash/3';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
  phase:'intro'|'ready'|'playing'|'stage_complete'|'complete';slots:(number|null)[];current:number|null;
  stockRemaining:number;placements:number;handPoints:number;lines:{kind:string;points:number}[];score:number;deadline:number;
  result?:RoyalResult|null;event:{label:string;points:number;slot?:number};

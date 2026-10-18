@@ -1,3 +1,13 @@
+# 2026-10-18 — Royal Flash has no manual score action
+
+Jeremy removed Take Score and explicitly chose to keep automatic partial-board
+scoring when time or cards run out. New admissions freeze `royal-flash/3`, which
+inherits v2 and changes only manual-action legality. The UI exposes no Take Score
+in either mode; v1/v2 server legality remains frozen for previously admitted
+games. Versions 1–3 keep one score/PB comparison group without rewriting results.
+Explicit Arcade abandonment remains unranked. No multiplayer forfeit, settlement,
+clock, bonus or presentation behavior changes are introduced.
+
 # 2026-10-18 — Royal Flash full-grid completion and one scoring timeline
 
 Jeremy explicitly requested automatic completion when all 25 squares are

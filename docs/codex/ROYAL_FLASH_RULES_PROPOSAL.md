@@ -1,5 +1,12 @@
 # Royal Flash — approved P-Town rules
 
+Latest October 18 clarification: **remove Take Score**. Jeremy selected automatic
+scoring when time expires or the deck runs out, including incomplete boards.
+New games use `royal-flash/3`; full-grid completion and all v2 values remain.
+The UI has no manual scoring control in either mode. Previously admitted v1/v2
+server rules and all historical records stay frozen; versions 1–3 share one
+leaderboard. This supersedes references to manual Take Score below.
+
 Subsequent October 18 smoke: Jeremy requested automatic completion when all 25
 squares are occupied. New admissions use `royal-flash/2`, inheriting the v1
 points, bonuses, deck and Ready/play clocks below; existing v1 games stay frozen.

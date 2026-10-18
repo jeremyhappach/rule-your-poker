@@ -1,3 +1,24 @@
+# Royal Flash — 2026-10-18 — remove Take Score
+
+Jeremy clarified that Royal Flash has no manual Take Score action, and selected
+continued automatic scoring on timeout/deck exhaustion. The shared view removes
+the control in both modes. New games freeze `royal-flash/3`, which rejects manual
+scoring without state/receipt writes. Full-grid completion, partial-board timeout
+and exhaustion, unranked Arcade abandonment, points/bonuses, 21-second scoring
+presentation, audio and canonical settlement/continuation are preserved.
+Existing v1/v2 games retain their frozen server rules; all three versions share
+the same leaderboard and personal bests. No historical records were rewritten.
+
+Migration `20261018201049` and complete candidate/installed production rollback
+proofs pass, including the financial gate, legal-action rejection in both RPCs,
+old-record preservation and abandonment. TypeScript, 84 focused tests, production
+build and independent-connection race proofs pass. Browser checks cover both-mode
+automatic scoring and continuation, plus 12 portrait/landscape layouts and four
+clock states. Physical iPhone smoke remains Jeremy's acceptance task:
+start a new game in each mode, confirm no Take Score, fill the grid, allow an
+incomplete grid to time out, and verify final totals/balances and continuation.
+Checkpoint: `royal-flash-no-take-score-2026-10-18`. Fake-money gating is unchanged.
+
 # Royal Flash — 2026-10-18 — synchronized scoring and automatic full grid
 
 Jeremy's follow-up smoke requested slower, synchronized scoring and automatic

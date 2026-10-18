@@ -26,11 +26,12 @@ BEGIN
  PERFORM pg_temp.royal_assert(b#>>'{result,reason}'='exhausted' AND b->>'placements'='52' AND b#>>'{result,timeBonus}'='0','replacement and 52-card partial exhaustion preserved');
 END $$;
 DO $$
-DECLARE u uuid:=gen_random_uuid();oldrun jsonb;newrun jsonb;oldresult jsonb;board jsonb;current_board jsonb;
+DECLARE u uuid:=gen_random_uuid();oldrun jsonb;newrun jsonb;oldresult jsonb;board jsonb;current_board jsonb;v3_enabled boolean;
 BEGIN
  INSERT INTO auth.users(id) VALUES(u);INSERT INTO public.profiles(id,username,is_active) VALUES(u,'Royal legacy proof '||u,true) ON CONFLICT(id) DO NOTHING;
  UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
- UPDATE private.arcade_rulesets SET enabled=false WHERE id='royal-flash/2';
+ SELECT enabled INTO v3_enabled FROM private.arcade_rulesets WHERE id='royal-flash/3';
+ UPDATE private.arcade_rulesets SET enabled=false WHERE id IN('royal-flash/2','royal-flash/3');
  oldrun:=public.arcade_start(u,gen_random_uuid(),'royal-flash');PERFORM public.arcade_royal_step(u,(oldrun->>'id')::uuid);
  UPDATE private.arcade_runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1000000)) WHERE id=(oldrun->>'id')::uuid;
  PERFORM public.arcade_royal_step(u,(oldrun->>'id')::uuid);
@@ -43,5 +44,6 @@ BEGIN
  PERFORM pg_temp.royal_assert(oldresult=(SELECT to_jsonb(r) FROM private.arcade_results r WHERE run_id=(oldrun->>'id')::uuid),'existing v1 immutable record preserved');
  PERFORM pg_temp.royal_assert(newrun->>'ruleset'='royal-flash/2' AND current_board->>'personalBest'='0','v2 admission and shared v1/v2 personal best');
  PERFORM pg_temp.royal_assert((SELECT record->>'priorBest'='0' FROM private.arcade_results WHERE run_id=(newrun->>'id')::uuid),'new result compares against existing v1 best');
+ UPDATE private.arcade_rulesets SET enabled=v3_enabled WHERE id='royal-flash/3';
 END $$;
 SELECT 'full-grid v2 PASS: automatic completion, timeout precedence, partial Take Score, legacy v1 and shared leaderboard' proof;

@@ -4,14 +4,21 @@ import assert from 'node:assert/strict';
 import {connect,localContext} from './database.mjs';
 const executablePath=['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe'].find(existsSync);
 const browser=await chromium.launch({headless:true,executablePath}),db=await connect(localContext().database),errors=[],evidence=[];
+// Only disposable fixture deadlines are shortened to exercise automatic timeout.
+async function expireBoard(page){
+ await page.getByRole('progressbar',{name:'Round time remaining'}).waitFor();
+ const f=Object.fromEntries(new URL(page.url()).searchParams),at=Date.now()+250;
+ if(f.mode==='solo')await db.query("UPDATE private.arcade_runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb($2::bigint)),due_at=$2 WHERE id=$1",[f.id,at]);
+ else await db.query("UPDATE private.royal_flash_matches SET state=jsonb_set(state,'{deadline}',to_jsonb($2::bigint)) WHERE dealer_game_id=$1",[f.id,at]);
+}
 const audio=page=>page.evaluate(()=>({contexts:window.__royalAudio.contexts.length,starts:window.__royalAudio.starts,state:window.__royalAudio.contexts[0]?.state}));
 async function makePage(){const page=await browser.newPage({viewport:{width:390,height:844}});page.on('pageerror',e=>errors.push(e.message));await page.addInitScript(()=>{window.__royalAudio={contexts:[],starts:0};const Native=window.AudioContext;window.AudioContext=class extends Native{constructor(...args){super(...args);window.__royalAudio.contexts.push(this);}createOscillator(){const osc=super.createOscillator(),start=osc.start.bind(osc);osc.start=(...args)=>{window.__royalAudio.starts++;return start(...args);};return osc;}};});return page;}
 try{
  const page=await makePage();page.setDefaultTimeout(12000);console.log('Fresh multiplayer');await page.goto('http://127.0.0.1:5186/dev/royal-flash/live.html');await page.getByRole('button',{name:'Start two-player table'}).click();
  const other=await page.getByText('Open player two').getAttribute('href'),second=await makePage();await second.goto(new URL(other,page.url()).toString());
  second.setDefaultTimeout(12000);const identity=Object.fromEntries(new URL(page.url()).searchParams);await page.locator('.royal-grid button').first().click({timeout:12000});
- const watcher=await makePage();watcher.setDefaultTimeout(12000);await watcher.goto(new URL(await page.getByText('Open spectator').getAttribute('href'),page.url()).toString());await watcher.getByRole('progressbar').waitFor();assert.equal(await watcher.locator('.royal-grid button:disabled').count(),25);assert.ok(await watcher.getByRole('button',{name:'Take Score'}).isDisabled());assert.equal((await audio(watcher)).starts,0,'spectator mount is silent');
- assert.equal((await audio(page)).contexts,1);assert.ok((await audio(page)).starts>0,'fresh multiplayer audio');
+ const watcher=await makePage();watcher.setDefaultTimeout(12000);await watcher.goto(new URL(await page.getByText('Open spectator').getAttribute('href'),page.url()).toString());await watcher.getByRole('progressbar').waitFor();assert.equal(await watcher.locator('.royal-grid button:disabled').count(),25);assert.equal(await watcher.getByRole('button',{name:'Take Score'}).count(),0);assert.equal((await audio(watcher)).starts,0,'spectator mount is silent');
+ assert.equal(await page.getByRole('button',{name:'Take Score'}).count(),0);assert.equal((await audio(page)).contexts,1);assert.ok((await audio(page)).starts>0,'fresh multiplayer audio');
  await page.evaluate(()=>{window.__royalSeen={chip:false,celebration:false,balances:[]};new MutationObserver(()=>{if(document.querySelector('[data-chip-transport-intent]'))window.__royalSeen.chip=true;if(document.querySelector('canvas'))window.__royalSeen.celebration=true;const balances=[...document.querySelectorAll('[data-chip-center]')].map(e=>e.textContent);if(balances.length)window.__royalSeen.balances=balances;}).observe(document.body,{childList:true,subtree:true,attributes:true,characterData:true});});
  for(let i=1;i<24;i++)await page.locator('.royal-grid button').nth(i).click();
  const score=Number((await page.locator('.royal-primary-score strong').innerText()).replaceAll(',',''));assert.ok(score>0,'live scored board');
@@ -19,7 +26,7 @@ try{
  await page.locator('.royal-grid button').nth(24).click();await page.getByRole('status').filter({hasText:'Grid complete'}).waitFor();
  await watcher.getByRole('button',{name:'History',exact:true}).click();await watcher.getByRole('dialog').getByText(/Round 1/).waitFor();await watcher.getByRole('button',{name:'Close',exact:true}).click();
  for(let turn=1;turn<4;turn++){
-  const actor=turn%2?second:page;await actor.locator('.royal-grid button').first().click({timeout:30000});await actor.getByRole('button',{name:'Take Score'}).click();await actor.getByRole('status').filter({hasText:'Score taken'}).waitFor();
+  const actor=turn%2?second:page;await actor.locator('.royal-grid button').first().click({timeout:30000});await expireBoard(actor);await actor.getByRole('status').filter({hasText:'Time expired'}).waitFor();
  }
  await page.getByRole('status').filter({hasText:'Game Over'}).waitFor({timeout:30000});const gameOver=await page.getByRole('status').filter({hasText:'Game Over'}).innerText();assert.match(gameOver,/wins/);
  const terminal=await page.evaluate(async f=>(await (await fetch('/__royal/state',{method:'POST',body:JSON.stringify(f)})).json()),identity);
@@ -35,8 +42,8 @@ try{
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
  const hidden=await audio(page);await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
  await page.waitForTimeout(250);assert.equal((await audio(page)).starts,hidden.starts,'background recovery does not replay cues');await page.locator('.royal-grid button').nth(2).click();
- await page.getByRole('button',{name:'Take Score'}).click();await page.getByRole('status').filter({hasText:'Score taken'}).waitFor();await page.getByRole('status').filter({hasText:'Score taken'}).waitFor({state:'hidden',timeout:30000});
- await page.locator('.royal-grid button').first().click({timeout:30000});await page.getByRole('button',{name:'Take Score'}).click();await page.getByRole('heading',{name:'Royal Flash leaderboard'}).waitFor({timeout:30000});
+ await expireBoard(page);await page.getByRole('status').filter({hasText:'Time expired'}).waitFor();await page.getByRole('status').filter({hasText:'Time expired'}).waitFor({state:'hidden',timeout:30000});
+ await page.locator('.royal-grid button').first().click({timeout:30000});await expireBoard(page);await page.getByRole('heading',{name:'Royal Flash leaderboard'}).waitFor({timeout:30000});
  await page.getByRole('button',{name:'Start two-player table'}).click();await page.locator('.royal-grid button').first().click({timeout:30000});assert.equal((await audio(page)).contexts,1);
  evidence.push({case:'multiplayer → Arcade → multiplayer; resume via start/play; reload and simulated background silent; Arcade leaderboard',before});
  const fresh=await makePage();fresh.setDefaultTimeout(12000);await fresh.goto('http://127.0.0.1:5186/dev/royal-flash/live.html');await fresh.getByRole('button',{name:'Start solo Arcade'}).click();await fresh.locator('.royal-grid button').first().click({timeout:30000});assert.ok((await audio(fresh)).starts>0,'fresh solo sounds');
