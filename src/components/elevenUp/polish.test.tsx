@@ -5,6 +5,7 @@ import {act,cleanup,fireEvent,render,waitFor} from '@testing-library/react';
 import {ElevenUpView} from './ElevenUpView';
 import {useElevenUp,type ElevenCommand,type ElevenTransport} from '@/hooks/useElevenUp';
 import type {ElevenSnapshot} from '@/lib/elevenUp/model';
+import {platformAudio} from '@/lib/audio/platformAudio';
 
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:(p:any)=><section><header>{p.title}<span>{p.description}</span></header>{p.scores}<main data-fullscreen-board-slot>{p.children}<div data-canonical-felt-interaction-layer=""/></main></section>}));
 vi.mock('@/components/triTowers/TriTowersPresentation',()=>({useTriRoundPresentation:()=>({admitted:false}),TriRoundIntro:()=>null}));
@@ -17,7 +18,7 @@ it('shows named multiplayer achievements and winner pulse without changing Arcad
  v.terminal={resultId:'receipt',startedAt:0,deadline:3000,winnerIds:['user'],score:103000,achievements:{user:{kind:'broken',priorBest:100,overallKind:'broken',overallPriorBest:100,rank:1,topTen:true},other:{kind:'broken',priorBest:80,overallKind:'lower',overallPriorBest:100,rank:2,topTen:true}}};
  const ui=render(<ElevenUpView {...props(v)} onFinish={vi.fn()} terminalPresenting now={4000}/>);
  expect(ui.getByText('Game Over')).toBeTruthy();expect(ui.getByText('Hap wins with 103,000')).toBeTruthy();
- expect(ui.getByText(/Sam.*all-time high/)).toBeTruthy();expect(ui.container.querySelectorAll('[data-winner=true]')).toHaveLength(1);
+ expect(ui.queryByText(/Sam.*all-time high/)).toBeNull();expect(ui.getByText(/Hap.*New personal best/)).toBeTruthy();expect(ui.container.querySelectorAll('[data-winner=true]')).toHaveLength(1);
  expect(ui.queryByRole('button',{name:'Continue'})).toBeNull();
  ui.rerender(<ElevenUpView {...props({...v,solo:true})}/>);
  expect(ui.getByText('Game complete')).toBeTruthy();expect(ui.queryByText('Game Over')).toBeNull();expect(ui.queryByText(/Sam.*all-time high/)).toBeNull();expect(ui.container.querySelectorAll('[data-winner=true]')).toHaveLength(0);
@@ -36,6 +37,27 @@ it('toggles individual balls, resolves a three-ball eleven once, and removes red
  expect(ui.queryByRole('timer')).toBeNull();expect(ui.getByRole('progressbar').textContent).toBe('');
  expect(ui.getByRole('button',{name:'Pass, 28 draws remaining'})).toBeTruthy();
  expect(ui.queryByText('You')).toBeNull();expect(ui.queryByText(/Arcade/)).toBeNull();
+});
+
+it('dings only a new confirmed eleven, with no selection, repeat, recovery or hidden-tab catchup',()=>{
+ const sound=vi.spyOn(platformAudio,'request').mockReturnValue(()=>{}),v=snapshot(),p=props(v),ui=render(<ElevenUpView {...p}/>);
+ fireEvent.click(ui.getByRole('button',{name:/^Ball 2,/}));expect(sound).not.toHaveBeenCalled();
+ const confirmed={...v,revision:2,board:{...v.board,groups:1}};
+ ui.rerender(<ElevenUpView {...p} view={confirmed}/>);expect(sound).toHaveBeenCalledTimes(1);
+ ui.rerender(<ElevenUpView {...p} view={{...confirmed}}/>);expect(sound).toHaveBeenCalledTimes(1);
+ ui.rerender(<ElevenUpView {...p} epoch={1} view={{...confirmed,revision:3,board:{...v.board,groups:2}}}/>);
+ ui.rerender(<ElevenUpView {...p} epoch={1} activeTab="lobby" view={{...confirmed,revision:4,board:{...v.board,groups:3}}}/>);
+ ui.rerender(<ElevenUpView {...p} epoch={1} view={{...confirmed,revision:4,board:{...v.board,groups:3}}}/>);
+ expect(sound).toHaveBeenCalledTimes(1);
+});
+
+it('announces only tied winners and uses this score, not an older personal rank',()=>{
+ const v=snapshot();v.solo=false;v.settled=true;v.board.phase='complete';
+ v.players=[{id:'user',name:'Hap',score:90,active:false},{id:'tie',name:'Tie',score:90,active:false},{id:'loser',name:'Loser',score:80,active:false}];
+ v.terminal={resultId:'receipt',startedAt:0,deadline:3000,winnerIds:['user','tie'],score:90,achievements:{user:{kind:'lower',overallKind:'lower',rank:12,topTen:false},tie:{kind:'broken',overallKind:'lower',rank:6,topTen:true},loser:{kind:'broken',overallKind:'lower',rank:8,topTen:true}}};
+ const ui=render(<ElevenUpView {...props(v)}/>);
+ expect(ui.getByText('Hap & Tie tie with 90')).toBeTruthy();expect(ui.getByText('Tie: #6 on the leaderboard')).toBeTruthy();expect(ui.getByText('Tie: New personal best!')).toBeTruthy();
+ expect(ui.container.querySelector('.eleven-achievements')?.textContent).not.toMatch(/Hap|Loser/);
 });
 
 it('retains over-eleven selections for individual correction and includes the current ball',()=>{

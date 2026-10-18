@@ -15,6 +15,7 @@ const gameTypes: DealerGameType[] = [
   'horses',
   'ship-captain-crew',
   'yahtzee',
+  'run21', 'tri-towers', 'eleven-up',
 ];
 
 function committed(gameType: DealerGameType, outcome: 'configured' | 'already_configured' = 'configured') {

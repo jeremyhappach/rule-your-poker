@@ -5628,7 +5628,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
         // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
         // CRITICAL: We now check isRunBack (local variable) which is guaranteed to be resolved
-        const shouldAutoAnte = freshCurrentPlayer?.auto_ante || (freshCurrentPlayer?.auto_ante_runback && isRunBack);
+        const shouldAutoAnte = !['eleven-up', 'tri-towers', 'run21'].includes(game.game_type ?? '') && (freshCurrentPlayer?.auto_ante || (freshCurrentPlayer?.auto_ante_runback && isRunBack));
         
         // ── Ante latch check for auto-ante path too ──
         const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
@@ -14293,13 +14293,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // CRIBBAGE — unified single instance across ALL session phases
-          if (renderGameType === 'eleven-up' && (heldEleven?.dealerGameId??game.current_game_uuid)) return <ElevenUpTable liveEntry={triLiveEntry} key={heldEleven?.dealerGameId??game.current_game_uuid} dealerGameId={(heldEleven?.dealerGameId??game.current_game_uuid)!} userId={user?.id??''} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={token=>{markTerminalPresentationComplete(token);elevenTerminal.complete(token);}}/>;
-          if (renderGameType === 'tri-towers' && game.current_game_uuid) return <TriTowersGame
+          if (renderGameType === 'eleven-up' && !isAnteDecision && (heldEleven?.dealerGameId??game.current_game_uuid)) return <ElevenUpTable liveEntry={triLiveEntry} key={heldEleven?.dealerGameId??game.current_game_uuid} dealerGameId={(heldEleven?.dealerGameId??game.current_game_uuid)!} userId={user?.id??''} activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive} onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={token=>{markTerminalPresentationComplete(token);elevenTerminal.complete(token);}}/>;
+          if (renderGameType === 'tri-towers' && !isAnteDecision && game.current_game_uuid) return <TriTowersGame
             liveEntry={triLiveEntry}
             key={game.current_game_uuid} dealerGameId={game.current_game_uuid} userId={user?.id ?? ''}
             activeTab={mobileActiveTab} setActiveTab={setMobileActiveTabWithTrace} sessionEnded={_sessionEndedTableActive}
             onTerminalActive={handleTerminalPresentationActiveChange} onTerminalComplete={markTerminalPresentationComplete}/>;
-          if (renderGameType === 'run21' && (heldRun21?.dealerGameId ?? game.current_game_uuid)) return <Run21GameTable
+          if (renderGameType === 'run21' && !isAnteDecision && (heldRun21?.dealerGameId ?? game.current_game_uuid)) return <Run21GameTable
             presentationMode={presentationMode}
             sittingOut={players.find(p => p.user_id === user?.id)?.sitting_out}
             key={heldRun21?.dealerGameId ?? game.current_game_uuid} gameId={gameId!}

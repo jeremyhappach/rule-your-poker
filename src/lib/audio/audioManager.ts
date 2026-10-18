@@ -45,6 +45,7 @@ export class AudioManager {
   private active = new Set<() => void>();
   private timelines = new Map<string, TimelineOwner>();
   private uninstall: (() => void) | null = null;
+  private primedContext: AudioContext | null = null;
 
   constructor(private env: AudioEnvironment) {}
 
@@ -53,7 +54,7 @@ export class AudioManager {
     const doc = this.env.document();
     // Touch/pointer release matters on Safari; capture runs before route-changing handlers.
     const gestures = ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
-    const gesture = (event: Event) => { if (event.isTrusted) this.unlock(); };
+    const gesture = (event: Event) => { if (event.isTrusted) this.unlock(true); };
     const visibility = () => {
       if (doc.hidden) this.stopActive();
       else this.unlock();
@@ -101,9 +102,10 @@ export class AudioManager {
   }
 
   /** Call synchronously in a trusted gesture: do not await preference or auth I/O first. */
-  unlock = () => {
+  unlock = (trustedGesture = false) => {
     try {
       if (!this.context || this.context.state === 'closed') {
+        this.context?.removeEventListener('statechange', this.stateChanged);
         this.context = this.env.createContext();
         this.context.addEventListener('statechange', this.stateChanged);
       }
@@ -112,6 +114,14 @@ export class AudioManager {
         // consume live timelines still waiting for permission to play.
         this.stopActive(false);
         void this.context.resume().then(() => this.flush()).catch(() => {});
+      }
+      // iOS can require an actual source started inside the navigation gesture,
+      // before an asynchronous game-start response supplies its first cue.
+      if (trustedGesture && this.primedContext !== this.context) {
+        const source=this.context.createBufferSource();
+        source.buffer=this.context.createBuffer(1,1,this.context.sampleRate);
+        source.connect(this.context.destination);source.onended=()=>source.disconnect();source.start(0);
+        this.primedContext=this.context;
       }
       this.flush();
     } catch { /* Unsupported/blocked audio never blocks gameplay. */ }
@@ -176,7 +186,7 @@ export class AudioManager {
   }
 
   private stateChanged = () => {
-    if (this.context?.state !== 'running') this.stopActive();
+    if (this.context?.state !== 'running') this.stopActive(false);
     else this.flush();
   };
 

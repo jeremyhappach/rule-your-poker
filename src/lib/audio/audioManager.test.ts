@@ -29,6 +29,28 @@ it('a suspended first observed intro is not consumed; readiness schedules exactl
   h.manager.request(event()); expect(h.starts()).toHaveLength(8);
 });
 
+it('retains unplayed timelines through delayed suspension notices across multiplayer and Arcade',async()=>{
+ await ready();
+ for(const id of ['multiplayer:11:1','arcade:11:1','arcade:11:2','multiplayer:tri:1','multiplayer:run21:1']){
+  h.ctx.state='suspended';const before=h.starts().length;
+  h.manager.follow({userId:'user',id,startedAt:Date.now(),expiresAt:Date.now()+2500,cueAt:()=>boxingBellCue});
+  h.state('suspended');expect(h.starts()).toHaveLength(before);
+  h.state('running');expect(h.starts()).toHaveLength(before+8);
+ }
+ expect(h.createContext).toHaveBeenCalledTimes(1);
+});
+
+it('primes only trusted gestures and replaces a closed context without stale listeners',async()=>{
+ await ready();h.manager.unlock();expect(h.ctx.createBufferSource).not.toHaveBeenCalled();
+ h.manager.unlock(true);h.manager.unlock(true);expect(h.ctx.createBufferSource).toHaveBeenCalledTimes(1);
+ const old=h.ctx,other=audioHarness();other.dispose();other.ctx.state='running';
+ h.createContext.mockReturnValue(other.ctx as unknown as AudioContext);
+ old.state='closed';h.manager.unlock(true);
+ expect(other.ctx.createBufferSource).toHaveBeenCalledTimes(1);
+ h.manager.request(event('after-close'));expect(other.starts()).toHaveLength(9);
+ old.dispatchEvent(new Event('statechange'));expect(other.nodes.filter(n=>n.kind==='oscillator').every(n=>n.stop.mock.calls.length===1)).toBe(true);
+});
+
 it('never catches up an expired or insufficient remaining window after unlock', async () => {
   await ready(); h.ctx.state = 'suspended'; h.manager.request(event());
   vi.advanceTimersByTime(2501); h.state('running');

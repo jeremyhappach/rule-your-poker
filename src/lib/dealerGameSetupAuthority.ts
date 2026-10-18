@@ -80,7 +80,7 @@ export function parseDealerGameSetupCommitResult(
     && typeof raw.deduped === 'boolean'
     && exactIdentity
     && game.id === expected.gameId
-    && game.status === (expected.gameType === 'run21' || expected.gameType === 'tri-towers' || expected.gameType === 'eleven-up' ? 'in_progress' : 'ante_decision')
+    && game.status === 'ante_decision'
     && game.config_complete === true
     && typeof dealerGame.id === 'string'
     && dealerGame.session_id === expected.gameId

@@ -992,7 +992,7 @@ const DealerGameSetupInner = ({
   const handleSimpleAnteGameSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
 
-    const parsedAnte = parseInt(anteAmount, 10);
+    const parsedAnte = Number(anteAmount);
     if (!Number.isInteger(parsedAnte) || parsedAnte < 1) {
       toast.error('Ante must be at least $1');
       return;
@@ -1406,7 +1406,7 @@ const DealerGameSetupInner = ({
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
 
                 <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='eleven-up' ? 'Match stake ($)' : 'Ante ($)'}</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
                   <Input
                     id="ante-simple"
                     type="text"

@@ -56,6 +56,7 @@ export const AnteUpDialog = ({
   const isCribbageGame = gameType === 'cribbage';
   const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
   const isYahtzeeGame = gameType === 'yahtzee';
+  const isMegatouch = ['eleven-up', 'tri-towers', 'run21'].includes(gameType ?? '');
   const isFarkleGame = gameType === 'farkle';
   
   const getGameDisplayName = () => {
@@ -66,6 +67,9 @@ export const AnteUpDialog = ({
     if (isGinRummyGame) return 'Gin Rummy';
     if (isYahtzeeGame) return 'Yahtzee';
     if (isFarkleGame) return 'Farkle';
+    if (gameType === 'eleven-up') return '11 Up';
+    if (gameType === 'tri-towers') return 'TriTowers';
+    if (gameType === 'run21') return 'Run21';
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
@@ -267,7 +271,7 @@ export const AnteUpDialog = ({
           </div>
           
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="font-semibold">Ante Amount:</div>
+            <div className="font-semibold">{isMegatouch ? 'Match stake:' : 'Ante Amount:'}</div>
             <div className="text-right">${anteAmount}</div>
             
             {isHolmGame && (
@@ -277,7 +281,7 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {!isHolmGame && !isHorsesGame && !isSCCGame && !isCribbageGame && !isGinRummyGame && !isYahtzeeGame && !isFarkleGame && (
+            {!isHolmGame && !isHorsesGame && !isSCCGame && !isCribbageGame && !isGinRummyGame && !isYahtzeeGame && !isFarkleGame && !isMegatouch && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>
@@ -334,7 +338,7 @@ export const AnteUpDialog = ({
           )}
           
           {/* Auto-ante options */}
-          <div className="flex flex-col gap-3 pt-2 border-t border-border">
+          {!isMegatouch && <div className="flex flex-col gap-3 pt-2 border-t border-border">
             <p className="text-xs text-muted-foreground font-medium">For future ante decisions:</p>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -358,7 +362,7 @@ export const AnteUpDialog = ({
                 Auto-Ante (All Games)
               </Label>
             </div>
-          </div>
+          </div>}
           
           <p className="text-xs text-muted-foreground">
             Choose within {timeLeft} seconds or you'll automatically sit out

@@ -10,6 +10,7 @@ import { install357RuntimeGlobalErrorHandlers } from "@/lib/threeFiveSeven/runti
 // phases hook behavioral instrumentation into this scaffold.
 import "@/lib/threeFiveSeven/wartime";
 import { supabase } from "@/integrations/supabase/client";
+import { setActivityUser } from '@/lib/appActivity';
 import { platformAudio } from '@/lib/audio/platformAudio';
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
@@ -73,6 +74,7 @@ bootstrapTableDemo();
 // Listen for auth errors that indicate a refresh failure
 supabase.auth.onAuthStateChange((event, session) => {
   platformAudio.setUser(session?.user?.id ?? null);
+  setActivityUser(session?.user?.id ?? null);
   try {
     recordAuthStateChange({
       previousState: null,

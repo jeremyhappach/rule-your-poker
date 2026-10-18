@@ -1,3 +1,13 @@
+# 2026-10-18 — Megatouch consent, history visibility and app activity
+
+All three multiplayer Megatouch families reuse canonical setup/ante consent;
+private game creation is deferred until accepted participants are resolved.
+TriTowers 2–4 standings remain compatible, while manual stuck completion in 5
+can earn time bonus unavailable under automatic exhaustion and stays separate.
+History is exposed visibly without rewriting results. Last-seen activity uses
+the existing profile field with server timestamps for future activity; legacy
+client-clock values remain untouched. See [evidence](MEGATOUCH_CONTINUED_SMOKE.md).
+
 # 2026-10-18 — 11 Up smoke integration
 
 Owner-directed manual stuck completion is a shared gameplay policy: new 11 Up 3

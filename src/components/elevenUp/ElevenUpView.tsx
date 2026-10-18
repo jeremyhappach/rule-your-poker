@@ -5,13 +5,15 @@ import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {TriRoundIntro,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {ballPosition,ballValue,type ElevenIntent,type ElevenSnapshot} from '@/lib/elevenUp/model';
-import {scoreAchievementLabels} from '@/lib/arcade/scoreAchievements';
+import {useElevenGroupAudio} from '@/hooks/useElevenGroupAudio';
+import {winnerAchievementLabels} from '@/lib/arcade/scoreAchievements';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
 interface Props {terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
 export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,terminalPresenting=false}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
+ useElevenGroupAudio(v,userId,epoch,tab==='cards'&&!error&&!v.paused&&!sessionEnded&&!document.hidden);
  const scoreGroup=useRef<HTMLDivElement>(null),activePlayerId=v.players.find(p=>p.active)?.id;
  const scorePlayers=v.players.length>2?[...v.players.filter(p=>p.active),...v.players.filter(p=>!p.active)]:v.players;
  useLayoutEffect(()=>{if(v.players.length>2&&scoreGroup.current)scoreGroup.current.scrollLeft=0;},[activePlayerId,v.players.length]);
@@ -73,7 +75,7 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
    </div>}
    {terminal&&<div className="eleven-result" role="status"><span>{v.solo?'Game complete':'Game Over'}</span>
     {!v.solo&&v.terminal?<><strong className="eleven-winner-name">{v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name).join(' & ')} {v.terminal.winnerIds.length===1?'wins':'tie'} with {v.terminal.score.toLocaleString()}</strong>
-    <div className="eleven-achievements">{v.players.map(p=>scoreAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>))}</div></>:<strong>{Math.max(...v.players.map(p=>p.score)).toLocaleString()}</strong>}
+    <div className="eleven-achievements">{v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>winnerAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>))}</div></>:<strong>{Math.max(...v.players.map(p=>p.score)).toLocaleString()}</strong>}
     {!v.solo&&!v.settled&&<p>Confirming settlement…</p>}</div>}
    {finalReady&&v.solo&&onFinish&&<button className="eleven-finish" onClick={onFinish}>Leaderboard</button>}
    {pending&&<span className="eleven-pending" role="status">Confirming play…</span>}

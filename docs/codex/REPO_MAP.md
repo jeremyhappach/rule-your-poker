@@ -1,5 +1,14 @@
 # Repository map
 
+Megatouch consent: `supabase/eleven-up/continued-smoke.sql` adds the private
+accepted-player bootstrap invoked by canonical `advance_ante_phase_exact`;
+the migration replaces all three configure RPCs. `continued-proof.sql` and
+`dev/eleven-up/continued-proof.mjs` exercise consent plus existing financial proofs.
+`src/hooks/useElevenGroupAudio.ts` requests confirmed-group cues from platformAudio.
+App activity: `src/lib/appActivity.ts` is installed at the global auth boundary;
+`RecentLoginsDialog.tsx` uses admin-only `admin_recent_activity`. Server-stamped
+`record_app_activity` replaces the former lobby-only useLastSeenTracker.
+
 11 Up smoke integration: `supabase/eleven-up/smoke.sql` owns private shared score
 facts, the compatible Arcade/multiplayer result view and authenticated own-score
 history. `20261018161030_eleven_up_smoke_corrections.sql` installs it alongside

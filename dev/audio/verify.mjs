@@ -61,6 +61,21 @@ try {
       await delayed.evaluate(() => window.audioProbe.probe.resolvePreference(true));
       await delayed.waitForFunction(() => window.audioProbe.probe.starts.length === 8);
       await delayed.close();
+      // Same document and shared context: switch both ways, including suspension and closure.
+      const modes = await context.newPage();await modes.goto(url);await modes.locator('#pregame').click();
+      await modes.waitForFunction(()=>window.audioProbe.probe.starts.length===8);
+      for(const id of ['arcade:11:first','arcade:11:next','multiplayer:tri:first','multiplayer:run21:next']){
+        await modes.evaluate(()=>window.audioProbe.leave());await modes.waitForTimeout(20);
+        await modes.evaluate(()=>window.audioProbe.probe.context.suspend());
+        const before=await modes.evaluate(()=>window.audioProbe.probe.starts.length);
+        await modes.evaluate(id=>window.audioProbe.enter(id),id);
+        await modes.waitForFunction(n=>window.audioProbe.probe.starts.length===n,before+8);
+      }
+      assert.equal(await modes.evaluate(()=>window.audioProbe.probe.contexts),1);
+      await modes.evaluate(()=>window.audioProbe.probe.context.close());
+      await modes.evaluate(()=>window.audioProbe.enter('arcade:after-close'));
+      await modes.waitForFunction(()=>window.audioProbe.probe.contexts===2&&window.audioProbe.probe.starts.length===48);
+      await modes.close();
       assert.deepEqual(errors, []);
       results.push({browser: name, version: browser.version(), passed: true, firstRound: first, blockedState: blocked.state});
       await context.close();

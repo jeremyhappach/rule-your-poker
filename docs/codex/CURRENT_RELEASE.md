@@ -1,3 +1,16 @@
+# Megatouch — 2026-10-18 — continued smoke corrections, awaiting owner smoke
+
+11 Up, TriTowers and Run21 multiplayer now use canonical stake consent before
+match creation. Shared audio preserves unplayed cues through context suspension;
+11 Up adds confirmed-eleven dings and winner-only current-score achievements.
+TriTowers' 78 surviving historical scores are accessible through the visible
+Classic selector; current manual-finish rules remain separately ranked because
+stuck-round time bonuses differ. Admin Recent logins shows server-stamped app
+activity with legacy timestamps preserved. Checkpoint:
+`megatouch-continued-smoke-2026-10-18`. See [evidence and smoke](MEGATOUCH_CONTINUED_SMOKE.md).
+Migration `20261018171604` and installed rollback proofs pass. TypeScript,
+2,441 application tests, 241 harness tests, browser checks and the build pass.
+
 # 11 Up — 2026-10-18 — smoke corrections, awaiting owner smoke
 
 New shared rules `eleven-up/3` and `tri-towers/5` require manual Take Score when

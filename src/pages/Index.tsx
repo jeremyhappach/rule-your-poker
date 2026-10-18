@@ -65,7 +65,7 @@ import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBou
 import { GeometryLabDraftProvider } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import { GeometryLabModalChrome } from "@/components/admin/GeometryLabModalChrome";
 import { accountAmountIsNegative, formatAccountAmount } from "@/lib/accountMoney";
-import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
+import { RecentLoginsDialog } from '@/components/RecentLoginsDialog';
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
 
 const Index = () => {
@@ -103,8 +103,7 @@ const Index = () => {
   const [loadingTimerSettings, setLoadingTimerSettings] = useState(true);
   const [savingTimerSettings, setSavingTimerSettings] = useState(false);
 
-  // Track user's last seen timestamp
-  useLastSeenTracker(user?.id ?? null);
+  const [showRecentLogins, setShowRecentLogins] = useState(false);
 
   // Sync loading state from auth guard
   useEffect(() => {
@@ -620,6 +619,7 @@ const Index = () => {
               <TabsContent value="admin" className="flex-1 min-h-0">
                 <ScrollArea className="h-full pr-4 overscroll-contain">
                   <div className="space-y-4 pt-2">
+                    <Button variant="outline" onClick={() => setShowRecentLogins(true)}>Recent logins</Button>
                     {/* Under Maintenance Toggle */}
                     <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
                       <div className="space-y-0.5">
@@ -1019,6 +1019,7 @@ const Index = () => {
       )}
 
       {/* Admin Player List Dialog */}
+      {isAdmin && <RecentLoginsDialog open={showRecentLogins} onOpenChange={setShowRecentLogins}/>}
       <AdminPlayerListDialog
         open={showAdminPlayerList}
         onOpenChange={setShowAdminPlayerList}

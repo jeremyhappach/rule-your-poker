@@ -9,3 +9,12 @@ export function scoreAchievementLabels(name:string,record?:ScoreAchievements){
  if(record.topTen)labels.push(`${name}: #${record.rank} on the leaderboard`);
  return labels;
 }
+/** This completed winning score only; history retains every participant's facts. */
+export function winnerAchievementLabels(name:string,record?:ScoreAchievements){
+ if(!record)return [];
+ const labels:string[]=[];
+ if(record.overallKind==='first'||record.overallKind==='broken')labels.push(`${name}: AN ALL-TIME HIGH SCORE!`);
+ if(record.kind==='first'||record.kind==='broken')labels.push(`${name}: New personal best!`);
+ if(record.topTen&&record.rank<=10)labels.push(`${name}: #${record.rank} on the leaderboard`);
+ return labels;
+}
