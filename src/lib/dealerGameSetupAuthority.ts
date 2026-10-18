@@ -10,7 +10,8 @@ export type DealerGameType =
   | 'yahtzee'
   | 'run21'
   | 'tri-towers'
-  | 'eleven-up';
+  | 'eleven-up'
+  | 'royal-flash';
 
 export interface DealerGameSetupCommitResult {
   outcome: 'configured' | 'already_configured';
@@ -111,7 +112,7 @@ export async function configureDealerGame(
     await assertRun21CreationAccess(params.gameId);
   }
 
-  const { data, error } = await supabase.rpc((params.gameType === 'eleven-up' ? 'eleven_up_configure' : params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
+  const { data, error } = await supabase.rpc((params.gameType === 'royal-flash' ? 'royal_flash_configure' : params.gameType === 'eleven-up' ? 'eleven_up_configure' : params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
     p_game_id: params.gameId,
     p_dealer_player_id: params.dealerPlayerId,
     p_expected_dealer_position: params.expectedDealerPosition,

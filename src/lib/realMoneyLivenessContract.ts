@@ -2,7 +2,7 @@ import type { DealerGameType } from '@/lib/dealerGameSetupAuthority';
 
 // These games are restricted to fake-money testing. Registration must not
 // advertise real-money recovery support before its separate qualification.
-type RealMoneyDealerGameType = Exclude<DealerGameType, 'run21' | 'tri-towers' | 'eleven-up'>;
+type RealMoneyDealerGameType = Exclude<DealerGameType, 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash'>;
 
 export type RecoveryOwner =
   | 'canonical_timers'

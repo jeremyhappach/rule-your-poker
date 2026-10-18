@@ -1,3 +1,19 @@
+# Royal Flash — 2026-10-18 — v1 delivery, owner smoke pending
+
+Jeremy approved the explicit P-Town rules in `ROYAL_FLASH_RULES_PROPOSAL.md`.
+Arcade and multiplayer share one frozen SQL rule base: a 5×5 replacement grid,
+52 unique cards, two rounds plus one earned bonus at 200,000, a 20-second first
+placement window and a 150-second play clock. `ROYAL_FLASH_QUALIFICATION.md`
+records authoritative, financial, concurrency, browser, layout and regression
+evidence, plus the remaining physical-iPhone acceptance checklist.
+
+Migration `20261018183121` and Arcade recovery worker v7 are installed. The
+migration closes admission by default; `supabase/royal-flash/activate.sql` is the
+post-publication gate for approved accounts and fake-money multiplayer. Existing
+Run21, TriTowers and 11 Up rules/history/records are preserved. Shared financial
+and terminal presentation owners remain authoritative. Physical Safari smoke
+and Jeremy's production acceptance remain outstanding.
+
 # Recent logins — 2026-10-18 — registered accounts only
 
 Jeremy requested permanent removal of the E2E Chaos users and exclusion of bots

@@ -337,7 +337,7 @@ export function ChipTransportProvider({
     || gameType === '357'
     || gameType === 'run21'
     || gameType === 'tri-towers'
-    || gameType === 'eleven-up';
+    || gameType === 'eleven-up' || gameType === 'royal-flash';
   const presentationLedger = useChipPresentationLedger(
     gameId,
     ledgerTransport,

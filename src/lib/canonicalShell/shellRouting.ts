@@ -37,6 +37,7 @@ export const CANONICAL_SHELL_FAMILY = new Set<string>([
   ...POKER_VARIANT_FAMILY,
   'tri-towers',
   'eleven-up',
+  'royal-flash',
   'run21',
   'gin-rummy',
   'cribbage',

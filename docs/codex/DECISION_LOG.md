@@ -2465,3 +2465,12 @@ confirmed placements/positive banked 104/105 results. New immutable `run21/3`
 extends the 104 medal by 200 ms, preserving 105 and full normal count-up timing.
 V2/v3 scores remain explicitly compatible; frozen versions, gameplay and existing
 multiplayer/Arcade progression owners remain intact. See `RUN21_SHARED_AUDIO.md`.
+# Royal Flash v1 — October 18, 2026
+
+Jeremy approved explicit P-Town choices for the unresolved original-game rules.
+`ROYAL_FLASH_RULES_PROPOSAL.md` distinguishes manufacturer evidence from those
+choices. Both modes freeze `royal-flash/1` and execute the same private SQL core.
+Multiplayer adds only consent, participant order, pause, bots, canonical chip
+settlement and postgame continuation; Arcade adds only solo persistence/results.
+Bots receive the redacted board/current card, never the hidden stock. Existing
+games' rules and score compatibility groups are unchanged.

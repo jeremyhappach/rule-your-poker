@@ -1,0 +1,12 @@
+import {readFileSync as read,writeFileSync as write} from 'node:fs';import {createHash} from 'node:crypto';import {build} from 'esbuild';
+import {candidate} from './database.mjs';
+const data=JSON.parse(read('qualification.local/royal-flash/production.json','utf8'));
+const owners=['arcade_start','arcade_commit','megatouch_begin','advance_ante_phase_exact','megatouch_frozen_stake'];
+const guards=owners.map(name=>{const f=data.functions.find(x=>x.name===name);return `IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='${f.schema}' AND p.proname='${name}') IS DISTINCT FROM '${createHash('md5').update(f.definition).digest('hex')}' THEN RAISE EXCEPTION 'royal_flash:owner_drift_${name}';END IF;`;}).join('\n');
+const sql=`-- Royal Flash v1. Admission remains closed until all release checks pass.\nDO $$ BEGIN\n${guards}\nEND $$;\n${candidate()}\nALTER PUBLICATION supabase_realtime ADD TABLE public.royal_flash_revisions;\nSELECT cron.schedule('royal-flash-recovery','1 second',$job$SET statement_timeout='3s'; SELECT private.royal_flash_recover()$job$);\nNOTIFY pgrst,'reload schema';\n`;
+write('supabase/migrations/20261018183121_royal_flash_v1.sql',sql);
+write('qualification.local/royal-flash/production-proof.sql','BEGIN;\n'+sql+'\n'+read('supabase/royal-flash/proof.sql','utf8')+'\n'+read('supabase/royal-flash/core-proof.sql','utf8')+'\nROLLBACK;');
+write('supabase/royal-flash/activate.sql',read('supabase/eleven-up/activate.sql','utf8').replaceAll('eleven-up','royal-flash').replaceAll('eleven_up','royal_flash'));
+const bundle=await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'node',target:'es2022'});
+write('qualification.local/royal-flash/arcade-recovery-bundle.js',bundle.outputFiles[0].text);
+console.log('Guarded migration and rollback proof assembled.');
