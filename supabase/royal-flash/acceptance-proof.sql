@@ -24,7 +24,7 @@ BEGIN
  BEGIN PERFORM public.royal_flash_configure(g,p[1],2,'royal-flash','{"ante_amount":10}',offer);RAISE EXCEPTION 'changed offer accepted';EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'royal_flash:setup_replay_conflict' THEN RAISE;END IF;END;
  PERFORM set_config('request.jwt.claim.sub',u[2]::text,true);
  PERFORM public.submit_ante_decision(g,d,p[2],'ante_up');PERFORM public.advance_ante_phase(g,d);
- PERFORM pg_temp.royal_assert((SELECT stake=9 AND state#>>'{rules,version}'='royal-flash/1' FROM private.royal_flash_matches WHERE dealer_game_id=d),'accepted frozen stake and version');
+ PERFORM pg_temp.royal_assert((SELECT stake=9 AND state#>>'{rules,version}'='royal-flash/2' FROM private.royal_flash_matches WHERE dealer_game_id=d),'accepted frozen stake and version');
  PERFORM set_config('request.jwt.claim.sub',u[3]::text,true);
  v:=public.royal_flash_snapshot(d);
  PERFORM pg_temp.royal_assert(NOT (v->>'canAct')::boolean AND NOT(v?'deck') AND NOT(v?'cursor'),'spectator sees only public board without actions');
@@ -42,10 +42,10 @@ BEGIN
    FOR j IN 0..CASE WHEN s->>'stage'='1' THEN 24 ELSE 0 END LOOP
     v:=public.royal_flash_action(d,gen_random_uuid(),rev,'place',ARRAY[j]);rev:=(v->>'revision')::bigint;
    END LOOP;
-   PERFORM public.royal_flash_action(d,gen_random_uuid(),rev,'take_score');
+   IF v->>'phase'<>'stage_complete' THEN PERFORM public.royal_flash_action(d,gen_random_uuid(),rev,'take_score');END IF;
   END IF;
  END LOOP;
- PERFORM pg_temp.royal_assert((SELECT count(*)=2 FROM private.multiplayer_score_results WHERE dealer_game_id=d AND ruleset='royal-flash/1'),'exactly one v1 record per human participant');
+ PERFORM pg_temp.royal_assert((SELECT count(*)=2 FROM private.multiplayer_score_results WHERE dealer_game_id=d AND ruleset='royal-flash/2'),'exactly one v2 record per human participant');
  PERFORM pg_temp.royal_assert(NOT EXISTS(SELECT 1 FROM private.multiplayer_score_results r WHERE dealer_game_id=d AND score IS DISTINCT FROM (s->'scores'->>player_id::text)::bigint),'final cumulative score recorded once');
  PERFORM pg_temp.royal_assert(NOT EXISTS(SELECT 1 FROM private.multiplayer_score_results r WHERE dealer_game_id=d AND score IS DISTINCT FROM (SELECT sum((x->>'stageScore')::bigint) FROM jsonb_array_elements(s->'stages')x WHERE x->>'playerId'=r.player_id::text)),'record equals sum of round contributions, not cumulative totals');
  PERFORM private.royal_flash_record_scores(d);

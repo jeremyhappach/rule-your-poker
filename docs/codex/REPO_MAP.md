@@ -7,7 +7,8 @@ grid, deck, hands, deadlines and bonuses. `multiplayer.sql`, `recovery.sql` and
 both modes through one view. `src/lib/royalFlash/` and `useRoyalFlash` own
 redacted transport/presentation admission. `scoringPresentation.ts` derives
 row/column/bonus display frames from immutable result metadata and the server
-deadline; `useRoyalScoringPresentation` admits only live score audio. Placement
+deadline; `scoreCue.ts` schedules that same plan on the audio clock;
+`useRoyalScoringPresentation` admits one complete live-result schedule. Placement
 and score audio use the shared AudioManager. `dev/royal-flash/` contains
 disposable SQL/browser qualification.
 

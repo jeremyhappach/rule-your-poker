@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import type {RoyalSnapshot} from '@/lib/royalFlash/model';
 import {royalScoreFrame} from '@/lib/royalFlash/scoringPresentation';
-import {usePresentedScoreAudio} from './usePresentedScoreAudio';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {royalScoreCue} from '@/lib/royalFlash/scoreCue';
 
 export function useRoyalScoringPresentation(view:RoyalSnapshot,userId:string,epoch:number,active:boolean,now:number){
  const previous=useRef<{scope:string;phase:string;epoch:number;active:boolean;userId:string}|null>(null);
@@ -14,6 +15,12 @@ export function useRoyalScoringPresentation(view:RoyalSnapshot,userId:string,epo
   else if(prior.phase==='playing'||prior.phase==='ready')setAdmitted(admission);
  },[view.scope,phase,epoch,active,userId,admission]);
  const frame=royalScoreFrame(view.board,now);
- usePresentedScoreAudio(userId,active&&admitted===admission&&frame&&frame.to>frame.from&&now>=frame.startedAt?`royal-score:${identity}:${frame.key}`:null,frame,now);
+ const audioKey=active&&admitted===admission&&view.board.result?.presentationMs?`royal-score:${identity}`:null;
+ useEffect(()=>{
+  const result=view.board.result;if(!audioKey||!result?.presentationMs)return;
+  const local=performance.now(),startedAt=view.board.deadline-result.presentationMs;
+  return platformAudio.follow({userId,id:audioKey,startedAt:local-(now-startedAt),expiresAt:local+view.board.deadline-now,cueAt:(elapsed,left)=>royalScoreCue(result,elapsed,left)});
+  // One admitted result owns the complete schedule; frame renders never restart it.
+ },[audioKey,userId]);
  return frame;
 }

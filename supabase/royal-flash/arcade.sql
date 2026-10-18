@@ -117,3 +117,5 @@ REVOKE ALL ON FUNCTION public.arcade_royal_step(uuid,uuid,bigint,text,uuid,text,
 GRANT EXECUTE ON FUNCTION public.arcade_royal_step(uuid,uuid,bigint,text,uuid,text,integer[],uuid) TO service_role;
 
 INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('royal-flash/1','royal-flash',private.royal_flash_rules(),false) ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('royal-flash/2','royal-flash',private.royal_flash_rules_v2(),false) ON CONFLICT(id) DO NOTHING;

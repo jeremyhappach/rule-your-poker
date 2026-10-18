@@ -1,5 +1,12 @@
 # Royal Flash — approved P-Town rules
 
+Subsequent October 18 smoke: Jeremy requested automatic completion when all 25
+squares are occupied. New admissions use `royal-flash/2`, inheriting the v1
+points, bonuses, deck and Ready/play clocks below; existing v1 games stay frozen.
+Both versions retain one leaderboard and all existing records. New results have
+a 21-second presentation with synchronized 1.6-second line steps. This supersedes
+the 15-second presentation note below. See [qualification](ROYAL_FLASH_AUTO_FINISH.md).
+
 October 18 production-smoke correction: Jeremy explicitly requested sufficient
 time for readable sequential row/column scoring. Newly completed boards now use
 a shared 15-second server presentation window instead of the original five

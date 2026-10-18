@@ -5,12 +5,12 @@ import {connect,localContext} from './database.mjs';
 const executablePath=['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe'].find(existsSync);
 const browser=await chromium.launch({headless:true,executablePath});
 const names={royal_flush:'Royal Flush',straight_flush:'Straight Flush',four_kind:'Four of a Kind',full_house:'Full House',flush:'Flush',straight:'Straight',three_kind:'Three of a Kind',two_pair:'Two Pair',pair:'One Pair',high_card:'High Card',incomplete:'Incomplete line'};
-try{const evidence=await Promise.all([true,false].map(async solo=>{const cases=[];for(const reason of ['take_score','exhausted','timeout']){const item=await(async()=>{
+try{const evidence=await Promise.all([true,false].map(async solo=>{const cases=[];for(const reason of ['full_grid','take_score','exhausted','timeout']){const item=await(async()=>{
  const page=await browser.newPage({viewport:solo?{width:390,height:844}:{width:844,height:390}}),db=await connect(localContext().database),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
  try{await page.goto('http://127.0.0.1:5186/dev/royal-flash/live.html');await page.getByRole('button',{name:solo?'Start solo Arcade':'Start two-player table'}).click();
   await page.locator('.royal-grid button').first().click();const f=Object.fromEntries(new URL(page.url()).searchParams);
-  for(let i=1;i<(reason==='timeout'?4:reason==='exhausted'?52:25);i++)await page.locator('.royal-grid button').nth(i%25).click();
+  for(let i=1;i<(reason==='timeout'||reason==='take_score'?4:reason==='exhausted'?52:25);i++)await page.locator('.royal-grid button').nth(reason==='exhausted'?i%24:i%25).click();
   if(reason==='take_score')await page.getByRole('button',{name:'Take Score'}).click();
   if(reason==='timeout'){
    // Advance only this disposable fixture's clock; production data is never touched.
@@ -20,7 +20,7 @@ try{const evidence=await Promise.all([true,false].map(async solo=>{const cases=[
   }
   await page.locator('.royal-breakdown').waitFor();
   const snapshot=await page.evaluate(async f=>(await (await fetch('/__royal/state',{method:'POST',body:JSON.stringify(f)})).json()),f);
-  const result=solo?snapshot.view.result:snapshot.stages.at(-1);assert.equal(result.reason,reason);assert.equal(result.presentationMs,15000);
+  const result=solo?snapshot.view.result:snapshot.stages.at(-1);assert.equal(result.reason,reason);assert.equal(result.presentationMs,21000);
   console.log({solo,reason,arrivalMs:Date.now()-result.completedAt,step:await page.locator('.royal-breakdown').getAttribute('data-scoring-step')});
   const steps=[];for(let line=0;line<10;line++){
    await page.locator(`[data-scoring-step="line-${line}"]`).waitFor();

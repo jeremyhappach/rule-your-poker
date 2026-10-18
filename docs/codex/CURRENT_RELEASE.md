@@ -1,3 +1,19 @@
+# Royal Flash — 2026-10-18 — synchronized scoring and automatic full grid
+
+Jeremy's follow-up smoke requested slower, synchronized scoring and automatic
+completion of the full grid. New games freeze `royal-flash/2`: occupying the
+25th square ends play atomically. Point values, bonuses and Ready/play clocks
+remain unchanged; admitted v1 games retain v1 behavior. Existing scores and
+personal bests remain on the same leaderboard, with no reset or rewrite.
+
+One result timeline drives each 1.6-second line highlight, label, count-up and
+scheduled chip sound. New results retain the board for 21 seconds. Recovery
+seeks silently; presentation never awards, settles or advances gameplay.
+Migration `20261018195633` and installed production rollback proof pass.
+159 focused tests, TypeScript, build, concurrency and both-mode browser checks
+pass. Fake-money gating is preserved. See [evidence and focused iPhone smoke](ROYAL_FLASH_AUTO_FINISH.md).
+Checkpoint: `royal-flash-auto-finish-2026-10-18`. Physical iPhone acceptance remains pending.
+
 # Royal Flash — 2026-10-18 — failed smoke corrected, new owner smoke pending
 
 Initial production smoke failed court-card suit visibility and scoring

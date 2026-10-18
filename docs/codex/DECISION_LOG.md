@@ -1,3 +1,17 @@
+# 2026-10-18 — Royal Flash full-grid completion and one scoring timeline
+
+Jeremy explicitly requested automatic completion when all 25 squares are
+occupied. This changes legal actions, so new Arcade/multiplayer admissions use
+`royal-flash/2`; v1 remains frozen for admitted games. v2 inherits all v1 point,
+bonus, deck and gameplay-clock values and adds automatic full-grid completion.
+The full-grid result receives the existing completion time bonus. Both versions
+share leaderboard/PB comparison, preserving the requested existing records.
+One presentation plan schedules visuals and audio, with a neutral one-second
+lead-in, ten 1.6-second lines, two-second bonus and two-second total. Results
+carry presentation version 2; old 15-second results remain readable. Canonical
+settlement and progression remain independent of the presentation. See
+[qualification](ROYAL_FLASH_AUTO_FINISH.md).
+
 # 2026-10-18 — Royal Flash readable result presentation
 
 Jeremy's failed smoke requires explicit court suits and sequential row/column

@@ -30,8 +30,9 @@ export function useRoyalFlash(id:string,userId:string,transport:RoyalTransport){
   const unsubscribe=transport.subscribe(()=>void refresh(),online=>{if(token!==generation.current)return;setConnected(online);if(online)void resolve();else setEpoch(n=>n+1);});void resolve();
   const recovery=()=>{setEpoch(n=>n+1);if(!document.hidden&&navigator.onLine)void resolve();};
   window.addEventListener('online',recovery);window.addEventListener('offline',recovery);window.addEventListener('focus',recovery);document.addEventListener('visibilitychange',recovery);
-  const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),100);
-  return()=>{mounted.current=false;generation.current++;unsubscribe();clearInterval(timer);window.removeEventListener('online',recovery);window.removeEventListener('offline',recovery);window.removeEventListener('focus',recovery);document.removeEventListener('visibilitychange',recovery);};
+  let timer:ReturnType<typeof setTimeout>,frame:number;
+  const tick=()=>{setNow(clock.current.server+performance.now()-clock.current.local);if(latest.current?.board.phase==='stage_complete'&&!document.hidden)frame=requestAnimationFrame(tick);else timer=setTimeout(tick,100);};tick();
+  return()=>{mounted.current=false;generation.current++;unsubscribe();clearTimeout(timer);cancelAnimationFrame(frame);window.removeEventListener('online',recovery);window.removeEventListener('offline',recovery);window.removeEventListener('focus',recovery);document.removeEventListener('visibilitychange',recovery);};
  },[transport,accept,resolve]);
  const act=async(intent:RoyalIntent)=>{
   const v=latest.current;if(!v||!connected||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&now>=v.board.deadline)return;
