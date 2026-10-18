@@ -1,5 +1,9 @@
 # Royal Flash v1 qualification — October 18, 2026
 
+Follow-up: `ROYAL_FLASH_ACCEPTANCE_AUDIT.md` records the complete eight-item
+audit, corrected score/layout gaps and expanded actual-wrapper browser proof.
+Its explicit verification limits supersede any ambiguity in this original summary.
+
 Jeremy approved the P-Town rules in `ROYAL_FLASH_RULES_PROPOSAL.md`. Both modes
 use the SQL core in `supabase/royal-flash/rules.sql`. Multiplayer and Arcade
 freeze `royal-flash/1`; there is no client scoring or mode-specific rule tuning.

@@ -1,4 +1,13 @@
-# Royal Flash — 2026-10-18 — v1 delivery, owner smoke pending
+# Royal Flash — 2026-10-18 — acceptance audit, owner smoke pending
+
+The follow-up audit corrected the live multiplayer score display, scrolling
+player balances and crowded short-landscape layout. Rules remain `royal-flash/1`.
+`ROYAL_FLASH_ACCEPTANCE_AUDIT.md` accounts for all eight requirements and clearly
+separates SQL/desktop evidence from production setup, route and physical-iPhone
+smoke. The real multiplayer wrapper now has browser evidence for chip movement,
+100/100 → 105/95 visible balances, winner celebration and automatic handoff.
+Deployed rollback proofs, 148 focused tests, TypeScript and build checks pass.
+Checkpoint: `royal-flash-acceptance-2026-10-18`. No migration or gate change.
 
 Jeremy approved the explicit P-Town rules in `ROYAL_FLASH_RULES_PROPOSAL.md`.
 Arcade and multiplayer share one frozen SQL rule base: a 5×5 replacement grid,

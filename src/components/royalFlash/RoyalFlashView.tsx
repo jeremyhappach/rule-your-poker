@@ -28,20 +28,20 @@ export function RoyalFlashView({view:v,userId,now,pending,error,epoch,liveEntry=
  useLayoutEffect(()=>{submitted.current=false;},[v.scope,v.revision,epoch]);
  const terminal=b.phase==='complete',canAct=v.canAct&&!v.paused&&!pending&&!error&&remaining>0&&['ready','playing'].includes(b.phase)&&tab==='cards'&&!sessionEnded;
  const send=(intent:RoyalIntent)=>{if(!canAct||submitted.current)return;submitted.current=true;onIntent(intent);};
- const active=v.players.find(p=>p.active),score=motion.displayScore??active?.score??v.terminal?.score??0;
+ const active=v.players.find(p=>p.active),score=motion.displayScore??v.terminal?.score??b.score;
  return <FullscreenGameShell className="royal-scene" title="Royal Flash" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
  navigation={v.solo?<nav aria-label="Royal Flash controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<RoyalFlashRules/>}>
  <div className="royal-root" ref={root} data-royal-flash={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="royal-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}
- {layer&&createPortal(<div className="royal-plane">
+ {layer&&createPortal(<div className="royal-plane" data-solo={v.solo||undefined}>
  <div className="royal-score-band"><span>{!terminal&&!sessionEnded&&(v.round===3?'Bonus round':`Round ${v.round} / 2`)}</span><div className="royal-primary-score">{!v.solo&&<small>{active?.name??'Final score'}</small>}<strong>{score.toLocaleString()}</strong></div>{!terminal&&!sessionEnded&&<button disabled={!canAct||b.phase!=='playing'} onClick={()=>send({type:'take_score'})}>Take Score</button>}</div>
  {!v.solo&&<div className="royal-players" aria-label="Player scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><b>{(p.active?score:p.score).toLocaleString()}</b>{balance?.(p)}</div>)}</div>}
  {!sessionEnded&&<div className="royal-playfield">
  {!terminal&&<><div className="royal-grid" aria-label="Royal Flash five by five board">{b.slots.map((id,index)=><button key={index} data-placed={b.event.slot===index&&b.phase==='playing'} disabled={!canAct} aria-label={`Row ${Math.floor(index/5)+1}, column ${index%5+1}, ${cardName(id)}`} onClick={()=>send({type:'place',index})}><Card id={id}/>{id===null&&<span className="royal-empty">+</span>}</button>)}</div>
  <div className="royal-controls"><div className="royal-draw"><span>Next card</span><Card id={b.current}/><small>{b.stockRemaining} cards left</small></div><div className="royal-lines" aria-label="Row and column scores"><span>Rows</span>{b.lines.slice(0,5).map((line,i)=><span key={'r'+i} title={line.kind.replace(/_/g,' ')}>{line.points.toLocaleString()}</span>)}<span>Columns</span>{b.lines.slice(5).map((line,i)=><span key={'c'+i} title={line.kind.replace(/_/g,' ')}>{line.points.toLocaleString()}</span>)}</div></div>
  {b.phase==='ready'&&<div className="royal-clock" role="timer">{v.paused?'Paused':'Place your first card'} · {Math.ceil(remaining/1000)}s</div>}
- {b.phase==='playing'&&<div className="royal-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={150} aria-valuenow={remaining/1000}><CountdownDots remaining={remaining} duration={b.rules.stageMs}/>{v.paused&&<small>Paused</small>}</div>}
+ {b.phase==='playing'&&<div className="royal-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={b.rules.stageMs/1000} aria-valuenow={Math.min(remaining,b.rules.stageMs)/1000}><CountdownDots remaining={remaining} duration={b.rules.stageMs}/>{v.paused&&<small>Paused</small>}</div>}
  </>}
  {b.phase==='intro'&&<div className="royal-overlay royal-intro"><TriRoundIntro remaining={remaining} roundLabel={v.round===3?'BONUS ROUND':`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${active?.name??'Player'}’S TURN`} paused={v.paused}/></div>}
  {result&&<div className="royal-overlay royal-result" role="status"><span>{b.event.label}</span><strong>{(motion.displayScore??result.score).toLocaleString()}</strong><p>Hands +{result.handPoints.toLocaleString()}<br/>Speed +{result.timeBonus.toLocaleString()}</p></div>}

@@ -6,3 +6,19 @@
 .royal-clock{height:4cqh;width:80%;font-size:clamp(.6rem,2cqh,1rem);text-align:center;display:flex;align-items:center;justify-content:center;gap:.5rem}.royal-clock>*{max-height:100%}.royal-overlay{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#102a2ddd;border-radius:1rem;pointer-events:none}.royal-intro{background:#102a2d99}.royal-result strong{font-size:clamp(1.4rem,8cqw,3.5rem);line-height:1.2}.royal-result p{font-size:clamp(.75rem,3cqw,1.2rem)}.royal-error{position:absolute;top:0;inset-inline:0;z-index:10;background:#6e2020;padding:.4rem;pointer-events:auto}.royal-pending{position:absolute;bottom:0;font-size:.65rem;opacity:.7}.royal-rules{display:grid;gap:1rem}.royal-rules dl>div{display:flex;justify-content:space-between;gap:1rem}.royal-rules dd{font-variant-numeric:tabular-nums}
 
 .royal-grid>button[data-placed=true]{box-shadow:0 0 0 2px #ffe28a}.royal-primary-score{border-radius:.6rem;background:#ffffff0d;padding:.15em}.royal-primary-score strong{font-size:clamp(1rem,min(5cqh,6cqw),2.5rem)}
+.royal-score-band{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr)}.royal-primary-score{min-width:0}
+.royal-players{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr));overflow:visible;gap:.25rem}.royal-players>div{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 .3rem}.royal-players>div>span{overflow:hidden;text-overflow:ellipsis}.royal-players>div>small{grid-column:1/-1}
+.royal-card{min-width:0;min-height:0}.royal-grid>button{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.royal-scene .fullscreen-game-actions:empty{display:none}
+/* Respond to available canonical board space, including landscape and split windows. */
+@container fullscreen-board (min-aspect-ratio:3/2){
+ .royal-plane{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);grid-template-rows:auto minmax(0,1fr);gap:1cqh 2cqw}
+ .royal-score-band{grid-column:1/-1}.royal-players{display:flex;flex-direction:column;align-self:start;gap:.25rem}
+ .royal-playfield{grid-column:2;grid-row:2;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+ .royal-plane[data-solo] .royal-playfield{grid-column:1/-1}
+ .royal-grid{grid-column:1;grid-row:1;place-self:center;width:min(62cqw,60cqh);height:min(93cqw,90cqh)}
+ .royal-controls{grid-column:2;grid-row:1;height:100%;flex-direction:column;gap:2cqh}
+ .royal-draw{height:42cqh;flex-wrap:wrap;justify-content:center}.royal-draw .royal-card{width:22cqh;height:33cqh}
+ .royal-lines{font-size:clamp(.45rem,1.8cqw,.8rem)}
+ .royal-clock{grid-column:1/-1;grid-row:2;height:8cqh;justify-self:center}
+}
