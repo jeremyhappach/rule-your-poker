@@ -1,3 +1,11 @@
+# 2026-10-18 — Owner-approved unified TriTowers leaderboard
+
+Jeremy judged the v4/v5 stuck-finish scoring difference insufficient to split
+the standings and explicitly requested one current leaderboard. Add v5 to the
+existing v2–v4 score group. This supersedes the separate-ranking decision below;
+it changes comparison eligibility, not frozen gameplay or stored scores/receipts.
+Both leaderboard periods, personal bests and future record facts use that group.
+
 # 2026-10-18 — Megatouch consent, history visibility and app activity
 
 All three multiplayer Megatouch families reuse canonical setup/ante consent;

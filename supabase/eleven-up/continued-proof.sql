@@ -47,6 +47,6 @@ BEGIN
   RAISE EXCEPTION 'missing server timestamp protection';
  EXCEPTION WHEN insufficient_privilege THEN IF SQLERRM<>'activity:server_timestamp_required' THEN RAISE;END IF;END;
  PERFORM pg_temp.smoke_assert(NOT has_function_privilege('anon','public.admin_recent_activity()','EXECUTE'),'anonymous activity listing denied');
- PERFORM pg_temp.smoke_assert(private.arcade_score_group('tri-towers','tri-towers/4')<>private.arcade_score_group('tri-towers','tri-towers/5'),'recognition and speed-bonus rules remain separate');
+ PERFORM pg_temp.smoke_assert(private.arcade_score_group('tri-towers','tri-towers/4')=private.arcade_score_group('tri-towers','tri-towers/5'),'owner-approved combined TriTowers leaderboard');
 END$$;
 SELECT 'canonical stake consent, lifecycle, history preservation and admin activity proof passed' proof;

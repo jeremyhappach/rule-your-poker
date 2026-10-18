@@ -21,7 +21,7 @@ BEGIN
  old:=jsonb_set(b,'{rules,version}','"tri-towers/4"');
  PERFORM pg_temp.eleven_assert(private.tri_towers_board_reduce(old,'draw',NULL,1000)->>'phase'='stage_complete','frozen TriTowers auto completion');
  PERFORM pg_temp.eleven_assert(private.tri_towers_board_reduce(b,'remove',27,1000)#>>'{result,reason}'='cleared','TriTowers all-clear immediate');
- PERFORM pg_temp.eleven_assert(private.arcade_score_group('tri-towers','tri-towers/5')<>private.arcade_score_group('tri-towers','tri-towers/4'),'manual-recognition score group isolated');
+ PERFORM pg_temp.eleven_assert(private.arcade_score_group('tri-towers','tri-towers/5')=private.arcade_score_group('tri-towers','tri-towers/4'),'owner-approved combined TriTowers leaderboard');
  FOR i IN 1..2 LOOP
   INSERT INTO auth.users(id) VALUES(users[i]);
   INSERT INTO public.profiles(id,username,is_active) VALUES(users[i],'Smoke '||i,true) ON CONFLICT(id) DO UPDATE SET is_active=true;

@@ -1,3 +1,17 @@
+# TriTowers — 2026-10-18 — one current leaderboard
+
+Jeremy explicitly accepted the v4/v5 scoring difference for leaderboard
+compatibility. Versions 2–5 now share the current leaderboard, personal-best
+comparison and future record comparison. All 83 recorded results present at
+inspection remain untouched. The Classic/current split is removed. Frozen
+gameplay rules, score receipts and other games' compatibility remain unchanged.
+See `supabase/tri-towers/unified-leaderboard-proof.sql` for the direct rollback
+proof of both time windows, exact ranks, legacy lookup, personal/overall bests
+and preserved history/rules. Checkpoint: `tritowers-unified-leaderboard-2026-10-18`.
+Migration `20261018173541` is installed and its deployed rollback proof passes.
+TypeScript, 2,441 application tests, 241 harness tests and the production build
+pass. Owner smoke: open TriTowers and verify combined Last 30 Days / All Time.
+
 # Megatouch — 2026-10-18 — continued smoke corrections, awaiting owner smoke
 
 11 Up, TriTowers and Run21 multiplayer now use canonical stake consent before

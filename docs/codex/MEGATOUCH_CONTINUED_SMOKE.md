@@ -1,5 +1,10 @@
 # Continued Megatouch smoke — 2026-10-18
 
+Subsequent owner correction: Jeremy explicitly requested v4/v5 share one current
+leaderboard. The earlier Classic/current split described below is superseded by
+`tritowers-unified-leaderboard-2026-10-18`; versions 2–5 now rank together without
+rewriting any scores, gameplay rules or historical receipts.
+
 Jeremy explicitly authorized implementation and production delivery of six
 continued smoke findings. Checkpoint tag: `megatouch-continued-smoke-2026-10-18`.
 Physical-device acceptance is pending.
@@ -91,8 +96,8 @@ Local evidence is under `.codex/evidence/continued-smoke/` and
    eleven ding and score sound; background/foreground once and try again.
    Include a Run21 and TriTowers round. Physical-device playback is not proved
    by desktop touch emulation.
-3. Select TriTowers Classic and All Time; verify historic standings. Switch to
-   current rules and verify the separately labeled standings.
+3. Open TriTowers and verify old and new scores share the current standings in
+   both Last 30 Days and All Time, with no Classic/current split.
 4. Open main-lobby admin → Recent logins. Verify local dates, recent activity
    after app use, and Never-last rows. Regular players cannot read the RPC.
 5. Verify winner-only achievements, a no-achievement winner, tied winners and
