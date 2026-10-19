@@ -1,0 +1,8 @@
+import {createRoot} from 'react-dom/client';
+import {TakeTwoView} from '@/components/takeTwo/TakeTwoView';
+import type {TakeTwoSnapshot} from '@/lib/takeTwo/model';
+import '@/index.css';import '@/lib/arcade/arcade.css';
+const params=new URLSearchParams(location.search),count=Number(params.get('players')??1),stage=Number(params.get('stage')??1);
+const layout=Array.from({length:stage===1?5:6},(_,row)=>Array.from({length:row%2?5:6},(_,column)=>({row,column,x:2*column+row%2}))).flat();
+const view:TakeTwoSnapshot={id:'fixture',scope:'fixture:1',revision:1,serverAt:1000,round:stage,canAct:true,paused:false,finished:false,settled:false,solo:count===1,players:Array.from({length:count},(_,i)=>({id:`player-${i}`,name:count===1?'You':`Long player name ${i+1}`,score:999999,active:i===0,...(count>1?{chips:100}:{})})),board:{rules:{version:'take-two/1',stageMs:100000,introMs:2500,holdMs:6000,meterMax:500,meterMin:50,meterHoldMs:1000,meterStepsPerSecond:30,meterStep:5},phase:'playing',layout,slots:layout.map((_,i)=>i),current:layout.length,highScore:999999,stockRemaining:51-layout.length,legalPairs:[[layout.length-2,layout.length-1]],exposed:layout.map((_,i)=>i),samePairs:12,consecutivePairs:8,meterAt:1000,score:999999,deadline:101000,event:{label:'Get ready',points:0}}};
+createRoot(document.getElementById('root')!).render(<div className="arcade-run" data-shell-presentation-mode="fullscreen"><header style={{height:'2.75rem',flexShrink:0}}>P-Town Poker · App header</header><TakeTwoView view={view} userId="player-0" now={1000} pending={false} error="" epoch={0} onIntent={()=>{}} onReconnect={()=>{}} balance={p=><small>{p.chips} chips</small>}/></div>);

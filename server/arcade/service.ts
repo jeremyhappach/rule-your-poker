@@ -6,6 +6,7 @@ export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 // ownership/access, frozen revision/round and immutable receipt under its lock.
 export function triShortcut(body:Record<string,any>){return body.game==='tri-towers'&&body.presentationVersion===4&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['remove','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='remove'||Number.isInteger(body.intent.index)));}
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='take-two')return (await rpc('arcade_take_two_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='royal-flash')return (await rpc('arcade_royal_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='eleven-up')return (await rpc('arcade_eleven_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='tri-towers')return (await rpc('arcade_tri_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -33,6 +34,12 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
   await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
+ if(row.game==='take-two'){
+  if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
+  if(body.op==='action'&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['pair','draw','take_score','abandon'].includes(body.intent.type)||body.intent.type==='pair'&&(!Array.isArray(body.intent.items)||body.intent.items.length!==2||body.intent.items.some((i:unknown)=>!Number.isInteger(i)||Number(i)<-1||Number(i)>32))))throw Error('arcade:invalid_command');
+  const result=await rpc('arcade_take_two_step',{p_actor:userId,p_run:row.id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.type==='pair'?body.intent.items:null}:{})});
+  if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
+ }
  if(row.game==='royal-flash'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
   if(body.op==='action'&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['place','take_score','abandon'].includes(body.intent.type)||body.intent.type==='place'&&(!Number.isInteger(body.intent.index)||body.intent.index<0||body.intent.index>24)))throw Error('arcade:invalid_command');

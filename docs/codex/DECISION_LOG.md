@@ -1,3 +1,14 @@
+# 2026-10-19 — Take 2 uses approved P-Town interpretations
+
+Jeremy approved Take 2 implementation and publication in both modes, then
+explicitly chose King–Ace wrapping. Original help/full-clear evidence remained
+incomplete: preserve that distinction in the rules evidence. Frozen `take-two/1`
+uses three normal rounds, 100 seconds, the approved decaying pair meter, −100
+manual draws, clear-before-refill bonuses and first uncovered row-major vacancy.
+Arcade and multiplayer call the same database rule core; only orchestration
+differs. Reuse deployed Royal Flash consent/financial/terminal owners and qualify
+both money modes before opening admission. See `TAKE_TWO_QUALIFICATION.md`.
+
 # 2026-10-18 — Royal Flash has no manual score action
 
 Jeremy removed Take Score and explicitly chose to keep automatic partial-board

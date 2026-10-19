@@ -56,7 +56,7 @@ export const AnteUpDialog = ({
   const isCribbageGame = gameType === 'cribbage';
   const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
   const isYahtzeeGame = gameType === 'yahtzee';
-  const isMegatouch = ['royal-flash', 'eleven-up', 'tri-towers', 'run21'].includes(gameType ?? '');
+  const isMegatouch = ['take-two', 'royal-flash', 'eleven-up', 'tri-towers', 'run21'].includes(gameType ?? '');
   const isFarkleGame = gameType === 'farkle';
   
   const getGameDisplayName = () => {
@@ -67,6 +67,7 @@ export const AnteUpDialog = ({
     if (isGinRummyGame) return 'Gin Rummy';
     if (isYahtzeeGame) return 'Yahtzee';
     if (isFarkleGame) return 'Farkle';
+    if (gameType === 'take-two') return 'Take 2';
     if (gameType === 'royal-flash') return 'Royal Flash';
     if (gameType === 'eleven-up') return '11 Up';
     if (gameType === 'tri-towers') return 'TriTowers';

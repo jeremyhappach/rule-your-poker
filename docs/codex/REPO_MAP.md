@@ -1,5 +1,12 @@
 # Repository map
 
+Take 2: `supabase/take-two/rules.sql` owns the shared versioned layout, legal
+pairs, deck, draw, meter, clock and bonuses. Its multiplayer/Arcade adapters use
+canonical receipts, financial settlement and recovery. `src/components/takeTwo/`
+contains the shared board and shell adapters; `src/lib/takeTwo/` and `useTakeTwo`
+own projected transport and presentation admission. `dev/take-two/` contains
+isolated browser/SQL qualification. See `TAKE_TWO_QUALIFICATION.md`.
+
 Royal Flash: `supabase/royal-flash/rules.sql` owns the mode-neutral versioned
 grid, deck, hands, deadlines and bonuses. `multiplayer.sql`, `recovery.sql` and
 `bots.sql` adapt canonical consent, settlement and zero-client progression;

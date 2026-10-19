@@ -1,3 +1,19 @@
+# Take 2 shared rules — 2026-10-19 — awaiting owner smoke
+
+Take 2 is qualified for Arcade and normal-stake multiplayer using frozen
+`take-two/1` rules. Three 100-second rounds, same/consecutive pairs (including
+King–Ace), the approved speed meter, manual draw penalty and clear/stock/time
+bonuses share one database owner. Canonical consent, finances and terminal flow
+follow the deployed Royal Flash pattern.
+
+Candidate and installed production rollback proofs, financial concurrency,
+bot/pause recovery, browser progression, twelve layouts, typecheck, focused
+correction of the full test run, harness tests and production build pass.
+Migration `20261019230217` keeps admission closed until matching client/worker
+publication and reviewed activation. Owner production acceptance remains pending.
+See [rules, evidence and smoke](TAKE_TWO_QUALIFICATION.md).
+Release checkpoint: `take-two-v1-2026-10-19`.
+
 # TriTowers, 11 Up and Royal Flash normal money admission — 2026-10-19
 
 All three games independently passed candidate and installed production rollback
