@@ -61,8 +61,9 @@ Multiplayer uses Royal Flash's deployed normal-stake pattern: canonical consent,
 UUID/revision receipts, financial transfers, final snapshots, pause, terminal hold,
 Session Ended and continuation. Bots use only the public projection. Arcade uses
 its existing authenticated solo receipts/results and recovery worker, with no
-multiplayer or financial owner mounted. One proportional 4:3 board uses canonical
-cards and the existing fullscreen shell in both modes.
+multiplayer or financial owner mounted. Canonical cards and the existing fullscreen
+shell are shared. The original 4:3 cabinet was superseded by the proportional
+full-slot layout in [production-smoke corrections](TAKE_TWO_SMOKE_POLISH.md).
 
 Migration `20261019230217_take_two_shared_v1.sql` was installed with admission
 disabled after a successful production candidate rollback proof. Installed

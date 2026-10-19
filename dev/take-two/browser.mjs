@@ -15,8 +15,8 @@ try{
  await page.reload();await page.locator('.take-stock:not([disabled])').waitFor();assert.equal(await page.locator('[data-selected=true]').count(),0);
  await page.screenshot({path:'qualification.local/take-two/solo-play.png'});
  for(let round=1;round<=3;round++){
-  await page.locator('.take-right>button:not([disabled])').waitFor();state=await post('state',f);assert.equal(state.view.round,round);assert.equal(state.view.slots.length,round===1?28:33);
-  await page.locator('.take-right>button').click();await page.locator('.take-result').waitFor();
+  await page.locator('.take-bank:not([disabled])').waitFor();state=await post('state',f);assert.equal(state.view.round,round);assert.equal(state.view.slots.length,round===1?28:33);
+  await page.locator('.take-bank').click();await page.locator('.take-result').waitFor();
   if(round<3)await page.locator('.take-result').waitFor({state:'hidden',timeout:12000});
  }
  await page.getByRole('heading',{name:'Take 2 leaderboard'}).waitFor({timeout:15000});assert.equal((await db.query('SELECT count(*) n FROM private.arcade_results WHERE run_id=$1',[f.id])).rows[0].n,'1');
@@ -27,7 +27,7 @@ try{
  await p1.screenshot({path:'qualification.local/take-two/multiplayer-play.png'});
  // Fast-forward only this isolated test match's authoritative deadline between UI turns.
  for(let turn=0;turn<6;turn++){
-  const active=turn%2===0?p1:p2;await active.locator('.take-right>button:not([disabled])').waitFor({timeout:15000});await active.locator('.take-right>button').click();await active.locator('.take-result').waitFor();
+  const active=turn%2===0?p1:p2;await active.locator('.take-bank:not([disabled])').waitFor({timeout:15000});await active.locator('.take-bank').click();await active.locator('.take-result').waitFor();
   await db.query("UPDATE private.take_two_matches SET state=jsonb_set(state,'{deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1)),revision=revision+1 WHERE dealer_game_id=$1",[m.id]);
  }
  await p1.getByRole('heading',{name:'Take 2',exact:true}).waitFor({timeout:15000});

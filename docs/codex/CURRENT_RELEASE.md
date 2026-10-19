@@ -1,3 +1,19 @@
+# Take 2 smoke corrections — 2026-10-19 — awaiting owner smoke
+
+Both modes share a larger proportional tableau, compact controls above/below,
+horizontal bonus meter and immediate pending-pair feedback. Safe next-card
+selection no longer waits for a response; command submission remains serialized
+and server-authoritative. Arcade removes two redundant reads using its existing
+locked step. No rules, timing, audio, settlement, records or database changes.
+
+Local median tap-to-removal: Arcade 79 → 46 ms; multiplayer 62 → 63 ms (unchanged
+transport, improved feedback/preselection). Portrait cards are 48% wider; standard
+two-player landscape cards are 62% wider. Forty-two proportional/hit-target layouts,
+full browser progression, 2,502 app tests, 241 harness tests, typecheck and build
+pass. Physical iPhone/production latency remains owner smoke. See
+[measurements, screenshot paths and smoke](TAKE_TWO_SMOKE_POLISH.md).
+Checkpoint: `take-two-smoke-polish-2026-10-19`.
+
 # Take 2 shared rules — 2026-10-19 — awaiting owner smoke
 
 Take 2 is qualified for Arcade and normal-stake multiplayer using frozen
