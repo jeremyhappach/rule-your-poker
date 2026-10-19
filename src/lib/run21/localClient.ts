@@ -21,7 +21,7 @@ export async function run21Request<T>(gameId: string, path: string, body?: unkno
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
     let response:Response;
     try{response=await run21Fetch(gameId,path,action?{method:'POST',body:JSON.stringify(body),signal:controller.signal}:{signal:controller.signal},id);}
-    catch(e){clearTimeout(timeout);if(!(e instanceof TypeError)&&!(e instanceof DOMException&&e.name==='AbortError'))throw e;lost=true;if(action&&attempt===0)continue;throw new UncertainRun21Action('Response lost.');}
+    catch(e){run21Timing('request-failed',id);clearTimeout(timeout);if(!(e instanceof TypeError)&&!(e instanceof DOMException&&e.name==='AbortError'))throw e;lost=true;if(action&&attempt===0)continue;throw new UncertainRun21Action('Response lost.');}
     run21Timing('response-headers',id,undefined,response.headers.get('X-Run21-Timing')??undefined);
     let result:any;try{result=await response.json();}catch{throw new UncertainRun21Action('Response lost.');}finally{clearTimeout(timeout);}
     if(response.status>=500||lost&&!response.ok)throw new UncertainRun21Action('Response uncertain.');

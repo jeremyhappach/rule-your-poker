@@ -2,7 +2,7 @@ import {useRun21Action} from './useRun21Action';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
 import {legalColumns} from '@/lib/run21/rules';
-import {run21SnapshotTiming} from '@/lib/run21/diagnostics';
+import {run21SnapshotTiming,run21RoundTiming,run21Timing} from '@/lib/run21/diagnostics';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
@@ -25,6 +25,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   if(previous&&value.revision===previous.revision&&JSON.stringify(value.view)!==JSON.stringify(previous.view)){
    setError('State changed unexpectedly. Reconnect to verify your run.');return;
   }
+  if(value.game==='run21')run21RoundTiming((value as unknown as ArcadeSnapshot).view.roundNumber);
   // Tag the recovered response as well as the interruption. An old playing frame
   // may remain mounted while the recovery fetch is in flight.
   if(trackRoundPresentation&&previous&&value.revision>previous.revision&&(recovery||requestEpoch!==epoch.current))setPresentationEpoch(n=>n+1);
@@ -41,7 +42,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
  },[runId,trackRoundPresentation]);
  const refresh=useCallback(async(recovery=false)=>{
   const current=generation.current,requestEpoch=epoch.current;
-  try{const value=await arcadeRequest<T>({op:'state',runId,...(trackRoundPresentation?{game:'tri-towers'}:{})});if(current===generation.current)accept(value,recovery,requestEpoch);}
+  try{const value=await arcadeRequest<T>({op:'state',runId,...(trackRoundPresentation?{game:'tri-towers'}:state.current?.game==='run21'?{game:'run21'}:{})});if(current===generation.current)accept(value,recovery,requestEpoch);}
   catch(e){if(current===generation.current){interrupt();setError(e instanceof Error?e.message:'Connection lost.');}}
  },[runId,accept,interrupt,trackRoundPresentation]);
  const intentView=(value:T|null)=>{if(!trackRoundPresentation||!value)return null;const s=value as unknown as TriArcadeSnapshot,v=s.view;if(!['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules?.version))return null;return {scope:runId+':'+v.roundId,actor:runId,roundId:v.roundId,revision:s.revision,phase:v.phase,waste:v.waste,cards:v.cards,removed:v.removed,allowed:s.status==='active'&&!error&&!document.hidden&&navigator.onLine&&anchor.current.server+performance.now()-anchor.current.local<v.deadline};};
@@ -71,7 +72,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   generation.current++;const currentGeneration=generation.current;state.current=null;initial.current=true;finishedSeen.current=false;busy.current=false;setSnapshot(null);setPending(false);setCompletedOnEntry(false);setCompletionLive(false);setPresentationEpoch(0);
   void refresh(true);
   const channel=supabase.channel('arcade:'+runId+':'+crypto.randomUUID()).on('postgres_changes',
-   {event:'UPDATE',schema:'public',table:'arcade_revisions',filter:'run_id=eq.'+runId},()=>{if(!trackRoundPresentation||currentGeneration===generation.current)void refresh();}).subscribe(status=>{if(trackRoundPresentation&&currentGeneration!==generation.current)return;if(status==='SUBSCRIBED')void refresh(true);else interrupt();});
+   {event:'UPDATE',schema:'public',table:'arcade_revisions',filter:'run_id=eq.'+runId},()=>{if(!trackRoundPresentation||currentGeneration===generation.current)void refresh();}).subscribe(status=>{if(state.current?.game==='run21')run21Timing(status==='SUBSCRIBED'?'subscription-open':status==='CLOSED'?'subscription-closed':status==='TIMED_OUT'?'subscription-timeout':'subscription-error');if(trackRoundPresentation&&currentGeneration!==generation.current)return;if(status==='SUBSCRIBED')void refresh(true);else interrupt();});
   const recover=()=>{interrupt();if(trackRoundPresentation){bufferRef.current.interrupt();void bufferRef.current.recover().then(()=>refresh(true));}else void refresh(true);};
   const visible=()=>{interrupt();if(trackRoundPresentation)bufferRef.current.interrupt();if(document.visibilityState==='visible'){if(trackRoundPresentation)void bufferRef.current.recover().then(()=>refresh(true));else void refresh(true);}};
   window.addEventListener('focus',recover);window.addEventListener('online',recover);window.addEventListener('offline',interrupt);document.addEventListener('visibilitychange',visible);

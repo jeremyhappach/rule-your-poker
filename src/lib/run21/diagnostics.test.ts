@@ -2,7 +2,12 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {fixtureMatch,PLAYERS} from './fixtures';
 import {project} from './engine';
-afterEach(()=>{sessionStorage.clear();delete window.__RUN21_TIMINGS__;vi.resetModules();});
+afterEach(()=>{sessionStorage.clear();delete window.__RUN21_TIMINGS__;vi.unstubAllEnvs();vi.resetModules();});
+it('cannot restart production capture through an old URL/storage flag after the grant expires',async()=>{
+ vi.stubEnv('PROD',true);sessionStorage.setItem('run21-timing','1');
+ const d=await import('./diagnostics');expect(d.run21TimingEnabled()).toBe(false);
+ const end=d.beginRun21Timing(Date.now(),Date.now()+1000);expect(d.run21TimingEnabled()).toBe(true);end();expect(d.run21TimingEnabled()).toBe(false);
+});
 it('correlates realtime-first DOM/paint evidence to its acknowledged command and keeps capture bounded',async()=>{
  sessionStorage.setItem('run21-timing','1');const d=await import('./diagnostics'),view=project(fixtureMatch(),PLAYERS[0].id),key=JSON.stringify([view.identity,view.roundId,view.viewerId])+':'+view.boards[view.viewerId!]!.revision;
  d.run21Timing('confirmed-dom',key);d.run21Timing('confirmed-paint-opportunity',key);d.run21SnapshotTiming('request-1',view,3);

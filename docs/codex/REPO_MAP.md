@@ -97,7 +97,10 @@ Run21 immediate feedback: `useRun21Action.ts` retains one immutable pending
 request across uncertain responses and same-tab recovery. `actionPresentation.ts`
 and `Run21Felt.tsx` render only its known card, keeping confirmed totals separate.
 `Run21SpaceScene.tsx` / `run21Space.css` provide the shared fullscreen space scene;
-`run21/diagnostics.ts` provides opt-in bounded timing capture. Release evidence:
+`run21/diagnostics.ts` provides bounded timing capture. `useRun21Diagnostics.ts`
+and `run21/timingCapture.ts` own automatic account-granted capture and idle uploads;
+private `run21_timing_grants` / `run21_timing_captures` own expiry and retrieval.
+See `RUN21_ACCOUNT_TIMING.md`. Original release evidence:
 `RUN21_RESPONSIVE_SPACE.md`.
 
 Shared table/fullscreen dissolve: `src/lib/canonicalShell/CinematicPresentation.tsx`

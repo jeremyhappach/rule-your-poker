@@ -1,3 +1,18 @@
+# Run21 automatic account timing — 2026-10-19 — awaiting owner smoke
+
+Hap's Run21 diagnostics are automatically enabled by a private, expiring one-week
+account grant in Arcade and multiplayer. Capture is bounded to 2,400 samples
+across rounds, with idle uploads every 30 seconds and a bounded final upload.
+Eight server captures are retained until one week after capture expiry. No
+per-move network/storage writes, gameplay UI, or game-rule changes are added.
+
+Local/deployed rollback proofs, both-mode activation/cleanup tests, typecheck,
+Run21/Arcade/Royal Flash regressions and a production build validate this release.
+The full-run browser harness verifies automatic capture and three-round retrieval;
+physical iPhone overhead and the intermittent production lag remain owner smoke.
+See [capture, retention and retrieval](RUN21_ACCOUNT_TIMING.md).
+Checkpoint: run21-account-timing-2026-10-19.
+
 # Royal Flash startup / Run21 performance — 2026-10-19 — awaiting owner smoke
 
 Both Royal Flash modes retain a styled loading shell and the board during

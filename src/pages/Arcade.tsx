@@ -6,6 +6,7 @@ import {grantTriStart} from '@/lib/triTowers/roundTimeline';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Gamepad2,ArrowLeft,Trophy,Play,RotateCcw} from 'lucide-react';
+import {useRun21Diagnostics} from '@/hooks/useRun21Diagnostics';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
 import {useIsAdmin} from '@/hooks/useIsAdmin';
 import {ArcadeInfo,ArcadeArtwork} from '@/components/arcade/ArcadeInfo';
@@ -101,6 +102,7 @@ function GameBoard({game}:{game:'run21'|'tri-towers'|'eleven-up'|'royal-flash'})
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
+ useRun21Diagnostics(userId,'arcade',runId);
  const {snapshot,error,pending,placement,now,act,refresh,completedOnEntry,completionLive,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[celebration,setCelebration]=useState<ScoreCelebrationReceipt|null>(null);
  const [finalUntil,setFinalUntil]=useState<number|null>(null);

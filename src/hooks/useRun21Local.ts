@@ -1,5 +1,5 @@
 import {useRun21Action} from './useRun21Action';
-import {run21SnapshotTiming} from '@/lib/run21/diagnostics';
+import {run21SnapshotTiming,run21RoundTiming,run21Timing} from '@/lib/run21/diagnostics';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
@@ -32,7 +32,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     const accepted=acceptRun21Snapshot(latest.current,value,dealerGameId);
     if(!accepted||accepted!==value)return;
     if(recovery||!latest.current)setAudioEpoch(n=>n+1);
-    latest.current=accepted;
+    latest.current=accepted;run21RoundTiming(accepted.view.roundNumber);
     celebrations.current.accept(accepted,recovery||document.hidden,continuousRenewal&&!document.hidden);
     const tick=performance.now();clock.current={server:Math.max(accepted.serverAt,clock.current.server+tick-clock.current.local),local:tick};
     // Live transport is a snapshot, not a replay timeline. The authority owns bot pacing
@@ -65,7 +65,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
         try{
           const response=await run21Fetch(gameId,`events?dealerGameId=${dealerGameId}&after=${presentation.current.received}`,{signal:controller.signal});
           if(!response.ok||!response.body)throw new Error('Run21 transport unavailable');
-          setConnected(true);
+          run21Timing('stream-open');setConnected(true);
           const reader=response.body.getReader(),decoder=new TextDecoder();let text='',baseline=true;
           while(!controller.signal.aborted){const {value,done}=await reader.read();if(done)break;
             text+=decoder.decode(value,{stream:true});let end:number;
@@ -77,8 +77,8 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
           }
         }catch{/* The canonical shell owns sustained connectivity presentation. */}
         if(controller.signal.aborted)return;
-        if(renewed){continuousRenewal=true;continue;}
-        continuousRenewal=false;
+        if(renewed){run21Timing('stream-renew');continuousRenewal=true;continue;}
+        continuousRenewal=false;run21Timing('stream-lost');
         celebrations.current.silence();setConnected(false);setAudioEpoch(n=>n+1);
         await new Promise<void>(resolve=>{
           const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',done);resolve();};

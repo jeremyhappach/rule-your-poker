@@ -1,0 +1,141 @@
+{
+  "environment": "isolated local PostgreSQL clone; production service/client/render/audio, local auth adapter; no WAN or physical Safari measurement",
+  "automatic": true,
+  "summary": [
+    {
+      "round": 1,
+      "moves": 13,
+      "channels": 1,
+      "listeners": 220,
+      "domNodes": 489,
+      "audio": {
+        "contexts": 1,
+        "started": 8,
+        "ended": 8
+      },
+      "serverMs": {
+        "n": 14,
+        "p50": 103.3794999999991,
+        "p95": 202.814699999999,
+        "max": 202.814699999999
+      },
+      "bytes": {
+        "n": 14,
+        "p50": 3395,
+        "p95": 4313,
+        "max": 4313
+      },
+      "inputToPaintMs": {
+        "n": 14,
+        "p50": 139,
+        "p95": 237.89999997615814,
+        "max": 237.89999997615814
+      },
+      "framesMs": {
+        "n": 772,
+        "p50": 16.699999999999818,
+        "p95": 16.899999999999864,
+        "max": 216.60000000000036
+      }
+    },
+    {
+      "round": 2,
+      "moves": 14,
+      "channels": 1,
+      "listeners": 218,
+      "domNodes": 487,
+      "audio": {
+        "contexts": 1,
+        "started": 117,
+        "ended": 115
+      },
+      "serverMs": {
+        "n": 14,
+        "p50": 96.50979999999981,
+        "p95": 201.53879999999845,
+        "max": 201.53879999999845
+      },
+      "bytes": {
+        "n": 14,
+        "p50": 3385,
+        "p95": 4293,
+        "max": 4293
+      },
+      "inputToPaintMs": {
+        "n": 14,
+        "p50": 125.30000001192093,
+        "p95": 226.4000000357628,
+        "max": 226.4000000357628
+      },
+      "framesMs": {
+        "n": 1514,
+        "p50": 16.69999999999891,
+        "p95": 17,
+        "max": 216.60000000000036
+      }
+    },
+    {
+      "round": 3,
+      "moves": 15,
+      "channels": 1,
+      "listeners": 221,
+      "domNodes": 521,
+      "audio": {
+        "contexts": 1,
+        "started": 125,
+        "ended": 125
+      },
+      "serverMs": {
+        "n": 16,
+        "p50": 115.83120000000054,
+        "p95": 224.87590000001364,
+        "max": 224.87590000001364
+      },
+      "bytes": {
+        "n": 16,
+        "p50": 3533,
+        "p95": 4709,
+        "max": 4709
+      },
+      "inputToPaintMs": {
+        "n": 16,
+        "p50": 155.30000001192093,
+        "p95": 258.19999998807907,
+        "max": 258.19999998807907
+      },
+      "framesMs": {
+        "n": 2000,
+        "p50": 16.69999999999709,
+        "p95": 17,
+        "max": 49.89999999999418
+      }
+    }
+  ],
+  "uploads": [
+    {
+      "at": 1792438530051,
+      "samples": 643,
+      "bytes": 54494
+    },
+    {
+      "at": 1792438632820,
+      "samples": 848,
+      "bytes": 72047
+    }
+  ],
+  "savedSamples": 848,
+  "savedRounds": [
+    1,
+    2,
+    3
+  ],
+  "overhead": {
+    "records": 10000,
+    "totalMs": 6.199999988079071,
+    "microsecondsPerSample": 0.6199999988079071,
+    "batchSamples": 2400,
+    "batchMs": 1.100000023841858,
+    "batchBytes": 150085
+  },
+  "errors": []
+}

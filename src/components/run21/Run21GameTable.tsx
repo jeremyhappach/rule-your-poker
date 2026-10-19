@@ -8,6 +8,7 @@ import { useShellTabBar, type ShellTabId } from '@/lib/canonicalShell/ShellTabBa
 import { HandHistory } from '@/components/HandHistory';
 import { MobileChatPanel } from '@/components/MobileChatPanel';
 import { useGameChatContext } from '@/hooks/GameChatContext';
+import {useRun21Diagnostics} from '@/hooks/useRun21Diagnostics';
 import { useRun21Local } from '@/hooks/useRun21Local';
 import { useSafeFelt } from '@/hooks/useRun21SafeFelt';
 import { RUN21_GEOMETRY_DEFAULTS } from '@/lib/run21/geometry';
@@ -52,6 +53,7 @@ function Felt({view, now, onIntent, pending, placement, events,hideScoring}: {pl
 }
 /** Game.tsx owns the only PersistentTableShell. This component fills its canonical slots. */
 export function Run21GameTable(props: Props) {
+  useRun21Diagnostics(props.userId,'multiplayer',props.dealerGameId);
   const {snapshot, now, error, pending, placement, onIntent, reconnect, phase,celebration,retireCelebration,connected,audioEpoch} = useRun21Local(props.gameId, props.dealerGameId,props.authoritativeComplete);
   const chat = useGameChatContext();
   const [replay, setReplay] = useState<ReplayPackageV1 | null>(null);
