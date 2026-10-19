@@ -26,3 +26,6 @@
 .royal-grid>button[data-scored]{z-index:1;outline:3px solid #ffe47b;outline-offset:0;box-shadow:0 0 12px #ffc53c99}
 .royal-breakdown{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.15em;width:96%;height:100%;padding:.3em;border:2px solid #ffe47b;border-radius:.65rem;background:#102a2d;line-height:1.15;font-size:clamp(.8rem,3cqh,1.4rem)}
 .royal-breakdown small{font-size:.7em;color:#dfd7bd}.royal-breakdown strong{font-size:1.15em;color:#ffe47b}.royal-breakdown b{font-size:1em}
+.royal-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1rem}.royal-loading button{pointer-events:auto}
+
+.royal-connection{position:absolute;top:0;inset-inline:0;z-index:10;text-align:center;color:#ffe2a4}

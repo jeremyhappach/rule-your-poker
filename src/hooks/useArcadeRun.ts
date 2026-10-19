@@ -2,7 +2,7 @@ import {useRun21Action} from './useRun21Action';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
 import {legalColumns} from '@/lib/run21/rules';
-import {run21Timing} from '@/lib/run21/diagnostics';
+import {run21SnapshotTiming} from '@/lib/run21/diagnostics';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
@@ -56,7 +56,7 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   const scope=generation.current,requestEpoch=epoch.current;
   try{
    const value=await arcadeRequest<T>({op:'action',game:'run21',runId,requestId:command.requestId,revision:command.runRevision,roundId:command.roundId,intent:command.intent});
-   if(scope===generation.current){accept(value,false,requestEpoch);run21Timing('snapshot-accepted',command.requestId);}
+   if(scope===generation.current){run21SnapshotTiming(command.requestId,(value as unknown as ArcadeSnapshot).view);accept(value,false,requestEpoch);}
   }catch(e){
    if(e instanceof UncertainRun21Action)throw e;
    // Restore confirmed state before releasing a rejected tentative card.

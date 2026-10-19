@@ -1,3 +1,21 @@
+# Royal Flash startup / Run21 performance — 2026-10-19 — awaiting owner smoke
+
+Both Royal Flash modes retain a styled loading shell and the board during
+interruptions. Initial handshakes no longer report reconnecting; reads no longer
+hold the command input lock. First placement follows the persisted intro gate,
+with Arcade waiting for its committed Ready response. Brief browser outages
+recover without a stuck subscription flag. Shared stockpile helper text is removed.
+Rules, scoring, timing, audio, settlement and records are preserved; no migration.
+
+The uninterrupted local three-round Run21 run did not reproduce late-game lag:
+one subscription throughout; p95 intent-to-paint 211 / 242 / 228 ms and p95
+frame intervals 17 ms. This is local desktop evidence, not production/iPhone
+latency. Opt-in diagnostics now correlate request, server and visible-update
+stages and capture long tasks. Production disconnect cause and Run21 lag remain
+unconfirmed. Typecheck, full suites, focused checks, both-mode Royal Flash browser
+outage checks and production build pass. See [findings and smoke](ROYAL_STARTUP_RUN21_PERFORMANCE.md).
+Checkpoint: royal-startup-run21-diagnostics-2026-10-19.
+
 # Royal Flash — 2026-10-18 — remove Take Score
 
 Jeremy clarified that Royal Flash has no manual Take Score action, and selected

@@ -1,5 +1,14 @@
 # Backlog
 
+## Queued — Run21 late-round-3 lag and intermittent Royal Flash reconnect evidence — October 19, 2026
+
+- Jeremy reported noticeable lag near the end of his last Run21 round 3 and intermittent Royal Flash reconnect messages. Exact production run, mode and time are not yet captured.
+- Royal Flash startup, read-lock and brief-outage handling are corrected in the current release. The original intermittent connection trigger remains unconfirmed.
+- A continuous local three-round Run21 run showed one subscription, stable frame cadence and no comparable late slowdown. Do not infer a production fix or begin an engine rewrite from this result.
+- Next action after recurrence: capture mode, time and opt-in Run21 timing export to separate browser work, requests and server spans; preserve the historical run. See ROYAL_STARTUP_RUN21_PERFORMANCE.md and its measured evidence.
+- Provenance: Jeremy's direct production-polish request, October 19, 2026.
+
+
 ## Queued — TriTowers all-clear fanfare interrupted by count-up — October 17, 2026
 
 - Jeremy reported one production occurrence where clearing all three towers

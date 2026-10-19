@@ -1,5 +1,5 @@
 import {pendingPlacement,type PendingRun21Action} from '@/lib/run21/actionPresentation';
-import {run21InputTiming,run21Timing,run21TimingEnabled} from '@/lib/run21/diagnostics';
+import {run21ConfirmationId,run21InputTiming,run21Timing,run21TimingEnabled} from '@/lib/run21/diagnostics';
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {createPortal} from 'react-dom';
 import { PlayingCard } from '@/components/PlayingCard';
@@ -76,7 +76,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placem
   const board=view.boards[playerId];
   useLayoutEffect(()=>{
     if(!run21TimingEnabled())return;
-    const key=scope+':'+board?.revision;run21Timing('confirmed-dom',key);
+    const key=run21ConfirmationId(scope+':'+board?.revision);run21Timing('confirmed-dom',key);
     let second=0;const first=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>run21Timing('confirmed-paint-opportunity',key));});
     return()=>{cancelAnimationFrame(first);cancelAnimationFrame(second);};
   },[scope,board?.revision]);

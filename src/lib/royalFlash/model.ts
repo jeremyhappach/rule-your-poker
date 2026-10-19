@@ -19,6 +19,13 @@ export interface RoyalSnapshot {
  canAct:boolean;paused:boolean;pausedAt?:number|null;finished:boolean;settled:boolean;solo:boolean;
  players:{id:string;name:string;score:number;active:boolean;seat?:number;chips?:number}[];
 }
+/** The frozen intro deadline is also the server reducer's first-placement gate.
+ * Derive a display/input window without changing the authoritative phase/revision. */
+export function royalPlayWindow(board:RoyalBoard,at:number,releaseIntro=true){
+ const released=releaseIntro&&board.phase==='intro'&&at>=board.deadline;
+ const deadline=released?board.deadline+board.rules.readyMs:board.deadline;
+ return {phase:released?'ready':board.phase,remaining:Math.max(0,deadline-at),playable:(released||board.phase==='ready'||board.phase==='playing')&&at<deadline};
+}
 export function acceptRoyalSnapshot(old:RoyalSnapshot|null,next:RoyalSnapshot,id:string){
  if(next.id!==id||!Number.isSafeInteger(next.revision))throw Error('Royal Flash snapshot identity mismatch');
  if(old&&next.revision<old.revision)return old;

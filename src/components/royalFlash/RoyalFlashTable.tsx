@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useRoyalFlash} from '@/hooks/useRoyalFlash';
 import {royalTransport,royalRpc} from '@/lib/royalFlash/client';
-import {RoyalFlashView,RoyalFlashRules} from './RoyalFlashView';
+import {RoyalFlashLoading,RoyalFlashView,RoyalFlashRules} from './RoyalFlashView';
 import {useRoyalFinancial} from './useRoyalFinancial';
 import {useGameChatContext} from '@/hooks/GameChatContext';
 import {MobileChatPanel} from '@/components/MobileChatPanel';
@@ -36,7 +36,7 @@ export function RoyalFlashTable(props:Props){
   closing.current=true;
   void royalRpc('royal_flash_close',{p_dealer_game_id:v.id}).then(()=>game.reconnect()).catch(e=>setError((e as Error).message));
  },[v,ready,props.sessionEnded,game.now]);
- if(!v)return <p role="status">{game.error||'Restoring Royal Flash…'} <button onClick={game.reconnect}>Reconnect</button></p>;
+ if(!v)return <RoyalFlashLoading activeTab={props.activeTab} setActiveTab={props.setActiveTab} error={game.error} onReconnect={game.reconnect}/>;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v.results?.map(r=><p key={r.id}>{v.players.find(p=>p.id===r.playerId)?.name} · Round {r.stage} · {r.reason.replace(/_/g,' ')} · {r.stageScore.toLocaleString()} · Total {r.score.toLocaleString()}</p>)}</div>:<RoyalFlashRules version={v.board.rules.version}/>;
- return <RoyalFlashView view={v} userId={props.userId} now={game.now} pending={game.pending} error={error||game.error} epoch={game.epoch} liveEntry={props.liveEntry} onIntent={game.act} onReconnect={()=>{closing.current=false;setError('');game.reconnect();}} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} terminalPresenting={v.settled&&!completed.current} panel={<>{panel}{props.activeTab==='history'&&v.terminal&&v.players.map(p=><div key={p.id}>{scoreAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>)}</div>)}</>} balance={p=><Balance player={p}/>}/>;
+ return <RoyalFlashView view={v} userId={props.userId} now={game.now} pending={game.pending} connected={game.connected} error={error||game.error} epoch={game.epoch} liveEntry={props.liveEntry} onIntent={game.act} onReconnect={()=>{closing.current=false;setError('');game.reconnect();}} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} terminalPresenting={v.settled&&!completed.current} panel={<>{panel}{props.activeTab==='history'&&v.terminal&&v.players.map(p=><div key={p.id}>{scoreAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>)}</div>)}</>} balance={p=><Balance player={p}/>}/>;
 }

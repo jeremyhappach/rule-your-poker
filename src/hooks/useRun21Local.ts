@@ -1,5 +1,5 @@
 import {useRun21Action} from './useRun21Action';
-import {run21Timing} from '@/lib/run21/diagnostics';
+import {run21SnapshotTiming} from '@/lib/run21/diagnostics';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
@@ -109,7 +109,7 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
     try{
       const response=await run21Request<Run21Snapshot>(gameId,path,command);
       if(response.requestId!==command.requestId)throw new UncertainRun21Action('Acknowledgment mismatch.');
-      flushSync(()=>accept(response,true));run21Timing('snapshot-accepted',command.requestId);
+      run21SnapshotTiming(command.requestId,response.view,response.events?.length);flushSync(()=>accept(response,true));
     }catch(e){
       if(e instanceof UncertainRun21Action)throw e;
       try{accept(await run21Request<Run21Snapshot>(gameId,`state?dealerGameId=${dealerGameId}&after=${presentation.current.received}`),false,true);}
