@@ -1,0 +1,3 @@
+import {connect} from '../royal-flash/database.mjs';import {readFileSync,writeFileSync} from 'node:fs';
+const dir='.codex/evidence/multiplayer-money/',c=await connect(JSON.parse(readFileSync(dir+'context.json')).database);
+try{const result=await c.query(readFileSync(dir+'production-proof.sql','utf8'));const rows=result.filter(r=>r.rows?.length).flatMap(r=>r.rows);writeFileSync(dir+'local-complete.json',JSON.stringify(rows,null,2));console.log('Complete rollback proof passed:',rows[0].evidence.length,'recorded examples');}catch(e){await c.query('ROLLBACK');console.error(e.message,e.where);process.exitCode=1;}finally{await c.end();}

@@ -227,6 +227,7 @@ const DealerGameSetupInner = ({
   }, []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
+  const selectionGeneration = useRef(0);
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [farkleDraft, setFarkleDraft] = useState<FarkleDealerFieldsValue>({ stake: '', target: '', endgame: 'equal_turns' });
@@ -332,6 +333,7 @@ const DealerGameSetupInner = ({
         // Preload a neutral card-game form only. The selected game's exact
         // config is applied by handleGameSelect below, after it has resolved.
         const initialGameType = previousGameType || 'holm-game';
+        if (selectionGeneration.current !== 0) return;
         if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
           if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
             applyDefaults(threeFiveSevenResult.data);
@@ -856,10 +858,12 @@ const DealerGameSetupInner = ({
   };
 
   const handleGameSelect = async (gameType: string) => {
+    const generation = ++selectionGeneration.current;
     if (gameType === 'farkle') {
       if (!isFarkleLocalQualification(import.meta.env, window.location.hostname)) {
         try {
           const defaults = await loadFarkleAdminDefaults();
+          if (generation !== selectionGeneration.current) return;
           setFarkleDraft({ stake: String(defaults.ante_amount), target: String(defaults.points_to_win), endgame: defaults.farkle_rules.endgame });
         } catch (error) {
           toast.error(error instanceof Error ? error.message : 'Could not load Farkle defaults');
@@ -898,6 +902,7 @@ const DealerGameSetupInner = ({
           .select('*')
           .eq('game_type', gameType === 'holm-game' ? 'holm' : '3-5-7')
           .single();
+        if (generation !== selectionGeneration.current) return;
         if (error || !data) {
           toast.error(`Could not load ${gameType === 'holm-game' ? 'Holm' : '3-5-7'} settings`);
           return;
@@ -915,8 +920,6 @@ const DealerGameSetupInner = ({
       return;
     }
 
-    setSelectedGameType(gameType);
-    setSelectionStep('config');
     if (isSimpleAnteGame(gameType)) {
       // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
@@ -924,6 +927,7 @@ const DealerGameSetupInner = ({
         .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus')
         .eq('game_type', gameType)
         .single();
+      if (generation !== selectionGeneration.current) return;
       
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
@@ -957,6 +961,9 @@ const DealerGameSetupInner = ({
         }
       }
     }
+    if (generation !== selectionGeneration.current) return;
+    setSelectedGameType(gameType);
+    setSelectionStep('config');
   };
 
   // Game definitions for unified grid

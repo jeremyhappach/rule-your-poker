@@ -1,0 +1,2631 @@
+{
+  "date": "2026-10-19",
+  "productionCandidateRollback": {
+    "passed": true,
+    "examples": [
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "b1327244-6ebd-4240-8d9a-d0bcd748898b",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "67201fea-c5db-4329-83cf-db14c7d8f116",
+          "transfers": [
+            {
+              "id": "67201fea-c5db-4329-83cf-db14c7d8f116:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "1fd0f86f-60b7-4ad3-a8ef-deade38338b6"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "daf90857-0b4f-4616-9b91-2fc716b3fd7e"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "d9d5f37e-0a86-44d6-ab91-3c8a167387ee",
+          "closing_balances": {
+            "player:1fd0f86f-60b7-4ad3-a8ef-deade38338b6": 117,
+            "player:daf90857-0b4f-4616-9b91-2fc716b3fd7e": 83
+          },
+          "opening_balances": {
+            "player:1fd0f86f-60b7-4ad3-a8ef-deade38338b6": 100,
+            "player:daf90857-0b4f-4616-9b91-2fc716b3fd7e": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "026b661a-7131-4400-a9d2-ad9188d3267b",
+          "game_id": "67201fea-c5db-4329-83cf-db14c7d8f116",
+          "pot_won": 17,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "d9d5f37e-0a86-44d6-ab91-3c8a167387ee",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_3e357d52",
+          "winner_player_id": "1fd0f86f-60b7-4ad3-a8ef-deade38338b6",
+          "player_chip_changes": {
+            "1fd0f86f-60b7-4ad3-a8ef-deade38338b6": 17,
+            "daf90857-0b4f-4616-9b91-2fc716b3fd7e": -17
+          },
+          "winning_hand_description": "TriTowers: {\"1fd0f86f-60b7-4ad3-a8ef-deade38338b6\": 100, \"daf90857-0b4f-4616-9b91-2fc716b3fd7e\": 0}"
+        },
+        "game_id": "67201fea-c5db-4329-83cf-db14c7d8f116",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "1fd0f86f-60b7-4ad3-a8ef-deade38338b6": 117,
+          "daf90857-0b4f-4616-9b91-2fc716b3fd7e": 83
+        },
+        "dealer_game_id": "d9d5f37e-0a86-44d6-ab91-3c8a167387ee",
+        "before_balances": {
+          "1fd0f86f-60b7-4ad3-a8ef-deade38338b6": 100,
+          "daf90857-0b4f-4616-9b91-2fc716b3fd7e": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "21614d57-bc40-43e2-8656-0a1378717aa6",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "ed762836-de01-44ed-b8b0-cb6da059ee93",
+          "transfers": [
+            {
+              "id": "ed762836-de01-44ed-b8b0-cb6da059ee93:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "87d24ce0-889a-4f10-ab9a-1e57eb62642b"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "97b7ac80-2a74-4e28-aae0-dd30a58411f8"
+              },
+              "amount": 9
+            },
+            {
+              "id": "ed762836-de01-44ed-b8b0-cb6da059ee93:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "8bec7aa4-4af8-419c-8df6-bbef4988b032"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "97b7ac80-2a74-4e28-aae0-dd30a58411f8"
+              },
+              "amount": 8
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "9641722f-c923-41e0-8e82-637060a8d7aa",
+          "closing_balances": {
+            "player:87d24ce0-889a-4f10-ab9a-1e57eb62642b": 109,
+            "player:8bec7aa4-4af8-419c-8df6-bbef4988b032": 108,
+            "player:97b7ac80-2a74-4e28-aae0-dd30a58411f8": 83
+          },
+          "opening_balances": {
+            "player:87d24ce0-889a-4f10-ab9a-1e57eb62642b": 100,
+            "player:8bec7aa4-4af8-419c-8df6-bbef4988b032": 100,
+            "player:97b7ac80-2a74-4e28-aae0-dd30a58411f8": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "479b5c3e-3ebb-4531-adc7-33fa5fc24327",
+          "game_id": "ed762836-de01-44ed-b8b0-cb6da059ee93",
+          "pot_won": 17,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "9641722f-c923-41e0-8e82-637060a8d7aa",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "87d24ce0-889a-4f10-ab9a-1e57eb62642b": 9,
+            "8bec7aa4-4af8-419c-8df6-bbef4988b032": 8,
+            "97b7ac80-2a74-4e28-aae0-dd30a58411f8": -17
+          },
+          "winning_hand_description": "TriTowers: {\"87d24ce0-889a-4f10-ab9a-1e57eb62642b\": 100, \"8bec7aa4-4af8-419c-8df6-bbef4988b032\": 100, \"97b7ac80-2a74-4e28-aae0-dd30a58411f8\": 0}"
+        },
+        "game_id": "ed762836-de01-44ed-b8b0-cb6da059ee93",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "87d24ce0-889a-4f10-ab9a-1e57eb62642b": 109,
+          "8bec7aa4-4af8-419c-8df6-bbef4988b032": 108,
+          "97b7ac80-2a74-4e28-aae0-dd30a58411f8": 83
+        },
+        "dealer_game_id": "9641722f-c923-41e0-8e82-637060a8d7aa",
+        "before_balances": {
+          "87d24ce0-889a-4f10-ab9a-1e57eb62642b": 100,
+          "8bec7aa4-4af8-419c-8df6-bbef4988b032": 100,
+          "97b7ac80-2a74-4e28-aae0-dd30a58411f8": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "df83d6e0-4fce-4546-a5fb-4e6ec8831fdf",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "a9d62e54-91a1-4914-91c2-3faab10621de",
+          "transfers": [
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "078b8c1f-fe11-4dc0-8493-b625b64849c2"
+              },
+              "amount": 17
+            },
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "248ea795-b5e2-4a24-83d2-f01a852ec8c8"
+              },
+              "amount": 17
+            },
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "35caaa38-2575-4642-ba34-dac79962177a"
+              },
+              "amount": 17
+            },
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "84bbb806-48ae-4523-87b9-a793f5fe6e83"
+              },
+              "amount": 17
+            },
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "bc8bc814-d92f-4e95-ae1b-26cf7b8f0889"
+              },
+              "amount": 17
+            },
+            {
+              "id": "a9d62e54-91a1-4914-91c2-3faab10621de:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "1954e26d-d695-4fde-97ec-662c134a0d23",
+          "closing_balances": {
+            "player:078b8c1f-fe11-4dc0-8493-b625b64849c2": 83,
+            "player:248ea795-b5e2-4a24-83d2-f01a852ec8c8": 83,
+            "player:35caaa38-2575-4642-ba34-dac79962177a": 83,
+            "player:681c570d-494c-4d6d-aa90-3ac1a0da1f7e": 202,
+            "player:84bbb806-48ae-4523-87b9-a793f5fe6e83": 83,
+            "player:bc8bc814-d92f-4e95-ae1b-26cf7b8f0889": 83,
+            "player:c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1": 83
+          },
+          "opening_balances": {
+            "player:078b8c1f-fe11-4dc0-8493-b625b64849c2": 100,
+            "player:248ea795-b5e2-4a24-83d2-f01a852ec8c8": 100,
+            "player:35caaa38-2575-4642-ba34-dac79962177a": 100,
+            "player:681c570d-494c-4d6d-aa90-3ac1a0da1f7e": 100,
+            "player:84bbb806-48ae-4523-87b9-a793f5fe6e83": 100,
+            "player:bc8bc814-d92f-4e95-ae1b-26cf7b8f0889": 100,
+            "player:c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "6a168d4b-9c3e-4925-82cc-8ce9a6958248",
+          "game_id": "a9d62e54-91a1-4914-91c2-3faab10621de",
+          "pot_won": 102,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "1954e26d-d695-4fde-97ec-662c134a0d23",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_3e357d52",
+          "winner_player_id": "681c570d-494c-4d6d-aa90-3ac1a0da1f7e",
+          "player_chip_changes": {
+            "078b8c1f-fe11-4dc0-8493-b625b64849c2": -17,
+            "248ea795-b5e2-4a24-83d2-f01a852ec8c8": -17,
+            "35caaa38-2575-4642-ba34-dac79962177a": -17,
+            "681c570d-494c-4d6d-aa90-3ac1a0da1f7e": 102,
+            "84bbb806-48ae-4523-87b9-a793f5fe6e83": -17,
+            "bc8bc814-d92f-4e95-ae1b-26cf7b8f0889": -17,
+            "c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1": -17
+          },
+          "winning_hand_description": "TriTowers: {\"078b8c1f-fe11-4dc0-8493-b625b64849c2\": 0, \"248ea795-b5e2-4a24-83d2-f01a852ec8c8\": 0, \"35caaa38-2575-4642-ba34-dac79962177a\": 0, \"681c570d-494c-4d6d-aa90-3ac1a0da1f7e\": 100, \"84bbb806-48ae-4523-87b9-a793f5fe6e83\": 0, \"bc8bc814-d92f-4e95-ae1b-26cf7b8f0889\": 0, \"c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1\": 0}"
+        },
+        "game_id": "a9d62e54-91a1-4914-91c2-3faab10621de",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "078b8c1f-fe11-4dc0-8493-b625b64849c2": 83,
+          "248ea795-b5e2-4a24-83d2-f01a852ec8c8": 83,
+          "35caaa38-2575-4642-ba34-dac79962177a": 83,
+          "681c570d-494c-4d6d-aa90-3ac1a0da1f7e": 202,
+          "84bbb806-48ae-4523-87b9-a793f5fe6e83": 83,
+          "bc8bc814-d92f-4e95-ae1b-26cf7b8f0889": 83,
+          "c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1": 83
+        },
+        "dealer_game_id": "1954e26d-d695-4fde-97ec-662c134a0d23",
+        "before_balances": {
+          "078b8c1f-fe11-4dc0-8493-b625b64849c2": 100,
+          "248ea795-b5e2-4a24-83d2-f01a852ec8c8": 100,
+          "35caaa38-2575-4642-ba34-dac79962177a": 100,
+          "681c570d-494c-4d6d-aa90-3ac1a0da1f7e": 100,
+          "84bbb806-48ae-4523-87b9-a793f5fe6e83": 100,
+          "bc8bc814-d92f-4e95-ae1b-26cf7b8f0889": 100,
+          "c64cf4fa-9d2b-47e5-b559-b05cd5cde5a1": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "3d9d4fe5-9d2a-406d-8a97-02f304b05665",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "b052e72c-15e6-4800-ac6c-69fc8c27e9c7",
+          "transfers": [
+            {
+              "id": "b052e72c-15e6-4800-ac6c-69fc8c27e9c7:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "15543996-340e-46a2-9db2-f0ad1e70b8f3"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "c80bef3b-d762-4435-b1d8-d1348f7ce63f"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "f810a65b-0662-40bb-abb6-8079e50e3703",
+          "closing_balances": {
+            "player:15543996-340e-46a2-9db2-f0ad1e70b8f3": 109,
+            "player:c80bef3b-d762-4435-b1d8-d1348f7ce63f": 91
+          },
+          "opening_balances": {
+            "player:15543996-340e-46a2-9db2-f0ad1e70b8f3": 100,
+            "player:c80bef3b-d762-4435-b1d8-d1348f7ce63f": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "a93662ef-0746-4b99-bd79-513634312dda",
+          "game_id": "b052e72c-15e6-4800-ac6c-69fc8c27e9c7",
+          "pot_won": 9,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "f810a65b-0662-40bb-abb6-8079e50e3703",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_b343d741",
+          "winner_player_id": "15543996-340e-46a2-9db2-f0ad1e70b8f3",
+          "player_chip_changes": {
+            "15543996-340e-46a2-9db2-f0ad1e70b8f3": 9,
+            "c80bef3b-d762-4435-b1d8-d1348f7ce63f": -9
+          },
+          "winning_hand_description": "TriTowers: {\"15543996-340e-46a2-9db2-f0ad1e70b8f3\": 2580, \"c80bef3b-d762-4435-b1d8-d1348f7ce63f\": 2380}"
+        },
+        "game_id": "b052e72c-15e6-4800-ac6c-69fc8c27e9c7",
+        "case_name": "play",
+        "after_balances": {
+          "15543996-340e-46a2-9db2-f0ad1e70b8f3": 109,
+          "c80bef3b-d762-4435-b1d8-d1348f7ce63f": 91
+        },
+        "dealer_game_id": "f810a65b-0662-40bb-abb6-8079e50e3703",
+        "before_balances": {
+          "15543996-340e-46a2-9db2-f0ad1e70b8f3": 100,
+          "c80bef3b-d762-4435-b1d8-d1348f7ce63f": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": null,
+        "result": {
+          "id": "31e8764c-d48d-4cad-9883-26edf76707ed",
+          "game_id": "86418225-2a14-44dd-aad3-82aaeac37bcf",
+          "pot_won": 0,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "b81a2340-abc0-492c-9cc6-7446089eefc6",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "04f665ae-b94a-479f-aec6-2b64b5a67f44": 0,
+            "b3a9d6d5-0a4d-433e-b6dc-e9b136f886b5": 0
+          },
+          "winning_hand_description": "TriTowers: {\"04f665ae-b94a-479f-aec6-2b64b5a67f44\": 0, \"b3a9d6d5-0a4d-433e-b6dc-e9b136f886b5\": 0}"
+        },
+        "game_id": "86418225-2a14-44dd-aad3-82aaeac37bcf",
+        "case_name": "recovery",
+        "after_balances": {
+          "04f665ae-b94a-479f-aec6-2b64b5a67f44": 100,
+          "b3a9d6d5-0a4d-433e-b6dc-e9b136f886b5": 100
+        },
+        "dealer_game_id": "b81a2340-abc0-492c-9cc6-7446089eefc6",
+        "before_balances": {
+          "04f665ae-b94a-479f-aec6-2b64b5a67f44": 100,
+          "b3a9d6d5-0a4d-433e-b6dc-e9b136f886b5": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "aca58cdb-cea3-4b52-a66d-2baf4747a242",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "c8aec69b-5059-45c2-8444-abd3f9171844",
+          "transfers": [
+            {
+              "id": "c8aec69b-5059-45c2-8444-abd3f9171844:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "e3a8111b-224f-4f06-a84a-5b0b604c54ad"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "f93e2371-c3a3-47a5-a6e5-7ff08d346f6a"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "8ed86cb0-7ebd-498f-989a-2fbe785a90d7",
+          "closing_balances": {
+            "player:e3a8111b-224f-4f06-a84a-5b0b604c54ad": 117,
+            "player:f93e2371-c3a3-47a5-a6e5-7ff08d346f6a": 83
+          },
+          "opening_balances": {
+            "player:e3a8111b-224f-4f06-a84a-5b0b604c54ad": 100,
+            "player:f93e2371-c3a3-47a5-a6e5-7ff08d346f6a": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "2825c89d-b0b7-4c2a-bb1d-db5b0f144e3a",
+          "game_id": "c8aec69b-5059-45c2-8444-abd3f9171844",
+          "pot_won": 17,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "8ed86cb0-7ebd-498f-989a-2fbe785a90d7",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Player_2b60eaeb",
+          "winner_player_id": "e3a8111b-224f-4f06-a84a-5b0b604c54ad",
+          "player_chip_changes": {
+            "e3a8111b-224f-4f06-a84a-5b0b604c54ad": 17,
+            "f93e2371-c3a3-47a5-a6e5-7ff08d346f6a": -17
+          },
+          "winning_hand_description": "11 Up: {\"e3a8111b-224f-4f06-a84a-5b0b604c54ad\": 100, \"f93e2371-c3a3-47a5-a6e5-7ff08d346f6a\": 0}"
+        },
+        "game_id": "c8aec69b-5059-45c2-8444-abd3f9171844",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "e3a8111b-224f-4f06-a84a-5b0b604c54ad": 117,
+          "f93e2371-c3a3-47a5-a6e5-7ff08d346f6a": 83
+        },
+        "dealer_game_id": "8ed86cb0-7ebd-498f-989a-2fbe785a90d7",
+        "before_balances": {
+          "e3a8111b-224f-4f06-a84a-5b0b604c54ad": 100,
+          "f93e2371-c3a3-47a5-a6e5-7ff08d346f6a": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "c06d744f-280e-4e96-bfef-4da6b816ff41",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "ff982ef3-d93f-4a2a-8dc0-cbe92037ea16",
+          "transfers": [
+            {
+              "id": "ff982ef3-d93f-4a2a-8dc0-cbe92037ea16:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "d2abae0e-a62a-4ce3-aa72-98a5c4a1317b"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "259a9316-737d-4d56-b75e-3988c56380f7"
+              },
+              "amount": 8
+            },
+            {
+              "id": "ff982ef3-d93f-4a2a-8dc0-cbe92037ea16:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "e579ab27-8e9f-47f1-9e85-50ce0a84f7a5"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "259a9316-737d-4d56-b75e-3988c56380f7"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "e963ea6c-fc3f-4ce7-bbf9-50682ca73de0",
+          "closing_balances": {
+            "player:259a9316-737d-4d56-b75e-3988c56380f7": 83,
+            "player:d2abae0e-a62a-4ce3-aa72-98a5c4a1317b": 108,
+            "player:e579ab27-8e9f-47f1-9e85-50ce0a84f7a5": 109
+          },
+          "opening_balances": {
+            "player:259a9316-737d-4d56-b75e-3988c56380f7": 100,
+            "player:d2abae0e-a62a-4ce3-aa72-98a5c4a1317b": 100,
+            "player:e579ab27-8e9f-47f1-9e85-50ce0a84f7a5": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "ae5f1140-ca9c-402a-ba18-cb95f78bb66c",
+          "game_id": "ff982ef3-d93f-4a2a-8dc0-cbe92037ea16",
+          "pot_won": 17,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "e963ea6c-fc3f-4ce7-bbf9-50682ca73de0",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "259a9316-737d-4d56-b75e-3988c56380f7": -17,
+            "d2abae0e-a62a-4ce3-aa72-98a5c4a1317b": 8,
+            "e579ab27-8e9f-47f1-9e85-50ce0a84f7a5": 9
+          },
+          "winning_hand_description": "11 Up: {\"259a9316-737d-4d56-b75e-3988c56380f7\": 0, \"d2abae0e-a62a-4ce3-aa72-98a5c4a1317b\": 100, \"e579ab27-8e9f-47f1-9e85-50ce0a84f7a5\": 100}"
+        },
+        "game_id": "ff982ef3-d93f-4a2a-8dc0-cbe92037ea16",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "259a9316-737d-4d56-b75e-3988c56380f7": 83,
+          "d2abae0e-a62a-4ce3-aa72-98a5c4a1317b": 108,
+          "e579ab27-8e9f-47f1-9e85-50ce0a84f7a5": 109
+        },
+        "dealer_game_id": "e963ea6c-fc3f-4ce7-bbf9-50682ca73de0",
+        "before_balances": {
+          "259a9316-737d-4d56-b75e-3988c56380f7": 100,
+          "d2abae0e-a62a-4ce3-aa72-98a5c4a1317b": 100,
+          "e579ab27-8e9f-47f1-9e85-50ce0a84f7a5": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "3244109b-5cf2-4062-a8e7-9b35bcf97522",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "59724697-9adb-4c13-acfc-29fcb9c3691c",
+          "transfers": [
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "684a5ead-d0bb-4bd4-85ac-3014e3eaa00e"
+              },
+              "amount": 17
+            },
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "7c19b855-d15c-48f7-aa26-2149e55b842f"
+              },
+              "amount": 17
+            },
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "a866c7e4-2982-48db-b432-24fdff59789d"
+              },
+              "amount": 17
+            },
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "aa24121e-87c7-4663-9138-494808f7819b"
+              },
+              "amount": 17
+            },
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "d9c538a5-4373-44de-b4e6-d8380624ad30"
+              },
+              "amount": 17
+            },
+            {
+              "id": "59724697-9adb-4c13-acfc-29fcb9c3691c:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "75b1a99b-7e8d-46c3-a399-1a7174136910"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "e7c78f25-4a4c-4365-a813-23268a70a9fa"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "a340f794-9359-462a-a68b-dc51037965cf",
+          "closing_balances": {
+            "player:684a5ead-d0bb-4bd4-85ac-3014e3eaa00e": 83,
+            "player:75b1a99b-7e8d-46c3-a399-1a7174136910": 202,
+            "player:7c19b855-d15c-48f7-aa26-2149e55b842f": 83,
+            "player:a866c7e4-2982-48db-b432-24fdff59789d": 83,
+            "player:aa24121e-87c7-4663-9138-494808f7819b": 83,
+            "player:d9c538a5-4373-44de-b4e6-d8380624ad30": 83,
+            "player:e7c78f25-4a4c-4365-a813-23268a70a9fa": 83
+          },
+          "opening_balances": {
+            "player:684a5ead-d0bb-4bd4-85ac-3014e3eaa00e": 100,
+            "player:75b1a99b-7e8d-46c3-a399-1a7174136910": 100,
+            "player:7c19b855-d15c-48f7-aa26-2149e55b842f": 100,
+            "player:a866c7e4-2982-48db-b432-24fdff59789d": 100,
+            "player:aa24121e-87c7-4663-9138-494808f7819b": 100,
+            "player:d9c538a5-4373-44de-b4e6-d8380624ad30": 100,
+            "player:e7c78f25-4a4c-4365-a813-23268a70a9fa": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "85b3bd95-fec5-4534-81c2-90f50c1fed1b",
+          "game_id": "59724697-9adb-4c13-acfc-29fcb9c3691c",
+          "pot_won": 102,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "a340f794-9359-462a-a68b-dc51037965cf",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Player_2b60eaeb",
+          "winner_player_id": "75b1a99b-7e8d-46c3-a399-1a7174136910",
+          "player_chip_changes": {
+            "684a5ead-d0bb-4bd4-85ac-3014e3eaa00e": -17,
+            "75b1a99b-7e8d-46c3-a399-1a7174136910": 102,
+            "7c19b855-d15c-48f7-aa26-2149e55b842f": -17,
+            "a866c7e4-2982-48db-b432-24fdff59789d": -17,
+            "aa24121e-87c7-4663-9138-494808f7819b": -17,
+            "d9c538a5-4373-44de-b4e6-d8380624ad30": -17,
+            "e7c78f25-4a4c-4365-a813-23268a70a9fa": -17
+          },
+          "winning_hand_description": "11 Up: {\"684a5ead-d0bb-4bd4-85ac-3014e3eaa00e\": 0, \"75b1a99b-7e8d-46c3-a399-1a7174136910\": 100, \"7c19b855-d15c-48f7-aa26-2149e55b842f\": 0, \"a866c7e4-2982-48db-b432-24fdff59789d\": 0, \"aa24121e-87c7-4663-9138-494808f7819b\": 0, \"d9c538a5-4373-44de-b4e6-d8380624ad30\": 0, \"e7c78f25-4a4c-4365-a813-23268a70a9fa\": 0}"
+        },
+        "game_id": "59724697-9adb-4c13-acfc-29fcb9c3691c",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "684a5ead-d0bb-4bd4-85ac-3014e3eaa00e": 83,
+          "75b1a99b-7e8d-46c3-a399-1a7174136910": 202,
+          "7c19b855-d15c-48f7-aa26-2149e55b842f": 83,
+          "a866c7e4-2982-48db-b432-24fdff59789d": 83,
+          "aa24121e-87c7-4663-9138-494808f7819b": 83,
+          "d9c538a5-4373-44de-b4e6-d8380624ad30": 83,
+          "e7c78f25-4a4c-4365-a813-23268a70a9fa": 83
+        },
+        "dealer_game_id": "a340f794-9359-462a-a68b-dc51037965cf",
+        "before_balances": {
+          "684a5ead-d0bb-4bd4-85ac-3014e3eaa00e": 100,
+          "75b1a99b-7e8d-46c3-a399-1a7174136910": 100,
+          "7c19b855-d15c-48f7-aa26-2149e55b842f": 100,
+          "a866c7e4-2982-48db-b432-24fdff59789d": 100,
+          "aa24121e-87c7-4663-9138-494808f7819b": 100,
+          "d9c538a5-4373-44de-b4e6-d8380624ad30": 100,
+          "e7c78f25-4a4c-4365-a813-23268a70a9fa": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": null,
+        "result": {
+          "id": "14c3471d-d4ee-4e65-80e6-8fc2229883a0",
+          "game_id": "45e48c1b-5fa9-4e94-84a9-66fb13743c10",
+          "pot_won": 0,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "76456493-1348-4273-8fa7-398983108b90",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "770fe066-1b8e-4729-9c6c-e9b3229577cc": 0,
+            "c71cb1b9-8278-4e20-9632-7e549eeae834": 0
+          },
+          "winning_hand_description": "11 Up: {\"770fe066-1b8e-4729-9c6c-e9b3229577cc\": 10000, \"c71cb1b9-8278-4e20-9632-7e549eeae834\": 10000}"
+        },
+        "game_id": "45e48c1b-5fa9-4e94-84a9-66fb13743c10",
+        "case_name": "play",
+        "after_balances": {
+          "770fe066-1b8e-4729-9c6c-e9b3229577cc": 100,
+          "c71cb1b9-8278-4e20-9632-7e549eeae834": 100
+        },
+        "dealer_game_id": "76456493-1348-4273-8fa7-398983108b90",
+        "before_balances": {
+          "770fe066-1b8e-4729-9c6c-e9b3229577cc": 100,
+          "c71cb1b9-8278-4e20-9632-7e549eeae834": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": null,
+        "result": {
+          "id": "46b2a7b0-475a-457e-a58a-b8dcc9fd4dce",
+          "game_id": "b3f3845f-6091-4e7c-bfe9-c5a8d8a85495",
+          "pot_won": 0,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "0404b796-5010-4ade-bc35-123d7bf31d26",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "195f7d67-8915-4867-9fd6-50e6e574887d": 0,
+            "b0309f2d-0343-40ba-85bf-84c365a90b2e": 0
+          },
+          "winning_hand_description": "11 Up: {\"195f7d67-8915-4867-9fd6-50e6e574887d\": 0, \"b0309f2d-0343-40ba-85bf-84c365a90b2e\": 0}"
+        },
+        "game_id": "b3f3845f-6091-4e7c-bfe9-c5a8d8a85495",
+        "case_name": "recovery",
+        "after_balances": {
+          "195f7d67-8915-4867-9fd6-50e6e574887d": 100,
+          "b0309f2d-0343-40ba-85bf-84c365a90b2e": 100
+        },
+        "dealer_game_id": "0404b796-5010-4ade-bc35-123d7bf31d26",
+        "before_balances": {
+          "195f7d67-8915-4867-9fd6-50e6e574887d": 100,
+          "b0309f2d-0343-40ba-85bf-84c365a90b2e": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "4a872a99-52f4-44c7-a7bd-61a601d32064",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "d92f3c3b-9c2c-4aaa-abce-213d0d9d7ce5",
+          "transfers": [
+            {
+              "id": "d92f3c3b-9c2c-4aaa-abce-213d0d9d7ce5:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "30eb8217-d377-4922-a75e-adb6ec93bc4f"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "30628e80-8e21-4ed6-bcea-3dda4d830372"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "d642ce21-b07b-4764-988f-490126d11625",
+          "closing_balances": {
+            "player:30628e80-8e21-4ed6-bcea-3dda4d830372": 83,
+            "player:30eb8217-d377-4922-a75e-adb6ec93bc4f": 117
+          },
+          "opening_balances": {
+            "player:30628e80-8e21-4ed6-bcea-3dda4d830372": 100,
+            "player:30eb8217-d377-4922-a75e-adb6ec93bc4f": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "8e5d3f5f-84fe-481d-a85b-ff296fb23943",
+          "game_id": "d92f3c3b-9c2c-4aaa-abce-213d0d9d7ce5",
+          "pot_won": 17,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "d642ce21-b07b-4764-988f-490126d11625",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_83809137",
+          "winner_player_id": "30eb8217-d377-4922-a75e-adb6ec93bc4f",
+          "player_chip_changes": {
+            "30628e80-8e21-4ed6-bcea-3dda4d830372": -17,
+            "30eb8217-d377-4922-a75e-adb6ec93bc4f": 17
+          },
+          "winning_hand_description": "Royal Flash: {\"30628e80-8e21-4ed6-bcea-3dda4d830372\": 0, \"30eb8217-d377-4922-a75e-adb6ec93bc4f\": 100}"
+        },
+        "game_id": "d92f3c3b-9c2c-4aaa-abce-213d0d9d7ce5",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "30628e80-8e21-4ed6-bcea-3dda4d830372": 83,
+          "30eb8217-d377-4922-a75e-adb6ec93bc4f": 117
+        },
+        "dealer_game_id": "d642ce21-b07b-4764-988f-490126d11625",
+        "before_balances": {
+          "30628e80-8e21-4ed6-bcea-3dda4d830372": 100,
+          "30eb8217-d377-4922-a75e-adb6ec93bc4f": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "4758a787-efdb-4cdb-be0c-e42a0073d0a1",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "5c4b0b52-488c-4c26-b2b7-e5ffc63f26b2",
+          "transfers": [
+            {
+              "id": "5c4b0b52-488c-4c26-b2b7-e5ffc63f26b2:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "496302e6-23f8-4cea-87fc-14cdeb59b02c"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b281e1f4-e852-464b-88f9-c0082ccf1bd6"
+              },
+              "amount": 9
+            },
+            {
+              "id": "5c4b0b52-488c-4c26-b2b7-e5ffc63f26b2:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "e8a661a8-b7e7-4217-bdff-e61baffc8851"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b281e1f4-e852-464b-88f9-c0082ccf1bd6"
+              },
+              "amount": 8
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "79596eaf-3621-4356-a73b-babe5f0080ba",
+          "closing_balances": {
+            "player:496302e6-23f8-4cea-87fc-14cdeb59b02c": 109,
+            "player:b281e1f4-e852-464b-88f9-c0082ccf1bd6": 83,
+            "player:e8a661a8-b7e7-4217-bdff-e61baffc8851": 108
+          },
+          "opening_balances": {
+            "player:496302e6-23f8-4cea-87fc-14cdeb59b02c": 100,
+            "player:b281e1f4-e852-464b-88f9-c0082ccf1bd6": 100,
+            "player:e8a661a8-b7e7-4217-bdff-e61baffc8851": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "cf72376d-3274-4828-bb00-44bdfaf6de19",
+          "game_id": "5c4b0b52-488c-4c26-b2b7-e5ffc63f26b2",
+          "pot_won": 17,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "79596eaf-3621-4356-a73b-babe5f0080ba",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "496302e6-23f8-4cea-87fc-14cdeb59b02c": 9,
+            "b281e1f4-e852-464b-88f9-c0082ccf1bd6": -17,
+            "e8a661a8-b7e7-4217-bdff-e61baffc8851": 8
+          },
+          "winning_hand_description": "Royal Flash: {\"496302e6-23f8-4cea-87fc-14cdeb59b02c\": 100, \"b281e1f4-e852-464b-88f9-c0082ccf1bd6\": 0, \"e8a661a8-b7e7-4217-bdff-e61baffc8851\": 100}"
+        },
+        "game_id": "5c4b0b52-488c-4c26-b2b7-e5ffc63f26b2",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "496302e6-23f8-4cea-87fc-14cdeb59b02c": 109,
+          "b281e1f4-e852-464b-88f9-c0082ccf1bd6": 83,
+          "e8a661a8-b7e7-4217-bdff-e61baffc8851": 108
+        },
+        "dealer_game_id": "79596eaf-3621-4356-a73b-babe5f0080ba",
+        "before_balances": {
+          "496302e6-23f8-4cea-87fc-14cdeb59b02c": 100,
+          "b281e1f4-e852-464b-88f9-c0082ccf1bd6": 100,
+          "e8a661a8-b7e7-4217-bdff-e61baffc8851": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "1d2fc798-6826-461e-97b2-0792b545e49b",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661",
+          "transfers": [
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "245f4631-3718-48ad-8b90-2848c18865f4"
+              },
+              "amount": 17
+            },
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "80710c65-42c5-431f-adec-a87ab6670a2b"
+              },
+              "amount": 17
+            },
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "c7d2ab5d-015b-4aae-9448-70d38770b57b"
+              },
+              "amount": 17
+            },
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "dc45af05-ca58-43e3-8d72-a7380715b495"
+              },
+              "amount": 17
+            },
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "e5d4e0e2-c861-48f4-b7fb-c23b9a915c72"
+              },
+              "amount": 17
+            },
+            {
+              "id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "9364b704-4637-49eb-92f6-914649b79c0e"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "fd425346-de41-403f-96b8-92d971f78e6b"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "0b8182d6-e5e0-4af4-900c-257c844d8a9f",
+          "closing_balances": {
+            "player:245f4631-3718-48ad-8b90-2848c18865f4": 83,
+            "player:80710c65-42c5-431f-adec-a87ab6670a2b": 83,
+            "player:9364b704-4637-49eb-92f6-914649b79c0e": 202,
+            "player:c7d2ab5d-015b-4aae-9448-70d38770b57b": 83,
+            "player:dc45af05-ca58-43e3-8d72-a7380715b495": 83,
+            "player:e5d4e0e2-c861-48f4-b7fb-c23b9a915c72": 83,
+            "player:fd425346-de41-403f-96b8-92d971f78e6b": 83
+          },
+          "opening_balances": {
+            "player:245f4631-3718-48ad-8b90-2848c18865f4": 100,
+            "player:80710c65-42c5-431f-adec-a87ab6670a2b": 100,
+            "player:9364b704-4637-49eb-92f6-914649b79c0e": 100,
+            "player:c7d2ab5d-015b-4aae-9448-70d38770b57b": 100,
+            "player:dc45af05-ca58-43e3-8d72-a7380715b495": 100,
+            "player:e5d4e0e2-c861-48f4-b7fb-c23b9a915c72": 100,
+            "player:fd425346-de41-403f-96b8-92d971f78e6b": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "5ded1e3c-18d8-4f5e-8868-68dccdcd2c17",
+          "game_id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661",
+          "pot_won": 102,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "0b8182d6-e5e0-4af4-900c-257c844d8a9f",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_83809137",
+          "winner_player_id": "9364b704-4637-49eb-92f6-914649b79c0e",
+          "player_chip_changes": {
+            "245f4631-3718-48ad-8b90-2848c18865f4": -17,
+            "80710c65-42c5-431f-adec-a87ab6670a2b": -17,
+            "9364b704-4637-49eb-92f6-914649b79c0e": 102,
+            "c7d2ab5d-015b-4aae-9448-70d38770b57b": -17,
+            "dc45af05-ca58-43e3-8d72-a7380715b495": -17,
+            "e5d4e0e2-c861-48f4-b7fb-c23b9a915c72": -17,
+            "fd425346-de41-403f-96b8-92d971f78e6b": -17
+          },
+          "winning_hand_description": "Royal Flash: {\"245f4631-3718-48ad-8b90-2848c18865f4\": 0, \"80710c65-42c5-431f-adec-a87ab6670a2b\": 0, \"9364b704-4637-49eb-92f6-914649b79c0e\": 100, \"c7d2ab5d-015b-4aae-9448-70d38770b57b\": 0, \"dc45af05-ca58-43e3-8d72-a7380715b495\": 0, \"e5d4e0e2-c861-48f4-b7fb-c23b9a915c72\": 0, \"fd425346-de41-403f-96b8-92d971f78e6b\": 0}"
+        },
+        "game_id": "2a215fe7-78d1-4831-a90c-0ae7e6cc8661",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "245f4631-3718-48ad-8b90-2848c18865f4": 83,
+          "80710c65-42c5-431f-adec-a87ab6670a2b": 83,
+          "9364b704-4637-49eb-92f6-914649b79c0e": 202,
+          "c7d2ab5d-015b-4aae-9448-70d38770b57b": 83,
+          "dc45af05-ca58-43e3-8d72-a7380715b495": 83,
+          "e5d4e0e2-c861-48f4-b7fb-c23b9a915c72": 83,
+          "fd425346-de41-403f-96b8-92d971f78e6b": 83
+        },
+        "dealer_game_id": "0b8182d6-e5e0-4af4-900c-257c844d8a9f",
+        "before_balances": {
+          "245f4631-3718-48ad-8b90-2848c18865f4": 100,
+          "80710c65-42c5-431f-adec-a87ab6670a2b": 100,
+          "9364b704-4637-49eb-92f6-914649b79c0e": 100,
+          "c7d2ab5d-015b-4aae-9448-70d38770b57b": 100,
+          "dc45af05-ca58-43e3-8d72-a7380715b495": 100,
+          "e5d4e0e2-c861-48f4-b7fb-c23b9a915c72": 100,
+          "fd425346-de41-403f-96b8-92d971f78e6b": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "26140408-5d17-4d41-a116-3a3012113cf6",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "d9382ad8-22f1-4eb1-8280-9c82c73e247b",
+          "transfers": [
+            {
+              "id": "d9382ad8-22f1-4eb1-8280-9c82c73e247b:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "169a19e3-21b9-4c2f-b043-55df969172e8"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "a9c644a3-5218-450d-9d5e-9369b1a442b6"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "dealer_game_id": "374d2d24-b0f3-443b-ac89-3b7903d2a8e7",
+          "closing_balances": {
+            "player:169a19e3-21b9-4c2f-b043-55df969172e8": 109,
+            "player:a9c644a3-5218-450d-9d5e-9369b1a442b6": 91
+          },
+          "opening_balances": {
+            "player:169a19e3-21b9-4c2f-b043-55df969172e8": 100,
+            "player:a9c644a3-5218-450d-9d5e-9369b1a442b6": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "3f294c61-0595-40a7-a6b0-ad81bfb37cfe",
+          "game_id": "d9382ad8-22f1-4eb1-8280-9c82c73e247b",
+          "pot_won": 9,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "374d2d24-b0f3-443b-ac89-3b7903d2a8e7",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_8ea161ca",
+          "winner_player_id": "169a19e3-21b9-4c2f-b043-55df969172e8",
+          "player_chip_changes": {
+            "169a19e3-21b9-4c2f-b043-55df969172e8": 9,
+            "a9c644a3-5218-450d-9d5e-9369b1a442b6": -9
+          },
+          "winning_hand_description": "Royal Flash: {\"169a19e3-21b9-4c2f-b043-55df969172e8\": 135500, \"a9c644a3-5218-450d-9d5e-9369b1a442b6\": 113500}"
+        },
+        "game_id": "d9382ad8-22f1-4eb1-8280-9c82c73e247b",
+        "case_name": "play",
+        "after_balances": {
+          "169a19e3-21b9-4c2f-b043-55df969172e8": 109,
+          "a9c644a3-5218-450d-9d5e-9369b1a442b6": 91
+        },
+        "dealer_game_id": "374d2d24-b0f3-443b-ac89-3b7903d2a8e7",
+        "before_balances": {
+          "169a19e3-21b9-4c2f-b043-55df969172e8": 100,
+          "a9c644a3-5218-450d-9d5e-9369b1a442b6": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": null,
+        "result": {
+          "id": "f095524d-5e01-4c96-9e5d-f56e266036cb",
+          "game_id": "1f8be2af-8565-46d8-adc7-6824db8983cd",
+          "pot_won": 0,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:32:34.264852+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "2c149fed-fafe-40a9-b274-605d32e001f7",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "1fd5e05c-288c-49e9-8f6c-33decb499ba6": 0,
+            "e8f23c3a-dc88-4646-9958-b37db1b49a34": 0
+          },
+          "winning_hand_description": "Royal Flash: {\"1fd5e05c-288c-49e9-8f6c-33decb499ba6\": 0, \"e8f23c3a-dc88-4646-9958-b37db1b49a34\": 0}"
+        },
+        "game_id": "1f8be2af-8565-46d8-adc7-6824db8983cd",
+        "case_name": "recovery",
+        "after_balances": {
+          "1fd5e05c-288c-49e9-8f6c-33decb499ba6": 100,
+          "e8f23c3a-dc88-4646-9958-b37db1b49a34": 100
+        },
+        "dealer_game_id": "2c149fed-fafe-40a9-b274-605d32e001f7",
+        "before_balances": {
+          "1fd5e05c-288c-49e9-8f6c-33decb499ba6": 100,
+          "e8f23c3a-dc88-4646-9958-b37db1b49a34": 100
+        }
+      }
+    ]
+  },
+  "migration": "20261019203757",
+  "productionInstalledRollback": {
+    "passed": true,
+    "examples": [
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "cf383791-5d33-4430-8456-ee2241daae68",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "6e23ca8e-6dc6-4814-8daf-0ff56eff9119",
+          "transfers": [
+            {
+              "id": "6e23ca8e-6dc6-4814-8daf-0ff56eff9119:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "24fe6cbc-b913-4df5-951e-8d7d730b0401"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "73910bd5-c29a-4892-8635-68b3eb5c429b",
+          "closing_balances": {
+            "player:24fe6cbc-b913-4df5-951e-8d7d730b0401": 117,
+            "player:401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a": 83
+          },
+          "opening_balances": {
+            "player:24fe6cbc-b913-4df5-951e-8d7d730b0401": 100,
+            "player:401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "ba3f4d93-8a74-4305-8d2a-e12bd5bde3cc",
+          "game_id": "6e23ca8e-6dc6-4814-8daf-0ff56eff9119",
+          "pot_won": 17,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "73910bd5-c29a-4892-8635-68b3eb5c429b",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_f870d396",
+          "winner_player_id": "24fe6cbc-b913-4df5-951e-8d7d730b0401",
+          "player_chip_changes": {
+            "24fe6cbc-b913-4df5-951e-8d7d730b0401": 17,
+            "401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a": -17
+          },
+          "winning_hand_description": "TriTowers: {\"24fe6cbc-b913-4df5-951e-8d7d730b0401\": 100, \"401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a\": 0}"
+        },
+        "game_id": "6e23ca8e-6dc6-4814-8daf-0ff56eff9119",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "24fe6cbc-b913-4df5-951e-8d7d730b0401": 117,
+          "401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a": 83
+        },
+        "dealer_game_id": "73910bd5-c29a-4892-8635-68b3eb5c429b",
+        "before_balances": {
+          "24fe6cbc-b913-4df5-951e-8d7d730b0401": 100,
+          "401b1cce-9bcd-4d06-bf8f-fa3217ef6a3a": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "7c1f64c6-e898-4ad3-acda-9f0e17ab8b57",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "6b74bd45-8b20-47c6-bafc-b33a24877d81",
+          "transfers": [
+            {
+              "id": "6b74bd45-8b20-47c6-bafc-b33a24877d81:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "2ce21b27-2bd1-4eff-aea2-fcb2428921a9"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "06681495-8761-4387-856f-304a058ed53e"
+              },
+              "amount": 8
+            },
+            {
+              "id": "6b74bd45-8b20-47c6-bafc-b33a24877d81:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "f35b2deb-72be-455f-82ce-ee3f6603e66f"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "06681495-8761-4387-856f-304a058ed53e"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "3d43af60-19b1-49eb-ba2f-713843be4697",
+          "closing_balances": {
+            "player:06681495-8761-4387-856f-304a058ed53e": 83,
+            "player:2ce21b27-2bd1-4eff-aea2-fcb2428921a9": 108,
+            "player:f35b2deb-72be-455f-82ce-ee3f6603e66f": 109
+          },
+          "opening_balances": {
+            "player:06681495-8761-4387-856f-304a058ed53e": 100,
+            "player:2ce21b27-2bd1-4eff-aea2-fcb2428921a9": 100,
+            "player:f35b2deb-72be-455f-82ce-ee3f6603e66f": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "90a5cace-4b0c-4d08-a67b-40618a074f37",
+          "game_id": "6b74bd45-8b20-47c6-bafc-b33a24877d81",
+          "pot_won": 17,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "3d43af60-19b1-49eb-ba2f-713843be4697",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "06681495-8761-4387-856f-304a058ed53e": -17,
+            "2ce21b27-2bd1-4eff-aea2-fcb2428921a9": 8,
+            "f35b2deb-72be-455f-82ce-ee3f6603e66f": 9
+          },
+          "winning_hand_description": "TriTowers: {\"06681495-8761-4387-856f-304a058ed53e\": 0, \"2ce21b27-2bd1-4eff-aea2-fcb2428921a9\": 100, \"f35b2deb-72be-455f-82ce-ee3f6603e66f\": 100}"
+        },
+        "game_id": "6b74bd45-8b20-47c6-bafc-b33a24877d81",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "06681495-8761-4387-856f-304a058ed53e": 83,
+          "2ce21b27-2bd1-4eff-aea2-fcb2428921a9": 108,
+          "f35b2deb-72be-455f-82ce-ee3f6603e66f": 109
+        },
+        "dealer_game_id": "3d43af60-19b1-49eb-ba2f-713843be4697",
+        "before_balances": {
+          "06681495-8761-4387-856f-304a058ed53e": 100,
+          "2ce21b27-2bd1-4eff-aea2-fcb2428921a9": 100,
+          "f35b2deb-72be-455f-82ce-ee3f6603e66f": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "b6858269-2b5b-488d-bd29-b39be7f969cc",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1",
+          "transfers": [
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "15cf285d-daec-475b-9961-c0275681d95c"
+              },
+              "amount": 17
+            },
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "1bfa1c3e-ec95-4019-824a-3205dd049722"
+              },
+              "amount": 17
+            },
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "846072d4-dd35-4973-8b96-5d444e9cc21c"
+              },
+              "amount": 17
+            },
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "a1d1f404-bf41-4313-a55b-1e190125ee4c"
+              },
+              "amount": 17
+            },
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b126a83c-9691-49d3-9f47-eb1fa9f784fa"
+              },
+              "amount": 17
+            },
+            {
+              "id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "44d4560b-5d67-4425-8633-a7c95adce642"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "d151fd9b-40cc-4a17-9622-7efe79ba662f"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "694f3216-e571-4f5a-9a99-dee00a43840c",
+          "closing_balances": {
+            "player:15cf285d-daec-475b-9961-c0275681d95c": 83,
+            "player:1bfa1c3e-ec95-4019-824a-3205dd049722": 83,
+            "player:44d4560b-5d67-4425-8633-a7c95adce642": 202,
+            "player:846072d4-dd35-4973-8b96-5d444e9cc21c": 83,
+            "player:a1d1f404-bf41-4313-a55b-1e190125ee4c": 83,
+            "player:b126a83c-9691-49d3-9f47-eb1fa9f784fa": 83,
+            "player:d151fd9b-40cc-4a17-9622-7efe79ba662f": 83
+          },
+          "opening_balances": {
+            "player:15cf285d-daec-475b-9961-c0275681d95c": 100,
+            "player:1bfa1c3e-ec95-4019-824a-3205dd049722": 100,
+            "player:44d4560b-5d67-4425-8633-a7c95adce642": 100,
+            "player:846072d4-dd35-4973-8b96-5d444e9cc21c": 100,
+            "player:a1d1f404-bf41-4313-a55b-1e190125ee4c": 100,
+            "player:b126a83c-9691-49d3-9f47-eb1fa9f784fa": 100,
+            "player:d151fd9b-40cc-4a17-9622-7efe79ba662f": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "40e88e2e-4e80-4d13-af98-d6bee338b372",
+          "game_id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1",
+          "pot_won": 102,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "694f3216-e571-4f5a-9a99-dee00a43840c",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_f870d396",
+          "winner_player_id": "44d4560b-5d67-4425-8633-a7c95adce642",
+          "player_chip_changes": {
+            "15cf285d-daec-475b-9961-c0275681d95c": -17,
+            "1bfa1c3e-ec95-4019-824a-3205dd049722": -17,
+            "44d4560b-5d67-4425-8633-a7c95adce642": 102,
+            "846072d4-dd35-4973-8b96-5d444e9cc21c": -17,
+            "a1d1f404-bf41-4313-a55b-1e190125ee4c": -17,
+            "b126a83c-9691-49d3-9f47-eb1fa9f784fa": -17,
+            "d151fd9b-40cc-4a17-9622-7efe79ba662f": -17
+          },
+          "winning_hand_description": "TriTowers: {\"15cf285d-daec-475b-9961-c0275681d95c\": 0, \"1bfa1c3e-ec95-4019-824a-3205dd049722\": 0, \"44d4560b-5d67-4425-8633-a7c95adce642\": 100, \"846072d4-dd35-4973-8b96-5d444e9cc21c\": 0, \"a1d1f404-bf41-4313-a55b-1e190125ee4c\": 0, \"b126a83c-9691-49d3-9f47-eb1fa9f784fa\": 0, \"d151fd9b-40cc-4a17-9622-7efe79ba662f\": 0}"
+        },
+        "game_id": "0ce090ab-cfe6-473b-a2d9-81d2a0db3dc1",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "15cf285d-daec-475b-9961-c0275681d95c": 83,
+          "1bfa1c3e-ec95-4019-824a-3205dd049722": 83,
+          "44d4560b-5d67-4425-8633-a7c95adce642": 202,
+          "846072d4-dd35-4973-8b96-5d444e9cc21c": 83,
+          "a1d1f404-bf41-4313-a55b-1e190125ee4c": 83,
+          "b126a83c-9691-49d3-9f47-eb1fa9f784fa": 83,
+          "d151fd9b-40cc-4a17-9622-7efe79ba662f": 83
+        },
+        "dealer_game_id": "694f3216-e571-4f5a-9a99-dee00a43840c",
+        "before_balances": {
+          "15cf285d-daec-475b-9961-c0275681d95c": 100,
+          "1bfa1c3e-ec95-4019-824a-3205dd049722": 100,
+          "44d4560b-5d67-4425-8633-a7c95adce642": 100,
+          "846072d4-dd35-4973-8b96-5d444e9cc21c": 100,
+          "a1d1f404-bf41-4313-a55b-1e190125ee4c": 100,
+          "b126a83c-9691-49d3-9f47-eb1fa9f784fa": 100,
+          "d151fd9b-40cc-4a17-9622-7efe79ba662f": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": {
+          "id": "fb48522c-8bab-4366-9f7f-8b38594dc541",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "d13204c9-f781-4402-8640-cbfc1a1b3927",
+          "transfers": [
+            {
+              "id": "d13204c9-f781-4402-8640-cbfc1a1b3927:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "1d73b0eb-b37a-4a3f-877a-4018022ec1cd"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "eb04c345-5686-4ffe-a9c4-6fde8a656149"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "4f9851df-158c-4495-bf8e-ddc3c0b637c9",
+          "closing_balances": {
+            "player:1d73b0eb-b37a-4a3f-877a-4018022ec1cd": 109,
+            "player:eb04c345-5686-4ffe-a9c4-6fde8a656149": 91
+          },
+          "opening_balances": {
+            "player:1d73b0eb-b37a-4a3f-877a-4018022ec1cd": 100,
+            "player:eb04c345-5686-4ffe-a9c4-6fde8a656149": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "625d4d8a-a628-4191-ab6a-b2dcf9fab4c3",
+          "game_id": "d13204c9-f781-4402-8640-cbfc1a1b3927",
+          "pot_won": 9,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "4f9851df-158c-4495-bf8e-ddc3c0b637c9",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Player_99511d27",
+          "winner_player_id": "1d73b0eb-b37a-4a3f-877a-4018022ec1cd",
+          "player_chip_changes": {
+            "1d73b0eb-b37a-4a3f-877a-4018022ec1cd": 9,
+            "eb04c345-5686-4ffe-a9c4-6fde8a656149": -9
+          },
+          "winning_hand_description": "TriTowers: {\"1d73b0eb-b37a-4a3f-877a-4018022ec1cd\": 2580, \"eb04c345-5686-4ffe-a9c4-6fde8a656149\": 2480}"
+        },
+        "game_id": "d13204c9-f781-4402-8640-cbfc1a1b3927",
+        "case_name": "play",
+        "after_balances": {
+          "1d73b0eb-b37a-4a3f-877a-4018022ec1cd": 109,
+          "eb04c345-5686-4ffe-a9c4-6fde8a656149": 91
+        },
+        "dealer_game_id": "4f9851df-158c-4495-bf8e-ddc3c0b637c9",
+        "before_balances": {
+          "1d73b0eb-b37a-4a3f-877a-4018022ec1cd": 100,
+          "eb04c345-5686-4ffe-a9c4-6fde8a656149": 100
+        }
+      },
+      {
+        "game": "tri_towers",
+        "batch": null,
+        "result": {
+          "id": "81f6a662-26e7-41a1-a217-7262fc6007ba",
+          "game_id": "b0d19c86-8ee1-49cd-91c3-ef34def9b581",
+          "pot_won": 0,
+          "game_type": "tri-towers",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "ed337d35-51f9-4edf-9d02-a57ff86ae558",
+          "settlement_key": "tri_towers_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "3ca596f9-d1ff-4fcf-95ba-f573f3c02938": 0,
+            "84642efd-3f90-451a-9f78-5026a02e1398": 0
+          },
+          "winning_hand_description": "TriTowers: {\"3ca596f9-d1ff-4fcf-95ba-f573f3c02938\": 0, \"84642efd-3f90-451a-9f78-5026a02e1398\": 0}"
+        },
+        "game_id": "b0d19c86-8ee1-49cd-91c3-ef34def9b581",
+        "case_name": "recovery",
+        "after_balances": {
+          "3ca596f9-d1ff-4fcf-95ba-f573f3c02938": 100,
+          "84642efd-3f90-451a-9f78-5026a02e1398": 100
+        },
+        "dealer_game_id": "ed337d35-51f9-4edf-9d02-a57ff86ae558",
+        "before_balances": {
+          "3ca596f9-d1ff-4fcf-95ba-f573f3c02938": 100,
+          "84642efd-3f90-451a-9f78-5026a02e1398": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "c623ef84-dff0-4cd3-b6b6-11f12da66d43",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "506ae742-6568-4176-be74-c5c711cb1866",
+          "transfers": [
+            {
+              "id": "506ae742-6568-4176-be74-c5c711cb1866:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "59870d8a-489b-4228-87d9-d3b623fa8d86"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "84af852f-190d-4f18-a08d-8aba58d42434"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "fbbdf85c-61d0-4da7-acc0-b54ad5cacf2b",
+          "closing_balances": {
+            "player:59870d8a-489b-4228-87d9-d3b623fa8d86": 117,
+            "player:84af852f-190d-4f18-a08d-8aba58d42434": 83
+          },
+          "opening_balances": {
+            "player:59870d8a-489b-4228-87d9-d3b623fa8d86": 100,
+            "player:84af852f-190d-4f18-a08d-8aba58d42434": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "7ab2ba0c-9fcf-421a-abfe-74b5163b4b94",
+          "game_id": "506ae742-6568-4176-be74-c5c711cb1866",
+          "pot_won": 17,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "fbbdf85c-61d0-4da7-acc0-b54ad5cacf2b",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Player_8527e62c",
+          "winner_player_id": "59870d8a-489b-4228-87d9-d3b623fa8d86",
+          "player_chip_changes": {
+            "59870d8a-489b-4228-87d9-d3b623fa8d86": 17,
+            "84af852f-190d-4f18-a08d-8aba58d42434": -17
+          },
+          "winning_hand_description": "11 Up: {\"59870d8a-489b-4228-87d9-d3b623fa8d86\": 100, \"84af852f-190d-4f18-a08d-8aba58d42434\": 0}"
+        },
+        "game_id": "506ae742-6568-4176-be74-c5c711cb1866",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "59870d8a-489b-4228-87d9-d3b623fa8d86": 117,
+          "84af852f-190d-4f18-a08d-8aba58d42434": 83
+        },
+        "dealer_game_id": "fbbdf85c-61d0-4da7-acc0-b54ad5cacf2b",
+        "before_balances": {
+          "59870d8a-489b-4228-87d9-d3b623fa8d86": 100,
+          "84af852f-190d-4f18-a08d-8aba58d42434": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "bc76c42f-187d-478d-a954-d77fce045215",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "dd35e4e1-ccc0-4ff9-9a9f-501a98b906dc",
+          "transfers": [
+            {
+              "id": "dd35e4e1-ccc0-4ff9-9a9f-501a98b906dc:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "ee2c77ee-843d-49ef-9dc6-f635c113b47b"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "664dd28e-d7b9-47f9-8f17-ab9ae46f7b09"
+              },
+              "amount": 8
+            },
+            {
+              "id": "dd35e4e1-ccc0-4ff9-9a9f-501a98b906dc:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "f2a9d6da-15be-467f-a0f4-3e77cee284f0"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "664dd28e-d7b9-47f9-8f17-ab9ae46f7b09"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "692c9b38-7240-480e-bf3e-14993f59e31e",
+          "closing_balances": {
+            "player:664dd28e-d7b9-47f9-8f17-ab9ae46f7b09": 83,
+            "player:ee2c77ee-843d-49ef-9dc6-f635c113b47b": 108,
+            "player:f2a9d6da-15be-467f-a0f4-3e77cee284f0": 109
+          },
+          "opening_balances": {
+            "player:664dd28e-d7b9-47f9-8f17-ab9ae46f7b09": 100,
+            "player:ee2c77ee-843d-49ef-9dc6-f635c113b47b": 100,
+            "player:f2a9d6da-15be-467f-a0f4-3e77cee284f0": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "c3826567-0d76-4d2d-a2d9-71972354e8ce",
+          "game_id": "dd35e4e1-ccc0-4ff9-9a9f-501a98b906dc",
+          "pot_won": 17,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "692c9b38-7240-480e-bf3e-14993f59e31e",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "664dd28e-d7b9-47f9-8f17-ab9ae46f7b09": -17,
+            "ee2c77ee-843d-49ef-9dc6-f635c113b47b": 8,
+            "f2a9d6da-15be-467f-a0f4-3e77cee284f0": 9
+          },
+          "winning_hand_description": "11 Up: {\"664dd28e-d7b9-47f9-8f17-ab9ae46f7b09\": 0, \"ee2c77ee-843d-49ef-9dc6-f635c113b47b\": 100, \"f2a9d6da-15be-467f-a0f4-3e77cee284f0\": 100}"
+        },
+        "game_id": "dd35e4e1-ccc0-4ff9-9a9f-501a98b906dc",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "664dd28e-d7b9-47f9-8f17-ab9ae46f7b09": 83,
+          "ee2c77ee-843d-49ef-9dc6-f635c113b47b": 108,
+          "f2a9d6da-15be-467f-a0f4-3e77cee284f0": 109
+        },
+        "dealer_game_id": "692c9b38-7240-480e-bf3e-14993f59e31e",
+        "before_balances": {
+          "664dd28e-d7b9-47f9-8f17-ab9ae46f7b09": 100,
+          "ee2c77ee-843d-49ef-9dc6-f635c113b47b": 100,
+          "f2a9d6da-15be-467f-a0f4-3e77cee284f0": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": {
+          "id": "bce6b9f9-2c91-4902-8765-240555aa1896",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "864c3cb8-19b2-4bd5-b1e4-454088095df9",
+          "transfers": [
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "0830e3bf-4db0-4bac-bd34-7c176e4f01de"
+              },
+              "amount": 17
+            },
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1"
+              },
+              "amount": 17
+            },
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "1b3e699b-f471-4f40-9c16-52ff3f6b9253"
+              },
+              "amount": 17
+            },
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "3a9ce8b0-d79a-43e6-8192-9fef76c4780e"
+              },
+              "amount": 17
+            },
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "df1e3384-e1c4-4cc6-886a-6d666a470d55"
+              },
+              "amount": 17
+            },
+            {
+              "id": "864c3cb8-19b2-4bd5-b1e4-454088095df9:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "c85b4dd3-6810-4529-ad8a-117a1cc035ab"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "e525daf7-4551-4cdf-84ca-9ac2949d8872"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "c2f2fdd2-e09a-462c-8057-976a130aaed6",
+          "closing_balances": {
+            "player:0830e3bf-4db0-4bac-bd34-7c176e4f01de": 83,
+            "player:0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1": 83,
+            "player:1b3e699b-f471-4f40-9c16-52ff3f6b9253": 83,
+            "player:3a9ce8b0-d79a-43e6-8192-9fef76c4780e": 83,
+            "player:c85b4dd3-6810-4529-ad8a-117a1cc035ab": 202,
+            "player:df1e3384-e1c4-4cc6-886a-6d666a470d55": 83,
+            "player:e525daf7-4551-4cdf-84ca-9ac2949d8872": 83
+          },
+          "opening_balances": {
+            "player:0830e3bf-4db0-4bac-bd34-7c176e4f01de": 100,
+            "player:0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1": 100,
+            "player:1b3e699b-f471-4f40-9c16-52ff3f6b9253": 100,
+            "player:3a9ce8b0-d79a-43e6-8192-9fef76c4780e": 100,
+            "player:c85b4dd3-6810-4529-ad8a-117a1cc035ab": 100,
+            "player:df1e3384-e1c4-4cc6-886a-6d666a470d55": 100,
+            "player:e525daf7-4551-4cdf-84ca-9ac2949d8872": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "992393f8-ea7e-4e60-846a-52a2fb668d72",
+          "game_id": "864c3cb8-19b2-4bd5-b1e4-454088095df9",
+          "pot_won": 102,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "c2f2fdd2-e09a-462c-8057-976a130aaed6",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Player_8527e62c",
+          "winner_player_id": "c85b4dd3-6810-4529-ad8a-117a1cc035ab",
+          "player_chip_changes": {
+            "0830e3bf-4db0-4bac-bd34-7c176e4f01de": -17,
+            "0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1": -17,
+            "1b3e699b-f471-4f40-9c16-52ff3f6b9253": -17,
+            "3a9ce8b0-d79a-43e6-8192-9fef76c4780e": -17,
+            "c85b4dd3-6810-4529-ad8a-117a1cc035ab": 102,
+            "df1e3384-e1c4-4cc6-886a-6d666a470d55": -17,
+            "e525daf7-4551-4cdf-84ca-9ac2949d8872": -17
+          },
+          "winning_hand_description": "11 Up: {\"0830e3bf-4db0-4bac-bd34-7c176e4f01de\": 0, \"0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1\": 0, \"1b3e699b-f471-4f40-9c16-52ff3f6b9253\": 0, \"3a9ce8b0-d79a-43e6-8192-9fef76c4780e\": 0, \"c85b4dd3-6810-4529-ad8a-117a1cc035ab\": 100, \"df1e3384-e1c4-4cc6-886a-6d666a470d55\": 0, \"e525daf7-4551-4cdf-84ca-9ac2949d8872\": 0}"
+        },
+        "game_id": "864c3cb8-19b2-4bd5-b1e4-454088095df9",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "0830e3bf-4db0-4bac-bd34-7c176e4f01de": 83,
+          "0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1": 83,
+          "1b3e699b-f471-4f40-9c16-52ff3f6b9253": 83,
+          "3a9ce8b0-d79a-43e6-8192-9fef76c4780e": 83,
+          "c85b4dd3-6810-4529-ad8a-117a1cc035ab": 202,
+          "df1e3384-e1c4-4cc6-886a-6d666a470d55": 83,
+          "e525daf7-4551-4cdf-84ca-9ac2949d8872": 83
+        },
+        "dealer_game_id": "c2f2fdd2-e09a-462c-8057-976a130aaed6",
+        "before_balances": {
+          "0830e3bf-4db0-4bac-bd34-7c176e4f01de": 100,
+          "0d686a5a-f5dd-49f5-92ff-127dc8a0e5e1": 100,
+          "1b3e699b-f471-4f40-9c16-52ff3f6b9253": 100,
+          "3a9ce8b0-d79a-43e6-8192-9fef76c4780e": 100,
+          "c85b4dd3-6810-4529-ad8a-117a1cc035ab": 100,
+          "df1e3384-e1c4-4cc6-886a-6d666a470d55": 100,
+          "e525daf7-4551-4cdf-84ca-9ac2949d8872": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": null,
+        "result": {
+          "id": "1260a0a2-e35d-4cb7-a055-0f2a80a9c2a3",
+          "game_id": "10ad9a51-ed3e-4eac-9f06-dcb2645cda7b",
+          "pot_won": 0,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "7063b798-d793-4cc9-a72e-b5312748b6a1",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "68c49fe3-0c15-4d11-9a83-f2b9bcaa8686": 0,
+            "8cef9993-0fe0-4f32-9056-768ba6ac188a": 0
+          },
+          "winning_hand_description": "11 Up: {\"68c49fe3-0c15-4d11-9a83-f2b9bcaa8686\": 10000, \"8cef9993-0fe0-4f32-9056-768ba6ac188a\": 10000}"
+        },
+        "game_id": "10ad9a51-ed3e-4eac-9f06-dcb2645cda7b",
+        "case_name": "play",
+        "after_balances": {
+          "68c49fe3-0c15-4d11-9a83-f2b9bcaa8686": 100,
+          "8cef9993-0fe0-4f32-9056-768ba6ac188a": 100
+        },
+        "dealer_game_id": "7063b798-d793-4cc9-a72e-b5312748b6a1",
+        "before_balances": {
+          "68c49fe3-0c15-4d11-9a83-f2b9bcaa8686": 100,
+          "8cef9993-0fe0-4f32-9056-768ba6ac188a": 100
+        }
+      },
+      {
+        "game": "eleven_up",
+        "batch": null,
+        "result": {
+          "id": "9b43ecd2-7fff-43a7-8ef6-343bc653f1ac",
+          "game_id": "da0111e8-1e42-41d4-8f90-fa268cac1ee8",
+          "pot_won": 0,
+          "game_type": "eleven-up",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "2b6b9c23-4542-433b-ba01-ee3e0f03d04b",
+          "settlement_key": "eleven_up_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "132fa13b-3deb-4296-a58e-34b09c11295a": 0,
+            "646b2911-dce9-447f-8b69-7dc9d8b19b2f": 0
+          },
+          "winning_hand_description": "11 Up: {\"132fa13b-3deb-4296-a58e-34b09c11295a\": 0, \"646b2911-dce9-447f-8b69-7dc9d8b19b2f\": 0}"
+        },
+        "game_id": "da0111e8-1e42-41d4-8f90-fa268cac1ee8",
+        "case_name": "recovery",
+        "after_balances": {
+          "132fa13b-3deb-4296-a58e-34b09c11295a": 100,
+          "646b2911-dce9-447f-8b69-7dc9d8b19b2f": 100
+        },
+        "dealer_game_id": "2b6b9c23-4542-433b-ba01-ee3e0f03d04b",
+        "before_balances": {
+          "132fa13b-3deb-4296-a58e-34b09c11295a": 100,
+          "646b2911-dce9-447f-8b69-7dc9d8b19b2f": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "fbeae2c5-d9ee-415f-b3f3-c326cc952207",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "29b49873-c5b9-492f-bfb6-2a51f824a34d",
+          "transfers": [
+            {
+              "id": "29b49873-c5b9-492f-bfb6-2a51f824a34d:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "245cd852-6f71-41db-96cf-0c70f5991cee"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "1fc0ddaa-eeed-4fb7-8434-3ebf660deccc"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "3db47459-5490-4dd6-92c4-96067395cfe8",
+          "closing_balances": {
+            "player:1fc0ddaa-eeed-4fb7-8434-3ebf660deccc": 83,
+            "player:245cd852-6f71-41db-96cf-0c70f5991cee": 117
+          },
+          "opening_balances": {
+            "player:1fc0ddaa-eeed-4fb7-8434-3ebf660deccc": 100,
+            "player:245cd852-6f71-41db-96cf-0c70f5991cee": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "5fc57db4-adde-4d85-b2c2-765e36a8b2b7",
+          "game_id": "29b49873-c5b9-492f-bfb6-2a51f824a34d",
+          "pot_won": 17,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "3db47459-5490-4dd6-92c4-96067395cfe8",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_5b9b39f3",
+          "winner_player_id": "245cd852-6f71-41db-96cf-0c70f5991cee",
+          "player_chip_changes": {
+            "1fc0ddaa-eeed-4fb7-8434-3ebf660deccc": -17,
+            "245cd852-6f71-41db-96cf-0c70f5991cee": 17
+          },
+          "winning_hand_description": "Royal Flash: {\"1fc0ddaa-eeed-4fb7-8434-3ebf660deccc\": 0, \"245cd852-6f71-41db-96cf-0c70f5991cee\": 100}"
+        },
+        "game_id": "29b49873-c5b9-492f-bfb6-2a51f824a34d",
+        "case_name": "real 2-player winner",
+        "after_balances": {
+          "1fc0ddaa-eeed-4fb7-8434-3ebf660deccc": 83,
+          "245cd852-6f71-41db-96cf-0c70f5991cee": 117
+        },
+        "dealer_game_id": "3db47459-5490-4dd6-92c4-96067395cfe8",
+        "before_balances": {
+          "1fc0ddaa-eeed-4fb7-8434-3ebf660deccc": 100,
+          "245cd852-6f71-41db-96cf-0c70f5991cee": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "3ab71dc7-4905-4ef9-ae7d-5403f4ee3987",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "908d9739-f56f-48f8-9354-f68b9aa65ac1",
+          "transfers": [
+            {
+              "id": "908d9739-f56f-48f8-9354-f68b9aa65ac1:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "3153ab34-1acf-4176-be88-375b0be7e61c"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "c7836385-2753-475f-810e-f942d2abdb01"
+              },
+              "amount": 8
+            },
+            {
+              "id": "908d9739-f56f-48f8-9354-f68b9aa65ac1:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "59e544ca-8bb6-4036-af5d-d380d6ba5dad"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "c7836385-2753-475f-810e-f942d2abdb01"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "8c03c132-a681-4dbf-84f4-8cd8398b6299",
+          "closing_balances": {
+            "player:3153ab34-1acf-4176-be88-375b0be7e61c": 108,
+            "player:59e544ca-8bb6-4036-af5d-d380d6ba5dad": 109,
+            "player:c7836385-2753-475f-810e-f942d2abdb01": 83
+          },
+          "opening_balances": {
+            "player:3153ab34-1acf-4176-be88-375b0be7e61c": 100,
+            "player:59e544ca-8bb6-4036-af5d-d380d6ba5dad": 100,
+            "player:c7836385-2753-475f-810e-f942d2abdb01": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "c5968cba-761d-4286-802e-b0ddc33ca910",
+          "game_id": "908d9739-f56f-48f8-9354-f68b9aa65ac1",
+          "pot_won": 17,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "8c03c132-a681-4dbf-84f4-8cd8398b6299",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "3153ab34-1acf-4176-be88-375b0be7e61c": 8,
+            "59e544ca-8bb6-4036-af5d-d380d6ba5dad": 9,
+            "c7836385-2753-475f-810e-f942d2abdb01": -17
+          },
+          "winning_hand_description": "Royal Flash: {\"3153ab34-1acf-4176-be88-375b0be7e61c\": 100, \"59e544ca-8bb6-4036-af5d-d380d6ba5dad\": 100, \"c7836385-2753-475f-810e-f942d2abdb01\": 0}"
+        },
+        "game_id": "908d9739-f56f-48f8-9354-f68b9aa65ac1",
+        "case_name": "real 3-player split",
+        "after_balances": {
+          "3153ab34-1acf-4176-be88-375b0be7e61c": 108,
+          "59e544ca-8bb6-4036-af5d-d380d6ba5dad": 109,
+          "c7836385-2753-475f-810e-f942d2abdb01": 83
+        },
+        "dealer_game_id": "8c03c132-a681-4dbf-84f4-8cd8398b6299",
+        "before_balances": {
+          "3153ab34-1acf-4176-be88-375b0be7e61c": 100,
+          "59e544ca-8bb6-4036-af5d-d380d6ba5dad": 100,
+          "c7836385-2753-475f-810e-f942d2abdb01": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "3579bdfb-49bd-4a67-b438-50fc77b41f1b",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "3b23c567-1d87-4226-b1ad-930b9ff621c6",
+          "transfers": [
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "54d6df07-dd4d-4fc3-8c8b-3e343f460849"
+              },
+              "amount": 17
+            },
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:2",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "7c0f614c-55bd-405d-b80d-3dd76aba4b33"
+              },
+              "amount": 17
+            },
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:3",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "7ce12798-7e55-47ac-be9e-2e9d396c8f2f"
+              },
+              "amount": 17
+            },
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:4",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b88f0cb7-390e-46ef-a325-1d0744710fb0"
+              },
+              "amount": 17
+            },
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:5",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "cad0dca1-956e-46e0-a746-37b6586d564b"
+              },
+              "amount": 17
+            },
+            {
+              "id": "3b23c567-1d87-4226-b1ad-930b9ff621c6:1:6",
+              "to": {
+                "kind": "player",
+                "playerId": "41a1e0b4-b24a-4528-9dc3-3315625bf786"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "dc6bd4cd-666d-470e-963a-3f2736a39a92"
+              },
+              "amount": 17
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "8aedc2a7-b2d0-4087-8b21-e08c12aba7d1",
+          "closing_balances": {
+            "player:41a1e0b4-b24a-4528-9dc3-3315625bf786": 202,
+            "player:54d6df07-dd4d-4fc3-8c8b-3e343f460849": 83,
+            "player:7c0f614c-55bd-405d-b80d-3dd76aba4b33": 83,
+            "player:7ce12798-7e55-47ac-be9e-2e9d396c8f2f": 83,
+            "player:b88f0cb7-390e-46ef-a325-1d0744710fb0": 83,
+            "player:cad0dca1-956e-46e0-a746-37b6586d564b": 83,
+            "player:dc6bd4cd-666d-470e-963a-3f2736a39a92": 83
+          },
+          "opening_balances": {
+            "player:41a1e0b4-b24a-4528-9dc3-3315625bf786": 100,
+            "player:54d6df07-dd4d-4fc3-8c8b-3e343f460849": 100,
+            "player:7c0f614c-55bd-405d-b80d-3dd76aba4b33": 100,
+            "player:7ce12798-7e55-47ac-be9e-2e9d396c8f2f": 100,
+            "player:b88f0cb7-390e-46ef-a325-1d0744710fb0": 100,
+            "player:cad0dca1-956e-46e0-a746-37b6586d564b": 100,
+            "player:dc6bd4cd-666d-470e-963a-3f2736a39a92": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "74ffec3b-ea18-4048-83fd-baa4a9b32215",
+          "game_id": "3b23c567-1d87-4226-b1ad-930b9ff621c6",
+          "pot_won": 102,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "8aedc2a7-b2d0-4087-8b21-e08c12aba7d1",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_5b9b39f3",
+          "winner_player_id": "41a1e0b4-b24a-4528-9dc3-3315625bf786",
+          "player_chip_changes": {
+            "41a1e0b4-b24a-4528-9dc3-3315625bf786": 102,
+            "54d6df07-dd4d-4fc3-8c8b-3e343f460849": -17,
+            "7c0f614c-55bd-405d-b80d-3dd76aba4b33": -17,
+            "7ce12798-7e55-47ac-be9e-2e9d396c8f2f": -17,
+            "b88f0cb7-390e-46ef-a325-1d0744710fb0": -17,
+            "cad0dca1-956e-46e0-a746-37b6586d564b": -17,
+            "dc6bd4cd-666d-470e-963a-3f2736a39a92": -17
+          },
+          "winning_hand_description": "Royal Flash: {\"41a1e0b4-b24a-4528-9dc3-3315625bf786\": 100, \"54d6df07-dd4d-4fc3-8c8b-3e343f460849\": 0, \"7c0f614c-55bd-405d-b80d-3dd76aba4b33\": 0, \"7ce12798-7e55-47ac-be9e-2e9d396c8f2f\": 0, \"b88f0cb7-390e-46ef-a325-1d0744710fb0\": 0, \"cad0dca1-956e-46e0-a746-37b6586d564b\": 0, \"dc6bd4cd-666d-470e-963a-3f2736a39a92\": 0}"
+        },
+        "game_id": "3b23c567-1d87-4226-b1ad-930b9ff621c6",
+        "case_name": "real 7-player winner",
+        "after_balances": {
+          "41a1e0b4-b24a-4528-9dc3-3315625bf786": 202,
+          "54d6df07-dd4d-4fc3-8c8b-3e343f460849": 83,
+          "7c0f614c-55bd-405d-b80d-3dd76aba4b33": 83,
+          "7ce12798-7e55-47ac-be9e-2e9d396c8f2f": 83,
+          "b88f0cb7-390e-46ef-a325-1d0744710fb0": 83,
+          "cad0dca1-956e-46e0-a746-37b6586d564b": 83,
+          "dc6bd4cd-666d-470e-963a-3f2736a39a92": 83
+        },
+        "dealer_game_id": "8aedc2a7-b2d0-4087-8b21-e08c12aba7d1",
+        "before_balances": {
+          "41a1e0b4-b24a-4528-9dc3-3315625bf786": 100,
+          "54d6df07-dd4d-4fc3-8c8b-3e343f460849": 100,
+          "7c0f614c-55bd-405d-b80d-3dd76aba4b33": 100,
+          "7ce12798-7e55-47ac-be9e-2e9d396c8f2f": 100,
+          "b88f0cb7-390e-46ef-a325-1d0744710fb0": 100,
+          "cad0dca1-956e-46e0-a746-37b6586d564b": 100,
+          "dc6bd4cd-666d-470e-963a-3f2736a39a92": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": {
+          "id": "4b33d29b-c7a8-427d-a56d-00a2bdc95d76",
+          "cursor": 1,
+          "reason": "win",
+          "game_id": "34d2e628-9196-4cb9-affa-c014fb70ad91",
+          "transfers": [
+            {
+              "id": "34d2e628-9196-4cb9-affa-c014fb70ad91:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "20c7026b-62da-479b-8d0a-d973609a583c"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b07dd280-f97c-439d-b8d9-f4abe7c6ded4"
+              },
+              "amount": 9
+            }
+          ],
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "dealer_game_id": "a8156da9-afba-49e5-af20-dc7bdf413611",
+          "closing_balances": {
+            "player:20c7026b-62da-479b-8d0a-d973609a583c": 109,
+            "player:b07dd280-f97c-439d-b8d9-f4abe7c6ded4": 91
+          },
+          "opening_balances": {
+            "player:20c7026b-62da-479b-8d0a-d973609a583c": 100,
+            "player:b07dd280-f97c-439d-b8d9-f4abe7c6ded4": 100
+          },
+          "unmatched_deltas": {}
+        },
+        "result": {
+          "id": "51118bf6-d416-4698-a9f8-19b8738a7c63",
+          "game_id": "34d2e628-9196-4cb9-affa-c014fb70ad91",
+          "pot_won": 9,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": false,
+          "hand_number": 1,
+          "dealer_game_id": "a8156da9-afba-49e5-af20-dc7bdf413611",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Player_2b1b0330",
+          "winner_player_id": "20c7026b-62da-479b-8d0a-d973609a583c",
+          "player_chip_changes": {
+            "20c7026b-62da-479b-8d0a-d973609a583c": 9,
+            "b07dd280-f97c-439d-b8d9-f4abe7c6ded4": -9
+          },
+          "winning_hand_description": "Royal Flash: {\"20c7026b-62da-479b-8d0a-d973609a583c\": 137500, \"b07dd280-f97c-439d-b8d9-f4abe7c6ded4\": 133500}"
+        },
+        "game_id": "34d2e628-9196-4cb9-affa-c014fb70ad91",
+        "case_name": "play",
+        "after_balances": {
+          "20c7026b-62da-479b-8d0a-d973609a583c": 109,
+          "b07dd280-f97c-439d-b8d9-f4abe7c6ded4": 91
+        },
+        "dealer_game_id": "a8156da9-afba-49e5-af20-dc7bdf413611",
+        "before_balances": {
+          "20c7026b-62da-479b-8d0a-d973609a583c": 100,
+          "b07dd280-f97c-439d-b8d9-f4abe7c6ded4": 100
+        }
+      },
+      {
+        "game": "royal_flash",
+        "batch": null,
+        "result": {
+          "id": "219a0d6b-f8ff-47c6-b17a-04a5419766a2",
+          "game_id": "25d20da8-3674-47c3-b3b4-561c1daf0dcc",
+          "pot_won": 0,
+          "game_type": "royal-flash",
+          "created_at": "2026-10-19T20:38:02.919871+00:00",
+          "event_kind": null,
+          "is_chopped": true,
+          "hand_number": 1,
+          "dealer_game_id": "839ba3a3-fad3-4d2a-804d-3166508fefc3",
+          "settlement_key": "royal_flash_terminal",
+          "winner_username": "Tie",
+          "winner_player_id": null,
+          "player_chip_changes": {
+            "80f017a8-f8d6-4ebd-acb9-8cddf25d5ddc": 0,
+            "fa917ed8-da0c-459b-87ca-c76716b00f5f": 0
+          },
+          "winning_hand_description": "Royal Flash: {\"80f017a8-f8d6-4ebd-acb9-8cddf25d5ddc\": 0, \"fa917ed8-da0c-459b-87ca-c76716b00f5f\": 0}"
+        },
+        "game_id": "25d20da8-3674-47c3-b3b4-561c1daf0dcc",
+        "case_name": "recovery",
+        "after_balances": {
+          "80f017a8-f8d6-4ebd-acb9-8cddf25d5ddc": 100,
+          "fa917ed8-da0c-459b-87ca-c76716b00f5f": 100
+        },
+        "dealer_game_id": "839ba3a3-fad3-4d2a-804d-3166508fefc3",
+        "before_balances": {
+          "80f017a8-f8d6-4ebd-acb9-8cddf25d5ddc": 100,
+          "fa917ed8-da0c-459b-87ca-c76716b00f5f": 100
+        }
+      }
+    ]
+  },
+  "browser": {
+    "evidence": [
+      {
+        "family": "tri-towers",
+        "fixture": {
+          "session": "c2c69c9e-02e8-4b91-94c0-c7457ef485fc",
+          "users": [
+            "fdbd3b89-42c4-4052-9877-597ce88f3629",
+            "ac0df8df-a402-4ed9-83b4-591b39a77d45"
+          ],
+          "players": [
+            "4698c3a1-8f5e-43b0-90cd-cb7ee25dd3ff",
+            "bb5f6e13-c0bf-486f-a737-a7d95f7f1ef9"
+          ]
+        },
+        "defaultStake": "5",
+        "changedStake": 9,
+        "explicitAnte": true,
+        "actions": 30,
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "seen": {
+          "chip": true,
+          "celebration": false
+        },
+        "batch": [
+          {
+            "id": "d2075d96-3ae6-433b-aa8e-c6a13698ef6d",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "c2c69c9e-02e8-4b91-94c0-c7457ef485fc:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "4698c3a1-8f5e-43b0-90cd-cb7ee25dd3ff"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "bb5f6e13-c0bf-486f-a737-a7d95f7f1ef9"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ],
+        "runBack": {
+          "stake": 9,
+          "explicitNewConsent": true,
+          "newDealerGameId": "baf3f38c-e18f-402b-944b-7ba0b6c99c83",
+          "unchangedBalances": [
+            109,
+            91
+          ]
+        }
+      },
+      {
+        "family": "eleven-up",
+        "fixture": {
+          "session": "0efb8f8a-272c-4160-bc8f-66d3635855b1",
+          "users": [
+            "e65652c5-bc6e-4233-a9f1-3d7545f622ed",
+            "16ec049a-5291-4206-b4ec-21cdb59f6d5a"
+          ],
+          "players": [
+            "06a1c18a-05aa-4b00-8cdc-23c597667fc1",
+            "45bfd3a7-adaa-4aad-ad32-0082c7226222"
+          ]
+        },
+        "defaultStake": "5",
+        "changedStake": 9,
+        "explicitAnte": true,
+        "actions": 15,
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "seen": {
+          "chip": true,
+          "celebration": true
+        },
+        "batch": [
+          {
+            "id": "753c1bcb-1755-4aea-9f76-8d70e83fdfc8",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "0efb8f8a-272c-4160-bc8f-66d3635855b1:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "06a1c18a-05aa-4b00-8cdc-23c597667fc1"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "45bfd3a7-adaa-4aad-ad32-0082c7226222"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ],
+        "runBack": {
+          "stake": 9,
+          "explicitNewConsent": true,
+          "newDealerGameId": "e4de4d73-4243-4156-baeb-e2243f900d42",
+          "unchangedBalances": [
+            109,
+            91
+          ]
+        }
+      },
+      {
+        "family": "royal-flash",
+        "fixture": {
+          "session": "edb77f54-c87b-4e59-a89d-e0b90b09de44",
+          "users": [
+            "b1e425f5-b40c-492f-82d5-c8896a6a2fd6",
+            "fabe600b-2069-4d36-8427-d0171a4e0f49"
+          ],
+          "players": [
+            "3e8fbe79-b557-4a86-a022-369002480f08",
+            "4df4c1d8-37ef-4d34-9524-5c7f1404134e"
+          ]
+        },
+        "defaultStake": "5",
+        "changedStake": 9,
+        "explicitAnte": true,
+        "actions": 100,
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "seen": {
+          "chip": true,
+          "celebration": true
+        },
+        "batch": [
+          {
+            "id": "2ee7ca49-e177-43a0-88bf-77791010c2ca",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "edb77f54-c87b-4e59-a89d-e0b90b09de44:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "3e8fbe79-b557-4a86-a022-369002480f08"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "4df4c1d8-37ef-4d34-9524-5c7f1404134e"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ],
+        "runBack": {
+          "stake": 9,
+          "explicitNewConsent": true,
+          "newDealerGameId": "cbd3a260-5d00-4f60-bbc3-976e3dfe1fff",
+          "unchangedBalances": [
+            109,
+            91
+          ]
+        }
+      }
+    ],
+    "errors": []
+  },
+  "concurrency": {
+    "passed": true,
+    "evidence": [
+      {
+        "game": "tri-towers",
+        "session": "9f245e1a-e9cd-4604-8945-fce4ba8c706f",
+        "dealerGameId": "859bd51d-6ec8-4364-96cd-834e5e80b0d9",
+        "stakeRace": "changed offer rejected; exact nine-chip offer accepted",
+        "independentRecovery": "one result and transfer batch",
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "results": [
+          {
+            "id": "6770f182-9d9b-4ead-9e52-da6b0d4fdcd1",
+            "player_chip_changes": {
+              "48283886-e18d-4947-bcd1-24aef8691ee7": 9,
+              "c7dc7e7b-64e5-462c-ad85-22eec59b0cf8": -9
+            }
+          }
+        ],
+        "batches": [
+          {
+            "id": "db93e7c8-a3f8-496a-9286-9ee424e4c42b",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "9f245e1a-e9cd-4604-8945-fce4ba8c706f:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "48283886-e18d-4947-bcd1-24aef8691ee7"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "c7dc7e7b-64e5-462c-ad85-22eec59b0cf8"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ]
+      },
+      {
+        "game": "eleven-up",
+        "session": "ea387380-2152-43f3-ba07-d17787480bd0",
+        "dealerGameId": "34c0cf9c-83d6-4679-9a3a-7442c7c85a78",
+        "stakeRace": "changed offer rejected; exact nine-chip offer accepted",
+        "independentRecovery": "one result and transfer batch",
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "results": [
+          {
+            "id": "6ccebd91-8427-4df8-a677-a72f78edba4a",
+            "player_chip_changes": {
+              "2b028ec1-b19e-42a8-9a9f-85e43b5bed17": -9,
+              "e1eb2c7b-c63b-4fd4-8567-6cec670fcdbe": 9
+            }
+          }
+        ],
+        "batches": [
+          {
+            "id": "987053e0-e402-4da1-a081-12bfca9c4858",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "ea387380-2152-43f3-ba07-d17787480bd0:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "e1eb2c7b-c63b-4fd4-8567-6cec670fcdbe"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "2b028ec1-b19e-42a8-9a9f-85e43b5bed17"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ]
+      },
+      {
+        "game": "royal-flash",
+        "session": "bfcb2f75-1ab5-4022-a6d0-fa79bc2d55b9",
+        "dealerGameId": "ae65c6fa-1ca0-453e-9dbf-f4a06b251c97",
+        "stakeRace": "changed offer rejected; exact nine-chip offer accepted",
+        "independentRecovery": "one result and transfer batch",
+        "before": [
+          100,
+          100
+        ],
+        "after": [
+          109,
+          91
+        ],
+        "results": [
+          {
+            "id": "228619bb-59a2-49d1-b754-7e8735c3f2b9",
+            "player_chip_changes": {
+              "a80c6e36-3c81-44be-98ab-5112d5c16d0b": 9,
+              "c0983b43-eea9-4012-9912-a7dc6ad5c4e9": -9
+            }
+          }
+        ],
+        "batches": [
+          {
+            "id": "e6823d24-36fc-4e6e-a009-e61d150d76cb",
+            "cursor": "1",
+            "transfers": [
+              {
+                "id": "bfcb2f75-1ab5-4022-a6d0-fa79bc2d55b9:1:1",
+                "to": {
+                  "kind": "player",
+                  "playerId": "a80c6e36-3c81-44be-98ab-5112d5c16d0b"
+                },
+                "from": {
+                  "kind": "player",
+                  "playerId": "c0983b43-eea9-4012-9912-a7dc6ad5c4e9"
+                },
+                "amount": 9
+              }
+            ],
+            "unmatched_deltas": {}
+          }
+        ]
+      }
+    ]
+  }
+}

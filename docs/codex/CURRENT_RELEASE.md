@@ -1,3 +1,22 @@
+# TriTowers, 11 Up and Royal Flash normal money admission — 2026-10-19
+
+All three games independently passed candidate and installed production rollback
+proofs, independent-connection financial races, and normal browser setup → changed
+stake → explicit Ante Up → gameplay → visible settlement → continuation. Run Back
+requires fresh consent at the retained stake. A late-default race in caller setup
+was corrected without changing game rules or financial formulas.
+
+Migration `20261019203757` installs capability v2 (`fake_money_only=false`) and
+removes fake-money checks from the existing gameplay/settlement/recovery owners.
+Ordinary account/session authorization and all Arcade behavior remain intact.
+New admission stays closed during client publication; the reviewed activation SQL
+opens each qualified game's admission after the matching production deployment.
+All three are qualified. Owner production acceptance remains pending.
+
+Typecheck, 2,489 application tests, 241 harness tests and production build pass.
+See [qualification, financial evidence and smoke](MULTIPLAYER_REAL_MONEY_QUALIFICATION.md).
+Checkpoint: `megatouch-real-money-2026-10-19`.
+
 # Run21 automatic account timing — 2026-10-19 — awaiting owner smoke
 
 Hap's Run21 diagnostics are automatically enabled by a private, expiring one-week

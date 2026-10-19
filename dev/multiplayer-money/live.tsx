@@ -1,0 +1,20 @@
+import {useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {DealerGameSetup} from '@/components/DealerGameSetup';import {AnteUpDialog} from '@/components/AnteUpDialog';
+import {TriTowersGame} from '@/components/triTowers/TriTowersGame';import {ElevenUpTable} from '@/components/elevenUp/ElevenUpTable';import {RoyalFlashTable} from '@/components/royalFlash/RoyalFlashTable';
+import {PersistentTableShell} from '@/lib/canonicalShell/PersistentTableShell';import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';import {VisualPreferencesProvider} from '@/hooks/useVisualPreferences';import {GameChatContextProvider} from '@/hooks/GameChatContext';import {platformAudio} from '@/lib/audio/platformAudio';import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
+import '@/index.css';
+const params=new URLSearchParams(location.search),session=params.get('session')!,user=params.get('user')!,previous=params.has('previous')?JSON.parse(params.get('previous')!):null;
+function App(){const [data,setData]=useState<any>(null),[held,setHeld]=useState<any>(null),[tab,setTab]=useState<ShellTabId>('cards');
+ const load=async()=>setData(await(await fetch('/__money/state',{method:'POST',body:JSON.stringify({session})})).json());
+ useEffect(()=>{void load();const stream=new EventSource('/__money/events');stream.onmessage=()=>void load();return()=>stream.close();},[]);
+ useEffect(()=>{if(data?.game.status==='in_progress')setHeld({id:data.game.current_game_uuid,type:data.game.game_type});},[data?.game.current_game_uuid,data?.game.status]);
+ if(!data)return <p>Loading qualification session</p>;const g=data.game,me=data.players.find((p:any)=>p.user_id===user),caller=data.players.find((p:any)=>p.position===g.dealer_position),match=held??(g.current_game_uuid&&g.status!=='ante_decision'?{id:g.current_game_uuid,type:g.game_type}:null);
+ const props={dealerGameId:match?.id,userId:user,liveEntry:true,activeTab:tab,setActiveTab:setTab,sessionEnded:false,onTerminalActive:()=>{},onTerminalComplete:()=>{setHeld(null);void load();}};
+ return <PersistentTableShell gameId={session} gameType={match?.type??g.game_type} presentationMode="fullscreen" header={<div>P-Town Poker · Financial qualification</div>}>
+ <GameChatContextProvider value={{allMessages:[],sendMessage:async()=>{},isSending:false} as any}>
+ {match?(match.type==='tri-towers'?<TriTowersGame key={match.id} {...props}/>:match.type==='eleven-up'?<ElevenUpTable key={match.id} {...props}/>:<RoyalFlashTable key={match.id} {...props}/>):g.status==='game_selection'?(me.position===g.dealer_position?<DealerGameSetup previousGameType={previous?.game_type} previousGameConfig={previous} isFirstHand={!previous} gameId={g.id} dealerUsername={caller.username} isBot={false} dealerPlayerId={caller.id} dealerPosition={caller.position} configDeadline={g.config_deadline} gameSetupTimerSeconds={600} anteDecisionTimerSeconds={120} activePlayerCount={2} activeHumanCount={2} onConfigComplete={load} onSessionEnd={load}/>:<p>Waiting for caller setup</p>):g.status==='ante_decision'?(me.ante_decision===null?<AnteUpDialog key={g.current_game_uuid} gameId={g.id} dealerGameId={g.current_game_uuid} playerId={me.id} gameType={g.game_type} anteAmount={g.ante_amount} legValue={0} pussyTaxEnabled={false} pussyTaxValue={0} legsToWin={0} potMaxEnabled={false} potMaxValue={0} chuckyCards={null} autoAnte={true} anteDecisionDeadline={g.ante_decision_deadline} onDecisionMade={load} onDecisionRejected={load}/>:<p>Waiting for Ante Up · ${g.ante_amount}</p>):<p>{g.status}</p>}
+ </GameChatContextProvider></PersistentTableShell>;
+}
+platformAudio.install();platformAudio.setUser(user);
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={new QueryClient()}><VisualPreferencesProvider><ResponsiveGeometryProvider><App/></ResponsiveGeometryProvider></VisualPreferencesProvider></QueryClientProvider>);

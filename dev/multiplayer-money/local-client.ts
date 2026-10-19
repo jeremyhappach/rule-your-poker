@@ -1,0 +1,11 @@
+const channels=new Map<object,{listeners:any[];status?:(value:string)=>void}>();
+let stream:EventSource|null=null;
+const user=()=>new URLSearchParams(location.search).get('user');
+async function request(path:string,body:object){return(await fetch('/__money/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:user(),...body})})).json();}
+export const supabase={
+ auth:{getSession:async()=>({data:{session:{user:{id:user()}}}}),getUser:async()=>({data:{user:{id:user()}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>{}}}})},
+ rpc:(name:string,args:object)=>request('rpc',{name,args}),
+ from(table:string){const filters:object[]=[];let single=false,write=false;const q:any={select:()=>q,eq:(key:string,value:unknown)=>{filters.push({key,value,op:'eq'});return q;},in:(key:string,value:unknown)=>{filters.push({key,value,op:'in'});return q;},neq:(key:string,value:unknown)=>{filters.push({key,value,op:'neq'});return q;},order:()=>q,limit:()=>q,maybeSingle:()=>{single=true;return q;},single:()=>{single=true;return q;},insert:()=>{write=true;return q;},update:()=>{write=true;return q;},upsert:()=>{write=true;return q;},then:(yes:any,no:any)=>(write?Promise.resolve({data:null,error:{message:'Qualification transport permits authoritative RPC writes only'}}):request('read',{table,filters,single})).then(yes,no)};return q;},
+ channel(){const listeners:any[]=[];const channel={on(_e:unknown,filter:any,callback:any){listeners.push({filter,callback});return channel;},subscribe(status?:(s:string)=>void){channels.set(channel,{listeners,status});if(!stream){stream=new EventSource('/__money/events');stream.onopen=()=>{for(const c of channels.values())c.status?.('SUBSCRIBED');};stream.onerror=()=>{for(const c of channels.values())c.status?.('CHANNEL_ERROR');};stream.onmessage=e=>{const event=JSON.parse(e.data);for(const c of channels.values())for(const l of c.listeners){const [key,value]=String(l.filter.filter??'').split('=eq.');if(l.filter.table===event.table&&(!value||String(event.new?.[key])===value))l.callback(event);}};}else if(stream.readyState===EventSource.OPEN)queueMicrotask(()=>status?.('SUBSCRIBED'));return channel;}};return channel;},
+ removeChannel(channel:object){channels.delete(channel);if(!channels.size){stream?.close();stream=null;}}
+};

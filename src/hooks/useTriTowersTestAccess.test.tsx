@@ -16,7 +16,7 @@ import { useTriTowersTestAccess } from './useTriTowersTestAccess';
 const user = '11111111-1111-4111-8111-111111111111';
 const session = '22222222-2222-4222-8222-222222222222';
 const project = 'abcdefghijklmnopqrst';
-const response = { data: { version: 1, enabled: true, fake_money_only: true, user_id: user, session_id: session, project_ref: project }, error: null };
+const response = { data: { version: 2, enabled: true, fake_money_only: false, user_id: user, session_id: session, project_ref: project }, error: null };
 beforeEach(() => {
   vi.clearAllMocks();
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: user } } } });
