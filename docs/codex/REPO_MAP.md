@@ -1,5 +1,11 @@
 # Repository map
 
+Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
+The adjoining Arcade/multiplayer adapters, bots and recovery follow the accepted
+Trip Flip owners. `src/components/boxdrop/` is the shared factory presentation;
+`src/lib/boxdrop/` and `src/hooks/useBoxdrop.ts` handle redacted transport and
+presentation. `dev/boxdrop/` contains isolated SQL/browser qualification tools.
+
 Trip Flip: `supabase/trip-flip/rules.sql` owns `trip-flip/1` deals, legal movement,
 classification, bonuses and clocks. Its multiplayer/Arcade adapters use canonical
 consent/settlement or solo receipts/results; bots/recovery remain server-owned.

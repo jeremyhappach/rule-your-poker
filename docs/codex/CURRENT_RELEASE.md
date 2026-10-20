@@ -1,3 +1,19 @@
+# Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
+
+Boxdrop adds Arcade and exactly two-player multiplayer through one server-owned
+rule core, including the approved first-32 bonus eligibility amendment.
+The factory presentation uses four scales, six-box FIFO recycling, 100-second
+rounds, centered score pills and one individually earned bonus round.
+Bots use visible state only. Multiplayer reuses canonical consent, chips, ledger,
+terminal hold and continuation; Arcade stays nonfinancial.
+
+Local SQL rules/parity/recovery proofs, both-money concurrency and financial
+rollback tests, live browser/audio checks, 112 viewport checks, TypeScript,
+2,530 application tests, 241 harness tests and production build passed.
+See `BOXDROP_RULES.md` and `BOXDROP_QUALIFICATION.md` for scope and evidence.
+Publication and activation use separate closed-admission gates. Physical iPhone
+smoke remains acceptance truth.
+
 # Trip Flip smoke corrections — 2026-10-19 — awaiting owner smoke
 
 Both modes now move the existing active score pill to the gameplay center and

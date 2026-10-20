@@ -1,3 +1,14 @@
+# 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
+
+Jeremy approved full Arcade and two-player multiplayer with one frozen server
+reducer. Preserve four 32→21 scales and six-box FIFO recycling. The 100-second
+clock, slot limits, overload/partial rules, precise speed rounding and 100,000
+bonus-round threshold are explicit Ptown adaptations. Speed and unused-recycling
+awards require a successful 32 order in the same round; reset that eligibility
+each round. Empty banking and recycling-only loops therefore earn zero.
+Use the Trip Flip persistence/financial/recovery owners with Boxdrop-specific
+round scheduling. No client rule engine or independent financial ledger.
+
 # 2026-10-19 — Trip Flip shares one frozen rule core across modes
 
 Jeremy approved the complete Arcade and multiplayer implementation. Freeze
