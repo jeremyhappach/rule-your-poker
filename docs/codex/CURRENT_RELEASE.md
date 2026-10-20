@@ -1,3 +1,11 @@
+# Lobby/settings catalog redesign — 2026-10-20 — local candidate, release approval required
+
+Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.
+
+Existing collection validation/save and the separate Farkle save adapter remain intact. Saved Farkle responses reconcile the parent draft to prevent a later collection save restoring old values. No migrations, admission activation, gameplay/financial changes, merge, push or deployment are included. Release requires Jeremy's explicit approval; then production-first smoke, with no mandatory preview deployment.
+
+Evidence and limitations: [LOBBY_CATALOG_REDESIGN.md](LOBBY_CATALOG_REDESIGN.md).
+
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 
 Boxdrop adds Arcade and exactly two-player multiplayer through one server-owned

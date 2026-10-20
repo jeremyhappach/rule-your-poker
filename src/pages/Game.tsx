@@ -13662,6 +13662,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
                     activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
+                    realMoney={game.real_money === true}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
@@ -13996,6 +13997,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
                     activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
+                    realMoney={game.real_money === true}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {

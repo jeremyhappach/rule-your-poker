@@ -2543,3 +2543,7 @@ Multiplayer adds only consent, participant order, pause, bots, canonical chip
 settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
+
+## 2026-10-20 — Presentation catalog UI candidate
+
+Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.

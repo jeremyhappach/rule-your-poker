@@ -1,3 +1,5 @@
+import {ArcadeSwitchboard} from '@/components/arcade/ArcadeSwitchboard';
+import {findGame} from '@/lib/gameCatalog';
 import {SoloBoxdrop} from '@/components/arcade/SoloBoxdrop';
 import {SoloTripFlip} from '@/components/arcade/SoloTripFlip';
 import {SoloTakeTwo} from '@/components/arcade/SoloTakeTwo';
@@ -11,9 +13,7 @@ import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Gamepad2,ArrowLeft,Trophy,Play,RotateCcw} from 'lucide-react';
 import {useRun21Diagnostics} from '@/hooks/useRun21Diagnostics';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
-import {useIsAdmin} from '@/hooks/useIsAdmin';
-import {ArcadeInfo,ArcadeArtwork} from '@/components/arcade/ArcadeInfo';
-import {loadArtwork,type Artwork} from '@/lib/arcade/artwork';
+import {ArcadeInfo} from '@/components/arcade/ArcadeInfo';
 import {useArcadeRun} from '@/hooks/useArcadeRun';
 import {arcadeRequest} from '@/lib/arcade/client';
 import type {ArcadeSnapshot,Leaderboard} from '@/lib/arcade/model';
@@ -34,43 +34,15 @@ import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import '@/lib/arcade/arcade.css';
-const games=[{id:'run21',name:'Run21',description:'5 columns, 3 rounds, make 21s',ready:true},
- {id:'tri-towers',name:'TriTowers',description:'Clear the towers.',ready:true},
- {id:'eleven-up',name:'11 Up',description:'Make eleven. Clear the pool balls.',ready:true},
- {id:'boxdrop',name:'Boxdrop',description:'Complete orders. Run the factory.',ready:true},
- {id:'trip-flip',name:'Trip Flip',description:'Build Trips and Runs. Chase the Special Run.',ready:true},
- {id:'take-two',name:'Take 2',description:'Pair cards and clear the board.',ready:true},
- {id:'royal-flash',name:'Royal Flash',description:'Build poker hands across a 5 × 5 grid.',ready:true},
- {id:'yahtzee',name:'Yahtzee',description:'Make every roll count.',ready:false}] as const;
 export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
- if(!game)return <Switchboard userId={user.id}/>;
+ if(!game)return <ArcadeSwitchboard userId={user.id}/>;
  if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up'&&game!=='royal-flash'&&game!=='boxdrop'&&game!=='trip-flip'&&game!=='take-two')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?(game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game} game={game}/>;
 }
-function Switchboard({userId}:{userId:string}){
- const {isAdmin}=useIsAdmin(userId),[artwork,setArtwork]=useState<Artwork[]>([]),[error,setError]=useState('');
- const generation=useRef(0);
- const refresh=useCallback(()=>{
-  const ticket=++generation.current;
-  void loadArtwork().then(rows=>{if(ticket===generation.current){setArtwork(rows);setError('');}}).catch(e=>{if(ticket===generation.current)setError(e.message);});
- },[]);
- useEffect(()=>{refresh();window.addEventListener('focus',refresh);return()=>{generation.current++;window.removeEventListener('focus',refresh);};},[refresh]);
- const updated=(row:Artwork)=>{generation.current++;setArtwork(rows=>rows.map(old=>old.game===row.game?row:old));};
- return <main className="arcade-page"><Link className="arcade-back" to="/"><ArrowLeft size={18}/>Main Lobby</Link>
-  <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><p>Pick a game. Chase your personal best.</p></div></header>
-  <div className="arcade-tiles">{games.map(g=>{
-   const row=artwork.find(item=>item.game===g.id);
-   return <article key={g.id} className="arcade-tile">
-    <div className="arcade-tile-copy"><h2>{g.ready?<Link className="arcade-card-link" to={'/arcade/'+g.id} aria-label={g.name+' leaderboard'}>{g.name}</Link>:g.name}</h2><p>{g.description}</p>{!g.ready&&<span className="arcade-soon">Coming Soon</span>}</div>
-    <ArcadeArtwork path={row?.object_path??null}/>
-    <ArcadeInfo game={g.id} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>
-   </article>;
-  })}</div>{error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;
-}
 function GameBoard({game}:{game:'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'boxdrop'|'trip-flip'|'take-two'}){
- const name=game==='boxdrop'?'Boxdrop':game==='trip-flip'?'Trip Flip':game==='take-two'?'Take 2':game==='royal-flash'?'Royal Flash':game==='eleven-up'?'11 Up':game==='run21'?'Run21':'TriTowers';
+ const name=findGame(game)?.name??game;
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
  const createId=useRef<string|null>(null);

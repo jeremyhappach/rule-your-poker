@@ -1,5 +1,7 @@
 # Repository map
 
+Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
+
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
 The adjoining Arcade/multiplayer adapters, bots and recovery follow the accepted
 Trip Flip owners. `src/components/boxdrop/` is the shared factory presentation;
