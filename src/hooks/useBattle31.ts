@@ -48,5 +48,5 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
   const command:Battle31Command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };
- return {snapshot:snapshot?.id===id?snapshot:null,error:error||(!online||connected===false?'Connection interrupted. Reconnectingâ€¦':''),connected:online&&connected===true,pending,now,epoch,act,reconnect:()=>{setOnline(navigator.onLine);setEpoch(n=>n+1);void resolve();}};
+ return {snapshot:snapshot?.id===id?snapshot:null,error:error||(!online||connected===false?'Connection interrupted. Reconnecting…':''),connected:online&&connected===true,pending,now,epoch,act,reconnect:()=>{setOnline(navigator.onLine);setEpoch(n=>n+1);void resolve();}};
 }

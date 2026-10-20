@@ -108,12 +108,11 @@ not. Do not treat earlier 3–7-minute claims as measured expectations.
 
 ## Remaining limits and coordinated release work
 
-This is a local candidate, not a production-qualified release. The browser harness
-uses actual SQL and canonical components with loopback RPC/realtime transport;
-it does not reproduce the entire authenticated main-route lobby-to-run-back flow,
-Supabase Realtime transport, hosted cron, or physical iPhone Safari/audio behavior.
-Those checks, wider adversarial bot balance and the full app admission/continuation
-journey remain explicit qualification limits.
+This is a local candidate, not a production-qualified release. The main-route
+journey now passes against actual candidate SQL with a token-bound loopback
+transport (details below). Hosted GoTrue/PostgREST/Realtime, production permission
+parity, hosted scheduling, physical iPhone Safari/audio and wider adversarial bot
+balance remain explicit qualification limits.
 
 Before any separately approved release, reconcile the shared registration
 functions and Game.tsx against coordinated main (other games are in development),
@@ -123,8 +122,9 @@ and full client lifecycle. Do not concatenate stale shared-function copies and
 overwrite another game's registration. Admission activation remains separate.
 
 Physical iPhone portrait/landscape, interrupted network, mute/reduced motion,
-run-back with fresh consent, and fresh entry to an ended session remain owner or
-full-route smoke checks. Source reuse and unit tests are not substitutes for them.
+run-back with fresh consent, and fresh entry to an ended session now have local
+route evidence but still require physical/production smoke. Source reuse and unit
+tests are not substitutes for those environments.
 
 Final retained SQL simulation: 200 greedy/greedy matches averaged 6.49 rounds and
 23.53 decisions (seat wins 94/106; 2 forced showdowns); 200 greedy/PASS matches
@@ -135,10 +135,88 @@ Earlier intermediate samples differed. At an assumed 3–5 seconds per decision,
 24.82 decisions plus deal/result holds implies roughly 1.8–2.6 minutes; this is
 an assumption-based estimate, not measured human duration.
 
-Checkpoint: stop this pass at the repository execution circuit breaker. The
-remaining local qualification is the complete authenticated main-route
-admission/run-back/reconnect journey and audio/mute checks. The reference adapter
-provided platform ownership, but could not prove the new hidden-hand exchange
-protocol and responsive card interactions without additional qualification.
-A further bounded local qualification pass is the next decision; no release
-approval is implied.
+## Main-route continuation and report reconciliation
+
+The initial implementation checkpoint is
+`a21d16c40366fddcceeb676d1223f512beb442f0`. A later response incorrectly reverted to
+research, requested already-granted rules approval, and stated no repository or
+database changes had occurred. That response is superseded by this record.
+At reconciliation the checkpoint was still HEAD, with nine untracked route-harness
+files. The disposable clone had received fixture read grants, read_session_frame,
+notification triggers and local gate/fullscreen-default changes. No production
+changes occurred. The interrupted route check had not passed consent.
+
+The corrected continuation retained seven useful harness files, removed two
+one-off probes, added runner documentation, and corrected two product defects:
+
+- Battle31View no longer renders a second Session Ended/winner surface underneath
+  the canonical terminal banner and Results panel. Canonical ownership is intact.
+- useBattle31 displays the reconnect ellipsis correctly rather than mojibake.
+
+Harness corrections were separate: UPDATE notifications must not reach DELETE
+subscriptions; auto_ante and auto_ante_runback cannot both be enabled; an absent
+local session must have the SDK's ordinary null-session/no-error shape. Exact
+repository request_session_end definitions were installed into the local clone,
+where that canonical function was missing. No production migration is implied.
+
+### Executed journey, both money modes
+
+`dev/battle31/main-route.mjs` mounts actual Game.tsx and its auth guard. Public
+RPCs and reads execute as PostgreSQL authenticated identities bound to distinct
+opaque loopback tokens. Tests block non-loopback browser requests.
+
+Both real-money-mode and fake-money-mode synthetic sessions passed:
+
+1. Caller chooses Battle 31, changes stake to 9, and configures the match.
+2. No private match exists until the non-caller explicitly accepts Ante Up.
+3. Two private human projections mount; an actual UI exchange commits.
+4. The first audible exchange schedules two cue oscillators; muted exchange adds
+   zero. Each document uses exactly one shared AudioContext.
+5. A committed exchange response is deliberately dropped. Reload clears the same
+   saved command through retry; its immutable request UUID has exactly one receipt.
+6. Offline controls disable; authenticated reload restores the current match.
+7. UI resignation settles 100/100 to 91/109 once, then canonical caller rotation
+   reaches setup/Run Back without ejecting the live route.
+8. Run Back retains stake 9 but creates a new dealer-game identity. Despite saved
+   auto-runback preferences, fresh consent is required and no match exists before
+   it. Consent itself does not debit chips.
+9. Successor reload preserves three masked opponent cards. Persisted mute remains
+   silent after reload; unmute restores two-note exchange cues with one context.
+10. A host-authorized canonical end request followed by UI resignation settles
+    the second match to 82/118. Live clients reach one canonical Session Ended
+    banner, Results and Back to Lobby; all Battle 31 cards are retired.
+11. A fresh authenticated mount of the ended session goes directly to the lobby.
+    A tokenless mount redirects to auth; a tokenless RPC receives HTTP 401.
+
+Both journeys recorded zero browser page errors. Retained evidence:
+[real mode](../../dev/battle31/evidence/main-route-real.json),
+[fake mode](../../dev/battle31/evidence/main-route-fake.json),
+[real terminal](../../dev/battle31/evidence/main-route-terminal-real.png), and
+[fake terminal](../../dev/battle31/evidence/main-route-terminal-fake.png).
+The synthetic fixtures start with 100 chips; canonical Results shows final
+balances 82/118, not just the two match deltas. Screenshots may include the trailing
+canonical +9 transfer cue; no game-owned cards or duplicate terminal title remain.
+
+Final checks: application TypeScript; 34 focused tests (Battle 31 model 3,
+shared audio 22, timer authority 4, route retention 3, canonical terminal 2);
+actual-Game route bundle; production Vite build. Existing Browserslist/chunk-size
+and terminal-test act-environment warnings remain. The previous checkpoint's
+full application/harness suites are prior evidence, not rerun claims for this pass.
+
+### Remaining limits
+
+This is local authenticated-role route qualification, not hosted sign-in or JWT
+validation. The loopback adapter substitutes Supabase HTTP/realtime transport;
+local SSE is fed by PostgreSQL notifications. Its optional presence/storage and
+unused query operations are stubs. Lobby creation and the auth page are destination
+placeholders; the actual Game route, setup, consent and continuation are exercised.
+Mute tests use persisted profile state and the actual shared audio preference API;
+Settings-screen navigation and physical speakers were not tested. A host end
+request is sent through its canonical authenticated RPC; its menu gesture is not
+part of this journey. See [runner scope](../../dev/battle31/README.md).
+
+Production permission/schema parity, hosted zero-client scheduling and realtime,
+physical iPhone portrait/landscape/interruption/audio, and coordinated-main
+integration remain pending. No merge, push, deployment, production migration or
+production admission activation occurred. Rules and local implementation approval
+are already granted; no repeat product approval is requested here.

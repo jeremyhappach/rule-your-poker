@@ -3,8 +3,12 @@
 Exactly-two-player multiplayer, strategic bots and fullscreen presentation use one
 server rule owner with canonical consent/finance/recovery. Local authority,
 financial, concurrency, bot and browser evidence is recorded in
-[BATTLE31_LOCAL_CANDIDATE.md](BATTLE31_LOCAL_CANDIDATE.md). Full-route/physical-device
-qualification and coordinated release work remain. No production migration,
+[BATTLE31_LOCAL_CANDIDATE.md](BATTLE31_LOCAL_CANDIDATE.md). Both-money actual-Game
+route admission, fresh consent/Run Back, lost-response
+reconnect, mute/unmute and canonical terminal qualification now pass locally.
+Duplicate Battle 31 terminal content and reconnect text are corrected. Hosted
+transport/authority, physical-device qualification and coordinated release work
+remain. No production migration,
 admission activation, merge, push or deployment is authorized.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending

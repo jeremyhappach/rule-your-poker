@@ -1,0 +1,107 @@
+{
+  "steps": [
+    "main-route changed stake 9 and explicit consent with auto-runback preference enabled",
+    "actual Game route mounted fullscreen private two-seat play",
+    "lost committed response: reload reused immutable command; one receipt",
+    "audible and muted exchanges through shared audio owner",
+    "offline controls disabled; authenticated reload recovered live match",
+    "terminal retained route then advanced caller; one 9-chip settlement",
+    "Run Back retained stake, new identity, fresh consent, no upfront debit",
+    "successor reload has correct private projection",
+    "persisted profile mute survives reload; muted and audible actors both checked",
+    "unmute restores exchange cues without a second AudioContext",
+    "live terminal reaches canonical Session Ended with no gameplay cards and local lobby control",
+    "fresh authenticated entry to ended session redirects directly to lobby",
+    "unauthenticated route enters auth; tokenless RPC rejected"
+  ],
+  "audio": [
+    {
+      "muted": false,
+      "uncertain": false,
+      "before": 3,
+      "starts": 5,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": true,
+      "uncertain": false,
+      "before": 5,
+      "starts": 5,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": false,
+      "uncertain": true,
+      "before": 7,
+      "starts": 9,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": true,
+      "uncertain": false,
+      "before": 0,
+      "starts": 0,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": false,
+      "uncertain": false,
+      "before": 2,
+      "starts": 4,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": false,
+      "uncertain": false,
+      "before": 0,
+      "starts": 2,
+      "contexts": [
+        "running"
+      ]
+    },
+    {
+      "muted": false,
+      "uncertain": false,
+      "before": 6,
+      "starts": 8,
+      "contexts": [
+        "running"
+      ]
+    }
+  ],
+  "errors": [],
+  "session": "0aebc09f-ea52-4cd3-9cf3-969b63fde12d",
+  "firstDealer": "8eaeff84-3a3c-4c3c-a712-c396514235dd",
+  "secondDealer": "92f9884e-f73e-47e6-bef5-9e34397e88c2",
+  "balances": [
+    {
+      "user_id": "f6217c61-723e-49aa-83fd-79455da47aa0",
+      "chips": 109
+    },
+    {
+      "user_id": "6413a346-da04-4248-8b62-b8b5859407db",
+      "chips": 91
+    }
+  ],
+  "finalBalances": [
+    {
+      "user_id": "6413a346-da04-4248-8b62-b8b5859407db",
+      "chips": 82
+    },
+    {
+      "user_id": "f6217c61-723e-49aa-83fd-79455da47aa0",
+      "chips": 118
+    }
+  ],
+  "realMoney": false
+}

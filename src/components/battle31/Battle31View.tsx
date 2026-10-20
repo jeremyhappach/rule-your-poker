@@ -28,7 +28,7 @@ export function Battle31View({view:v,userId,now,pending,connected=true,error,epo
  const title=v.terminal?.outcome==='aborted'?'Match aborted':v.terminal?.winnerIds.length===1?`${v.players.find(p=>p.id===v.terminal?.winnerIds[0])?.name} wins`:'Match drawn';
  return <FullscreenGameShell className="battle-scene" title="Battle 31" description={`Round ${v.round}/12 · Match stake ${v.stake}`} activeTab={activeTab} setActiveTab={setActiveTab} sessionEnded={sessionEnded} panel={panel}>
  <div ref={root}>{layer&&createPortal(<div className="battle-plane" data-battle31="">
- {sessionEnded?<div className="battle-ended"><h2>{title}</h2><p>Session Ended</p></div>:<>
+ {sessionEnded?null:<>
  {seat(top,'other')}
  <section className="battle-center"><p>{b.phase==='intro'?'Dealing':b.phase==='round_result'?'Round complete':b.phase==='complete'?title:b.closing?'Final response':b.turn>=7?'Last turn each':`Decision ${b.turn}/8`}</p><div className="battle-hand">{b.center.map((id,i)=>card(id,i,'center'))}</div></section>
  {seat(bottom,'own')}
