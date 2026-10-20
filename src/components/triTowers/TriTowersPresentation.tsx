@@ -5,6 +5,7 @@ import {boxingBellCue} from '@/lib/run21/boxingBell';
 import {TRI_FANFARE_MS,triAllClearCueAt} from '@/lib/triTowers/allClearCue';
 import {triCountWindow,triResultTimeline} from '@/lib/triTowers/roundTimeline';
 import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
+import type {AudioTimeline} from '@/lib/audio/audioManager';
 import '@/components/run21/run21.css';
 
 export interface TriScore {id:string;name?:string;score:number;active:boolean;balance?:ReactNode}
@@ -24,9 +25,11 @@ export function TriScorePill({item,root,fraction=0,value=item.score}:{item:TriSc
 interface RoundPresentationProps {
  scope:string;phase:string;connected:boolean;paused:boolean;now:number;deadline:number;userId:string;active:boolean;
  celebrationMs?:number;modern:boolean;liveEntry:boolean;recoveryEpoch:number;
+ resultSequence?:{namespace:string;clearMs:number;clearCueAt:AudioTimeline['cueAt'];seekOnRecovery:boolean;
+  timeline:(elapsed:number,cleared:boolean)=>ReturnType<typeof triResultTimeline>;countWindow:(cleared:boolean)=>{start:number;end:number}};
  result:{id:string;elapsed:number;scoreBefore:number;score:number;displayScore:number;reason:string;completedAt?:number}|null;
 }
-export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch,celebrationMs=0}:RoundPresentationProps){
+export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch,celebrationMs=0,resultSequence}:RoundPresentationProps){
  const prior=useRef<{scope:string;phase:string;connected:boolean;active:boolean;epoch:number}|null>(null);
  const initial=useRef(liveEntry&&recoveryEpoch===0&&phase==='intro'?scope:null),seen=useRef(new Set<string>());
  const clock=useRef<{scope:string;deadline:number}|null>(null),[drainFrom,setDrainFrom]=useState(0);
@@ -61,27 +64,29 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
   return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',visible);};
  },[scope]);
  const admitted=!!result&&live===result.id&&active&&connected&&!paused&&!document.hidden;
- const elapsed=result?.elapsed??0,timeline=triResultTimeline(elapsed,result?.reason==='cleared',result?.reason==='cleared'?celebrationMs:0);
+ const elapsed=result?.elapsed??0,cleared=result?.reason==='cleared',timeline=resultSequence?.timeline(elapsed,cleared)??triResultTimeline(elapsed,cleared,cleared?celebrationMs:0);
+ const presented=admitted||!!result&&active&&!!resultSequence?.seekOnRecovery,namespace=resultSequence?.namespace??'tri';
  const bellKey=modern&&intro===scope&&phase==='intro'&&connected&&active&&!paused&&!document.hidden?scope:null;
  useEffect(()=>{
   if(!bellKey)return;
   const local=performance.now();
   return platformAudio.follow({userId,id:'run21-bell:tri:'+bellKey,startedAt:local,expiresAt:local+deadline-now,cueAt:()=>boxingBellCue});
  },[bellKey,userId]);
- const fraction=admitted&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
- const countWindow=triCountWindow(result?.reason==='cleared',result?.reason==='cleared'?celebrationMs:0);
+ const fraction=presented&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
+ const countWindow=resultSequence?.countWindow(cleared)??triCountWindow(cleared,cleared?celebrationMs:0);
  const end=modern?countWindow.end:2800,start=modern?countWindow.start:0;
  const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed+start,endsAt:now-elapsed+end}:null;
- usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?'tri-count:'+scope+':'+result.id:null,count,now);
- const clearKey=modern&&admitted&&!reduced&&result.reason==='cleared'&&elapsed<TRI_FANFARE_MS?result.id:null;
+ usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?namespace+'-count:'+scope+':'+result.id:null,count,now);
+ const clearMs=resultSequence?.clearMs??TRI_FANFARE_MS,clearCueAt=resultSequence?.clearCueAt??triAllClearCueAt;
+ const clearKey=modern&&admitted&&!reduced&&cleared&&elapsed<clearMs?result.id:null;
  useEffect(()=>{
   if(!clearKey)return;
   const local=performance.now();
-  return platformAudio.follow({userId,id:'tri-clear:'+scope+':'+clearKey,startedAt:local-elapsed,expiresAt:local-elapsed+TRI_FANFARE_MS,cueAt:triAllClearCueAt});
- },[clearKey,userId,scope]);
+  return platformAudio.follow({userId,id:namespace+'-clear:'+scope+':'+clearKey,startedAt:local-elapsed,expiresAt:local-elapsed+clearMs,cueAt:clearCueAt});
+ },[clearKey,userId,scope,namespace,clearMs,clearCueAt]);
  return {fraction,admitted,reduced,elapsed,timeline,
   drainRemaining:admitted&&!reduced?drainFrom*(1-timeline.progress):0,
-  displayScore:admitted&&!reduced&&result.score>result.scoreBefore?(modern?Math.round(result.scoreBefore+(result.score-result.scoreBefore)*timeline.progress):result.displayScore):result?.score};
+  displayScore:presented&&!reduced&&result&&result.score>result.scoreBefore?(modern?Math.round(result.scoreBefore+(result.score-result.scoreBefore)*timeline.progress):result.displayScore):result?.score};
 }
 export function TriRoundIntro({remaining,roundLabel,turnLabel,paused}:{remaining:number;roundLabel:string;turnLabel?:string;paused:boolean}){
  return remaining>0?<RoundIntroArtwork label={roundLabel} turnLabel={turnLabel} fading={remaining<=200&&!paused}/>:null;

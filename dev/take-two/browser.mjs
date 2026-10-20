@@ -27,7 +27,10 @@ try{
  await p1.screenshot({path:'qualification.local/take-two/multiplayer-play.png'});
  // Fast-forward only this isolated test match's authoritative deadline between UI turns.
  for(let turn=0;turn<6;turn++){
-  const active=turn%2===0?p1:p2;await active.bringToFront();await active.locator('.take-bank:not([disabled])').waitFor({timeout:15000});assert.equal(await active.evaluate(()=>document.hidden),false);await active.locator('.take-bank').click();await active.locator('.take-result').waitFor();
+  const active=turn%2===0?p1:p2;await active.locator('.take-bank:not([disabled])').waitFor({timeout:15000});await active.bringToFront();assert.equal(await active.evaluate(()=>document.hidden),false);
+  const response=active.waitForResponse(r=>r.url().endsWith('/__takeTwo/rpc')&&r.request().postDataJSON()?.name==='take_two_action',{timeout:10000}).then(r=>r.json()).catch(e=>({error:e.message}));
+  await active.locator('.take-bank').click();const action=await response;
+  try{await active.locator('.take-result').waitFor();}catch(e){await active.screenshot({path:'qualification.local/take-two/progression-failure.png'});writeFileSync('qualification.local/take-two/progression-failure.json',JSON.stringify({turn,fixture:m,action,hidden:await active.evaluate(()=>document.hidden),state:await post('state',m)},null,2));throw e;}
   await db.query("UPDATE private.take_two_matches SET state=jsonb_set(state,'{deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1)),revision=revision+1 WHERE dealer_game_id=$1",[m.id]);
  }
  await p1.getByRole('heading',{name:'Take 2',exact:true}).waitFor({timeout:15000});

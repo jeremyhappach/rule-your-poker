@@ -4,7 +4,7 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {TakeTwoView} from './TakeTwoView';
 import type {TakeTwoSnapshot} from '@/lib/takeTwo/model';
 vi.mock('@/components/PlayingCard',()=>({PlayingCard:()=>null}));
-vi.mock('@/components/triTowers/TriTowersPresentation',()=>({useTriRoundPresentation:()=>{},TriRoundIntro:()=>null}));
+vi.mock('@/components/triTowers/TriTowersPresentation',()=>({useTriRoundPresentation:()=>({fraction:0}),TriRoundIntro:()=>null,TriScorePill:()=>null}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children}:any)=><main data-fullscreen-board-slot>{children}<div data-canonical-felt-interaction-layer/></main>}));
 beforeEach(()=>{vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});Element.prototype.scrollIntoView=vi.fn();});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});

@@ -1,3 +1,17 @@
+# Take 2 round-end presentation — 2026-10-19 — awaiting owner smoke
+
+Both modes use the accepted centered score pill and synchronized count-up audio,
+without the detailed breakdown. All clear first shows the authoritative clear
+bonus with a distinct three-second Take 2 fanfare, then counts to the exact final
+total. Everything fits inside the unchanged six-second server result window.
+Recovery seeks visuals without replaying old audio; mute and shared audio-context
+ownership remain intact. No rules, schema, settlement or progression changes.
+
+Full build/tests, 11 focused presentation tests, five authoritative browser/audio
+runs, full gameplay progression and 87 layout checks pass. Owner phone/speaker
+smoke remains pending. See [timing and evidence](TAKE_TWO_ROUND_PRESENTATION.md).
+Checkpoint: `take-two-round-end-2026-10-19`.
+
 # Take 2 layout pass — 2026-10-19 — awaiting owner smoke
 
 Both modes now use a centered numeric score pill, Round/Take Score on its sides,

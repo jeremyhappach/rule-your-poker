@@ -3,7 +3,9 @@ import {createPortal} from 'react-dom';
 import {PlayingCard} from '@/components/PlayingCard';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
-import {TriRoundIntro,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
+import {TriScorePill,TriRoundIntro,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
+import {takeTwoRoundPresentation,takeTwoResultSequence} from '@/lib/takeTwo/roundPresentation';
+import {TakeTwoAllClear} from './TakeTwoAllClear';
 import {takeTwoPlayWindow,takeTwoMeter,type TakeTwoIntent,type TakeTwoSnapshot} from '@/lib/takeTwo/model';
 import {winnerAchievementLabels} from '@/lib/arcade/scoreAchievements';
 import './takeTwo.css';
@@ -22,12 +24,13 @@ export function TakeTwoLoading({solo=false,error,onReconnect,activeTab,setActive
 interface Props {connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:TakeTwoSnapshot['players'][number])=>ReactNode;view:TakeTwoSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:TakeTwoIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
 export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
- const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,window=takeTwoPlayWindow(b,at,!v.solo),result=b.result;
+ const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,window=takeTwoPlayWindow(b,at,!v.solo),result=takeTwoRoundPresentation(b,v.scope,at),cabinetRef=useRef<HTMLDivElement>(null);
  const [selection,setSelection]=useState<{index:number;card:number|null;scope:string}|null>(null),[feedback,setFeedback]=useState('');
  const [submission,setSubmission]=useState<{revision:number;scope:string;items:number[]}|null>(null);
  const selected=selection?.scope===v.scope&&(selection.index===-1?b.current:b.slots[selection.index])===selection.card&&(selection.index===-1||b.exposed.includes(selection.index))?selection.index:null;
  const submittedItems=submission?.scope===v.scope&&submission.revision===v.revision?submission.items:[];
- useTriRoundPresentation({scope:'take-two:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result:null,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch});
+ const motion=useTriRoundPresentation({scope:'take-two:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch,resultSequence:takeTwoResultSequence});
+ const allClear=!!result&&result.reason==='cleared'&&result.elapsed<takeTwoResultSequence.clearMs;
  const root=useRef<HTMLDivElement>(null),playersRef=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),submitted=useRef(false);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{setSelection(null);setFeedback('');},[v.scope,epoch,tab]);
@@ -58,8 +61,8 @@ export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  {!connected&&!error&&!sessionEnded&&<div className="take-error" role="status">Connecting live updates…</div>}
  {layer&&createPortal(<div className="take-plane">
  {!v.solo&&<div className="take-players" ref={playersRef} aria-label="Player scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><b>{p.score.toLocaleString()}</b>{balance?.(p)}</div>)}</div>}
- {!sessionEnded&&<div className="take-fit"><div className="take-cabinet">
- <header><span className="take-stage">Round <b>{v.round} / 3</b></span><span className="take-total" aria-label="Score"><b>{(v.terminal?.score??b.score).toLocaleString()}</b></span><button className="take-bank" disabled={!canAct} onClick={()=>send({type:'take_score'})}>Take Score</button></header>
+ {!sessionEnded&&<div className="take-fit"><div className="take-cabinet" ref={cabinetRef}>
+ <header><span className="take-stage">Round <b>{v.round} / 3</b></span><div className="take-total"><TriScorePill root={cabinetRef} item={{id:v.scope,score:v.terminal?.score??b.score,active:true}} fraction={motion.fraction} value={motion.displayScore??v.terminal?.score??b.score}/></div><button className="take-bank" disabled={!canAct} onClick={()=>send({type:'take_score'})}>Take Score</button></header>
  <div className="take-stats"><div className="take-counters"><span>K Q <b>{b.consecutivePairs}</b><small> ×400</small></span><span>J J <b>{b.samePairs}</b><small> ×1200</small></span></div><div className="take-meter" role="meter" aria-label="Pair speed bonus" aria-valuemin={50} aria-valuemax={500} aria-valuenow={meter}><span style={{width:`${meter/5}%`}}/><b>Bonus +{meter}</b></div></div>
  <p className="take-instruction" role="status">{feedback||(pending||submission?'Confirming…':b.event.label==='Get ready'?'':`${b.event.label}${b.event.points?' · '+(b.event.points>0?'+':'')+b.event.points:''}`)}</p>
  <div className="take-felt"><div className="take-play-group"><div className="take-tableau-space">
@@ -68,7 +71,7 @@ export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  </div>
  </div>
  {window.phase==='intro'&&<div className="take-overlay"><TriRoundIntro remaining={window.remaining} roundLabel={`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${active?.name??'Player'}’S TURN`} paused={v.paused}/></div>}
- {result&&<div className="take-overlay take-result" role="status"><h2>{b.event.label}</h2><p>Pairs and draws <b>{result.displayScore-result.scoreBefore}</b></p><p>Full clear <b>+{result.clearBonus.toLocaleString()}</b></p><p>Undrawn stock <b>+{result.stockBonus.toLocaleString()}</b></p><p>Time bonus <b>+{result.timeBonus.toLocaleString()}</b></p><strong>{result.score.toLocaleString()}</strong><small>{v.solo&&v.round===3?'Final score':'Play advances automatically'}</small></div>}
+ {result&&<div className="take-overlay take-result take-round-result" data-result-id={result.id} data-result-phase={allClear?'clear':'score'} role="status">{allClear?<TakeTwoAllClear bonus={result.clearBonus} elapsed={result.elapsed} opacity={motion.timeline.crest} reduced={motion.reduced}/>:<><h2>{result.reason==='timeout'?'Time Up':'Round Complete'}</h2><span className="sr-only">Total {result.score.toLocaleString()}</span></>}</div>}
  {terminal&&<div className="take-overlay take-result" role="status"><h2>Game Over</h2><strong>{v.players.filter(p=>v.terminal?.winnerIds.includes(p.id)).map(p=>p.name).join(' & ')} {v.terminal?.winnerIds.length===1?'wins':'tie'}</strong><p>{v.terminal?.score.toLocaleString()} points</p>{v.players.filter(p=>v.terminal?.winnerIds.includes(p.id)).flatMap(p=>winnerAchievementLabels(p.name,v.terminal?.achievements[p.id])).map(label=><p key={label}>{label}</p>)}</div>}
  </div></div>}
  </div>,layer)}</div></FullscreenGameShell>;
