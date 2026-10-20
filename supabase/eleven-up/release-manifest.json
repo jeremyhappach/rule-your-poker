@@ -1,0 +1,15 @@
+{
+  "base": "44dbd5a7d4de4635b258f731558fe346473d82b9",
+  "candidate": "3b0d01eb9ac6418dfd78765de7ee2f34aca8d119",
+  "encoding": "UTF-8, LF, no BOM",
+  "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+  "sources": {
+    "supabase/eleven-up/bots.sql": "803dfac07f3d50d13d5c65a6f761c07fa197becfcf7c24d51cecfa6d5b84fe43",
+    "supabase/eleven-up/bot-recovery.sql": "024dc21a36553b77cb22e33b8c304b0a5a3a79b012250776d906fc6f8e9f6c57",
+    "supabase/eleven-up/release-preflight.sql": "aed645b7ad08b7555d2b5892b2c0571d8d9a407515e19e0cbba677aa46c6c41d",
+    "supabase/eleven-up/release-verify.sql": "f10da43fe9a79d903de5866b9d0e916f0c0cdf635e95715f6aac2f9208d4cc48",
+    "supabase/eleven-up/rollback-bot-admission.sql": "135d411329fc38a072591c517baaa8510d73ab45ebea651a9b9ae24f48521b74"
+  },
+  "migrationRegistration": "BLOCKED: installed Supabase CLI unavailable; use supabase migration new eleven_up_bots, then fill the generated empty path with this script.",
+  "production": "No execution authorized"
+}

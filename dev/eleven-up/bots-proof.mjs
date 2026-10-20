@@ -2,8 +2,11 @@ import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import assert from 'node:assert/strict';
 import {randomUUID as uuid} from 'node:crypto';
 import {connect,context} from './bots-database.mjs';
+import {migrationSql,hash} from './bots-release-package.mjs';
 const {database}=context(),c=await connect(database),evidence=[];
-const candidate=()=>['bots','bot-recovery'].map(n=>read(`supabase/eleven-up/${n}.sql`,'utf8')).join('\n');
+const releasePackage=process.argv.includes('--release-package');
+const unwrapped=s=>s.replace('\nBEGIN;\n','\n').replace(/\nCOMMIT;\s*$/,'\n');
+const candidate=()=>releasePackage?unwrapped(migrationSql()):['bots','bot-recovery'].map(n=>read(`supabase/eleven-up/${n}.sql`,'utf8')).join('\n');
 const q=async(sql,args=[])=>(await c.query(sql,args)).rows[0]?.v;
 const pass=(name,details={})=>{evidence.push({name,...details});console.log('PASS',name);};
 async function actor(user){await c.query("select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[user,JSON.stringify({sub:user,role:'authenticated'})]);}
@@ -22,7 +25,7 @@ async function fixture(real=false){
 }
 async function state(f){return q('select state v from private.eleven_up_matches where dealer_game_id=$1',[f.dealer]);}
 async function fullPlay(real){
- const f=await fixture(real);let moves=0,humanMoves=0,reconnects=0,steps=0,lastHuman;
+ const f=await fixture(real);let moves=0,humanMoves=0,reconnects=0,steps=0,lastHuman,admissionRolledBack=false;
  const rules=(await state(f)).rules;
  while(++steps<1000){
   const m=(await c.query('select * from private.eleven_up_matches where dealer_game_id=$1',[f.dealer])).rows[0],s=m.state;
@@ -34,6 +37,12 @@ async function fullPlay(real){
    // Honor the real durable schedule; the trigger intentionally rejects due-only rewrites.
    await c.query('select pg_sleep(greatest(0,($1::bigint-floor(extract(epoch from clock_timestamp())*1000))/1000.0)+0.01)',[m.bot_due_at]);
    await c.query('select private.eleven_up_recover()');const after=await state(f);assert.notDeepEqual(after,s);moves++;
+   if(releasePackage&&!admissionRolledBack){
+    await c.query(unwrapped(read('supabase/eleven-up/rollback-bot-admission.sql','utf8')));
+    await c.query('savepoint closed_admission');
+    try{await assert.rejects(()=>fixture(false),/bots_not_supported/);}finally{await c.query('rollback to closed_admission');await c.query('release closed_admission');}
+    admissionRolledBack=true;
+   }
    const rev=await q('select revision v from private.eleven_up_matches where dealer_game_id=$1',[f.dealer]);await c.query('select private.eleven_up_recover()');assert.equal(await q('select revision v from private.eleven_up_matches where dealer_game_id=$1',[f.dealer]),rev);
   }else{
    await actor(f.users[0]);await c.query('set local role authenticated');
@@ -56,6 +65,7 @@ async function fullPlay(real){
  assert.equal(await q('select finished v from private.eleven_up_matches where dealer_game_id=$1',[f.dealer]),true);
  assert.deepEqual((await c.query('select id,chips from public.players where game_id=$1',[f.game])).rows,balances);
  await c.query('set constraints all deferred');pass('Complete human/bot match and reconnect/replay/continuation '+(real?'real':'fake'),{moves,humanMoves,reconnects,balances});
+ if(admissionRolledBack){await c.query(candidate());pass('Admission rollback rejects new bots while admitted bot match completes and settles');}
 }
 async function policy(){
  const rules=await q('select private.eleven_up_rules() v');
@@ -122,5 +132,5 @@ try{
  await c.query(matrix());const financial=(await c.query('select * from money_evidence')).rows;assert.equal(financial.length,36);pass('Both money modes, 2–7 seats: winner/split/tie, exact chips/ledger/snapshots, fault rollback',{cases:financial.length});
  const after=await q("select jsonb_object_agg(n.nspname||'.'||p.oid::text,md5(pg_get_functiondef(p.oid))) v from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in('public','private') and p.prokind='f' and p.proname not in('eleven_up_configure','megatouch_begin','eleven_up_recover','eleven_up_bot_choice','eleven_up_schedule_bot')");assert.deepEqual(after,before);
  await c.query('rollback');pass('All candidate changes and synthetic data rolled back; unrelated functions unchanged');
- write('qualification.local/eleven-up-bots/proof.json',JSON.stringify({database,evidence},null,2));
+ write('qualification.local/eleven-up-bots/'+(releasePackage?'release-proof.json':'proof.json'),JSON.stringify({database,...(releasePackage?{migrationSha256:hash(migrationSql())}:{}),evidence},null,2));
 }catch(e){await c.query('rollback').catch(()=>{});throw e;}finally{await c.end();}

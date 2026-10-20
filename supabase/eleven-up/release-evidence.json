@@ -1,0 +1,68 @@
+{
+  "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+  "proof": {
+    "database": "eleven_up_bots_1792536250433",
+    "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+    "evidence": [
+      {
+        "name": "Visible-only three-ball policy, deadline precedence, 30 randomized legal full rounds"
+      },
+      {
+        "name": "Bot impersonation rejected, pause/resume schedule and zero-client deadline completion"
+      },
+      {
+        "name": "Canonical Add Bot, UUID replay, waiting admission, and real-money bot refusal"
+      },
+      {
+        "name": "Complete human/bot match and reconnect/replay/continuation fake",
+        "moves": 79,
+        "humanMoves": 4,
+        "reconnects": 4,
+        "balances": [
+          {
+            "id": "fee8ea16-64ea-4b9b-be3e-e1652c5b050b",
+            "chips": 93
+          },
+          {
+            "id": "c5e03397-74ae-476d-8bd3-d08715faef29",
+            "chips": 107
+          }
+        ]
+      },
+      {
+        "name": "Admission rollback rejects new bots while admitted bot match completes and settles"
+      },
+      {
+        "name": "Both money modes, 2–7 seats: winner/split/tie, exact chips/ledger/snapshots, fault rollback",
+        "cases": 36
+      },
+      {
+        "name": "All candidate changes and synthetic data rolled back; unrelated functions unchanged"
+      }
+    ]
+  },
+  "installation": {
+    "database": "eleven_up_bots_1792536250433",
+    "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+    "verify": {
+      "due_index": true,
+      "same_reducer": true,
+      "policy_private": true,
+      "same_settlement": true,
+      "recovery_private": true,
+      "consent_fake_only": true,
+      "configure_fake_only": true,
+      "bot_schedule_trigger": true,
+      "bot_creation_fake_only": true
+    },
+    "installation": "passed",
+    "idempotentInstall": "passed",
+    "idempotentAdmissionRollback": "passed",
+    "reapply": "passed",
+    "unrelatedDefinitions": "unchanged",
+    "laterSharedAdapterChange": "preserved by surgical rollback"
+  },
+  "clientRegression": "Unchanged product client at 3b0d01eb9: 56 focused tests, tsc, vite build and six browser layouts passed",
+  "production": "Not accessed or modified; registration and release approval pending",
+  "installedPackageFullRerun": "passed"
+}
