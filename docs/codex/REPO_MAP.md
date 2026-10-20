@@ -1101,3 +1101,9 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
   enables new admissions after compatible client deployment.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
+
+## Battle 31 local candidate
+
+Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
+`src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
+`dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.

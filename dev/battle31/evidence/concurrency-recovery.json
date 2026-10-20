@@ -1,0 +1,24 @@
+[
+  {
+    "real": false,
+    "duplicateRace": true,
+    "competingRace": true,
+    "timeoutRace": true,
+    "pause": true,
+    "zeroClientSteps": 14,
+    "zeroClientRound": 5,
+    "postgameRecovered": true,
+    "resignation": true
+  },
+  {
+    "real": true,
+    "duplicateRace": true,
+    "competingRace": true,
+    "timeoutRace": true,
+    "pause": true,
+    "zeroClientSteps": 16,
+    "zeroClientRound": 5,
+    "postgameRecovered": true,
+    "resignation": true
+  }
+]

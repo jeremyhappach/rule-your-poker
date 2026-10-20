@@ -2547,3 +2547,11 @@ games' rules and score compatibility groups are unchanged.
 ## 2026-10-20 — Presentation catalog UI candidate
 
 Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.
+
+## 2026-10-20 — Battle 31 local rules and implementation
+
+Approved `battle-31/1` uses TAKE POT as all-three exchange, three normal turn
+pairs then one announced final turn each, and no artificial inter-move delay.
+Exactly two multiplayer seats, legal-information bots; historical fidelity is
+not a release gate. Local implementation/qualification/commits only; release is
+separately authorized. See `BATTLE31_LOCAL_CANDIDATE.md` for exact rules/evidence.

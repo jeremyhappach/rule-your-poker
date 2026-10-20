@@ -1,3 +1,12 @@
+# Battle 31 / 1 — 2026-10-20 — isolated local candidate, not released
+
+Exactly-two-player multiplayer, strategic bots and fullscreen presentation use one
+server rule owner with canonical consent/finance/recovery. Local authority,
+financial, concurrency, bot and browser evidence is recorded in
+[BATTLE31_LOCAL_CANDIDATE.md](BATTLE31_LOCAL_CANDIDATE.md). Full-route/physical-device
+qualification and coordinated release work remain. No production migration,
+admission activation, merge, push or deployment is authorized.
+
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
 Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.

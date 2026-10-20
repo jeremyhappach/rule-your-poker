@@ -3,7 +3,7 @@ import {useLocalTerminalPresentation} from '@/lib/canonicalShell/localTerminalPr
 
 /** Match-scoped adapter to the shell's existing local presentation owner. */
 export function useRun21PresentationRetention<T extends {dealerGameId:string;firstRoundId:string}>(
-  sessionId:string|null, live:T|null,gameType:'run21'|'eleven-up'|'royal-flash'|'boxdrop'|'trip-flip'|'take-two'='run21',
+  sessionId:string|null, live:T|null,gameType:'run21'|'eleven-up'|'royal-flash'|'battle-31'|'boxdrop'|'trip-flip'|'take-two'='run21',
 ) {
   const observed=useRef<{sessionId:string|null;snapshot:T|null;completed:Set<string>}>({sessionId,snapshot:null,completed:new Set()});
   if(observed.current.sessionId!==sessionId)observed.current={sessionId,snapshot:null,completed:new Set()};

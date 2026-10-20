@@ -1,3 +1,4 @@
+import battle31 from './games/battle-31';
 import game0 from './games/holm';
 import game1 from './games/3-5-7';
 import game2 from './games/cribbage';
@@ -15,7 +16,7 @@ import game13 from './games/take-two';
 import game14 from './games/royal-flash';
 import type {GameDescriptor, Category, Capability} from './types';
 export type {GameDescriptor, Category, Capability} from './types';
-export const GAME_CATALOG: readonly GameDescriptor[] = [game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14];
+export const GAME_CATALOG: readonly GameDescriptor[] = [game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14,battle31];
 export const CATEGORIES: readonly Category[] = ['cards','dice','other'];
 export const CATEGORY_LABELS: Record<Category,string> = {cards:'Cards',dice:'Dice',other:'Other'};
 export function findGame(id: string | null | undefined) {
