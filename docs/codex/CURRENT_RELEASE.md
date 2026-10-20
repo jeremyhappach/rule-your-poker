@@ -1,3 +1,10 @@
+# Canasta / 1 — 2026-10-20 — local mobile checkpoint only
+
+Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
+inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Implementation stops for Jeremy's
+interaction review before full gameplay integration. No production admission,
+database changes or deployment. Financial qualification remains MISSING.
+
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 
 Boxdrop adds Arcade and exactly two-player multiplayer through one server-owned

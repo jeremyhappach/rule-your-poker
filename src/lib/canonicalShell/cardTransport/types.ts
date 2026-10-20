@@ -125,6 +125,8 @@ export interface CardTransportIntent {
    * authoritative state at dispatch time.
    */
   visibleFace?: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' };
+  /** Explicit suitless face; legacy visibleFace remains standard-deck only. */
+  jokerFace?: import('@/lib/cardGames/physicalCard').JokerFace;
 }
 
 export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';

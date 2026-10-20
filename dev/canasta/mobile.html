@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Canasta phone review</title>
+<style>body{margin:0;background:#0b1511;color:#e6dfce;font:14px system-ui}header{padding:10px;display:flex;gap:12px;align-items:center}a{color:#f5d28a}iframe{display:block;border:1px solid #697b70;margin:0 auto;background:#10281f}main{overflow:auto}select{padding:8px;background:#244134;color:white}</style></head>
+<body><header><strong>Canasta · local mobile checkpoint</strong><select id="device" aria-label="Phone layout">
+<option value="320,568">Narrow portrait · 320×568</option><option value="375,812" selected>iPhone portrait · 375×812</option>
+<option value="430,932">Large portrait · 430×932</option><option value="812,375">iPhone landscape · 812×375</option>
+<option value="932,430">Large landscape · 932×430</option></select><label><input id="safe" type="checkbox">Safe-area envelope</label><a href="/">Full window</a><button id="measure">Measure layout</button></header>
+<main><iframe title="Canasta phone viewport" src="/" width="375" height="812"></iframe></main>
+<output id="measurements" style="display:block;padding:8px;font-size:11px"></output>
+<script type="module">
+const device=document.querySelector('#device'),frame=document.querySelector('iframe'),safe=document.querySelector('#safe');
+function size(){const [w,h]=device.value.split(',').map(Number),landscape=w>h;
+  const top=safe.checked&&!landscape?47:1,bottom=safe.checked?(landscape?21:34):1,side=safe.checked&&landscape?44:1;
+  frame.width=w-side*2;frame.height=h-top-bottom;
+  frame.style.borderWidth=`${top}px ${side}px ${bottom}px`;frame.style.borderColor=safe.checked?'#020604':'#697b70';
+  const scale=Math.min(1,(window.innerHeight-65)/h,(window.innerWidth-24)/w);
+  frame.style.transform=`scale(${scale})`;frame.style.transformOrigin='top center';
+  document.querySelector('main').style.height=`${h*scale+3}px`;
+}
+device.addEventListener('change',size);safe.addEventListener('change',size);window.addEventListener('resize',size);size();
+document.querySelector('#measure').addEventListener('click',()=>{
+  const d=frame.contentDocument,cards=[...d.querySelectorAll('[data-physical-id]')];
+  const rects=cards.map(c=>c.getBoundingClientRect());
+  const report={viewport:device.value,safeAreaEnvelope:safe.checked,scenario:d.querySelector('[aria-label="Review scenario"]').value,
+    shellCount:d.querySelectorAll('[data-canonical-shell-root]').length,
+    cardCount:cards.length,uniqueIds:new Set(cards.map(c=>c.dataset.physicalId)).size,
+    minTargetWidth:Math.min(...rects.map(r=>r.width)),minTargetHeight:Math.min(...rects.map(r=>r.height)),
+    documentOverflow:d.documentElement.scrollWidth>d.documentElement.clientWidth,
+    workspaceScroll:d.querySelector('.canasta-workspace').scrollHeight>d.querySelector('.canasta-workspace').clientHeight};
+  document.querySelector('#measurements').textContent=JSON.stringify(report);
+});
+</script></body></html>
