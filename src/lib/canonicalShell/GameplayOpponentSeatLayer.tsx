@@ -1,3 +1,5 @@
+import {PlayingCard} from '@/components/PlayingCard';
+import type {Card} from '@/lib/cardUtils';
 /**
  * GameplayOpponentSeatLayer — shell-owned gameplay opponent seat
  * cluster set for canonical card-family game tables (cribbage, gin
@@ -88,6 +90,8 @@ export interface CardBacksPresentation {
 }
 
 export interface GameplayOpponentSeatPresentation {
+  /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
+  publicTableau?: (p: GameplayOpponentSeatParticipant) => (Card|undefined)[];
   /** A separately persisted local test ledger must not read the session money cursor. */
   isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
   /** Public one-use pass availability; contains no private card evidence. */
@@ -111,7 +115,7 @@ export interface GameplayOpponentSeatPresentation {
 
 export interface GameplayOpponentSeatLayerProps {
   /** Game family used in ownerLabel + diagnostics. */
-  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
+  family: 'six-card-golf' | 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
   /** Opponents to project (caller filters self / observers as needed). */
   participants: GameplayOpponentSeatParticipant[];
   /** Typed presentation accessors. All fields optional. */
@@ -335,7 +339,7 @@ export function GameplayOpponentSeatLayer({
             playerId={p.id}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
-            {renderCardBacks && cardBacks ? (
+            {presentation?.publicTableau ? <div data-public-seat-tableau={p.position} style={{display:'grid',gridTemplateColumns:'repeat(3,18px)',gap:2,marginTop:4}}>{presentation.publicTableau(p).map((card,i)=><PlayingCard key={i} card={card} isHidden={!card} tier="small" style={{width:18,height:26}}/>)}</div> : renderCardBacks && cardBacks ? (
               <ShellOpponentCardBacks
                 count={cardBacks.count}
                 variant={cardBacks.variant}

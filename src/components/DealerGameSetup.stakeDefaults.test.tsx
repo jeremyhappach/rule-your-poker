@@ -7,6 +7,7 @@ vi.mock('@/hooks/useElevenUpAccess',()=>({useElevenUpAccess:()=>true}));
 vi.mock('@/hooks/useRoyalFlashAccess',()=>({useRoyalFlashAccess:()=>true}));
 vi.mock('@/hooks/useTakeTwoAccess',()=>({useTakeTwoAccess:()=>true}));
 vi.mock('@/hooks/useTripFlipAccess',()=>({useTripFlipAccess:()=>true}));
+vi.mock('@/hooks/useGolfAccess',()=>({useGolfAccess:()=>true}));
 vi.mock('@/hooks/useBoxdropAccess',()=>({useBoxdropAccess:()=>true}));
 vi.mock('@/hooks/useRun21Access',()=>({useRun21Access:()=>false}));
 vi.mock('@/lib/canonicalShell/lifecycleDebug',()=>({useLifecycleMount:()=>{}}));

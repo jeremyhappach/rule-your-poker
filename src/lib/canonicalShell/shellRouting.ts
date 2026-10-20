@@ -43,6 +43,7 @@ export const CANONICAL_SHELL_FAMILY = new Set<string>([
   'cribbage',
   'yahtzee',
   'farkle',
+  'six-card-golf',
 ]);
 
 export function isCanonicalShellFamily(gameType: string | null | undefined): boolean {
@@ -78,6 +79,7 @@ export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
   'cribbage',
   'yahtzee',
   'farkle',
+  'six-card-golf',
   // PR-B: poker-variant family collapsed to canonical seat rendering.
   // MobileGameTable now reads every seat slot from useRequiredSeatAnchors
   // and renders through CanonicalSeatCluster — no bespoke if-tree, no

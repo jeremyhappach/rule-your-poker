@@ -1,0 +1,17 @@
+.golf-felt {position:absolute;inset:0;pointer-events:none;container-type:size;color:#fff}
+.golf-summary {position:absolute;left:27%;top:8%;width:46%;text-align:center;display:flex;flex-wrap:wrap;justify-content:center;gap:.2em .7em;font-size:clamp(.65rem,3cqw,.9rem)}
+.golf-summary strong,.golf-summary>span:first-of-type {flex-basis:100%}
+.golf-piles {position:absolute;left:50%;top:32%;height:21%;transform:translateX(-50%);display:flex;gap:2cqw}
+.golf-piles button {height:100%;aspect-ratio:5/7;position:relative}
+.golf-piles small {position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:clamp(.6rem,2.6cqw,.85rem)}
+.golf-local {position:absolute;left:50%;bottom:2%;height:38%;aspect-ratio:15/14;transform:translateX(-50%)}
+.golf-tableau {width:100%;height:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:3%}
+.golf-tableau button,.golf-piles button {pointer-events:auto;border:0;padding:0;background:transparent;min-width:0;min-height:0;touch-action:manipulation}
+.golf-tableau button:disabled,.golf-piles button:disabled {opacity:1;cursor:default}
+.golf-tableau button:focus-visible,.golf-piles button:focus-visible {outline:2px solid #facc15;outline-offset:2px}
+.golf-hole-result {position:absolute;left:25%;top:31%;width:50%;text-align:center;font-size:clamp(.65rem,3cqw,1rem)}
+.golf-controls {height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2em;text-align:center;overflow:auto;font-size:clamp(.65rem,2.8cqw,.9rem)}
+.golf-controls button {border:1px solid #eab308;border-radius:.4em;padding:.25em .8em;background:#312714;color:#fef3c7}
+.golf-controls button:disabled {opacity:.5}
+.golf-warning {color:#fde68a}
+.golf-panel {height:100%;overflow:auto;padding:.5rem;font-size:.8rem}

@@ -1,0 +1,25 @@
+import {describe,it,expect} from 'vitest';
+import {golfSnapshot,acceptGolfSnapshot,golfWarning,golfCard,type GolfSnapshot} from './model';
+const fixture=()=>({identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},rules:{version:'six-card-golf/1'},revision:3,serverAt:10,viewerId:'a',settlement:null,
+ players:[{id:'a',chips:100},{id:'b',chips:100}],tableaus:{a:{cards:[null,null,null,null,null,null],exposed:[false,false,false,false,false,false]},b:{cards:[0,null,null,null,null,null],exposed:[true,false,false,false,false,false]}},
+ financial:{balances:{a:100,b:100}},pending:null,finalReason:null,finalQueue:[],consecutiveNoRevealTurns:0,scores:{a:-2,b:4}});
+describe('Golf public projection boundary',()=>{
+ it('rejects own and opponent concealed values and another actor pending draw',()=>{
+  for(const id of ['a','b'] as const){const v=fixture();v.tableaus[id].cards[1]=4;expect(()=>golfSnapshot(v)).toThrow('projection');}
+  expect(()=>golfSnapshot({...fixture(),pending:{actor:'b',card:4}})).toThrow('projection');
+ });
+ it('preserves completed-hole negative totals without deriving a current score',()=>{
+  const v=golfSnapshot(fixture());expect(v.scores).toEqual({a:-2,b:4});expect(v.tableaus.a.cards.every(c=>c===null)).toBe(true);expect(golfCard(null)).toBeUndefined();
+ });
+ it('rejects conflicting equal revisions and other match identities, ignores regressive frames',()=>{
+  const v=golfSnapshot(fixture());expect(acceptGolfSnapshot(v,{...v,revision:2},'d')).toBe(v);
+  expect(()=>acceptGolfSnapshot(v,{...v,scores:{a:99,b:4}},'d')).toThrow('conflicting');
+  expect(()=>acceptGolfSnapshot(v,{...v,id:'other'},'d')).toThrow('identity');
+  expect(acceptGolfSnapshot(v,{...v,serverAt:20},'d').serverAt).toBe(20);
+ });
+ it('warns from public completed-turn count and reports immutable queue remainder',()=>{
+  const v=golfSnapshot(fixture());expect(golfWarning(v)).toBeNull();
+  expect(golfWarning({...v,consecutiveNoRevealTurns:8})).toContain('2 completed turns');
+  expect(golfWarning({...v,finalReason:'prolonged_play',finalQueue:['b']} as GolfSnapshot)).toBe('Final turns: 1 remaining');
+ });
+});

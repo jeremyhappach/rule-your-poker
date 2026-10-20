@@ -1,3 +1,7 @@
+# Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
+
+Authority, canonical table integration and local proofs are checkpointed on `codex/six-card-golf-candidate`, based on `44dbd5a7d4de4635b258f731558fe346473d82b9`. Mobile visual quality, audio, remaining lifecycle/race proofs and release registration are unfinished. Golf admission remains closed in both money modes. No production migration, merge, push or deployment is authorized by the current coordinated-release instruction. See [implementation evidence and blockers](SIX_CARD_GOLF_IMPLEMENTATION.md).
+
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
 Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.

@@ -22,6 +22,7 @@ export type CanonicalFeltGameKind =
   | "three-five-seven"
   | "horses"
   | "ship-captain-crew"
+  | "six-card-golf"
   | "farkle"
   | "yahtzee"
   | "gin-rummy"
@@ -78,6 +79,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "three-five-seven": "3-5-7",
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
+  "six-card-golf": "SIX-CARD GOLF",
   "farkle": "FARKLE",
   "yahtzee": "YAHTZEE",
   "gin-rummy": "GIN RUMMY",
