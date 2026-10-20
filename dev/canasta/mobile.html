@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Canasta phone review</title>
-<style>body{margin:0;background:#0b1511;color:#e6dfce;font:14px system-ui}header{padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}a{color:#f5d28a}iframe{display:block;border:1px solid #697b70;margin:0 auto;background:#10281f}main{position:relative;overflow:hidden}output{overflow-wrap:anywhere}iframe{position:absolute;left:50%;margin:0}select{padding:8px;background:#244134;color:white}</style></head>
+<style>body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font:14px system-ui}header{padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}a{color:hsl(var(--primary));text-decoration:underline}iframe{display:block;border:1px solid hsl(var(--border));outline:1px solid hsl(var(--border));margin:0 auto;background:hsl(var(--background))}main{position:relative;overflow:hidden}output{overflow-wrap:anywhere}iframe{position:absolute;left:50%;margin:0}select,button{padding:8px;background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));border:1px solid hsl(var(--border));border-radius:var(--radius)}</style></head>
 <body><header><strong>Canasta · local mobile checkpoint</strong><select id="device" aria-label="Phone layout">
 <option value="320,568">Narrow portrait · 320×568</option><option value="375,812" selected>iPhone portrait · 375×812</option>
 <option value="430,932">Large portrait · 430×932</option><option value="812,375">iPhone landscape · 812×375</option>
@@ -7,11 +7,12 @@
 <main><iframe title="Canasta phone viewport" src="/" width="375" height="812"></iframe></main>
 <output id="measurements" style="display:block;padding:8px;font-size:11px"></output>
 <script type="module">
+import '@/index.css';
 const device=document.querySelector('#device'),frame=document.querySelector('iframe'),safe=document.querySelector('#safe');
 function size(){const [w,h]=device.value.split(',').map(Number),landscape=w>h;
   const top=safe.checked&&!landscape?47:1,bottom=safe.checked?(landscape?21:34):1,side=safe.checked&&landscape?44:1;
   frame.width=w-side*2;frame.height=h-top-bottom;
-  frame.style.borderWidth=`${top}px ${side}px ${bottom}px`;frame.style.borderColor=safe.checked?'#020604':'#697b70';
+  frame.style.borderWidth=`${top}px ${side}px ${bottom}px`;frame.style.borderColor=safe.checked?'hsl(var(--background))':'hsl(var(--border))';
   const scale=Math.min(1,(window.innerHeight-document.querySelector('header').offsetHeight-32)/h,(window.innerWidth-24)/w);
   frame.style.transform=`translateX(-50%) scale(${scale})`;frame.style.transformOrigin='top center';
   document.querySelector('main').style.height=`${h*scale+3}px`;

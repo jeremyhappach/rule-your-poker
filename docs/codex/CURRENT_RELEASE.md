@@ -6,6 +6,9 @@ interaction review before full gameplay integration. No production admission,
 database changes or deployment. Financial qualification remains MISSING.
 Bounded checkpoint correction: canonical configuration/header/identity, paged
 shared-dialog editor, legal 71-card witness and bound. Owner review remains pending.
+Appearance follow-up removes preview-only dark styling. Authenticated production
+comparison confirms the shared amber border, bridge felt and white page treatment;
+side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
 
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 

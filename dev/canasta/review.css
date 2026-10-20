@@ -3,13 +3,13 @@ body{margin:0}
 .canasta-play{height:var(--shell-play-h);position:relative;flex-shrink:0}
 .canasta-seats{position:absolute;left:50%;top:var(--play-top-safe-area);width:var(--shell-felt-w);height:var(--shell-felt-h);transform:translateX(-50%)}
 .canasta-felt{position:absolute;pointer-events:auto;display:grid;place-items:center;overflow:hidden}
-.canasta-piles{display:flex;gap:1.25rem;align-items:center}
+.canasta-piles{display:flex;gap:1.25rem;align-items:center;color:white}
 .canasta-piles small{display:block;font-size:.65rem;margin-top:.2rem;text-align:center}
 .canasta-piles button{padding:0;background:transparent;border:0}
 .canasta-empty{display:grid;place-items:center;width:48px;height:68px;border:1px dashed #ddd8;border-radius:5px}
 .canasta-launcher{height:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;padding:.25rem}
 .canasta-launcher>span{font-size:.75rem}
-.canasta-launcher button,.canasta-editor button,.canasta-editor select{min-width:44px;min-height:44px;border:1px solid #94ad9b66;border-radius:.4rem;background:#1c3a2c;color:#fff;padding:.25rem .45rem;font-size:.8rem}
+.canasta-launcher button,.canasta-editor button,.canasta-editor select{min-width:44px;min-height:44px;border:1px solid hsl(var(--border));border-radius:.4rem;background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));padding:.25rem .45rem;font-size:.8rem}
 .canasta-editor{width:calc(100% - 16px)!important;height:calc(100% - 16px);max-width:960px!important;max-height:900px;padding:8px!important;gap:4px!important;grid-template-rows:44px 44px minmax(0,1fr) 44px;overflow:hidden}
 .canasta-editor-heading{padding-right:48px;display:flex;flex-direction:column;justify-content:center}
 .canasta-editor-heading h2{font-size:1rem}
@@ -24,7 +24,7 @@ body{margin:0}
 .canasta-hand-grid{display:flex;gap:4px;min-height:84px;justify-content:center;align-items:center;width:100%}
 .canasta-editor .canasta-card{width:56px;min-width:56px;height:84px;padding:2px!important;background:transparent;border:0;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .canasta-card span{font-size:.65rem;white-space:nowrap}
-.canasta-editor [aria-pressed=true]{outline:2px solid #efd082;outline-offset:-2px}
+.canasta-editor [aria-pressed=true]{outline:2px solid hsl(var(--ring));outline-offset:-2px}
 .canasta-pagination{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:44px;font-size:.7rem}
 .canasta-pagination span{text-align:center}
 .canasta-compose{display:flex;gap:4px;min-width:0}
@@ -34,4 +34,4 @@ body{margin:0}
 .canasta-finish p{grid-column:1/-1;margin:0}
 .canasta-validation{font-size:.75rem;margin:0}
 .canasta-editor button:disabled{opacity:.5}
-.canasta-editor :focus-visible{outline:2px solid #ffe093;outline-offset:-2px}
+.canasta-editor :focus-visible{outline:2px solid hsl(var(--ring));outline-offset:-2px}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Canonical appearance comparison</title>
+  <style>
+    body{margin:0;padding:12px;background:hsl(var(--background));color:hsl(var(--foreground));font:14px system-ui}
+    main{display:flex;gap:16px;justify-content:center}
+    figure{margin:0;width:461px;flex:none}
+    figcaption{height:32px}
+    img,iframe{display:block;width:461px;height:604px;border:0}
+    p{text-align:center;margin:8px 0}
+  </style>
+</head>
+<body>
+  <main>
+    <figure><figcaption>Production reference · Cribbage · captured October 20</figcaption><img id="reference" alt="Production canonical table with white page and amber border"></figure>
+    <figure><figcaption>Local Canasta checkpoint · same 461 × 604 viewport</figcaption><iframe title="Local Canasta comparison" src="/?scene=maximum"></iframe></figure>
+  </main>
+  <p>Appearance comparison only. Different game content and seat projections are visible.</p>
+  <script type="module">
+    import '@/index.css';
+    import reference from '../../docs/codex/evidence/canasta-mobile/production-appearance-reference.png';
+    document.querySelector('#reference').src=reference;
+  </script>
+</body>
+</html>

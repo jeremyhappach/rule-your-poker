@@ -178,7 +178,6 @@ function App(){
     </PersistentTableShell>
   </ResponsiveGeometryProvider></VisualPreferencesProvider>;
 }
-document.documentElement.classList.add('dark');
 loadPresentationSnapshot();
 const root=createRoot(document.getElementById('root')!);
 root.render(<App/>);

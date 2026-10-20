@@ -137,3 +137,32 @@ historical; legal-71-* and *-corrected images are the corrected checkpoint.
 Development limitation: hot replacement while a dialog was open produced a portal
 cleanup error during editing. A clean reload rendered successfully with no new
 console errors. Use a clean reload when reviewing a changed checkpoint.
+
+## Appearance correction, October 20
+
+The preview forced `html.dark`, while the authenticated production table uses
+the default light document theme. The mobile review wrapper also supplied its
+own dark background and black safe-area envelope. Those preview overrides are
+removed. The wrapper now imports the application's `index.css` tokens, and the
+editor controls use canonical background, foreground, border and focus tokens.
+Felt pile labels retain white text for contrast against the dark shared felt.
+
+The user opened the production Cribbage table for comparison. Both the rendered
+production table and local Canasta use CanonicalFeltSurface's exact 2px
+`rgb(120, 53, 15)` amber border, white page background, bridge image at
+`center 38%` / opacity 0.28, and gradient from rgb(26,26,26) to rgb(10,10,10).
+The border is canonical, not a review/debug outline; no shared border change is
+made. Production build inspected: 44dbd5a7d4de4635b258f731558fe346473d82b9.
+
+`dev/canasta/comparison.html` places the captured production table beside the
+live local fixture at the same 461 by 604 viewport. See
+`evidence/canasta-mobile/appearance-side-by-side.png`. This proves appearance
+parity for the page, felt and outline, not identical game content or seat
+projection: the reference is Cribbage and the fixture is Canasta.
+
+Validation: fixture TypeScript and isolated Vite build pass. Portrait 375 by 812
+and landscape 812 by 375 with a safe-area envelope expose all 71 physical cards
+with zero target-size, clipping, overlap, overflow or nested-scrolling failures;
+see `appearance-layout-audits.json` and `appearance-editor-landscape.png`.
+Existing Browserslist age and bundle-size advisories remain. No rules, database,
+production settings, admission, deployment or financial behavior changed.
