@@ -25,7 +25,11 @@ describe('integrated catalog parity',()=>{
  if(game.availability!=='existing-setup'){expect(isDiscovered(game,{})).toBe(false);expect(eligibility(game,{players:2,humans:2},{})).toBe('Currently unavailable');}
  });
  it('keeps bot policy distinct from seat count and money mode',()=>{
- expect(eligibility(findGame('eleven-up')!,{players:2,humans:1},{'eleven-up':true})).toBe('Humans only');
+ for(const realMoney of [false,true]){
+  expect(eligibility(findGame('eleven-up')!,{players:2,humans:1,realMoney},{'eleven-up':true})).toBe(realMoney?'Bots require fake money':null);
+  expect(eligibility(findGame('eleven-up')!,{players:7,humans:1,realMoney},{'eleven-up':true})).toBe(realMoney?'Bots require fake money':null);
+  expect(eligibility(findGame('eleven-up')!,{players:2,humans:0,realMoney},{'eleven-up':true})).toBe('A human player is required');
+ }
  expect(eligibility(findGame('run21')!,{players:2,humans:1,realMoney:true},{run21:true})).toBe('Bots require fake money');
  expect(eligibility(findGame('run21')!,{players:2,humans:1,realMoney:false},{run21:true})).toBeNull();
  });

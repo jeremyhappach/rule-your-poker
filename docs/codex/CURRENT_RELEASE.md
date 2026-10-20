@@ -1,3 +1,13 @@
+# 11 Up bots — 2026-10-20 — local candidate, release not authorized
+
+11 Up bot support adds visible-information server decisions through its existing
+versioned reducer and canonical recovery/consent/settlement owners. The unchanged
+2–7-seat multiplayer roster permits fake-money bots with at least one human,
+preserving canonical Add Bot's real-money restriction. Arcade, rules,
+leaderboards and financial semantics are preserved. Local rollback qualification
+and focused client checks pass; release requires separate approval and matching
+database/client publication. See [scope, evidence and smoke](ELEVEN_UP_BOTS.md).
+
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
 Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.
