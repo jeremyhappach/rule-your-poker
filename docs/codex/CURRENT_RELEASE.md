@@ -1,3 +1,19 @@
+# Trip Flip smoke corrections — 2026-10-19 — awaiting owner smoke
+
+Both modes now move the existing active score pill to the gameplay center and
+count from the previous banked total to the authoritative cumulative total with
+shared scoring audio. The opponent remains visible. The itemized result panel
+is removed, stacked corners are more exposed, and Rules explicitly explain
+ordered Runs. Shared `trip-flip/1`, deadlines and financial ownership are intact.
+
+The matching production run's 32 committed moves replayed as two Runs and zero
+Trips; 1,200 + 5,000 + 1,250 correctly totals 7,450. No historical scores changed.
+Full build/typecheck, 2,529 app tests, 241 harness tests, both-adapter scoring and
+replay fixtures, concurrency regression, 84 viewport cases and browser/audio
+checks passed. Physical iPhone Safari acceptance remains pending. See
+[investigation, evidence and smoke](TRIP_FLIP_SMOKE_POLISH.md).
+Checkpoint: `trip-flip-smoke-polish-2026-10-19`.
+
 # Trip Flip — 2026-10-19 — qualified, awaiting owner smoke
 
 Complete Arcade and two-player multiplayer share frozen `trip-flip/1`: four

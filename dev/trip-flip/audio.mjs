@@ -17,7 +17,7 @@ try{
   const before=await page.evaluate(()=>window.__tripAudio.starts);
   await page.getByRole('button',{name:'Start '+mode,exact:true}).click();
   await page.locator('.trip-bank:not([disabled])').waitFor({timeout:15000});
-  await page.locator('.trip-bank').click();await page.locator('.trip-result').waitFor();
+  await page.locator('.trip-bank').click();await page.locator('.trip-round-result').waitFor();
   await page.waitForTimeout(1800);
   const after=await page.evaluate(()=>({starts:window.__tripAudio.starts,states:window.__tripAudio.contexts.map(c=>c.state)}));
   assert.ok(after.starts>before,mode+' has scheduled audio');
