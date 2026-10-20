@@ -10,7 +10,7 @@ const plugin={name:'golf-local-authority',configureServer(server){server.middlew
  if(req.url.startsWith('/events')){res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});res.write(': ready\n\n');const s={id:new URL(req.url,'http://localhost').searchParams.get('id'),res};streams.add(s);req.on('close',()=>streams.delete(s));return;}
  try{let body='';for await(const chunk of req){body+=chunk;if(body.length>10000)throw Error('Request too large');}const input=JSON.parse(body);let value;
  if(req.url==='/new'){console.log('Local fixture request');
-  const n=input.players===4?4:2,users=Array.from({length:n},()=>uuid()),ids=users.map(()=>uuid()),g=uuid(),deadline=new Date(Date.now()+600000).toISOString();
+  const n=[2,3,4].includes(input.players)?input.players:2,users=Array.from({length:n},()=>uuid()),ids=users.map(()=>uuid()),g=uuid(),deadline=new Date(Date.now()+600000).toISOString();
   for(const u of users)actors.add(u);
   await transaction(null,async c=>{
    for(let i=0;i<n;i++){await c.query('INSERT INTO auth.users(id) VALUES($1)',[users[i]]);await c.query('INSERT INTO public.profiles(id,username,is_active) VALUES($1,$2,true) ON CONFLICT(id) DO UPDATE SET is_active=true',[users[i],'Player '+(i+1)+' '+users[i].slice(0,8)]);}

@@ -73,5 +73,16 @@ BEGIN
  PERFORM pg_temp.golf_assert((SELECT state->'pending'=before_state->'pending' AND state->'tableaus'=before_state->'tableaus'
   AND state->'finalQueue'=before_state->'finalQueue' AND state->'consecutiveNoRevealTurns'=before_state->'consecutiveNoRevealTurns'
   FROM private.golf_matches WHERE dealer_game_id=d),'all-human pause preserves unresolved gameplay');
+ -- A corrupt committed partition is a fault fixture, not a legal move. Restore
+ -- the guard before exercising the real recovery/hold owner.
+ PERFORM public.set_game_paused(g,false,d,(SELECT pause_version FROM public.games WHERE id=g));
+ ALTER TABLE private.golf_matches DISABLE TRIGGER golf_guard;
+ UPDATE private.golf_matches SET state=jsonb_set(jsonb_set(state,'{stock}','[]'),'{deadline}','0'),revision=revision+1 WHERE dealer_game_id=d;
+ ALTER TABLE private.golf_matches ENABLE TRIGGER golf_guard;
+ SELECT state INTO before_state FROM private.golf_matches WHERE dealer_game_id=d;
+ PERFORM private.golf_recover();
+ PERFORM pg_temp.golf_assert((SELECT is_paused FROM public.games WHERE id=g),'committed corruption holds table');
+ PERFORM pg_temp.golf_assert((SELECT state=before_state AND settlement IS NULL FROM private.golf_matches WHERE dealer_game_id=d),'hold neither repairs nor scores nor settles');
+ PERFORM pg_temp.golf_assert(EXISTS(SELECT 1 FROM private.golf_integrity_failures WHERE dealer_game_id=d AND code='card_partition'),'restricted integrity diagnostic');
 END $$;
 SELECT 'Golf mixed bot consent, autonomous opening/turn, pause time and real-human pending-draw timeout passed' proof;

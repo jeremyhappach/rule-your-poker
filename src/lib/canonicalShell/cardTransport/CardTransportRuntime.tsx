@@ -1,3 +1,5 @@
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 /**
  * CardTransportRuntime — owns launch, travel, arrival, destroy.
@@ -347,6 +349,7 @@ export function CardTransportRuntime({
           const r = resolvedRef.current.get(intent.id);
           if (!r) return;
           r.launched = true;
+          if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
           if (isThreeFiveSevenSelfHandIntent(intent)) {
             const currentTo = resolveCardEndpoint(intent.to, container) ?? r.to;
             record357DealLandingTrace(intent.cardId, {
@@ -368,7 +371,7 @@ export function CardTransportRuntime({
             launchedAt: performance.now(),
             lifecycleState: 'launched',
           });
-          recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+        recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
             reason: 'delayed-launch-timer-fired',
             timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
             gameType: ctx.gameType ?? null,
@@ -378,6 +381,7 @@ export function CardTransportRuntime({
         }, delayMs);
         launchTimersRef.current.set(intent.id, tLaunch);
       } else {
+        if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
         if (isThreeFiveSevenSelfHandIntent(intent)) {
           const currentTo = resolveCardEndpoint(intent.to, container) ?? to;
           record357DealLandingTrace(intent.cardId, {

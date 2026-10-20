@@ -37,7 +37,7 @@ Current worktree: `codex/six-card-golf-candidate`, based on current main `44dbd5
 conservation validation, whitelisted projection, observation-only bot policy,
 consent adapter, immutable payload-bound action receipts, linked hole progression,
 canonical transfer settlement, pause/recovery adapter and closed release gates.
-The canonical table adapter, public six-card seat artifacts, completed-hole scoreboard, Rules dialog, stock/discard controls, persisted client intent recovery, capability-gated catalog/setup, Ante Up copy, Run Back configuration and terminal-retention wiring now exist. Browser qualification is incomplete; canonical card flight/audio is not implemented.
+The canonical table adapter, public six-card seat artifacts, completed-hole scoreboard, Rules dialog, stock/discard controls, persisted client intent recovery, capability-gated catalog/setup, Ante Up copy, Run Back configuration and terminal-retention wiring now exist. Canonical card flight/audio is implemented; browser and mobile visual qualification remain incomplete.
 
 Only public revision notifications and authorized snapshot/action RPCs are
 exposed; private cards are excluded from public history frames.
@@ -96,11 +96,81 @@ This bounded pass stops at the repository execution-budget circuit breaker. No a
 
 ## Remaining implementation and release blockers
 
-1. Finish and visually qualify canonical two/four-seat geometry, especially landscape card readability/tap size, text collisions, opponent projection, safe areas and changing Safari chrome. Do not label the five viewport existence checks as layout approval. Implement and verify canonical card flight/deal/reveal audio without reconnect replay.
+1. Finish and visually qualify canonical two/four-seat geometry, especially landscape card readability/tap size, text collisions, opponent projection, safe areas and changing Safari chrome. Do not label viewport bounds checks as layout approval. Card transport/audio now has focused and browser evidence; see the latest checkpoint below.
 2. Finish closed-admission migration assembly, current deployed-definition guards, recovery scheduler and public revision publication registration. No Golf production authority/migration exists. Reference/installed-authority parity remains unproved.
-3. Extend independent-connection proofs for timeout/final-action/successor races, old requests after continuation, earned zero-client settlement, and corrupted committed-state hold. Existing rule-level conservation rejects invalid transitions; committed corruption recovery needs explicit qualification.
-4. Qualify complete mixed-bot matches, two-human nine-hole browser operation, Run Back consent, chip transport, terminal hold, Session Ended and cold-mount routing through the actual application route. Current browser harness mounts the canonical shell directly.
-5. Obtain one clean final application qualification run after presentation work. The initial full regression failures and isolated rechecks are recorded separately above.
+3. Extend independent-connection proofs for timeout/final-action races and earned zero-client settlement. Successor races, old requests after terminal continuation and corrupted committed-state hold now pass; continuation into a newly admitted match still needs proof.
+4. Qualify complete mixed-bot matches, Run Back consent, chip transport, terminal hold, Session Ended and cold-mount routing through the actual application route. Two-human nine-hole browser operation passes in the direct canonical-shell harness; this does not establish full-route coverage.
+5. Final application regression is green: 2,563 tests across 366 files, with one worker. The full application TypeScript check and production build pass. The earlier parallel timeout remains recorded as qualification-resource sensitivity, without a proven root cause.
 6. Installed-authority proofs and coordinated release approval remain mandatory before any publication or activation. Both money-mode admissions remain closed; Jeremy has not performed production smoke.
 
 The accepted Boxdrop pattern supplied consent/finance ownership, but its fullscreen board does not provide Golf's shared hidden tableau, multi-hole identity or responsive canonical table artifacts. These differences require the remaining presentation and lifecycle work; no approved rule has been changed.
+
+## Local qualification follow-up — 2026-10-20
+
+Starting checkpoint: `4349b7aba5d671ffeb64015b77d463f271387a62`.
+No game rules or production authority changed in this follow-up.
+
+- Added canonical tableau transport endpoints, projection-based card flights and
+  shared launch-time audio. Private pending cards travel as backs without rank or
+  suit in transport diagnostics. Initial/reconnect snapshots seek without replay.
+  Settlement callbacks are guarded against superseded flights.
+- Local cards now use the existing HUD hand area in taller containers and the
+  felt in short containers. Actual rendered width drives canonical face sizing.
+  Opponent tableaus have public-only inspection dialogs. Scores remain totals
+  from completed holes; no concealed-card-derived subtotal exists.
+- Full two-human browser match passed: nine holes, 162 actions, one settlement
+  of +5/-5, conserved total balance 200, terminal completion callback, actual
+  shared Web Audio starts on both clients, and no audio replay after reload.
+  This mounts the canonical shell directly, not the full application route.
+- 63 rendered combinations cover 2/3/4 participants, every viewer, and seven
+  portrait/landscape sizes. All checked cards stay inside the viewport and local
+  interactive cards are at least 44 pixels wide. Visual inspection and rectangle
+  intersection checks still find opponent-tableau overlaps in 12 short-landscape
+  cases (3/4 participants, 568x320 and 844x390). Name/card crowding also remains.
+  These are failed visual qualification, not passing layout evidence.
+- Corrupted committed card partition proof passes in a rollback transaction:
+  actual recovery pauses, keeps state unchanged, leaves settlement empty and
+  records only restricted fault metadata. The synthetic corruption disables the
+  integrity trigger solely for injection, then restores it before recovery.
+- Independent connection proofs pass in both money modes with successor races,
+  exactly one linked successor, stale prior-hole rejection, immutable old
+  receipts, one terminal settlement, autonomous terminal continuation, and old
+  receipt replay after continuation. Exact balances remain 91/109 for stake 9.
+  Terminal/successor fixtures isolate those boundaries; they do not replace a
+  legal full-match proof or prove zero-client settlement from earned final play.
+- Twelve focused projection/transport/shared-seat tests pass. Production Vite
+  build passes with existing chunk-size warnings.
+- Full suite with two workers: 2,558 pass, one Run21 test times out at 60 seconds.
+  The unchanged Run21 file passes all 18 cases in isolation (42 seconds total).
+  Final serial-suite and full application TypeScript outcomes are recorded below.
+- A later basic browser run timed out before its first enabled card click while
+  other qualification was running. Its log is retained; no cause is claimed.
+
+Evidence: `qualification.local/six-card-golf/full-browser.json`,
+`layout.json`, `layout-4-0-568x320.png`, `layout-4-0-390x844.png`,
+`layout-2-0-320x568.png`, `concurrency-extended.log`,
+`concurrency-extended-real.log`, `presentation-tests.log`,
+`full-regression.log`, `run21-recheck.log`, `full-regression-serial.log`,
+`typecheck-app.log`, `build-qualification.log`, `browser-qualification.log`,
+and `full-browser-final.log`. Evidence is local and ignored by Git.
+
+Still blocked: landscape visual quality; complete mixed-bot qualification;
+remaining timeout/final-action races; earned zero-client settlement; Run Back,
+Session Ended and cold routing through the full application; closed migration
+assembly and recovery/publication registration; installed-authority and matching
+production release proofs. Physical iPhone Safari and Jeremy's smoke remain
+pending. Both money-mode admissions stay closed. No migration identifier or
+production deployment exists for Golf.
+
+Final follow-up results: `tsc --noEmit -p tsconfig.app.json` passed after
+correcting an incomplete test fixture; `vitest run src --maxWorkers=1` passed
+all 2,563 tests in 366 files (429.56 seconds). The final transport fixture also
+passed its four focused tests. The final nine-hole browser rerun passed on the
+current presentation code: 162 actions, +5/-5 settlement, 91/92 shared audio
+source starts, terminal completion and silent reload. Its exact local match is
+`cb39d99a-ddf9-40c8-8dcd-0ff2c1df9b2b`. The earlier basic-browser timeout remains
+preserved; this successful full run supersedes it as current operation evidence
+without explaining its cause. No additional implementation is started in this
+bounded checkpoint. The next pass begins with the unresolved canonical mobile
+artifact geometry and remaining release qualification; no product-rule decision
+is needed.

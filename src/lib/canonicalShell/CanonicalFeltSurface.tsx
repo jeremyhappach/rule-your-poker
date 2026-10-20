@@ -316,7 +316,7 @@ export function CanonicalFeltSurface({
           className="absolute top-3 inset-x-0 px-4 z-20 flex flex-col items-center pointer-events-none"
           style={{ containerType: 'inline-size' } as React.CSSProperties}
         >
-          {isDicePlate || gameKind === 'run21' ? (
+          {isDicePlate || gameKind === 'run21' || gameKind === 'six-card-golf' ? (
             <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>

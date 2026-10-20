@@ -240,6 +240,8 @@ export interface CanonicalSeatClusterProps {
    * Default 'above-chip' preserves every existing consumer's layout.
    */
   namePlacement?: 'above-chip' | 'below-chip' | 'none';
+  /** Keep a perimeter nameplate extending toward the table interior. */
+  keepNameInward?: boolean;
   /**
    * Wave 5D follow-up — slot-aware growth opt-in.
    *
@@ -284,6 +286,7 @@ export interface CanonicalSeatClusterProps {
 
 export function CanonicalSeatCluster({
   slot,
+  keepNameInward = false,
   position,
   name,
   isDealer = false,
@@ -569,7 +572,7 @@ export function CanonicalSeatCluster({
       ? 'upper'
       : namePlateCfg.anchorStart;
   const effectiveAttachment: 'inner' | 'center' | 'outer' =
-    isCenterAnchoredSlot ? 'center' : namePlateCfg.attachment;
+    isCenterAnchoredSlot ? 'center' : keepNameInward ? 'outer' : namePlateCfg.attachment;
 
   let anchorXcss = 0;
   let anchorYcss = 0;

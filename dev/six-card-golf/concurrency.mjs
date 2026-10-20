@@ -46,6 +46,16 @@ try {
  assert.equal(race.filter(r=>r.status==='fulfilled').length,1);
  assert.match(race.find(r=>r.status==='rejected').reason.message,/stale_revision/);
  await assert.rejects(act(a,uuid(),await snapshot(),'draw'),/not_actor/);
+ // A closed, card-conserving hole fixture isolates successor contention.
+ const priorRound=(await snapshot()).identity.roundId;
+ await admin.query("UPDATE private.golf_matches SET state=state||jsonb_build_object('phase','hole_complete','deadline',0,'holes',jsonb_build_array(jsonb_build_object('hole',1))),revision=revision+1 WHERE dealer_game_id=$1",[dealer]);
+ for(const c of [a,b])await c.query('RESET ROLE');
+ await Promise.all([a,b].map(c=>q(c,'SELECT private.golf_recover() v')));
+ const successor=await snapshot();
+ assert.notEqual(successor.identity.roundId,priorRound);assert.equal(successor.hole,2);
+ assert.equal(await q(admin,'SELECT count(*)::int v FROM public.rounds WHERE predecessor_round_id=$1',[priorRound]),1);
+ assert.deepEqual((await act(a,request,v,'draw')).receipt,draw[0].receipt);
+ await assert.rejects(act(a,uuid(),v,'draw'),/stale_identity|stale_revision|round/);
  // Closed terminal fixture isolates concurrent canonical settlement.
  await admin.query("UPDATE private.golf_matches SET state=state||jsonb_build_object('phase','complete','hole',9,'scores',jsonb_build_object($2::text,-1,$3::text,10),'holes',(SELECT jsonb_agg(jsonb_build_object('hole',h)) FROM generate_series(1,9)h)),revision=revision+1 WHERE dealer_game_id=$1",[dealer,players[0],players[1]]);
  for(const c of [a,b])await c.query('RESET ROLE');
@@ -54,6 +64,14 @@ try {
  assert.equal(await q(admin,'SELECT count(*)::int v FROM public.gameplay_transfer_batches WHERE dealer_game_id=$1',[dealer]),1);
  assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY chips',[game])).rows.map(r=>r.chips),[91,109]);
  assert.deepEqual((await act(a,request,v,'draw')).receipt,draw[0].receipt);
+ // No browser callback is needed to finish an already-settled terminal hold.
+ await new Promise(resolve=>setTimeout(resolve,3100));
+ await Promise.all([a,b].map(c=>q(c,'SELECT private.golf_recover() v')));
+ assert.equal(await q(admin,'SELECT finished v FROM private.golf_matches WHERE dealer_game_id=$1',[dealer]),true);
+ assert.equal(await q(admin,'SELECT current_game_uuid IS NULL v FROM public.games WHERE id=$1',[game]),true);
+ assert.deepEqual((await act(a,request,v,'draw')).receipt,draw[0].receipt);
+ await assert.rejects(act(a,uuid(),await snapshot(),'draw'),/inactive/);
+ assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY chips',[game])).rows.map(r=>r.chips),[91,109]);
  write(`qualification.local/six-card-golf/concurrency${real?'-real':''}.json`,JSON.stringify({passed:true,at:new Date().toISOString(),database:db,game,dealer,balances:[91,109]}));
- console.log('PASS authenticated independent-connection duplicate opening/draw, lost response, competing replacements, actor rejection, concurrent settlement, late replay; money='+real);
+ console.log('PASS authenticated independent-connection duplicate opening/draw, lost response, competing replacements, actor rejection, successor race, concurrent settlement, zero-client terminal continuation, old receipt after continuation; money='+real);
 } finally {await Promise.all([a.end(),b.end(),admin.end()]);}

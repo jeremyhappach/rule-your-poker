@@ -1,4 +1,5 @@
-import {PlayingCard} from '@/components/PlayingCard';
+import './publicTableau.css';
+import {TableauCard} from '@/lib/canonicalShell/TableauCard';
 import type {Card} from '@/lib/cardUtils';
 /**
  * GameplayOpponentSeatLayer — shell-owned gameplay opponent seat
@@ -91,6 +92,8 @@ export interface CardBacksPresentation {
 
 export interface GameplayOpponentSeatPresentation {
   /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
+  onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
+  hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
   publicTableau?: (p: GameplayOpponentSeatParticipant) => (Card|undefined)[];
   /** A separately persisted local test ledger must not read the session money cursor. */
   isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
@@ -277,6 +280,7 @@ export function GameplayOpponentSeatLayer({
         // coordinate frame and pulled seats inward vs. the
         // MobileGameTable canonical clusters. --shell-felt-w stays
         // owned by ShellOwnedFeltHost for the ellipse paint only.
+        containerType:'size',containerName:'seat-frame',
         position: 'fixed',
         top: 'calc(var(--shell-header-h, 0px) + var(--play-top-safe-area, 0px))',
         left: 0,
@@ -337,9 +341,11 @@ export function GameplayOpponentSeatLayer({
             scoreLine={scoreLine ?? null}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
+            keepNameInward={!!presentation?.publicTableau}
+            innerDecoration={presentation?.publicTableau ? <button type="button" className="canonical-public-tableau" data-public-seat-tableau={p.position} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}>{presentation.publicTableau(p).map((card,i)=><div key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:presentation.hiddenTableauCards?.(p).includes(i)?'hidden':'visible'}}><TableauCard card={card} isHidden={!card} tier="small" style={{width:'100%',height:'100%'}}/></div>)}</button> : undefined}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
-            {presentation?.publicTableau ? <div data-public-seat-tableau={p.position} style={{display:'grid',gridTemplateColumns:'repeat(3,18px)',gap:2,marginTop:4}}>{presentation.publicTableau(p).map((card,i)=><PlayingCard key={i} card={card} isHidden={!card} tier="small" style={{width:18,height:26}}/>)}</div> : renderCardBacks && cardBacks ? (
+            {renderCardBacks && cardBacks ? (
               <ShellOpponentCardBacks
                 count={cardBacks.count}
                 variant={cardBacks.variant}

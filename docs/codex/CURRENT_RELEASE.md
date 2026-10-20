@@ -1,6 +1,6 @@
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
-Authority, canonical table integration and local proofs are checkpointed on `codex/six-card-golf-candidate`, based on `44dbd5a7d4de4635b258f731558fe346473d82b9`. Mobile visual quality, audio, remaining lifecycle/race proofs and release registration are unfinished. Golf admission remains closed in both money modes. No production migration, merge, push or deployment is authorized by the current coordinated-release instruction. See [implementation evidence and blockers](SIX_CARD_GOLF_IMPLEMENTATION.md).
+Authority, canonical table integration and local proofs are checkpointed on `codex/six-card-golf-candidate`, based on `44dbd5a7d4de4635b258f731558fe346473d82b9`. A two-human nine-hole browser match, shared card audio, corruption hold and extended successor/continuation concurrency checks pass locally. Short landscape opponent overlaps, remaining lifecycle/race proofs and release registration still block qualification. Golf admission remains closed in both money modes. No production migration, merge, push or deployment has occurred. See [implementation evidence and blockers](SIX_CARD_GOLF_IMPLEMENTATION.md).
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
