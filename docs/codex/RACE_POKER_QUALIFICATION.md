@@ -156,3 +156,49 @@ production gate remains MISSING until the coordinated release plan is executed.
 The post-integration gameplay layout rerun also passed all 40 viewport/scene
 checks on 2026-10-20. Both catalog and gameplay layout evidence therefore cover
 the integrated source, including the shared Rules extraction.
+
+## Closed-admission release attempt — 2026-10-20 23:12–23:20 UTC
+
+Jeremy separately approved changing only the push helper directory line to
+`cd /d "%~dp0..\.." || exit /b 1`; its installed-Git `git push origin main`
+operation is unchanged. The correction is local and has not been pushed.
+
+Candidate 3d676398598182ff37922afd19053f8ded7f1108 still contains main
+44dbd5a7d4de4635b258f731558fe346473d82b9. Vercel production remained READY at
+that main SHA (deployment dpl_4LKHDL3kx68J1wJvFFiC4nk2ZzBt, holm357.com).
+No competing deployment was observed; other active game work was local qualification.
+All five canonical guard hashes matched. Production migration head remained
+20261020161756 (boxdrop_v1); Race Poker was absent.
+
+A dedicated production-proof builder generates a repeatable-read BEGIN/ROLLBACK
+payload using four synthetic user UUIDs, an existing-player balance snapshot,
+the guarded candidate, core/financial proofs, and a scoped after-chip-write
+failure injection. The installed-form wrapper and failure injection first passed
+against the isolated local database. Concurrency/load tests stayed isolated.
+
+The production candidate attempt FAILED with SQLSTATE 40001 at:
+`UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed'`.
+That local-fixture heartbeat seed conflicts with the live recovery worker under
+repeatable read. It must not manufacture production scheduler health. Execution
+stopped at this statement, before synthetic users/games or financial writes.
+No retry or migration application was attempted, following the stop-on-failed-gate
+instruction. The pre-install financial gate remains FAIL, not qualified.
+
+A separate read-only verification confirmed zero manifest users, profiles, players
+and snapshots; zero Race Poker games/results; no Race release/match tables; no
+failure-injection trigger; all five canonical hashes unchanged; migration head
+unchanged. The live heartbeat was 0.440468 seconds old. Existing player balances
+were not touched: the failure preceded every fixture/player/settlement statement.
+
+Required correction before resuming: omit the heartbeat-seeding UPDATE from the
+production wrapper and rely on the actual healthy production scheduler, retaining
+all real-money liveness checks, short lock timeout, synthetic-only data and the
+rollback envelope. Keep the heartbeat seed available to isolated local proofs.
+Do not lower isolation, disable the worker, fabricate health, or weaken a gate.
+This correction/retry is proposed, not executed. The raw failed payload and its
+UUID manifest remain under ignored qualification.local/race-poker/.
+
+No main merge, push, production migration, deployment, admission or money-mode
+activation occurred. The four persistent release flags were never created.
+Activation remains a separate decision only after the closed release and all
+production gates pass, limited to qualified modes and the existing approved cohort.

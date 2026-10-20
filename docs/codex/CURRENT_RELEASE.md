@@ -1,6 +1,6 @@
-# Race Poker / 1 — 2026-10-20 — local candidate, coordinated release hold
+# Race Poker / 1 — 2026-10-20 — closed-admission release blocked at production proof
 
-Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. The isolated branch now integrates catalog main 44dbd5a7d; it has not been merged into main. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates. Production gate: MISSING (not run). The planned sequence is in `RACE_POKER_RELEASE_PLAN.md`.
+Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. The isolated branch now integrates catalog main 44dbd5a7d; it has not been merged into main. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates. Production gate: FAIL (rollback-only proof hit SQLSTATE 40001 while seeding the live recovery heartbeat; no persistent changes). The approved push-helper path is corrected locally. No migration, main merge, push or deployment occurred. The planned sequence is in `RACE_POKER_RELEASE_PLAN.md`.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
