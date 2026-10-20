@@ -11,19 +11,12 @@
 .take-players small{white-space:nowrap;color:#e1d9ec}
 .take-players [data-active=true]{border-color:#e3df50}
 .take-fit{position:relative;flex:1;min-height:0;container:take-fit/size}
-.take-cabinet{position:absolute;inset:0;box-sizing:border-box;container:take-cabinet/size;display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:'score' 'clock' 'stats' 'instruction' 'felt';gap:.2rem;font-size:clamp(.65rem,2.6cqw,1rem)}
-.take-cabinet header{grid-area:score}.take-clock{grid-area:clock}.take-stats{grid-area:stats}.take-instruction{grid-area:instruction}.take-felt{grid-area:felt}
-@container take-fit (min-aspect-ratio: 3/2){
- .take-cabinet{grid-template-columns:minmax(0,1fr) minmax(0,.7fr) minmax(0,.9fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:'score clock stats' 'felt felt felt';align-items:center}
- .take-felt{align-self:stretch}
- .take-instruction{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-}
-.take-cabinet header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;flex-shrink:0;line-height:1.1}
-.take-total,.take-round{min-width:0;display:flex;align-items:center;justify-content:center;gap:.4em;background:#160d24;border:1px solid #ddc94566;border-radius:.4rem;padding:.3em;font-size:clamp(.55rem,1.8cqw,.8rem)}
-.take-total small{max-width:45%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.take-total b,.take-round b{font-size:clamp(.8rem,3cqw,1rem);color:#f3f960;font-variant-numeric:tabular-nums}
+.take-cabinet{position:absolute;inset:0;box-sizing:border-box;container:take-cabinet/size;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:.25rem;font-size:clamp(.65rem,2.6cqw,1rem)}
+.take-cabinet header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;line-height:1.1}
+.take-total{min-width:5.5em;display:grid;place-items:center;border:2px solid #f4d765;border-radius:2rem;background:linear-gradient(#8744c6,#432071);box-shadow:inset 0 0 0 1px #c99af3,0 2px 4px #263b6040;color:#ffe882;padding:.15rem .6rem}
+.take-total b{font-size:clamp(1rem,4cqh,1.6rem);font-weight:900;font-variant-numeric:tabular-nums}
 .take-stage{white-space:nowrap;font-size:clamp(.65rem,2.5cqw,.9rem)}
-.take-clock{height:clamp(.8rem,2.5cqh,1.15rem);display:flex;align-items:center;gap:.4rem;background:#171020;border-radius:2em;padding:0 .5rem;flex-shrink:0;box-sizing:border-box}
+.take-clock{height:clamp(.65rem,2.5cqh,1.15rem);display:flex;align-items:center;gap:clamp(.2rem,1cqw,.4rem);background:#171020;border-radius:2em;padding:0 .5rem;flex-shrink:0;box-sizing:border-box}
 .take-clock i{flex:1;height:70%;border-radius:1em;background:#123a19;opacity:.3}
 .take-clock i[data-zone=red]{background:#ff3f55}.take-clock i[data-zone=yellow]{background:#edf554}.take-clock i[data-zone=green]{background:#43d466}.take-clock i[data-lit=true]{opacity:1;box-shadow:inset 0 1px 2px #fff8}
 .take-clock small{font-size:.6rem;min-width:3em;text-align:right}
@@ -34,21 +27,32 @@
 .take-meter{flex:1;min-width:0;position:relative;background:#153527;border:1px solid #508a3f;border-radius:.3rem;overflow:hidden;text-align:center;font-size:clamp(.65rem,2.6cqw,.9rem)}
 .take-meter>span{position:absolute;inset-block:0;left:0;background:linear-gradient(to right,#226333,#43ad4c);pointer-events:none}
 .take-meter b{position:relative;color:#ecfff6;white-space:nowrap;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
-.take-instruction{margin:0;min-height:1.2em;line-height:1.2;text-align:center;color:#8df5e2;font-size:clamp(.55rem,1.65cqw,.8rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
-/* One scale fits the canonical slot: short containers constrain height,
-   tall ones width. Tableau offsets and card proportions stay unchanged. */
-.take-felt{position:relative;flex:1;min-height:0;container:take-felt/size;background:radial-gradient(ellipse at top,#17131e,#160d2400);border-radius:.4rem;display:flex;justify-content:center;align-items:flex-start}
-.take-play-group{width:100%;height:min(100cqh,calc(56.43cqw + clamp(2.75rem,16cqh,6rem) + .3rem));display:flex;flex-direction:column;gap:.3rem;flex-shrink:0}
-.take-tableau-space{flex:1;min-height:0;container:take-tableau-space/size;display:flex;justify-content:center;align-items:flex-start}
-.take-tableau{position:relative;width:min(100cqw,177.2cqh);height:min(56.43cqw,100cqh);flex-shrink:0}
-.take-tableau>button{position:absolute;width:16.5%;height:44%;border-radius:5%;padding:0;background:transparent;border:0;display:grid;place-items:start center}
+.take-instruction{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+/* Fit the canonical container, including its safe-area/header allocation.
+   Keep the six-card width and half-card stagger. Row pitch spans .76–1.05
+   card widths: enough for the complete royal rank, while retaining overlap. */
+.take-felt{position:relative;min-height:0;container:take-felt/size;background:radial-gradient(ellipse at top,#17131e,#160d2400);border-radius:.4rem}
+.take-play-group{width:100%;height:100%;display:flex;flex-direction:column;gap:clamp(.15rem,2.5cqh,1.5rem)}
+.take-tableau-space{flex:1;min-height:0;container:take-tableau-space/size;display:flex;justify-content:center;align-items:center}
+.take-tableau{--take-min-ratio:.7491;--take-max-ratio:.9405;position:relative;width:min(100cqw,calc(100cqh / var(--take-min-ratio)));height:min(100cqh,calc(100cqw * var(--take-max-ratio)));flex-shrink:0}
+.take-tableau[data-rows="6"]{--take-min-ratio:.8745;--take-max-ratio:1.11375}
+.take-tableau>button{position:absolute;width:16.5%;aspect-ratio:2/3;border-radius:5%;padding:0;background:transparent;border:0;display:grid;place-items:start center}
 .take-card{display:flex;align-items:flex-start;justify-content:center;width:100%;height:100%;min-width:0;min-height:0;pointer-events:none}
 .take-tableau [data-selected],.take-current[data-selected]{filter:drop-shadow(0 0 .25rem #ffff41);outline:2px solid #f8fc44}
-.take-cabinet footer{flex:0 0 clamp(2.75rem,16cqh,6rem);min-height:0;display:flex;align-items:flex-start;justify-content:center;gap:4%;font-size:clamp(.7rem,2.6cqw,1rem)}
-.take-bank,.take-stock{align-self:center;background:#402249;border:1px solid #ba71d7;border-radius:.4rem;min-height:min(2.75rem,100%);padding:.3em .6em;line-height:1.2;font-weight:bold}
-.take-stock{background:#234147;color:#b0f8ff}.take-stock small{display:block;font-size:.75em;margin-top:.2em}
+.take-cabinet footer{flex:0 0 clamp(1.75rem,17cqh,6rem);min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(.8rem,4cqw,2rem);font-size:clamp(.7rem,2.6cqw,1rem)}
+.take-bank,.take-stock{background:#402249;border:1px solid #ba71d7;border-radius:.4rem;min-height:clamp(1.5rem,6cqh,2.75rem);padding:.3em .6em;line-height:1.2;font-weight:bold;white-space:nowrap}
+.take-bank{justify-self:end}
+.take-stock{position:relative;justify-self:start;background:#234147;color:#b0f8ff;min-height:min(2.75rem,100%)}
+.take-stock-count{position:absolute;top:0;left:0;transform:translate(-35%,-40%);display:grid;place-items:center;min-width:1.8em;height:1.8em;padding:0 .2em;border:2px solid #eed58a;border-radius:50%;background:#113f48;color:#fff;font-size:.8rem;font-weight:800;font-variant-numeric:tabular-nums;pointer-events:none}
 .take-bank:disabled,.take-stock:disabled{opacity:.55}
-.take-current{aspect-ratio:2/3;flex-shrink:0;height:100%;border:0;background:transparent;padding:0}
+.take-current{grid-column:2;aspect-ratio:2/3;height:100%;border:0;background:transparent;padding:0}
+@container take-fit (min-aspect-ratio: 2/1){
+ .take-cabinet{gap:.15rem}
+ .take-cabinet header .take-bank{font-size:.7rem;padding:.15em .6em;min-height:1.5rem}
+ .take-stage{font-size:.65rem}
+ .take-total b{font-size:1rem}
+ .take-counters,.take-meter,.take-cabinet footer{font-size:.7rem}
+}
 .take-overlay{position:absolute;inset:0;z-index:15;background:#1e102cde;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .take-result{gap:1cqh;padding:3cqw;font-size:clamp(.75rem,3cqw,1.25rem)}.take-result h2{font-size:clamp(1rem,5cqw,2rem);font-weight:bold;color:#f7ec65}.take-result strong{font-size:clamp(1.1rem,6cqw,2.5rem)}.take-result p{display:flex;justify-content:space-between;gap:4cqw;min-width:65%}.take-result small{font-size:clamp(.65rem,2.2cqw,1rem)}
 .take-error{position:absolute;z-index:30;inset-inline:0;top:0;background:#802e43;padding:.4em;text-align:center;pointer-events:auto}.take-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1rem}.take-loading button{pointer-events:auto}.take-rules{display:grid;gap:1rem}.take-scene .fullscreen-game-actions:empty{display:none}

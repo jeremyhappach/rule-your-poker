@@ -7,7 +7,7 @@ const browser=await chromium.launch({headless:true,executablePath:['C:/Program F
 const base='http://127.0.0.1:5187';
 const post=async(path,body)=>{const r=await fetch(`${base}/__takeTwo/${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});assert.ok(r.ok);return r.json();};
 try {
- for(const [width,height] of [[390,844],[390,664],[393,587],[844,390],[844,300],[320,568],[1440,900]])for(const players of [1,2,7])for(const stage of [1,3]){
+ if(!process.argv.includes('--actions-only'))for(const [width,height] of [[390,844],[390,664],[393,587],[844,390],[844,300],[320,568],[1440,900]])for(const players of [1,2,7])for(const stage of [1,3]){
   const page=await browser.newPage({viewport:{width,height}});
   await page.goto(`${base}/dev/take-two/layout.html?players=${players}&stage=${stage}`);
   await page.locator('.take-tableau [data-playing-card-root]').last().waitFor();
@@ -20,7 +20,7 @@ try {
    assert.equal(geometry.clipped.length,0,`fit ${width}x${height}/${players}: ${JSON.stringify(geometry.clipped)}`);
    const c=geometry.cards[0],stagger=geometry.cards[6];
    assert.ok(Math.abs((stagger.x-c.x)/c.w-.506)<.02,'half-card stagger');
-   assert.ok(Math.abs((stagger.y-c.y)/c.w-(stage===1?.4685:.3831))<.02,'scaled row overlap');
+   assert.ok((stagger.y-c.y)/c.w>=.74&&(stagger.y-c.y)/c.w<=1.07,'readable overlapping rows');
    assert.ok(geometry.cards.every(c=>c.bottom<=geometry.tableau.bottom+.5),'tableau bounds');
    const targets=await page.evaluate(()=>{const buttons=[...document.querySelectorAll('.take-tableau button')].slice(-5),controls=[...document.querySelectorAll('footer button')];return [...buttons,...controls].every(b=>{const r=b.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height*.8)?.closest('button')===b;});});
    assert.ok(targets,'exposed cards and controls remain reachable');

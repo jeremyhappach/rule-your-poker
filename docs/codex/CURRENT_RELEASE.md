@@ -1,3 +1,17 @@
+# Take 2 layout pass — 2026-10-19 — awaiting owner smoke
+
+Both modes now use a centered numeric score pill, Round/Take Score on its sides,
+compact bonus counters, readable overlapping ranks, a timer below the tableau,
+and centered current card with Next Card/stock badge on its right. Reference
+portrait cards stay 63 px wide; height-limited screens fit proportionally smaller
+cards. Shared rules, clocks, audio, authority and recent response fixes are intact.
+
+Forty-two before/after layouts, real Arcade/multiplayer progression, 2,502 app
+tests, 241 harness tests, typecheck and build pass. Local median pair removal stays
+47 ms Arcade / 63 ms multiplayer. Physical-phone acceptance, especially compact
+landscape tap comfort, remains owner smoke. See [evidence](TAKE_TWO_LAYOUT_PASS.md).
+Checkpoint: `take-two-layout-2026-10-19`.
+
 # Take 2 smoke corrections — 2026-10-19 — awaiting owner smoke
 
 Both modes share a larger proportional tableau, compact controls above/below,
