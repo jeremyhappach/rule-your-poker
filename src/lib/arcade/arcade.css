@@ -20,3 +20,11 @@ body:has(.arcade-page),body:has(.arcade-run){background:#0c171e}
 .arcade-info[role=dialog] .arcade-upload small{color:#4c5c66}
 .arcade-info[role=dialog] .arcade-version select{background:#fff;color:#1b3037;border-color:#a1a8a9}
 .arcade-info[role=dialog] :focus-visible{outline-color:#713c85}
+
+/* Catalog switchboard: compact artwork tiles, independent Info target. */
+.arcade-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+.arcade-tile{display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:end;gap:.35rem;padding:.65rem;min-width:0;min-height:6rem}
+.arcade-tile-copy{grid-column:1;grid-row:2}.arcade-tile h2{font-size:1rem;overflow-wrap:anywhere}.arcade-tile .arcade-artwork{grid-row:1;grid-column:1/-1;width:100%;height:4rem;object-fit:contain}
+.arcade-tile .arcade-info-button{grid-row:2;grid-column:2;align-self:end}.arcade-tile .arcade-soon{display:block}
+
+.arcade-tile-copy{grid-column:1/-1}.arcade-tile .arcade-info-button{grid-row:3;justify-self:end}.arcade-tile h2{overflow-wrap:normal;word-break:normal}.arcade-tile .arcade-artwork{height:3rem}.arcade-tile{gap:.15rem;min-height:6rem}

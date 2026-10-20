@@ -1,6 +1,14 @@
 # Race Poker / 1 — 2026-10-20 — local candidate, coordinated release hold
 
-Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. Current main needs catalog integration; this branch is not merged. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates.
+Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. The isolated branch now integrates catalog main 44dbd5a7d; it has not been merged into main. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates. Production gate: MISSING (not run). The planned sequence is in `RACE_POKER_RELEASE_PLAN.md`.
+
+# Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
+
+Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.
+
+Existing collection validation/save and the separate Farkle save adapter remain intact. Saved Farkle responses reconcile the parent draft to prevent a later collection save restoring old values. No migrations, admission activation or gameplay/financial changes are included. Release approval received for implementation 6137c7fe0838546c27292da8085cbea7b190e783. Main remains at the implementation base; 73 relevant tests, TypeScript and the production bundle passed again. Other development threads were idle and the latest Vercel deployment READY before integration. Publish through the established main push helper, then production-first owner smoke; no preview deployment required.
+
+Evidence and limitations: [LOBBY_CATALOG_REDESIGN.md](LOBBY_CATALOG_REDESIGN.md).
 
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 

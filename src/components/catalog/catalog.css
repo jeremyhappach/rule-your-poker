@@ -1,0 +1,11 @@
+.catalog-dialog[role=dialog]{background:#fffdf6;color:#1b3037;--foreground:196 30% 15%;--muted-foreground:210 15% 35%;max-height:calc(100% - 2rem);display:flex;flex-direction:column;overflow:hidden;gap:.75rem;padding:1rem;min-width:0}
+.catalog-dialog>*{min-width:0}.catalog-dialog>button{min-width:2.75rem;min-height:2.75rem;display:grid;place-items:center;top:.25rem;right:.25rem}.catalog-dialog h2{padding-right:2rem}
+.catalog-select{min-height:3rem;width:100%;min-width:0;padding:.5rem;border:1px solid #68777a;border-radius:.4rem;background:white;color:#1b3037;font-size:1rem}
+.catalog-scroll{overflow-y:auto;min-height:0;overscroll-behavior:contain;padding:.25rem .25rem max(.5rem,env(safe-area-inset-bottom))}
+.catalog-rules-copy{font-size:1rem;line-height:1.55;overflow-wrap:anywhere}.catalog-rules-copy p,.catalog-rules-copy ul,.catalog-rules-copy dl{margin:.65rem 0}.catalog-rules-copy h3,.catalog-rules-copy h4{color:#172b33}.catalog-rules-copy dt{font-weight:700}.catalog-dialog :focus-visible{outline:2px solid #713c85;outline-offset:2px}
+.catalog-settings-group{border-top:1px solid #c7c9bf;padding-top:.5rem}.catalog-settings-group>summary{min-height:3rem;cursor:pointer;font-weight:600;padding:.65rem .25rem}.catalog-settings-group>div{padding:.25rem}
+
+.dealer-catalog [role=tablist]{background:#0b2b23;border:1px solid #b88d31}.dealer-catalog [role=tab]{color:#f2d897}.dealer-catalog [role=tab][data-state=active]{background:#f2c454;color:#122e26}.dealer-catalog [data-dealer-game-option]{min-height:3.5rem}
+.catalog-dialog .catalog-scroll{scroll-padding:1rem}.catalog-dialog .catalog-rules-copy .text-muted-foreground{color:#4c5c66}
+
+.catalog-dialog[role=dialog]{max-height:calc(100% - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))}

@@ -13,6 +13,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `RACE_POKER_RULES.md` | Approved multiplayer-only rules and bot information contract |
 | `RACE_POKER_QUALIFICATION.md` | Local authority/financial/browser evidence and coordinated release hold |
+| `RACE_POKER_RELEASE_PLAN.md` | Exact coordinated integration, migration, qualification, publication and activation sequence |
 | `TRIP_FLIP_RULES.md` | Frozen Trip Flip rules, timing boundaries and approved P-Town adaptations |
 | `TRIP_FLIP_QUALIFICATION.md` | Trip Flip authority, financial/concurrency proofs, browser/audio/layout evidence and owner smoke |
 | `RUN21_PRODUCTION_QUALIFICATION.md` | Run21 financial authority, recovery, inactivity policy, release evidence and owner smoke |

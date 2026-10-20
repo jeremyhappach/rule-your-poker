@@ -1,7 +1,11 @@
-import { FarkleDefaultsEditor } from '@/components/farkle/FarkleDefaultsEditor';
+import {lazy,Suspense} from 'react';
+import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
+import {CategoryNavigation} from '@/components/catalog/CategoryNavigation';
+import '@/components/catalog/catalog.css';
+const FarkleDefaultsEditor=lazy(()=>import('@/components/farkle/FarkleDefaultsEditor').then(m=>({default:m.FarkleDefaultsEditor})));
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,25 +68,14 @@ interface SessionDealerDrawTieHarnessStatus {
   consumedGameId?: string | null;
 }
 
-// Game type display info
-const GAME_TYPES = [
-  { value: 'holm', label: 'Holm', icon: Spade, category: 'card' },
-  { value: '3-5-7', label: '3-5-7', icon: Spade, category: 'card' },
-  { value: 'cribbage', label: 'Cribbage', icon: Crown, category: 'card' },
-  { value: 'gin-rummy', label: 'Gin Rummy', icon: Spade, category: 'card' },
-  { value: 'horses', label: 'Horses', icon: Dice5, category: 'dice' },
-  { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
-  { value: 'yahtzee', label: 'Yahtzee', icon: Dice5, category: 'dice' },
-  { value: 'farkle', label: 'Farkle', icon: Dice5, category: 'dice' },
-  { value: 'run21', label: 'Run21', icon: Spade, category: 'other' },
-];
-
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
   const { enabled: harnessesModeEnabled, loading: harnessesModeLoading, toggle: toggleHarnessesMode } = useHarnessesMode();
   const [defaults, setDefaults] = useState<GameDefaults[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedGameType, setSelectedGameType] = useState<string>('holm');
+  const [farkleVisited,setFarkleVisited]=useState(false);
+  useEffect(()=>{if(!open)setFarkleVisited(false);else if(selectedGameType==='farkle')setFarkleVisited(true);},[open,selectedGameType]);
   const [dealerDrawTieHarness, setDealerDrawTieHarness] = useState<SessionDealerDrawTieHarnessStatus>({ armed: false });
   const [dealerDrawTieHarnessLoading, setDealerDrawTieHarnessLoading] = useState(false);
 
@@ -164,8 +157,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   };
 
   const updateDefault = (gameType: string, field: keyof GameDefaults, value: number | boolean | string) => {
-    setDefaults(prev => 
-      prev.map(d => 
+    setDefaults(prev =>
+      prev.map(d =>
         d.game_type === gameType ? { ...d, [field]: value } : d
       )
     );
@@ -174,22 +167,22 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const validateAndSave = async () => {
     // Validate all numeric fields before saving
     const validationErrors: string[] = [];
-    
+
     for (const defaultConfig of defaults) {
       const gameType = defaultConfig.game_type;
-      
+
       // Decision timer: 5-60 seconds
       const timer = Number(defaultConfig.decision_timer_seconds);
       if (isNaN(timer) || timer < 5 || timer > 60) {
         validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
       }
-      
+
       // Ante: minimum 1, no max
       const ante = Number(defaultConfig.ante_amount);
       if (isNaN(ante) || ante < 1) {
         validationErrors.push(`${gameType}: Ante must be at least $1`);
       }
-      
+
       // Pot max: minimum 1, no max
       if (defaultConfig.pot_max_enabled) {
         const potMax = Number(defaultConfig.pot_max_value);
@@ -197,7 +190,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           validationErrors.push(`${gameType}: Pot max must be at least $1`);
         }
       }
-      
+
       // Pussy tax: minimum 1, no max
       if (defaultConfig.pussy_tax_enabled) {
         const pussyTax = Number(defaultConfig.pussy_tax_value);
@@ -205,20 +198,20 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           validationErrors.push(`${gameType}: Pussy tax must be at least $1`);
         }
       }
-      
+
       // Bot delay: 0.1-10
       const botDelay = Number(defaultConfig.bot_decision_delay_seconds);
       if (isNaN(botDelay) || botDelay < 0.1 || botDelay > 10) {
         validationErrors.push(`${gameType}: Bot delay must be 0.1-10 seconds`);
       }
-      
+
       // Game-specific validations
       if (gameType === 'holm') {
         const chucky2nd = Number(defaultConfig.chucky_second_to_last_delay_seconds);
         if (isNaN(chucky2nd) || chucky2nd < 0.5 || chucky2nd > 10) {
           validationErrors.push(`Holm: Chucky 2nd-to-last delay must be 0.5-10 seconds`);
         }
-        
+
         const chuckyLast = Number(defaultConfig.chucky_last_card_delay_seconds);
         if (isNaN(chuckyLast) || chuckyLast < 0.5 || chuckyLast > 10) {
           validationErrors.push(`Holm: Chucky last card delay must be 0.5-10 seconds`);
@@ -243,13 +236,13 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         if (!Number.isInteger(rabbitHuntPostRevealDelay) || rabbitHuntPostRevealDelay < 0 || rabbitHuntPostRevealDelay > 10000) {
           validationErrors.push(`Holm: Rabbit Hunt post-reveal delay must be a whole number from 0-10000 ms`);
         }
-        
+
         const chuckyCards = Number(defaultConfig.chucky_cards);
         if (isNaN(chuckyCards) || chuckyCards < 1 || chuckyCards > 7) {
           validationErrors.push(`Holm: Chucky cards must be 1-7`);
         }
       }
-      
+
       if (gameType === '3-5-7') {
         const rollover = Number(defaultConfig.rollover_amount);
         if (isNaN(rollover) || rollover < 1) {
@@ -260,7 +253,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         if (isNaN(legValue) || legValue < 1) {
           validationErrors.push(`3-5-7: Leg value must be at least $1`);
         }
-        
+
         const legsToWin = Number(defaultConfig.legs_to_win);
         if (isNaN(legsToWin) || legsToWin < 1 || legsToWin > 10) {
           validationErrors.push(`3-5-7: Legs to win must be 1-10`);
@@ -271,21 +264,21 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           validationErrors.push(`3-5-7: Secret Reveal reading delay must be a whole number from 0-10000 ms`);
         }
       }
-      
+
       // Cribbage validations
       if (gameType === 'cribbage') {
         const pointsToWin = Number(defaultConfig.points_to_win);
         if (isNaN(pointsToWin) || pointsToWin < 31 || pointsToWin > 200) {
           validationErrors.push(`Cribbage: Points to win must be 31-200`);
         }
-        
+
         if (defaultConfig.skunk_enabled) {
           const skunkThreshold = Number(defaultConfig.skunk_threshold);
           if (isNaN(skunkThreshold) || skunkThreshold < 1 || skunkThreshold >= pointsToWin) {
             validationErrors.push(`Cribbage: Skunk threshold must be between 1 and points to win`);
           }
         }
-        
+
         if (defaultConfig.double_skunk_enabled) {
           const doubleSkunkThreshold = Number(defaultConfig.double_skunk_threshold);
           const skunkThreshold = Number(defaultConfig.skunk_threshold);
@@ -295,12 +288,12 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         }
       }
     }
-    
+
     if (validationErrors.length > 0) {
       toast.error(validationErrors[0]);
       return;
     }
-    
+
     // Convert string values to numbers before saving
     const normalizedDefaults = defaults.map(d => ({
       ...d,
@@ -327,7 +320,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       gin_bonus: Number((d as any).gin_bonus ?? 0),
       undercut_bonus: Number((d as any).undercut_bonus ?? 0),
     }));
-    
+
     setSaving(true);
     try {
       for (const defaultConfig of normalizedDefaults) {
@@ -387,7 +380,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setSaving(false);
   };
 
-  const getDefaultByType = (gameType: string) => 
+  const getDefaultByType = (gameType: string) =>
     defaults.find(d => d.game_type === gameType);
 
   const renderGameSettings = (gameType: string, options: { includeAnte?: boolean } = {}) => {
@@ -403,7 +396,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <DollarSign className="h-4 w-4" />
           Game Settings
         </div>
-        
+
         <div className="space-y-3">
           {options.includeAnte !== false && (
             <div className="space-y-2">
@@ -480,7 +473,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Bot className="h-4 w-4" />
           Bot Behavior
         </div>
-        
+
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -530,99 +523,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const renderHolmSettings = () => {
     const holmDefaults = getDefaultByType('holm');
     if (!holmDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Holm</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Timer className="h-4 w-4" />
           Timing Settings
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-timer">Decision Timer (seconds)</Label>
-          <Input
-            id="holm-timer"
-            type="text"
-            inputMode="numeric"
-            value={holmDefaults.decision_timer_seconds}
-            onChange={(e) => updateDefault('holm', 'decision_timer_seconds', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Time each player has to make a stay/fold decision</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-second-last">Chucky 2nd-to-Last Card Delay (seconds)</Label>
-          <Input
-            id="holm-second-last"
-            type="text"
-            inputMode="decimal"
-            value={holmDefaults.chucky_second_to_last_delay_seconds}
-            onChange={(e) => updateDefault('holm', 'chucky_second_to_last_delay_seconds', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Delay before revealing Chucky's 2nd-to-last card</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-last">Chucky Last Card Delay (seconds)</Label>
-          <Input
-            id="holm-last"
-            type="text"
-            inputMode="decimal"
-            value={holmDefaults.chucky_last_card_delay_seconds}
-            onChange={(e) => updateDefault('holm', 'chucky_last_card_delay_seconds', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-after-tabled-delay">After Tabled Cards Delay (ms)</Label>
-          <Input
-            id="holm-after-tabled-delay"
-            type="text"
-            inputMode="numeric"
-            value={holmDefaults.holm_after_tabled_delay_ms}
-            onChange={(e) => updateDefault('holm', 'holm_after_tabled_delay_ms', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Pause after solo tabled cards land before community cards 3 and 4 begin to flip</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-pre-chucky-delay">Pre-Chucky Delay (ms)</Label>
-          <Input
-            id="holm-pre-chucky-delay"
-            type="text"
-            inputMode="numeric"
-            value={holmDefaults.holm_pre_chucky_delay_ms}
-            onChange={(e) => updateDefault('holm', 'holm_pre_chucky_delay_ms', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Time the solo player hand announcement remains visible before Chucky appears</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-multi-showdown-delay">Multi-player Showdown Delay (ms)</Label>
-          <Input
-            id="holm-multi-showdown-delay"
-            type="text"
-            inputMode="numeric"
-            value={holmDefaults.holm_multi_showdown_delay_ms}
-            onChange={(e) => updateDefault('holm', 'holm_multi_showdown_delay_ms', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Reading time after players expose their hands before community cards 3 and 4 begin to flip</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="holm-rabbit-hunt-post-reveal-delay">Rabbit Hunt Post-Reveal Delay (ms)</Label>
-          <Input
-            id="holm-rabbit-hunt-post-reveal-delay"
-            type="text"
-            inputMode="numeric"
-            value={holmDefaults.holm_rabbit_hunt_post_reveal_delay_ms}
-            onChange={(e) => updateDefault('holm', 'holm_rabbit_hunt_post_reveal_delay_ms', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Pause after the final Rabbit Hunt card lands before the next hand</p>
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
+<div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm font-medium">
             Chucky Settings
           </div>
@@ -637,7 +545,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             />
             <p className="text-xs text-muted-foreground">Number of cards Chucky receives</p>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Rabbit Hunt</Label>
@@ -649,48 +557,101 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             />
           </div>
         </div>
-
-        {renderGameSettings('holm')}
-        {renderBotSettings('holm')}
-        
-      </>
+{renderGameSettings('holm', { includeAnte: false })}</div></details>
+<details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-3"><div className="space-y-2">
+          <Label htmlFor="holm-timer">Decision Timer (seconds)</Label>
+          <Input
+            id="holm-timer"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.decision_timer_seconds}
+            onChange={(e) => updateDefault('holm', 'decision_timer_seconds', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Time each player has to make a stay/fold decision</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-second-last">Chucky 2nd-to-Last Card Delay (seconds)</Label>
+          <Input
+            id="holm-second-last"
+            type="text"
+            inputMode="decimal"
+            value={holmDefaults.chucky_second_to_last_delay_seconds}
+            onChange={(e) => updateDefault('holm', 'chucky_second_to_last_delay_seconds', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Delay before revealing Chucky's 2nd-to-last card</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-last">Chucky Last Card Delay (seconds)</Label>
+          <Input
+            id="holm-last"
+            type="text"
+            inputMode="decimal"
+            value={holmDefaults.chucky_last_card_delay_seconds}
+            onChange={(e) => updateDefault('holm', 'chucky_last_card_delay_seconds', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-after-tabled-delay">After Tabled Cards Delay (ms)</Label>
+          <Input
+            id="holm-after-tabled-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_after_tabled_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_after_tabled_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Pause after solo tabled cards land before community cards 3 and 4 begin to flip</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-pre-chucky-delay">Pre-Chucky Delay (ms)</Label>
+          <Input
+            id="holm-pre-chucky-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_pre_chucky_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_pre_chucky_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Time the solo player hand announcement remains visible before Chucky appears</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-multi-showdown-delay">Multi-player Showdown Delay (ms)</Label>
+          <Input
+            id="holm-multi-showdown-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_multi_showdown_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_multi_showdown_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Reading time after players expose their hands before community cards 3 and 4 begin to flip</p>
+        </div>
+<div className="space-y-2">
+          <Label htmlFor="holm-rabbit-hunt-post-reveal-delay">Rabbit Hunt Post-Reveal Delay (ms)</Label>
+          <Input
+            id="holm-rabbit-hunt-post-reveal-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_rabbit_hunt_post_reveal_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_rabbit_hunt_post_reveal_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Pause after the final Rabbit Hunt card lands before the next hand</p>
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Bots</summary><div className="space-y-3">{renderBotSettings('holm')}</div></details>
+</>
     );
   };
 
   const render357Settings = () => {
     const defaults357 = getDefaultByType('3-5-7');
     if (!defaults357) return <div className="text-muted-foreground text-center py-4">No defaults found for 3-5-7</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Timer className="h-4 w-4" />
           Timing Settings
         </div>
+<div className="grid grid-cols-2 gap-2 pt-4 border-t border-border">
 
-        <div className="space-y-2">
-          <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
-          <Input
-            id="357-timer"
-            type="text"
-            inputMode="numeric"
-            value={defaults357.decision_timer_seconds}
-            onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Time players have to make stay/drop decisions</p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-border">
-          <div className="space-y-2">
-            <Label htmlFor="357-ante">Ante ($)</Label>
-            <Input
-              id="357-ante"
-              type="text"
-              inputMode="numeric"
-              value={defaults357.ante_amount}
-              onChange={(e) => updateDefault('3-5-7', 'ante_amount', e.target.value)}
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="357-leg-value">Leg Value ($)</Label>
             <Input
@@ -712,8 +673,19 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             />
           </div>
         </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
+{renderGameSettings('3-5-7', { includeAnte: false })}</div></details>
+<details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-3"><div className="space-y-2">
+          <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
+          <Input
+            id="357-timer"
+            type="text"
+            inputMode="numeric"
+            value={defaults357.decision_timer_seconds}
+            onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Time players have to make stay/drop decisions</p>
+        </div>
+<div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm font-medium">
             Legs Settings
           </div>
@@ -728,7 +700,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             />
             <p className="text-xs text-muted-foreground">Number of legs required to win</p>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Secret Reveal at Showdown</Label>
@@ -751,26 +723,23 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             />
             <p className="text-xs text-muted-foreground">Applied after opponent cards reveal; Secret Reveal off remains immediate</p>
           </div>
-        </div>
-
-        {renderGameSettings('3-5-7', { includeAnte: false })}
-        {renderBotSettings('3-5-7')}
-      </>
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Bots</summary><div className="space-y-3">{renderBotSettings('3-5-7')}</div></details>
+</>
     );
   };
 
   const renderCribbageSettings = () => {
     const cribbageDefaults = getDefaultByType('cribbage');
     if (!cribbageDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Cribbage</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Crown className="h-4 w-4" />
           Game Rules
         </div>
-
-        <div className="space-y-2">
+<div className="space-y-2">
           <Label htmlFor="cribbage-points">Points to Win</Label>
           <Input
             id="cribbage-points"
@@ -781,12 +750,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           />
           <p className="text-xs text-muted-foreground">Standard game is 121, short game is 61</p>
         </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
+<div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm font-medium">
             Skunk Rules
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Skunk Enabled</Label>
@@ -836,44 +804,23 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               <p className="text-xs text-muted-foreground">Loser must be below this score for double skunk</p>
             </div>
           )}
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" />
-            Betting
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="cribbage-ante">Base Ante Amount ($)</Label>
-            <Input
-              id="cribbage-ante"
-              type="text"
-              inputMode="numeric"
-              value={cribbageDefaults.ante_amount}
-              onChange={(e) => updateDefault('cribbage', 'ante_amount', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Base amount for chip transfers (multiplied by skunk)</p>
-          </div>
-        </div>
-
-        {renderBotSettings('cribbage')}
-      </>
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Bots</summary><div className="space-y-3">{renderBotSettings('cribbage')}</div></details>
+</>
     );
   };
 
   const renderGinRummySettings = () => {
     const ginDefaults = getDefaultByType('gin-rummy');
     if (!ginDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Gin Rummy</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Spade className="h-4 w-4" />
           Match Settings
         </div>
-
-        <div className="space-y-2">
+<div className="space-y-2">
           <Label htmlFor="gin-points">Points to Win</Label>
           <Input
             id="gin-points"
@@ -884,24 +831,13 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           />
           <p className="text-xs text-muted-foreground">Standard is 100, short is 50</p>
         </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
+<div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm font-medium">
             <DollarSign className="h-4 w-4" />
             Payout Settings
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="gin-ante">Ante Amount ($)</Label>
-            <Input
-              id="gin-ante"
-              type="text"
-              inputMode="numeric"
-              value={ginDefaults.ante_amount}
-              onChange={(e) => updateDefault('gin-rummy', 'ante_amount', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Base per-hand payout (winner takes from loser)</p>
-          </div>
+
+
 
           <div className="space-y-2">
             <Label htmlFor="gin-per-point">Per-Point Value ($)</Label>
@@ -938,25 +874,23 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
              />
              <p className="text-xs text-muted-foreground">Extra points awarded for undercutting (0 = disabled)</p>
            </div>
-        </div>
-
-        {renderBotSettings('gin-rummy')}
-      </>
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Bots</summary><div className="space-y-3">{renderBotSettings('gin-rummy')}</div></details>
+</>
     );
   };
 
   const renderHorsesSettings = () => {
     const horsesDefaults = getDefaultByType('horses');
     if (!horsesDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Horses</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Timer className="h-4 w-4" />
           Timing Settings
-        </div>
-
-        <div className="space-y-2">
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-3"><div className="space-y-2">
           <Label htmlFor="horses-timer">Decision Timer (seconds)</Label>
           <Input
             id="horses-timer"
@@ -966,42 +900,22 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             onChange={(e) => updateDefault('horses', 'decision_timer_seconds', e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Time each player has per turn before auto-roll</p>
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" />
-            Game Settings
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="horses-ante">Ante Amount ($)</Label>
-            <Input
-              id="horses-ante"
-              type="text"
-              inputMode="numeric"
-              value={horsesDefaults.ante_amount}
-              onChange={(e) => updateDefault('horses', 'ante_amount', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Amount each player antes</p>
-          </div>
-        </div>
-      </>
+        </div></div></details>
+</>
     );
   };
 
   const renderSCCSettings = () => {
     const sccDefaults = getDefaultByType('ship-captain-crew');
     if (!sccDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Ship Captain Crew</div>;
-    
+
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Timer className="h-4 w-4" />
           Timing Settings
-        </div>
-
-        <div className="space-y-2">
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-3"><div className="space-y-2">
           <Label htmlFor="scc-timer">Decision Timer (seconds)</Label>
           <Input
             id="scc-timer"
@@ -1011,27 +925,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             onChange={(e) => updateDefault('ship-captain-crew', 'decision_timer_seconds', e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Time each player has per turn before auto-roll</p>
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" />
-            Game Settings
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="scc-ante">Ante Amount ($)</Label>
-            <Input
-              id="scc-ante"
-              type="text"
-              inputMode="numeric"
-              value={sccDefaults.ante_amount}
-              onChange={(e) => updateDefault('ship-captain-crew', 'ante_amount', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Amount each player antes</p>
-          </div>
-        </div>
-      </>
+        </div></div></details>
+</>
     );
   };
 
@@ -1041,12 +936,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     return (
       <>
-        <div className="flex items-center gap-2 text-sm font-medium">
+<details className="catalog-settings-group"><summary>Game Options</summary><div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium">
           <Timer className="h-4 w-4" />
           Timing Settings
-        </div>
-
-        <div className="space-y-2">
+        </div></div></details>
+<details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-3"><div className="space-y-2">
           <Label htmlFor="yahtzee-timer">Decision Timer (seconds)</Label>
           <Input
             id="yahtzee-timer"
@@ -1056,27 +950,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             onChange={(e) => updateDefault('yahtzee', 'decision_timer_seconds', e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Time each player has per turn</p>
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" />
-            Game Settings
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="yahtzee-ante">Ante Amount ($)</Label>
-            <Input
-              id="yahtzee-ante"
-              type="text"
-              inputMode="numeric"
-              value={yahtzeeDefaults.ante_amount}
-              onChange={(e) => updateDefault('yahtzee', 'ante_amount', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Amount each player antes</p>
-          </div>
-        </div>
-      </>
+        </div></div></details>
+</>
     );
   };
 
@@ -1147,31 +1022,20 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
   const renderSettingsForGameType = () => {
     const inner = (() => {
-      switch (selectedGameType) {
-        case 'farkle': return <FarkleDefaultsEditor />;
-        case 'holm':
-          return renderHolmSettings();
-        case '3-5-7':
-          return render357Settings();
-        case 'cribbage':
-          return renderCribbageSettings();
-        case 'gin-rummy':
-          return renderGinRummySettings();
-        case 'horses':
-          return renderHorsesSettings();
-        case 'ship-captain-crew':
-          return renderSCCSettings();
-        case 'yahtzee':
-          return renderYahtzeeSettings();
+      const entry=findGame(selectedGameType);
+      if(entry?.defaultsEditor!=='legacy')return null;
+      const editors:Record<string,()=>React.ReactNode>={'holm':renderHolmSettings,'3-5-7':render357Settings,'cribbage':renderCribbageSettings,'gin-rummy':renderGinRummySettings,'horses':renderHorsesSettings,'ship-captain-crew':renderSCCSettings,'yahtzee':renderYahtzeeSettings};
+      if(editors[selectedGameType])return editors[selectedGameType]();
+      switch(selectedGameType){
         case 'run21': {
           const run21Defaults = defaults.find(d => d.game_type === 'run21');
-          return run21Defaults ? <div className="space-y-2">
+          return run21Defaults ? <details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-2">
             <Label htmlFor="run21-first-placement">First placement deadline (seconds)</Label>
             <Input id="run21-first-placement" type="number" min={5} max={60}
               value={run21Defaults.decision_timer_seconds}
               onChange={e => updateDefault('run21', 'decision_timer_seconds', e.target.value)}/>
             <p className="text-xs text-muted-foreground">Default 30 seconds. Applies to each new turn in new matches. Real-money timeouts pause the session; fake-money timeouts enable automatic play.</p>
-          </div> : null;
+          </div></details> : null;
         }
         default:
           return null;
@@ -1180,28 +1044,38 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     return (
       <>
         {inner}
-        {selectedGameType !== 'farkle' && renderDebugHarness(selectedGameType)}
+        {renderDebugHarness(selectedGameType) && <details className="catalog-settings-group"><summary>Advanced / QA</summary>{renderDebugHarness(selectedGameType)}</details>}
       </>
     );
   };
 
-  const selectedGameInfo = GAME_TYPES.find(g => g.value === selectedGameType);
+  const selectedGameInfo = findGame(selectedGameType)!;
+  const selectedDefaults = getDefaultByType(selectedGameType);
+  const changeCategory=(category:Category)=>setSelectedGameType(GAME_CATALOG.find(g=>g.category===category)!.defaultsKey);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-card max-h-[80vh] overflow-y-auto">
+      <DialogContent className="catalog-dialog sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Game Defaults Configuration
           </DialogTitle>
+          <DialogDescription>Defaults for future games. Existing games retain their configuration.</DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="py-8 text-center text-muted-foreground">Loading...</div>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-3 rounded-md border border-border p-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <CategoryNavigation value={selectedGameInfo.category} onChange={changeCategory}/>
+            <label className="grid gap-1 text-sm font-medium">Game<select className="catalog-select" value={selectedGameType} onChange={e=>setSelectedGameType(e.target.value)}>{GAME_CATALOG.map(game=>game.category===selectedGameInfo.category&&<option key={game.id} value={game.defaultsKey}>{game.name}</option>)}</select></label>
+            {/* Settings for selected game */}
+            <div className="catalog-scroll space-y-3">
+              {selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
+              {renderSettingsForGameType()}
+              {open&&(farkleVisited||selectedGameType==='farkle')&&<div hidden={selectedGameType!=='farkle'}><Suspense fallback={<p role="status">Loading Farkle defaults…</p>}><FarkleDefaultsEditor onSaved={value=>setDefaults(rows=>rows.map(row=>row.game_type==='farkle'?{...row,...value}:row))}/></Suspense></div>}
+              <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <FlaskConical className="h-4 w-4" />
                 Session Dealer Draw Smoke Fixture
@@ -1243,50 +1117,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               )}
             </div>
 
-            {/* Game Type Dropdown */}
-            <div className="space-y-2">
-              <Label>Game Type</Label>
-              <Select value={selectedGameType} onValueChange={setSelectedGameType}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {selectedGameInfo && (
-                      <span className="flex items-center gap-2">
-                        <selectedGameInfo.icon className="h-4 w-4" />
-                        {selectedGameInfo.label}
-                      </span>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Card Games</div>
-                  {GAME_TYPES.filter(g => g.category === 'card').map(game => (
-                    <SelectItem key={game.value} value={game.value}>
-                      <span className="flex items-center gap-2">
-                        <game.icon className="h-4 w-4" />
-                        {game.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-1">Dice Games</div>
-                  {GAME_TYPES.filter(g => g.category === 'dice').map(game => (
-                    <SelectItem key={game.value} value={game.value}>
-                      <span className="flex items-center gap-2">
-                        <game.icon className="h-4 w-4" />
-                        {game.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-1">Other</div>
-                  {GAME_TYPES.filter(g => g.category === 'other').map(game => (
-                    <SelectItem key={game.value} value={game.value}>{game.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Settings for selected game */}
-            <div className="space-y-4 pt-2">
-              {renderSettingsForGameType()}
+</details>
             </div>
           </div>
         )}

@@ -1,25 +1,9 @@
 // @vitest-environment jsdom
-import {afterEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render} from '@testing-library/react';
-import {GameSelection} from '@/components/GameSelection';
-const access=vi.hoisted(()=>({allowed:true}));
-vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>access.allowed}));
-vi.mock('@/hooks/useRun21Access',()=>({useRun21Access:()=>false}));
-vi.mock('@/lib/debugHarness/activeHarnessWarning',()=>({useActiveHarnessMap:()=>({})}));
-afterEach(()=>{cleanup();access.allowed=true;});
-describe('TriTowers production selection',()=>{
- it('selects the canonical game key under Other after server admission',()=>{
-  const select=vi.fn(),ui=render(<GameSelection onSelectGame={select} activePlayerCount={2} activeHumanCount={1}/>);
-  expect(ui.getByRole('tab',{name:'Card Games'})).toBeTruthy();
-  expect(ui.getByRole('tab',{name:'Dice Games'})).toBeTruthy();
-  fireEvent.mouseDown(ui.getByRole('tab',{name:'Other'}),{button:0,ctrlKey:false});
-  fireEvent.click(ui.getByText('TriTowers · 2–7 players'));
-  expect(select).toHaveBeenCalledWith('tri-towers');
- });
- it('keeps selection and Run Back closed when admission is denied',()=>{
-  access.allowed=false;
-  const ui=render(<GameSelection onSelectGame={vi.fn()} activePlayerCount={2} lastGameType="tri-towers" isFirstHand={false}/>);
-  expect(ui.queryByRole('tab',{name:'Other'})).toBeNull();
-  expect(ui.queryByText(/Run Back/)).toBeNull();
- });
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {render,fireEvent,cleanup} from '@testing-library/react';
+import {DealerGamePicker} from '@/components/catalog/DealerGamePicker';
+afterEach(cleanup);
+describe('TriTowers catalog selection',()=>{
+ it('does not expose the game before its capability permits discovery',()=>{const ui=render(<DealerGamePicker roster={{players:2,humans:2}} access={{}} onSelect={()=>{}} previousGame="tri-towers"/>);expect(ui.queryByRole('button',{name:'TriTowers'})).toBeNull();});
+ it('uses the canonical ID after scoped admission',()=>{const select=vi.fn(),ui=render(<DealerGamePicker roster={{players:2,humans:2}} access={{'tri-towers':true}} onSelect={select} previousGame="tri-towers"/>);fireEvent.click(ui.getByRole('button',{name:'TriTowers'}));expect(select).toHaveBeenCalledWith('tri-towers');});
 });

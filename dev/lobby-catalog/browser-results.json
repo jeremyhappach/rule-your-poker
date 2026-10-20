@@ -1,0 +1,5 @@
+{
+  "checks": 56,
+  "errors": [],
+  "environment": "Headless Chromium; mocked local adapters; no production writes; not physical iPhone"
+}

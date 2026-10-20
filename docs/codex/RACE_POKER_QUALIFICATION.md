@@ -68,26 +68,41 @@ all 241 harness tests (12 files), and the Vite production bundle on 2026-10-20.
 React review confirmed stable component ownership, effect cleanup, canonical
 container geometry and button-based legal actions; no broad refactor was made.
 
-## Current-main compatibility — integration still required
+## Current-main catalog integration — local branch only
 
-Read-only comparison used origin/main
-`44dbd5a7d4de4635b258f731558fe346473d82b9` (lobby catalog redesign).
-This candidate was qualified on its isolated base, not a merged current-main tree.
+The isolated candidate now incorporates origin/main
+`44dbd5a7d4de4635b258f731558fe346473d82b9` through a local merge, preserving
+both histories and the lobby release documentation. The gameplay parent remains
+`e0366f7b9a7e9ef874f5dd4f208ecad27827d27a`. Nothing was merged into main.
 
-The meaningful overlap is `src/components/DealerGameSetup.tsx`: main replaced
-legacy option lists with GAME_CATALOG / DealerGamePicker. During coordinated
-integration, add Race Poker to `src/lib/gameCatalog/types.ts` and `index.ts` plus
-a descriptor: multiplayer only, exactly two participants, at least one human,
-bots supported, Megatouch family, Other category, editable stake, race-poker
-availability, owner smoke pending, lazy RacePokerRules. Add useRacePokerAccess to
-setup's catalog availability map; retain catalog roster/money eligibility.
-Do not restore obsolete setup lists.
+Race Poker has one typed catalog descriptor: multiplayer only, exactly two seats,
+at least one human, bots supported, editable stake and existing Race capability.
+Setup uses the catalog's discovered/eligible checks for selection, submission and
+Run Back. The deleted legacy GameSelection component stays deleted. Main's
+realMoney setup props and existing game entries remain intact.
 
-Main deleted unused GameSelection.tsx; this candidate leaves it unchanged and
-must not resurrect it. Main's two realMoney setup props in src/pages/Game.tsx
-are separate from Race retention and must be preserved. Combine CURRENT_RELEASE,
-DECISION_LOG and REPO_MAP additions without overwriting lobby release records.
-Rerun integrated catalog/setup tests and build afterward. No merge/rebase occurred.
+The same RacePokerRules article serves gameplay and catalog Info. The descriptor
+pins its frozen help version to race-poker/1; the shared help loader skips Arcade
+requests for that explicit frozen contract and rejects unknown versions. All
+other games retain their existing current/legacy version resolution.
+
+Focused integration: 115 tests passed across seven files, including capability
+closure, exact roster, one human plus bot in both money modes, defaults/stake
+edits, explicit Ante Up despite saved auto-ante, exact Run Back, and existing
+catalog/default/rule regressions. The broader suite result is recorded below.
+
+`node dev/race-poker/catalog-browser.mjs` passed 34 checks: actual setup,
+Ante Up, Defaults and Rules/Info at 320×568, 390×844, 430×932, 844×390,
+390×664 and 1280×800; closed/invalid selection, exact Run Back with either
+roster, and live orientation/toolbar-height resizing. Screenshots were inspected
+at narrow portrait, large portrait and short landscape. This uses isolated mock
+transport and explicitly seeded candidate defaults, not production state or a
+financial proof. The existing live-SQL financial evidence above remains separate.
+
+Local Supabase debug-event stubs were added to the browser fixture after its first
+run stopped following an otherwise valid setup response. No product change was
+needed for that fixture limitation. Rules and SQL authority/migration bytes were
+preserved apart from extracting the unchanged help article into its shared file.
 
 ## Prepared migration and remaining production gates
 
@@ -99,7 +114,7 @@ revision rows. Hash guards refuse stale canonical owner replacement; never bypas
 a mismatch. Earlier read-only index inspection confirmed canonical settlement-key
 and final-snapshot identity uniqueness.
 
-After separate coordinated release authorization: integrate the catalog; inspect
+After separate coordinated release authorization: verify then-current main compatibility; inspect
 actual deployed owners/indexes; run complete rollback financial proofs against
 that authority; install with admission closed; repeat installed proofs; publish
 and verify the exact deployment; then activate only qualified money modes for the
@@ -117,3 +132,27 @@ checkout or RACE_POKER_PG_MODULE. No dependencies were installed. Local fixture
 servers use separate Vite caches and ports 5226/5227.
 
 Prepared migration SHA-256: `d0defb62498f619884a40d70f759c0fa4beff1ed5f498e26349b4f20188928c3`.
+
+Detailed production sequence: [RACE_POKER_RELEASE_PLAN.md](RACE_POKER_RELEASE_PLAN.md).
+
+## Integrated validation result — 2026-10-20
+
+TypeScript passed on the integrated tree. The full application run passed 2,582
+of 2,583 tests across 369 files; the existing Run21 three-round simulation hit
+its 60-second timeout under the full run. The unchanged localAuthority.test.ts
+then passed all 18 tests in isolation, including both three-round cases (about
+25 seconds each). No Run21 source or test timeout was changed. This is recorded
+as a full-run timeout resolved by isolated regression, not a clean first build.
+All 241 harness tests passed and the Vite production bundle passed separately.
+The focused catalog run passed all 115 tests; it used a 15-second test ceiling
+for the loaded machine after initial lazy-module/defaults waits timed out.
+Production code changes were not needed for those timing failures.
+
+The 34 catalog browser checks passed at 22:36 UTC. This catalog integration
+makes no SQL, migration, bot-policy or command-transport change from e0366f7b9.
+Financial/authority proofs therefore remain the prior local evidence, and their
+production gate remains MISSING until the coordinated release plan is executed.
+
+The post-integration gameplay layout rerun also passed all 40 viewport/scene
+checks on 2026-10-20. Both catalog and gameplay layout evidence therefore cover
+the integrated source, including the shared Rules extraction.
