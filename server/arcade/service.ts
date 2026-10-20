@@ -6,6 +6,12 @@ export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 // ownership/access, frozen revision/round and immutable receipt under its lock.
 export function triShortcut(body:Record<string,any>){return body.game==='tri-towers'&&body.presentationVersion===4&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['remove','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='remove'||Number.isInteger(body.intent.index)));}
 // The stored game and all authorization/receipt checks remain in the locked RPC.
+const validTripFlipCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['move','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='move'||Array.isArray(body.intent.items)&&body.intent.items.length===3&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=0&&Number(i)<=53));
+export function tripFlipShortcut(body:Record<string,any>){return body.game==='trip-flip'&&body.presentationVersion===1&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&validTripFlipCommand(body));}
+async function tripFlipStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
+ const result=await rpc('arcade_trip_flip_step',{p_actor:userId,p_run:id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.type==='move'?body.intent.items:null}:{})});
+ if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
+}
 const validTakeTwoCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['pair','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='pair'||Array.isArray(body.intent.items)&&body.intent.items.length===2&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=-1&&Number(i)<=32));
 export function takeTwoShortcut(body:Record<string,any>){return body.game==='take-two'&&body.presentationVersion===1&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&validTakeTwoCommand(body));}
 async function takeTwoStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
@@ -13,6 +19,7 @@ async function takeTwoStep(rpc:Rpc,userId:string,id:string,body:Record<string,an
  if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
 }
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='trip-flip')return (await rpc('arcade_trip_flip_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='take-two')return (await rpc('arcade_take_two_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='royal-flash')return (await rpc('arcade_royal_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='eleven-up')return (await rpc('arcade_eleven_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -34,6 +41,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
+ if(tripFlipShortcut(body))return tripFlipStep(rpc,userId,body.runId,body);
  if(takeTwoShortcut(body))return takeTwoStep(rpc,userId,body.runId,body);
  if(triShortcut(body)){
   const result=await rpc('arcade_tri_step',{p_actor:userId,p_run:body.runId,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_index:body.intent.type==='remove'?body.intent.index:null}:{})});
@@ -42,6 +50,11 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
   await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
+ if(row.game==='trip-flip'){
+  if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
+  if(body.op==='action'&&!validTripFlipCommand(body))throw Error('arcade:invalid_command');
+  return tripFlipStep(rpc,userId,row.id,body);
+ }
  if(row.game==='take-two'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
   if(body.op==='action'&&!validTakeTwoCommand(body))throw Error('arcade:invalid_command');

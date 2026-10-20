@@ -1,3 +1,22 @@
+# Trip Flip — 2026-10-19 — qualified, awaiting owner smoke
+
+Complete Arcade and two-player multiplayer share frozen `trip-flip/1`: four
+columns, three Flip cells, front-only fan, Trips/Runs/Jokers, exact Special target,
+two 180-second rounds and 30 dots at 125 points each. Canonical consent, chips,
+ledger, terminal continuation and zero-client recovery are preserved.
+
+Financial winner/tie proofs passed in both money modes before and after the
+admission-closed migration; independent-connection races and after-chip-write
+rollback passed. Full build passed 2,524 app tests and 241 harness tests. Actual
+browser progression, 77 layout cases and Arcade → multiplayer → Arcade audio
+passed. Recovery worker version 9 is active. Client publication and explicit
+admission activation are the release steps for checkpoint
+`trip-flip-v1-2026-10-19`; final deployment identity is recorded in the delivery
+report. Physical iPhone production smoke remains pending.
+
+See [qualification and smoke checklist](TRIP_FLIP_QUALIFICATION.md) and
+[frozen rules and deliberate P-Town decisions](TRIP_FLIP_RULES.md).
+
 # Take 2 draw resets speed bonus — 2026-10-19 — awaiting owner smoke
 
 New Arcade and multiplayer games freeze `take-two/2`: accepted stock draws reset

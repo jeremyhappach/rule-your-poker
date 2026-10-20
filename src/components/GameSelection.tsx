@@ -1,3 +1,4 @@
+import {useTripFlipAccess} from '@/hooks/useTripFlipAccess';
 import {useTakeTwoAccess} from '@/hooks/useTakeTwoAccess';
 import {useRoyalFlashAccess} from '@/hooks/useRoyalFlashAccess';
 import {useElevenUpAccess} from '@/hooks/useElevenUpAccess';
@@ -46,9 +47,10 @@ export const GameSelection = ({
   const run21Allowed = useRun21Access(sessionId);
   const triTowersAllowed = useTriTowersTestAccess(sessionId);
   const elevenAllowed = useElevenUpAccess(sessionId);
+  const tripFlipAllowed = useTripFlipAccess(sessionId);
   const takeTwoAllowed = useTakeTwoAccess(sessionId);
   const royalAllowed = useRoyalFlashAccess(sessionId);
-  const otherAllowed = takeTwoAllowed || royalAllowed || run21Allowed || triTowersAllowed || elevenAllowed;
+  const otherAllowed = tripFlipAllowed || takeTwoAllowed || royalAllowed || run21Allowed || triTowersAllowed || elevenAllowed;
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
     'run21',
@@ -118,6 +120,7 @@ export const GameSelection = ({
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
       case 'run21': return 'Run21';
+      case 'trip-flip': return 'Trip Flip';
       case 'take-two': return 'Take 2';
       case 'royal-flash': return 'Royal Flash';
       case 'eleven-up': return '11 Up';
@@ -280,6 +283,7 @@ export const GameSelection = ({
                   <span className="font-bold">Run21</span>{harnessMap.run21?.active && <span className="ml-2 rounded bg-red-600 px-1 text-xs font-bold text-white" title="Debug harness active">H</span>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
                 </button>}
                 {elevenAllowed && <button type="button" data-dealer-game-option="eleven-up" onClick={()=>handleGameSelect({id:'eleven-up',name:'11 Up',description:'Clear the pool balls',enabled:true,maxPlayers:7})} disabled={activeHumanCount!==activePlayerCount||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">11 Up · 2–7 human players</button>}
+                {tripFlipAllowed && <button type="button" data-dealer-game-option="trip-flip" onClick={()=>handleGameSelect({id:'trip-flip',name:'Trip Flip',description:'Build Trips and Runs',enabled:true,maxPlayers:2})} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>2} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Trip Flip · 2 players · Bots supported</button>}
                 {takeTwoAllowed && <button type="button" data-dealer-game-option="take-two" onClick={()=>handleGameSelect({id:'take-two',name:'Take 2',description:'Pair cards and clear the board',enabled:true,maxPlayers:7})} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Take 2 · 2–7 players · Bots supported</button>}
                 {royalAllowed && <button type="button" data-dealer-game-option="royal-flash" onClick={()=>handleGameSelect({id:'royal-flash',name:'Royal Flash',description:'Build poker hands',enabled:true,maxPlayers:7})} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Royal Flash · 2–7 players · Bots supported</button>}
                   {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers"
@@ -291,7 +295,7 @@ export const GameSelection = ({
           </Tabs>
 
           {/* Run Back option - only show on 2nd+ game of session */}
-          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || triTowersAllowed) && (lastGameType !== 'run21' || run21Allowed) && (lastGameType !== 'take-two' || takeTwoAllowed) && (lastGameType !== 'royal-flash' || royalAllowed) && (lastGameType !== 'eleven-up' || elevenAllowed && activeHumanCount===activePlayerCount) && (
+          {!isFirstHand && lastGameType && (lastGameType !== TRI_TOWERS.id || triTowersAllowed) && (lastGameType !== 'run21' || run21Allowed) && (lastGameType !== 'trip-flip' || tripFlipAllowed) && (lastGameType !== 'take-two' || takeTwoAllowed) && (lastGameType !== 'royal-flash' || royalAllowed) && (lastGameType !== 'eleven-up' || elevenAllowed && activeHumanCount===activePlayerCount) && (
             <div className="pt-3 border-t border-poker-gold/30">
               <button
                 onClick={handleRunBack}

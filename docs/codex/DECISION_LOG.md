@@ -1,3 +1,17 @@
+# 2026-10-19 — Trip Flip shares one frozen rule core across modes
+
+Jeremy approved the complete Arcade and multiplayer implementation. Freeze
+`trip-flip/1` with conservative exposed-card movement, Ace-low ordered Runs,
+highest-base Joker interpretation, natural-only suited/Special bonuses, exact
+ordered Special targets worth 10,000 once per round, two 180-second rounds and
+30 six-second dots rounded upward at banking. These edge cases and timing are
+explicit P-Town choices. Early Take Score includes zero-combination games.
+Multiplayer alternates complete rounds on independent boards for exactly two
+players; Arcade remains nonfinancial. Both call the same SQL reducer. Bots see
+only the visible board and authoritative legal moves. Production admission
+requires successful canonical financial/recovery qualification in both modes.
+See `TRIP_FLIP_RULES.md` and `TRIP_FLIP_QUALIFICATION.md`.
+
 # 2026-10-19 — Take 2 uses approved P-Town interpretations
 
 Jeremy approved Take 2 implementation and publication in both modes, then

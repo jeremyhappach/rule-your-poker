@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {arcadeOperation,triShortcut,takeTwoShortcut} from '../server/arcade/service.js';
+import {arcadeOperation,triShortcut,takeTwoShortcut,tripFlipShortcut} from '../server/arcade/service.js';
 export default async function handler(req:IncomingMessage&{body?:unknown},res:ServerResponse){
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');
  const started=performance.now(),timings:string[]=[];
@@ -22,7 +22,7 @@ export default async function handler(req:IncomingMessage&{body?:unknown},res:Se
    const at=performance.now();const {data,error,status}=await db.rpc(name,args);timings.push(`${name};dur=${(performance.now()-at).toFixed(1)}`);if(error){if(!error.code||status>=500)res.statusCode=503;throw Error(error.message.startsWith('arcade:')?error.message:'arcade:database_rejected');}return data;
   };
   const profileAt=performance.now();
-  const name=triShortcut(body)||takeTwoShortcut(body)?Promise.resolve('You'):Promise.resolve(db.from('profiles').select('username').eq('id',data.user.id).single()).then(profile=>{timings.push(`profile;dur=${(performance.now()-profileAt).toFixed(1)}`);return profile.data?.username??'You';});
+  const name=triShortcut(body)||takeTwoShortcut(body)||tripFlipShortcut(body)?Promise.resolve('You'):Promise.resolve(db.from('profiles').select('username').eq('id',data.user.id).single()).then(profile=>{timings.push(`profile;dur=${(performance.now()-profileAt).toFixed(1)}`);return profile.data?.username??'You';});
   // Display name does not admit a command. Auth is complete; RPC access checks stay intact.
   const displayName=body.game==='run21'?name:await name;
   const [result]=await Promise.all([arcadeOperation(rpc,data.user.id,displayName,body),name]);

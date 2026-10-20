@@ -11,6 +11,8 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `TRIP_FLIP_RULES.md` | Frozen Trip Flip rules, timing boundaries and approved P-Town adaptations |
+| `TRIP_FLIP_QUALIFICATION.md` | Trip Flip authority, financial/concurrency proofs, browser/audio/layout evidence and owner smoke |
 | `RUN21_PRODUCTION_QUALIFICATION.md` | Run21 financial authority, recovery, inactivity policy, release evidence and owner smoke |
 | `RUN21_FAIRNESS_CORRECTION.md` | Run21 shared-deck containment, independent player decks, historical compatibility and qualification |
 | `PERFORMANCE_COST_REDUCTION_PLAN.md` | September 8 cost-reduction work, benchmark gates, idle recovery optimization, and lower-tier eligibility |

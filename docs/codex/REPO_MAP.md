@@ -1,5 +1,14 @@
 # Repository map
 
+Trip Flip: `supabase/trip-flip/rules.sql` owns `trip-flip/1` deals, legal movement,
+classification, bonuses and clocks. Its multiplayer/Arcade adapters use canonical
+consent/settlement or solo receipts/results; bots/recovery remain server-owned.
+`src/components/tripFlip/` renders both modes in the canonical fullscreen shell;
+`src/lib/tripFlip/` and `src/hooks/useTripFlip.ts` own redacted transport,
+revision reconciliation and display-only clocks. `dev/trip-flip/` contains
+isolated SQL, concurrency, actual-browser, audio and layout qualification.
+See `TRIP_FLIP_QUALIFICATION.md` and `TRIP_FLIP_RULES.md`.
+
 Take 2: `supabase/take-two/rules.sql` owns the shared versioned layout, legal
 pairs, deck, draw, meter, clock and bonuses. Its multiplayer/Arcade adapters use
 canonical receipts, financial settlement and recovery. `src/components/takeTwo/`

@@ -1,3 +1,4 @@
+import {TripFlipRules} from '@/components/tripFlip/TripFlipView';
 import {TakeTwoRules} from '@/components/takeTwo/TakeTwoView';
 import {RoyalFlashRules} from '@/components/royalFlash/RoyalFlashView';
 import {ElevenUpRules} from '@/components/elevenUp/ElevenUpView';
@@ -25,7 +26,7 @@ export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArt
   const [open,setOpen]=useState(false),[config,setConfig]=useState<Config|Rules|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const inputId=useId();
   useEffect(()=>{
-    if(!open||game==='yahtzee'||game==='eleven-up'||game==='royal-flash'||game==='take-two')return;
+    if(!open||game==='yahtzee'||game==='eleven-up'||game==='royal-flash'||game==='trip-flip'||game==='take-two')return;
     let alive=true;setConfig(null);setError('');
     void supabase.rpc('arcade_rules_help',{p_ruleset:ruleset??(game==='tri-towers'?'tri-towers/2':null)}).then(({data,error})=>{
       if(alive){if(error||!data)setError('Rules could not be loaded. Close and reopen to retry.');else setConfig(data as unknown as Config);}
@@ -46,7 +47,7 @@ export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArt
     <DialogTrigger asChild><button type="button" className="arcade-info-button" aria-label={name+' rules and info'}><Info size={21} aria-hidden="true"/></button></DialogTrigger>
     <DialogContent className="arcade-info"><DialogTitle>{name} · Rules &amp; info</DialogTitle>
       <DialogDescription>{game!=='yahtzee'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>
-      {game==='take-two'?<TakeTwoRules version={ruleset}/>:game==='royal-flash'?<RoyalFlashRules/>:game==='eleven-up'?<ElevenUpRules/>:game!=='yahtzee'?(config?(game==='tri-towers'?<TriTowersRules rules={config as Rules} solo/>:<Run21ScoringReference config={config as Config} solo/>):<p role="status">Loading rules…</p>):<p>Roll dice to fill a scorecard of combinations. Arcade rules will be available when this game launches.</p>}
+      {game==='trip-flip'?<TripFlipRules/>:game==='take-two'?<TakeTwoRules version={ruleset}/>:game==='royal-flash'?<RoyalFlashRules/>:game==='eleven-up'?<ElevenUpRules/>:game!=='yahtzee'?(config?(game==='tri-towers'?<TriTowersRules rules={config as Rules} solo/>:<Run21ScoringReference config={config as Config} solo/>):<p role="status">Loading rules…</p>):<p>Roll dice to fill a scorecard of combinations. Arcade rules will be available when this game launches.</p>}
       {children}
       {admin&&<div className="arcade-upload">
         <label htmlFor={inputId}>{busy?'Uploading…':artwork?.object_path?'Replace artwork':'Upload artwork'}</label>

@@ -1,8 +1,8 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {Readable} from 'node:stream';
-const mocks=vi.hoisted(()=>({getUser:vi.fn(),operation:vi.fn(),createClient:vi.fn(),shortcut:vi.fn(),takeTwoShortcut:vi.fn(),from:vi.fn(),rpc:vi.fn()}));
+const mocks=vi.hoisted(()=>({getUser:vi.fn(),operation:vi.fn(),createClient:vi.fn(),shortcut:vi.fn(),takeTwoShortcut:vi.fn(),tripFlipShortcut:vi.fn(),from:vi.fn(),rpc:vi.fn()}));
 vi.mock('@supabase/supabase-js',()=>({createClient:mocks.createClient}));
-vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation,triShortcut:mocks.shortcut,takeTwoShortcut:mocks.takeTwoShortcut}));
+vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation,triShortcut:mocks.shortcut,takeTwoShortcut:mocks.takeTwoShortcut,tripFlipShortcut:mocks.tripFlipShortcut}));
 import handler from '../../../api/arcade';
 async function request(headers:Record<string,string>={},body:unknown={op:'state'},method='POST'){
  const req=Object.assign(Readable.from([]),{method,headers:{host:'holm357.com',...headers},body});
@@ -15,7 +15,7 @@ beforeEach(()=>{
  vi.stubEnv('RUN21_SUPABASE_SERVICE_ROLE_KEY','test-only');
  mocks.getUser.mockResolvedValue({data:{user:{id:'verified-user'}},error:null});
  const chain={select:()=>chain,eq:()=>chain,single:async()=>({data:{username:'Verified'}})};
- mocks.shortcut.mockReturnValue(false);mocks.takeTwoShortcut.mockReturnValue(false);mocks.from.mockReturnValue(chain);mocks.createClient.mockReturnValue({auth:{getUser:mocks.getUser},from:mocks.from,rpc:mocks.rpc});
+ mocks.shortcut.mockReturnValue(false);mocks.takeTwoShortcut.mockReturnValue(false);mocks.tripFlipShortcut.mockReturnValue(false);mocks.from.mockReturnValue(chain);mocks.createClient.mockReturnValue({auth:{getUser:mocks.getUser},from:mocks.from,rpc:mocks.rpc});
  mocks.operation.mockResolvedValue({verified:true});
 });
 describe('Arcade HTTP authentication boundary',()=>{

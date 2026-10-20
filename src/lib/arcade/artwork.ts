@@ -3,7 +3,7 @@ import {supabase} from '@/integrations/supabase/client';
 export const ARTWORK_BUCKET='arcade-artwork';
 export const ARTWORK_LIMIT=2*1024*1024;
 export const ARTWORK_TYPES:Record<string,string>={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
-export type ArcadeGame='run21'|'tri-towers'|'yahtzee'|'eleven-up'|'royal-flash'|'take-two';
+export type ArcadeGame='run21'|'tri-towers'|'yahtzee'|'eleven-up'|'royal-flash'|'trip-flip'|'take-two';
 export type Artwork={game:ArcadeGame;object_path:string|null;updated_at:string};
 
 export function validateArtwork(file:Pick<File,'size'|'type'>){

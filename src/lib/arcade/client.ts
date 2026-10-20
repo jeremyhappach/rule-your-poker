@@ -27,7 +27,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
  for(let attempt=0;attempt<2;attempt++){
   let response:Response;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
-  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:['eleven-up','royal-flash','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
+  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:['eleven-up','royal-flash','trip-flip','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
   catch{mark('request-failed');clearTimeout(timeout);lostResponse=true;if(attempt===0)continue;throw run21?new UncertainRun21Action('Connection lost.'):timed?new UncertainTriAction('Connection lost. Reconnect to restore your game.'):Error('Connection lost. Reconnect to restore your run.');}
   finally{if(!run21)clearTimeout(timeout);}
   mark('response-headers',response.headers.get('Server-Timing')??undefined);
@@ -35,7 +35,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
   let value:any;try{value=await response.json();}catch(e){if(run21)throw new UncertainRun21Action('Response was lost.');if(timed)throw new UncertainTriAction('Response was lost.');throw e;}finally{clearTimeout(timeout);}
   if(run21&&(response.status>=500||lostResponse&&!response.ok))throw new UncertainRun21Action('Server response uncertain.');
   if(timed&&response.status>=500)throw new UncertainTriAction('Server response uncertain.');
-  if(!response.ok&&['eleven-up','royal-flash','take-two'].includes(body.game as string))throw Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected');
+  if(!response.ok&&['eleven-up','royal-flash','trip-flip','take-two'].includes(body.game as string))throw Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected');
   if(!response.ok){const message=messages[value.error]??'Arcade could not process that request. Please try again.';throw timed&&['arcade:stale_action','arcade:database_rejected','arcade:round_intro'].includes(value.error)?new RejectedTriAction(message):timed&&lostResponse?new UncertainTriAction(message):Error(message);}
   if(timed)triTiming('response-parsed',id,performance.now()-started);
   mark('response-parsed');return value as T;
