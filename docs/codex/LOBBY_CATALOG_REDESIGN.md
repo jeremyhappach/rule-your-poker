@@ -1,6 +1,6 @@
 # Lobby/settings presentation catalog candidate
 
-Date: 2026-10-20. Base: a150cd6aecc746143f246186a8b46421d0534355, fetched origin/main before implementation. Isolated branch: codex/lobby-catalog-redesign. Release is NOT approved: no merge, push, migration, gate change or deployment.
+Date: 2026-10-20. Base: a150cd6aecc746143f246186a8b46421d0534355, fetched origin/main before implementation. Isolated branch: codex/lobby-catalog-redesign. Implementation commit: 6137c7fe0838546c27292da8085cbea7b190e783. Release approval received on 2026-10-20 for integration and production publication; no migration or gate change.
 
 ## Ownership and scope
 
@@ -24,7 +24,7 @@ Date: 2026-10-20. Base: a150cd6aecc746143f246186a8b46421d0534355, fetched origin
 
 ## Remaining acceptance and release
 
-Production publication is deliberately pending explicit release approval. No preview deployment is required. After approval, integrate against the then-current main without overwriting concurrent game additions, publish through the established helper, and perform production-first smoke:
+Release preflight confirmed origin/main still matches the base; no compatibility changes were necessary. All other development threads were idle and the latest production deployment was READY. The release rerun passed 73 relevant tests, TypeScript and the production bundle. Integrate and publish through the established helper, then perform production-first smoke (no preview deployment required):
 
 1. On a small iPhone, choose Cards/Dice/Other, verify full titles, eligibility, setup stake changes and non-caller Ante Up. Confirm Run Back requires fresh consent.
 2. Open Defaults, switch games with unsaved edits, save an intended stake change, reopen to verify; verify Farkle separately. Do not change defaults merely to test without choosing an intended value.
