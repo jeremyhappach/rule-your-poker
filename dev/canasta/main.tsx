@@ -12,14 +12,18 @@ import {useShellTabBar,type ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {useCanonicalFeltInteractionLayerElement} from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
 import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import {useCardTransport} from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
-import {CanonicalChipDisc} from '@/components/canonicalShell/CanonicalChipDisc';
+import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
+import {CanonicalTableHeader} from '@/lib/canonicalShell/CanonicalTableHeader';
+import {PlayerOptionsMenu} from '@/components/PlayerOptionsMenu';
+import {HandEditor} from './HandEditor';
+import {loadPresentationSnapshot} from './presentation';
 import {PlayingCard} from '@/components/PlayingCard';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
-import {isResolvedJoker,physicalCardLabel,type PhysicalCard} from '@/lib/cardGames/physicalCard';
+import {isResolvedJoker,type PhysicalCard} from '@/lib/cardGames/physicalCard';
 import {resolveTransportCardFace} from '@/lib/cardGames/resolvedCardFace';
 import {safeFeltRect,type Rect} from '@/lib/run21/safeFelt';
-import {compareCards,openingReport,meldError,pickupError,turnPlan,canastas,standard,redThree,type Meld} from '@/lib/canasta/rules';
+import {compareCards,pickupError,turnPlan,standard,redThree,type Meld} from '@/lib/canasta/rules';
 import type {Rank} from '@/lib/cardUtils';
 import {fixture,SCENES,SELF,OTHER,type Scene,type Fixture} from './fixtures';
 import '@/index.css';
@@ -32,7 +36,7 @@ function Face({card,selected=false}:{card:PhysicalCard;selected?:boolean}) {
     style={{width:48,height:68}}/>;
 }
 function Contents({scene}:{scene:Scene}) {
-  const savedKey=`canasta-review/1/${scene}`;
+  const savedKey=`canasta-review/2/${scene}`;
   const [saved]=useState<{view:Fixture;deadline:number}|null>(()=>{
     try{return JSON.parse(sessionStorage.getItem(savedKey)??'null');}catch{return null;}
   });
@@ -45,7 +49,6 @@ function Contents({scene}:{scene:Scene}) {
   const [discard,setDiscard]=useState<string|null>(null);
   const [message,setMessage]=useState('');
   const [tab,setTab]=useState<ShellTabId>('cards');
-  const [pane,setPane]=useState<'hand'|'melds'|'finish'>('hand');
   const [seconds,setSeconds]=useState(120);
   const [paused,setPaused]=useState(false);
   const deadline=useRef(saved?.deadline??Date.now()+120000);
@@ -82,8 +85,6 @@ function Contents({scene}:{scene:Scene}) {
     const ro=new ResizeObserver(measure);ro.observe(layer);nodes.forEach(n=>ro.observe(n));measure();
     return()=>ro.disconnect();
   },[layer]);
-  const report=openingReport(drafts,view.score);
-  const used=new Set(drafts.flatMap(m=>m.cards.map(c=>c.id)));
   const ordered=sorted?[...view.hand].sort(compareCards):view.hand;
   const hand=ordered.filter(c=>filter==='all'||(filter==='wild'?(isResolvedJoker(c.face)||standard(c)?.rank==='2'):standard(c)?.rank===filter));
   const ready=view.phase!=='ended'&&!paused;
@@ -134,93 +135,51 @@ function Contents({scene}:{scene:Scene}) {
       notice:out?'Legal going out · hand result fixture':'Turn submitted · opponent turn fixture'});
     clear();setPaused(true);setMessage('Committed fixture response. This review does not run a live match.');
   }
-  const controls=<div className="canasta-workspace">
-    <nav className="canasta-workspace-nav" aria-label="Arrange hand">
-      <button onClick={()=>setPane('hand')} aria-pressed={pane==='hand'}>Hand {view.hand.length}</button>
-      <button onClick={()=>setPane('melds')} aria-pressed={pane==='melds'}>Melds {drafts.length}</button>
-      <button onClick={()=>setPane('finish')} aria-pressed={pane==='finish'}>Finish</button>
-      <button onClick={()=>setSorted(v=>!v)} aria-pressed={sorted}>Sort</button>
-    </nav>
-    <div className="canasta-pane-scroll">
-      <div role="status" className="canasta-feedback">{message||view.notice}</div>
-      {pane==='hand'?<>
-        <label className="canasta-filter">Show <select aria-label="Hand rank filter" value={filter} onChange={e=>setFilter(e.target.value)}>
-          <option value="all">All {view.hand.length} cards</option><option value="wild">Wild cards</option>
-          {['A','3','4','5','6','7','8','9','10','J','Q','K'].map(r=><option key={r}>{r}</option>)}
-        </select><span>{selected.length} selected</span></label>
-        <div className="canasta-hand-grid" data-card-anchor={`hand-${SELF}`} aria-label="Your physical cards">
-          {hand.map(c=><button key={c.id} className="canasta-card" data-physical-id={c.id}
-            aria-label={`${physicalCardLabel(c)} copy ${c.id}`} aria-pressed={selected.includes(c.id)}
-            disabled={!ready} onClick={()=>setSelected(ids=>ids.includes(c.id)?ids.filter(id=>id!==c.id):[...ids,c.id])}>
-            <Face card={c} selected={selected.includes(c.id)}/>
-            <span>{used.has(c.id)?`→ ${drafts.find(m=>m.cards.some(x=>x.id===c.id))?.rank}`:discard===c.id?'Discard':selected.includes(c.id)?'Selected':'Select'}</span>
-          </button>)}
-        </div>
-      </>:pane==='melds'?<>
-        <p>Opening: <strong>{report.count} / {report.required}</strong> · {view.opened?'Already opened':'Bonuses excluded'}</p>
-        {report.error&&<p role="alert">{report.error}</p>}
-        {drafts.map(m=><article className="canasta-draft" key={m.rank}><strong>{m.rank} · {m.cards.length} cards</strong>
-          <div className="canasta-draft-cards">{m.cards.map(c=><button key={c.id} onClick={()=>{setSelected([c.id]);setPane('hand');}}
-            aria-label={`Reassign ${physicalCardLabel(c)}`}><Face card={c}/></button>)}</div>
-          <p>{meldError(m)??'Valid draft group'}</p>
-        </article>)}
-        {!drafts.length&&<p>Select cards in Hand, choose a rank below, and add them to a draft.</p>}
-      </>:<>
-        <p>Canastas: {canastas(view.melds)} committed · two required to go out.</p>
-        <p>Discard: {view.hand.find(c=>c.id===discard)?physicalCardLabel(view.hand.find(c=>c.id===discard)!):'Choose one card in Hand, then Set discard.'}</p>
-        <div className="canasta-actions"><button disabled={!ready} onClick={()=>finish()}>Submit turn</button>
-          <button disabled={!ready} onClick={()=>finish(true)}>Go out without discard</button></div>
-        <button onClick={()=>{const snapshot=JSON.parse(sessionStorage.getItem(savedKey)!);setView(snapshot.view);deadline.current=snapshot.deadline;clear();setMessage(`Reconnected to committed revision ${snapshot.view.revision}. ${snapshot.view.hand.length} cards; draft discarded.`);}}>Reconnect</button>
-        <p>Committed actions remain. Unsubmitted arrangements are local drafts.</p>
-      </>}
-    </div>
-    <div className="canasta-compose">
-      <label>Rank <select value={rank} aria-label="Draft meld rank" onChange={e=>setRank(e.target.value as Rank)}>
-        {['A','4','5','6','7','8','9','10','J','Q','K','3'].map(r=><option key={r}>{r}</option>)}
-      </select></label>
-      <button disabled={!ready} onClick={assign}>Add {selected.length||''}</button>
-      <button disabled={!ready} onClick={()=>{if(selected.length!==1){setMessage('Select exactly one discard.');return;}setDiscard(selected[0]);setSelected([]);setPane('finish');}}>Set discard</button>
-      <button onClick={clear}>Clear</button>
-      <button onClick={()=>{setView(fixture(scene));deadline.current=Date.now()+120000;setPaused(false);setSeconds(120);clear();}}>Reset fixture</button>
-    </div>
-  </div>;
+  const controls=<HandEditor view={view} hand={hand} selected={selected} setSelected={setSelected} drafts={drafts}
+    rank={rank} setRank={setRank} filter={filter} setFilter={setFilter} sort={()=>setSorted(v=>!v)} sorted={sorted}
+    discard={discard} message={message} ready={ready} clear={clear} assign={assign}
+    setDiscard={()=>{setDiscard(selected[0]);setSelected([]);}} pickup={pickup} finish={finish}
+    reconnect={()=>{const snapshot=JSON.parse(sessionStorage.getItem(savedKey)!);setView(snapshot.view);deadline.current=snapshot.deadline;clear();setMessage('Reconnected to committed revision '+snapshot.view.revision+'. Draft discarded.');}}
+    reset={()=>{setView(fixture(scene));deadline.current=Date.now()+120000;setPaused(false);setSeconds(120);clear();}}
+    seconds={seconds} paused={paused}/>;
   return <>
     <div className="canasta-play"><div className="canasta-seats">
       <CanonicalSeatCluster slot={anchors.byPosition.get(5)?.slot} position={5} name="Opponent"
         chipValue="100" chipAmount={100} playerId={OTHER} ownerLabel="CanastaReview" scoreLine="1,240"/>
     </div></div>
-    {layer&&area.width>0&&createPortal(<div className="canasta-felt" style={{left:`${area.x*100}%`,top:`${area.y*100}%`,width:`${area.width*100}%`,height:`${area.height*100}%`}}>
+    {layer&&area.width*layer.clientWidth>=130&&area.height*layer.clientHeight>=88&&createPortal(<div className="canasta-felt" style={{left:`${area.x*100}%`,top:`${area.y*100}%`,width:`${area.width*100}%`,height:`${area.height*100}%`}}>
       <div className="canasta-piles">
-        <div><PlayingCard isHidden style={{width:48,height:68}}/><small>Stock</small></div>
+        <div>{view.stockCount===0||scene==='maximum'?<span className="canasta-empty">Empty</span>:<PlayingCard isHidden style={{width:48,height:68}}/>}<small>Stock</small></div>
         <button data-card-anchor="discard" disabled={view.phase!=='draw'||!ready} onClick={pickup} aria-label="Take discard pile">
           {view.pile.at(-1)?<Face card={view.pile.at(-1)!}/>:<span className="canasta-empty">Empty</span>}
           <small>{view.pile.length} · {scene==='frozen'&&view.pile.length?'Frozen':'Pile'}</small>
         </button>
       </div>
-      <div className="canasta-meld-summary">{view.melds.length?view.melds.map(m=><span key={m.rank}>{m.rank} × {m.cards.length}{m.cards.length>=7?' ★':''}</span>):<span>No committed melds</span>}</div>
-      {view.phase==='draw'&&<p>Select a natural pair and tap the pile.</p>}
     </div>,layer)}
     <ShellHudGrid timer={<ShellTimerRail/>} pane={tab==='cards'?controls:<div className="canasta-pane-scroll">Offline {tab} fixture · no session data.</div>}
-      identity={<div className="canasta-identity"><strong>You</strong><CanonicalChipDisc amount={100} positionAnchor={1} size="cluster"/><span>Score {view.score.toLocaleString()}</span></div>}/>
+      identity={<CanonicalPlayerIdentityRow playerId={SELF} name="You" chips={100} active/>}/>
   </>;
 }
 function App(){
-  const [scene,setScene]=useState<Scene>('15');
-  const [muted,setMuted]=useState(false);
+  const [scene]=useState<Scene>(()=>{const requested=new URLSearchParams(location.search).get('scene');return SCENES.find(s=>s.id===requested)?.id??'maximum';});
+  const muted=false;
   useEffect(()=>{const stop=platformAudio.install();platformAudio.setUser(SELF);return()=>{platformAudio.setUser(null);stop();};},[]);
   useEffect(()=>platformAudio.setPreference(SELF,!muted),[muted]);
   return <VisualPreferencesProvider userId={null}><ResponsiveGeometryProvider>
     <PersistentTableShell gameType="canasta" anteAmount={10} projectionMode="active-canonical"
       viewerPosition={1} viewerUserId={SELF} seats={[{position:1,occupied:true},{position:5,occupied:true}]}
-      header={<header className="canasta-header"><strong>Canasta</strong><label><button aria-label="Mute review audio" aria-pressed={muted} onClick={()=>setMuted(v=>!v)}>{muted?'Muted':'Sound'}</button>
-        <select aria-label="Review scenario" value={scene} onChange={e=>setScene(e.target.value as Scene)}>
-          {SCENES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
-        </select></label></header>}>
+      header={<CanonicalTableHeader title="Canasta · local review">
+        <fieldset disabled aria-label="Session controls unavailable in fixture"><PlayerOptionsMenu isSittingOut={false} isObserver waiting={false}
+          autoAnte={false} autoAnteRunback={false} sitOutNextHand={false} standUpNextHand={false}
+          onAutoAnteChange={()=>{}} onAutoAnteRunbackChange={()=>{}} onSitOutNextHandChange={()=>{}}
+          onStandUpNextHandChange={()=>{}} onStandUpNow={()=>{}} onLeaveGameNow={()=>{}} variant="mobile"/></fieldset>
+      </CanonicalTableHeader>}>
       <Contents key={scene} scene={scene}/>
     </PersistentTableShell>
   </ResponsiveGeometryProvider></VisualPreferencesProvider>;
 }
 document.documentElement.classList.add('dark');
+loadPresentationSnapshot();
 const root=createRoot(document.getElementById('root')!);
 root.render(<App/>);
 if(import.meta.hot)import.meta.hot.dispose(()=>root.unmount());

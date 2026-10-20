@@ -4,6 +4,8 @@ Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
 inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Implementation stops for Jeremy's
 interaction review before full gameplay integration. No production admission,
 database changes or deployment. Financial qualification remains MISSING.
+Bounded checkpoint correction: canonical configuration/header/identity, paged
+shared-dialog editor, legal 71-card witness and bound. Owner review remains pending.
 
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 

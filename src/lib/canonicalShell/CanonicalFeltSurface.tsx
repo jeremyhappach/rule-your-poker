@@ -26,6 +26,7 @@ export type CanonicalFeltGameKind =
   | "yahtzee"
   | "gin-rummy"
   | "run21"
+  | "canasta"
   | "cribbage";
 
 export interface CanonicalFeltSurfaceProps {
@@ -83,6 +84,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "gin-rummy": "GIN RUMMY",
   "cribbage": "CRIBBAGE",
   "run21": "RUN 21",
+  "canasta": "CANASTA",
 };
 
 // Dice-family games use a compact single-line plate (legacy parity).
@@ -331,7 +333,7 @@ export function CanonicalFeltSurface({
                 ` • <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
               </span>
             </>
-          ) : gameKind === "gin-rummy" ? (
+          ) : gameKind === "gin-rummy" || gameKind === "canasta" ? (
             <>
               <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
                 ${anteAmount} {GAME_NAME_LABEL[gameKind]}

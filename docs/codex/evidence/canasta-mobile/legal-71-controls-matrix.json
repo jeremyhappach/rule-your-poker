@@ -1,0 +1,132 @@
+[
+  {
+    "viewport": "320,568",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "375,812",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "430,932",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "812,375",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "932,430",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "320,568",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Melds 1",
+    "uniqueCards": 3,
+    "pages": [
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "375,812",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Melds 1",
+    "uniqueCards": 3,
+    "pages": [
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "430,932",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Melds 1",
+    "uniqueCards": 3,
+    "pages": [
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "812,375",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Melds 1",
+    "uniqueCards": 3,
+    "pages": [
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "932,430",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Melds 1",
+    "uniqueCards": 3,
+    "pages": [
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  }
+]

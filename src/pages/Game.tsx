@@ -1,3 +1,4 @@
+import { CanonicalTableHeader } from '@/lib/canonicalShell/CanonicalTableHeader';
 import {BoxdropTable} from '@/components/boxdrop/BoxdropTable';
 import {TripFlipTable} from '@/components/tripFlip/TripFlipTable';
 import {TakeTwoTable} from '@/components/takeTwo/TakeTwoTable';
@@ -13183,9 +13184,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `header` prop. The shell renders it above the canonical
   // announcement rail and the opaque game children.
   const mobileHeader = (isMobile || isFullscreenPresentation) ? (
-    <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
+    <CanonicalTableHeader title={<>{gameName}{!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}</>}>
         {currentPlayer ? (
           <PlayerOptionsMenu
             isSittingOut={currentPlayer.sitting_out}
@@ -13264,12 +13263,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         {game.pending_session_end && (
           <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>
         )}
-      </div>
-      <span className="text-xs text-muted-foreground">
-        {gameName}
-        {!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
-      </span>
-    </div>
+      </CanonicalTableHeader>
   ) : null;
 
   const innerTree = (

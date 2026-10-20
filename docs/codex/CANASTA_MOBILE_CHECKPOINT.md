@@ -1,4 +1,4 @@
-# Canasta mobile checkpoint — implementation in progress
+# Canasta mobile checkpoint — corrected local review
 
 This branch is a local, isolated interaction review. No catalog, route admission,
 database migration, live RPC, financial write, production deployment or main
@@ -42,7 +42,7 @@ Scenarios cover 15/30/60 cards, duplicate selection and sorting, Joker allocatio
 opening feedback, frozen pickup, final discard/out, cancellation and reconnect to
 the committed fixture. Clock presentation uses the canonical timer owner.
 
-**Large-hand limitation:** 104 (all non-red-three cards) is an absolute physical
+**Superseded first-checkpoint limitation:** 104 (all non-red-three cards) is an absolute physical
 stress bound, not a proved maximum-reachable hand. The scene labels this
 explicitly and supersedes the initial 88-card measurement. It tests capacity
 beyond any legal hand without imposing a new gameplay cap. Exact reachable maximum
@@ -89,8 +89,51 @@ winner or payout from a single hand going out.
 - Frozen contract: `CANASTA_CONTRACT.md`.
 - Focused unit evidence and rendered evidence: recorded below when run.
 - Owner interaction review: PENDING.
-- Exact maximum-hand reachability: PENDING.
+- Maximum hand: 71 after pickup / 70 after discard. Shared-predicate witness and mathematical bound pass; full authority reducer proof remains later work.
 - Full gameplay/authority, bot matches, privacy, concurrency, recovery,
   both-money financial rollback, terminal and production qualification: MISSING.
 - Production admission: CLOSED / no Canasta admission added.
 - No production publish at this checkpoint.
+
+## Bounded correction, October 20
+
+- Canonical header markup is extracted without changing route-owned actions.
+  Production Game and this fixture share CanonicalTableHeader. The fixture uses
+  CanonicalPlayerIdentityRow; session controls are visibly disabled offline.
+- Presentation snapshot is read-only production evidence: canonical_shell_layout
+  top 2 / bottom 8; shell_nameplate and shell_chip_balance values are captured in
+  dev/canasta/presentation.ts and applied through registered canonical owners.
+  No shell/global geometry is retuned. Matching shell/global geometry_overrides
+  query returned no rows. Personal visual preferences remain explicit defaults,
+  not a claim to reproduce Jeremy's saved profile.
+- Canasta gains a canonical fixed-stake felt plate. No catalog/admission changes.
+- Hand arrangement uses the existing shared Dialog, with rank filtering and
+  container-measured card pages. Card faces stay 48 by 68, selection targets
+  56 by 84; fixed navigation, footer actions and close control are at least 44.
+  Compact felt areas omit piles that cannot fit full cards; pickup remains in
+  the editor. There is no scrollable felt or nested hand-strip scrolling.
+- The maximum scene consumes the actual 71-card witness. See CANASTA_MAXIMUM_HAND.md.
+  The 104-card stress scene remains separately labeled.
+- Browser checks cover duplicate selection through sorting, multiple drafts,
+  wild reassignment exposing an invalid source meld, opening rejection then
+  accepted frozen pickup, local committed-revision reconnect, and legal final
+  discard. Timer was not reset by these operations.
+- legal-71-layout-matrix.json records every physical card page at five viewports,
+  with/without safe-area envelopes. Audits inspect clipping through ancestor
+  bounds, target size and hit-test overlap, not only element rectangles.
+- These remain desktop-browser viewport/envelope checks. Native iPhone Safari,
+  touch gestures and owner interaction acceptance remain outstanding.
+- Complete authority, live network recovery, bot matches, financial qualification,
+  release and admission remain out of scope. No merge, push or deployment.
+
+Validation for correction: 59 focused tests passed, including three maximum-hand
+and three presentation regression tests; application and fixture typechecks and
+local Vite bundle passed. Ten all-card-page audits and ten safe-area draft/finish
+control audits passed (zero clipping, target, overlap or scrolling failures).
+Hit testing uses button centers and points 8px inside rounded corners; ancestor
+intersection separately checks full target bounds. Original evidence above is
+historical; legal-71-* and *-corrected images are the corrected checkpoint.
+
+Development limitation: hot replacement while a dialog was open produced a portal
+cleanup error during editing. A clean reload rendered successfully with no new
+console errors. Use a clean reload when reviewing a changed checkpoint.

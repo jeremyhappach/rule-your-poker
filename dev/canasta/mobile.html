@@ -1,9 +1,9 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Canasta phone review</title>
-<style>body{margin:0;background:#0b1511;color:#e6dfce;font:14px system-ui}header{padding:10px;display:flex;gap:12px;align-items:center}a{color:#f5d28a}iframe{display:block;border:1px solid #697b70;margin:0 auto;background:#10281f}main{overflow:auto}select{padding:8px;background:#244134;color:white}</style></head>
+<style>body{margin:0;background:#0b1511;color:#e6dfce;font:14px system-ui}header{padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}a{color:#f5d28a}iframe{display:block;border:1px solid #697b70;margin:0 auto;background:#10281f}main{position:relative;overflow:hidden}output{overflow-wrap:anywhere}iframe{position:absolute;left:50%;margin:0}select{padding:8px;background:#244134;color:white}</style></head>
 <body><header><strong>Canasta · local mobile checkpoint</strong><select id="device" aria-label="Phone layout">
 <option value="320,568">Narrow portrait · 320×568</option><option value="375,812" selected>iPhone portrait · 375×812</option>
 <option value="430,932">Large portrait · 430×932</option><option value="812,375">iPhone landscape · 812×375</option>
-<option value="932,430">Large landscape · 932×430</option></select><label><input id="safe" type="checkbox">Safe-area envelope</label><a href="/">Full window</a><button id="measure">Measure layout</button></header>
+<option value="932,430">Large landscape · 932×430</option></select><select id="scene" aria-label="Review scenario"><option value="maximum">71 cards · legal maximum</option><option value="15">15 cards</option><option value="30">30 cards</option><option value="60">60 cards</option><option value="capacity">104 · stress only</option><option value="frozen">Frozen pickup</option><option value="opening">Opening</option><option value="out">Going out</option><option value="reconnect">Committed pickup</option></select><label><input id="safe" type="checkbox">Safe-area envelope</label><a href="/">Full window</a><button id="measure">Measure layout</button><button id="audit">Audit all card pages</button></header>
 <main><iframe title="Canasta phone viewport" src="/" width="375" height="812"></iframe></main>
 <output id="measurements" style="display:block;padding:8px;font-size:11px"></output>
 <script type="module">
@@ -12,20 +12,57 @@ function size(){const [w,h]=device.value.split(',').map(Number),landscape=w>h;
   const top=safe.checked&&!landscape?47:1,bottom=safe.checked?(landscape?21:34):1,side=safe.checked&&landscape?44:1;
   frame.width=w-side*2;frame.height=h-top-bottom;
   frame.style.borderWidth=`${top}px ${side}px ${bottom}px`;frame.style.borderColor=safe.checked?'#020604':'#697b70';
-  const scale=Math.min(1,(window.innerHeight-65)/h,(window.innerWidth-24)/w);
-  frame.style.transform=`scale(${scale})`;frame.style.transformOrigin='top center';
+  const scale=Math.min(1,(window.innerHeight-document.querySelector('header').offsetHeight-32)/h,(window.innerWidth-24)/w);
+  frame.style.transform=`translateX(-50%) scale(${scale})`;frame.style.transformOrigin='top center';
   document.querySelector('main').style.height=`${h*scale+3}px`;
 }
+document.querySelector('#scene').addEventListener('change',e=>{frame.src='/?scene='+e.target.value;});
 device.addEventListener('change',size);safe.addEventListener('change',size);window.addEventListener('resize',size);size();
 document.querySelector('#measure').addEventListener('click',()=>{
   const d=frame.contentDocument,cards=[...d.querySelectorAll('[data-physical-id]')];
   const rects=cards.map(c=>c.getBoundingClientRect());
-  const report={viewport:device.value,safeAreaEnvelope:safe.checked,scenario:d.querySelector('[aria-label="Review scenario"]').value,
+  const report={viewport:device.value,safeAreaEnvelope:safe.checked,scenario:document.querySelector('#scene').value,
     shellCount:d.querySelectorAll('[data-canonical-shell-root]').length,
     cardCount:cards.length,uniqueIds:new Set(cards.map(c=>c.dataset.physicalId)).size,
     minTargetWidth:Math.min(...rects.map(r=>r.width)),minTargetHeight:Math.min(...rects.map(r=>r.height)),
     documentOverflow:d.documentElement.scrollWidth>d.documentElement.clientWidth,
-    workspaceScroll:d.querySelector('.canasta-workspace').scrollHeight>d.querySelector('.canasta-workspace').clientHeight};
+    workspaceScroll:!!d.querySelector('.canasta-editor') && d.querySelector('.canasta-editor').scrollHeight>d.querySelector('.canasta-editor').clientHeight};
   document.querySelector('#measurements').textContent=JSON.stringify(report);
+});
+
+document.querySelector('#audit').addEventListener('click',async()=>{
+ const d=frame.contentDocument,win=frame.contentWindow,editor=d.querySelector('.canasta-editor');
+ if(!editor){document.querySelector('#measurements').textContent='Open Arrange cards, then Hand, before auditing.';return;}
+ document.querySelector('#measurements').textContent='Auditing…';
+ const seen=new Set(),failures=[],pages=[];
+ const pause=()=>new Promise(r=>win.requestAnimationFrame(()=>win.requestAnimationFrame(r)));
+ let previous=[...editor.querySelectorAll('button')].find(b=>b.textContent==='Previous');
+ while(previous&&!previous.disabled){previous.click();await pause();}
+ for(let i=0;i<110;i++){
+  const cards=[...editor.querySelectorAll('[data-physical-id]')];
+  cards.forEach(c=>seen.add(c.dataset.physicalId));
+  const controls=[...editor.querySelectorAll('button,select')];
+  for(const c of controls){
+   const r=c.getBoundingClientRect();
+   if(r.width<43.9||r.height<43.9)failures.push('small '+(c.textContent||c.ariaLabel));
+   let visible={l:Math.max(0,r.left),t:Math.max(0,r.top),r:Math.min(win.innerWidth,r.right),b:Math.min(win.innerHeight,r.bottom)};
+   for(let a=c.parentElement;a;a=a.parentElement){
+    const st=win.getComputedStyle(a),ar=a.getBoundingClientRect();
+    if(/hidden|auto|scroll|clip/.test(st.overflowX)){visible.l=Math.max(visible.l,ar.left);visible.r=Math.min(visible.r,ar.right);}
+    if(/hidden|auto|scroll|clip/.test(st.overflowY)){visible.t=Math.max(visible.t,ar.top);visible.b=Math.min(visible.b,ar.bottom);}
+   }
+   if(visible.r-visible.l<r.width-.5||visible.b-visible.t<r.height-.5)failures.push('clipped '+(c.textContent||c.ariaLabel));
+   if(!c.disabled)for(const [x,y] of [[r.left+8,r.top+8],[r.right-8,r.bottom-8],[r.left+r.width/2,r.top+r.height/2]]){
+    const hit=d.elementFromPoint(x,y);if(hit&&!c.contains(hit))failures.push('covered '+(c.textContent||c.ariaLabel));
+   }
+  }
+  pages.push(cards.length);
+  const next=[...editor.querySelectorAll('button')].find(b=>b.textContent==='Next');
+  if(!next||next.disabled)break;next.click();await pause();
+ }
+ const report={viewport:device.value,safeAreaEnvelope:safe.checked,scenario:document.querySelector('#scene').value,
+  pane:editor.querySelector('.canasta-editor-nav [aria-pressed=true]').textContent,uniqueCards:seen.size,pages,failures:[...new Set(failures)],editorOverflow:editor.scrollHeight>editor.clientHeight,
+  nestedScrollers:[...editor.querySelectorAll('*')].filter(n=>{const st=win.getComputedStyle(n);return /auto|scroll/.test(st.overflow)&& (n.scrollHeight>n.clientHeight||n.scrollWidth>n.clientWidth);}).length};
+ document.querySelector('#measurements').textContent=JSON.stringify(report);
 });
 </script></body></html>
