@@ -1,0 +1,2 @@
+import {createServer} from 'vite';import react from '@vitejs/plugin-react-swc';import {resolve} from 'node:path';
+const server=await createServer({configFile:false,cacheDir:resolve('qualification.local/race-poker/vite-layout-cache'),plugins:[react()],resolve:{alias:{'@':resolve('src')}},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false},server:{host:'127.0.0.1',port:5226,strictPort:true}});await server.listen();console.log('Race Poker local layout http://127.0.0.1:5226/dev/race-poker/layout.html');

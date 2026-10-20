@@ -2543,3 +2543,8 @@ Multiplayer adds only consent, participant order, pause, bots, canonical chip
 settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
+
+
+## Race Poker local candidate — 2026-10-20
+
+Race Poker freezes the approved multiplayer-only race-poker/1 contract and separately versioned race-poker-bot/1 policy. Human, bot and recovery commands share one private executor; canonical financial settlement remains authoritative. Local qualification does not authorize coordinated release. See RACE_POKER_RULES.md and RACE_POKER_QUALIFICATION.md.

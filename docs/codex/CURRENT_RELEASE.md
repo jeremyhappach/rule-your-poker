@@ -1,3 +1,7 @@
+# Race Poker / 1 — 2026-10-20 — local candidate, coordinated release hold
+
+Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. Current main needs catalog integration; this branch is not merged. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates.
+
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 
 Boxdrop adds Arcade and exactly two-player multiplayer through one server-owned

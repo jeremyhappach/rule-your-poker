@@ -1099,3 +1099,8 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
   enables new admissions after compatible client deployment.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
+
+
+## Race Poker local candidate — 2026-10-20
+
+Race Poker: supabase/race-poker owns SQL rules, commands, canonical multiplayer adapter, registration guards and proofs. src/lib/racePoker owns public model/transport/audio; src/hooks/useRacePoker.ts owns client reconciliation; src/components/racePoker owns canonical fullscreen presentation and financial bridging. dev/race-poker contains local qualification utilities. Current-main catalog integration is documented in RACE_POKER_QUALIFICATION.md.
