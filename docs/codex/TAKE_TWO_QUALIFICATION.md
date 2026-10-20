@@ -4,7 +4,11 @@ Jeremy approved implementation and release in Arcade and multiplayer on 2026-10-
 The later Ace decision explicitly enables King–Ace as well as Ace–2. This is a
 P-Town interpretation where original machine evidence is incomplete.
 
-## Frozen rules: take-two/1
+Current admissions use [take-two/2](TAKE_TWO_DRAW_RESET.md), which resets the
+speed bonus after accepted stock draws. The v1 rules below remain historical;
+their no-reset choice was not established by original-game evidence.
+
+## Historical frozen rules: take-two/1
 
 One shuffled 52-card deck per round; three normal rounds for every player.
 Round one has 28 tableau cards (6/5/6/5/6), one current card and 23 stock cards.

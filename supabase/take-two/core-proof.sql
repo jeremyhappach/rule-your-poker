@@ -9,7 +9,7 @@ BEGIN
  PERFORM pg_temp.take_assert(b->>'deadline'='103500' AND b->>'phase'='playing','100 seconds begins at intro end');
  PERFORM pg_temp.take_assert(private.take_two_meter(b,4500)=500 AND private.take_two_meter(b,5500)=350 AND private.take_two_meter(b,7500)=50 AND private.take_two_meter(b,90000)=50,'meter hold decay and floor');
  v:=private.take_two_board_reduce(b,'draw',NULL,4500);
- PERFORM pg_temp.take_assert(v->>'score'='0' AND v->'deadline'=b->'deadline' AND v->'meterAt'=b->'meterAt' AND v->'slots'=b->'slots' AND v->>'cursor'='30','manual full-board draw floors score, discards old current, no clock/reset');
+ PERFORM pg_temp.take_assert(v->>'score'='0' AND v->'deadline'=b->'deadline' AND v->>'meterAt'='4500' AND v->'slots'=b->'slots' AND v->>'cursor'='30','manual full-board draw floors score, discards old current, unchanged clock and reset speed meter');
  BEGIN PERFORM private.take_two_board_reduce(b,'pair',ARRAY[0,1],4000);RAISE EXCEPTION 'covered pair accepted';EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'take_two:illegal_pair' THEN RAISE;END IF;END;
  b:=b||jsonb_build_object('slots',(SELECT jsonb_agg(CASE WHEN slot_i=26 THEN 0 WHEN slot_i=27 THEN 13 ELSE NULL END ORDER BY slot_i) FROM generate_series(0,27)slot_i),'score',1000,'scoreBefore',1000);
  v:=private.take_two_board_reduce(b,'pair',ARRAY[26,27],3500);

@@ -1,8 +1,13 @@
--- P-Town Take 2 v1. One frozen rule base for Arcade and multiplayer.
-CREATE OR REPLACE FUNCTION private.take_two_rules() RETURNS jsonb
+-- P-Town Take 2. Historical rules stay frozen for in-progress games.
+CREATE OR REPLACE FUNCTION private.take_two_rules(version_i text) RETURNS jsonb
 LANGUAGE sql IMMUTABLE SET search_path='' AS $$
- SELECT '{"version":"take-two/1","stageMs":100000,"introMs":2500,"holdMs":6000,"clockStart":"intro_end","rounds":3,"samePoints":1200,"consecutivePoints":400,"meterMax":500,"meterMin":50,"meterHoldMs":1000,"meterStepsPerSecond":30,"meterStep":5,"drawPenalty":100,"clearBonus":10000,"stockBonus":1000,"timeBonusPerSecond":50,"aceWrap":true,"vacancyOrder":"first_exposed_row_major"}'::jsonb
+ SELECT CASE version_i WHEN 'take-two/1' THEN '{"version":"take-two/1","stageMs":100000,"introMs":2500,"holdMs":6000,"clockStart":"intro_end","rounds":3,"samePoints":1200,"consecutivePoints":400,"meterMax":500,"meterMin":50,"meterHoldMs":1000,"meterStepsPerSecond":30,"meterStep":5,"drawPenalty":100,"clearBonus":10000,"stockBonus":1000,"timeBonusPerSecond":50,"aceWrap":true,"vacancyOrder":"first_exposed_row_major"}'::jsonb
+ WHEN 'take-two/2' THEN '{"version":"take-two/1","stageMs":100000,"introMs":2500,"holdMs":6000,"clockStart":"intro_end","rounds":3,"samePoints":1200,"consecutivePoints":400,"meterMax":500,"meterMin":50,"meterHoldMs":1000,"meterStepsPerSecond":30,"meterStep":5,"drawPenalty":100,"clearBonus":10000,"stockBonus":1000,"timeBonusPerSecond":50,"aceWrap":true,"vacancyOrder":"first_exposed_row_major"}'::jsonb || '{"version":"take-two/2","drawResetsMeter":true}'::jsonb END
 $$;
+REVOKE ALL ON FUNCTION private.take_two_rules(text) FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION private.take_two_rules() RETURNS jsonb
+LANGUAGE sql IMMUTABLE SET search_path='' AS $$ SELECT private.take_two_rules('take-two/2') $$;
 
 CREATE OR REPLACE FUNCTION private.take_two_layout(stage integer) RETURNS jsonb
 LANGUAGE sql IMMUTABLE SET search_path='' AS $$
@@ -55,7 +60,7 @@ CREATE OR REPLACE FUNCTION private.take_two_board_deal(b jsonb,at_ms bigint) RET
 LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE deck jsonb:=private.take_two_shuffle();layout jsonb;size_i integer;start_i bigint;
 BEGIN
- IF b->'rules' IS DISTINCT FROM private.take_two_rules() THEN RAISE EXCEPTION 'take_two:rules';END IF;
+ IF private.take_two_rules(b#>>'{rules,version}') IS NULL OR b->'rules' IS DISTINCT FROM private.take_two_rules(b#>>'{rules,version}') THEN RAISE EXCEPTION 'take_two:rules';END IF;
  layout:=private.take_two_layout(coalesce((b->>'stage')::integer,1));size_i:=jsonb_array_length(layout);
  start_i:=at_ms+(b#>>'{rules,introMs}')::integer;
  RETURN (b-ARRAY['result','startedAt'])||jsonb_build_object('deck',deck,'layout',layout,
@@ -84,7 +89,7 @@ CREATE OR REPLACE FUNCTION private.take_two_board_reduce(b jsonb,action text,ite
 LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE i integer;j integer;ca integer;cb integer;points_i integer;cursor_i integer;vacancy integer;key_i text;slots_i jsonb;
 BEGIN
- IF b->'rules' IS DISTINCT FROM private.take_two_rules() THEN RAISE EXCEPTION 'take_two:rules';END IF;
+ IF private.take_two_rules(b#>>'{rules,version}') IS NULL OR b->'rules' IS DISTINCT FROM private.take_two_rules(b#>>'{rules,version}') THEN RAISE EXCEPTION 'take_two:rules';END IF;
  IF b->>'phase'='intro' THEN
   IF at_ms<(b->>'deadline')::bigint THEN IF action='tick' THEN RETURN b;END IF;RAISE EXCEPTION 'take_two:intro';END IF;
   b:=b||jsonb_build_object('phase','playing','startedAt',b->'deadline','deadline',(b->>'deadline')::bigint+(b#>>'{rules,stageMs}')::integer);
@@ -101,6 +106,7 @@ BEGIN
   IF vacancy IS NOT NULL AND b->>'current' IS NOT NULL THEN slots_i:=jsonb_set(slots_i,ARRAY[vacancy::text],b->'current');END IF;
   RETURN b||jsonb_build_object('slots',slots_i,'current',b->'deck'->cursor_i,'cursor',cursor_i+1,
    'score',greatest(0,(b->>'score')::bigint-(b#>>'{rules,drawPenalty}')::integer),
+   'meterAt',CASE WHEN coalesce((b#>>'{rules,drawResetsMeter}')::boolean,false) THEN at_ms ELSE (b->>'meterAt')::bigint END,
    'event',jsonb_build_object('label','Next card','points',-least((b->>'score')::integer,(b#>>'{rules,drawPenalty}')::integer)));
  END IF;
  IF action<>'pair' OR cardinality(items) IS DISTINCT FROM 2 OR items[1] IS NULL OR items[2] IS NULL THEN RAISE EXCEPTION 'take_two:invalid_command';END IF;

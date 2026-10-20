@@ -68,13 +68,16 @@ BEGIN
  RETURN jsonb_build_object('version',2,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',false);
 END $function$
 ;
-CREATE OR REPLACE FUNCTION private.take_two_high_score(actor uuid) RETURNS bigint
+CREATE OR REPLACE FUNCTION private.take_two_high_score(actor uuid, version_i text) RETURNS bigint
 LANGUAGE sql STABLE SET search_path='' AS $$
  SELECT coalesce(max(score),0) FROM (
-  SELECT score FROM private.arcade_results WHERE user_id=actor AND game='take-two' AND ruleset='take-two/1'
-  UNION ALL SELECT score FROM private.multiplayer_score_results WHERE user_id=actor AND game='take-two' AND ruleset='take-two/1'
+  SELECT score FROM private.arcade_results WHERE user_id=actor AND game='take-two' AND ruleset=version_i
+  UNION ALL SELECT score FROM private.multiplayer_score_results WHERE user_id=actor AND game='take-two' AND ruleset=version_i
  ) scores
 $$;
+REVOKE ALL ON FUNCTION private.take_two_high_score(uuid,text) FROM PUBLIC,anon,authenticated,service_role;
+CREATE OR REPLACE FUNCTION private.take_two_high_score(actor uuid) RETURNS bigint
+LANGUAGE sql STABLE SET search_path='' AS $$ SELECT private.take_two_high_score(actor,private.take_two_rules()->>'version') $$;
 CREATE OR REPLACE FUNCTION private.take_two_deal(s jsonb, at_ms bigint)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -83,7 +86,7 @@ AS $function$
 DECLARE totals jsonb;
 BEGIN
  SELECT jsonb_object_agg(p->>'id',coalesce(s->'scores'->(p->>'id'),'0'::jsonb)) INTO totals FROM jsonb_array_elements(s->'players') p;
- RETURN private.take_two_board_deal(s||jsonb_build_object('scores',totals,'highScore',private.take_two_high_score((s->'players'->(s->>'turnIndex')::integer->>'userId')::uuid),'score',coalesce(totals->(s->'players'->(s->>'turnIndex')::integer->>'id'),'0'::jsonb)),at_ms);
+ RETURN private.take_two_board_deal(s||jsonb_build_object('scores',totals,'highScore',private.take_two_high_score((s->'players'->(s->>'turnIndex')::integer->>'userId')::uuid,s#>>'{rules,version}'),'score',coalesce(totals->(s->'players'->(s->>'turnIndex')::integer->>'id'),'0'::jsonb)),at_ms);
 END $function$
 ;
 CREATE OR REPLACE FUNCTION private.take_two_reduce(s jsonb, action text, items integer[], at_ms bigint)

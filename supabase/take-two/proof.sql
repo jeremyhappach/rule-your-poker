@@ -66,7 +66,7 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub','',true);PERFORM set_config('request.jwt.claim.role','service_role',true);
  PERFORM private.take_two_recover();PERFORM pg_temp.take_assert((SELECT state->>'phase'='complete' AND settlement IS NOT NULL FROM private.take_two_matches WHERE dealer_game_id=dealer),'zero-client recovery');
  SELECT jsonb_build_array((SELECT count(*) FROM public.games),(SELECT count(*) FROM public.players),(SELECT count(*) FROM public.game_results),(SELECT count(*) FROM public.gameplay_transfer_batches)) INTO before_counts;
- UPDATE private.arcade_rulesets SET enabled=true WHERE id='take-two/1';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
+ UPDATE private.arcade_rulesets SET enabled=true WHERE id=private.take_two_rules()->>'version';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL;
  run:=public.arcade_start(users[1],gen_random_uuid(),'take-two');a:=public.arcade_take_two_step(users[1],(run->>'id')::uuid);
  PERFORM pg_temp.take_assert(NOT((a#>'{projection,view}')?'deck'),'solo redaction');
  PERFORM pg_temp.take_assert(a#>'{projection,view,rules}'=private.take_two_rules(),'Arcade freezes same admission rules');

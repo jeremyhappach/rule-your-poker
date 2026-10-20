@@ -1,7 +1,7 @@
 export type TakeTwoIntent={type:'pair';items:[number,number]}|{type:'draw'|'take_score'|'abandon'};
 export interface TakeTwoResult {id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;clearBonus:number;stockBonus:number;timeBonus:number;completedAt:number}
 export interface TakeTwoBoard {
- rules:{version:'take-two/1';stageMs:number;introMs:number;holdMs:number;meterMin:number;meterMax:number;meterStep:number;meterStepsPerSecond:number;meterHoldMs:number};
+ rules:{version:'take-two/1'|'take-two/2';drawResetsMeter?:boolean;stageMs:number;introMs:number;holdMs:number;meterMin:number;meterMax:number;meterStep:number;meterStepsPerSecond:number;meterHoldMs:number};
  phase:'intro'|'playing'|'stage_complete'|'complete';slots:(number|null)[];current:number|null;
  layout:{row:number;column:number;x:number}[];legalPairs:[number,number][];exposed:number[];
  highScore:number;stockRemaining:number;samePairs:number;consecutivePairs:number;meterAt:number;score:number;deadline:number;

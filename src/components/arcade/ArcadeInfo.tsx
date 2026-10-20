@@ -46,7 +46,7 @@ export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArt
     <DialogTrigger asChild><button type="button" className="arcade-info-button" aria-label={name+' rules and info'}><Info size={21} aria-hidden="true"/></button></DialogTrigger>
     <DialogContent className="arcade-info"><DialogTitle>{name} · Rules &amp; info</DialogTitle>
       <DialogDescription>{game!=='yahtzee'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>
-      {game==='take-two'?<TakeTwoRules/>:game==='royal-flash'?<RoyalFlashRules/>:game==='eleven-up'?<ElevenUpRules/>:game!=='yahtzee'?(config?(game==='tri-towers'?<TriTowersRules rules={config as Rules} solo/>:<Run21ScoringReference config={config as Config} solo/>):<p role="status">Loading rules…</p>):<p>Roll dice to fill a scorecard of combinations. Arcade rules will be available when this game launches.</p>}
+      {game==='take-two'?<TakeTwoRules version={ruleset}/>:game==='royal-flash'?<RoyalFlashRules/>:game==='eleven-up'?<ElevenUpRules/>:game!=='yahtzee'?(config?(game==='tri-towers'?<TriTowersRules rules={config as Rules} solo/>:<Run21ScoringReference config={config as Config} solo/>):<p role="status">Loading rules…</p>):<p>Roll dice to fill a scorecard of combinations. Arcade rules will be available when this game launches.</p>}
       {children}
       {admin&&<div className="arcade-upload">
         <label htmlFor={inputId}>{busy?'Uploading…':artwork?.object_path?'Replace artwork':'Upload artwork'}</label>

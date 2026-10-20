@@ -5,5 +5,5 @@ SET LOCAL statement_timeout='3s';
 INSERT INTO public.game_defaults(game_type,presentation_mode,ante_amount,real_money,debug_harness,timeout_action,timeout_enforcement_enabled,pot_max_enabled,pussy_tax_enabled,leg_value,legs_to_win)
  VALUES('take-two','fullscreen',5,false,'none','none',false,false,false,0,0) ON CONFLICT(game_type) DO NOTHING;
 UPDATE private.take_two_release SET enabled=true,admission_enabled=true WHERE singleton;
-UPDATE private.arcade_rulesets SET enabled=true WHERE id='take-two/1';
+UPDATE private.arcade_rulesets SET enabled=(id=private.take_two_rules()->>'version') WHERE game='take-two';
 COMMIT;

@@ -1,4 +1,4 @@
--- Solo orchestration only. Board rules remain in the shared take-two/1 core.
+-- Solo orchestration only. Board rules remain in the shared versioned core.
 CREATE OR REPLACE FUNCTION private.arcade_take_two_finish_round(s jsonb) RETURNS jsonb
 LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE r jsonb; round_i integer:=(s->>'round')::integer;
@@ -89,7 +89,7 @@ BEGIN
  IF run.status='active' THEN
   IF s IS NULL THEN
    s:=jsonb_build_object('runId',run.id,'userId',run.user_id,'config',run.config,'round',1,'roundId',run.id||':1','status','active','score',0,'results','[]'::jsonb,
-    'board',private.take_two_board_deal(jsonb_build_object('rules',run.config,'highScore',private.take_two_high_score(run.user_id),'score',0,'stage',1),floor(extract(epoch FROM run.created_at)*1000)::bigint));
+    'board',private.take_two_board_deal(jsonb_build_object('rules',run.config,'highScore',private.take_two_high_score(run.user_id,run.ruleset),'score',0,'stage',1),floor(extract(epoch FROM run.created_at)*1000)::bigint));
   END IF;
   next_s:=private.arcade_take_two_advance(s,at_ms);
   IF next_s IS DISTINCT FROM run.state THEN
@@ -115,4 +115,4 @@ END $$;
 REVOKE ALL ON FUNCTION public.arcade_take_two_step(uuid,uuid,bigint,text,uuid,text,integer[],uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.arcade_take_two_step(uuid,uuid,bigint,text,uuid,text,integer[],uuid) TO service_role;
 
-INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('take-two/1','take-two',private.take_two_rules(),false) ON CONFLICT(id) DO NOTHING;
+INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('take-two/1','take-two',private.take_two_rules('take-two/1'),false),('take-two/2','take-two',private.take_two_rules(),false) ON CONFLICT(id) DO NOTHING;

@@ -1,3 +1,18 @@
+# Take 2 draw resets speed bonus — 2026-10-19 — awaiting owner smoke
+
+New Arcade and multiplayer games freeze `take-two/2`: accepted stock draws reset
+the speed bonus to 500 with its existing hold/decay. The 100-point penalty and
+round clock are unchanged. Duplicate/stale/rejected requests cannot reset again.
+The retained research contains no original-game evidence against resetting it.
+
+In-progress v1 games retain frozen behavior; historical records remain intact.
+V2 uses a separate current leaderboard and record comparison, with v1 available
+as Legacy. Rules/help follows the active/selected version. Candidate database,
+installed production rollback, concurrency, both-mode browser, full build and
+focused checks pass. Migration `20261020011009` is installed. See
+[evidence and smoke](TAKE_TWO_DRAW_RESET.md).
+Checkpoint: `take-two-draw-reset-2026-10-19`.
+
 # Take 2 round-end presentation — 2026-10-19 — awaiting owner smoke
 
 Both modes use the accepted centered score pill and synchronized count-up audio,
