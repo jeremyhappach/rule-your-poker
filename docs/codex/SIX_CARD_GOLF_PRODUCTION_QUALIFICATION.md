@@ -1,5 +1,9 @@
 # Golf production qualification preparation — 2026-10-21
 
+The [corrected direct runner](SIX_CARD_GOLF_DIRECT_RUNNER.md) supersedes the MCP
+wrapper. Its local timeout/rollback proof passes; hosted execution still requires
+an approved existing PostgreSQL binding and production-slot authorization.
+
 Later authorized execution is recorded in [the hosted attempt](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
 The current runner requires 16 units after separating the six human matches.
 Six hosted units passed; four-human containment timed out. Release remains held.

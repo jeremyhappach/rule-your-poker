@@ -1,5 +1,14 @@
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
+Local continuation corrected the qualification transport: original SQL statements
+now run through a dedicated PostgreSQL connection and preserve both evidence rows.
+A local 16.209-second unit passes while the old wrapper times out at 15.020 seconds;
+the original limits remain unchanged. Five runner tests and six package tests pass.
+No supported production PostgreSQL credential binding was found in documented
+project configuration. Hosted work awaits that binding and the production-slot
+decision. No hosted action occurred in this continuation. See
+[runner evidence and setup requirement](SIX_CARD_GOLF_DIRECT_RUNNER.md).
+
 October 21 hosted attempt: the owner promoted Golf to the next smoke candidate.
 Fresh main/READY production and all eight preimages match `6b15f4eb`. Six candidate
 rollback units pass; the four-human unit times out during final existing-record

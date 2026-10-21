@@ -1,10 +1,10 @@
-// Evidence transport for MCP, which returns only the final SQL result set.
+// Historical MCP transport, retained for local diagnosis/reproduction only.
+// Its enclosing DO statement imposes a whole-unit deadline. Use direct-proof.mjs
+// for a later authorized hosted attempt; do not generate new hosted wrappers.
 // Candidate bytes and all fixture/assertion statements remain unchanged. An
 // intentional subtransaction rollback retains PL/pgSQL evidence variables,
 // then the original residual checks run before one combined result is returned.
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 export function wrapUnit(sql){
@@ -33,15 +33,5 @@ SELECT * FROM pg_temp.golf_hosted_capture;
 `;
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- const dir=process.argv[2];assert(dir,'Pass generated candidate/installed directory');
- const manifest=JSON.parse(readFileSync(dir+'/manifest.json','utf8'));
- const out=dir+'/mcp';mkdirSync(out,{recursive:true});
- const units=manifest.units.map(u=>{
-  const source=readFileSync(dir+'/'+u.name+'.sql','utf8');
-  assert.equal(createHash('sha256').update(source).digest('hex'),u.sha256);
-  const sql=wrapUnit(source);writeFileSync(out+'/'+u.name+'.sql',sql);
-  return {...u,source_sha256:u.sha256,sha256:createHash('sha256').update(sql).digest('hex')};
- });
- writeFileSync(out+'/manifest.json',JSON.stringify({...manifest,transport:'MCP combined evidence; intentional subtransaction rollback',units},null,2));
- console.log('Prepared '+units.length+' rollback wrappers; no database connection.');
+ throw Error('MCP wrapper retired: use direct-proof.mjs with an approved direct/session connection');
 }
