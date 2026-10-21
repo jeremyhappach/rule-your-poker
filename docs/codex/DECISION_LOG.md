@@ -5,6 +5,10 @@ canonical owner; fake money takes over through the existing strategic bot policy
 Active scoring time is never renewed or automatically paused for inactivity or
 disconnect. It expires under the frozen shared rules; standard inactivity and
 all-human handling resumes at the next eligible Ready boundary. No second timer.
+Production's false/none defaults do not disable this 11 Up Ready safeguard:
+the canonical helper's two policy gates are specialized only for that game and
+phase, retaining canonical counts, locks and versioned pause. Defaults and other
+game policy gates remain unchanged; a forward migration preserves the bot package.
 Reclaim changes control only, including when paused. This local implementation
 does not authorize or recover the stalled release. See `ELEVEN_UP_HUMAN_READY.md`.
 

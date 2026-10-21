@@ -1,13 +1,17 @@
-# 11 Up human Ready timeout — local only, release still blocked
+# 11 Up human Ready timeout — forward package qualified locally
 
 Isolated from preserved `0ecd5ab0`: real-money Ready expiry uses canonical pause;
 fake-money Ready expiry persists autoplay/deferred sit-out and starts the existing
 strategic policy atomically. Reclaim clears flags and invalidates stale bot work
-without clock changes or resume. Scoring expiry and the configured all-human
-safeguard are preserved at their respective gameplay/Ready boundaries.
+without clock changes or resume. Forward migration `20261021181947` makes the
+canonical all-human safeguard apply at Ready despite false/none defaults, with
+no inactivity pause during scoring and no changes to other games or defaults.
 Local SQL/race/financial proofs, browser and six phone layouts, 2,587 app tests,
 241 harness tests, TypeScript and build pass. No original package changes, push,
-production action or stalled-request resolution. See [qualification](ELEVEN_UP_HUMAN_READY.md).
+production writes. Original task is interrupted and Jeremy confirms cards cleared;
+production remains separately gated and Race Poker is a separate waiting release.
+Ordered migrations, financial/race proof and 49 focused regressions pass for the
+SQL-only follow-up. See [qualification](ELEVEN_UP_HUMAN_READY.md).
 
 # 11 Up bots: production proof passed; migration request failed
 

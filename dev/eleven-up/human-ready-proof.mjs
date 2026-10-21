@@ -78,7 +78,8 @@ try{
  assert.equal((await match(denied)).revision,deniedMatch.revision);
  evidence.push('nonmember and anonymous reclaim rejected without state changes');
  const all=await fixture(false);
- await c.query("update public.games set timeout_enforcement_enabled=true,timeout_action='auto_fold' where id=$1",[all.game]);
+ await c.query("update public.game_defaults set timeout_enforcement_enabled=false,timeout_action='none' where game_type='eleven-up'");
+ await c.query("update public.games set timeout_enforcement_enabled=null,timeout_action=null where id=$1",[all.game]);
  await c.query('update public.players set auto_fold=true,sit_out_next_hand=true where game_id=$1 and id<>$2',[all.game,all.active]);
  await service();await c.query('select private.eleven_up_recover()');
  assert.equal((await q('select is_paused from public.games where id=$1',[all.game])).is_paused,true);
@@ -88,7 +89,14 @@ try{
  assert.equal((await q('select is_paused from public.games where id=$1',[all.game])).is_paused,true);
  assert.equal((await match(all)).state.deadline,paused.state.deadline);
  assert.equal((await q('select auto_fold or sit_out_next_hand as flags from public.players where id=$1',[all.active])).flags,false);
- evidence.push('configured all-human safeguard pauses; reclaim while paused clears flags without resume or clock shift');
+ evidence.push('inherited production false/none defaults still pause all humans at Ready; paused reclaim clears flags without resume or clock shift');
+ const explicit=await fixture(false);
+ await c.query("update public.games set timeout_enforcement_enabled=false,timeout_action='none' where id=$1",[explicit.game]);
+ await c.query('update public.players set auto_fold=true where game_id=$1',[explicit.game]);
+ await service();
+ assert.equal((await q('select private.pause_all_humans_auto_fold($1) v',[explicit.game])).v,true);
+ assert.equal((await match(explicit)).state.phase,'ready');
+ evidence.push('explicit false/none policy also honors canonical Ready all-human safeguard');
  const boundary=await fixture(false);
  await service();await c.query('select private.eleven_up_recover()');
  assert.equal((await q('select sitting_out from public.players where id=$1',[boundary.active])).sitting_out,false);
@@ -103,6 +111,7 @@ try{
  let dm=await match(deferred);assert.equal(dm.state.phase,'playing');
  await c.query("update public.games set timeout_enforcement_enabled=true,timeout_action='auto_fold' where id=$1",[deferred.game]);
  await c.query('update public.players set auto_fold=true,sit_out_next_hand=true where game_id=$1',[deferred.game]);
+ assert.equal((await q('select private.pause_all_humans_auto_fold($1) v',[deferred.game])).v,false);
  await c.query('select private.eleven_up_recover()');
  assert.equal((await q('select is_paused from public.games where id=$1',[deferred.game])).is_paused,false);
  assert.equal((await match(deferred)).state.deadline,dm.state.deadline);

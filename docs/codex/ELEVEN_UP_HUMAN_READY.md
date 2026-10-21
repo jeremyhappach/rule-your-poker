@@ -9,15 +9,16 @@ inactivity timer, disconnect extension, scoring reset or automatic resume.
 
 ## Behavior and ownership
 
-`supabase/eleven-up/human-ready.sql` is an unregistered local candidate, layered
-after the original bot transaction. It changes only 11 Up owners and adds a
-player-flag trigger guarded by the current 11 Up competition identity.
+`supabase/eleven-up/human-ready.sql` is registered locally as the byte-identical
+forward migration `20261021181947_eleven_up_human_ready.sql`, after the unchanged
+original bot transaction. It adds a player-flag trigger guarded by the current
+11 Up competition identity and a scoped predicate in the canonical all-human guard.
 
 - Real-money Ready timeout refreshes only the unstarted Ready allowance and
   invokes versioned `set_game_paused`; the existing 11 Up pause trigger freezes
   it and canonical resume shifts it. No zero score or participant advance.
 - Fake-money Ready timeout persists canonical `auto_fold` and
-  `sit_out_next_hand`, checks the existing configured all-human safeguard, and
+  `sit_out_next_hand`, checks the canonical all-human safeguard, and
   otherwise commits the first legal bot move in the same transaction. The
   existing visible-information bot policy and shared reducer own every move.
   Atomic first play prevents repeated reclaim from renewing Ready indefinitely.
@@ -40,9 +41,14 @@ player-flag trigger guarded by the current 11 Up competition identity.
   paused and between rounds, and a robot beside an autoplay opponent's score.
   Controls and metadata remain absent in Arcade and Session Ended.
 
-The all-human guard retains its existing configuration contract (enabled
-`auto_fold` policy); this change does not change defaults or force another game
-into that policy. Bot admission remains fake-money-only. Scoring, bonuses,
+The all-human guard applies at 11 Up Ready even with production's inherited or
+explicit `false`/`none` timeout policy. At other 11 Up phases it cannot initiate
+an inactivity pause. Both precheck and locked recheck use this predicate; counts,
+locks, pause owner, and every other game's configuration contract are unchanged.
+The installer rejects an unexpected source shape. No defaults are changed.
+Shared callers inspected: automatic-play RPC, canonical timer dispatch, Holm
+recovery/preparation/activation, and 3-5-7 recovery/advance. They retain their
+existing behavior outside 11 Up. Bot admission remains fake-money-only. Scoring, bonuses,
 legal actions, rules versions, finances, canonical pause, and other game owners
 are not replaced. Old absent control metadata maps to false in the new client.
 
@@ -73,7 +79,14 @@ This is local qualification, not an assertion of current production schema parit
   390×844, 430×932, 844×390 and 667×375. No page errors or overflow. Portrait and
   landscape screenshots were inspected. Desktop emulation is not physical iPhone smoke.
 - `npm run build`: TypeScript, 2,587 application tests, 241 harness tests and Vite
-  production bundle passed. Existing Browserslist/chunk warnings remain.
+  production bundle passed at `e1aaf3975bf562fceb9f1917cb61974cf5720d4a`.
+  Client sources are unchanged in this SQL-only follow-up. Existing warnings remain.
+- Forward qualification: the preparer installs original then registered forward
+  migration, verifies source equality and original SHA-256, proves no default-row
+  changes, and compares the canonical guard with only its two new predicates
+  removed. All other function text is identical. Full SQL/financial/race proof
+  rerun passes, including inherited and explicit false/none and direct guard
+  invocation during playing. Eight focused regression files / 49 tests pass.
 
 Evidence: `supabase/eleven-up/human-ready-evidence.json`; raw proof and browser
 results/screenshots are under `qualification.local/eleven-up-timeout/`.
@@ -93,17 +106,23 @@ results/screenshots are under `qualification.local/eleven-up-timeout/`.
 
 ## Remaining release blockers
 
-No push, main integration, production read/write, migration registration,
-deployment, stalled-task mutation or pending-request retry/cancellation occurred.
-The unresolved durable operation still blocks the shared release lane.
+No push, main integration, production writes, deployment or pending-request
+retry/cancellation occurred. The original task was subsequently observed
+interrupted; Jeremy confirms approval cards cleared. This is no longer a blocker
+to local qualification, but does not authorize production execution or claim the
+shared release lane. Race Poker remains a separate waiting release.
 
 The original migration and package sources remain byte-for-byte unchanged:
 `20261021002901_eleven_up_bots.sql`, SHA-256
 `dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d`.
 
-After authoritative resolution of that operation, a separately authorized release
-must reconcile current main, inspect installed definitions/history, register and
-qualify a NEW forward migration for `human-ready.sql` after the original bot
-package, verify the real all-human configuration and canonical dependencies, and
-publish its matching client. Do not edit/replay the original migration to include
-this addition. Owner production and physical-phone smoke remain outstanding.
+A separately authorized serialized release must reconcile current main and
+recheck installed history/definitions against this qualification. Install only
+the missing members of this ordered pair: original `20261021002901`, then forward
+`20261021181947`. Inspect before applying; verify an installed member rather than
+blindly replaying it. The original enables bot admission, so temporarily close new
+11 Up admission during the ordered database/client rollout, verify both installed
+definitions and exact deployed client SHA, then restore admission only after
+successful checks. No admission changes are authorized by this local task.
+Do not modify the original migration. Owner production and physical-phone smoke
+remain outstanding. This package is locally qualified, not deployed acceptance.

@@ -1,9 +1,19 @@
 {
   "base": "0ecd5ab0cb604331605615cb2487dd4096deb4a7",
   "branch": "codex/eleven-up-human-timeout",
-  "status": "Local only; unresolved original operation blocks release",
+  "status": "Locally qualified ordered forward package; production release separately gated",
   "originalMigrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
-  "candidateSqlSha256": "7c4fdfaa9b2ec88c7510bce6f960ef24ca1a99336b756db2d07f0a0ac6e49768",
+  "candidateSqlSha256": "6a17ff25e9bf8f611d4f969ec9f5c1fd9d8d677032582a5b33ef21750552e507",
+  "forwardMigration": "supabase/migrations/20261021181947_eleven_up_human_ready.sql",
+  "orderedMigrations": {
+    "order": [
+      "20261021002901_eleven_up_bots.sql",
+      "20261021181947_eleven_up_human_ready.sql"
+    ],
+    "canonicalGuardPreservedExceptReadyPredicate": true,
+    "defaultsUnchanged": true,
+    "forwardSha256": "6a17ff25e9bf8f611d4f969ec9f5c1fd9d8d677032582a5b33ef21750552e507"
+  },
   "sql": {
     "database": "eleven_up_timeout_1792601764738",
     "evidence": [
@@ -13,7 +23,8 @@
       "fake scoring expiry matches unchanged reducer exactly",
       "late human RPC uses the same Ready timeout boundary in both money modes",
       "nonmember and anonymous reclaim rejected without state changes",
-      "configured all-human safeguard pauses; reclaim while paused clears flags without resume or clock shift",
+      "inherited production false/none defaults still pause all humans at Ready; paused reclaim clears flags without resume or clock shift",
+      "explicit false/none policy also honors canonical Ready all-human safeguard",
       "sit-out deferred through competition; canonical close excludes player from next-game eligibility and clears transient flags",
       "all-human inactivity does not freeze active scoring; safeguard applies at next Ready boundary",
       "existing flagged match installs at a new revision; repeat install does not mutate it again",
@@ -23,7 +34,7 @@
   },
   "browser": {
     "database": "eleven_up_timeout_1792601764738",
-    "id": "0b8bf4b9-1747-412b-a365-4deda1e0eef2",
+    "id": "2c93f2e0-a191-4216-ada4-e69ac845aae6",
     "layouts": [
       {
         "width": 320,
@@ -103,18 +114,25 @@
     ],
     "limitation": "Desktop browser phone emulation; not physical iPhone acceptance"
   },
+  "focusedRegression": {
+    "files": 8,
+    "tests": 49,
+    "result": "passed"
+  },
   "build": {
+    "commit": "e1aaf3975bf562fceb9f1917cb61974cf5720d4a",
+    "clientUnchanged": true,
     "command": "npm run build",
     "typecheck": "passed",
     "applicationTests": 2587,
     "harnessTests": 241,
     "bundle": "passed"
   },
-  "productionActions": [],
-  "migrationRegistered": false,
+  "productionWrites": [],
+  "migrationRegisteredLocally": true,
   "limitations": [
-    "Local retained schema requires production parity verification during a separately authorized release",
-    "Phone viewport emulation is not physical iPhone acceptance",
-    "Unresolved stalled operation; original package unchanged"
+    "Retained local schema requires production parity recheck during authorized release",
+    "Phone emulation is not physical iPhone acceptance",
+    "Serialized admission/database/client rollout and exact deployed SHA verification remain outstanding"
   ]
 }

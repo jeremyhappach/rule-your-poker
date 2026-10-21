@@ -1,5 +1,7 @@
 // Local-only qualification. Never reads credentials or accepts a remote host.
 import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync as read,writeFileSync as write,mkdirSync,existsSync} from 'node:fs';
 const require=createRequire(import.meta.url);
 const pg=require('C:/Users/jerem/source/repos/rule-your-poker/qualification.local/tri-towers/tools/node_modules/pg');
@@ -33,8 +35,21 @@ if(process.argv[2]==='prepare'){
    if(!fs.length)throw Error('Missing retained canonical definition: '+name);
    for(const f of fs){await d.query(f.definition);console.log('Restored exact retained definition',f.signature);}
   }
-  await d.query(body(read('supabase/migrations/20261021002901_eleven_up_bots.sql','utf8')));
-  await d.query(body(read('supabase/eleven-up/human-ready.sql','utf8')));
+  const original=read('supabase/migrations/20261021002901_eleven_up_bots.sql');
+  assert.equal(createHash('sha256').update(original).digest('hex'),'dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d');
+  const forward=read('supabase/migrations/20261021181947_eleven_up_human_ready.sql','utf8');
+  assert.equal(forward,read('supabase/eleven-up/human-ready.sql','utf8'));
+  const guardSql="select pg_get_functiondef('private.pause_all_humans_auto_fold(uuid)'::regprocedure) v";
+  const defaultsSql='select to_jsonb(d) v from public.game_defaults d order by game_type';
+  const guard=(await d.query(guardSql)).rows[0].v,defaults=(await d.query(defaultsSql)).rows;
+  await d.query(body(original.toString()));
+  await d.query(body(forward));
+  const patched=(await d.query(guardSql)).rows[0].v;
+  const boundary=/IF g.game_type='eleven-up' THEN\n -- eleven_up_ready_all_humans_v1\n[\s\S]*?ELSE\n (IF NOT enabled OR action<>'auto_fold' THEN RETURN false; END IF;)\nEND IF;/g;
+  assert.equal([...patched.matchAll(boundary)].length,2);
+  assert.equal(patched.replace(boundary,'$1'),guard,'Other-game gates, canonical count, locks and pause flow unchanged');
+  assert.deepEqual((await d.query(defaultsSql)).rows,defaults,'No global/default policy changes');
+  write('qualification.local/eleven-up-timeout/ordered-migrations.json',JSON.stringify({order:['20261021002901_eleven_up_bots.sql','20261021181947_eleven_up_human_ready.sql'],canonicalGuardPreservedExceptReadyPredicate:true,defaultsUnchanged:true,forwardSha256:createHash('sha256').update(forward).digest('hex')},null,2));
   await d.query('COMMIT');console.log({database});
  }catch(e){await d.query('ROLLBACK');throw e;}finally{await d.end();}
 }

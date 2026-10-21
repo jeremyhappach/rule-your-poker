@@ -9,6 +9,30 @@ DO $$ BEGIN
  END IF;
 END $$;
 
+-- Keep the canonical count, lock/recheck and pause owner. 11 Up's Ready
+-- boundary is inactivity even when legacy defaults disable timeout folding.
+-- Its scoring clock is never an inactivity boundary, including generic callers.
+DO $patch$
+DECLARE source text; gate text := 'IF NOT enabled OR action<>''auto_fold'' THEN RETURN false; END IF;';
+ replacement text := $gate$IF g.game_type='eleven-up' THEN
+ -- eleven_up_ready_all_humans_v1
+ IF NOT EXISTS (SELECT 1 FROM private.eleven_up_matches m
+  WHERE m.game_id=g.id AND m.dealer_game_id=g.current_game_uuid
+   AND NOT m.finished AND m.settlement IS NULL AND m.state->>'phase'='ready')
+ THEN RETURN false; END IF;
+ELSE
+ IF NOT enabled OR action<>'auto_fold' THEN RETURN false; END IF;
+END IF;$gate$;
+BEGIN
+ source := pg_get_functiondef('private.pause_all_humans_auto_fold(uuid)'::regprocedure);
+ IF position('eleven_up_ready_all_humans_v1' IN source)=0 THEN
+  IF (length(source)-length(replace(source,gate,'')))/length(gate) <> 2 THEN
+   RAISE EXCEPTION 'eleven_up:canonical_all_human_guard_drift';
+  END IF;
+  EXECUTE replace(source,gate,replacement);
+ END IF;
+END $patch$;
+
 CREATE OR REPLACE FUNCTION private.eleven_up_schedule_bot() RETURNS trigger
 LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE automatic boolean;
