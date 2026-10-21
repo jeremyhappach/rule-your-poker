@@ -134,7 +134,10 @@ BEGIN
      AND p_state->'pause'='null'::jsonb AND p_state#>>'{hand,phase}'<>'complete' THEN at_ms+750 END WHERE dealer_game_id=p_match;
  -- Project automatic status through canonical player controls; no participant is removed between hands.
  UPDATE public.players p SET auto_fold=EXISTS(SELECT 1 FROM jsonb_array_elements_text(p_state->'automatic') a WHERE a=p.id::text),
-   sit_out_next_hand=CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements_text(p_state->'automatic') a WHERE a=p.id::text) THEN true ELSE p.sit_out_next_hand END
+   sit_out_next_hand=CASE WHEN p_context->>'kind'='control' AND p.user_id=actor THEN false
+     WHEN EXISTS(SELECT 1 FROM jsonb_array_elements_text(p_state->'automatic') a WHERE a=p.id::text) THEN true ELSE p.sit_out_next_hand END,
+   stand_up_next_hand=CASE WHEN p_context->>'kind'='control' AND p.user_id=actor THEN false ELSE p.stand_up_next_hand END,
+   auto_play_stop_round_id=CASE WHEN p_context->>'kind'='control' AND p.user_id=actor THEN NULL ELSE p.auto_play_stop_round_id END
   WHERE p.game_id=m.game_id AND NOT p.is_bot AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) s WHERE s->>'id'=p.id::text);
  IF nullif(p_state->'pause','null'::jsonb) IS NOT NULL AND NOT g.is_paused THEN
   IF g.real_money AND p_state#>>'{pause,reason}'='inactivity' THEN UPDATE public.players SET sitting_out=true,sit_out_next_hand=true WHERE id=(p_state#>>'{hand,active}')::uuid;END IF;

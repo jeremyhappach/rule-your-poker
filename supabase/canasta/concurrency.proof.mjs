@@ -30,5 +30,18 @@ try{
  const fail=fixture(true);
  sql(`CREATE FUNCTION public.canasta_proof_inject() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.dealer_game_id='${fail.match}' THEN RAISE EXCEPTION 'injected_snapshot_failure';END IF;RETURN NEW;END $$;CREATE TRIGGER canasta_proof_inject BEFORE INSERT ON public.session_player_snapshots FOR EACH ROW EXECUTE FUNCTION public.canasta_proof_inject();`);
  const failed=await processSql(commit(fail)).done;assert.match(failed.error,/injected_snapshot_failure/);assert.deepEqual(report(fail),{results:0,batches:0,snapshots:0,chips:[100,100],revision:1});
- console.log('Passed: both-money competing/duplicate settlement, fresh-lock deadline, and injected post-transfer rollback.');
+ // Reclaim wins the canonical lock before a stale autoplay worker can commit.
+ const control=fixture(false),who=control.players[0];
+ sql(`UPDATE private.canasta_matches SET state=jsonb_set(state,'{automatic}','["${who}"]') WHERE dealer_game_id='${control.match}';
+  UPDATE public.players SET auto_fold=true,sit_out_next_hand=true WHERE id='${who}';`);
+ const prior=JSON.parse(sql(`SELECT state FROM private.canasta_matches WHERE dealer_game_id='${control.match}';`));
+ const reclaimed={...prior,revision:prior.revision+1,automatic:[]},stale={...prior,revision:prior.revision+1};
+ const reclaim=`SELECT public.canasta_server_commit('${control.match}',${prior.revision},'${JSON.stringify(reclaimed)}','${JSON.stringify({kind:'control',userId:control.actor})}');`;
+ const first=processSql(`BEGIN;SELECT id FROM public.rounds WHERE id='${control.round}' FOR UPDATE;SELECT 'locked';SELECT pg_sleep(0.5);${reclaim}COMMIT;`);
+ await first.locked;
+ const worker=processSql(`SELECT public.canasta_server_commit('${control.match}',${prior.revision},'${JSON.stringify(stale)}','{"kind":"recover"}');`);
+ assert.equal((await first.done).code,0);assert.match((await worker.done).error,/canasta:conflict/);
+ assert.equal(sql(`SELECT NOT auto_fold AND NOT sit_out_next_hand FROM public.players WHERE id='${who}';`),'t');
+ assert.deepEqual(JSON.parse(sql(`SELECT state->'hand' FROM private.canasta_matches WHERE dealer_game_id='${control.match}';`)),prior.hand);
+ console.log('Passed: both-money competing/duplicate settlement, fresh-lock deadline, injected post-transfer rollback, and reclaim versus stale autoplay.');
 }finally{sql(`DROP DATABASE ${db};`,'postgres');}

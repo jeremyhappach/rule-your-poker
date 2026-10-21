@@ -28,8 +28,18 @@ CREATE TABLE public.canasta_revisions(dealer_game_id uuid PRIMARY KEY REFERENCES
 ALTER TABLE public.canasta_revisions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.canasta_revisions FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.canasta_revisions TO authenticated;
-CREATE POLICY canasta_member_revision ON public.canasta_revisions FOR SELECT TO authenticated USING (
- EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=canasta_revisions.game_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status<>'left'));
+-- Terminal membership is frozen: standing up must not hide the final notification.
+-- This exposes only a revision signal, never the private match or other users' hands.
+CREATE FUNCTION public.canasta_revision_visible(p_match uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT EXISTS(SELECT 1 FROM private.canasta_matches m JOIN public.profiles pr ON pr.id=auth.uid() AND pr.is_active
+  WHERE m.dealer_game_id=p_match AND (
+   EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=m.game_id AND p.user_id=pr.id AND NOT p.is_bot AND p.status<>'left')
+   OR (m.settlement IS NOT NULL AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) seat WHERE seat->>'userId'=pr.id::text))))
+$$;
+REVOKE ALL ON FUNCTION public.canasta_revision_visible(uuid) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.canasta_revision_visible(uuid) TO authenticated;
+CREATE POLICY canasta_member_revision ON public.canasta_revisions FOR SELECT TO authenticated
+ USING(public.canasta_revision_visible(dealer_game_id));
 CREATE FUNCTION private.canasta_publish_revision() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  INSERT INTO public.canasta_revisions VALUES(NEW.dealer_game_id,NEW.game_id,NEW.revision)

@@ -19,11 +19,11 @@ function App(){
  const [tab,setTab]=useState<ShellTabId>('cards');
  const transport=useMemo<Transport>(()=>{
   async function request(op:string,body?:unknown){const r=await fetch(`/__canasta-fixture/${op}?viewer=${viewer}`,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw new CommandRejected(data.error);return data;}
-  return {load:()=>request('state'),send:c=>request('action',c),subscribe:refresh=>{const source=new EventSource(`/__canasta-fixture/events?viewer=${viewer}`);source.onmessage=refresh;return()=>source.close();}};
+  return {load:()=>request('state'),send:c=>request('action',c),takeControl:()=>request('take-control',{}),subscribe:refresh=>{const source=new EventSource(`/__canasta-fixture/events?viewer=${viewer}`);source.onmessage=refresh;return()=>source.close();}};
  },[]);
  return <VisualPreferencesProvider userId={null}><ResponsiveGeometryProvider><GameChatContextProvider value={chat}>
   <PersistentTableShell gameType="canasta" anteAmount={10} projectionMode="active-canonical" viewerPosition={players[viewer-1].position} viewerUserId={players[viewer-1].user_id} seats={[{position:1,occupied:true},{position:5,occupied:true}]}
-   header={<CanonicalTableHeader title="Canasta · local authority fixture"><button onClick={()=>void fetch(`/__canasta-fixture/opponent?viewer=${viewer}`,{method:'POST'})}>Advance test opponent</button></CanonicalTableHeader>}>
+   header={<CanonicalTableHeader title="Canasta · local authority fixture"><button onClick={()=>void fetch(`/__canasta-fixture/opponent?viewer=${viewer}`,{method:'POST'})}>Advance test opponent</button><button onClick={()=>void fetch('/__canasta-fixture/expire',{method:'POST'})}>Expire test turn</button><button onClick={()=>void fetch('/__canasta-fixture/resume',{method:'POST'})}>Resume test match</button></CanonicalTableHeader>}>
    <CanastaTable dealerGameId={id(1)} userId={players[viewer-1].user_id} players={players} activeTab={tab} setActiveTab={setTab} sessionEnded={false} onTerminalActive={()=>{}} onTerminalComplete={()=>{}} transport={transport}/>
   </PersistentTableShell>
  </GameChatContextProvider></ResponsiveGeometryProvider></VisualPreferencesProvider>;

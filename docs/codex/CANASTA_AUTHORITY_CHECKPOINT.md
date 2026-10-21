@@ -1,5 +1,59 @@
 # Canasta local integration checkpoint — October 21, 2026
 
+## October 21 recovery and timeout correction
+
+Supersedes the final-revision limitation and mechanical-only timeout description
+below. Local-only authorization: fix final delivery and terminal/reconnect/restart
+behavior, apply Horses/SSC timeout standard, preserve rules and accepted geometry.
+
+- Root cause: revision RLS required a non-left player row while the terminal
+  projection allowed the frozen participants. A narrowly scoped security-definer
+  visibility predicate now grants settled frozen participants the revision signal,
+  still requiring an active profile. Private hands are not published.
+- Eligible fake-money expiry uses the same own-hand/public-information bot planner
+  as bot seats. Canonical auto_fold and sit_out_next_hand are set atomically. Both
+  Canasta reclaim and canonical set_automatic_play(false) clear the queued sit-out.
+  Real-money expiry and all-human inactivity pause; the latter commits automatic
+  status first without playing the pending turn. A legal bot plan can meld cards;
+  deterministic completion remains only the bounded fallback. Rules/stake unchanged.
+- Uncheck Auto-play restores manual controls; opponent seats reuse AutoRollIndicator
+  in the existing canonical chip slot. No other game's presentation changes.
+- Restart proof exposed a paused postgame continuation blocked by the shared pause
+  guard. Due work and finish now defer while paused, preserving settlement until
+  canonical resume. No pause guard is bypassed.
+- Local rollback SQL verifies canonical control RPCs, unchanged hand/deadline on
+  reclaim, exact final revision, terminal Stand Up, repeated finish, authenticated
+  RLS access by the left frozen participant, outsider denial and inactive-account
+  denial. Private projection reconnect returns the finished authoritative snapshot.
+- recovery.proof.mjs starts separate Node worker processes against a disposable
+  database in the network-disabled container, kills execution after committed
+  gameplay and after terminal finish, then starts fresh workers. It verifies expired
+  claim rejection, dispatcher lease rotation, health acknowledgement, canonical
+  pause/resume, no duplicate turn/settlement and final revision persistence. This
+  clone lacks pg_net: only HTTP delivery is stubbed; actual dispatcher/lease/RPC/
+  financial owners execute. This does not qualify deployed cron or Edge delivery.
+- Component tests hold until authoritative finish, the server hold deadline and
+  canonical chip cursor completion; emit one exact completion token, retain the
+  correct first round after later-hand reconnect, reject wrong tokens and avoid a
+  retained table on a fresh ended entry. Canonical owners are mocked at this
+  component boundary; production Game-route navigation is still a release test.
+- Two rendered fixture tabs verified bot meld/discard completion, opponent robot,
+  reconnect with checked Auto-play, uncheck propagating to the opponent, all-human
+  pause without further drawing, separate resume at 120 seconds and reconnect
+  preserving cards/melds. Evidence: autoplay-opponent.png and autoplay-reclaim.png.
+
+Release remains closed. Remaining installed-stack checks include authenticated
+consent-to-terminal navigation, actual Supabase Realtime delivery and cron/Edge
+transport, Run Back/sit-out transitions and physical iPhone acceptance. This pass
+does not push, deploy, install production SQL, activate admission or change main.
+
+Validation for this correction: 146 tests across 20 files passed, including
+Horses/SSC authority/terminal and canonical player-intent regressions. App/server/
+fixture TypeScript, application build and recovery-worker bundle passed. All three
+local SQL proof runners passed: rollback consent/financial/control/RLS; competing
+settlement/deadline/injected rollback plus reclaim versus stale autoplay; and
+separate-process recovery. Existing build advisory warnings are unchanged.
+
 ## October 21 local integration addendum
 
 This section supersedes the implementation gaps in the October 20 record below.

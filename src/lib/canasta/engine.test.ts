@@ -67,8 +67,10 @@ describe('complete Canasta reducer',()=>{
   });
   it('preserves pickup on timeout and ends the following exhausted hand exactly once',()=>{
     const {afterPickup:m}=maximumThroughReducer(),deadline=m.hand!.deadline;
-    const done=expire(m,deadline,[B]);expect(done.hand!.players[A].cards).toHaveLength(70);
-    expect(done.hand!.players[A].melds).toEqual(m.hand!.players[A].melds);
+    const done=expire(m,deadline,[B]);expect(done.hand!.players[A].cards.length).toBeLessThan(70);
+    // Autoplay may add strategic melds, but never rewinds the committed pickup.
+    for(const meld of m.hand!.players[A].melds)expect(done.hand!.players[A].melds.find(g=>g.rank===meld.rank)?.cards).toEqual(expect.arrayContaining(meld.cards));
+    expect(done.hand!.stock).toEqual(m.hand!.stock);expect(done.hand!.turn).toBe(m.hand!.turn+1);assertConservation(done);
     const c=cmd(done,{type:'end-exhausted'},900),ended=execute(done,c,{kind:'service'},deadline+1).state;
     expect(ended.completed).toHaveLength(1);expect(ended.hand!.result?.out).toBeNull();
     expect(execute(ended,c,{kind:'service'},deadline+2).state.completed).toHaveLength(1);

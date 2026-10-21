@@ -13,6 +13,8 @@ BEGIN
  SELECT * INTO STRICT m FROM private.canasta_matches WHERE dealer_game_id=p_dealer_game_id FOR UPDATE;
  IF m.settlement IS NULL THEN RAISE EXCEPTION 'canasta:close_denied' USING ERRCODE='42501';END IF;
  IF m.finished THEN RETURN;END IF;
+ -- Canonical pause freezes postgame continuation too. A resumed due worker retries.
+ IF g.is_paused THEN RETURN;END IF;
  IF coalesce((m.settlement->>'deadline')::bigint,0)>floor(extract(epoch FROM clock_timestamp())*1000) THEN RETURN;END IF;
  IF g.current_game_uuid IS DISTINCT FROM m.dealer_game_id OR g.game_type IS DISTINCT FROM 'canasta' OR g.status NOT IN ('game_over','session_ended') THEN RAISE EXCEPTION 'canasta:close_identity';END IF;
  IF g.status<>'session_ended' THEN
@@ -84,7 +86,7 @@ END $$;
 CREATE TRIGGER canasta_pause AFTER UPDATE OF is_paused ON public.games FOR EACH ROW EXECUTE FUNCTION private.canasta_pause();
 CREATE FUNCTION public.canasta_server_due() RETURNS SETOF uuid LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
  SELECT m.dealer_game_id FROM private.canasta_matches m JOIN public.games g ON g.id=m.game_id
- WHERE NOT m.finished AND g.current_game_uuid=m.dealer_game_id AND g.game_type='canasta' AND (m.settlement IS NOT NULL OR NOT g.is_paused)
+ WHERE NOT m.finished AND g.current_game_uuid=m.dealer_game_id AND g.game_type='canasta' AND NOT g.is_paused
  AND EXISTS(SELECT 1 FROM private.canasta_release WHERE enabled)
  AND (m.state->'hand'='null'::jsonb OR m.state#>>'{hand,phase}'='complete' OR
   least((m.state#>>'{hand,deadline}')::bigint,m.bot_due_at)<=floor(extract(epoch FROM clock_timestamp())*1000))

@@ -18,7 +18,7 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false}:{t
   const serverOffset=useRef(0),observe=useRef(onSnapshot);observe.current=onSnapshot;
   const mounted=useRef(false);
   const clear=useCallback(()=>{setSelected([]);setDrafts([]);setDiscard(null);},[]);
-  const receive=useCallback((s:Snapshot)=>{if(!mounted.current)return;const next=acceptSnapshot(current.current,s);if(next===current.current)return;current.current=next;serverOffset.current=next.serverAt-Date.now();setSnapshot(next);observe.current(next);},[]);
+  const receive=useCallback((s:Snapshot)=>{if(!mounted.current)return;const next=acceptSnapshot(current.current,s);if(next===current.current)return;current.current=next;serverOffset.current=next.serverAt-Date.now();setNow(next.serverAt);setSnapshot(next);observe.current(next);},[]);
   const refresh=useCallback(async()=>{try{receive(await transport.load());setError('');}catch(e){setError(e instanceof Error?e.message:'Connection uncertain');}},[receive,transport]);
   useEffect(()=>{mounted.current=true;let live=true;const refreshLive=()=>{if(live)void refresh();};const stop=transport.subscribe(refreshLive);refreshLive();
     return()=>{live=false;mounted.current=false;stop();};},[transport,refresh]);
@@ -44,7 +44,7 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false}:{t
     clear();if(retry.current){await send(retry.current.action);if(retry.current)return;}await refresh();
   }
   if(!s||!h||!p?.cards)return <ShellHudGrid timer={<ShellTimerRail/>} pane={panel??<button onClick={()=>void refresh()}>{error||(s?.viewer===null?'Watching Canasta':'Loading Canasta…')}</button>} identity={identity}/>;
-  const ready=!pending&&!retry.current&&!s.pause&&!s.winner&&h.active===s.viewer&&h.phase!=='complete'&&seconds>0;
+  const ready=!pending&&!retry.current&&!s.pause&&!s.winner&&!s.automatic.includes(s.viewer!)&&h.active===s.viewer&&h.phase!=='complete'&&seconds>0;
   const view:EditorView={hand:p.cards,pile:h.pile,melds:p.melds,score:p.openingScore,opened:p.opened,stockCount:h.stockCount,
     phase:h.phase==='complete'?'ended':h.phase,notice:h.active===s.viewer?'Draw or take a qualifying pile, then submit your turn.':'Opponent’s turn.'};
   const hand=(sorted?[...p.cards].sort(compareCards):p.cards).filter(c=>filter==='all'||(filter==='wild'?wild(c):standard(c)?.rank===filter));
@@ -64,5 +64,11 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false}:{t
     finish={without=>void send({type:'finish',groups:drafts.map(g=>({rank:g.rank,ids:g.cards.map(c=>c.id)})),discard:without?null:discard})}
     reconnect={()=>void reconnect()} seconds={seconds} paused={!!s.pause}/>;
   const automatic=s.automatic.includes(s.viewer!);
-  return <ShellHudGrid timer={<ShellTimerRail/>} pane={panel??(ended?null:<>{automatic?<button disabled={pending} onClick={()=>{void transport.takeControl?.().then(receive).catch(e=>setError(e.message));}}>Automatic play · Take Back Control</button>:null}{controls}</>)} identity={identity}/>;
+  async function reclaim(){
+    if(busy.current||!transport.takeControl)return;busy.current=true;setPending(true);
+    try{receive(await transport.takeControl());clear();retry.current=null;setError('');}
+    catch(e){setError(e instanceof Error?e.message:'Connection uncertain');}
+    finally{busy.current=false;setPending(false);}
+  }
+  return <ShellHudGrid timer={<ShellTimerRail/>} pane={panel??(ended?null:<>{automatic?<label className="flex min-h-11 items-center justify-center gap-2 text-xs text-amber-600"><input type="checkbox" aria-label="Auto-play" checked disabled={pending||!transport.takeControl} onChange={()=>void reclaim()}/>Auto-play (uncheck to rejoin)</label>:null}{controls}</>)} identity={identity}/>;
 }

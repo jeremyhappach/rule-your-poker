@@ -33,7 +33,7 @@ export function CanastaTable(props:Props){
   const reconnect=()=>refresh();window.addEventListener('online',reconnect);
   return()=>{void supabase.removeChannel(channel);window.removeEventListener('online',reconnect);};
  }),[props.dealerGameId,props.transport]);
- const observe=useCallback((v:Snapshot)=>{offset.current=v.serverAt-Date.now();setSnapshot(v);if(v.firstRoundId)callbacks.current.onFirstRound?.(v.firstRoundId);if(!v.settlement)sawLive.current=true;},[]);
+ const observe=useCallback((v:Snapshot)=>{offset.current=v.serverAt-Date.now();setNow(v.serverAt);setSnapshot(v);if(v.firstRoundId)callbacks.current.onFirstRound?.(v.firstRoundId);if(!v.settlement)sawLive.current=true;},[]);
  useCanastaCardPresentation(snapshot,props.userId);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()+offset.current),250);return()=>clearInterval(id);},[]);
  useShellTabBar({cardsIcon:'spade',activeTab:props.activeTab,setActiveTab:props.setActiveTab});

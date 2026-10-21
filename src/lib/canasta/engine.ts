@@ -1,5 +1,6 @@
 import type {Rank} from '../cardUtils';
 import type {PhysicalCard} from '../cardGames/physicalCard';
+import {chooseBotAction} from './bot';
 import {VERSION,CONTRACT,fixtureDeck,redThree,standard,natural,wild,meldError,openingReport,
   pileStatus,compareCards,canastas,rulesFor,type Meld} from './rules';
 
@@ -132,6 +133,7 @@ export function execute(input:Match,command:Command,principal:Principal,at:numbe
   requireThat(uuid(command.requestId)&&command.matchId===input.id,'command_identity');
   const signature=JSON.stringify(command),receipt=input.receipts[command.requestId];
   if(receipt){requireThat(receipt.signature===signature,'receipt_conflict');return {state:input,duplicate:true};}
+  requireThat(principal.kind==='service'||!input.automatic.includes(command.playerId),'automatic_control');
   const h=input.hand;
   requireThat(h&&!input.winner&&!input.pause&&command.handId===h.id&&command.turn===h.turn&&command.generation===h.generation
     &&command.revision===input.revision&&command.playerId===h.active,'stale_command');
@@ -149,18 +151,31 @@ export function resume(input:Match,at:number,episode:number):Match{
   requireThat(input.pause?.episode===episode,'pause_episode');const m=structuredClone(input);
   m.hand!.deadline=at+(m.pause!.expired?CONTRACT.turnMs:m.pause!.remaining);m.hand!.generation++;m.pause=null;return advance(m,at);
 }
-/** Worker receives canonical active-human IDs. Never calls the strategic bot. */
+/** Approved fake-money autoplay uses the same bounded bot and private-seat projection. */
 export function expire(input:Match,at:number,activeHumans:string[]):Match{
   const h=input.hand;if(!h||input.pause||input.winner||h.phase==='complete'||at<h.deadline)return input;
-  if(input.realMoney||!input.seats.some(s=>s.kind==='human'&&s.id!==h.active&&activeHumans.includes(s.id)&&!input.automatic.includes(s.id)))
-    return pause(input,at,'inactivity');
-  const m=structuredClone(input);if(!m.automatic.includes(h.active))m.automatic.push(h.active);
-  return mechanicalCompletion(m,at);
+  if(input.realMoney)return pause(input,at,'inactivity');
+  const m=structuredClone(input);if(m.seats.find(s=>s.id===h.active)?.kind==='human'&&!m.automatic.includes(h.active))m.automatic.push(h.active);
+  if(!input.seats.some(s=>s.kind==='human'&&s.id!==h.active&&activeHumans.includes(s.id)&&!input.automatic.includes(s.id)))return pause(m,at,'inactivity');
+  return autoplayCompletion(m,at);
 }
 export function automaticTurn(input:Match,at:number,activeHumans:string[]):Match{
   const h=input.hand;requireThat(h&&input.automatic.includes(h.active)&&!input.pause&&!input.winner&&h.phase!=='complete','automatic_identity');
   if(input.realMoney||!input.seats.some(s=>s.kind==='human'&&s.id!==h.active&&activeHumans.includes(s.id)&&!input.automatic.includes(s.id)))return pause(input,at,'inactivity');
-  return mechanicalCompletion(structuredClone(input),at);
+  return autoplayCompletion(structuredClone(input),at);
+}
+function autoplayCompletion(input:Match,at:number):Match{
+  let m=input;const turn=m.hand!.turn;
+  // A bot plans one draw/pickup and one finish. Validate each plan on a copy so
+  // fallback cannot inherit partial mutations from an invalid proposal.
+  for(let step=0;step<2&&m.hand!.turn===turn&&m.hand!.phase!=='complete';step++){
+    const action=chooseBotAction(project(m,m.hand!.active));
+    if(!action)return mechanicalCompletion(m,at);
+    const next=structuredClone(m);
+    try{applyAction(next,action,at);}catch{return mechanicalCompletion(m,at);}
+    m=next;
+  }
+  return advance(m,at);
 }
 function mechanicalCompletion(m:Match,at:number):Match{
   if(m.hand!.phase==='draw'){

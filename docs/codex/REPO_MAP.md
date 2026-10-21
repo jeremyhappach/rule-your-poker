@@ -1110,6 +1110,10 @@ route header presentation. Live dispatcher/scheduler/route integration remains;
 see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.
 # Canasta local integration owners (2026-10-21; admission closed)
 
+- `supabase/canasta/terminal-control.proof.sql`: terminal revision RLS and canonical Auto-play/reclaim assertions.
+- `supabase/canasta/recovery.proof.mjs`, `recovery.process-proof.ts`: disposable SQL database and fresh worker-process crash/restart proof; HTTP dispatch delivery is stubbed locally.
+- `src/components/canasta/CanastaTerminal.test.tsx`, `src/lib/canasta/recoveryLifecycle.test.ts`: terminal retention, cold reconnect and timeout control qualification.
+
 - `api/canasta.ts`, `server/canasta/{production,recovery}.ts`: authenticated route and leased recovery orchestration.
 - `supabase/canasta/{registration,recovery,schedule}.candidate.sql`: guarded Ante Up insertion, immutable config, revision signal, disabled scheduler; unapplied.
 - `src/components/canasta/{CanastaTable,CanastaArtifacts,useCanastaCardPresentation}.tsx`: canonical table adapter, artifacts and observed card presentation (the hook is a `.ts` file).

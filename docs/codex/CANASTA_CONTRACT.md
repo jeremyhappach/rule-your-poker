@@ -80,14 +80,29 @@ Fake-money automatic completion only while another human remains active.
 All-human inactivity guard runs first; human/bot therefore pauses on human expiry.
 Normal pause retains remaining budget. Authorized return/resume after expiry
 rearms 120 seconds once per pause episode, recorded durably.
-Automatic mode uses canonical indicators/Take Back Control; next-match sit-out
-never removes a participant between internal hands. No timeout forfeits/payouts.
+October 21 approved timeout alignment supersedes the earlier mechanical-only
+human policy: eligible fake-money expiry marks canonical Auto-play and
+`sit_out_next_hand`, then uses the existing bounded bot planner with only that
+seat's hand and public information. The last inactive human is marked automatic
+before pausing; no turn is played while the all-human guard applies. Real-money
+expiry does not invoke the bot. Next-match sit-out never removes a participant
+between internal hands. There is no timeout forfeiture or timeout-created payout.
+An ordinarily played legal match finish still uses the unchanged settlement rules.
 
-Mechanical completion ignores all unsubmitted drafts and preserves committed
-draw/pickup/melds. Before draw, stock draw normally; after draw/pickup, no redraw.
-At exhausted stock take only mandatory legal pickup, otherwise end exhausted hand.
+The checked Auto-play control restores manual control and clears queued sit-out
+when unchecked. It does not reset the deadline, undo a draw/pickup/meld or resume
+a paused game. Opponents see the canonical robot indicator. Reclaim and worker
+actions serialize through revision CAS; stale manual drafts cannot race autoplay.
+
+Autoplay ignores all unsubmitted drafts and preserves committed draw/pickup/melds.
+It may take any legal pickup, including an optional stock-exhaustion pickup.
+After a committed draw/pickup it never redraws. The bounded planner proposes at
+most a draw/pickup and final submission through the same rule predicates. If it
+cannot propose a valid completion, the deterministic fallback applies: before
+draw, stock draw normally; at exhausted stock take a mandatory legal pickup,
+otherwise end the exhausted hand. After drawing, the fallback selects:
 Sort legal discard candidates by A,2,3,...,K,Joker; then clubs,diamonds,hearts,spades;
-then physical ID bytewise. Never evaluate strategy or invoke the strategic bot.
+then physical ID bytewise.
 If no discard, only the sole remaining card may join an existing meld to legally
 complete going out; choose lowest destination rank when ambiguous.
 Otherwise preserve the state and pause for recovery.

@@ -2545,6 +2545,16 @@ Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
 # 2026-10-21 — Canasta local canonical integration
 
+Follow-up approval aligns fake-money human expiry with Horses/SSC Auto-play:
+the existing private-information bot acts, canonical next-hand sit-out is queued,
+uncheck restores control and clears that intent, and opponents see the shared robot.
+Real-money expiry and all-human inactivity still pause. This explicitly supersedes
+the earlier mechanical-only timeout policy; game legality, scoring, stake and
+120-second deadline are unchanged. Mechanical completion remains a legal fallback.
+Settled frozen participants retain revision visibility after Stand Up. Canonical
+pause also freezes postgame continuation; workers retry after authorized resume.
+Installed Realtime/Edge delivery remains a separate release qualification gate.
+
 Preserve the exact deployed Ante Up dispatcher, including Race Poker, by a guarded
 single-branch insertion; do not install the stale local dispatcher. Freeze the
 two-seat roster with configuration, require fresh canonical consent and recovery

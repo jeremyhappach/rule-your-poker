@@ -1,5 +1,11 @@
 # Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
 
+Local recovery follow-up fixes final revision visibility for frozen participants
+after Stand Up, aligns fake-money expiry with approved bot Auto-play and clears
+queued sit-out on reclaim. Real-money and all-human inactivity still pause.
+Terminal ownership and separate worker-process crash/restart proofs are included;
+installed Realtime/Edge delivery and native device acceptance remain unqualified.
+
 Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
 inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Appearance accepted; local implementation
 authorized. See `CANASTA_AUTHORITY_CHECKPOINT.md` for completed reducer, server

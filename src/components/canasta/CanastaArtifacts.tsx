@@ -5,6 +5,7 @@ import {CanonicalSeatCluster} from '@/lib/canonicalShell/CanonicalSeatCluster';
 import {useSeatAnchors} from '@/lib/canonicalShell/SeatAnchorLayer';
 import {useCanonicalFeltInteractionLayerElement} from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
 import {PlayingCard} from '@/components/PlayingCard';
+import {AutoRollIndicator} from '@/components/AutoRollIndicator';
 import {isResolvedJoker} from '@/lib/cardGames/physicalCard';
 import {pileStatus} from '@/lib/canasta/rules';
 import {safeFeltRect,type Rect} from '@/lib/run21/safeFelt';
@@ -26,7 +27,7 @@ export function CanastaArtifacts({snapshot,players,ended}:{snapshot:Snapshot|nul
  const blocked=h?pileStatus(h.pile,!!(viewer&&h.players[viewer]?.opened)):null;
  return <>
   <div className="canasta-play"><div className="canasta-seats">{s?.seats.filter(p=>p.id!==viewer).map(seat=>{
-   const p=players.find(p=>p.id===seat.id);return <CanonicalSeatCluster key={seat.id} slot={anchors.byPosition.get(seat.seat)?.slot} position={seat.seat} name={p?.profiles?.username??'Opponent'} chipValue={String(p?.chips??0)} chipAmount={p?.chips??0} playerId={seat.id} ownerLabel="Canasta" scoreLine={String(s.totals[seat.id])}>
+   const p=players.find(p=>p.id===seat.id),slot=anchors.byPosition.get(seat.seat)?.slot;return <CanonicalSeatCluster key={seat.id} slot={slot} position={seat.seat} name={p?.profiles?.username??'Opponent'} chipValue={String(p?.chips??0)} chipAmount={p?.chips??0} playerId={seat.id} ownerLabel="Canasta" scoreLine={String(s.totals[seat.id])} chipDiscChildren={!ended&&seat.kind==='human'&&s.automatic.includes(seat.id)?<span role="img" aria-label="Opponent auto-play"><AutoRollIndicator isRightSide={(slot??0)>=3}/></span>:null}>
     {!ended&&h&&<span data-card-anchor={`opp-stack-${seat.seat}`} className="text-xs">{h.players[seat.id].count} cards · {h.players[seat.id].melds.map(m=>`${m.rank} × ${m.cards.length}`).join(' · ')}</span>}
    </CanonicalSeatCluster>;
   })}</div></div>

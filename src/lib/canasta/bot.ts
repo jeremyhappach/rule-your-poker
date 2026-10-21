@@ -1,7 +1,7 @@
 import type {Action,Projection,Group} from './engine';
 import {standard,natural,wild,points,compareCards,pickupError,turnPlan,pileStatus,type Meld} from './rules';
 
-/** Bounded public-information policy. Human timeout completion never calls this. */
+/** Bounded own-hand/public-information policy, also used by approved fake-money autoplay. */
 export function chooseBotAction(view:Projection):Action|null {
   const h=view.hand;if(!h||view.pause||view.winner||h.phase==='complete'||h.active!==view.viewer)return null;
   const p=h.players[h.active],hand=p.cards;if(!hand)return null;
