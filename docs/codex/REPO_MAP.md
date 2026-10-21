@@ -1,5 +1,11 @@
 # Repository map
 
+Canasta closed release preparation: `supabase/canasta/release/build.mjs` produces
+the hashed installation, rollback proofs and recovery-worker bundle from existing
+Canasta owners. `admission.proof.sql` owns fake-money admission regressions.
+`CANASTA_RELEASE_PACKAGE.md` links exact artifacts and remaining hosted gates.
+No production migration is registered by this package.
+
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
 The adjoining Arcade/multiplayer adapters, bots and recovery follow the accepted
 Trip Flip owners. `src/components/boxdrop/` is the shared factory presentation;

@@ -8,6 +8,14 @@ See `CANASTA_AUTHORITY_CHECKPOINT.md` for progress and remaining gates.
 
 ## Version and rules
 
+Initial access amendment, October 21: fake-money sessions only. Enforce the locked
+session's mode at configuration and consent completion, including Run Back.
+Capabilities must hide Canasta for real-money sessions. Global admission stays
+closed by default. This does not alter the frozen gameplay rules, signed scores,
+canonical settlement, accepted match recovery or historical results. No tester
+allowlist is implied by the active-profile capability predicate. Hosted tester
+identities and release/activation remain separate approvals.
+
 `canasta-classic-two/1`: exactly two UUID participants, human/human or human/bot,
 multiplayer only. Two 52-card decks plus four Jokers, unique opaque physical IDs.
 Fifteen-card hands; draw two, optionally meld, discard one. Two canastas to go out;

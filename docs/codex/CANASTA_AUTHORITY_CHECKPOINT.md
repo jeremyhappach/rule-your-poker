@@ -1,5 +1,24 @@
 # Canasta local integration checkpoint — October 21, 2026
 
+## October 21 fake-money admission and closed package
+
+Approved local-only follow-up adds authoritative fake-money guards to configure
+and begin, and session-specific capability filtering. The admission proof covers
+both closed modes, forged client mode, no side effects on rejection, genuine fake
+setup followed by a mode change, private-RPC denial, and committed retry after
+gate closure. Run Back uses the same configure owner; actual hosted Run Back
+remains part of browser qualification. Existing rule/financial/recovery code is
+unchanged. Both-money financial tests are synthetic rollback regressions only.
+
+Passed this pass: main rollback consent/financial/control/RLS/admission proof;
+independent settlement/deadline/reclaim concurrency; worker-process crash/restart;
+exact generated closed-install and both release rollback scripts locally.
+The package verifies closed flags and inactive scheduler before any local health
+fixture. Generated artifacts have reproducible hashes and a no-write check.
+Previous app tests/build evidence is unchanged; no client source changed here.
+See `CANASTA_RELEASE_PACKAGE.md`. Release remains blocked by current-main
+reconciliation, hosted authority/transport/browser checks and native acceptance.
+
 ## October 21 recovery and timeout correction
 
 Supersedes the final-revision limitation and mechanical-only timeout description

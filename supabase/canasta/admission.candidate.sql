@@ -14,6 +14,9 @@ BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game_id FOR UPDATE;
  SELECT * INTO STRICT d FROM public.players WHERE id=p_dealer_player_id AND game_id=g.id;
  IF d.user_id IS DISTINCT FROM actor OR d.is_bot THEN RAISE EXCEPTION 'canasta:dealer_required' USING ERRCODE='42501';END IF;
+ -- Initial launch scope is fake money only, including direct RPC and Run Back.
+ -- Check the locked session, never a client-supplied config flag or UI filter.
+ IF g.real_money IS DISTINCT FROM false THEN RAISE EXCEPTION 'canasta:fake_money_only' USING ERRCODE='42501';END IF;
 
  IF coalesce(p_config->>'ante_amount','') !~ '^[1-9][0-9]{0,3}$' OR p_expected_config_deadline IS NULL THEN RAISE EXCEPTION 'canasta:config';END IF;stake_i:=(p_config->>'ante_amount')::integer;
  hash:=md5(jsonb_build_array(p_game_id,p_dealer_player_id,p_expected_dealer_position,p_config,p_expected_config_deadline)::text);
@@ -58,6 +61,8 @@ CREATE FUNCTION private.canasta_begin(p_game uuid,p_dealer uuid) RETURNS jsonb L
 DECLARE g public.games;dg public.dealer_games;seats_i jsonb;initial_state jsonb;first_round_i uuid:=gen_random_uuid();at_ms bigint;
 BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game FOR UPDATE;
+ -- Recheck at consent completion in case session mode changed after setup.
+ IF g.real_money IS DISTINCT FROM false THEN RAISE EXCEPTION 'canasta:fake_money_only' USING ERRCODE='42501';END IF;
  PERFORM private.canasta_assert_recovery_health();
  SELECT * INTO STRICT dg FROM public.dealer_games WHERE id=p_dealer AND session_id=p_game;
  IF g.current_game_uuid IS DISTINCT FROM p_dealer OR g.game_type IS DISTINCT FROM 'canasta' OR g.status<>'ante_decision' OR g.is_paused

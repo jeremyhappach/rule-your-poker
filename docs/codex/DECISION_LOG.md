@@ -1,3 +1,16 @@
+# 2026-10-21 — Canasta initial admission is fake money only
+
+Jeremy authorized the local correction and exact hosted qualification/release
+package, with no production changes, merge, push, deployment or activation.
+Use the authoritative locked session mode at both configure and consent completion;
+filter session capabilities consistently. Existing admission defaults stay closed.
+No new allowlist or alternate gate infrastructure. The active-profile capability
+would allow all eligible active accounts if globally opened; restricted hosted
+qualification therefore needs explicitly approved identities/session provisioning.
+Accepted match execution, canonical money owners and real-money regression fixtures
+remain intact. Package/current-main reconciliation and hosted acceptance are still
+required before release. See `CANASTA_RELEASE_PACKAGE.md`.
+
 # 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
 
 Jeremy approved full Arcade and two-player multiplayer with one frozen server

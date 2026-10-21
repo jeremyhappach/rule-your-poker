@@ -14,10 +14,11 @@ BEGIN
   INSERT INTO auth.users(id) VALUES(users[money]);
   INSERT INTO public.profiles(id,username,is_active) VALUES(users[money],'Canasta consent '||money,true) ON CONFLICT(id) DO UPDATE SET is_active=true;
  END LOOP;
+ -- Two independent fake-money sessions retain the consent/recovery lease proof.
  FOR money IN 0..1 LOOP
   ids:=ARRAY[gen_random_uuid(),gen_random_uuid()];g:=gen_random_uuid();deadline:=clock_timestamp()+interval '120 seconds';
   PERFORM set_config('request.jwt.claim.role','service_role',true);PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
-  INSERT INTO public.games(id,status,real_money,dealer_position,pot,is_paused,config_deadline) VALUES(g,'game_selection',money=1,1,0,false,deadline);
+  INSERT INTO public.games(id,status,real_money,dealer_position,pot,is_paused,config_deadline) VALUES(g,'game_selection',false,1,0,false,deadline);
   INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot,status,sitting_out,waiting)
    SELECT ids[i],g,users[i],i,100,false,'active',false,false FROM generate_series(1,2) i;
   PERFORM set_config('request.jwt.claim.sub',users[1]::text,true);

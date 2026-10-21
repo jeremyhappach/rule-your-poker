@@ -1,5 +1,12 @@
 # Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
 
+Initial admission is now explicitly fake-money-only at discovery, locked setup
+and consent completion. Closed defaults remain unchanged. The local correction
+and exact closed SQL/worker package pass rollback, concurrency and restart proofs.
+See `CANASTA_RELEASE_PACKAGE.md` and `supabase/canasta/release/README.md` for hashes,
+tester scope and remaining hosted gates. No main integration, push, production
+mutation, deployment or admission activation is authorized or performed.
+
 Local recovery follow-up fixes final revision visibility for frozen participants
 after Stand Up, aligns fake-money expiry with approved bot Auto-play and clears
 queued sit-out on reclaim. Real-money and all-human inactivity still pause.

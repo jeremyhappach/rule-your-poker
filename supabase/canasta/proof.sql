@@ -33,7 +33,7 @@ BEGIN
   INSERT INTO private.canasta_matches(dealer_game_id,game_id,first_round_id,state,revision,stake,seats) VALUES(dealer,game,round_id,state_i,1,10,seats_i);
   PERFORM pg_temp.canasta_assert(NOT has_function_privilege('authenticated','public.canasta_server_commit(uuid,bigint,jsonb,jsonb)','EXECUTE'),'client cannot submit authority state');
   BEGIN PERFORM public.canasta_configure(game,proof_players[1],1,'canasta','{"ante_amount":10}',clock_timestamp());
-   RAISE EXCEPTION 'missing closed admission';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT IN ('canasta:release_closed','canasta:dealer_required','canasta:admission_closed') THEN RAISE;END IF;END;
+   RAISE EXCEPTION 'missing closed admission';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT IN ('canasta:release_closed','canasta:dealer_required','canasta:admission_closed','canasta:fake_money_only') THEN RAISE;END IF;END;
   BEGIN PERFORM public.canasta_server_load(dealer,gen_random_uuid());RAISE EXCEPTION 'missing authorization rejection';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
   req:=gen_random_uuid();cmd:=jsonb_build_object('requestId',req,'matchId',dealer,'handId',round_id,'turn',1,'generation',1,'revision',1,'playerId',proof_players[1],'action',jsonb_build_object('type','finish','groups','[]'::jsonb,'discard',NULL));
   UPDATE private.canasta_matches SET state=jsonb_set(state,'{hand,deadline}','0') WHERE dealer_game_id=dealer;

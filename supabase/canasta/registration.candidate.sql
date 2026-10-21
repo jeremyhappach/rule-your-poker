@@ -53,7 +53,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.canasta_revisions;
 CREATE FUNCTION public.canasta_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',
   private.canasta_actor_allowed(auth.uid()) AND EXISTS(SELECT 1 FROM private.canasta_release WHERE admission_enabled)
-  AND (p_session_id IS NULL OR EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=auth.uid() AND NOT is_bot AND status='active')))
+  AND (p_session_id IS NULL OR EXISTS(SELECT 1 FROM public.players p JOIN public.games g ON g.id=p.game_id
+   WHERE p.game_id=p_session_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status='active' AND g.real_money=false)))
 $$;
 REVOKE ALL ON FUNCTION public.canasta_capabilities(uuid) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.canasta_capabilities(uuid) TO authenticated;
