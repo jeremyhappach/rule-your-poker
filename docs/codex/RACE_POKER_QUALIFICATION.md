@@ -1,4 +1,4 @@
-# Race Poker qualification — production authority passed, admission closed
+# Race Poker qualification — production published, admission closed
 
 Approved `race-poker/1` is implemented on `codex/race-poker-v1`, based on
 `a150cd6aecc746143f246186a8b46421d0534355`. The initial qualification below was local; the chronological release evidence at
@@ -245,3 +245,34 @@ real_qualified are all false. No cohort/profile access was expanded.
 
 Client publication and final closed-admission browser checks are the next stage.
 No activation or physical-phone acceptance is claimed.
+
+
+## Closed production publication — 2026-10-21 00:31 UTC
+
+Main was fast-forwarded to `fff4e8d39c4514c5c4370e993929ee858a453f04` and pushed
+through the corrected approved helper. Local checkpoint tag:
+`race-poker-closed-release-2026-10-20`. Vercel production deployment
+`dpl_6oGnRPndEVXfZhZ6kSD5LwGPrM9k` is READY at that exact SHA, with aliases
+holm357.com and ptown-poker.vercel.app. The canonical HTML and
+`/assets/index-CMUZ0zhE.js` both return HTTP 200; the asset contains the Race client.
+
+A signed-in 390x844 desktop Chromium run against https://holm357.com verified:
+capability HTTP 200/version 2/enabled false; approved adaptation Rules including
+30 seconds and no fifth-card refill; no Race request to the Arcade endpoint;
+existing Run21 Arcade entry present and no Race Poker Arcade entry; no page errors.
+The smoke identity does not expose the admin Defaults button, so no production
+Defaults UI coverage is claimed. Read-only database evidence confirms Race defaults
+fullscreen/stake 5. Dealer selection and Run Back rejection have local catalog
+coverage and installed production configure rejection; no live game was created
+to repeat those UI paths during the closed release.
+
+Final database check: enabled=false, admission_enabled=false,
+fake_qualified=false, real_qualified=false; zero matches/games/results; latest
+recovery run succeeded. No existing cohort/profile eligibility changed. Evidence
+and screenshots are under ignored qualification.local/race-poker/production-*.
+
+This completes the authorized closed release. Activation of either money mode is
+unexecuted and requires Jeremy's separate approval. Physical iPhone audio/touch,
+two-human and human/bot production gameplay smoke remain pending after activation.
+The following documentation-only checkpoint records this verified product release;
+it does not alter product code, authority or flags.
