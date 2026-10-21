@@ -12,6 +12,7 @@ export const expected={
  'public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)':'c633a318c7f2605104c92e03d3b3b09a',
  'public.set_game_paused(uuid,boolean,uuid,bigint)':'1fa2220c33734d1cf14c11f3eaef432b',
  'private.split_whole_chips_clockwise(uuid,uuid[],integer,integer)':'b6eb18407c38efdc17d6b181820cfa9a',
+ 'public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)':'a69f39fefb234c3b01114c8049fdbbb6',
 };
 export const guard=`DO $guard$ DECLARE f record;BEGIN FOR f IN SELECT * FROM (VALUES ${Object.entries(expected).map(([signature,hash])=>`('${signature}','${hash}')`).join(',')}) expected(signature,hash) LOOP
  IF md5(pg_get_functiondef(to_regprocedure(f.signature))) IS DISTINCT FROM f.hash AND md5(replace(pg_get_functiondef(to_regprocedure(f.signature)),chr(13)||chr(10),chr(10))) IS DISTINCT FROM f.hash THEN RAISE EXCEPTION 'golf:shared_authority_changed:%',f.signature;END IF;END LOOP;END $guard$;`;
@@ -28,7 +29,7 @@ write(migrationPath,sql);
 const c=await connect(localContext().database);
 try{await c.query('BEGIN');await installLocalReference(c);await c.query(guard);await c.query('ROLLBACK');}
 catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}
-const proof="-- LOCAL qualification: fixtures seed scheduler health. Not a production proof payload.\nBEGIN; SET LOCAL statement_timeout='60s';\n"+['core-proof','proof','financial-proof','recovery-proof','mixed-proof'].map(n=>read('supabase/six-card-golf/'+n+'.sql','utf8')).join('\n')+'\n'+['core-proof','financial-proof','rollback-failure-proof'].map(n=>read('supabase/race-poker/'+n+'.sql','utf8')).join('\n')+"\nROLLBACK;";
+const proof="-- LOCAL qualification: fixtures seed scheduler health. Not a production proof payload.\nBEGIN; SET LOCAL statement_timeout='60s';\n"+['core-proof','proof','financial-proof','recovery-proof','mixed-proof','qualification-proof'].map(n=>read('supabase/six-card-golf/'+n+'.sql','utf8')).join('\n')+'\n'+['core-proof','financial-proof','rollback-failure-proof'].map(n=>read('supabase/race-poker/'+n+'.sql','utf8')).join('\n')+"\nROLLBACK;";
 write('qualification.local/six-card-golf/migration.sql',sql);
 write('qualification.local/six-card-golf/installed-proof.sql',proof);
 write('qualification.local/six-card-golf/release-manifest.json',JSON.stringify({preparedAt:new Date().toISOString(),sha256:createHash('sha256').update(sql).digest('hex'),expected,admission:'closed',productionApplied:false,formalMigrationId:'20261021011905'},null,2));

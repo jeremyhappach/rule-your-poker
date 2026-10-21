@@ -416,3 +416,66 @@ The remaining release decision is the proposed exact-account/session live
 qualification gate. It is not implemented by this task. Full commands, evidence
 format, safeguards, service checks and activation sequence are in
 [production qualification preparation](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
+
+## Scoped qualification gate and canonical autoplay — 2026-10-21
+
+The subsequently approved local follow-up implements the private exact-existing-
+account/session/expiry gate, with general admission closed. Every human must be
+scoped before new admission. Immutable admitted access survives expiry/removal
+for that match only; it cannot admit Run Back. Active-profile, membership, stake,
+consent and hidden-card rules remain mandatory. Authenticated revision RLS denies
+outsiders. The two grant/access tables start empty and expose no grant writer.
+
+Real-money human timeout retains canonical pause. Fake timeout already used
+canonical `auto_fold` and `sit_out_next_hand`; Golf now publishes those controls
+with a revision and the current canonical intent version. The self Auto-play
+checkbox survives reload; unchecking delegates to `public.set_automatic_play`,
+clears autoplay/deferred sit-out and leaves deliberate pause untouched. Opponent
+autoplay appears beside the score through an opt-in canonical seat prop; other
+games retain their existing rendering. Reclaim can safely retain a pending stock
+draw at an atomic card-action boundary. A hole successor retains the frozen match
+roster; canonical deferred sit-out applies after the match, not between holes.
+
+Executed local evidence under `qualification.local/six-card-golf/`:
+
+- `gate-full-proof.log`, `gate-installed.log`: core/privacy, human/mixed matches,
+  all winner/tie financial cases, recovery, scoped qualification and installed
+  Race Poker preservation/financial failure rollback passed. Closed flags and
+  zero residual synthetic matches/revisions verified after rollback.
+- `gate-pending-proof.log`: final focused qualification proof passes exact
+  account/session/default closure, unknown identities, expiry, active-account
+  denial, actual authenticated-role RLS, both timeout modes, stale/outsider
+  reclaim, other-option version publication, pending-draw preservation,
+  deliberate/all-human pause, hole retention, next-match sit-out and unchanged
+  canonical 105/95 settlement. Its terminal case is explicitly a constructed
+  fixture; full-match evidence is in the separate human/mixed proofs.
+- `gate-concurrency-fake.log`, `gate-concurrency-real.log`: independent-connection
+  action/timeout/successor/settlement/replay checks passed in both money modes.
+- `autoplay-browser.json`, `autoplay-self.png`, `autoplay-peer.png`: two actual
+  local mobile browser clients passed fake timeout, checked checkbox, opponent
+  score robot, reload persistence and authoritative uncheck/reclaim. The browser
+  service directly invokes recovery; this is not pg_cron or live Realtime proof.
+- `gate-build.log`: TypeScript, 373 application files / 2,602 tests, 12 harness
+  files / 241 tests, and production Vite build passed (8.30 seconds for bundle).
+- `gate-offline-tests.log`: five offline safety/evidence tests passed.
+  `gate-proof-containment.log`: live-service negative gate, real SQL containment,
+  recorded-row deletion/out-of-scope rejection and rollback passed.
+
+Final admission-boundary review also corrected `golf_close` to use exact frozen
+match access. The installed qualification proof now completes and replays that
+public terminal RPC after grant expiry/removal, with general flags still false.
+
+The initial local fixture lacked the existing canonical autoplay RPC; the local
+bootstrap now imports that exact checked-in owner, without modifying production
+shared authority. Final review found unrelated player options could advance its
+version; the Golf projection now follows every canonical intent-version change.
+The first browser assertion expected synchronous checkbox removal and was fixed
+to await the authoritative response. `bunx tsgo` could not resolve the preferred
+tool (registry 404); the installed repository TypeScript command passed instead.
+
+Migration `20261021011905_six_card_golf_v1.sql` remains unpublished and now has
+eight shared-authority guards. Its exact hash and eleven regenerated production
+proof units are pinned in the production qualification plan. No production write,
+grant, main integration, push, deployment or activation occurred in this follow-up.
+Physical iPhone acceptance and live production service/race qualification remain
+pending. No scoring, prolonged-play, match stake or settlement rule changed.

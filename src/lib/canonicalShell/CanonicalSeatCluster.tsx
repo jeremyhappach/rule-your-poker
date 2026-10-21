@@ -90,6 +90,7 @@ export interface CanonicalSeatClusterProps {
   /** Optional secondary line rendered below the chip bubble (e.g. running
    *  score for games that track per-player totals). Hidden when null. */
   scoreLine?: string | null;
+  scoreAutoPlay?: boolean;
   /**
    * Canonical participant status — drives the chip bubble fill color
    * via the shared `getParticipantChipBgClass` palette. Defaults to
@@ -294,6 +295,7 @@ export function CanonicalSeatCluster({
   chipAmount,
   status = 'active',
   scoreLine,
+  scoreAutoPlay = false,
   children,
   innerDecoration,
   outerDecoration,
@@ -748,7 +750,7 @@ export function CanonicalSeatCluster({
         className="text-[10px] font-semibold text-white leading-none whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5"
         style={{ minWidth: '2.75rem', textAlign: 'center' }}
       >
-        {scoreLine}
+        {scoreAutoPlay&&<span role="img" aria-label="Auto-play" className="mr-1">🤖</span>}{scoreLine}
       </span>,
     );
   }

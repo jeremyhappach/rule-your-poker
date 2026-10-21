@@ -100,6 +100,13 @@ function SourceTransferSeat() {
   );
 }
 
+it('places the autoplay marker beside the score only when admitted by its game',()=>{
+ renderInLayer(<CanonicalSeatCluster slot={2} position={2} name="Peer" chipValue="$100" scoreLine="Total 8" scoreAutoPlay/>);
+ expect(container.querySelector('[aria-label="Auto-play"]')?.parentElement?.textContent).toBe('🤖Total 8');
+ renderInLayer(<CanonicalSeatCluster slot={2} position={2} name="Peer" chipValue="$100" scoreLine="Total 8"/>);
+ expect(container.querySelector('[aria-label="Auto-play"]')).toBeNull();
+});
+
 describe('CanonicalSeatCluster — byte-for-byte contract for existing consumers', () => {
   it('emits no decoration nodes when only baseline props are passed', () => {
     renderInLayer(

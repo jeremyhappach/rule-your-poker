@@ -26,12 +26,14 @@ export function GolfTable(props:Props) {
  const v=game.snapshot,ready=useGolfFinancial(v,props.sessionEnded),layer=useCanonicalFeltInteractionLayerElement(!props.sessionEnded);
  const [selected,setSelected]=useState<number[]>([]),[discard,setDiscard]=useState(false),[error,setError]=useState('');
  const [rulesOpen,setRulesOpen]=useState(false),[inspectPlayer,setInspectPlayer]=useState<string|null>(null);
+ const [reclaiming,setReclaiming]=useState(false);
  const [handSlot,setHandSlot]=useState<HTMLDivElement|null>(null),[compact,setCompact]=useState(false);
  useLayoutEffect(()=>{if(!layer)return;const update=()=>{const r=layer.getBoundingClientRect();setCompact(r.width/r.height>=1.5);};update();const observer=new ResizeObserver(update);observer.observe(layer);return()=>observer.disconnect();},[layer]);
  const announced=useRef(''),closing=useRef(false),completed=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const chat=useGameChatContext(),announcements=useAnnouncements();
  const flying=useGolfCardPresentation(v,game.epoch,props.userId);
  const self=v?.players.find(p=>p.id===v.viewerId),actor=v?.players[v.turnIndex];
+ const reclaim=async()=>{if(!v||!self||reclaiming)return;setReclaiming(true);try{await golfRpc('golf_reclaim_control',{p_dealer_game_id:v.id,p_round_id:v.scope,p_expected_version:v.playerControls?.[self.id]?.intentVersion});setError('');}catch(e){setError((e as Error).message);}finally{setReclaiming(false);game.reconnect();}};
  const acting=!!v?.canAct&&!game.pending&&game.connected&&!v.paused&&game.now<v.deadline&&!props.sessionEnded;
  if(v&&!v.settled)sawLive.current=true;
  useEffect(()=>{setSelected([]);setDiscard(false);},[v?.scope,v?.turnIndex,v?.revision]);
@@ -78,6 +80,7 @@ export function GolfTable(props:Props) {
   {v&&!props.sessionEnded&&<GameplayOpponentSeatLayer family="six-card-golf" participants={v.players.filter(p=>p.id!==self?.id).map(p=>({...p,position:p.seat}))} presentation={{
    dealerPip:p=>p.id===v.players[v.dealerIndex]?.id,
    scoreLine:p=>'Total '+v.scores[p.id],
+   scoreAutoPlay:p=>!!v.playerControls?.[p.id]?.autoPlay,
    onInspectTableau:p=>setInspectPlayer(p.id),
    hiddenTableauCards:p=>flying.get(p.id)??[],
    publicTableau:p=>v.tableaus[p.id].cards.map(golfCard),
@@ -99,6 +102,7 @@ export function GolfTable(props:Props) {
    <p role="status">{props.sessionEnded?'Session ended':status}</p>{warning&&!props.sessionEnded&&<p className="golf-warning">{warning}</p>}
    </div><div className="golf-actions">
    <button onClick={()=>setRulesOpen(true)}>Rules</button>
+   {self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}
    {v?.phase==='opening'&&acting&&<button aria-label="Reveal selected two" disabled={selected.length!==2} onClick={()=>void game.act({type:'open',items:selected})}>Reveal 2</button>}
    {(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}
    </div>

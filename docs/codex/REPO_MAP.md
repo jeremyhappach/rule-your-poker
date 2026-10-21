@@ -1108,3 +1108,19 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 Race Poker: supabase/race-poker owns SQL rules, commands, canonical multiplayer adapter, registration guards and proofs. src/lib/racePoker owns public model/transport/audio; src/hooks/useRacePoker.ts owns client reconciliation; src/components/racePoker owns canonical fullscreen presentation and financial bridging. dev/race-poker contains local qualification utilities. Current-main catalog integration is documented in RACE_POKER_QUALIFICATION.md.
 
 Race Poker catalog integration: `src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the unexecuted production sequence.
+
+## Six-Card Golf local candidate — 2026-10-21
+
+`supabase/six-card-golf/` owns versioned rules, redacted snapshots, multiplayer
+admission/consent, canonical settlement and durable recovery. `multiplayer.sql`
+owns private exact-session/user qualification grants and frozen admitted access;
+`recovery.sql` projects canonical player intent and delegates reclaim to
+`public.set_automatic_play`. `qualification-proof.sql` covers expiry, RLS and
+timeout/reclaim/next-match intent. The registered unpublished migration is
+`20261021011905_six_card_golf_v1.sql`.
+
+`src/components/golf/GolfTable.tsx` renders canonical Golf artifacts and autoplay
+controls; `src/hooks/useGolf.ts` reconciles authoritative revisions/receipts.
+`dev/six-card-golf/` contains local browser/SQL/race tools and separate offline
+production proof/evidence builders. The production qualification plan records
+the exact pinned hash, eleven rollback units and remaining live-service gates.

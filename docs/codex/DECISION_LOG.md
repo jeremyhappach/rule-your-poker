@@ -2580,3 +2580,16 @@ An exact-account/session qualification gate is recommended to resolve live
 browser/cron testing before general admission; it is not approved or implemented
 by this preparation. No global active-account opening is inferred. See
 SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md.
+
+## 2026-10-21 — Golf scoped qualification and canonical autoplay follow-up
+
+The later approved local implementation supersedes the proposed-gate status above.
+Private expiring grants bind exact existing users and sessions, while frozen
+admitted access preserves liabilities after expiry without admitting another match.
+General admission stays closed. Canonical player intent owns autoplay/reclaim;
+Golf publishes only its public controls with authoritative revisions. Real human
+timeout pauses; fake timeout marks autoplay and deferred next-match sit-out.
+Uncheck clears those flags without resuming pause or disposing of a pending draw.
+Opponent robots are an opt-in score decoration. Rules and finances are unchanged.
+Production qualification/publication remains a separate authorized phase with
+fresh authority checks and actual Auth/Realtime/cron/race evidence.

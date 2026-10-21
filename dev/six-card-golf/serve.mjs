@@ -23,7 +23,7 @@ const plugin={name:'golf-local-authority',configureServer(server){server.middlew
   if(input.endSession)await transaction(null,c=>c.query('UPDATE public.games SET pending_session_end=true WHERE id=$1',[g]));
   value={id:d,session:g,users,players:ids.map((id,i)=>({id,user:users[i],seat:4-i})),user:users[0],endSession:!!input.endSession};
  }else if(req.url==='/rpc'){
-  if(!['golf_snapshot','golf_action','golf_close','golf_history','set_game_paused'].includes(input.name)||Object.keys(input.args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid RPC');
+  if(!['golf_snapshot','golf_action','golf_close','golf_history','golf_reclaim_control','set_game_paused'].includes(input.name)||Object.keys(input.args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid RPC');
   try{value={data:await transaction(input.user,c=>query(c,'SELECT public.'+input.name+'('+Object.keys(input.args).map((k,i)=>k+' => $'+(i+1)).join(',')+') v',Object.values(input.args))),error:null,status:200};}
   catch(e){value={data:null,error:{message:e.message,code:e.code??'P0001'},status:400};}
  }else if(req.url==='/read'){

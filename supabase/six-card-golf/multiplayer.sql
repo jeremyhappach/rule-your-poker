@@ -6,11 +6,30 @@ INSERT INTO private.golf_release DEFAULT VALUES;
 ALTER TABLE private.golf_release ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.golf_release FROM PUBLIC,anon,authenticated,service_role;
 
+-- Empty by default. Only a privileged, separately approved grant can admit an
+-- existing account into an exact existing qualification session before expiry.
+CREATE TABLE private.golf_qualification (
+ game_id uuid NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY(game_id,user_id), CHECK(expires_at>created_at)
+);
+CREATE TABLE private.golf_qualified_matches (
+ dealer_game_id uuid NOT NULL REFERENCES public.dealer_games(id) ON DELETE CASCADE,
+ game_id uuid NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ PRIMARY KEY(dealer_game_id,user_id)
+);
+ALTER TABLE private.golf_qualification ENABLE ROW LEVEL SECURITY;
+ALTER TABLE private.golf_qualified_matches ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.golf_qualification,private.golf_qualified_matches FROM PUBLIC,anon,authenticated,service_role;
+
 CREATE TABLE private.golf_matches (
  dealer_game_id uuid PRIMARY KEY,
  game_id uuid NOT NULL, round_id uuid NOT NULL,
  state jsonb NOT NULL, revision bigint NOT NULL DEFAULT 0, stake integer NOT NULL CHECK(stake>0),
  settlement jsonb, finished boolean NOT NULL DEFAULT false, paused_at bigint, bot_due_at bigint,
+ player_controls jsonb NOT NULL DEFAULT '{}',
 
  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
@@ -40,29 +59,43 @@ GRANT SELECT ON public.golf_revisions TO authenticated;
 CREATE POLICY golf_member_read ON public.golf_revisions FOR SELECT TO authenticated
  USING(EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=golf_revisions.game_id AND p.user_id=(SELECT auth.uid()) AND p.status<>'left'));
 
-CREATE OR REPLACE FUNCTION private.golf_actor_allowed(actor uuid)
+CREATE OR REPLACE FUNCTION private.golf_actor_allowed(actor uuid, session_id uuid DEFAULT NULL, match_id uuid DEFAULT NULL)
  RETURNS boolean
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
  SELECT actor IS NOT NULL AND EXISTS(SELECT 1 FROM public.profiles WHERE id=actor AND is_active)
-  AND EXISTS(SELECT 1 FROM private.golf_release WHERE singleton AND enabled)
+  AND (EXISTS(SELECT 1 FROM private.golf_release WHERE singleton AND enabled)
+   OR EXISTS(SELECT 1 FROM private.golf_qualification q WHERE q.game_id=session_id AND q.user_id=actor AND q.expires_at>clock_timestamp())
+   OR EXISTS(SELECT 1 FROM private.golf_qualified_matches q WHERE q.game_id=session_id AND q.user_id=actor AND (match_id IS NULL OR q.dealer_game_id=match_id)))
 $function$
 ;
+CREATE OR REPLACE FUNCTION private.golf_admission_allowed(actor uuid, session_id uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT actor IS NOT NULL AND EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active)
+ AND (EXISTS(SELECT FROM private.golf_release WHERE singleton AND enabled AND admission_enabled)
+ OR EXISTS(SELECT FROM private.golf_qualification WHERE game_id=session_id AND user_id=actor AND expires_at>clock_timestamp()))
+$$;
+CREATE OR REPLACE FUNCTION public.golf_revision_allowed(p_game_id uuid,p_dealer_game_id uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT private.golf_actor_allowed(auth.uid(),p_game_id,p_dealer_game_id)
+ AND EXISTS(SELECT FROM private.golf_matches WHERE game_id=p_game_id AND dealer_game_id=p_dealer_game_id)
+ AND EXISTS(SELECT FROM public.players WHERE game_id=p_game_id AND user_id=auth.uid() AND status<>'left' AND NOT is_bot)
+$$;
+ALTER POLICY golf_member_read ON public.golf_revisions USING(public.golf_revision_allowed(game_id,dealer_game_id));
 CREATE OR REPLACE FUNCTION public.golf_capabilities(p_session_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-DECLARE actor uuid:=auth.uid(); allowed boolean:=private.golf_actor_allowed(actor);
+DECLARE actor uuid:=auth.uid(); allowed boolean:=private.golf_admission_allowed(actor,p_session_id);
 BEGIN
- allowed:=allowed AND EXISTS(SELECT 1 FROM private.golf_release WHERE singleton AND admission_enabled);
  IF p_session_id IS NOT NULL THEN
   allowed:=allowed AND EXISTS(SELECT 1 FROM public.games WHERE id=p_session_id)
    AND EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=actor AND status<>'left')
-   AND NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND status<>'left' AND NOT is_bot AND NOT private.golf_actor_allowed(user_id));
+   AND NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND status<>'left' AND NOT is_bot AND NOT private.golf_admission_allowed(user_id,p_session_id));
  END IF;
  RETURN jsonb_build_object('version',2,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',false);
 END $function$
@@ -90,7 +123,7 @@ DECLARE m private.golf_matches; viewer uuid; paused boolean; balances jsonb; bat
 BEGIN
  SELECT * INTO STRICT m FROM private.golf_matches WHERE dealer_game_id=p_dealer_game_id;
  SELECT id INTO viewer FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND (status<>'left' OR m.finished) AND NOT is_bot;
- IF viewer IS NULL OR NOT private.golf_actor_allowed(auth.uid()) THEN RAISE EXCEPTION 'golf:membership_required' USING ERRCODE='42501'; END IF;
+ IF viewer IS NULL OR NOT private.golf_actor_allowed(auth.uid(),m.game_id,m.dealer_game_id) THEN RAISE EXCEPTION 'golf:membership_required' USING ERRCODE='42501'; END IF;
  SELECT is_paused INTO paused FROM public.games WHERE id=m.game_id;
  IF m.settlement IS NOT NULL THEN
   SELECT jsonb_object_agg(player_id::text,chips) INTO balances FROM public.session_player_snapshots WHERE dealer_game_id=p_dealer_game_id;
@@ -98,7 +131,8 @@ BEGIN
  SELECT * INTO batch FROM public.gameplay_transfer_batches WHERE dealer_game_id=p_dealer_game_id ORDER BY cursor DESC LIMIT 1;
  SELECT id INTO result_id FROM public.game_results WHERE dealer_game_id=p_dealer_game_id AND settlement_key='golf_terminal';
  RETURN private.golf_visible(m.state,viewer::text)||jsonb_build_object('revision',m.revision,'viewerId',viewer,
-  'canAct',NOT coalesce(paused,false) AND m.state->>'phase' IN ('opening','playing') AND m.state->'players'->(m.state->>'turnIndex')::integer->>'id'=viewer::text,
+  'canAct',NOT coalesce(paused,false) AND NOT coalesce((m.player_controls#>>ARRAY[viewer::text,'autoPlay'])::boolean,false) AND m.state->>'phase' IN ('opening','playing') AND m.state->'players'->(m.state->>'turnIndex')::integer->>'id'=viewer::text,
+  'playerControls',m.player_controls,
   'stake',m.stake,'serverAt',floor(extract(epoch FROM clock_timestamp())*1000),'settlement',m.settlement,'paused',coalesce(paused,false),'finished',m.finished,'pausedAt',m.paused_at,'financial',jsonb_build_object('balances',coalesce(balances,'{}'::jsonb),'resultId',result_id,'batch',CASE WHEN batch.id IS NOT NULL THEN to_jsonb(batch) ELSE NULL END))
   -- Add new presentation metadata only with a newly committed result/revision.
   -- Existing clients compare equal revisions strictly; installation alone must not change their snapshot shape.
@@ -173,7 +207,7 @@ AS $function$
 DECLARE g public.games; d public.players; dg public.dealer_games; r uuid:=gen_random_uuid(); actor uuid:=auth.uid();
  claim private.dealer_game_setup_commits; hash text; stake_i integer; people jsonb; s jsonb; result jsonb; setup_players jsonb;
 BEGIN
- IF NOT private.golf_actor_allowed(actor) OR p_game_type IS DISTINCT FROM 'six-card-golf' THEN RAISE EXCEPTION 'golf:release_closed' USING ERRCODE='42501';END IF;
+ IF NOT private.golf_actor_allowed(actor,p_game_id) OR p_game_type IS DISTINCT FROM 'six-card-golf' THEN RAISE EXCEPTION 'golf:release_closed' USING ERRCODE='42501';END IF;
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game_id FOR UPDATE;
  SELECT * INTO STRICT d FROM public.players WHERE id=p_dealer_player_id AND game_id=g.id;
  IF d.user_id IS DISTINCT FROM actor OR d.is_bot THEN RAISE EXCEPTION 'golf:dealer_required' USING ERRCODE='42501';END IF;
@@ -187,12 +221,12 @@ BEGIN
   RETURN claim.result||'{"outcome":"already_configured","deduped":true}'::jsonb;
  END IF;
  -- Admission controls creation only; existing setup retries and match authority remain live.
- IF NOT EXISTS(SELECT 1 FROM private.golf_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'golf:admission_closed' USING ERRCODE='42501';END IF;
+ IF NOT private.golf_admission_allowed(actor,g.id) THEN RAISE EXCEPTION 'golf:admission_closed' USING ERRCODE='42501';END IF;
  IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'golf:setup_identity';END IF;
  PERFORM 1 FROM public.players WHERE game_id=g.id ORDER BY id FOR UPDATE;
- IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.golf_actor_allowed(user_id)) THEN RAISE EXCEPTION 'golf:tester_required' USING ERRCODE='42501';END IF;
+ IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.golf_admission_allowed(user_id,g.id)) THEN RAISE EXCEPTION 'golf:tester_required' USING ERRCODE='42501';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND NOT waiting AND position IS NOT NULL AND NOT is_bot) THEN RAISE EXCEPTION 'golf:human_required';END IF;
  SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position,'isBot',p.is_bot)
  ORDER BY CASE WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,p.position DESC,p.id) INTO people
@@ -206,6 +240,11 @@ BEGIN
  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
  IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;
  INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'six-card-golf',jsonb_build_object('ante_amount',stake_i,'rules',private.golf_rules())) RETURNING * INTO dg;
+ -- Freeze already-authorized access for this match. Expiry/revocation prevents
+ -- new matches, but cannot strand accepted liabilities or an unresolved offer.
+ INSERT INTO private.golf_qualified_matches(dealer_game_id,game_id,user_id)
+ SELECT dg.id,g.id,(p->>'userId')::uuid FROM jsonb_array_elements(people) p
+ WHERE NOT (p->>'isBot')::boolean;
  UPDATE public.players SET ante_decision=CASE WHEN id=p_dealer_player_id THEN 'ante_up' ELSE NULL END,current_decision=NULL,decision_locked=false,auto_fold=false WHERE game_id=g.id AND id IN(SELECT (p->>'id')::uuid FROM jsonb_array_elements(people) p);
  UPDATE public.games SET game_type='six-card-golf',current_game_uuid=dg.id,config_complete=true,config_deadline=NULL,ante_decision_deadline=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.ante_decision_timer_seconds,30))),status='ante_decision',ante_amount=stake_i,current_round=NULL,total_hands=0,replay_contract_version=NULL,all_decisions_in=false,all_decisions_in_round_id=NULL WHERE id=g.id RETURNING * INTO g;
  SELECT jsonb_agg(to_jsonb(p) ORDER BY position) INTO setup_players FROM public.players p WHERE game_id=g.id;
@@ -270,7 +309,7 @@ CREATE OR REPLACE FUNCTION public.golf_close(p_dealer_game_id uuid)
  SET search_path TO ''
 AS $function$
 DECLARE session uuid; BEGIN SELECT game_id INTO STRICT session FROM private.golf_matches WHERE dealer_game_id=p_dealer_game_id;
-IF NOT private.golf_actor_allowed(auth.uid()) OR NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=session AND user_id=auth.uid() AND status<>'left' AND NOT is_bot) THEN RAISE EXCEPTION 'golf:close_denied' USING ERRCODE='42501';END IF;
+IF NOT private.golf_actor_allowed(auth.uid(),session,p_dealer_game_id) OR NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=session AND user_id=auth.uid() AND status<>'left' AND NOT is_bot) THEN RAISE EXCEPTION 'golf:close_denied' USING ERRCODE='42501';END IF;
 PERFORM private.golf_finish_postgame(p_dealer_game_id);END $function$
 ;
 CREATE OR REPLACE FUNCTION private.golf_pause()

@@ -8,12 +8,43 @@ CREATE OR REPLACE FUNCTION private.golf_schedule_bot() RETURNS trigger LANGUAGE 
 BEGIN
  IF NEW.finished OR NEW.settlement IS NOT NULL OR NEW.paused_at IS NOT NULL OR NEW.state->>'phase' NOT IN ('opening','playing')
   OR NOT EXISTS(SELECT 1 FROM public.players p WHERE p.id=(NEW.state->'players'->(NEW.state->>'turnIndex')::integer->>'id')::uuid AND (p.is_bot OR p.auto_fold) AND p.game_id=NEW.game_id) THEN NEW.bot_due_at:=NULL;
- ELSIF TG_OP='INSERT' THEN NEW.bot_due_at:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+750;
+ ELSIF TG_OP='INSERT' OR NEW.bot_due_at IS NULL THEN NEW.bot_due_at:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+750;
  ELSIF OLD.paused_at IS NOT NULL OR NEW.state IS DISTINCT FROM OLD.state THEN NEW.bot_due_at:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+750;
  ELSE NEW.bot_due_at:=OLD.bot_due_at;END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER golf_bot_schedule BEFORE INSERT OR UPDATE ON private.golf_matches FOR EACH ROW EXECUTE FUNCTION private.golf_schedule_bot();
+
+-- Canonical player intent remains the owner. Publish its public projection with
+-- a new Golf revision; reconnect never silently cancels automatic play.
+CREATE OR REPLACE FUNCTION private.golf_player_controls() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE m private.golf_matches;g public.games;BEGIN
+ SELECT * INTO g FROM public.games WHERE id=NEW.game_id;
+ IF g.game_type IS DISTINCT FROM 'six-card-golf' THEN RETURN NEW;END IF;
+ SELECT * INTO m FROM private.golf_matches WHERE dealer_game_id=g.current_game_uuid AND NOT finished;
+ IF NOT FOUND OR NOT EXISTS(SELECT FROM jsonb_array_elements(m.state->'players') p WHERE p->>'id'=NEW.id::text) THEN RETURN NEW;END IF;
+ UPDATE private.golf_matches SET player_controls=jsonb_set(player_controls,ARRAY[NEW.id::text],jsonb_build_object('autoPlay',NEW.auto_fold,'sitOutNextHand',NEW.sit_out_next_hand,'intentVersion',NEW.intent_version)),revision=revision+1 WHERE dealer_game_id=m.dealer_game_id;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER golf_player_controls AFTER UPDATE ON public.players
+ FOR EACH ROW WHEN(ROW(OLD.auto_fold,OLD.sit_out_next_hand,OLD.auto_play_stop_round_id,OLD.intent_version) IS DISTINCT FROM ROW(NEW.auto_fold,NEW.sit_out_next_hand,NEW.auto_play_stop_round_id,NEW.intent_version)) EXECUTE FUNCTION private.golf_player_controls();
+
+CREATE OR REPLACE FUNCTION public.golf_reclaim_control(p_dealer_game_id uuid,p_round_id uuid,p_expected_version bigint) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE m private.golf_matches;p public.players;v jsonb;BEGIN
+ SELECT * INTO STRICT m FROM private.golf_matches WHERE dealer_game_id=p_dealer_game_id;
+ SELECT * INTO p FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND NOT is_bot;
+ IF NOT FOUND OR NOT private.golf_actor_allowed(auth.uid(),m.game_id,m.dealer_game_id)
+  OR NOT EXISTS(SELECT FROM jsonb_array_elements(m.state->'players') x WHERE x->>'id'=p.id::text)
+ THEN RAISE EXCEPTION 'golf:participant_required' USING ERRCODE='42501';END IF;
+ -- Reuse canonical identity/version checks and clearing of deferred sit-out.
+ -- Unlike dice, Golf has an authoritative boundary after each card action, so
+ -- an unresolved private draw can safely be handed back without completing it.
+ v:=public.set_automatic_play(m.game_id,p_round_id,m.dealer_game_id,p.id,p_expected_version,false);
+ IF v->>'outcome'<>'accepted' THEN RAISE EXCEPTION 'golf:stale_control';END IF;
+ RETURN public.golf_snapshot(m.dealer_game_id);
+END $$;
 
 CREATE OR REPLACE FUNCTION private.golf_recover() RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE work record; m private.golf_matches; g public.games; p public.players; at_ms bigint; count_i integer:=0; choice jsonb; prior jsonb; enabled boolean; policy text;

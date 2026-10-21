@@ -105,6 +105,7 @@ export interface GameplayOpponentSeatPresentation {
   chipValue?: (p: GameplayOpponentSeatParticipant) => string | undefined;
   hideChipBubble?: (p: GameplayOpponentSeatParticipant) => boolean;
   scoreLine?: (p: GameplayOpponentSeatParticipant) => string | undefined;
+  scoreAutoPlay?: (p: GameplayOpponentSeatParticipant) => boolean;
   cardBacks?: (p: GameplayOpponentSeatParticipant) => CardBacksPresentation | null;
   /** Presentation-only marker for a fake-money human currently auto-rolling. */
   autoRoll?: (p: GameplayOpponentSeatParticipant) => boolean;
@@ -339,6 +340,7 @@ export function GameplayOpponentSeatLayer({
             chipHUD={chipHUD}
             chipDiscChildren={chipDiscChildren}
             scoreLine={scoreLine ?? null}
+            scoreAutoPlay={presentation?.scoreAutoPlay?.(p)??false}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
             keepNameInward={!!presentation?.publicTableau}

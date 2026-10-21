@@ -30,6 +30,11 @@ export async function installLocalReference(c){
  const pauseEnd=pauseReference.indexOf('$function$;',pauseStart)+'$function$;'.length;
  if(pauseStart<0||pauseEnd<pauseStart)throw Error('Missing exact canonical pause reference');
  await c.query(pauseReference.slice(pauseStart,pauseEnd));
+ const automaticStart=pauseReference.indexOf('CREATE OR REPLACE FUNCTION public.set_automatic_play(');
+ const automaticEnd=pauseReference.indexOf('$function$;',automaticStart)+'$function$;'.length;
+ if(automaticStart<0||automaticEnd<automaticStart)throw Error('Missing canonical automatic-play reference');
+ await c.query(pauseReference.slice(automaticStart,automaticEnd));
+ await c.query('REVOKE ALL ON FUNCTION public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean) TO authenticated');
  const autoPause=read('supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql','utf8');
  await c.query(autoPause.slice(autoPause.indexOf('CREATE OR REPLACE FUNCTION private.pause_all_humans_auto_fold'),autoPause.indexOf('$guard$;')+'$guard$;'.length));
 }

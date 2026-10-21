@@ -12,7 +12,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
-| `SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md` | Offline production-proof commands, rollback safeguards and proposed scoped live-test/activation procedure |
+| `SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md` | Offline production proofs, implemented scoped qualification gate, canonical autoplay/reclaim and later activation procedure |
 | `RACE_POKER_RULES.md` | Approved multiplayer-only rules and bot information contract |
 | `RACE_POKER_QUALIFICATION.md` | Local authority/financial/browser evidence and coordinated release hold |
 | `RACE_POKER_RELEASE_PLAN.md` | Exact coordinated integration, migration, qualification, publication and activation sequence |

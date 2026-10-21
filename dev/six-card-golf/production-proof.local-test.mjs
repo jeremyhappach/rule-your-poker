@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
 import {buildProofs,migrationPath} from './production-proof.mjs';
-const names=['core-proof','proof','financial-proof','recovery-proof','mixed-proof'];
+const names=['core-proof','proof','financial-proof','recovery-proof','mixed-proof','qualification-proof'];
 const {database}=JSON.parse(readFileSync('qualification.local/six-card-golf/context.json','utf8'));
 if(!/^golf_\d+$/.test(database))throw Error('Unexpected local reference database');
 const c=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});

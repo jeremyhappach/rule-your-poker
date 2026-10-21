@@ -7,6 +7,7 @@ export interface GolfSnapshot {
  rules:{version:'six-card-golf/1';turnSeconds:30;holes:9};
  phase:'opening'|'playing'|'hole_complete'|'complete';hole:number;dealerIndex:number;turnIndex:number;openingRemaining:number;
  players:{id:string;userId:string;name:string;seat:number;isBot:boolean;chips:number}[];
+ playerControls?:Record<string,{autoPlay:boolean;sitOutNextHand:boolean;intentVersion:number}>;
  tableaus:Record<string,{cards:(number|null)[];exposed:boolean[]}>;
  scores:Record<string,number>;holes:{hole:number;roundId:string;scores:Record<string,number>}[];
  pending:{actor:string;card:number}|null;hasPending:boolean;stockCount:number;discardTop:number;

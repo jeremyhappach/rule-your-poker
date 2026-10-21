@@ -34,9 +34,9 @@ Official existing Supabase CLI 2.121.0 created
 `supabase/migrations/20261021011905_six_card_golf_v1.sql` using
 `supabase migration new six_card_golf_v1`. No tools were installed.
 The generated source is normalized to LF. SHA-256:
-`815408fbc2cf2a37948b87a91656fc7d56e1d546d28e8f45c48961fd1c73e121`.
+`5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054`.
 
-The migration checks seven canonical function definitions with newline-normalized
+The migration checks eight canonical function definitions with newline-normalized
 hashes. It requires actual pg_cron, an existing Realtime publication and logical
 WAL before installing Golf. It registers only public revision notifications,
 and a one-second service recovery job with a three-second statement timeout.
@@ -60,12 +60,14 @@ the isolated scheduler heartbeat. Never use it unchanged for production.
 The executable offline proof package and the explicit live-test decision are in
 [production qualification preparation](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
 That procedure resolves the former ambiguity between closed admission and actual
-browser setup: the proposed exact-account/session qualification gate is not yet
-implemented or approved. Current global flags cannot substitute for that gate.
+browser setup: the approved exact-account/session qualification gate is now
+implemented and locally qualified, default closed. Current global flags cannot
+substitute for scoped grants. Expiry blocks new admission while frozen admitted
+access preserves existing liabilities and recovery.
 
 1. Obtain authorization for the production phase. Pin the final integrated
    application commit, migration bytes and current deployed authority. Reinspect
-   all seven guarded definitions, canonical financial indexes/triggers,
+   all eight guarded definitions, canonical financial indexes/triggers,
    role grants, RLS, active-account eligibility and existing money-mode gates.
    Stop on drift; do not remove a guard or overwrite another game's registration.
    Inspect migration history as well: main documents Race Poker source version
@@ -92,8 +94,8 @@ implemented or approved. Current global flags cannot substitute for that gate.
    reviewed candidate function/catalog fingerprints. Actual scheduled recovery,
    Realtime and independent connections require committed fixtures; rollback
    receipts alone do not establish them.
-5. Implement and qualify the recommended exact-account/session live-test gate
-   only after that release decision is authorized. Keep general admission closed
+5. Apply reviewed exact-account/session/expiry grants only when that production
+   phase is authorized. The gate itself is implemented locally. Keep general admission closed
    while running the explicit browser/service/race procedure in the linked plan.
    The original global flags do not isolate named testers. Do not infer live
    qualification from simulated SDK responses or direct worker invocation.

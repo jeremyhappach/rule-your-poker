@@ -19,7 +19,7 @@ export function useGolf(id:string,userId:string,transport:GolfTransport){
     catch(e){
      // Definitive server rejection retires this intent. Network uncertainty keeps
      // exactly the same UUID/payload across reload; never mint a replacement.
-     if(/golf:deadline|golf:not_actor|golf:identity|golf:paused|stale|inactive|phase|illegal|stock_empty|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}
+     if(/golf:deadline|golf:not_actor|golf:identity|golf:paused|golf:autoplay_active|stale|inactive|phase|illegal|stock_empty|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}
      else throw e;
     }
    }else accept(await transport.load(),token);

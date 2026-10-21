@@ -12,8 +12,11 @@ additive and both workstreams remain documented.
 
 Migration: `supabase/migrations/20261021011905_six_card_golf_v1.sql`.
 Exact SHA-256:
-`815408fbc2cf2a37948b87a91656fc7d56e1d546d28e8f45c48961fd1c73e121`.
-The preparation does not modify this migration.
+`5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054`.
+The still-unpublished migration now includes the approved exact-account/session
+qualification gate and canonical autoplay control projection/reclaim. Its eight
+shared-authority guards include `public.set_automatic_play`; this additional
+guard is locally verified and still requires a fresh production comparison.
 
 The preceding read-only inspection on October 21, about 08:15 CDT, found all
 seven shared-function guard hashes matching production, pg_cron 1.6.4, logical
@@ -38,9 +41,10 @@ connect to a database. The local test has a fixed loopback host/port and require
 the existing isolated `golf_<digits>` database; it never seeds scheduler health.
 `production-preflight.sql` is a separately reviewable, read-only inventory.
 
-There are ten independently bounded proof units: core rules/privacy, six human
+There are eleven independently bounded proof units: core rules/privacy, six human
 matches, all financial winner/tie cases and failure rollback, recovery/pause,
-and six individual mixed-match cases (2/3/4 seats in each money mode).
+six individual mixed-match cases (2/3/4 seats in each money mode), and scoped
+qualification/expiry/autoplay/reclaim/RLS checks.
 Each mixed case retains the real terminal hold. Splitting avoids holding shared
 DDL locks through six terminal waits in one transaction.
 
@@ -53,7 +57,7 @@ calls in the authority fixtures test recovery logic, not scheduled execution.
 Each payload:
 
 - Pins exact migration bytes; candidate units include that migration, including
-  its seven deployed-authority guards, publication and cron registration, inside
+  its eight deployed-authority guards, publication and cron registration, inside
   the rollback transaction. None becomes visible to another connection.
 - Requires pristine Golf: no existing Golf sessions/results, and either absent
   candidate authority or installed empty authority with both flags false.
@@ -105,7 +109,7 @@ node dev/six-card-golf/production-evidence.mjs qualification.local/six-card-golf
 node dev/six-card-golf/production-proof.mjs --installed --fingerprints reviewed-candidate.json
 ```
 
-The evidence validator requires all ten exact units, matching SQL hashes and
+The evidence validator requires all eleven exact units, matching SQL hashes and
 fixture namespaces, successful rollback, consistent function/catalog fingerprints,
 and at least one actual earned bot final settlement across the mixed cases.
 It will not convert missing or partial output into a pass. Installed generation
@@ -121,27 +125,28 @@ and explicit cleanup within the live qualification lane described below.
 
 ## Explicit live-test and activation procedure
 
-The current flags cannot support an ordinary live test while admission stays
-closed: configure/Run Back require admission, and snapshots/actions require
-enabled. Both flags true admit the existing active-account population (4,958
-profiles at the read-only inspection), not just named testers. A rolled-back
-fixture is invisible to separate browsers and cron connections.
+The qualification gate is implemented and locally qualified, default closed.
+`private.golf_qualification` contains exact existing `game_id`, existing `user_id`
+and `expires_at` triples. Foreign keys reject unknown identities; active-account
+eligibility remains mandatory. No authenticated or service-role grant writer is
+exposed. Every human in a new session roster must hold an unexpired exact grant;
+bots use ordinary supported seats. Null-session/global discovery stays closed.
+Capabilities, configure/Run Back, snapshots/actions and revision RLS enforce scope.
+Both general release flags remain false and both grant tables start empty.
 
-**Recommendation awaiting a release decision:** authorize a temporary, private
-qualification gate scoped to exact existing tester UUIDs AND exact test session
-UUIDs, with an expiry and a server-side check at capability, configure/Run Back
-and action/snapshot boundaries. Every human participant must be admitted by that
-gate; bot seating remains ordinary. General release/admission flags remain false.
-This is a proposed additional implementation, not a feature of the current
-candidate or a bypass that these scripts install. No rule/stake/privacy or
-financial guard may be relaxed. Do not create credentials or change profile
-eligibility for testing. Expiry closes new admission while preserving already
-admitted liabilities, authorized reads/actions and durable recovery to completion.
+Admission freezes human access in `private.golf_qualified_matches` before consent
+can cross grant expiry. Expiry or grant removal prevents new matches/Run Back;
+it does not strand consent, committed liabilities, reads/actions or recovery for
+an already admitted match. Frozen access cannot admit a successor match. This
+exception never removes normal participant, identity, privacy or stake checks.
 
-If approved, implement and prove that gate locally, register its exact migration
-identity, repin the complete release package and regenerate candidate/installed
-proofs. The current pinned SQL alone must not be represented as containing it.
-Do not edit a reviewed hash or remove authority guards to accommodate drift.
+The later privileged grant operation is an explicit, reviewed transaction:
+verify the exact existing session and all active human UUIDs against the approved
+manifest, verify the two global flags remain false, then insert one row per
+approved `(game_id,user_id,expires_at)` in `private.golf_qualification`. Use a fixed
+UTC expiry from the manifest, require it to be in the future, and verify the
+returned rows before commit. Do not create accounts or change profile eligibility.
+No production grants have been written by this local task.
 
 Then use this order:
 
@@ -154,7 +159,8 @@ Then use this order:
    matching application through the repository workflow only when authorized.
 3. Pass installed rollback proofs and verify exact migration history, private
    projection permissions, revision publication and recovery job/command.
-4. Admit only the named qualification sessions/accounts. Start with two humans
+4. Apply only the reviewed exact-session/account expiry grants described above.
+   Start with two humans
    and fake money through real setup and Ante Up. Exercise whole turns, private
    pending draws, lost responses, reconnects, prolonged-play queue, nine holes,
    exact balance/ledger/result/snapshot agreement, Run Back fresh consent,
@@ -162,6 +168,12 @@ Then use this order:
 5. Observe real cron run receipts and state progression with all browsers closed
    at an earned settlement boundary; record exactly one result and transfer.
    Verify interruption/retry, unresolved deliberate pauses and human timeout.
+   Real-money human timeout must pause without autoplay. Fake timeout must set
+   canonical `auto_fold` and `sit_out_next_hand`; check the self Auto-play checkbox,
+   peer robot beside the score, reload persistence and uncheck/reclaim. Reclaim
+   clears both flags through canonical `set_automatic_play` and does not resume
+   a paused table. Holes retain the frozen roster; deferred sit-out applies at
+   match completion, not between holes. Reclaimed players remain eligible.
    Never advance via direct recovery invocation and call that scheduler proof.
 6. Verify actor/peer/outsider Auth/PostgREST and Realtime access: concealed own
    cards stay hidden, pending draw remains actor-only, notifications contain
@@ -187,17 +199,14 @@ forward correction. No historical score or balance repair is authorized.
 
 ## Exact remaining decision and evidence limits
 
-Approve the narrowly scoped qualification gate and subsequent production
-qualification phase, naming existing tester accounts/sessions and expiry.
-That is the recommended way to preserve closed general admission while proving
-the actual route. Using the current global flags instead would require explicitly
-accepting a broader active-account qualification opening before those live checks;
-this package does not recommend or silently authorize that alternative.
+The scoped gate implementation is complete locally. The remaining release
+decision is authorization for the production phase with the exact existing tester
+accounts, test sessions and fixed expiry recorded in a reviewed manifest. Do not
+substitute global admission for scoped qualification.
 
-Local preparation passed five offline safety/evidence tests, the real local SQL
-negative service gate and containment/rollback checks, TypeScript and production
-build. The builder generated ten candidate units; none ran on production.
-Positive live-service qualification and the proposed qualification gate remain
-unimplemented/unexecuted. No production-safe independent-connection runner is
-claimed. The original full local Golf rules/financial/browser evidence remains
-valid for its recorded scope; it is not relabeled as live production evidence.
+Eleven candidate units are generated; none has run on production. Positive live
+Auth/PostgREST/Realtime and actual pg_cron qualification remain unexecuted. The
+local browser service directly invokes recovery and is explicitly not cron proof.
+No production-safe independent-connection runner is claimed; the later committed
+test-session race procedure remains required. See the implementation checkpoint
+for executed local checks; none is relabeled as production acceptance.

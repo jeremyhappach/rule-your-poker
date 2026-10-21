@@ -5,10 +5,10 @@ import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 
 export const migrationPath='supabase/migrations/20261021011905_six_card_golf_v1.sql';
-export const migrationHash='815408fbc2cf2a37948b87a91656fc7d56e1d546d28e8f45c48961fd1c73e121';
-const names=['core-proof','proof','financial-proof','recovery-proof','mixed-proof'];
+export const migrationHash='5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054';
+const names=['core-proof','proof','financial-proof','recovery-proof','mixed-proof','qualification-proof'];
 const seed="UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed';";
-const expectedSeeds={'core-proof':0,proof:1,'financial-proof':1,'recovery-proof':0,'mixed-proof':2};
+const expectedSeeds={'core-proof':0,proof:1,'financial-proof':1,'recovery-proof':0,'mixed-proof':2,'qualification-proof':0};
 const quote=s=>"'"+s.replaceAll("'","''")+"'";
 const body=s=>s.replaceAll('\r\n','\n');
 export function sanitizeFixture(name,source){
@@ -59,7 +59,7 @@ const functionSnapshot=`SELECT jsonb_object_agg(p.oid::regprocedure::text,
  to_regprocedure('public.settle_gameplay_chip_transfers(uuid,jsonb,text)'),
  to_regprocedure('public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)'),
  to_regprocedure('public.set_game_paused(uuid,boolean,uuid,bigint)'),
- to_regprocedure('private.split_whole_chips_clockwise(uuid,uuid[],integer,integer)')))`;
+ to_regprocedure('private.split_whole_chips_clockwise(uuid,uuid[],integer,integer)'),to_regprocedure('public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)')))`;
 
 const catalogSnapshot=`WITH tables AS (
  SELECT c.oid,n.nspname||'.'||c.relname name,c.relrowsecurity,c.relforcerowsecurity,c.relacl
@@ -73,7 +73,7 @@ const catalogSnapshot=`WITH tables AS (
  UNION ALL SELECT 'trigger:'||t.name||':'||g.tgname,jsonb_build_array(g.tgenabled,pg_get_triggerdef(g.oid))::text FROM pg_trigger g JOIN tables t ON t.oid=g.tgrelid WHERE NOT g.tgisinternal
  UNION ALL SELECT 'index:'||t.name||':'||c.relname,pg_get_indexdef(i.indexrelid) FROM pg_index i JOIN tables t ON t.oid=i.indrelid JOIN pg_class c ON c.oid=i.indexrelid
  UNION ALL SELECT 'policy:'||t.name||':'||p.polname,jsonb_build_array(p.polcmd,p.polpermissive,p.polroles::text,pg_get_expr(p.polqual,p.polrelid),pg_get_expr(p.polwithcheck,p.polrelid))::text FROM pg_policy p JOIN tables t ON t.oid=p.polrelid
- UNION ALL SELECT 'function-acl:'||p.oid::regprocedure::text,coalesce(p.proacl::text,'default') FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('private','public') AND (p.proname LIKE 'golf_%' OR p.proname IN('settle_gameplay_chip_transfers','submit_ante_decision','set_game_paused','megatouch_begin','advance_ante_phase_exact','megatouch_frozen_stake','split_whole_chips_clockwise'))
+ UNION ALL SELECT 'function-acl:'||p.oid::regprocedure::text,coalesce(p.proacl::text,'default') FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('private','public') AND (p.proname LIKE 'golf_%' OR p.proname IN('settle_gameplay_chip_transfers','submit_ante_decision','set_game_paused','set_automatic_play','megatouch_begin','advance_ante_phase_exact','megatouch_frozen_stake','split_whole_chips_clockwise'))
 ) SELECT md5(jsonb_object_agg(k,v)::text) FROM items`;
 
 function containment(prefix){return `
@@ -111,6 +111,7 @@ function installedGuard(fingerprints,catalogFingerprint){
  IF to_regclass('private.golf_release') IS NULL THEN RAISE EXCEPTION 'golf_proof:not_installed';END IF;
  IF NOT EXISTS(SELECT FROM private.golf_release WHERE singleton AND NOT enabled AND NOT admission_enabled)
   OR EXISTS(SELECT FROM private.golf_matches) OR EXISTS(SELECT FROM public.golf_revisions)
+  OR EXISTS(SELECT FROM private.golf_qualification) OR EXISTS(SELECT FROM private.golf_qualified_matches)
  THEN RAISE EXCEPTION 'golf_proof:installed_authority_not_pristine_closed';END IF;
  IF (${functionSnapshot}) IS DISTINCT FROM ${quote(JSON.stringify(fingerprints))}::jsonb THEN RAISE EXCEPTION 'golf_proof:installed_function_drift';END IF;
  IF (${catalogSnapshot}) IS DISTINCT FROM ${quote(catalogFingerprint)} THEN RAISE EXCEPTION 'golf_proof:installed_catalog_drift';END IF;
@@ -127,7 +128,7 @@ export function buildProofs({migration,fixtures,installed=false,fingerprints,cat
  const clean=Object.fromEntries(names.map(n=>[n,sanitizeFixture(n,fixtures[n])]));
  const assertFn=clean['core-proof'].slice(0,clean['core-proof'].indexOf('\nDO $$'));
  const loginFn=clean.proof.slice(0,clean.proof.indexOf('\nDO $$'));
- const suites=[['core',clean['core-proof']],['human',clean.proof],['financial',clean['financial-proof']],['recovery',clean['recovery-proof']]];
+ const suites=[['core',clean['core-proof']],['human',clean.proof],['financial',clean['financial-proof']],['recovery',clean['recovery-proof']],['qualification',clean['qualification-proof']]];
  for(const money of [0,1])for(const n of [2,3,4]){
   let sql=clean['mixed-proof'];
   const loop='FOR money IN 0..1 LOOP FOR n IN 2..4 LOOP';
@@ -176,7 +177,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(args.some((a,i)=>!['--installed','--fingerprints'].includes(a)&&args[i-1]!=='--fingerprints'))throw Error('Usage: node dev/six-card-golf/production-proof.mjs [--installed --fingerprints reviewed.json]');
  const fp=args.indexOf('--fingerprints');
  const reviewed=fp<0?undefined:JSON.parse(readFileSync(args[fp+1],'utf8'));
- if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==10||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
+ if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==11||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
  const units=buildProofs({migration:readFileSync(migrationPath,'utf8'),fixtures:Object.fromEntries(names.map(n=>[n,readFileSync(`supabase/six-card-golf/${n}.sql`,'utf8')])),installed,fingerprints:reviewed?.function_fingerprints,catalogFingerprint:reviewed?.catalog_fingerprint});
  const out=`qualification.local/six-card-golf/production-${installed?'installed':'candidate'}`;
  mkdirSync(out,{recursive:true});

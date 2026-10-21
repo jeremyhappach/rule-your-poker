@@ -5,7 +5,7 @@ DO $$ DECLARE f record;BEGIN
  END LOOP;
 END $$;
 GRANT EXECUTE ON FUNCTION public.golf_capabilities(uuid),public.golf_snapshot(uuid),public.golf_history(uuid),
- public.golf_action(uuid,uuid,uuid,bigint,text,integer[]),public.golf_configure(uuid,uuid,integer,text,jsonb,timestamptz),public.golf_close(uuid) TO authenticated;
+ public.golf_action(uuid,uuid,uuid,bigint,text,integer[]),public.golf_configure(uuid,uuid,integer,text,jsonb,timestamptz),public.golf_close(uuid),public.golf_revision_allowed(uuid,uuid),public.golf_reclaim_control(uuid,uuid,bigint) TO authenticated;
 LOCK TABLE public.games,public.dealer_games,public.rounds IN SHARE ROW EXCLUSIVE MODE NOWAIT;
 ALTER TABLE private.golf_matches
  ADD FOREIGN KEY(dealer_game_id) REFERENCES public.dealer_games(id) ON DELETE CASCADE,

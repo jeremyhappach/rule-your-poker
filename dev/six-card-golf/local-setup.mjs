@@ -1,10 +1,10 @@
 import {readFileSync as read,writeFileSync as write} from 'node:fs';
-import {connect,localContext,candidate} from './database.mjs';
+import {connect,localContext,candidate,installLocalReference} from './database.mjs';
 const database='golf_ui_'+Date.now(),admin=await connect('postgres');
 await admin.query('CREATE DATABASE '+database+' TEMPLATE '+localContext().database);await admin.end();
 const c=await connect(database);
 try {
- await c.query('BEGIN');await c.query(read('supabase/six-card-golf/local-reference.sql','utf8'));
+ await c.query('BEGIN');await installLocalReference(c);
  const pause=read('supabase/migrations/20261015212154_farkle_active_account_and_recovery_lock_order.sql','utf8');
  const begin=pause.indexOf('CREATE OR REPLACE FUNCTION public.set_game_paused(p_game_id uuid, p_paused boolean, p_expected_dealer_game_id uuid, p_expected_pause_version bigint)');
  await c.query(pause.slice(begin,pause.indexOf('$function$;',begin)+12));

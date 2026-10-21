@@ -15,13 +15,15 @@ BEGIN
  WHERE p.game_id=p_game AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL AND p.ante_decision='ante_up';
  n:=jsonb_array_length(people);
  IF n NOT BETWEEN 2 AND 4 OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(people) p WHERE NOT (p->>'isBot')::boolean) THEN RAISE EXCEPTION 'golf:accepted_player_count';END IF;
+ IF EXISTS(SELECT FROM jsonb_array_elements(people) p WHERE NOT (p->>'isBot')::boolean AND NOT private.golf_actor_allowed((p->>'userId')::uuid,g.id,dg.id)) THEN RAISE EXCEPTION 'golf:tester_required' USING ERRCODE='42501';END IF;
  UPDATE public.games SET status='in_progress',ante_decision_deadline=NULL,current_round=1,total_hands=1 WHERE id=p_game;
  INSERT INTO public.rounds(id,game_id,dealer_game_id,hand_number,round_number,cards_dealt,status,pot)
  VALUES(r,p_game,p_dealer,1,1,0,'betting',0);
  s:=jsonb_build_object('identity',jsonb_build_object('sessionId',p_game,'dealerGameId',p_dealer,'roundId',r),'rules',dg.config->'rules',
   'players',people,'hole',1,'dealerIndex',n-1,'scores',(SELECT jsonb_object_agg(p->>'id',0) FROM jsonb_array_elements(people) p),'holes','[]'::jsonb);
  s:=private.golf_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
- INSERT INTO private.golf_matches(dealer_game_id,game_id,round_id,state,stake) VALUES(p_dealer,p_game,r,s,stake_i);
+ INSERT INTO private.golf_matches(dealer_game_id,game_id,round_id,state,stake,player_controls)
+ VALUES(p_dealer,p_game,r,s,stake_i,(SELECT jsonb_object_agg(p.id::text,jsonb_build_object('autoPlay',p.auto_fold,'sitOutNextHand',p.sit_out_next_hand,'intentVersion',p.intent_version)) FROM public.players p WHERE p.game_id=p_game AND p.id IN(SELECT (x->>'id')::uuid FROM jsonb_array_elements(people) x)));
  RETURN jsonb_build_object('dealerGameId',p_dealer,'roundId',r);
 END $$;
 
@@ -55,7 +57,7 @@ BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=m.game_id FOR UPDATE;
  SELECT * INTO STRICT m FROM private.golf_matches WHERE dealer_game_id=p_dealer_game_id FOR UPDATE;
  SELECT id INTO player FROM public.players WHERE game_id=m.game_id AND user_id=actor AND NOT is_bot AND (status<>'left' OR m.settlement IS NOT NULL);
- IF player IS NULL OR NOT private.golf_actor_allowed(actor) OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m.state->'players') p WHERE p->>'id'=player::text) THEN RAISE EXCEPTION 'golf:participant_required' USING ERRCODE='42501';END IF;
+ IF player IS NULL OR NOT private.golf_actor_allowed(actor,m.game_id,m.dealer_game_id) OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m.state->'players') p WHERE p->>'id'=player::text) THEN RAISE EXCEPTION 'golf:participant_required' USING ERRCODE='42501';END IF;
  IF p_request_id IS NULL OR p_revision IS NULL OR p_round_id IS NULL OR p_action IS NULL OR p_action NOT IN ('open','draw','replace','discard','reject') THEN RAISE EXCEPTION 'golf:invalid_command';END IF;
  SELECT * INTO prior FROM private.golf_requests WHERE dealer_game_id=p_dealer_game_id AND request_id=p_request_id;
  IF FOUND THEN
@@ -65,6 +67,7 @@ BEGIN
  IF g.current_game_uuid IS DISTINCT FROM m.dealer_game_id OR g.game_type IS DISTINCT FROM 'six-card-golf' OR g.status<>'in_progress' OR m.finished OR g.is_paused THEN RAISE EXCEPTION 'golf:inactive';END IF;
  IF m.round_id<>p_round_id OR m.revision<>p_revision THEN RAISE EXCEPTION 'golf:stale_revision';END IF;
  IF m.state->'players'->(m.state->>'turnIndex')::integer->>'id' IS DISTINCT FROM player::text THEN RAISE EXCEPTION 'golf:not_actor' USING ERRCODE='42501';END IF;
+ IF EXISTS(SELECT FROM public.players WHERE id=player AND auto_fold) THEN RAISE EXCEPTION 'golf:autoplay_active';END IF;
  at_ms:=floor(extract(epoch FROM clock_timestamp())*1000);
  IF at_ms>=(m.state->>'deadline')::bigint THEN RAISE EXCEPTION 'golf:deadline';END IF;
  m.state:=private.golf_reduce(m.state,p_action,p_items,at_ms);
