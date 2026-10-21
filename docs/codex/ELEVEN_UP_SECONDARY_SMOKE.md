@@ -1,51 +1,57 @@
-# 11 Up secondary smoke — local only
+# 11 Up secondary smoke — locally qualified, unreleased
 
 Base: 55a896b1f84fcd31d32a1a135622af99fca1a3c9. Branch: codex/eleven-up-secondary-smoke.
-Release goes behind every currently queued game deployment (Golf, Canasta, Battle31
-and the rest of that queue). This work reserves no release slot and blocks no game.
+Release remains behind every currently queued game (including Golf, Canasta and
+Battle31). This candidate reserves no release slot and blocks no other game.
 
-## Ding correction
+## Corrections
 
-The audio hook previously sounded on the confirmed group-count increase, while
-the presentation hook had only highlighted the first ball. Automatic groups now
-retain their confirmed identity until the same witnessed presentation displays
-a total of 11. The cue is consumed once. Manual/Arcade confirmation remains
-immediate; reconnect, scope change, pause, tab change, expiry and reclaim cannot
-replay a cancelled automatic cue. No action, timer, rule or financial owner changes.
+Automatic combination audio now waits until the witnessed ball highlights display
+11, then plays once. Manual/Arcade confirmation remains immediate. Cancelled or
+historical presentations cannot replay a cue. Local browser evidence records one
+cue at 11 with 770 ms selection spacing and an unchanged authoritative deadline.
 
-47 focused tests pass. Actual local SQL/browser playback records one cue at
-displayed total 11, 770ms selection spacing, no page errors and unchanged deadline.
-TypeScript and Vite build pass. Physical audio/phone acceptance remains pending.
+The Ready stall was the all-human safeguard firing during an active play-money
+competition. The clarified policy puts eligible-human checks BETWEEN dealer games.
+The forward SQL changes only the 11 Up branches of pause_all_humans_auto_fold and
+11 Up postgame orchestration: active fake-money play can complete using the existing
+legal bot policy; postgame delegates to canonical participation resolution when no
+human remains eligible, even if multiple bots remain. Real-money Ready still pauses.
+Expired scoring results, clocks, bonuses, settlement and real-money bot admission
+are unchanged. Deferred sit-out remains at the whole-competition boundary.
 
-## Ready pause — reproduced; policy decision pending
+Reclaim clears autoplay/deferred flags without resetting clocks or implicitly
+resuming. A paused participant who has reclaimed sees an explicit Resume game
+button if they are the current host; other participants see host-resume guidance.
+The route uses its existing guarded canonical pause/resume callback and versioned
+RPC. No alternate pause authority was introduced.
 
-Run: node dev/eleven-up/secondary-ready-repro.mjs (loopback, rolled back).
-The exact pre-first-placement round-one boundary reproduces as follows:
+## Local validation
 
-- Play money, one human plus bot: timeout flags autoplay/deferred sit-out;
-  canonical all-human safeguard pauses in Ready before any bot action. Reclaim
-  clears both flags and deliberately keeps the pause and Ready state unchanged.
-- Play money, two humans with the other human active: legal takeover starts
-  playing without pausing; reclaim clears flags without changing state/clocks.
-- Real money, two humans: timeout pauses in Ready without admitting a bot or
-  setting fake-money autoplay flags.
+- 48 focused 11 Up tests and 15 canonical pause/timer/intent tests passed.
+- Typecheck and Vite production build passed.
+- Local SQL proof covers all-away two-human, human-plus-bot and human-plus-two-bot
+  competitions, legal Ready takeover, reload, reclaim, stale rejection, settlement
+  once, canonical chips/snapshots, deferred sit-out and next-game waiting.
+- Completion uses bounded fixture clocks and verifies each expiry against the
+  unchanged reducer; it is not a full wall-clock unattended run.
+- Both-money 36-case financial matrix and prior smoke-controls proof passed.
+- Independent-connection bot-first/reclaim-first races passed.
+- Race Poker core/financial/injected rollback/v2 controls and Battle31 six-case
+  financial proof passed. Other function definitions and ACLs are preserved.
+- Actual local SQL/browser reclaim, reload and explicit authenticated Resume passed
+  at 320x568, 390x844 and 667x375, with no overflow or page errors.
 
-This explains the reported behavior when the timed-out player is the sole active
-human; the production session identity/roster has not been inspected or altered.
-The request to never pause fake money conflicts with the earlier explicit order
-to preserve the canonical all-human safeguard. Reclaim also must not implicitly
-resume a pause. The smallest compatible correction is an explicit canonical
-Resume affordance after reclaim, preserving the safeguard. The alternative is a
-new 11 Up fake-money exception to that policy, requiring a direct owner decision.
-The question is pending; no SQL, pause, resume or admission behavior was changed.
-The current fullscreen 11 Up Session panel supplies rules/history/chat but no
-canonical pause/resume callback, explaining the missing in-surface affordance.
+Evidence: dev/eleven-up/secondary-smoke-evidence.json. Reproduction script retains
+the historical failing expectations; use secondary-ready-proof.mjs and
+secondary-ready-races.mjs to qualify the corrected candidate.
 
-## Remaining release steps
+## Release blockers
 
-Resolve the Ready policy decision and implement/test that correction locally.
-After all currently queued game deployments, obtain an explicit release slot,
-reconcile current main/shared authority, qualify any resulting forward migration,
-and publish the matching client. Audio alone requires no database migration.
-No production queries/writes, main integration, push, deployment, grants or live
-session repairs occurred for this secondary candidate.
+supabase/eleven-up/secondary-ready.sql is an UNREGISTERED local forward artifact.
+After the other queued releases, establish a release slot, reconcile current main,
+inspect hosted definition parity, register/qualify the forward migration and publish
+the matching client. Physical phone/audio and production owner smoke remain pending.
+Broader policy application to other games is separately queued, not implemented here.
+No production access, migration, main integration, push, deployment, admission/grant
+change or live-session repair occurred for this secondary candidate.

@@ -1,3 +1,11 @@
+## October 21, 2026 — Active play-money completion and next-game eligibility
+
+Owner clarification: all-human inactivity must not strand an active play-money
+competition. Eligible-human checks belong between dealer games. The local 11 Up
+candidate applies this narrowly, retaining canonical postgame waiting, real-money
+pauses, unchanged scoring expiry and explicit resume after reclaim. Other games
+remain separately queued for review. See ELEVEN_UP_SECONDARY_SMOKE.md.
+
 # 2026-10-21 — 11 Up expired humans retain their round schedule
 
 Jeremy superseded the earlier Ready-only control policy: gameplay expiry preserves

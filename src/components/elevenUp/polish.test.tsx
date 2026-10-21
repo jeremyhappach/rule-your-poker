@@ -94,6 +94,20 @@ it('keeps reclaim available while paused or between rounds and identifies oppone
  ui.rerender(<ElevenUpView {...p} sessionEnded/>);expect(ui.queryByRole('checkbox')).toBeNull();expect(ui.queryByRole('img',{name:/Auto-play/})).toBeNull();
 });
 
+it('offers explicit Resume after paused reclaim without resuming from the checkbox or snapshot',()=>{
+ const v=snapshot();v.solo=false;v.viewerId='user';v.paused=true;v.canAct=false;v.players[0].autoplay=true;
+ const onResume=vi.fn().mockResolvedValue(undefined),onIntent=vi.fn(),p=props(v,onIntent),ui=render(<ElevenUpView {...p} onResume={onResume}/>);
+ expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ fireEvent.click(ui.getByRole('checkbox',{name:'Auto-play'}));expect(onIntent).toHaveBeenCalledExactlyOnceWith({type:'reclaim'});expect(onResume).not.toHaveBeenCalled();
+ const reclaimed={...v,revision:2,players:[{...v.players[0],autoplay:false,sitOutNextHand:false}]};
+ ui.rerender(<ElevenUpView {...p} view={reclaimed} onResume={onResume}/>);
+ expect(ui.queryByRole('checkbox')).toBeNull();expect(onResume).not.toHaveBeenCalled();
+ fireEvent.click(ui.getByRole('button',{name:'Resume game'}));expect(onResume).toHaveBeenCalledTimes(1);
+ ui.rerender(<ElevenUpView {...p} view={reclaimed}/>);expect(ui.getByText('Paused · ask host to resume')).toBeTruthy();expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ ui.rerender(<ElevenUpView {...p} view={{...reclaimed,paused:false}} onResume={onResume}/>);expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ ui.rerender(<ElevenUpView {...p} view={reclaimed} onResume={onResume} sessionEnded/>);expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+});
+
 it('shows named multiplayer achievements and winner pulse without changing Arcade results',()=>{
  const v=snapshot();v.solo=false;v.settled=true;v.board.phase='complete';v.players=[{id:'user',name:'Hap',score:103000,active:true},{id:'other',name:'Sam',score:90000,active:false}];
  v.terminal={resultId:'receipt',startedAt:0,deadline:3000,winnerIds:['user'],score:103000,achievements:{user:{kind:'broken',priorBest:100,overallKind:'broken',overallPriorBest:100,rank:1,topTen:true},other:{kind:'broken',priorBest:80,overallKind:'lower',overallPriorBest:100,rank:2,topTen:true}}};

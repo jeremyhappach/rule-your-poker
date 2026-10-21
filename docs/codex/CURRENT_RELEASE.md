@@ -1,9 +1,11 @@
-# 11 Up secondary smoke — local only, back of release queue
+# 11 Up secondary smoke — locally qualified, back of release queue
 
-Audio now waits for the displayed combination to reach 11. Ready pause reproduces
-as the canonical all-human safeguard in human-versus-bot play; policy clarification
-is pending, so pause/resume/database behavior is unchanged. This candidate holds
-no production slot and blocks no other game. See [findings](ELEVEN_UP_SECONDARY_SMOKE.md).
+Audio waits for displayed total 11. Active play-money competitions can finish
+through autoplay, with eligible-human checks at the next-game boundary. Real-money
+pauses remain; reclaim never resumes implicitly, and the host now has explicit
+canonical Resume. Local SQL, financial/race, browser, typecheck and build checks
+pass. Forward SQL remains unregistered and unreleased. This candidate blocks no
+other game. See [scope and evidence](ELEVEN_UP_SECONDARY_SMOKE.md).
 
 # 11 Up smoke controls — installed and qualified for publication
 

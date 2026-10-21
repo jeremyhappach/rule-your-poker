@@ -1,12 +1,18 @@
 ## Queued — 11 Up secondary smoke release — October 21, 2026
 
-Release ordering: very back, after all currently queued game deployments; Golf,
-Canasta and Battle31 go first. No prerequisite/hold on those releases. Jeremy
-reported a premature bot-combination ding and fake-money Ready timeout pausing
-before first placement, then reclaim leaving no visible resume control. Audio
-correction is locally tested. Ready behavior reproduces the canonical all-human
-safeguard; its policy decision is pending. No production session was changed.
-See [local findings and next steps](ELEVEN_UP_SECONDARY_SMOKE.md).
+Locally implemented and qualified: audio at displayed 11, active play-money
+completion, next-game eligible-human guard and explicit canonical Resume after
+reclaim. Release VERY LAST after all currently queued games; no holds on Golf,
+Canasta, Battle31 or others. Forward migration/hosted parity/publication and owner
+smoke remain. See [candidate](ELEVEN_UP_SECONDARY_SMOKE.md).
+
+## Queued — Cross-game active competition inactivity policy review — October 21, 2026
+
+Jeremy clarified that only-remaining-human eligibility belongs BETWEEN dealer
+games; active play-money competitions must have a path to completion. 11 Up is
+locally corrected. Review other games separately against that policy, preserving
+real-money pauses, scoring clocks and canonical settlement. This is not a release
+prerequisite for currently queued games; no other game changed in this task.
 
 # Backlog
 
