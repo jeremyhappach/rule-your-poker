@@ -1,4 +1,8 @@
-# Box Drop numeral contrast - 2026-10-21 - narrowed release approved
+# Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
+
+Owner smoke rejected the contrast-only release because actual crate values remained too small. The shared crate renderer now gives bold sans-serif numerals 88% of the face, with a 10% colored edge marker. Single digits use a larger fitted size; two-digit values fit without clipping. Incoming, queued and placed crates share this styling. Crate positions, playfield, controls, rules and financial/admission behavior are unchanged. No landscape or dialog changes are included. Thirty-two focused phone/desktop visual cases pass for values 2, 7, 10 and 11, including exact unchanged crate/control geometry and glyph fit; before/after evidence is under `qualification.local/boxdrop/numeral`. Focused regressions (25 tests), typecheck and production build pass. Physical iPhone owner smoke remains pending.
+
+# Box Drop numeral contrast - 2026-10-21 - published, superseded by owner feedback
 
 Only the shared crate numeral paint changes: opaque cream background, dark foreground, no stroke or shadow. Font sizes, crate/playfield geometry, controls, dialog behavior, rules, timing, financial logic and admission are unchanged. The broader landscape candidate `5bf7556061d78bef6b8debf927b38705abe1766f` and pending reconciliation remain isolated in `codex/boxdrop-number-readability`; they are excluded from this release. Focused visual comparison passes 220 cases (values 1-11, five viewport sizes, four presentation states), preserving exact geometry and disabled states. Local before/after screenshots are under `qualification.local/boxdrop/contrast`. Focused regressions (25 tests), TypeScript checking and production build pass. Owner iPhone smoke remains pending; existing small multiplayer landscape geometry is intentionally unchanged under the narrowed approval.
 

@@ -3,3 +3,9 @@
 .box-shaft[data-status=short] .box-sign{font-size:2.9cqw}.box-shaft .box-scale-state{font-size:1.4cqw}.box-factory .box-scales{gap:2%;left:34%}
 /* Opaque numeral contrast without changing crate or playfield geometry. */
 .box-crate b{color:#101810;background:#fff6da;border-radius:2px;-webkit-text-stroke:0;text-shadow:none}
+/* Let the value own the face; keep crate color as a narrow edge marker. */
+.box-crate{container-type:size}
+.box-crate i{position:absolute;left:0;top:0;width:10%;height:100%;font-size:0;border:0}
+.box-crate b,.box-queue .box-crate b{position:absolute;right:0;top:0;display:grid;place-items:center;width:88%;height:100%;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;font-size:min(120cqh,65cqw);line-height:1;border-radius:0}
+.box-queue .box-crate i{font-size:0}
+.box-crate b[data-digits="1"]{font-size:min(125cqh,105cqw)}
