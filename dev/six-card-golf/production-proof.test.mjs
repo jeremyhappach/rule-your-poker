@@ -20,7 +20,7 @@ test('production fixtures never seed heartbeat or disable integrity triggers',()
  assert.throws(()=>sanitizeFixture('core-proof',input.fixtures['core-proof']+'\nALTER TABLE private.golf_matches DISABLE TRIGGER golf_guard;'),/Unsafe/);
 });
 test('each unit is bounded, rollback-only, isolated and checks both sides of rollback',()=>{
- const units=buildProofs(input);assert.equal(units.length,11);assert.equal(new Set(units.map(x=>x.namespace)).size,11);
+ const units=buildProofs(input);assert.equal(units.length,16);assert.equal(new Set(units.map(x=>x.namespace)).size,16);
  for(const {sql} of units){
   assert.equal((sql.match(/^BEGIN ISOLATION LEVEL REPEATABLE READ;/gm)||[]).length,1);
   assert.equal((sql.match(/^ROLLBACK;/gm)||[]).length,1);
@@ -32,6 +32,16 @@ test('each unit is bounded, rollback-only, isolated and checks both sides of rol
   assert.doesNotMatch(sql,/installLocalReference|local-reference.sql/);
  }
  for(const x of units.filter(x=>x.name.startsWith('mixed'))){assert.match(x.sql,/FOR money IN [01]\.\.[01] LOOP FOR n IN [234]\.\.[234] LOOP/);assert.match(x.sql,/golf_metrics VALUES\('bot_finishes'/);}
+});
+test('hosted fixture respects automatic Auth profiles and unique usernames',()=>{
+ for(const name of names){
+  const sql=sanitizeFixture(name,input.fixtures[name]);
+  assert.doesNotMatch(sql,/INSERT INTO public\.profiles/);
+  assert.doesNotMatch(sql,/INSERT INTO auth\.users\(id\) VALUES/);
+ }
+ const recovery=sanitizeFixture('recovery-proof',input.fixtures['recovery-proof']);
+ assert.match(recovery,/WHERE id=u;/);assert.match(recovery,/WHERE id=bu;/);
+ assert.match(recovery,/jsonb_build_object\('username','Golf fixture '\|\|fixture_id::text\)/);
 });
 test('installed payload cannot be built without reviewed candidate fingerprints',()=>{
  assert.throws(()=>buildProofs({...input,installed:true}),/reviewed candidate/);
@@ -46,7 +56,7 @@ test('evidence rejects partial runs, missing rollback, changed authority and no 
  const evidence={units:units.map(u=>({sql_sha256:u.sha256,candidate_evidence:{unit:u.name,function_fingerprints:fingerprints,catalog_fingerprint:'b'.repeat(32),fixture_namespace:u.namespace,existing_records_unchanged:true,metrics:{bot_finishes:u.name.startsWith('mixed')?1:0}},rollback_evidence:{unit:u.name,fixture_namespace:u.namespace,rollback_verified:true,golf_release_exists:false}}))};
  assert.equal(validateEvidence(manifest,evidence).botFinishes,6);
  const change=f=>{const e=structuredClone(evidence);f(e);return e;};
- assert.throws(()=>validateEvidence(manifest,change(e=>e.units.pop())),/eleven/);
+ assert.throws(()=>validateEvidence(manifest,change(e=>e.units.pop())),/sixteen/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].rollback_evidence.rollback_verified=false)),/Unverified/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].candidate_evidence.function_fingerprints={...e.units[0].candidate_evidence.function_fingerprints,'private.golf_test_0()':'b'.repeat(32)})),/differs/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].candidate_evidence.catalog_fingerprint='c'.repeat(32))),/Catalog differs/);

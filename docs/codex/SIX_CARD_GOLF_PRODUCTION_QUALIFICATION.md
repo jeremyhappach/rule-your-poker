@@ -1,5 +1,11 @@
 # Golf production qualification preparation — 2026-10-21
 
+Later authorized execution is recorded in [the hosted attempt](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
+The current runner requires 16 units after separating the six human matches.
+Six hosted units passed; four-human containment timed out. Release remains held.
+The preparation-only authorization and eleven-unit descriptions below are the
+historical plan, superseded by that attempt's exact manifest and result record.
+
 This package prepares local artifacts only. No production write, integration
 into main, push, deployment, admission activation or new credential is authorized
 by this preparation task. The game and financial contract are unchanged.

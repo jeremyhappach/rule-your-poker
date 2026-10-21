@@ -4,10 +4,10 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {migrationHash} from './production-proof.mjs';
 export function validateEvidence(manifest,evidence){
- if(manifest.migrationHash!==migrationHash||manifest.units?.length!==11)throw Error('Wrong migration/manifest');
- const expected=['core','human','financial','recovery','qualification',...['fake','real'].flatMap(m=>[2,3,4].map(n=>`mixed-${m}-${n}`))].sort();
+ if(manifest.migrationHash!==migrationHash||manifest.units?.length!==16)throw Error('Wrong migration/manifest');
+ const expected=['core','financial','recovery','qualification',...['human','mixed'].flatMap(kind=>['fake','real'].flatMap(m=>[2,3,4].map(n=>`${kind}-${m}-${n}`)))].sort();
  if(JSON.stringify(manifest.units.map(u=>u.name).sort())!==JSON.stringify(expected))throw Error('Wrong proof coverage');
- if(!Array.isArray(evidence.units)||evidence.units.length!==11)throw Error('All eleven unit results required');
+ if(!Array.isArray(evidence.units)||evidence.units.length!==16)throw Error('All sixteen unit results required');
  const seen=new Set();let canonical,catalog,botFinishes=0;
  for(const unit of manifest.units){
   const rows=evidence.units.filter(x=>x.candidate_evidence?.unit===unit.name);

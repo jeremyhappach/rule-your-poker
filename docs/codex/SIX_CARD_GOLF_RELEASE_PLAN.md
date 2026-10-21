@@ -1,5 +1,10 @@
 # Six-Card Golf — closed-admission qualification plan
 
+Latest execution, October 21: Golf was promoted to the next smoke candidate,
+but hosted qualification stopped at a four-human proof timeout during
+existing-record containment. No migration, integration, push, deployment or
+grants occurred. See [the exact attempt and preserved scope](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
+
 Current reconciled baseline: main `6b15f4eb060df319df13d576948c343920a23b21`.
 See [reconciliation evidence](SIX_CARD_GOLF_RECONCILIATION.md) for the revised
 guards, additive shared registration and approved later two-account fake-only

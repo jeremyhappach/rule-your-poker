@@ -1,5 +1,12 @@
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
+October 21 hosted attempt: the owner promoted Golf to the next smoke candidate.
+Fresh main/READY production and all eight preimages match `6b15f4eb`. Six candidate
+rollback units pass; the four-human unit times out during final existing-record
+containment. Qualification is incomplete, so no Golf installation, main change,
+push, deployment or grant occurred. The migration hash is unchanged and the
+24-hour smoke window has not started. See [hosted results and exact blocker](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
+
 October 21 reconciliation now incorporates released main `6b15f4eb060df319df13d576948c343920a23b21` without changing main or publishing. Three stale preimages are updated to verified deployed authority; guarded additive ante/stake registration preserves Battle 31, Race Poker v2, 11 Up bots/Ready and other games. Combined local SQL/financial/control proofs, 408-function/permission preservation, both-mode Golf races, 2,626 application tests, 241 harness tests, TypeScript and production build pass. The later 24-hour fake-money smoke scope is reserved for the verified Hap and Happach Gmail accounts with bots; no grants exist and the window has not started. See [revised package and evidence](SIX_CARD_GOLF_RECONCILIATION.md). Hosted qualification and release remain held pending review of this revised candidate.
 
 October 21 local candidate incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c`. The approved qualification gate is implemented for exact existing accounts and sessions with expiry, default closed. Frozen admitted access preserves existing liabilities after expiry; new admission and Run Back close. Canonical fake-money autoplay now exposes a self checkbox and peer score robot, survives reload and reclaims through the shared player-intent owner. Real-money human timeout and deliberate pauses remain preserved; deferred sit-out applies after the nine-hole match. Eleven bounded production proof units are prepared with eight authority guards. Local SQL, RLS, installed financial/Race Poker preservation, both-mode races, browser reclaim and offline containment checks pass. General admission remains closed; no production writes or publication occurred. See [explicit qualification procedure](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).

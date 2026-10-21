@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
+import {wrapUnit} from './hosted-unit.mjs';
+const {database}=JSON.parse(readFileSync('qualification.local/six-card-golf/context.json','utf8'));
+assert.match(database,/^golf_\d+$/);
+const c=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});
+await c.connect();
+try{
+ await c.query('CREATE TEMP TABLE transport_guard(n integer); INSERT INTO transport_guard VALUES(1)');
+ const unit=`BEGIN ISOLATION LEVEL REPEATABLE READ;
+ UPDATE transport_guard SET n=2;
+ CREATE TEMP TABLE candidate_only(n integer);
+ SELECT jsonb_build_object('unit','transport','observed',(SELECT n FROM transport_guard)) candidate_evidence;
+ROLLBACK;
+ DO $$ BEGIN IF to_regclass('pg_temp.candidate_only') IS NOT NULL OR (SELECT n FROM transport_guard)<>1 THEN RAISE EXCEPTION 'residual'; END IF; END $$;
+ SELECT jsonb_build_object('unit','transport','rollback_verified',true) rollback_evidence;`;
+ const result=await c.query(wrapUnit(unit));const row=result.at(-1).rows[0];
+ assert.equal(row.candidate_evidence.observed,2);assert.equal(row.rollback_evidence.rollback_verified,true);
+ assert.equal((await c.query('SELECT n FROM transport_guard')).rows[0].n,1);
+ const failing=unit.replace('CREATE TEMP TABLE candidate_only(n integer);',()=>"DO $$ BEGIN RAISE EXCEPTION 'deliberate_error';END $$;");
+ await assert.rejects(c.query(wrapUnit(failing)),/deliberate_error/);
+ await c.query('ROLLBACK');
+ assert.equal((await c.query('SELECT n FROM transport_guard')).rows[0].n,1);
+ const actual=readFileSync('qualification.local/six-card-golf/production-candidate/core.sql','utf8');
+ await assert.rejects(c.query(wrapUnit(actual)),/live_services_required/);
+ await c.query('ROLLBACK');
+ assert.equal((await c.query("SELECT to_regclass('private.golf_release') v")).rows[0].v,null);
+ console.log('PASS combined evidence capture, actual subtransaction rollback, propagated failures and unchanged live-service rejection.');
+}finally{await c.end();}

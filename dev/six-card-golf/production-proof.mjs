@@ -15,6 +15,15 @@ export function sanitizeFixture(name,source){
  let sql=body(source),count=sql.split(seed).length-1;
  if(count!==expectedSeeds[name])throw Error(`Unexpected heartbeat seed count in ${name}: ${count}`);
  sql=sql.replaceAll(seed,'-- Scheduler health is read from actual authority; never seeded.');
+ // Hosted Auth creates profiles itself. Use a unique explicit fixture username
+ // and update only that fixture profile; never disable the production trigger.
+ sql=sql.replace(/INSERT INTO auth\.users\(id\) VALUES([^;]+);/g,(_,values)=>
+  `INSERT INTO auth.users(id,raw_user_meta_data) SELECT fixture_id,jsonb_build_object('username','Golf fixture '||fixture_id::text) FROM (VALUES ${values}) fixture(fixture_id);`);
+ sql=sql.replace(/INSERT INTO public\.profiles\(id,username,is_active\) VALUES([^;]+);/g,(_,values)=>{
+  const ids=[...values.split(' ON CONFLICT')[0].matchAll(/\(([^,]+),/g)].map(m=>m[1]);
+  if(!ids.length)throw Error('Unrecognized profile fixture');
+  return ids.map(id=>`UPDATE public.profiles SET is_active=true WHERE id=${id}; IF NOT FOUND THEN RAISE EXCEPTION 'golf_proof:auth_profile_missing'; END IF;`).join('\n');
+ });
  if(name==='recovery-proof'){
   const start=sql.indexOf(' -- A corrupt committed partition');
   const end=sql.indexOf('\nEND $$;',start);
@@ -78,6 +87,7 @@ const catalogSnapshot=`WITH tables AS (
 
 function containment(prefix){return `
 CREATE TEMP TABLE golf_existing(table_name text,row_hash text) ON COMMIT DROP;
+CREATE INDEX ON golf_existing(table_name);
 DO $baseline$ DECLARE t record;BEGIN
  FOR t IN SELECT * FROM (VALUES ${tableValues}) v(table_name,scope_column) LOOP
   EXECUTE format('INSERT INTO pg_temp.golf_existing SELECT %L,md5(to_jsonb(x)::text) FROM %s x',t.table_name,t.table_name);
@@ -91,7 +101,7 @@ CREATE FUNCTION pg_temp.golf_fixture_uuid() RETURNS uuid LANGUAGE sql VOLATILE A
 CREATE FUNCTION pg_temp.golf_unchanged() RETURNS void LANGUAGE plpgsql AS $check$
 DECLARE t record;bad boolean;BEGIN
  FOR t IN SELECT * FROM (VALUES ${tableValues}) v(table_name,scope_column) LOOP
-  EXECUTE format('SELECT EXISTS((SELECT row_hash FROM pg_temp.golf_existing WHERE table_name=%L EXCEPT ALL SELECT md5(to_jsonb(x)::text) FROM %s x) UNION ALL (SELECT md5(to_jsonb(x)::text) FROM %s x WHERE x.%I::text NOT LIKE %L EXCEPT ALL SELECT row_hash FROM pg_temp.golf_existing WHERE table_name=%L))',t.table_name,t.table_name,t.table_name,t.scope_column,${quote(prefix+'%')},t.table_name) INTO bad;
+  EXECUTE format('WITH current_rows AS MATERIALIZED (SELECT md5(to_jsonb(x)::text) row_hash,x.%I::text LIKE %L fixture FROM %s x) SELECT EXISTS((SELECT row_hash FROM pg_temp.golf_existing WHERE table_name=%L EXCEPT ALL SELECT row_hash FROM current_rows) UNION ALL (SELECT row_hash FROM current_rows WHERE NOT fixture EXCEPT ALL SELECT row_hash FROM pg_temp.golf_existing WHERE table_name=%L))',t.scope_column,${quote(prefix+'%')},t.table_name,t.table_name,t.table_name) INTO bad;
   IF bad THEN RAISE EXCEPTION 'golf_proof:existing_or_unscoped_records_changed:%',t.table_name;END IF;
  END LOOP;
 END $check$;
@@ -128,7 +138,15 @@ export function buildProofs({migration,fixtures,installed=false,fingerprints,cat
  const clean=Object.fromEntries(names.map(n=>[n,sanitizeFixture(n,fixtures[n])]));
  const assertFn=clean['core-proof'].slice(0,clean['core-proof'].indexOf('\nDO $$'));
  const loginFn=clean.proof.slice(0,clean.proof.indexOf('\nDO $$'));
- const suites=[['core',clean['core-proof']],['human',clean.proof],['financial',clean['financial-proof']],['recovery',clean['recovery-proof']],['qualification',clean['qualification-proof']]];
+ const suites=[['core',clean['core-proof']],['financial',clean['financial-proof']],['recovery',clean['recovery-proof']],['qualification',clean['qualification-proof']]];
+ for(const money of [0,1])for(const n of [2,3,4]){
+  let sql=clean.proof;
+  for(const [oldValue,newValue] of [['FOR money_i IN 0..1 LOOP',`FOR money_i IN ${money}..${money} LOOP`],['FOR n IN 2..4 LOOP',`FOR n IN ${n}..${n} LOOP`]]){
+   if(sql.split(oldValue).length!==2)throw Error('Human loop changed');
+   sql=sql.replace(oldValue,newValue);
+  }
+  suites.push([`human-${money?'real':'fake'}-${n}`,sql]);
+ }
  for(const money of [0,1])for(const n of [2,3,4]){
   let sql=clean['mixed-proof'];
   const loop='FOR money IN 0..1 LOOP FOR n IN 2..4 LOOP';
@@ -177,7 +195,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(args.some((a,i)=>!['--installed','--fingerprints'].includes(a)&&args[i-1]!=='--fingerprints'))throw Error('Usage: node dev/six-card-golf/production-proof.mjs [--installed --fingerprints reviewed.json]');
  const fp=args.indexOf('--fingerprints');
  const reviewed=fp<0?undefined:JSON.parse(readFileSync(args[fp+1],'utf8'));
- if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==11||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
+ if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==16||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
  const units=buildProofs({migration:readFileSync(migrationPath,'utf8'),fixtures:Object.fromEntries(names.map(n=>[n,readFileSync(`supabase/six-card-golf/${n}.sql`,'utf8')])),installed,fingerprints:reviewed?.function_fingerprints,catalogFingerprint:reviewed?.catalog_fingerprint});
  const out=`qualification.local/six-card-golf/production-${installed?'installed':'candidate'}`;
  mkdirSync(out,{recursive:true});
