@@ -8,7 +8,7 @@ const pg=require('C:/Users/jerem/source/repos/rule-your-poker/qualification.loca
 const root='C:/Users/jerem/source/repos/rule-your-poker/';
 export const connect=async(database)=>{if(database!=='postgres'&&!/^eleven_up_timeout_\d+$/.test(database))throw Error('Isolated local database only');const c=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});await c.connect();return c;};
 export const context=()=>JSON.parse(read('qualification.local/eleven-up-timeout/context.json','utf8'));
-export const body=s=>s.replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,'');
+export const body=s=>s.replaceAll('\r\n','\n').replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,'');
 if(process.argv[2]==='prepare'){
  const database=existsSync('qualification.local/eleven-up-timeout/context.json')?context().database:'eleven_up_timeout_'+Date.now(),c=await connect('postgres');
  if(!existsSync('qualification.local/eleven-up-timeout/context.json'))await c.query(`CREATE DATABASE "${database}" TEMPLATE "eleven_up_bots_1792536250433"`);await c.end();

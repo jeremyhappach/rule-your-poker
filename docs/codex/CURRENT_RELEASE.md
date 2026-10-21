@@ -1,3 +1,11 @@
+# 11 Up smoke controls — local candidate only
+
+Local follow-up from published `bb1ec308030065d1aa30fc79a18efd493315291e`:
+sequential bot ball highlights and gameplay-expiry away/rejoin handling while
+preserving all rounds and original scoring clocks. Fake money uses the existing
+bot policy for subsequent rounds; real money pauses before the next away turn.
+No production actions in this phase. See [scope and proof](ELEVEN_UP_SMOKE_CONTROLS.md).
+
 # 11 Up combined bots / Ready controls — installed and qualified for publication
 
 Jeremy directly authorized the combined rollout after Race Poker. Reconciled

@@ -1,5 +1,10 @@
 # Repository map
 
+11 Up smoke controls: `supabase/eleven-up/smoke-controls.sql` is the local forward
+candidate for post-expiry away state and next-Ready real-money pause.
+`src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
+`dev/eleven-up/smoke-controls-*.mjs` provides isolated qualification.
+
 11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
 forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
 `dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared

@@ -10,6 +10,7 @@ import {ballPosition,ballValue,type ElevenIntent,type ElevenSnapshot} from '@/li
 import {useElevenGroupAudio} from '@/hooks/useElevenGroupAudio';
 import {winnerAchievementLabels} from '@/lib/arcade/scoreAchievements';
 import {Bot} from 'lucide-react';
+import {useElevenBotSelection} from '@/hooks/useElevenBotSelection';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
@@ -35,9 +36,11 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
  const selected=useRef<number[]>([]),submitted=useRef(false);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{selected.current=[];submitted.current=false;setSelection([]);},[v.scope,v.revision,epoch,active]);
- const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,remaining=Math.max(0,b.deadline-at);
+ const botSelection=useElevenBotSelection(v,now,epoch,active&&!error&&!v.paused&&!sessionEnded&&!document.hidden);
+ const b=botSelection?.board??v.board,at=v.paused?(v.pausedAt??v.serverAt):now,remaining=Math.max(0,v.board.deadline-at);
  const canAct=v.canAct&&!v.paused&&!pending&&!error&&remaining>0&&['ready','playing'].includes(b.phase)&&active&&!sessionEnded;
- const sum=selection.reduce((n,id)=>n+ballValue(id),0);
+ const shownSelection=botSelection?.selection??selection;
+ const sum=shownSelection.reduce((n,id)=>n+ballValue(id),0);
  const toggle=(id:number)=>{
   if(!canAct||submitted.current)return;
   const next=selected.current.includes(id)?selected.current.filter(x=>x!==id):[...selected.current,id];
@@ -60,20 +63,20 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
    {!sessionEnded&&<div className="eleven-playfield">
    {!terminal&&<>
    <div className="eleven-rack" aria-label="Pool balls on felt">
-    {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`${y}%`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={selection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}
+    {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`${y}%`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={shownSelection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}
    </div>
    {b.phase!=='stage_complete'&&<>
     <output className="eleven-selection" aria-label={`Selected total ${sum}`}>{sum}</output>
     {b.phase==='ready'&&<div className="eleven-clock eleven-ready-clock" role="timer" aria-label="Time to start">{v.paused?'Paused · ':'Select or pass · '}{Math.floor(Math.ceil(remaining/1000)/60)}:{String(Math.ceil(remaining/1000)%60).padStart(2,'0')}</div>}
     {b.phase==='playing'&&<div className="eleven-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={b.rules.stageMs/1000} aria-valuenow={Math.min(remaining,b.rules.stageMs)/1000} aria-valuetext={`${v.paused?'Paused · ':''}${Math.ceil(remaining/1000)} seconds remaining`}><CountdownDots remaining={remaining} duration={b.rules.stageMs}/>{v.paused&&<small>Paused</small>}</div>}
     <div className="eleven-controls">
-     <div className="eleven-current">{b.current!==null?<button className="eleven-draw" aria-label={`Draw ball ${ballValue(b.current)}`} aria-pressed={selection.includes(b.current)} disabled={!canAct} onClick={()=>toggle(b.current!)}><Ball id={b.current}/></button>:<span>Empty</span>}</div>
+     <div className="eleven-current">{b.current!==null?<button className="eleven-draw" aria-label={`Draw ball ${ballValue(b.current)}`} aria-pressed={shownSelection.includes(b.current)} disabled={!canAct} onClick={()=>toggle(b.current!)}><Ball id={b.current}/></button>:<span>Empty</span>}</div>
      <button className="eleven-pass" disabled={!canAct||!b.canPass} aria-label={`Pass, ${b.stockRemaining} draws remaining`} onClick={()=>onIntent({type:'pass'})}><span className="eleven-stock-count" aria-hidden="true">{b.stockRemaining}</span>Pass</button>
     </div>
    </>}
    </>}
    {b.phase==='intro'&&<div className="eleven-intro"><TriRoundIntro remaining={remaining} roundLabel={v.round===3?'BONUS ROUND':`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${v.players.find(p=>p.active)?.name??'Player'}’S TURN`} paused={v.paused}/></div>}
-   {result&&<div className="eleven-result" role="status" data-celebrating={motion.admitted&&result.reason==='cleared'&&motion.elapsed<3000}>
+   {result&&!botSelection&&<div className="eleven-result" role="status" data-celebrating={motion.admitted&&result.reason==='cleared'&&motion.elapsed<3000}>
     <span>{result.reason==='cleared'?'✦ ALL BALLS CLEARED ✦':b.event.label}</span><strong>{(motion.displayScore??result.score).toLocaleString()}</strong>
     {(!motion.admitted||result.reason!=='cleared'||motion.elapsed>=3000)&&<p>Elevens +{result.groupBonus.toLocaleString()}<br/>{result.clearBonus>0&&<>Clear +{result.clearBonus.toLocaleString()} · Stock +{result.stockBonus.toLocaleString()}<br/></>}Speed +{result.timeBonus.toLocaleString()}</p>}
    </div>}

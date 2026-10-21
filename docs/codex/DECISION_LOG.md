@@ -1,3 +1,11 @@
+# 2026-10-21 — 11 Up expired humans retain their round schedule
+
+Jeremy superseded the earlier Ready-only control policy: gameplay expiry preserves
+the exact result but marks the human away. Keep their seat and all subsequent
+rounds/bonuses: fake money delegates those turns to the existing bot; real money
+pauses at the next Ready boundary. Reclaim clears deferred sit-out without resume
+or clock reset. See `ELEVEN_UP_SMOKE_CONTROLS.md`. Approved scope is local only.
+
 # 2026-10-21 — 11 Up Ready inactivity is separate from scoring time
 
 Jeremy selected Ready-only inactivity handling. Real money pauses through the
