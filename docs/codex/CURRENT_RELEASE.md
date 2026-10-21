@@ -1,3 +1,14 @@
+# 11 Up smoke controls — installed and qualified for publication
+
+Jeremy directly authorized the release slot. Unchanged candidate `ef39ce022`
+passes hosted candidate and installed rollback proofs: six financial cases, four
+timeout-control cases, and preservation of balances, matches, other-game authority,
+ACLs, defaults and admission. Exact forward SQL is installed as hosted migration
+`20261021221415`; both changed definitions match local qualification. Recovery
+succeeds every second. Matching client publication is the remaining release step.
+Existing 11 Up/Race admission remains unchanged; Battle31 remains closed.
+See `supabase/eleven-up/smoke-release-evidence.json`. Owner smoke is pending.
+
 # 11 Up smoke controls — local candidate only
 
 Local follow-up from published `bb1ec308030065d1aa30fc79a18efd493315291e`:

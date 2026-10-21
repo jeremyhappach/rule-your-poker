@@ -88,3 +88,15 @@ if Golf or another release advances main or shared authority before then.
 Reconciled `npm run build` passes TypeScript, 373 application files / 2,610 tests,
 12 harness files / 241 tests, and Vite. Only existing Browserslist/chunk warnings
 remain. See `supabase/eleven-up/smoke-reconciliation-evidence.json`.
+
+## Authorized hosted release
+
+The later direct release authorization supersedes the local-only/Golf hold above.
+Official CLI registered the unchanged forward bytes as
+`20261021221318_eleven_up_smoke_controls.sql`; Supabase installed them as
+`20261021221415` (`eleven_up_smoke_controls`). Candidate and installed rollback
+proofs pass six financial and four timeout cases with balances, matches, other
+owners/ACLs, defaults and admission preserved. Both installed definitions match
+the locally tested candidate. Reuse the retained local race/UI/full-build evidence;
+only proof tooling, migration registration and release documentation were added.
+Matching client publication and owner smoke remain separately verified steps.
