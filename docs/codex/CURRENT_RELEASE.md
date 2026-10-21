@@ -1,11 +1,13 @@
-# Canasta / 1 — 2026-10-20 — local mobile checkpoint only
+# Canasta / 1 — 2026-10-20 — local authority checkpoint, integration incomplete
 
 Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
-inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Implementation stops for Jeremy's
-interaction review before full gameplay integration. No production admission,
-database changes or deployment. Financial qualification remains MISSING.
+inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Appearance accepted; local implementation
+authorized. See `CANASTA_AUTHORITY_CHECKPOINT.md` for completed reducer, server
+adapters, rollback-only SQL evidence and remaining integration. No production
+admission, database changes or deployment. Full financial qualification is incomplete.
 Bounded checkpoint correction: canonical configuration/header/identity, paged
-shared-dialog editor, legal 71-card witness and bound. Owner review remains pending.
+shared-dialog editor, legal 71-card witness and bound. Full reducer now reproduces
+the 71-card witness. Native mobile/gameplay acceptance remains pending.
 Appearance follow-up removes preview-only dark styling. Authenticated production
 comparison confirms the shared amber border, bridge felt and white page treatment;
 side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.

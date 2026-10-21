@@ -74,10 +74,13 @@ every move and produces the actual 71 cards used in the rendered fixture.
 maximumHand.test.ts checks the sequence, conservation, invalid pair, insufficient
 opening threshold, all remaining-stock count bounds and final discard.
 
-The complete authoritative match reducer does not exist at this checkpoint.
-Atomic server commands, secure dealing, exhaustion orchestration and recovery
-still require their later integration tests. This fixture does not claim those
-gates passed and does not implement a competing game engine.
+The subsequent local authority checkpoint adds `engine.ts` and the full replay
+in `engine.test.ts`: a complete ordered 108-card deck goes through actual deal,
+red-three replacement, initial upcards, 31 alternating draw/discard turns,
+frozen opening pickup and final discard. It reproduces 71 then 70 cards while
+checking conservation through the complete reducer. The rendered review still
+uses the earlier predicate fixture. Full network/consent/recovery integration
+and release qualification remain outstanding; see CANASTA_AUTHORITY_CHECKPOINT.md.
 
 Baseline: https://www.pagat.com/rummy/canasta.html (Classic and two-player sections).
 The separate 104-card scene is an impossible-hand rendering stress fixture only.

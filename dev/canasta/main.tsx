@@ -135,7 +135,7 @@ function Contents({scene}:{scene:Scene}) {
       notice:out?'Legal going out · hand result fixture':'Turn submitted · opponent turn fixture'});
     clear();setPaused(true);setMessage('Committed fixture response. This review does not run a live match.');
   }
-  const controls=<HandEditor view={view} hand={hand} selected={selected} setSelected={setSelected} drafts={drafts}
+  const controls=<HandEditor viewerId={SELF} view={view} hand={hand} selected={selected} setSelected={setSelected} drafts={drafts}
     rank={rank} setRank={setRank} filter={filter} setFilter={setFilter} sort={()=>setSorted(v=>!v)} sorted={sorted}
     discard={discard} message={message} ready={ready} clear={clear} assign={assign}
     setDiscard={()=>{setDiscard(selected[0]);setSelected([]);}} pickup={pickup} finish={finish}

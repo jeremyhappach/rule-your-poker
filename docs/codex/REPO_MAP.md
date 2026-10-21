@@ -1100,7 +1100,11 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
 
-Canasta local checkpoint: dev/canasta/HandEditor.tsx owns fixture-only paged
-interaction; src/lib/canasta/maximumHand.fixture.ts owns the shared-predicate legal
-witness. CanonicalTableHeader.tsx now shares unchanged route header presentation
-between Game.tsx and the checkpoint. No live Canasta admission or authority adapter.
+Canasta: src/lib/canasta/engine.ts owns full transitions over the frozen rules;
+engine.test.ts contains the complete 71-card legal replay. server/canasta contains
+unregistered authority/HTTP/store factories. supabase/canasta contains unapplied
+closed-admission SQL candidates and rollback-only proofs. src/components/canasta
+owns the shared paged editor and unregistered authoritative gameplay contents;
+dev/canasta reuses the editor for offline review. CanonicalTableHeader.tsx shares
+route header presentation. Live dispatcher/scheduler/route integration remains;
+see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.

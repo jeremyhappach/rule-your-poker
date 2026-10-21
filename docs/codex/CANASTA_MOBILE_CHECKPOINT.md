@@ -1,5 +1,9 @@
 # Canasta mobile checkpoint — corrected local review
 
+Subsequent authority: Jeremy accepted this appearance and authorized local
+implementation. `CANASTA_AUTHORITY_CHECKPOINT.md` supersedes the stop boundary
+below and records the incomplete integration. The offline review remains a fixture.
+
 This branch is a local, isolated interaction review. No catalog, route admission,
 database migration, live RPC, financial write, production deployment or main
 integration is authorized at this checkpoint. Main remains unchanged.

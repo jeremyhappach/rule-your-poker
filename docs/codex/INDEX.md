@@ -9,6 +9,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `GAME_RULES.md` | Any change touching legal actions, scoring, settlement, dealer/hand flow, bots |
 | `CARD_FACE_CONTRACT.md` | Card rendering, private/masked projections, deal/reveal admission, and face caches in Holm, Gin, Cribbage or 3-5-7 |
 | `CANASTA_CONTRACT.md` | Approved Classic two-player rules, fixed stake, timeout policy and legality correction |
+| `CANASTA_AUTHORITY_CHECKPOINT.md` | Local reducer/server/SQL checkpoint, qualification evidence and unfinished integration |
 | `CANASTA_MAXIMUM_HAND.md` | 71-card legal witness, count upper bound and proof boundaries |
 | `CANASTA_MOBILE_CHECKPOINT.md` | Isolated mobile checkpoint, shared-owner inventory, evidence and remaining review gates |
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |

@@ -2,7 +2,9 @@
 
 Authority: Jeremy's attached implementation approval in the Canasta workstream,
 including the legality correction. This freezes the launch specification, not
-production activation. Stop at the rendered mobile checkpoint for Jeremy's review.
+production activation. Jeremy subsequently accepted the rendered appearance and
+authorized local authority integration, preserving closed admission and no release.
+See `CANASTA_AUTHORITY_CHECKPOINT.md` for progress and remaining gates.
 
 ## Version and rules
 
