@@ -1,6 +1,7 @@
 # Six-Card Golf — closed-admission qualification plan
 
 Local reconciliation target: main `88c798396bd0202551e36dcf4cd9efa39c9ef555`.
+Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa` (isolated Box Drop numeral contrast).
 Golf starting checkpoint: `79292bcedecddc2b08b1b46447884631d6ed5f09`.
 This follow-up authorizes local work only. Nothing here authorizes production
 access, merge to main, push, deployment, activation or credential/security changes.

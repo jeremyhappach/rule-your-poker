@@ -380,3 +380,10 @@ These remain local results. Live authentication/PostgREST/Realtime, actual
 scheduled pg_cron recovery, deployed-authority comparison and production-safe
 candidate/installed proofs remain release blockers. No production deployment
 or activation is claimed.
+
+Main advanced during qualification to
+`3f3dfb3e199d31097646c349363b6b8d77486daa`. Its isolated Box Drop numeral
+contrast CSS is incorporated unchanged. The only merge conflict joined the
+two release-note introductions; both entries were retained. No Golf source or
+SQL changed in this final reconciliation. The combined production build is
+recorded in `build-main-final.log`.
