@@ -17,7 +17,6 @@ function Ball({id}:{id:number}){const value=ballValue(id);return <span className
 interface Props {terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
 export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,terminalPresenting=false}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
- useElevenGroupAudio(v,userId,epoch,tab==='cards'&&!error&&!v.paused&&!sessionEnded&&!document.hidden);
  const scoreGroup=useRef<HTMLDivElement>(null),activePlayerId=v.players.find(p=>p.active)?.id;
  const scorePlayers=v.players.length>2?[...v.players.filter(p=>p.active),...v.players.filter(p=>!p.active)]:v.players;
  useLayoutEffect(()=>{if(v.players.length>2&&scoreGroup.current)scoreGroup.current.scrollLeft=0;},[activePlayerId,v.players.length]);
@@ -31,7 +30,7 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
   <ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,motion,result,sessionEnded,scores}} active={tab==='cards'}/>
  </FullscreenGameShell>;
 }
-function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,active,motion,result,sessionEnded,scores}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;scores:ReactNode;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){
+function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFinish,active,motion,result,sessionEnded,scores}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;scores:ReactNode;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){
  const root=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),[selection,setSelection]=useState<number[]>([]);
  const selected=useRef<number[]>([]),submitted=useRef(false);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
@@ -41,6 +40,7 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
  const canAct=v.canAct&&!v.paused&&!pending&&!error&&remaining>0&&['ready','playing'].includes(b.phase)&&active&&!sessionEnded;
  const shownSelection=botSelection?.selection??selection;
  const sum=shownSelection.reduce((n,id)=>n+ballValue(id),0);
+ useElevenGroupAudio(v,userId,epoch,active&&!error&&!v.paused&&!sessionEnded&&!document.hidden,botSelection&&sum===11?botSelection.group:null);
  const toggle=(id:number)=>{
   if(!canAct||submitted.current)return;
   const next=selected.current.includes(id)?selected.current.filter(x=>x!==id):[...selected.current,id];

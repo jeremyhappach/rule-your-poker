@@ -1,3 +1,13 @@
+## Queued — 11 Up secondary smoke release — October 21, 2026
+
+Release ordering: very back, after all currently queued game deployments; Golf,
+Canasta and Battle31 go first. No prerequisite/hold on those releases. Jeremy
+reported a premature bot-combination ding and fake-money Ready timeout pausing
+before first placement, then reclaim leaving no visible resume control. Audio
+correction is locally tested. Ready behavior reproduces the canonical all-human
+safeguard; its policy decision is pending. No production session was changed.
+See [local findings and next steps](ELEVEN_UP_SECONDARY_SMOKE.md).
+
 # Backlog
 
 ## Queued — Run21 late-round-3 lag and intermittent Royal Flash reconnect evidence — October 19, 2026

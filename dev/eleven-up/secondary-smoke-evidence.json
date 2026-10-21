@@ -1,0 +1,51 @@
+{
+  "base": "55a896b1f84fcd31d32a1a135622af99fca1a3c9",
+  "localOnly": true,
+  "releaseQueue": "Behind all currently queued game deployments; no release slot or cross-game hold",
+  "audio": {
+    "tests": 47,
+    "testFiles": 5,
+    "typecheck": true,
+    "viteBuild": true,
+    "browser": {
+      "selectionSpacingMs": 770,
+      "cues": [
+        {
+          "id": "eleven-group:6e4c9038-6549-4dde-9fda-2ea1ae161b82:8defeed6-7577-4f13-986e-500eeeb21e42:4ac03ed4-5780-494a-a682-8c193ca19f71:1:1",
+          "total": "11"
+        }
+      ],
+      "errors": [],
+      "deadlineUnchanged": true
+    }
+  },
+  "readyReproduction": [
+    {
+      "real": false,
+      "opponent": "bot",
+      "phaseAfterTimeout": "ready",
+      "paused": true,
+      "autoplayAfterTimeout": true,
+      "reclaimClearsFlagsWithoutResume": true
+    },
+    {
+      "real": false,
+      "opponent": "human",
+      "phaseAfterTimeout": "playing",
+      "paused": false,
+      "autoplayAfterTimeout": true,
+      "reclaimClearsFlagsWithoutResume": true
+    },
+    {
+      "real": true,
+      "opponent": "human",
+      "phaseAfterTimeout": "ready",
+      "paused": true,
+      "autoplayAfterTimeout": false,
+      "reclaimClearsFlagsWithoutResume": true
+    }
+  ],
+  "readyFix": "Not implemented: direct policy decision pending; canonical all-human safeguard and no-implicit-resume retained",
+  "productionAccess": "None",
+  "sqlChanged": false
+}

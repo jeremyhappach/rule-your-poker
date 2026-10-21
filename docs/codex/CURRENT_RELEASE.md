@@ -1,3 +1,10 @@
+# 11 Up secondary smoke — local only, back of release queue
+
+Audio now waits for the displayed combination to reach 11. Ready pause reproduces
+as the canonical all-human safeguard in human-versus-bot play; policy clarification
+is pending, so pause/resume/database behavior is unchanged. This candidate holds
+no production slot and blocks no other game. See [findings](ELEVEN_UP_SECONDARY_SMOKE.md).
+
 # 11 Up smoke controls — installed and qualified for publication
 
 Jeremy directly authorized the release slot. Unchanged candidate `ef39ce022`
