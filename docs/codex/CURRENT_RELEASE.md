@@ -1,3 +1,14 @@
+# Race Poker / 2 timeout controls — 2026-10-21 — local candidate only
+
+Opponent choices dim; fake-money human timeout starts strategic Auto-play and
+next-dealer-game sit-out; unchecking restores control and clears that intent.
+Real-money human timeout uses canonical pause. New admissions will freeze v2;
+existing v1 rules, scoring and financial ownership remain intact.
+Local SQL/financial/concurrency, focused tests, 50 layouts, TypeScript and build
+pass. Migration is prepared but unapplied. Local commit only: no push/deployment.
+Production v1 remains fake-money smoke only, superseding the historical closed
+status below. See [contract, evidence and release boundary](RACE_POKER_TIMEOUT_CONTROLS.md).
+
 # Race Poker / 1 — 2026-10-20 — production published, admission closed
 
 Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false. Client fff4e8d39c4514c5c4370e993929ee858a453f04 is READY at holm357.com; authenticated capability closure, approved Rules and no Arcade entry passed. No money mode is activated. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.

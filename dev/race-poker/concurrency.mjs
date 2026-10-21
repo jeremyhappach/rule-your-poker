@@ -11,7 +11,7 @@ try{
  const u=[uuid(),uuid()],p=[uuid(),uuid()],g=uuid(),offer=new Date(Date.now()+600000).toISOString();
  await admin.query("UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed'");
  for(let i=0;i<2;i++){await admin.query('INSERT INTO auth.users(id) VALUES($1)',[u[i]]);await admin.query('INSERT INTO public.profiles(id,username,is_active) VALUES($1,$2,true) ON CONFLICT(id) DO UPDATE SET is_active=true',[u[i],'Race Poker proof '+u[i]]);}
- await admin.query("INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES($1,'game_selection',$3,2,$2,0,false,false)",[g,offer,real]);
+ await admin.query("INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end,current_host) VALUES($1,'game_selection',$3,2,$2,0,false,false,$4)",[g,offer,real,u[0]]);
  for(let i=0;i<2;i++)await admin.query('INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot) VALUES($1,$2,$3,$4,100,false)',[p[i],g,u[i],2-i]);
  await q(admin,"SELECT set_config('request.jwt.claim.sub',$1,false) v",[u[0]]);
  const config=await q(admin,"SELECT public.race_poker_configure($1,$2,2,'race-poker','{\"ante_amount\":9}',$3) v",[g,p[0],offer]),d=config.dealer_game.id;
@@ -27,8 +27,10 @@ try{
  // At/after expiry a racing click cannot beat recovery; original receipt remains retrievable.
  await admin.query("UPDATE private.race_poker_matches SET state=jsonb_set(state,'{deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1)) WHERE dealer_game_id=$1",[d]);
  await b.query('RESET ROLE');
- const timeout=await Promise.allSettled([move(a,uuid(),initial+2),q(b,'SELECT private.race_poker_recover() v')]);assert.equal(timeout[0].status,'rejected');assert.match(timeout[0].reason.message,/deadline|stale_revision|inactive/);assert.equal(timeout[1].status,'fulfilled');
+ const timeout=await Promise.allSettled([move(a,uuid(),initial+2),q(b,'SELECT private.race_poker_recover() v')]);assert.equal(timeout[0].status,'rejected');assert.match(timeout[0].reason.message,/deadline|stale_revision|inactive|autoplay_active/);assert.equal(timeout[1].status,'fulfilled');
  assert.deepEqual(await move(a,req,initial),dup[0]);await a.query('RESET ROLE');
+ const pausedGame=await q(admin,'SELECT to_jsonb(g) v FROM public.games g WHERE id=$1',[g]);
+ if(pausedGame.is_paused){await q(admin,"SELECT set_config('request.jwt.claim.sub',$1,false) v",[u[0]]);assert.equal((await q(admin,'SELECT public.set_game_paused($1,false,$2,$3) v',[g,d,pausedGame.pause_version])).outcome,'resumed');}
  // Inject failure only after canonical chip writes, then prove the entire transaction rolled back.
  await admin.query('BEGIN');await admin.query("UPDATE private.race_poker_matches SET state=state||jsonb_build_object('phase','complete','scores',jsonb_build_object($2::text,100,$3::text,0)) WHERE dealer_game_id=$1",[d,p[0],p[1]]);
  await admin.query("CREATE FUNCTION pg_temp.race_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=NEW.game_id AND chips<>100) THEN RAISE EXCEPTION 'injection_before_chip_writes';END IF;RAISE EXCEPTION 'injected_after_chips';END $$; CREATE TRIGGER race_failure BEFORE INSERT ON public.session_player_snapshots FOR EACH ROW EXECUTE FUNCTION pg_temp.race_fail(); SAVEPOINT before_failure");

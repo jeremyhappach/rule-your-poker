@@ -7,9 +7,9 @@ const driver=process.env.RACE_POKER_PG_MODULE??resolve(primary,'qualification.lo
 if(!existsSync(driver))throw Error('Set RACE_POKER_PG_MODULE to the existing local PostgreSQL test driver; do not install dependencies implicitly.');
 const {default:pg}=await import(pathToFileURL(driver).href);
 export async function connect(database){const c=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});await c.connect();return c;}
-export const candidate=()=>['rules','multiplayer','commands','registration'].map(n=>read('supabase/race-poker/'+n+'.sql','utf8')).join('\n');
+export const candidate=()=>['rules','multiplayer','commands','registration','v2'].map(n=>read('supabase/race-poker/'+n+'.sql','utf8')).join('\n');
 const context='qualification.local/race-poker/context.json';
-export const localContext=()=>JSON.parse(read(context,'utf8'));
+export const localContext=()=>process.env.RACE_POKER_TEST_DATABASE?{database:process.env.RACE_POKER_TEST_DATABASE}:JSON.parse(read(context,'utf8'));
 if(!existsSync(context)||process.argv.includes('--fresh')){
  mkdirSync('qualification.local/race-poker',{recursive:true});
  const database='race_poker_'+Date.now(),admin=await connect('postgres');

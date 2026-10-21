@@ -1,5 +1,12 @@
 # Repository map
 
+Race Poker: `supabase/race-poker/` owns rules, commands, settlement and recovery.
+`v2.sql` adds canonical inactivity controls while preserving v1 matches; its
+guarded migration remains local/unapplied. `src/components/racePoker/`,
+`src/hooks/useRacePoker.ts` and `src/lib/racePoker/` own presentation and redacted
+transport. `dev/race-poker/v2-proof.mjs` and `v2-concurrency.mjs` qualify controls
+against isolated local PostgreSQL. See `RACE_POKER_TIMEOUT_CONTROLS.md`.
+
 Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.

@@ -1,3 +1,13 @@
+# 2026-10-21 — Race Poker canonical inactivity controls
+
+Jeremy's smoke follow-up replaces new-game zero-point human expiry with canonical
+fake-money autoplay/sit-out or real-money pause. Freeze this as race-poker/2;
+preserve existing v1 games. Reuse shared control owners without replacing them,
+publish participation changes through Race revisions, and apply sit-out only at
+the next dealer game after the frozen two-seat race settles. Bot policy stays
+separately versioned. Authorization ends at local commit. See
+[exact contract and qualification](RACE_POKER_TIMEOUT_CONTROLS.md).
+
 # 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
 
 Jeremy approved full Arcade and two-player multiplayer with one frozen server
