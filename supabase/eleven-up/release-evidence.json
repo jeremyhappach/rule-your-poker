@@ -15,16 +15,16 @@
       },
       {
         "name": "Complete human/bot match and reconnect/replay/continuation fake",
-        "moves": 79,
+        "moves": 73,
         "humanMoves": 4,
         "reconnects": 4,
         "balances": [
           {
-            "id": "fee8ea16-64ea-4b9b-be3e-e1652c5b050b",
+            "id": "7783bd25-ffcc-4b85-8906-3e3e7c2e30de",
             "chips": 93
           },
           {
-            "id": "c5e03397-74ae-476d-8bd3-d08715faef29",
+            "id": "0f61d27a-239e-426a-a760-313b86aea000",
             "chips": 107
           }
         ]
@@ -63,6 +63,8 @@
     "laterSharedAdapterChange": "preserved by surgical rollback"
   },
   "clientRegression": "Unchanged product client at 3b0d01eb9: 56 focused tests, tsc, vite build and six browser layouts passed",
-  "production": "Not accessed or modified; registration and release approval pending",
-  "installedPackageFullRerun": "passed"
+  "production": "Not accessed or modified; separate release approval and combined-main qualification pending",
+  "installedPackageFullRerun": "passed",
+  "registeredMigration": "supabase/migrations/20261021002901_eleven_up_bots.sql",
+  "registeredFileFullRerun": "passed"
 }

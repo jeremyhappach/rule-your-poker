@@ -9,8 +9,8 @@ and focused client checks pass; release requires separate approval and matching
 database/client publication. See [scope, evidence and smoke](ELEVEN_UP_BOTS.md).
 The [local release package](ELEVEN_UP_BOT_RELEASE_PACKAGE.md) now includes a
 deterministic transaction, hashes, preflight/verification and safe admission
-rollback. Timestamped migration registration is blocked on an available Supabase
-CLI. Race Poker retains the production release slot; no release is authorized.
+rollback. Official CLI registration is complete in migration
+`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Race Poker retains the production release slot; no release is authorized.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 

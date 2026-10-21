@@ -1,7 +1,7 @@
 import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import assert from 'node:assert/strict';
 import {connect,context} from './bots-database.mjs';
-import {migrationSql,hash} from './bots-release-package.mjs';
+import {registeredSql as migrationSql,hash} from './bots-release-package.mjs';
 const proof=JSON.parse(read('qualification.local/eleven-up-bots/release-proof.json','utf8'));
 assert.equal(proof.migrationSha256,hash(migrationSql()));
 const c=await connect(context().database);

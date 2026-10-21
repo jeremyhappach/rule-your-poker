@@ -2,7 +2,7 @@ import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import assert from 'node:assert/strict';
 import {randomUUID as uuid} from 'node:crypto';
 import {connect,context} from './bots-database.mjs';
-import {migrationSql,hash} from './bots-release-package.mjs';
+import {registeredSql as migrationSql,hash} from './bots-release-package.mjs';
 const {database}=context(),c=await connect(database),evidence=[];
 const releasePackage=process.argv.includes('--release-package');
 const unwrapped=s=>s.replace('\nBEGIN;\n','\n').replace(/\nCOMMIT;\s*$/,'\n');

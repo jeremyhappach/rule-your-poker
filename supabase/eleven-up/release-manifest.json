@@ -10,6 +10,14 @@
     "supabase/eleven-up/release-verify.sql": "f10da43fe9a79d903de5866b9d0e916f0c0cdf635e95715f6aac2f9208d4cc48",
     "supabase/eleven-up/rollback-bot-admission.sql": "135d411329fc38a072591c517baaa8510d73ab45ebea651a9b9ae24f48521b74"
   },
-  "migrationRegistration": "BLOCKED: installed Supabase CLI unavailable; use supabase migration new eleven_up_bots, then fill the generated empty path with this script.",
-  "production": "No execution authorized"
+  "migrationRegistration": {
+    "path": "supabase/migrations/20261021002901_eleven_up_bots.sql",
+    "sha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+    "cliVersion": "2.121.0",
+    "command": "supabase migration new eleven_up_bots",
+    "telemetry": "SUPABASE_TELEMETRY_DISABLED=1, process-local only"
+  },
+  "production": "No execution authorized",
+  "observedLocalMain": "fff4e8d39c4514c5c4370e993929ee858a453f04",
+  "reconciliation": "Read-only Race Poker overlap review; combined release candidate not integrated or qualified"
 }

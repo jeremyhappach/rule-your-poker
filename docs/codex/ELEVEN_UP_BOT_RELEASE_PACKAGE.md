@@ -1,13 +1,19 @@
 # 11 Up bot release package — local only
 
 Implementation candidate: `3b0d01eb9ac6418dfd78765de7ee2f34aca8d119`.
-Fetched `origin/main`, local `main` and implementation base all resolve to
-`44dbd5a7d4de4635b258f731558fe346473d82b9` at this preparation checkpoint.
-No merge/rebase or other worktree edits were necessary or performed.
+Implementation base remains `44dbd5a7d4de4635b258f731558fe346473d82b9`.
+At migration registration, local main had advanced to `fff4e8d39c4514c5c4370e993929ee858a453f04`
+(Race Poker). Read-only comparison found Race Poker additions in shared dealer
+setup/catalog tests and a replacement of `private.megatouch_begin`. Its 11 Up
+bot-exclusion fragment still exactly matches this migration's surgical target;
+its Race Poker branches are preserved by fragment replacement. No 11 Up source
+or canonical bot-creation change was found in that main delta. No merge/rebase,
+remote refresh or unrelated worktree edits were performed. The actual combined
+candidate still requires reconciliation and regression checks at release time.
 Race Poker owns the serialized production release; this package does not claim
 that slot or authorize any production action.
 
-## Package identity and registration blocker
+## Package identity and registration
 
 The deterministic transaction is composed by
 `dev/eleven-up/bots-release-package.mjs`: `BEGIN`, canonical fake-money bot-policy
@@ -21,24 +27,19 @@ Individual normalized source hashes are in
 
 `135d411329fc38a072591c517baaa8510d73ab45ebea651a9b9ae24f48521b74`
 
-**Timestamped migration registration remains blocked.** No installed Supabase
-CLI is available on PATH, in repository dependencies, or at the cached location
-referenced by repository scripts (including sibling cached CLI packages).
-The Supabase skill requires creating a migration with `supabase migration new`
-first. No tool was installed and no timestamp/name was invented.
+Registered migration: `supabase/migrations/20261021002901_eleven_up_bots.sql`.
+Official Supabase CLI 2.121.0 created the empty file with
+`supabase migration new eleven_up_bots`; the package generator then populated it.
+The exact file bytes match the transaction hash above. Both package checks now
+read the registered file and reject any difference from the qualified sources.
 
-Once an existing CLI is made available or a scoped installation is approved:
-
-1. Inspect that CLI's `migration new --help`.
-2. Run `supabase migration new eleven_up_bots` in this worktree.
-3. Run `node dev/eleven-up/bots-release-package.mjs fill
-   supabase/migrations/<CLI-generated-timestamp>_eleven_up_bots.sql`.
-   The generator requires an existing empty CLI-created path and refuses to
-   overwrite another file. Its printed SHA-256 must equal the transaction hash
-   above. This file creation does not apply SQL anywhere.
-4. Record the generated migration version and commit it locally after checking
-   the diff. The current package commit contains the exact tested generator and
-   SQL sources, but no registered timestamped migration file.
+The CLI was installed only under ignored
+`qualification.local/eleven-up-bots/cli` from the official npm registry, pinned
+to 2.121.0. No shared dependency or global installation changed. Its initial
+telemetry write outside the task directory was denied; the documented
+process-local `SUPABASE_TELEMETRY_DISABLED=1` opt-out allowed local registration
+without global settings, credentials, login or production access.
+See [official CLI installation and telemetry options](https://supabase.com/docs/guides/local-development/cli/getting-started).
 
 ## Changes and preservation
 
@@ -91,7 +92,7 @@ Raw local results: `qualification.local/eleven-up-bots/release-proof.json` and
    catalog, `private.megatouch_begin`, canonical bot creation and recovery since
    the recorded base. Stop on conflicts or unexpected ownership changes; never
    overwrite a newer shared function with the old qualification snapshot.
-2. Finish CLI migration registration, reconcile in isolation, rerun the relevant
+2. Verify the registered migration hash, reconcile in isolation, rerun the relevant
    local package proofs and client checks for the actual release candidate,
    and record/tag that candidate under the repository release procedure.
 3. With explicit production-read approval, execute `release-preflight.sql` and
