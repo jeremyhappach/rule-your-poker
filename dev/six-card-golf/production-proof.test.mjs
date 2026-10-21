@@ -20,7 +20,7 @@ test('production fixtures never seed heartbeat or disable integrity triggers',()
  assert.throws(()=>sanitizeFixture('core-proof',input.fixtures['core-proof']+'\nALTER TABLE private.golf_matches DISABLE TRIGGER golf_guard;'),/Unsafe/);
 });
 test('each unit is bounded, rollback-only, isolated and checks both sides of rollback',()=>{
- const units=buildProofs(input);assert.equal(units.length,16);assert.equal(new Set(units.map(x=>x.namespace)).size,16);
+ const units=buildProofs(input);assert.equal(units.length,22);assert.equal(new Set(units.map(x=>x.namespace)).size,22);
  for(const {sql} of units){
   assert.equal((sql.match(/^BEGIN ISOLATION LEVEL REPEATABLE READ;/gm)||[]).length,1);
   assert.equal((sql.match(/^ROLLBACK;/gm)||[]).length,1);
@@ -32,6 +32,15 @@ test('each unit is bounded, rollback-only, isolated and checks both sides of rol
   assert.doesNotMatch(sql,/installLocalReference|local-reference.sql/);
  }
  for(const x of units.filter(x=>x.name.startsWith('mixed'))){assert.match(x.sql,/FOR money IN [01]\.\.[01] LOOP FOR n IN [234]\.\.[234] LOOP/);assert.match(x.sql,/golf_metrics VALUES\('bot_finishes'/);}
+ for(const kind of ['mixed','continuation']){
+  const cases=units.filter(x=>x.name.startsWith(kind));assert.equal(cases.length,6);
+  for(const x of cases){
+   assert.ok(x.sql.includes("proof_phase text:='"+(kind==='mixed'?'full':'continuation')+"';"));
+   assert.match(x.sql,/mixed actual balanced chip deltas/);
+   assert.match(x.sql,/late replay preserves entire new match/);
+   assert.match(x.sql,/interval '3 seconds'/);
+  }
+ }
 });
 test('hosted fixture respects automatic Auth profiles and unique usernames',()=>{
  for(const name of names){
@@ -56,7 +65,7 @@ test('evidence rejects partial runs, missing rollback, changed authority and no 
  const evidence={units:units.map(u=>({sql_sha256:u.sha256,candidate_evidence:{unit:u.name,function_fingerprints:fingerprints,catalog_fingerprint:'b'.repeat(32),fixture_namespace:u.namespace,existing_records_unchanged:true,metrics:{bot_finishes:u.name.startsWith('mixed')?1:0}},rollback_evidence:{unit:u.name,fixture_namespace:u.namespace,rollback_verified:true,golf_release_exists:false}}))};
  assert.equal(validateEvidence(manifest,evidence).botFinishes,6);
  const change=f=>{const e=structuredClone(evidence);f(e);return e;};
- assert.throws(()=>validateEvidence(manifest,change(e=>e.units.pop())),/sixteen/);
+ assert.throws(()=>validateEvidence(manifest,change(e=>e.units.pop())),/twenty-two/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].rollback_evidence.rollback_verified=false)),/Unverified/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].candidate_evidence.function_fingerprints={...e.units[0].candidate_evidence.function_fingerprints,'private.golf_test_0()':'b'.repeat(32)})),/differs/);
  assert.throws(()=>validateEvidence(manifest,change(e=>e.units[0].candidate_evidence.catalog_fingerprint='c'.repeat(32))),/Catalog differs/);

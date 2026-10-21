@@ -1,0 +1,28 @@
+[
+  {
+    "observation": {
+      "waiters": [
+        {
+          "pid": 2420965,
+          "wait": "transactionid",
+          "blockers": [
+            2425739
+          ],
+          "query_prefix": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_dealer_game_id\", \"p_rou"
+        },
+        {
+          "pid": 2420964,
+          "wait": "tuple",
+          "blockers": [
+            2420965
+          ],
+          "query_prefix": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_dealer_game_id\", \"p_rou"
+        }
+      ],
+      "holder_pid": 2425739,
+      "started_at": "2026-10-21T23:17:44.846584+00:00",
+      "observed_at": "2026-10-21T23:17:50.855863+00:00",
+      "released_at": "2026-10-21T23:17:53.859622+00:00"
+    }
+  }
+]

@@ -1,5 +1,11 @@
 # Six-Card Golf — closed-admission qualification plan
 
+Current execution: [hosted qualification](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md)
+supersedes the blocked attempts below. Both 22-unit SQL matrices and recorded
+hosted transport/recovery checks pass; migration `20261021230433` is installed.
+General admission stays closed. Matching-client publication and the approved
+Hap/Gmail 24-hour fake-only smoke scope are the authorized release steps.
+
 Latest execution, October 21: Golf was promoted to the next smoke candidate,
 but hosted qualification stopped at a four-human proof timeout during
 existing-record containment. No migration, integration, push, deployment or

@@ -98,6 +98,14 @@ CREATE TEMP SEQUENCE golf_fixture_ids;
 CREATE TEMP TABLE golf_metrics(name text,value integer) ON COMMIT DROP;
 CREATE FUNCTION pg_temp.golf_fixture_uuid() RETURNS uuid LANGUAGE sql VOLATILE AS
  $$ SELECT (${quote(prefix+'-a000-')}||lpad(to_hex(nextval('pg_temp.golf_fixture_ids')),12,'0'))::uuid $$;
+CREATE FUNCTION pg_temp.golf_capture_unscoped() RETURNS jsonb LANGUAGE plpgsql AS $capture$
+DECLARE t record;rows_json jsonb;captured jsonb:='[]';BEGIN
+ FOR t IN SELECT * FROM (VALUES ${tableValues}) v(table_name,scope_column) LOOP
+  EXECUTE format('SELECT coalesce(jsonb_agg(jsonb_build_object(''table_name'',%L,''row_hash'',md5(to_jsonb(x)::text))),''[]''::jsonb) FROM %s x WHERE x.%I::text NOT LIKE %L',t.table_name,t.table_name,t.scope_column,${quote(prefix+'%')}) INTO rows_json;
+  captured:=captured||rows_json;
+ END LOOP;
+ RETURN captured;
+END $capture$;
 CREATE FUNCTION pg_temp.golf_unchanged() RETURNS void LANGUAGE plpgsql AS $check$
 DECLARE t record;bad boolean;BEGIN
  FOR t IN SELECT * FROM (VALUES ${tableValues}) v(table_name,scope_column) LOOP
@@ -147,17 +155,19 @@ export function buildProofs({migration,fixtures,installed=false,fingerprints,cat
   }
   suites.push([`human-${money?'real':'fake'}-${n}`,sql]);
  }
- for(const money of [0,1])for(const n of [2,3,4]){
+ for(const kind of ['mixed','continuation'])for(const money of [0,1])for(const n of [2,3,4]){
   let sql=clean['mixed-proof'];
   const loop='FOR money IN 0..1 LOOP FOR n IN 2..4 LOOP';
   if(sql.split(loop).length!==2)throw Error('Mixed loop changed');
   sql=sql.replace(loop,`FOR money IN ${money}..${money} LOOP FOR n IN ${n}..${n} LOOP`);
+  if(sql.split("proof_phase text:='combined';").length!==2)throw Error('Mixed phase boundary changed');
+  sql=sql.replace("proof_phase text:='combined';",`proof_phase text:='${kind==='mixed'?'full':'continuation'}';`);
   // A particular random match need not end on a bot; retain aggregate evidence
   // in returned counts rather than falsifying a per-case bot-finish assertion.
   const botAssertion="PERFORM pg_temp.golf_assert(bot_finishes>0,'earned zero-client bot final action and settlement');";
   if(sql.split(botAssertion).length!==2)throw Error('Mixed bot-finish assertion changed');
   sql=sql.replace(botAssertion,"INSERT INTO pg_temp.golf_metrics VALUES('bot_finishes',bot_finishes),('dealer_draws',dealer_draws);");
-  suites.push([`mixed-${money?'real':'fake'}-${n}`,sql]);
+  suites.push([`${kind}-${money?'real':'fake'}-${n}`,sql]);
  }
  const guard=installed?installedGuard(fingerprints,catalogFingerprint):`DO $$ BEGIN IF to_regclass('private.golf_release') IS NOT NULL THEN RAISE EXCEPTION 'golf_proof:candidate_already_installed';END IF;END $$;`;
  return suites.map(([name,fixture],index)=>{
@@ -196,7 +206,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(args.some((a,i)=>!['--installed','--fingerprints'].includes(a)&&args[i-1]!=='--fingerprints'))throw Error('Usage: node dev/six-card-golf/production-proof.mjs [--installed --fingerprints reviewed.json]');
  const fp=args.indexOf('--fingerprints');
  const reviewed=fp<0?undefined:JSON.parse(readFileSync(args[fp+1],'utf8'));
- if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==16||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
+ if(installed&&(reviewed?.migrationHash!==migrationHash||reviewed?.units!==22||reviewed?.installed!==false))throw Error('Use the validated candidate evidence file for this exact migration');
  const units=buildProofs({migration:readFileSync(migrationPath,'utf8'),fixtures:Object.fromEntries(names.map(n=>[n,readFileSync(`supabase/six-card-golf/${n}.sql`,'utf8')])),installed,fingerprints:reviewed?.function_fingerprints,catalogFingerprint:reviewed?.catalog_fingerprint});
  const out=`qualification.local/six-card-golf/production-${installed?'installed':'candidate'}`;
  mkdirSync(out,{recursive:true});

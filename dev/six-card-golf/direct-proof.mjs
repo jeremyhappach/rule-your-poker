@@ -85,10 +85,10 @@ export async function main(args,env=process.env){
  const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
  assert.equal(manifest.migrationHash,migrationHash,'Wrong migration manifest');
  assert.equal(sha(readFileSync(migrationPath)),migrationHash,'Migration bytes changed');
- assert.equal(manifest.units?.length,16,'All sixteen units required');
+ assert.equal(manifest.units?.length,22,'All twenty-two units required');
  assert.equal(typeof manifest.installed,'boolean');
  assert(!manifest.transport&&!manifest.units.some(u=>u.source_sha256),'Use original units, not MCP wrappers');
- const names=['core','financial','recovery','qualification',...['human','mixed'].flatMap(k=>['fake','real'].flatMap(m=>[2,3,4].map(n=>`${k}-${m}-${n}`)))];
+ const names=['core','financial','recovery','qualification',...['human','mixed','continuation'].flatMap(k=>['fake','real'].flatMap(m=>[2,3,4].map(n=>`${k}-${m}-${n}`)))];
  assert.deepEqual(manifest.units.map(u=>u.name).sort(),names.sort(),'Wrong coverage');
  const units=manifest.units.map(unit=>{
   const sql=readFileSync(resolve(dirname(manifestPath),unit.name+'.sql'),'utf8');

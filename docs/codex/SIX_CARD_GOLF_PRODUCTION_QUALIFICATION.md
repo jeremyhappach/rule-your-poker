@@ -1,5 +1,12 @@
 # Golf production qualification preparation — 2026-10-21
 
+Superseding execution: [hosted qualification](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md)
+passes all 22 candidate and 22 installed units and the recorded live checks.
+Source migration is installed as hosted `20261021230433`. The 22-unit matrix
+retains all prior coverage and separates six bounded continuation fixtures from
+six complete strategic mixed matches. Historical unit counts/blockers below
+are not the current acceptance matrix.
+
 Current result: [connector retry](SIX_CARD_GOLF_CONNECTOR_RETRY.md) against
 released 11 Up main `55a896b1` passed 14/16 candidate units. Mixed real 3 failed
 the existing Run Back liveness guard; mixed real 4 was not run. Rollback is

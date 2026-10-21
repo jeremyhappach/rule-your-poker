@@ -1,5 +1,11 @@
 # Golf connector retry — October 21, 2026
 
+Superseded by [the completed hosted qualification](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md).
+The canonical procedure intentionally commits each of 32 one-second ticks;
+its 32-second batch duration was not evidence of a stall. No historical tick
+freshness claim follows from that correction. The later harness preserves
+repeatable-read containment and the genuine liveness guard.
+
 Release remains blocked: **14 of 16 hosted candidate units passed**. The
 three-player mixed real-money unit failed at fresh Run Back with
 `real_money_liveness_unavailable:scheduler_heartbeat_stale`; the four-player

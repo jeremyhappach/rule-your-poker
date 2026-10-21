@@ -2,8 +2,10 @@ DO $$
 DECLARE g uuid;d uuid;next_d uuid;u uuid[];p uuid[];n integer;money integer;i integer;t integer;human_count integer;
  m private.golf_matches;v jsonb;offer timestamptz;actor jsonb;items integer[];action text;bot_finishes integer:=0;dealer_draws integer:=0;
  old_round uuid;old_rev bigint;old_request uuid;old_actor uuid;old_action text;old_items integer[];old_receipt jsonb;
+ proof_phase text:='combined';new_match_before jsonb;
 BEGIN
  FOR money IN 0..1 LOOP FOR n IN 2..4 LOOP
+  old_receipt:=NULL;
   g:=gen_random_uuid();u:=ARRAY[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
   p:=ARRAY[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];human_count:=CASE WHEN n=2 THEN 1 ELSE 2 END;
   offer:=clock_timestamp()+interval '10 minutes';
@@ -24,7 +26,18 @@ BEGIN
     PERFORM private.golf_recover();CONTINUE;
    END IF;
    actor:=m.state->'players'->(m.state->>'turnIndex')::integer;
-   IF (actor->>'isBot')::boolean THEN
+   IF proof_phase='continuation' AND old_receipt IS NOT NULL THEN
+    -- Independent continuation setup: bounded legal reveal choices through the
+    -- exact reducer, integrity/publication triggers and settlement owner.
+    -- Full-match units separately exercise every human RPC and strategic bot.
+    IF m.state->>'phase'='opening' THEN action:='open';items:=ARRAY[0,3];
+    ELSIF m.state->'pending'='null'::jsonb THEN action:='draw';items:=NULL;
+    ELSE action:='replace';SELECT ARRAY[coalesce(min(ordinal::integer-1) FILTER(WHERE value='false'),0)] INTO items
+     FROM jsonb_array_elements_text(m.state->'tableaus'->(actor->>'id')->'exposed') WITH ORDINALITY c(value,ordinal);END IF;
+    m.state:=private.golf_reduce(m.state,action,items,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
+    UPDATE private.golf_matches SET state=m.state,revision=revision+1 WHERE dealer_game_id=d;
+    IF m.state->>'phase'='complete' THEN PERFORM private.golf_settle(d);END IF;
+   ELSIF (actor->>'isBot')::boolean THEN
     -- Advance only the local fixture's wake time; actual redacted bot policy,
     -- reducer, terminal detection and financial settlement remain the owners.
     UPDATE private.golf_matches SET state=jsonb_set(state,'{deadline}','0'),revision=revision+1 WHERE dealer_game_id=d;
@@ -48,6 +61,7 @@ BEGIN
   PERFORM pg_temp.golf_assert((SELECT sum(chips)=100*n AND bool_and(chips=100+(m.settlement->>id::text)::integer) FROM public.players WHERE game_id=g),'mixed actual balanced chip deltas');
   PERFORM pg_temp.golf_assert((SELECT coalesce(bool_and(unmatched_deltas='{}'),true) FROM public.gameplay_transfer_batches WHERE dealer_game_id=d),'mixed balanced ledger');
   SET CONSTRAINTS ALL DEFERRED;
+  IF proof_phase<>'full' THEN
   -- Wait for the real terminal hold, preserving immutable final state.
   PERFORM pg_sleep(greatest(0,((m.state#>>'{terminal,deadline}')::bigint-floor(extract(epoch FROM clock_timestamp())*1000))/1000.0)+0.01);
   PERFORM private.golf_recover();
@@ -76,9 +90,12 @@ BEGIN
    FOR i IN 1..human_count LOOP IF u[i]<>(actor->>'user_id')::uuid THEN PERFORM pg_temp.golf_login(u[i]);PERFORM public.submit_ante_decision(g,next_d,p[i],'ante_up');END IF;END LOOP;
   END IF;
   PERFORM public.advance_ante_phase(g,next_d);
+  SELECT jsonb_build_object('state',state,'revision',revision,'roundId',round_id) INTO new_match_before FROM private.golf_matches WHERE dealer_game_id=next_d;
   PERFORM pg_temp.golf_login(old_actor);
   PERFORM pg_temp.golf_assert(public.golf_action(d,old_round,old_request,old_rev,old_action,old_items)->'receipt'=old_receipt,'old receipt after newly admitted match');
   PERFORM pg_temp.golf_assert((SELECT state->>'hole'='1' AND settlement IS NULL FROM private.golf_matches WHERE dealer_game_id=next_d),'old receipt cannot advance new match');
+  PERFORM pg_temp.golf_assert((SELECT jsonb_build_object('state',state,'revision',revision,'roundId',round_id)=new_match_before FROM private.golf_matches WHERE dealer_game_id=next_d),'late replay preserves entire new match');
+  END IF;
  END LOOP;END LOOP;
  PERFORM pg_temp.golf_assert(bot_finishes>0,'earned zero-client bot final action and settlement');
 END $$;

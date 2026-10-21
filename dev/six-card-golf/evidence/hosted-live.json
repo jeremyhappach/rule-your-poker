@@ -1,0 +1,3249 @@
+{
+  "at": "2026-10-21T23:10:22.979Z",
+  "game": "b07a5c86-91b0-4474-84cd-97b62a3a93f2",
+  "events": [
+    [
+      {
+        "revision": 1,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624226682
+      },
+      {
+        "revision": 2,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227341
+      },
+      {
+        "revision": 3,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227342
+      },
+      {
+        "revision": 4,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227918
+      },
+      {
+        "revision": 5,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227918
+      },
+      {
+        "revision": 6,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227966
+      },
+      {
+        "revision": 7,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624259664
+      },
+      {
+        "revision": 8,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260274
+      },
+      {
+        "revision": 9,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260316
+      },
+      {
+        "revision": 10,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260898
+      },
+      {
+        "revision": 11,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260898
+      },
+      {
+        "revision": 12,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624261473
+      },
+      {
+        "revision": 13,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624261473
+      },
+      {
+        "revision": 14,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262063
+      },
+      {
+        "revision": 15,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262063
+      },
+      {
+        "revision": 16,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262102
+      },
+      {
+        "revision": 17,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262677
+      },
+      {
+        "revision": 18,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262677
+      },
+      {
+        "revision": 19,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262716
+      },
+      {
+        "revision": 20,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263294
+      },
+      {
+        "revision": 21,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263294
+      },
+      {
+        "revision": 22,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263342
+      },
+      {
+        "revision": 24,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263917
+      },
+      {
+        "revision": 23,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263917
+      },
+      {
+        "revision": 25,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263960
+      },
+      {
+        "revision": 26,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624264527
+      },
+      {
+        "revision": 27,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624264527
+      },
+      {
+        "revision": 28,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265118
+      },
+      {
+        "revision": 29,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265118
+      },
+      {
+        "revision": 30,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265118
+      },
+      {
+        "revision": 31,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624271483
+      },
+      {
+        "revision": 32,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 33,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 34,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 35,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272637
+      },
+      {
+        "revision": 36,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272637
+      },
+      {
+        "revision": 37,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272676
+      },
+      {
+        "revision": 38,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273252
+      },
+      {
+        "revision": 39,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273252
+      },
+      {
+        "revision": 40,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273300
+      },
+      {
+        "revision": 41,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273862
+      },
+      {
+        "revision": 42,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 43,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 44,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 45,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275027
+      },
+      {
+        "revision": 47,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275027
+      },
+      {
+        "revision": 46,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275027
+      },
+      {
+        "revision": 49,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275603
+      },
+      {
+        "revision": 48,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275603
+      },
+      {
+        "revision": 50,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624282515
+      },
+      {
+        "revision": 51,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283086
+      },
+      {
+        "revision": 52,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283086
+      },
+      {
+        "revision": 53,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283086
+      },
+      {
+        "revision": 54,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283664
+      },
+      {
+        "revision": 55,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283664
+      },
+      {
+        "revision": 56,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284237
+      },
+      {
+        "revision": 57,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284237
+      },
+      {
+        "revision": 58,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284237
+      },
+      {
+        "revision": 59,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284807
+      },
+      {
+        "revision": 60,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284807
+      },
+      {
+        "revision": 61,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284845
+      },
+      {
+        "revision": 62,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285420
+      },
+      {
+        "revision": 63,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285420
+      },
+      {
+        "revision": 64,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285468
+      },
+      {
+        "revision": 65,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286043
+      },
+      {
+        "revision": 66,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286043
+      },
+      {
+        "revision": 67,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286623
+      },
+      {
+        "revision": 68,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286623
+      },
+      {
+        "revision": 69,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624292479
+      },
+      {
+        "revision": 70,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293049
+      },
+      {
+        "revision": 71,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293620
+      },
+      {
+        "revision": 72,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293620
+      },
+      {
+        "revision": 73,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294199
+      },
+      {
+        "revision": 74,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294199
+      },
+      {
+        "revision": 75,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294199
+      },
+      {
+        "revision": 76,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 78,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 77,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 79,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295359
+      },
+      {
+        "revision": 80,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295359
+      },
+      {
+        "revision": 81,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295407
+      },
+      {
+        "revision": 82,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296001
+      },
+      {
+        "revision": 83,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296001
+      },
+      {
+        "revision": 84,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296041
+      },
+      {
+        "revision": 85,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 86,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 87,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 88,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304053
+      },
+      {
+        "revision": 89,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304098
+      },
+      {
+        "revision": 90,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304667
+      },
+      {
+        "revision": 91,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304668
+      },
+      {
+        "revision": 92,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305234
+      },
+      {
+        "revision": 93,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305234
+      },
+      {
+        "revision": 94,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305829
+      },
+      {
+        "revision": 95,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305829
+      },
+      {
+        "revision": 96,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305829
+      },
+      {
+        "revision": 97,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306403
+      },
+      {
+        "revision": 98,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306403
+      },
+      {
+        "revision": 99,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306403
+      },
+      {
+        "revision": 100,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306994
+      },
+      {
+        "revision": 101,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306994
+      },
+      {
+        "revision": 102,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307574
+      },
+      {
+        "revision": 103,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307574
+      },
+      {
+        "revision": 104,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307574
+      },
+      {
+        "revision": 105,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624308143
+      },
+      {
+        "revision": 106,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624308143
+      },
+      {
+        "revision": 107,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624315054
+      },
+      {
+        "revision": 108,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624315616
+      },
+      {
+        "revision": 109,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316189
+      },
+      {
+        "revision": 110,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316189
+      },
+      {
+        "revision": 111,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316189
+      },
+      {
+        "revision": 112,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316755
+      },
+      {
+        "revision": 113,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316755
+      },
+      {
+        "revision": 114,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317341
+      },
+      {
+        "revision": 115,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317341
+      },
+      {
+        "revision": 116,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317341
+      },
+      {
+        "revision": 117,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317908
+      },
+      {
+        "revision": 118,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317908
+      },
+      {
+        "revision": 119,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317908
+      },
+      {
+        "revision": 120,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624318484
+      },
+      {
+        "revision": 121,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624318484
+      },
+      {
+        "revision": 122,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 123,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 124,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 125,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319692
+      },
+      {
+        "revision": 126,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326261
+      },
+      {
+        "revision": 127,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326844
+      },
+      {
+        "revision": 128,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326844
+      },
+      {
+        "revision": 129,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326892
+      },
+      {
+        "revision": 130,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624327498
+      },
+      {
+        "revision": 131,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624327498
+      },
+      {
+        "revision": 132,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328097
+      },
+      {
+        "revision": 133,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328097
+      },
+      {
+        "revision": 134,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328135
+      },
+      {
+        "revision": 136,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328732
+      },
+      {
+        "revision": 135,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328732
+      },
+      {
+        "revision": 137,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329365
+      },
+      {
+        "revision": 138,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329365
+      },
+      {
+        "revision": 139,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329365
+      },
+      {
+        "revision": 140,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329950
+      },
+      {
+        "revision": 141,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329950
+      },
+      {
+        "revision": 142,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329950
+      },
+      {
+        "revision": 144,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624330560
+      },
+      {
+        "revision": 143,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624330561
+      },
+      {
+        "revision": 145,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624337457
+      },
+      {
+        "revision": 146,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338023
+      },
+      {
+        "revision": 147,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338023
+      },
+      {
+        "revision": 148,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338596
+      },
+      {
+        "revision": 149,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338596
+      },
+      {
+        "revision": 150,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338637
+      },
+      {
+        "revision": 151,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339207
+      },
+      {
+        "revision": 152,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339207
+      },
+      {
+        "revision": 153,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339784
+      },
+      {
+        "revision": 154,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339784
+      },
+      {
+        "revision": 155,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339784
+      },
+      {
+        "revision": 156,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340350
+      },
+      {
+        "revision": 157,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340350
+      },
+      {
+        "revision": 158,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340945
+      },
+      {
+        "revision": 160,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340945
+      },
+      {
+        "revision": 159,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340945
+      },
+      {
+        "revision": 161,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341518
+      },
+      {
+        "revision": 162,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341518
+      },
+      {
+        "revision": 163,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341518
+      },
+      {
+        "revision": 164,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624348940
+      },
+      {
+        "revision": 165,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624348940
+      },
+      {
+        "revision": 166,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349519
+      },
+      {
+        "revision": 167,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349519
+      },
+      {
+        "revision": 168,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349568
+      },
+      {
+        "revision": 169,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350145
+      },
+      {
+        "revision": 170,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350145
+      },
+      {
+        "revision": 171,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350183
+      },
+      {
+        "revision": 172,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350759
+      },
+      {
+        "revision": 173,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350760
+      },
+      {
+        "revision": 174,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350800
+      },
+      {
+        "revision": 176,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351379
+      },
+      {
+        "revision": 175,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351379
+      },
+      {
+        "revision": 177,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351953
+      },
+      {
+        "revision": 178,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351953
+      },
+      {
+        "revision": 179,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351953
+      },
+      {
+        "revision": 180,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624352549
+      },
+      {
+        "revision": 181,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624352549
+      }
+    ],
+    [
+      {
+        "revision": 4,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227919
+      },
+      {
+        "revision": 5,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227919
+      },
+      {
+        "revision": 6,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624227968
+      },
+      {
+        "revision": 7,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624259666
+      },
+      {
+        "revision": 8,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260275
+      },
+      {
+        "revision": 9,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260317
+      },
+      {
+        "revision": 10,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260899
+      },
+      {
+        "revision": 11,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624260899
+      },
+      {
+        "revision": 12,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624261476
+      },
+      {
+        "revision": 13,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624261476
+      },
+      {
+        "revision": 14,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262063
+      },
+      {
+        "revision": 15,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262063
+      },
+      {
+        "revision": 16,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262104
+      },
+      {
+        "revision": 17,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262679
+      },
+      {
+        "revision": 18,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262679
+      },
+      {
+        "revision": 19,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624262717
+      },
+      {
+        "revision": 20,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263296
+      },
+      {
+        "revision": 21,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263296
+      },
+      {
+        "revision": 22,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263344
+      },
+      {
+        "revision": 23,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263921
+      },
+      {
+        "revision": 24,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263921
+      },
+      {
+        "revision": 25,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624263962
+      },
+      {
+        "revision": 26,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624264529
+      },
+      {
+        "revision": 27,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624264529
+      },
+      {
+        "revision": 28,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265119
+      },
+      {
+        "revision": 29,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265119
+      },
+      {
+        "revision": 30,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624265119
+      },
+      {
+        "revision": 31,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624271485
+      },
+      {
+        "revision": 32,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 34,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 33,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272067
+      },
+      {
+        "revision": 35,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272638
+      },
+      {
+        "revision": 36,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272638
+      },
+      {
+        "revision": 37,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624272677
+      },
+      {
+        "revision": 38,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273254
+      },
+      {
+        "revision": 39,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273254
+      },
+      {
+        "revision": 40,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273299
+      },
+      {
+        "revision": 41,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624273864
+      },
+      {
+        "revision": 42,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 43,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 44,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624274445
+      },
+      {
+        "revision": 45,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275025
+      },
+      {
+        "revision": 47,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275025
+      },
+      {
+        "revision": 46,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275025
+      },
+      {
+        "revision": 48,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275605
+      },
+      {
+        "revision": 49,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624275605
+      },
+      {
+        "revision": 50,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624282546
+      },
+      {
+        "revision": 51,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283087
+      },
+      {
+        "revision": 52,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283087
+      },
+      {
+        "revision": 53,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283087
+      },
+      {
+        "revision": 54,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283666
+      },
+      {
+        "revision": 55,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624283666
+      },
+      {
+        "revision": 56,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284238
+      },
+      {
+        "revision": 57,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284238
+      },
+      {
+        "revision": 58,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284238
+      },
+      {
+        "revision": 59,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284807
+      },
+      {
+        "revision": 60,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284807
+      },
+      {
+        "revision": 61,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624284848
+      },
+      {
+        "revision": 62,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285420
+      },
+      {
+        "revision": 63,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285420
+      },
+      {
+        "revision": 64,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624285470
+      },
+      {
+        "revision": 65,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286047
+      },
+      {
+        "revision": 66,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286047
+      },
+      {
+        "revision": 67,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286645
+      },
+      {
+        "revision": 68,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624286645
+      },
+      {
+        "revision": 69,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624292480
+      },
+      {
+        "revision": 70,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293045
+      },
+      {
+        "revision": 71,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293623
+      },
+      {
+        "revision": 72,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624293623
+      },
+      {
+        "revision": 73,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294201
+      },
+      {
+        "revision": 74,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294201
+      },
+      {
+        "revision": 75,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294201
+      },
+      {
+        "revision": 76,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 78,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 77,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624294780
+      },
+      {
+        "revision": 79,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295362
+      },
+      {
+        "revision": 80,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295362
+      },
+      {
+        "revision": 81,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624295408
+      },
+      {
+        "revision": 82,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296001
+      },
+      {
+        "revision": 83,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296001
+      },
+      {
+        "revision": 84,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296044
+      },
+      {
+        "revision": 85,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 86,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 87,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624296622
+      },
+      {
+        "revision": 88,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304059
+      },
+      {
+        "revision": 89,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304099
+      },
+      {
+        "revision": 90,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304668
+      },
+      {
+        "revision": 91,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624304668
+      },
+      {
+        "revision": 92,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305234
+      },
+      {
+        "revision": 93,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305234
+      },
+      {
+        "revision": 94,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305831
+      },
+      {
+        "revision": 95,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305831
+      },
+      {
+        "revision": 96,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624305831
+      },
+      {
+        "revision": 97,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306410
+      },
+      {
+        "revision": 98,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306410
+      },
+      {
+        "revision": 99,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624306410
+      },
+      {
+        "revision": 100,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307001
+      },
+      {
+        "revision": 101,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307001
+      },
+      {
+        "revision": 103,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307577
+      },
+      {
+        "revision": 102,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307577
+      },
+      {
+        "revision": 104,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624307577
+      },
+      {
+        "revision": 105,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624308144
+      },
+      {
+        "revision": 106,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624308144
+      },
+      {
+        "revision": 107,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624315055
+      },
+      {
+        "revision": 108,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624315619
+      },
+      {
+        "revision": 109,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316191
+      },
+      {
+        "revision": 111,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316191
+      },
+      {
+        "revision": 110,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316191
+      },
+      {
+        "revision": 112,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316756
+      },
+      {
+        "revision": 113,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624316756
+      },
+      {
+        "revision": 114,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317342
+      },
+      {
+        "revision": 115,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317342
+      },
+      {
+        "revision": 116,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317342
+      },
+      {
+        "revision": 117,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317909
+      },
+      {
+        "revision": 118,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317910
+      },
+      {
+        "revision": 119,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624317910
+      },
+      {
+        "revision": 120,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624318484
+      },
+      {
+        "revision": 121,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624318484
+      },
+      {
+        "revision": 122,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 123,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 124,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319104
+      },
+      {
+        "revision": 125,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624319695
+      },
+      {
+        "revision": 126,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326261
+      },
+      {
+        "revision": 127,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326850
+      },
+      {
+        "revision": 128,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326850
+      },
+      {
+        "revision": 129,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624326894
+      },
+      {
+        "revision": 130,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624327500
+      },
+      {
+        "revision": 131,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624327500
+      },
+      {
+        "revision": 132,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328088
+      },
+      {
+        "revision": 133,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328088
+      },
+      {
+        "revision": 134,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328137
+      },
+      {
+        "revision": 135,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328734
+      },
+      {
+        "revision": 136,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624328734
+      },
+      {
+        "revision": 137,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329366
+      },
+      {
+        "revision": 138,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329366
+      },
+      {
+        "revision": 139,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329366
+      },
+      {
+        "revision": 140,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329948
+      },
+      {
+        "revision": 141,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329948
+      },
+      {
+        "revision": 142,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624329948
+      },
+      {
+        "revision": 143,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624330562
+      },
+      {
+        "revision": 144,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624330562
+      },
+      {
+        "revision": 145,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624337457
+      },
+      {
+        "revision": 147,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338026
+      },
+      {
+        "revision": 146,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338026
+      },
+      {
+        "revision": 148,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338598
+      },
+      {
+        "revision": 149,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338598
+      },
+      {
+        "revision": 150,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624338638
+      },
+      {
+        "revision": 151,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339209
+      },
+      {
+        "revision": 152,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339209
+      },
+      {
+        "revision": 153,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339786
+      },
+      {
+        "revision": 154,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339786
+      },
+      {
+        "revision": 155,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624339786
+      },
+      {
+        "revision": 156,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340353
+      },
+      {
+        "revision": 157,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340353
+      },
+      {
+        "revision": 158,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340947
+      },
+      {
+        "revision": 159,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340947
+      },
+      {
+        "revision": 160,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624340947
+      },
+      {
+        "revision": 161,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341520
+      },
+      {
+        "revision": 162,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341520
+      },
+      {
+        "revision": 163,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624341520
+      },
+      {
+        "revision": 164,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624348964
+      },
+      {
+        "revision": 165,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624348964
+      },
+      {
+        "revision": 166,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349520
+      },
+      {
+        "revision": 167,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349520
+      },
+      {
+        "revision": 168,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624349569
+      },
+      {
+        "revision": 169,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350146
+      },
+      {
+        "revision": 170,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350146
+      },
+      {
+        "revision": 171,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350184
+      },
+      {
+        "revision": 172,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350760
+      },
+      {
+        "revision": 173,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350760
+      },
+      {
+        "revision": 174,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624350800
+      },
+      {
+        "revision": 175,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351380
+      },
+      {
+        "revision": 176,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351380
+      },
+      {
+        "revision": 177,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351954
+      },
+      {
+        "revision": 178,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351954
+      },
+      {
+        "revision": 179,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624351954
+      },
+      {
+        "revision": 180,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624352549
+      },
+      {
+        "revision": 181,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792624352549
+      }
+    ]
+  ],
+  "passed": false,
+  "dealer": "5dfd01b7-516e-449f-a0d9-7f478c1045de",
+  "lostDrawResponse": true,
+  "privacy": true,
+  "deliberatePause": true,
+  "reclaimPreservedPause": true,
+  "failure": "Final race coordination required",
+  "clientsClosedAt": "2026-10-21T23:12:47.806Z"
+}

@@ -1,5 +1,17 @@
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
+October 21 qualified publication checkpoint: candidate **22/22** and installed
+**22/22** hosted proofs pass. Unchanged Golf source is installed as migration
+`20261021230433`. Live Auth/privacy/Realtime, final-action competition, two
+observed independent PostgREST connections, Run Back consent/late replay,
+deliberate pause, genuine timeout/reclaim and actual zero-client bot settlement
+pass. General admission remains closed; temporary qualification grants were
+revoked, and admitted paused state is preserved. Matching client publication
+and the exact two-account fake-money smoke session follow the approved release
+workflow. Jeremy's physical-device acceptance is pending. See
+[current qualification evidence](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md).
+The blocked checkpoints below are historical and superseded.
+
 October 21 connector retry against released 11 Up main
 `55a896b1f84fcd31d32a1a135622af99fca1a3c9`: 14/16 hosted candidate units
 passed. Mixed real 3 failed canonical Run Back admission because the visible
