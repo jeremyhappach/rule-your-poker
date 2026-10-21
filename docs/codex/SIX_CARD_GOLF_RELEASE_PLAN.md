@@ -2,6 +2,7 @@
 
 Local reconciliation target: main `88c798396bd0202551e36dcf4cd9efa39c9ef555`.
 Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa` (isolated Box Drop numeral contrast).
+Local preparation now also incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c` (dominant Box Drop numerals).
 Golf starting checkpoint: `79292bcedecddc2b08b1b46447884631d6ed5f09`.
 This follow-up authorizes local work only. Nothing here authorizes production
 access, merge to main, push, deployment, activation or credential/security changes.
@@ -56,6 +57,12 @@ the isolated scheduler heartbeat. Never use it unchanged for production.
 
 ## Required later production qualification, with admission closed
 
+The executable offline proof package and the explicit live-test decision are in
+[production qualification preparation](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
+That procedure resolves the former ambiguity between closed admission and actual
+browser setup: the proposed exact-account/session qualification gate is not yet
+implemented or approved. Current global flags cannot substitute for that gate.
+
 1. Obtain authorization for the production phase. Pin the final integrated
    application commit, migration bytes and current deployed authority. Reinspect
    all seven guarded definitions, canonical financial indexes/triggers,
@@ -81,24 +88,19 @@ the isolated scheduler heartbeat. Never use it unchanged for production.
    pg_cron job registration. Publish the matching application through the
    repository workflow only when that phase is authorized; leave discovery,
    setup and Run Back admission closed.
-4. Rerun the complete production-safe proof against installed authority.
-   Observe real scheduled recovery and authenticated Realtime delivery,
-   including zero-client earned settlement, retry/worker interruption and
-   preservation of unresolved deliberate pauses. Direct worker invocation and
-   publication membership alone are insufficient.
-5. Exercise the actual authenticated application route: two humans through
-   nine holes, private pending draw/lost response, reconnects, final queue,
-   financial presentation, Run Back consent, connected Session Ended, cold
-   ended-session mount and sign-out. Then cover mixed bots and three/four seats.
-   Capture raw permitted snapshots, exact chip/ledger/result evidence and
-   rendered mobile behavior. Verify the shared +5 renderer retires without
-   suppressing final balances or replaying on continuation.
-6. Only after every applicable gate passes, separately authorize activation
-   for the existing approved active-account qualification scope. Golf currently
-   has shared release/admission flags, not separate per-mode flags: do not
-   describe it as fake-only activation or enable it with one money mode
-   unqualified. Preserve any stricter platform money-mode gate. Jeremy's
-   physical iPhone Safari and production smoke remains acceptance truth.
+4. Rerun the complete production-safe proof against installed authority using
+   reviewed candidate function/catalog fingerprints. Actual scheduled recovery,
+   Realtime and independent connections require committed fixtures; rollback
+   receipts alone do not establish them.
+5. Implement and qualify the recommended exact-account/session live-test gate
+   only after that release decision is authorized. Keep general admission closed
+   while running the explicit browser/service/race procedure in the linked plan.
+   The original global flags do not isolate named testers. Do not infer live
+   qualification from simulated SDK responses or direct worker invocation.
+6. After every applicable gate passes, authorize the stated active-account
+   activation scope, preserving stricter platform money-mode gates. Both modes
+   require qualification before a shared gate opens. Jeremy's physical iPhone
+   Safari production smoke remains acceptance truth.
 
 If qualification fails, keep new admission closed and preserve evidence.
 If admission has later been opened, close admission without disabling the

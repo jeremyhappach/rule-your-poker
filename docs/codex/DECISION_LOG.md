@@ -2568,3 +2568,15 @@ responses, and a complete local browser match verifies retained Results/HUD,
 the Session Ended heading and local Back to Lobby. This is local qualification,
 not live service or production acceptance. See SIX_CARD_GOLF_IMPLEMENTATION.md
 and SIX_CARD_GOLF_RELEASE_PLAN.md for evidence and closed-admission gates.
+
+## 2026-10-21 — Golf production proof preparation, live gate still proposed
+
+Production proof generation is offline and separate from local bootstrap tools.
+It pins the unchanged migration, removes fixture heartbeat writes, refuses stale
+live scheduler health, preserves integrity triggers and requires complete
+rollback/containment evidence. Installed proofs use reviewed candidate function
+and catalog fingerprints. Deliberate committed-corruption injection stays local.
+An exact-account/session qualification gate is recommended to resolve live
+browser/cron testing before general admission; it is not approved or implemented
+by this preparation. No global active-account opening is inferred. See
+SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md.

@@ -387,3 +387,32 @@ contrast CSS is incorporated unchanged. The only merge conflict joined the
 two release-note introductions; both entries were retained. No Golf source or
 SQL changed in this final reconciliation. The combined production build is
 recorded in `build-main-final.log`.
+
+## Production qualification preparation — 2026-10-21
+
+Local candidate reconciliation now includes main
+`0d9469ecc24345175b3cb07052d16283a1c4f42c`, preserving Box Drop's dominant
+numeral correction. The release-note conflict was resolved additively.
+The Golf migration bytes and all gameplay/financial rules remain unchanged.
+
+New offline production-proof/evidence tools produce ten bounded rollback units,
+require actual scheduler health, omit local heartbeat seeds and intentional
+trigger disabling, and verify pre-existing records plus residual cleanup.
+Installed generation requires reviewed candidate function/catalog fingerprints.
+The local PostgreSQL check proves rejection before installation when live
+services are missing, containment of synthetic identities, recorded-row deletion
+and out-of-scope insertion rejection, metadata-query syntax and rollback.
+An initial test assumed a full auth.users timestamp column; the isolated local
+reference has a minimal auth table, so the test uses deletion of its own fixture
+row instead. No production health or positive qualification result is fabricated.
+
+Five offline tests pass; TypeScript and the reconciled production build pass
+(`typecheck-production-preparation.log`, `build-production-preparation.log`,
+10.48 seconds). No full game regression or browser matrix was repeated because
+this preparation changes qualification tooling/documentation only; the incoming
+Box Drop source is preserved from main. No production write or publication ran.
+
+The remaining release decision is the proposed exact-account/session live
+qualification gate. It is not implemented by this task. Full commands, evidence
+format, safeguards, service checks and activation sequence are in
+[production qualification preparation](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
