@@ -1,8 +1,8 @@
 {
-  "at": "2026-10-21T14:41:13.817Z",
-  "database": "battle31_package_1792593672768",
+  "at": "2026-10-21T15:59:53.188Z",
+  "database": "battle31_package_1792598392050",
   "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
-  "packageSHA256": "b0c5610a3eef4b25ca2e0323ad4f694bff7ae11b8b6c5e40fd6396aafc659ff2",
+  "packageSHA256": "c5a7b3eee6ec71a740de815946326d3268b0b0bfa5479eb4bdf1e1614cd07816",
   "passed": true,
   "cases": [
     "missing publication refused",

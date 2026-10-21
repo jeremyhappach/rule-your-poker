@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {installCanonicalLifecycle} from './canonical-lifecycle.mjs';
 import {connect} from './database.mjs';
 const database='battle31_package_'+Date.now(),admin=await connect('postgres');
 await admin.query('CREATE DATABASE '+database+' TEMPLATE money_qualification_1792441147994');await admin.end();
@@ -15,7 +16,7 @@ async function reject(name,setup,pattern){
  finally{await c.query('ROLLBACK');}
 }
 try{
- await c.query(reference);
+ await installCanonicalLifecycle(c);await c.query(reference);
  // This local template has no pg_cron extension. Model registration metadata,
  // not execution: actual pg_cron dispatch remains a hosted qualification gate.
  await c.query(`ALTER TABLE cron.job ADD COLUMN command text,ADD COLUMN database text DEFAULT current_database(),ADD COLUMN username text DEFAULT current_user;

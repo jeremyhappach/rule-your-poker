@@ -4,7 +4,7 @@
 CREATE OR REPLACE FUNCTION private.battle31_recover() RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE candidate record; m private.battle31_matches; g public.games;
- actor uuid; choice jsonb; action_i text; items_i int[]; req uuid;
+ actor uuid; action_i text; req uuid;
  at_ms bigint:=floor(extract(epoch FROM clock_timestamp())*1000);
 BEGIN
  FOR candidate IN
@@ -24,7 +24,7 @@ BEGIN
    AND live.status='in_progress' AND NOT live.is_paused
    AND ((work.state->>'deadline')::bigint<=at_ms OR work.state->>'phase'='playing'
     AND coalesce(work.bot_due_at,0)<=at_ms
-    AND (work.state->'players'->(work.state->>'turnIndex')::int->>'isBot')::boolean)
+    AND EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=work.game_id AND p.id=(work.state->'players'->(work.state->>'turnIndex')::int->>'id')::uuid AND (p.is_bot OR p.auto_fold)))
   ORDER BY (work.state->>'deadline')::bigint,work.dealer_game_id
   LIMIT 20 FOR UPDATE OF r,live,work SKIP LOCKED
  LOOP
@@ -36,20 +36,16 @@ BEGIN
    OR m.game_id<>candidate.game_id OR m.round_id<>candidate.round_id OR m.revision<>candidate.revision
    OR m.state->>'dealId' IS DISTINCT FROM candidate.deal_id OR m.state->>'phase' IS DISTINCT FROM candidate.phase
    OR m.state->>'turnIndex' IS DISTINCT FROM candidate.turn_index THEN CONTINUE;END IF;
-  actor:=(m.state->'players'->(m.state->>'turnIndex')::int->>'id')::uuid;items_i:=NULL;
-  IF (m.state->>'deadline')::bigint<=at_ms THEN action_i:='tick';
-  ELSIF m.state->>'phase'='playing' AND coalesce(m.bot_due_at,0)<=at_ms
-   AND (m.state->'players'->(m.state->>'turnIndex')::int->>'isBot')::boolean
-   AND EXISTS(SELECT 1 FROM public.players WHERE id=actor AND game_id=m.game_id AND is_bot) THEN
-   choice:=private.battle31_bot_choice(private.battle31_visible(m.state,actor));action_i:=choice->>'action';
-   SELECT array_agg(value::int) INTO items_i FROM jsonb_array_elements_text(coalesce(nullif(choice->'items','null'),'[]'));
+  actor:=(m.state->'players'->(m.state->>'turnIndex')::int->>'id')::uuid;
+  IF m.state->>'phase'='playing' AND EXISTS(SELECT 1 FROM public.players WHERE id=actor AND game_id=m.game_id AND (is_bot OR auto_fold)) THEN action_i:='bot';
+  ELSIF (m.state->>'deadline')::bigint<=at_ms THEN action_i:='tick';
   ELSE CONTINUE;END IF;
   req:=md5(m.dealer_game_id::text||':'||m.revision||':service')::uuid;
   BEGIN
    -- A player/accounting writer outside the normal session lock contract must
    -- not block the entire batch either. Release partial locks on NOWAIT failure.
    PERFORM 1 FROM public.players WHERE game_id=m.game_id ORDER BY id FOR UPDATE NOWAIT;
-   PERFORM private.battle31_commit(m.dealer_game_id,req,m.revision,actor,action_i,items_i);
+   PERFORM private.battle31_commit(m.dealer_game_id,req,m.revision,actor,action_i,NULL);
   EXCEPTION WHEN lock_not_available THEN CONTINUE;
    WHEN raise_exception THEN IF SQLERRM NOT IN('battle31:stale_revision','battle31:inactive','battle31:deadline') THEN RAISE;END IF;
   END;

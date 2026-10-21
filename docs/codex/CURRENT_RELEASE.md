@@ -1,3 +1,16 @@
+# Battle 31 / 1 — 2026-10-21 — timeout correction qualified locally, not published
+
+Real-money human expiry now pauses through the canonical owner. Fake-money
+expiry starts strategic autoplay and deferred sit-out. Auto-play uncheck reclaims
+control and clears both flags; the opponent robot follows authoritative control.
+The existing postgame owner applies deferred sit-out after the whole match.
+Approved scoring/rules, two-seat ownership and canonical settlement are preserved.
+
+Local authority/race/reconnect/continuation, browser, financial, package and
+recovery proofs pass. Hosted qualification and physical-device acceptance remain.
+No push, production write, deployment or activation occurred. See
+[BATTLE31_TIMEOUT_QUALIFICATION.md](BATTLE31_TIMEOUT_QUALIFICATION.md).
+
 # Battle 31 / 1 — 2026-10-21 — local release corrections qualified, not published
 
 Definition fingerprints now tolerate CRLF/LF only; separate fake/real server

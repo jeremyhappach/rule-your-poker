@@ -87,7 +87,7 @@ CREATE OR REPLACE FUNCTION public.battle31_snapshot(p_dealer_game_id uuid)
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-DECLARE m private.battle31_matches; viewer uuid; paused boolean; balances jsonb; batch public.gameplay_transfer_batches; result_id uuid;
+DECLARE m private.battle31_matches; viewer uuid; paused boolean; controls jsonb; balances jsonb; batch public.gameplay_transfer_batches; result_id uuid;
 BEGIN
  SELECT * INTO STRICT m FROM private.battle31_matches WHERE dealer_game_id=p_dealer_game_id;
  SELECT id INTO viewer FROM public.players WHERE game_id=m.game_id AND user_id=auth.uid() AND (status<>'left' OR m.finished) AND NOT is_bot;
@@ -98,8 +98,10 @@ BEGIN
  ELSE SELECT jsonb_object_agg(id::text,chips) INTO balances FROM public.players WHERE game_id=m.game_id;END IF;
  SELECT * INTO batch FROM public.gameplay_transfer_batches WHERE dealer_game_id=p_dealer_game_id ORDER BY cursor DESC LIMIT 1;
  SELECT id INTO result_id FROM public.game_results WHERE dealer_game_id=p_dealer_game_id AND settlement_key='battle31_terminal';
- RETURN private.battle31_visible(m.state,viewer)||jsonb_build_object('revision',m.revision,'stake',m.stake,'viewerId',viewer,
-  'canAct',NOT coalesce(paused,false) AND m.state->>'phase'='playing' AND m.state->'players'->(m.state->>'turnIndex')::integer->>'id'=viewer::text,
+ SELECT jsonb_agg(p||jsonb_build_object('autoPlay',CASE WHEN m.finished THEN false ELSE coalesce(live.auto_fold,false) END,'sitOutNextHand',CASE WHEN m.finished THEN false ELSE coalesce(live.sit_out_next_hand,false) END,'intentVersion',CASE WHEN m.finished THEN 0 ELSE live.intent_version END) ORDER BY i) INTO controls
+ FROM jsonb_array_elements(m.state->'players') WITH ORDINALITY x(p,i) LEFT JOIN public.players live ON live.id=(p->>'id')::uuid AND live.game_id=m.game_id;
+ RETURN private.battle31_visible(m.state,viewer)||jsonb_build_object('players',controls,'revision',m.revision,'stake',m.stake,'viewerId',viewer,
+  'canAct',NOT coalesce(paused,false) AND m.state->>'phase'='playing' AND m.state->'players'->(m.state->>'turnIndex')::integer->>'id'=viewer::text AND NOT EXISTS(SELECT 1 FROM public.players WHERE id=viewer AND auto_fold),
   'serverAt',floor(extract(epoch FROM clock_timestamp())*1000),'settlement',m.settlement,'paused',coalesce(paused,false),'finished',m.finished,'pausedAt',m.paused_at,'financial',jsonb_build_object('balances',coalesce(balances,'{}'::jsonb),'resultId',result_id,'batch',CASE WHEN batch.id IS NOT NULL THEN to_jsonb(batch) ELSE NULL END))
 ;
 END $function$

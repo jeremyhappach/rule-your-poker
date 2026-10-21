@@ -1,3 +1,14 @@
+# 2026-10-21 — Battle 31 multiplayer timeout ownership
+
+Approved local correction: real-money human timeout pauses; fake-money human
+expiry enables strategic autoplay and canonical sit_out_next_hand. Reclaim uses
+set_automatic_play and clears both flags immediately. The match revision changes
+with control, so queued bot decisions cannot survive reclaim. Deferred sit-out
+is applied at the match boundary, not between internal life rounds. This
+supersedes earlier Battle 31 blanket timeout PASS claims without changing the
+frozen scoring/exchange reducer. No production release is authorized by this pass.
+See BATTLE31_TIMEOUT_QUALIFICATION.md.
+
 # 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
 
 Jeremy approved full Arcade and two-player multiplayer with one frozen server

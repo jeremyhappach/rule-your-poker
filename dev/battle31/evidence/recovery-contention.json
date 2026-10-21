@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-21T14:35:33.552Z",
-  "database": "battle31_recovery_1792593322303",
-  "recoverySHA256": "1906555b0aed6125c319546b9c11eab27bdc9876a08834dd601af600db3e8f3c",
+  "at": "2026-10-21T15:58:02.677Z",
+  "database": "battle31_recovery_1792598272187",
+  "recoverySHA256": "679431ffe65455cef4791b961e4aa8852656c2d4a9c7dc93a6ca923a928776f1",
   "statementTimeoutMs": 1500,
   "results": [
     {
@@ -18,7 +18,7 @@
       "competingWorkers": true,
       "canonicalResults": 42,
       "chipTotal": 8400,
-      "firstBatchMs": 13
+      "firstBatchMs": 12
     },
     {
       "real": true,
@@ -34,7 +34,7 @@
       "competingWorkers": true,
       "canonicalResults": 42,
       "chipTotal": 8400,
-      "firstBatchMs": 7
+      "firstBatchMs": 5
     }
   ]
 }

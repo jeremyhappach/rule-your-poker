@@ -88,3 +88,17 @@ These tests prove fail-closed handling, not hosted health. See
 `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md` for qualification limits and current
 package identity. Closing new admission preserves accepted offers in qualified
 modes; do not revoke enabled/money qualification before pending offers drain.
+
+## Timeout and reclaim correction
+
+After package-proof, set BATTLE31_DATABASE to its returned disposable database
+and run `node dev/battle31/timeout-lifecycle.mjs`. For the actual-route proof,
+prepare/build/start the route server against the same local database and run
+`node dev/battle31/timeout-browser.mjs`. It checks both money modes, reconnect,
+checkbox reclaim, opponent robot and canonical host resume. No hosted credentials
+are accepted. The exact canonical lifecycle helper installs missing clone
+functions only; it is not part of the release payload.
+
+Real-money timeout now pauses. The concurrency runner explicitly opts both
+humans into autoplay before testing unattended real-money progression; it no
+longer mislabels forced PASS progression as real-money recovery policy.

@@ -80,26 +80,26 @@
     }
   ],
   "errors": [],
-  "session": "caabd641-dcef-4f92-85bf-1b67ef21b5e6",
-  "firstDealer": "6d8c2105-3525-40f5-89ed-c2adc84c75ff",
-  "secondDealer": "1325e329-dd61-4b67-998b-0658c0a56a4f",
+  "session": "f9866c3c-c8ac-423f-8d69-e104592d819e",
+  "firstDealer": "fe453b0b-644e-49a7-9123-fbe925069958",
+  "secondDealer": "851c8b1d-6e66-4703-b90e-791a90af2d81",
   "balances": [
     {
-      "user_id": "7bda2af8-92e8-4a93-9a4a-f2f1aee7e825",
+      "user_id": "6523c2d1-97c8-4002-aeeb-979fb8e14831",
       "chips": 91
     },
     {
-      "user_id": "ca64045a-b2ec-4d68-9fc8-9139aae3f4b2",
+      "user_id": "83d424b1-bc58-4b0d-84c7-6ab664603d8e",
       "chips": 109
     }
   ],
   "finalBalances": [
     {
-      "user_id": "7bda2af8-92e8-4a93-9a4a-f2f1aee7e825",
+      "user_id": "6523c2d1-97c8-4002-aeeb-979fb8e14831",
       "chips": 82
     },
     {
-      "user_id": "ca64045a-b2ec-4d68-9fc8-9139aae3f4b2",
+      "user_id": "83d424b1-bc58-4b0d-84c7-6ab664603d8e",
       "chips": 118
     }
   ],

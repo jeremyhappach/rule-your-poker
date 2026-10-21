@@ -1,5 +1,11 @@
 # Repository map
 
+Battle 31 timeout/control: `supabase/battle31/commands.sql` bridges canonical pause
+and automatic play; `recovery.sql` dispatches strategic controlled turns;
+`multiplayer.sql` projects control flags. `Battle31View.tsx` owns checkbox/robot
+presentation. Local authority/browser proofs: `dev/battle31/timeout-lifecycle.mjs`
+and `timeout-browser.mjs`; see `BATTLE31_TIMEOUT_QUALIFICATION.md`.
+
 Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.

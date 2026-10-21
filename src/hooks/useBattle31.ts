@@ -19,7 +19,7 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
     catch(e){
      // Definitive server rejection retires this intent. Network uncertainty keeps
      // exactly the same UUID/payload across reload; never mint a replacement.
-     if(/stale|inactive|phase|illegal|deadline|wrong_turn|forbidden|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}
+     if(/stale|inactive|phase|illegal|deadline|wrong_turn|forbidden|not_controller|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}
      else throw e;
     }
    }else accept(await transport.load(),token);
@@ -44,7 +44,11 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
   return()=>clearTimeout(timer);
  },[snapshot?.scope,snapshot?.board.deadline,snapshot?.paused,snapshot?.finished,resolve]);
  const act=async(intent:Battle31Intent)=>{
-  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||flight.current||sessionStorage.getItem(key)||intent.type!=='resign'&&!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='resign'&&!battle31PlayWindow(v.board,at).playable)return;
+  const control=intent.type==='autoplay_on'||intent.type==='autoplay_off';
+  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;
+  if(!v||!connected||flight.current||sessionStorage.getItem(key)||document.hidden||!navigator.onLine)return;
+  // Reclaim remains available off turn and while paused; it never resumes play.
+  if(!control&&(v.paused||intent.type!=='resign'&&(!v.canAct||!battle31PlayWindow(v.board,at).playable)))return;
   const command:Battle31Command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };

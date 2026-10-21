@@ -1,3 +1,4 @@
+import {installCanonicalLifecycle} from './canonical-lifecycle.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
@@ -28,14 +29,14 @@ async function boxdrop(real,users){
 try{
  await c.query('BEGIN');
  for(const name of ['rules','multiplayer','arcade','bots','recovery'])await c.query(readFileSync('supabase/boxdrop/'+name+'.sql','utf8'));
- await c.query(candidate());await c.query('COMMIT');
+ await installCanonicalLifecycle(c);await c.query(candidate());await c.query('COMMIT');
  for(const client of [c,other])await client.query("SET statement_timeout='1500ms'");
  for(const real of [false,true]){
   const fixtures=[];
   for(let i=0;i<42;i++)fixtures.push(await fixture(real,false,database));
   const ids=fixtures.map(f=>f.id);
-  await c.query("UPDATE private.battle31_matches SET state=state||jsonb_build_object('phase','playing','turn',1,'turnIndex',0,'closing',false,'hands','[[0,1,10],[16,17,26]]'::jsonb,'center','[2,11,20]'::jsonb,'deadline',1) WHERE dealer_game_id=ANY($1::uuid[])",[ids]);
-  await c.query("UPDATE private.battle31_matches SET state=jsonb_set(state,'{deadline}','0') WHERE dealer_game_id=ANY($1::uuid[])",[ids.slice(0,21)]);
+  await c.query("UPDATE private.battle31_matches SET state=state||jsonb_build_object('phase','intro','turn',1,'turnIndex',0,'closing',false,'hands','[[0,1,10],[16,17,26]]'::jsonb,'center','[2,11,20]'::jsonb,'deadline',1) WHERE dealer_game_id=ANY($1::uuid[])",[ids]);
+  await c.query("UPDATE private.battle31_matches SET state=state||jsonb_build_object('phase','intro','deadline',0) WHERE dealer_game_id=ANY($1::uuid[])",[ids.slice(0,21)]);
   const box=await boxdrop(real,fixtures[0].users);
   await c.query("SELECT set_config('request.jwt.claim.sub','',false)");
   const boxBefore=(await c.query('SELECT revision FROM private.boxdrop_matches WHERE dealer_game_id=$1',[box])).rows[0].revision;
@@ -66,7 +67,7 @@ try{
   // More player-only locks than the batch size must not starve healthy work.
   await c.query('UPDATE private.battle31_matches SET paused_at=0 WHERE dealer_game_id=ANY($1::uuid[])',[ids]);
   await c.query('UPDATE private.battle31_matches SET paused_at=NULL WHERE dealer_game_id=ANY($1::uuid[])',[ids.slice(0,22)]);
-  await c.query("UPDATE private.battle31_matches SET state=jsonb_set(state,'{deadline}','0') WHERE dealer_game_id=ANY($1::uuid[])",[ids.slice(0,22)]);
+  await c.query("UPDATE private.battle31_matches SET state=state||jsonb_build_object('phase','intro','deadline',0) WHERE dealer_game_id=ANY($1::uuid[])",[ids.slice(0,22)]);
   const playerLockRevisions=[];for(const f of fixtures.slice(0,22))playerLockRevisions.push(await state(f.id));
   await locker.query('BEGIN');
   await locker.query('SELECT id FROM public.players WHERE game_id=ANY($1::uuid[]) FOR UPDATE',[fixtures.slice(0,21).map(f=>f.game)]);

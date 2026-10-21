@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-21T15:59:20.608Z",
+  "database": "battle31_package_1792598247729",
+  "checks": [
+    "fake-money autoplay, opponent robot beside score, reload persistence, checkbox reclaim and both flags cleared",
+    "real-money timeout visibly pauses; reconnect preserves hand, no autoplay or sit-out; canonical host menu resumes with full deadline"
+  ],
+  "errors": []
+}

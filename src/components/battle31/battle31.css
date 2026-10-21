@@ -3,3 +3,5 @@
 @container (min-aspect-ratio: 6/5){.battle-plane{grid-template-columns:1fr 1.25fr 1.2fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:1cqh 2cqw}.battle-other{grid-column:2;grid-row:1}.battle-own{grid-column:2;grid-row:2}.battle-center{grid-column:1;grid-row:1/3}.battle-controls{grid-column:3;grid-row:1/3;justify-content:center}.battle-buttons{flex-direction:column;gap:1cqh}.battle-buttons button{min-height:44px;width:100%}.battle-buttons small{display:inline;margin-left:1ch}.battle-card{width:min(7cqw,18cqh)}.battle-seat header{font-size:11px;gap:1cqw}.battle-seat header strong{max-width:45%}.battle-seat output,.battle-center p{font-size:11px}.battle-hand{gap:.7cqw;padding:0}.battle-controls p{font-size:11px}}
 .battle-plane button{pointer-events:auto}
 .battle-card{width:max(44px,min(17cqw,11cqh))}@container (min-aspect-ratio:6/5){.battle-card{width:clamp(44px,18cqh,7cqw)}}
+
+.battle-score{display:flex;align-items:center;justify-content:center;gap:.5em}.battle-autoplay{display:flex;align-items:center;gap:.5em;min-height:44px;font-size:12px;cursor:pointer;pointer-events:auto}.battle-autoplay input{width:18px;height:18px}

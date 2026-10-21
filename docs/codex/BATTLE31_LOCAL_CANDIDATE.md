@@ -29,7 +29,9 @@ TAKE POT to exchange all three atomically. Exactly two is illegal. PASS during
 normal play grants the opponent one final decision. After six normal decisions,
 announce one final turn each (7 and 8). STAND at 7 preserves 8; no response after 8.
 PASS at 6 resolves after response 7; PASS at 5 resolves after response 6.
-Timeout uses PASS/stand. A 31/AAA on any decision resolves immediately.
+Human timeout policy is superseded by BATTLE31_TIMEOUT_QUALIFICATION.md:
+real-money pauses; fake-money enables strategic autoplay and deferred sit-out.
+A 31/AAA on any decision resolves immediately.
 Eight all-three exchanges cannot loop beyond the cutoff.
 
 The lower hand incurs one loss. Three lives then Last chance; the fourth loss
@@ -40,7 +42,8 @@ draws. This marker is independent of the canonical caller.
 Each decision has a persisted 15-second deadline. The next turn opens at commit,
 without animation gating. Round-result hold is four seconds; terminal hold is
 three. Canonical pause shifts the remaining deadline on resume. Disconnecting is
-not resignation. Server recovery advances deadlines with no clients; an explicit
+not resignation. Server recovery advances eligible work with no clients; expired
+real-money human decisions pause without a move. An explicit
 resignation loses the match. An integrity abort is private administration only.
 Unpaused rules permit at most 96 decisions, about 25 minutes at every deadline
 plus scheduler latency; this is a bound, not expected playing time.

@@ -3,6 +3,9 @@
 Local correction to checkpoint `0446d75e5d2f3dd7c250b204a05d9e5b337f8b1a`.
 No production writes, push, deployment, activation, or rules changes.
 
+The later timeout/controller correction and current package evidence are in
+[BATTLE31_TIMEOUT_QUALIFICATION.md](BATTLE31_TIMEOUT_QUALIFICATION.md).
+
 ## Final behavior
 
 - Definition fingerprints normalize CRLF to LF only. Bare carriage returns,

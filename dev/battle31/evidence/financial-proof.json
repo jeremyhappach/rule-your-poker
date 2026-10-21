@@ -14,11 +14,11 @@
       "outcome": "winner",
       "chips": [
         {
-          "id": "1b375d8c-b25c-4407-80ab-b50d69bf8c75",
+          "id": "88cced44-fa77-4e8f-ba6b-6529b07e48df",
           "chips": 105
         },
         {
-          "id": "6476370b-9a5b-4f37-b706-efa47b6b0225",
+          "id": "eb2ecee1-3313-45f6-8686-f7b5a19d02c2",
           "chips": 95
         }
       ],
@@ -26,14 +26,14 @@
         {
           "transfers": [
             {
-              "id": "ab44b786-0de2-43f5-acf5-2faefe3b1322:1:1",
+              "id": "0a9eae89-d0cc-4e6d-a5da-2bcb92d7ec0f:1:1",
               "to": {
                 "kind": "player",
-                "playerId": "1b375d8c-b25c-4407-80ab-b50d69bf8c75"
+                "playerId": "88cced44-fa77-4e8f-ba6b-6529b07e48df"
               },
               "from": {
                 "kind": "player",
-                "playerId": "6476370b-9a5b-4f37-b706-efa47b6b0225"
+                "playerId": "eb2ecee1-3313-45f6-8686-f7b5a19d02c2"
               },
               "amount": 5
             }
@@ -48,11 +48,11 @@
       "outcome": "tie",
       "chips": [
         {
-          "id": "727df025-5374-4a9e-aa0d-3e54ddddb78d",
+          "id": "5bdb2788-0044-42db-8792-a0ed825f5684",
           "chips": 100
         },
         {
-          "id": "74bcf3b2-4bb9-41c4-ab8a-b3f3a05f79c2",
+          "id": "a2d3a7c9-353f-4891-8261-fa6acd20aa59",
           "chips": 100
         }
       ],
@@ -64,11 +64,11 @@
       "outcome": "abort",
       "chips": [
         {
-          "id": "05e2dcc1-fe80-4110-bd13-48347c7cc43f",
+          "id": "46dd6472-a3ae-436c-b943-ffdbf010fd02",
           "chips": 100
         },
         {
-          "id": "c0a2dc60-6b8b-48e1-83bf-6206a9f77c59",
+          "id": "4a85a2c6-6ac7-4170-b802-383abca329fd",
           "chips": 100
         }
       ],
@@ -80,11 +80,11 @@
       "outcome": "winner",
       "chips": [
         {
-          "id": "17fdc282-f820-4c31-b326-c6daecb5eee1",
+          "id": "4a897e66-8d2c-4534-a0bc-ea4d34cc6251",
           "chips": 105
         },
         {
-          "id": "9d4dfee3-2fb6-4438-ac02-c2b6d17cb6e9",
+          "id": "531c0c8e-27a0-4ae8-96aa-519806fcf747",
           "chips": 95
         }
       ],
@@ -92,14 +92,14 @@
         {
           "transfers": [
             {
-              "id": "ef207d1e-95ba-4c2f-bc2f-f77440cd6d74:1:1",
+              "id": "2e8d8a70-e520-4439-9d3d-155dda6c319e:1:1",
               "to": {
                 "kind": "player",
-                "playerId": "17fdc282-f820-4c31-b326-c6daecb5eee1"
+                "playerId": "4a897e66-8d2c-4534-a0bc-ea4d34cc6251"
               },
               "from": {
                 "kind": "player",
-                "playerId": "9d4dfee3-2fb6-4438-ac02-c2b6d17cb6e9"
+                "playerId": "531c0c8e-27a0-4ae8-96aa-519806fcf747"
               },
               "amount": 5
             }
@@ -114,11 +114,11 @@
       "outcome": "tie",
       "chips": [
         {
-          "id": "3b6769ae-bf28-48bf-a997-91fddd4a7764",
+          "id": "1f694be4-1865-4a28-b332-4f0607c9458e",
           "chips": 100
         },
         {
-          "id": "d9b11dfb-4a40-46ca-b1bf-eb89439e56ee",
+          "id": "b281935e-f602-40ca-9565-eb482a40685d",
           "chips": 100
         }
       ],
@@ -130,11 +130,11 @@
       "outcome": "abort",
       "chips": [
         {
-          "id": "04b4a4a1-8809-46b9-b944-a46103948ee9",
+          "id": "08212f15-b69d-4bf7-b7a7-f9dbbe90e149",
           "chips": 100
         },
         {
-          "id": "940d0c40-bb9b-4c99-ae88-b484c127a331",
+          "id": "39c837e3-8bbd-47ee-abae-c932aabc47be",
           "chips": 100
         }
       ],

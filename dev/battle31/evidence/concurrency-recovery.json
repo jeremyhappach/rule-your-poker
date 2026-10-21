@@ -5,8 +5,10 @@
     "competingRace": true,
     "timeoutRace": true,
     "pause": true,
-    "zeroClientSteps": 32,
-    "zeroClientRound": 9,
+    "realTimeoutPaused": false,
+    "realAutoplayExplicitConsent": false,
+    "zeroClientSteps": 34,
+    "zeroClientRound": 6,
     "postgameRecovered": true,
     "resignation": true
   },
@@ -16,8 +18,10 @@
     "competingRace": true,
     "timeoutRace": true,
     "pause": true,
-    "zeroClientSteps": 20,
-    "zeroClientRound": 6,
+    "realTimeoutPaused": true,
+    "realAutoplayExplicitConsent": true,
+    "zeroClientSteps": 35,
+    "zeroClientRound": 7,
     "postgameRecovered": true,
     "resignation": true
   }
