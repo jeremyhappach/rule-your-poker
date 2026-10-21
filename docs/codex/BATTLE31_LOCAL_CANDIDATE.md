@@ -1,5 +1,10 @@
 # Battle 31 / 1 — local candidate, 2026-10-20
 
+Recovery and migration packaging were subsequently qualified locally on October 21.
+See [the superseding recovery checkpoint](BATTLE31_RECOVERY_QUALIFICATION.md) for
+that scope, exact evidence and remaining release gates. Earlier evidence below
+remains historical; approved rules are unchanged.
+
 Approved local rules: exactly two multiplayer seats, human/human or human/bot.
 No Arcade, leaderboard, historical-fidelity release gate, or Full Hand Replay UI.
 Implementation is isolated on `codex/battle31-v1`, based on main

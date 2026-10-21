@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-21T13:26:24.724Z",
+  "database": "battle31_package_1792589183665",
+  "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
+  "packageSHA256": "f7a83f5782e3a987efc9f085ec4435eaacaca50ec0ff28778b635218437977b4",
+  "passed": true,
+  "cases": [
+    "missing publication refused",
+    "canonical drift refused",
+    "partial installation refused",
+    "scheduler collision rolls back all game objects",
+    "late registration failure is atomic",
+    "busy shared table fails without waiting",
+    "fresh atomic install",
+    "exact repeat no-op twice",
+    "installed function drift refused",
+    "installed ACL drift refused",
+    "installed schema drift refused",
+    "scheduler drift refused",
+    "publication drift refused",
+    "repeat preserves existing gates",
+    "current-main Race Poker registration preserved exactly"
+  ],
+  "limitations": [
+    "cron.schedule is a local metadata stub; no actual scheduler dispatch",
+    "publication catalog tested with wal_level=replica; no logical replication transport"
+  ]
+}

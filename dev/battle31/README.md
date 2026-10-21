@@ -1,6 +1,6 @@
 # Battle 31 local qualification
 
-All runners use the disposable PostgreSQL clone in
+The original route runners use the disposable PostgreSQL clone in
 `qualification.local/battle31/context.json` at 127.0.0.1:55439.
 They are not production runners. Never substitute a hosted database.
 
@@ -41,3 +41,32 @@ The transport implements only the query surface needed by this journey;
 optional presence/storage/functions and unused query operators are stubs.
 Mute uses persisted profile state and the actual shared AudioManager preference
 API; the Settings screen itself is not part of this journey.
+
+
+## Recovery and release package
+
+Run with the already-installed dependencies and loopback PostgreSQL service:
+
+```text
+node dev/battle31/recovery-contention.mjs
+node dev/battle31/package-release.mjs
+node dev/battle31/package-proof.mjs
+node dev/battle31/recovery-regressions.mjs
+```
+
+Contention and package proofs create dedicated `battle31_*` clones of the existing
+money-qualification template. They never mutate the template or production.
+The package builder briefly installs current-main registration in a rolled-back
+local transaction to obtain its canonical preimage hashes. It writes the portable
+atomic migration `supabase/battle31/release.sql` and hash manifest. No Supabase CLI
+is installed here; a history filename must be assigned on the approved release
+host using its CLI. Do not silently regenerate against unreviewed main changes.
+
+The package proof models cron registration with a local metadata stub and creates
+a publication catalog entry. It does not prove real pg_cron execution or logical
+replication: the clone has no pg_cron extension and uses `wal_level=replica`.
+Regression runners accept `BATTLE31_DATABASE` only for named disposable Battle 31
+databases. Fixtures deliberately enable local admission and write synthetic
+recovery-health timestamps; these runners must never become hosted proof scripts.
+The regression wrapper checks package replay over settled fixture data and closes
+its local admission gates afterward. Retained proof results are in `evidence/`.

@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-21T13:26:28.227Z",
+  "database": "battle31_package_1792589183665",
+  "packageSHA256": "f7a83f5782e3a987efc9f085ec4435eaacaca50ec0ff28778b635218437977b4",
+  "results": [
+    {
+      "script": "proof",
+      "passed": true
+    },
+    {
+      "script": "concurrency",
+      "passed": true
+    },
+    {
+      "script": "human-bot",
+      "passed": true
+    }
+  ],
+  "exactReplayPreservesSettledData": true,
+  "replayFacts": {
+    "chips": 37620,
+    "gates": {
+      "enabled": true,
+      "singleton": true,
+      "admission_enabled": true
+    },
+    "matches": 5,
+    "results": 5,
+    "requests": 65
+  },
+  "localAdmissionClosedAfterProof": true
+}

@@ -2555,3 +2555,17 @@ pairs then one announced final turn each, and no artificial inter-move delay.
 Exactly two multiplayer seats, legal-information bots; historical fidelity is
 not a release gate. Local implementation/qualification/commits only; release is
 separately authorized. See `BATTLE31_LOCAL_CANDIDATE.md` for exact rules/evidence.
+
+
+## 2026-10-21 — Battle 31 bounded recovery and guarded local release package
+
+Recovery selects at most 20 gameplay and 20 terminal sessions. Locked round,
+session, match and participant rows are excluded before the batch limit so a
+locked queue head cannot starve healthy sessions. Existing command/postgame
+owners retain rule and financial authority. Both-money contention and installed
+package regressions pass locally; approved rules are unchanged.
+
+The atomic package preserves current-main Race Poker shared registration, verifies
+canonical preimages, installs closed, and fingerprints installed definitions and
+registration for exact replay without resetting data or gates. No hosted changes
+or branch integration occurred. See `BATTLE31_RECOVERY_QUALIFICATION.md`.

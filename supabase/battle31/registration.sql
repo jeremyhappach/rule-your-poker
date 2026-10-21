@@ -1,3 +1,4 @@
+-- Extend the inspected current Boxdrop registration; guard deployed hashes before applying.
 CREATE OR REPLACE FUNCTION private.megatouch_begin(p_game uuid, p_dealer uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -8,7 +9,7 @@ DECLARE g public.games;dg public.dealer_games;r uuid:=gen_random_uuid();people j
 BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game FOR UPDATE;
  SELECT * INTO STRICT dg FROM public.dealer_games WHERE id=p_dealer AND session_id=p_game;
- IF g.current_game_uuid IS DISTINCT FROM p_dealer OR g.status<>'ante_decision' OR g.game_type NOT IN('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','battle-31') OR g.is_paused THEN RAISE EXCEPTION 'megatouch:ante_identity';END IF;
+ IF g.current_game_uuid IS DISTINCT FROM p_dealer OR g.status<>'ante_decision' OR g.game_type NOT IN('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker','battle-31') OR g.is_paused THEN RAISE EXCEPTION 'megatouch:ante_identity';END IF;
  stake_i:=(dg.config->>'ante_amount')::integer;
  IF g.ante_amount IS DISTINCT FROM stake_i THEN RAISE EXCEPTION 'megatouch:stake_changed';END IF;
  PERFORM 1 FROM public.players WHERE game_id=p_game ORDER BY id FOR UPDATE;
@@ -17,7 +18,7 @@ BEGIN
  ORDER BY CASE WHEN g.game_type='run21' THEN 0 WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,CASE WHEN g.game_type='run21' THEN p.position ELSE -p.position END,p.id),jsonb_object_agg(p.id,p.chips)
  INTO people,balances FROM public.players p JOIN public.profiles pr ON pr.id=p.user_id
  WHERE p.game_id=p_game AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL AND p.ante_decision='ante_up';
- IF coalesce(jsonb_array_length(people),0)<2 OR jsonb_array_length(people)>(CASE WHEN g.game_type IN('run21','trip-flip','boxdrop','battle-31') THEN 2 ELSE 7 END) THEN RAISE EXCEPTION 'megatouch:accepted_player_count';END IF;
+ IF coalesce(jsonb_array_length(people),0)<2 OR jsonb_array_length(people)>(CASE WHEN g.game_type IN('run21','trip-flip','boxdrop','race-poker','battle-31') THEN 2 ELSE 7 END) THEN RAISE EXCEPTION 'megatouch:accepted_player_count';END IF;
  IF g.game_type='eleven-up' AND EXISTS(SELECT 1 FROM jsonb_array_elements(people)p WHERE (p->>'isBot')::boolean) THEN RAISE EXCEPTION 'eleven_up:bots_not_supported';END IF;
  PERFORM set_config('app.cribbage_authoritative_write','on',true);PERFORM set_config('app.gin_rummy_authoritative_write','on',true);PERFORM set_config('app.three_five_seven_authoritative_write','on',true);PERFORM set_config('app.yahtzee_authoritative_write','on',true);
  UPDATE public.games SET status='in_progress',ante_decision_deadline=NULL,current_round=1,total_hands=1 WHERE id=p_game;
@@ -30,6 +31,11 @@ BEGIN
   IF g.game_type='battle-31' THEN
    s:=private.battle31_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
    INSERT INTO private.battle31_matches(dealer_game_id,game_id,round_id,state,stake) VALUES(p_dealer,p_game,r,s,stake_i);
+  ELSIF g.game_type='race-poker' THEN
+   IF NOT EXISTS(SELECT 1 FROM private.race_poker_release WHERE singleton AND enabled AND admission_enabled AND CASE WHEN g.real_money THEN real_qualified ELSE fake_qualified END) THEN RAISE EXCEPTION 'race_poker:admission_closed';END IF;
+   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(people)p WHERE NOT (p->>'isBot')::boolean) THEN RAISE EXCEPTION 'race_poker:human_required';END IF;
+   s:=private.race_poker_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
+   INSERT INTO private.race_poker_matches(dealer_game_id,game_id,round_id,state,stake,real_money) VALUES(p_dealer,p_game,r,s,stake_i,g.real_money);
   ELSIF g.game_type='boxdrop' THEN
    s:=private.boxdrop_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
    INSERT INTO private.boxdrop_matches(dealer_game_id,game_id,round_id,state,stake) VALUES(p_dealer,p_game,r,s,stake_i);
@@ -176,7 +182,7 @@ BEGIN
       SELECT public.cribbage_begin_dealer_selection(p_game_id) INTO v_start;
     WHEN v_game.game_type='gin-rummy' THEN
       SELECT public.start_gin_rummy_initial_hand(p_game_id) INTO v_start;
-    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','battle-31') THEN
+    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker','battle-31') THEN
       SELECT private.megatouch_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;
     WHEN v_game.game_type='farkle' THEN
       SELECT private.farkle_begin_v1(p_game_id,p_expected_dealer_game_id) INTO v_start;
@@ -204,6 +210,6 @@ CREATE OR REPLACE FUNCTION private.megatouch_frozen_stake()
  SET search_path TO ''
 AS $function$
 BEGIN
- IF OLD.game_type IN('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','battle-31') AND NEW.config IS DISTINCT FROM OLD.config THEN RAISE EXCEPTION 'megatouch:configuration_frozen';END IF;RETURN NEW;
+ IF OLD.game_type IN('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker','battle-31') AND NEW.config IS DISTINCT FROM OLD.config THEN RAISE EXCEPTION 'megatouch:configuration_frozen';END IF;RETURN NEW;
 END $function$
 ;

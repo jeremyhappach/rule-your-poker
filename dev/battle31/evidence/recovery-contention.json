@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-21T13:23:13.650Z",
+  "database": "battle31_recovery_1792588983258",
+  "recoverySHA256": "1906555b0aed6125c319546b9c11eab27bdc9876a08834dd601af600db3e8f3c",
+  "statementTimeoutMs": 1500,
+  "results": [
+    {
+      "real": false,
+      "fixtures": 42,
+      "lockedFront": 21,
+      "gameplayBatch": 20,
+      "terminalBatch": 20,
+      "roundGameMatchPlayerLocksSkipped": true,
+      "playerLockedFront": 21,
+      "terminalPlayerLockedFront": 20,
+      "otherGameRecovery": true,
+      "staleIdentityAndPause": true,
+      "competingWorkers": true,
+      "canonicalResults": 42,
+      "chipTotal": 8400,
+      "firstBatchMs": 13
+    },
+    {
+      "real": true,
+      "fixtures": 42,
+      "lockedFront": 21,
+      "gameplayBatch": 20,
+      "terminalBatch": 20,
+      "roundGameMatchPlayerLocksSkipped": true,
+      "playerLockedFront": 21,
+      "terminalPlayerLockedFront": 20,
+      "otherGameRecovery": true,
+      "staleIdentityAndPause": true,
+      "competingWorkers": true,
+      "canonicalResults": 42,
+      "chipTotal": 8400,
+      "firstBatchMs": 5
+    }
+  ]
+}

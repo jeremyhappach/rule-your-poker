@@ -1,15 +1,18 @@
-# Battle 31 / 1 — 2026-10-20 — isolated local candidate, not released
+# Battle 31 / 1 — 2026-10-21 — local recovery/package qualified, not released
 
-Exactly-two-player multiplayer, strategic bots and fullscreen presentation use one
-server rule owner with canonical consent/finance/recovery. Local authority,
-financial, concurrency, bot and browser evidence is recorded in
-[BATTLE31_LOCAL_CANDIDATE.md](BATTLE31_LOCAL_CANDIDATE.md). Both-money actual-Game
-route admission, fresh consent/Run Back, lost-response
-reconnect, mute/unmute and canonical terminal qualification now pass locally.
-Duplicate Battle 31 terminal content and reconnect text are corrected. Hosted
-transport/authority, physical-device qualification and coordinated release work
-remain. No production migration,
-admission activation, merge, push or deployment is authorized.
+The isolated candidate now has bounded recovery (20 gameplay and 20 terminal
+sessions per invocation), lock skipping before the batch limit, and identity
+revalidation. Both-money contention proofs cover locked rounds/sessions/matches/
+players, healthy tails, competing workers, and independent Box Drop recovery.
+A guarded atomic migration package preserves current-main Race Poker registration,
+rejects drift/collisions, installs closed, and validates exact repeat installation.
+Financial/concurrency/human-bot regressions, TypeScript and 36 focused tests pass.
+
+See [recovery/package qualification](BATTLE31_RECOVERY_QUALIFICATION.md) and
+[earlier candidate and route evidence](BATTLE31_LOCAL_CANDIDATE.md). Current-main
+client integration, migration-history registration, hosted authority/scheduler/
+Realtime checks and physical-device smoke remain. No production mutation,
+admission activation, merge into main, push or deployment occurred.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 

@@ -1107,3 +1107,9 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
 `src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
 `dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
+
+
+Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
+`package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
+atomic migration: `supabase/battle31/release.sql`; evidence/remaining gates:
+`docs/codex/BATTLE31_RECOVERY_QUALIFICATION.md`.
