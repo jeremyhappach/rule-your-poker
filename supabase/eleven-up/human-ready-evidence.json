@@ -1,0 +1,120 @@
+{
+  "base": "0ecd5ab0cb604331605615cb2487dd4096deb4a7",
+  "branch": "codex/eleven-up-human-timeout",
+  "status": "Local only; unresolved original operation blocks release",
+  "originalMigrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+  "candidateSqlSha256": "7c4fdfaa9b2ec88c7510bce6f960ef24ca1a99336b756db2d07f0a0ac6e49768",
+  "sql": {
+    "database": "eleven_up_timeout_1792601764738",
+    "evidence": [
+      "real Ready pauses without score/advance; canonical resume retains Ready allowance",
+      "real scoring expiry matches unchanged reducer exactly",
+      "fake Ready strategic takeover; snapshot persistence; reclaim clears flags/due time; stale action rejected; scoring clock unchanged",
+      "fake scoring expiry matches unchanged reducer exactly",
+      "late human RPC uses the same Ready timeout boundary in both money modes",
+      "nonmember and anonymous reclaim rejected without state changes",
+      "configured all-human safeguard pauses; reclaim while paused clears flags without resume or clock shift",
+      "sit-out deferred through competition; canonical close excludes player from next-game eligibility and clears transient flags",
+      "all-human inactivity does not freeze active scoring; safeguard applies at next Ready boundary",
+      "existing flagged match installs at a new revision; repeat install does not mutate it again",
+      "36 both-money financial cases, canonical ledger/snapshots, injected failure and duplicate settlement",
+      "independent-connection bot/reclaim races: bot-first stale reclaim rejected; retry succeeds; reclaim-first blocks/skips bot without duplicate action"
+    ]
+  },
+  "browser": {
+    "database": "eleven_up_timeout_1792601764738",
+    "id": "0b8bf4b9-1747-412b-a365-4deda1e0eef2",
+    "layouts": [
+      {
+        "width": 320,
+        "height": 568,
+        "checkbox": {
+          "x": 25.59375,
+          "y": 530,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      },
+      {
+        "width": 375,
+        "height": 667,
+        "checkbox": {
+          "x": 34.390625,
+          "y": 629,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "checkbox": {
+          "x": 36.78125,
+          "y": 806,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      },
+      {
+        "width": 430,
+        "height": 932,
+        "checkbox": {
+          "x": 41.78125,
+          "y": 894,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "checkbox": {
+          "x": 102.453125,
+          "y": 352,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      },
+      {
+        "width": 667,
+        "height": 375,
+        "checkbox": {
+          "x": 74.140625,
+          "y": 337,
+          "width": 16,
+          "height": 16
+        },
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "checks": [
+      "actual SQL takeover",
+      "reconnect persistence",
+      "opponent robot",
+      "checkbox reclaim",
+      "unchanged scoring deadline",
+      "reclaimed reload"
+    ],
+    "limitation": "Desktop browser phone emulation; not physical iPhone acceptance"
+  },
+  "build": {
+    "command": "npm run build",
+    "typecheck": "passed",
+    "applicationTests": 2587,
+    "harnessTests": 241,
+    "bundle": "passed"
+  },
+  "productionActions": [],
+  "migrationRegistered": false,
+  "limitations": [
+    "Local retained schema requires production parity verification during a separately authorized release",
+    "Phone viewport emulation is not physical iPhone acceptance",
+    "Unresolved stalled operation; original package unchanged"
+  ]
+}

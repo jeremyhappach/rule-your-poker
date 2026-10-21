@@ -1,3 +1,13 @@
+# 2026-10-21 — 11 Up Ready inactivity is separate from scoring time
+
+Jeremy selected Ready-only inactivity handling. Real money pauses through the
+canonical owner; fake money takes over through the existing strategic bot policy.
+Active scoring time is never renewed or automatically paused for inactivity or
+disconnect. It expires under the frozen shared rules; standard inactivity and
+all-human handling resumes at the next eligible Ready boundary. No second timer.
+Reclaim changes control only, including when paused. This local implementation
+does not authorize or recover the stalled release. See `ELEVEN_UP_HUMAN_READY.md`.
+
 # 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
 
 Jeremy approved full Arcade and two-player multiplayer with one frozen server

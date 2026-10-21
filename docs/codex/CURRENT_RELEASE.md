@@ -1,3 +1,14 @@
+# 11 Up human Ready timeout — local only, release still blocked
+
+Isolated from preserved `0ecd5ab0`: real-money Ready expiry uses canonical pause;
+fake-money Ready expiry persists autoplay/deferred sit-out and starts the existing
+strategic policy atomically. Reclaim clears flags and invalidates stale bot work
+without clock changes or resume. Scoring expiry and the configured all-human
+safeguard are preserved at their respective gameplay/Ready boundaries.
+Local SQL/race/financial proofs, browser and six phone layouts, 2,587 app tests,
+241 harness tests, TypeScript and build pass. No original package changes, push,
+production action or stalled-request resolution. See [qualification](ELEVEN_UP_HUMAN_READY.md).
+
 # 11 Up bots: production proof passed; migration request failed
 
 The approved corrected rollback-only production proof passed all six financial

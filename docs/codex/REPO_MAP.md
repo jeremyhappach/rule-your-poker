@@ -1,5 +1,10 @@
 # Repository map
 
+11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
+forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
+`dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared
+rules and settlement remain in their original owners. See `ELEVEN_UP_HUMAN_READY.md`.
+
 Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
