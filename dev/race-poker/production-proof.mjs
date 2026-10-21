@@ -1,5 +1,3 @@
-// BLOCKED: production attempt hit 40001 at financial-proof heartbeat seeding.
-// Omit that local-only seed before any authorized production retry; see qualification report.
 // Builds a reviewable rollback-only SQL payload. Never connects to production.
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
@@ -7,12 +5,18 @@ const installed=process.argv.includes('--installed'),ids=Array.from({length:4},r
 const read=n=>readFileSync('supabase/race-poker/'+n+'.sql','utf8');
 const array=values=>'ARRAY['+values.map(id=>"'"+id+"'::uuid").join(',')+']';
 const fixture=(name,users)=>read(name).replace('ARRAY[gen_random_uuid(),gen_random_uuid()]',array(users));
+// Production must use the live scheduler health; only isolated fixtures seed it.
+const heartbeatSeed=" UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed';";
+const financialFixture=fixture('financial-proof',ids.slice(0,2));
+if(financialFixture.split(heartbeatSeed).length!==2)throw Error('Expected exactly one local heartbeat seed');
+const productionFinancial=financialFixture.replace(heartbeatSeed,' -- Use actual scheduler health; do not seed the live heartbeat.');
+if(/(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+private\.game_recovery_dispatch_state/i.test(productionFinancial))throw Error('Production proof must not mutate the heartbeat');
 const sql=`BEGIN ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL lock_timeout='100ms'; SET LOCAL statement_timeout='15s';
 CREATE TEMP TABLE race_existing_balances ON COMMIT DROP AS SELECT id,chips FROM public.players;
 ${installed?'': ['canonical-guard','rules','multiplayer','commands','registration'].map(read).join('\n')}
 ${read('core-proof')}
-${fixture('financial-proof',ids.slice(0,2))}
+${productionFinancial}
 ${fixture('rollback-failure-proof',ids.slice(2))}
 DO $$ BEGIN
  PERFORM pg_temp.race_assert(NOT EXISTS(SELECT 1 FROM pg_temp.race_existing_balances b LEFT JOIN public.players p USING(id) WHERE p.id IS NULL OR p.chips IS DISTINCT FROM b.chips),'all pre-existing player balances untouched');

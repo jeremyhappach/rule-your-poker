@@ -1,9 +1,9 @@
 # Race Poker coordinated production release plan
 
-Status: CLOSED RELEASE AUTHORIZED, STOPPED AT FAILED PROOF. Jeremy approved the
-helper-path correction and closed-admission phases, but no money-mode activation.
-The first rollback-only production proof hit a live-heartbeat serialization
-conflict. See RACE_POKER_QUALIFICATION.md; no retry, install or publication occurred.
+Status: CLOSED RELEASE AUTHORIZED; candidate and installed production proofs PASS.
+Jeremy approved the heartbeat-test correction and retry. Production authority is
+installed with all four persistent flags false. Client publication/closed checks
+remain; neither money-mode activation is authorized.
 The gameplay candidate is e0366f7b9a7e9ef874f5dd4f208ecad27827d27a.
 The catalog baseline is origin/main 44dbd5a7d4de4635b258f731558fe346473d82b9.
 The integration commit containing this document preserves both histories.
@@ -120,6 +120,7 @@ Physical sound, touch ergonomics and Safari behavior are pending until observed.
 Record defects without altering the frozen rule contract or claiming acceptance.
 
 Prepared migration SHA-256: `d0defb62498f619884a40d70f759c0fa4beff1ed5f498e26349b4f20188928c3`.
-Only read-only preflight and one failed rollback-contained candidate proof have
-executed. Correct the production wrapper heartbeat handling before an authorized
-resume; all install/publication/activation stages remain unexecuted.
+Production retry passed after removing the isolated-test heartbeat seed from the
+production wrapper. Supabase installed version 20261021002421 (race_poker_v1).
+Candidate and installed rollback proofs, function parity, worker execution and
+closed configure checks passed. Publication remains; activation is unexecuted.

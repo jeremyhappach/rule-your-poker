@@ -1,9 +1,9 @@
-# Race Poker qualification — local candidate, coordinated release hold
+# Race Poker qualification — production authority passed, admission closed
 
 Approved `race-poker/1` is implemented on `codex/race-poker-v1`, based on
-`a150cd6aecc746143f246186a8b46421d0534355`. This is local qualification, not
-production acceptance. No merge, push, production migration, deployment or
-admission activation is authorized by the current coordinated release hold.
+`a150cd6aecc746143f246186a8b46421d0534355`. The initial qualification below was local; the chronological release evidence at
+the end records later authorization and installed production proofs. This does
+not claim physical-phone acceptance or authorize money-mode activation.
 Unrelated primary-checkout work and the Battle31 local server were preserved.
 
 ## Authority and financial evidence
@@ -202,3 +202,46 @@ No main merge, push, production migration, deployment, admission or money-mode
 activation occurred. The four persistent release flags were never created.
 Activation remains a separate decision only after the closed release and all
 production gates pass, limited to qualified modes and the existing approved cohort.
+
+
+## Authorized heartbeat correction and production retry — 2026-10-21 UTC
+
+Jeremy authorized omission of the isolated-test heartbeat seed, local validation,
+and a retry of the closed release, stopping on any failure and keeping all four
+persistent flags false. The production builder removes exactly one known seed
+and fails if its expected shape changes or any heartbeat DML remains. The local
+financial fixture keeps its seed. No production scheduler-health check changed.
+
+The corrected installed wrapper passed locally at 00:23:47 UTC in both money
+modes; the heartbeat row was byte-for-byte unchanged across the proof. The local
+database retained seven pre-existing qualification results; exact new synthetic
+users/profiles/players/snapshots were zero after rollback.
+
+Before production writes, all five canonical guard hashes matched; live recovery
+was healthy. Main and the latest READY production deployment remained
+44dbd5a7d4de4635b258f731558fe346473d82b9. The only other active game chat was
+read-only release planning. The candidate production proof then passed: winner
+105/95, draw 100/100, injected failure rollback 100/100, existing balance assertion
+passed, no residual synthetic users/profiles/players/snapshots, no Race games or
+results and no injection trigger.
+
+The unchanged prepared migration SHA-256 remains
+`d0defb62498f619884a40d70f759c0fa4beff1ed5f498e26349b4f20188928c3`.
+Supabase installed it as version `20261021002421`, name `race_poker_v1` (the local
+source filename retains `20261020190908_race_poker_v1.sql`). All 28 production
+Race/canonical function hashes match the isolated qualification authority. The
+local-only notification helper is not a production function. Private Race tables
+have RLS and deny anon/authenticated SELECT; public revisions permit authenticated
+SELECT only through participant-membership RLS. Realtime publication is present.
+Cron job 49 runs every second with a three-second statement timeout; observed
+runs succeeded.
+
+The full installed-authority rollback proof passed again in both money modes,
+with the same balances, failure containment and zero residuals. A subsequent
+transaction under the authenticated role verified configure returns
+race_poker:release_closed. All matches, receipts, history, revisions, Race games
+and results are zero. Persistent enabled, admission_enabled, fake_qualified and
+real_qualified are all false. No cohort/profile access was expanded.
+
+Client publication and final closed-admission browser checks are the next stage.
+No activation or physical-phone acceptance is claimed.

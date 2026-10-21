@@ -1,6 +1,6 @@
-# Race Poker / 1 — 2026-10-20 — closed-admission release blocked at production proof
+# Race Poker / 1 — 2026-10-20 — production authority qualified, admission closed
 
-Approved multiplayer-only adaptation is isolated on `codex/race-poker-v1`. Local core, both-money financial/concurrency/rollback, bot recovery, browser financial presentation and landscape proofs pass. The isolated branch now integrates catalog main 44dbd5a7d; it has not been merged into main. Production remains unchanged; Race Poker is not deployed or admitted. See `RACE_POKER_RULES.md` and `RACE_POKER_QUALIFICATION.md` for the exact remaining gates. Production gate: FAIL (rollback-only proof hit SQLSTATE 40001 while seeding the live recovery heartbeat; no persistent changes). The approved push-helper path is corrected locally. No migration, main merge, push or deployment occurred. The planned sequence is in `RACE_POKER_RELEASE_PLAN.md`.
+Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false; client publication and closed-admission verification follow. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 
