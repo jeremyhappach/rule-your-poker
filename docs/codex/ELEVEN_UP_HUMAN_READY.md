@@ -1,4 +1,39 @@
-# 11 Up human Ready timeout — local qualification, no release
+# 11 Up human Ready timeout — qualification and combined release
+
+## Authorized production release, October 21
+
+Jeremy directly approved the combined rollout from `33e7a1cc90af69d6bbdd0027733bd888ce6dab74`.
+Race's production `fe71aa33b596887e7647350c420162a5b66a8c80` is the preserved
+integration baseline. Fresh checks found no 11 Up installation or unfinished
+matches. The original interrupted task remained idle and no competing release
+worker was active. No original task or pending request was restarted.
+
+Hosted migration history assigned `20261021185314` to `eleven_up_bots` and
+`20261021185320` to `eleven_up_human_ready`. Their stored statements exactly equal
+the qualified local files `20261021002901` and `20261021181947`, respectively.
+This is a documented local/hosted version mapping, not permission to replay them.
+Both ordered installations succeeded, with admission held closed throughout.
+
+Candidate and installed production rollback proofs pass six financial cases,
+both Ready modes, fake strategic first move, control reclaim, active-clock
+inactivity exclusion and false/none all-human Ready pause. They assert existing
+balances, Race definitions/admission and global defaults are unchanged. Fixture
+identities do not persist. Installed authority matches 23 local function definitions
+(line endings normalized); the legacy two-argument pause overload is absent from
+the retained local database but exactly matches its production preflight text.
+Migration statements match exact bytes, not normalized hashes. Recovery runs
+succeed, and reclaim permissions deny anonymous callers. 55 combined client tests,
+TypeScript and Vite build pass; the client geometry is unchanged from six-layout
+browser qualification. Final production SHA and restored admission are verified
+in the delivery report after publication. Physical-phone/owner smoke remains open.
+
+`dev/eleven-up/combined-production-proof.mjs` generates candidate/installed proof
+payloads. Installed qualification temporarily enables admission only inside its
+rolled-back transaction; concurrent sessions continue seeing the committed closed
+gate. Never execute a proof without its enclosing rollback transaction.
+
+The earlier local-only phase and release requirements below remain historical
+qualification context; this explicit approval supersedes the local-only limit.
 
 Base: `0ecd5ab0cb604331605615cb2487dd4096deb4a7`.
 Branch: `codex/eleven-up-human-timeout`.

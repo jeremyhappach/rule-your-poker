@@ -1,4 +1,20 @@
-# 11 Up human Ready timeout — forward package qualified locally
+# 11 Up combined bots / Ready controls — installed and qualified for publication
+
+Jeremy directly authorized the combined rollout after Race Poker. Reconciled
+with Race production `fe71aa33b596887e7647350c420162a5b66a8c80`, preserving its
+definitions and fake-only admission. Exact original and forward artifacts are
+installed as hosted versions `20261021185314` and `20261021185320` respectively.
+Candidate and installed production rollback proofs pass: six financial cases,
+Ready money-mode controls, reclaim, all-human safeguard, unchanged balances,
+Race authority and defaults, with no residual fixture identities. All 23 relevant
+installed definitions match qualification; the unchanged legacy pause overload
+matches its production baseline. One-second recovery succeeds. 55 reconciled
+client tests, TypeScript and Vite build pass. New 11 Up admission is closed until
+matching production SHA verification, then only its prior availability is restored.
+See `ELEVEN_UP_HUMAN_READY.md` and `supabase/eleven-up/combined-release-evidence.json`.
+Owner multiplayer and physical-phone smoke remain outstanding.
+
+## Earlier local qualification
 
 Isolated from preserved `0ecd5ab0`: real-money Ready expiry uses canonical pause;
 fake-money Ready expiry persists autoplay/deferred sit-out and starts the existing
@@ -39,6 +55,23 @@ verification confirmed the original owners and zero bot migration entries.
 Production retry and publication remain stopped pending review of this failed gate.
 The isolated branch now includes main `88c798396bd0202551e36dcf4cd9efa39c9ef555`;
 combined Race Poker/11 Up database proofs and 131 focused client tests pass.
+
+# Race Poker / 2 timeout controls — 2026-10-21 — installed and qualified for publication
+
+Opponent choices dim; fake-money human timeout starts strategic Auto-play and
+next-dealer-game sit-out; unchecking restores control and clears that intent.
+Real-money human timeout uses canonical pause. New admissions will freeze v2;
+existing v1 rules, scoring and financial ownership remain intact.
+Local SQL/financial/concurrency, focused tests, 50 layouts, TypeScript and build
+pass. Jeremy authorized the first coordinated release slot. Migration
+`20261021183159` (`race_poker_timeout_controls_v2`) is installed; candidate and
+installed production rollback proofs passed both money modes, preserved existing
+balances/v1 history and left zero fixtures. Recovery and function parity pass.
+New admission is briefly closed during matching client publication; restore the
+existing fake-only availability after exact deployment verification. Real money
+stays closed. Checkpoint tag: `race-poker-timeout-2026-10-21`; the delivery report
+records its exact production SHA. Owner repeat smoke remains pending. See
+[contract, evidence and release boundary](RACE_POKER_TIMEOUT_CONTROLS.md).
 
 # Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
 

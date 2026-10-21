@@ -21,7 +21,7 @@ export function useRacePoker(id:string,userId:string,transport:RacePokerTranspor
    try{accept(await transport.send(command),token);sessionStorage.removeItem(key);}
    catch(e){
     // Retire only definitive rejection; uncertain delivery retains UUID/payload.
-    if(/stale|inactive|phase|illegal|invalid_command|invalid_action|deadline|replay_conflict|database_rejected/.test((e as Error).message)){
+    if(/stale|inactive|phase|illegal|invalid_command|invalid_action|deadline|replay_conflict|database_rejected|autoplay_active|participant_required/.test((e as Error).message)){
      sessionStorage.removeItem(key);accept(await transport.load(),token);
     }else throw e;
    }
@@ -50,7 +50,9 @@ export function useRacePoker(id:string,userId:string,transport:RacePokerTranspor
   return()=>clearTimeout(timer);
  },[snapshot?.scope,snapshot?.board.deadline,snapshot?.paused,snapshot?.finished,resolve]);
  const act=async(intent:RacePokerIntent)=>{
-  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||!racePokerPlayWindow(v.board,at).playable)return;
+  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||flight.current||sessionStorage.getItem(key)||document.hidden||!navigator.onLine)return;
+  if(intent.type==='choose'&&(!v.canAct||v.paused||!racePokerPlayWindow(v.board,at).playable))return;
+  if(intent.type==='autoplay'&&(v.board.rules.version!=='race-poker/2'||v.settled||v.finished||!v.players.some(p=>p.id===v.viewerId)))return;
   const command:RacePokerCommand={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };
