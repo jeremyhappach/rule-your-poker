@@ -1,5 +1,28 @@
 # Repository map
 
+Battle 31 reconciliation: `registration.sql` performs guarded additive shared
+authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
+release locally; `released-games-proof.mjs` verifies Race Poker and 11 Up against
+the combined package. See `BATTLE31_RECONCILIATION.md`.
+
+Battle 31 timeout/control: `supabase/battle31/commands.sql` bridges canonical pause
+and automatic play; `recovery.sql` dispatches strategic controlled turns;
+`multiplayer.sql` projects control flags. `Battle31View.tsx` owns checkbox/robot
+presentation. Local authority/browser proofs: `dev/battle31/timeout-lifecycle.mjs`
+and `timeout-browser.mjs`; see `BATTLE31_TIMEOUT_QUALIFICATION.md`.
+
+11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
+forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
+`dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared
+rules and settlement remain in their original owners. See `ELEVEN_UP_HUMAN_READY.md`.
+
+Race Poker: `supabase/race-poker/` owns rules, commands, settlement and recovery.
+`v2.sql` adds canonical inactivity controls while preserving v1 matches; its
+guarded migration remains local/unapplied. `src/components/racePoker/`,
+`src/hooks/useRacePoker.ts` and `src/lib/racePoker/` own presentation and redacted
+transport. `dev/race-poker/v2-proof.mjs` and `v2-concurrency.mjs` qualify controls
+against isolated local PostgreSQL. See `RACE_POKER_TIMEOUT_CONTROLS.md`.
+
 Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
@@ -1102,12 +1125,16 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
 
+## Battle 31 local candidate
 
-## Race Poker local candidate — 2026-10-20
+Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
+`src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
+`dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
 
-Race Poker: supabase/race-poker owns SQL rules, commands, canonical multiplayer adapter, registration guards and proofs. src/lib/racePoker owns public model/transport/audio; src/hooks/useRacePoker.ts owns client reconciliation; src/components/racePoker owns canonical fullscreen presentation and financial bridging. dev/race-poker contains local qualification utilities. Current-main catalog integration is documented in RACE_POKER_QUALIFICATION.md.
 
-Race Poker catalog integration: `src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the unexecuted production sequence.
+## Race Poker catalog integration
+
+`src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the release sequence.
 
 ## Six-Card Golf local candidate — 2026-10-21
 
@@ -1124,3 +1151,20 @@ controls; `src/hooks/useGolf.ts` reconciles authoritative revisions/receipts.
 `dev/six-card-golf/` contains local browser/SQL/race tools and separate offline
 production proof/evidence builders. The production qualification plan records
 the exact pinned hash, eleven rollback units and remaining live-service gates.
+
+Golf `registration.sql` makes guarded additive changes to the current shared
+ante/stake owners. `dev/six-card-golf/reconciliation-proof.mjs` compares existing
+definitions/permissions and runs released-game proofs against combined local
+authority. `SIX_CARD_GOLF_RECONCILIATION.md` records baseline and evidence.
+
+## Battle 31 qualification tools
+
+Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
+`package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
+atomic migration: `supabase/battle31/release.sql`; evidence/remaining gates:
+`docs/codex/BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
+shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
+controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
+preflight tests: `dev/battle31/hosted-qualification.test.mjs`.

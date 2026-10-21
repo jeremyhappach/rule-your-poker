@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-21T20:06:35.067Z",
+  "database": "battle31_package_1792613134582",
+  "passed": true,
+  "checks": [
+    "real timeout pauses without action, flags, losses or chips; reconnect, repeated worker and authorized full-clock resume",
+    "fake timeout enables canonical autoplay/deferred sit-out; private projection remains masked; strategic bot advances",
+    "current-turn reclaim clears both flags, resets human deadline, rejects stale/fresh unauthorized bot commands, and replay is idempotent",
+    "shared canonical control changes advance the Battle revision",
+    "off-turn reclaim preserves opponent deadline; paused reclaim does not resume the game",
+    "independent-connection reclaim/bot race serializes; reclaimed control persists",
+    "deferred sit-out waits for match boundary; unreclaimed player sits out, reclaimed player stays eligible; flags clear exactly once"
+  ]
+}

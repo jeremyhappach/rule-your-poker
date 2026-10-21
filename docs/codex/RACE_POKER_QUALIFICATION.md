@@ -1,5 +1,11 @@
 # Race Poker qualification — production published, admission closed
 
+Later status: production v1 opened for fake-money smoke in a separately approved
+flag-only step. The v2 timeout correction is local only; its exact rules,
+qualification, limitations and unexecuted release steps are recorded in
+[Race Poker timeout controls](RACE_POKER_TIMEOUT_CONTROLS.md). Earlier closed
+release assertions below describe those dated checkpoints.
+
 Approved `race-poker/1` is implemented on `codex/race-poker-v1`, based on
 `a150cd6aecc746143f246186a8b46421d0534355`. The initial qualification below was local; the chronological release evidence at
 the end records later authorization and installed production proofs. This does

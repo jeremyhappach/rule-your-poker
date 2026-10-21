@@ -46,3 +46,9 @@ it('opens the approved frozen help from Rules/Info without requesting Arcade adm
 it('does not silently substitute v1 help for an unknown historical version',async()=>{
  render(<RulesContent game="race-poker" version="race-poker/unknown"/>);await screen.findByRole('alert');expect(screen.queryByText(/Approved Ptown adaptation/)).toBeNull();
 });
+it('preserves legacy timeout help while current rules describe canonical takeover',async()=>{
+ const ui=render(<RulesContent game="race-poker" version="race-poker/1"/>);
+ await screen.findByText(/An incomplete hand earns zero/);expect(screen.queryByText(/timeout turns on Auto-play/)).toBeNull();
+ ui.rerender(<RulesContent game="race-poker" version="race-poker/2"/>);
+ await screen.findByText(/timeout turns on Auto-play/);expect(screen.queryByText(/An incomplete hand earns zero/)).toBeNull();
+});

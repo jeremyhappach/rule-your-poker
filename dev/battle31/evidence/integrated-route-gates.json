@@ -1,0 +1,18 @@
+{
+  "packageSHA256": "b0c5610a3eef4b25ca2e0323ad4f694bff7ae11b8b6c5e40fd6396aafc659ff2",
+  "database": "battle31_package_1792593672768",
+  "runs": [
+    {
+      "realMoney": false,
+      "fakeQualified": true,
+      "realQualified": false,
+      "passed": true
+    },
+    {
+      "realMoney": true,
+      "fakeQualified": false,
+      "realQualified": true,
+      "passed": true
+    }
+  ]
+}

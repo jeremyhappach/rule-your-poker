@@ -27,3 +27,8 @@ it('does not play a victory fanfare for an exact draw',()=>{
  const {rerender}=renderHook(({v})=>useRacePokerAudio(v,'user',0,0,true,'','cards',false),{initialProps:{v:frame(3,'stage_complete')}});
  rerender({v:{...frame(4,'complete'),terminal:{...frame(4,'complete').terminal!,winnerIds:['p','other']}}});expect(request).not.toHaveBeenCalled();
 });
+it('does not treat an autoplay control revision as a selected card',()=>{
+ const {rerender}=renderHook(({v})=>useRacePokerAudio(v,'user',0,20,true,'','cards',false),{initialProps:{v:frame(2)}});
+ rerender({v:frame(3)});expect(request).not.toHaveBeenCalled();
+ rerender({v:{...frame(4),board:{...frame(4).board,hand:[0,1]}}});expect(request).toHaveBeenCalledTimes(1);
+});

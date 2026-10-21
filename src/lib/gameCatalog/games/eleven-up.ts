@@ -15,7 +15,7 @@ export default {
     "max": 7,
     "selection": "active-roster"
   },
-  "bots": "unsupported",
+  "bots": "fake-money-only",
   "availability": "eleven-up",
   "development": "integrated",
   "ownerSmoke": "pending",

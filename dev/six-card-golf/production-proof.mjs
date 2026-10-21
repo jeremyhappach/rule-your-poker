@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 
 export const migrationPath='supabase/migrations/20261021011905_six_card_golf_v1.sql';
-export const migrationHash='5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054';
+export const migrationHash='95c20197069e1139da8ea7b1b1d786fb5672f40e02573ab2be9189bc654be41e';
 const names=['core-proof','proof','financial-proof','recovery-proof','mixed-proof','qualification-proof'];
 const seed="UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed';";
 const expectedSeeds={'core-proof':0,proof:1,'financial-proof':1,'recovery-proof':0,'mixed-proof':2,'qualification-proof':0};

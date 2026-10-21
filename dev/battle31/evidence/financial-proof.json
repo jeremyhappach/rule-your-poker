@@ -1,0 +1,152 @@
+{
+  "passed": true,
+  "residual": {
+    "games": 0,
+    "batches": 0,
+    "players": 0,
+    "results": 0,
+    "profiles": 0,
+    "snapshots": 0
+  },
+  "cases": [
+    {
+      "money": false,
+      "outcome": "winner",
+      "chips": [
+        {
+          "id": "0d418bae-7b63-4bc8-9900-e99e3f7f0582",
+          "chips": 95
+        },
+        {
+          "id": "4b9bf4c4-00d0-4ca3-8f37-b67c810db72d",
+          "chips": 105
+        }
+      ],
+      "batches": [
+        {
+          "transfers": [
+            {
+              "id": "2da1b177-0954-49c4-a951-017ad9e089bb:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "4b9bf4c4-00d0-4ca3-8f37-b67c810db72d"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "0d418bae-7b63-4bc8-9900-e99e3f7f0582"
+              },
+              "amount": 5
+            }
+          ],
+          "unmatched_deltas": {}
+        }
+      ],
+      "passed": true
+    },
+    {
+      "money": false,
+      "outcome": "tie",
+      "chips": [
+        {
+          "id": "326933ed-6df5-4f3b-bf2a-f61793b1f4ea",
+          "chips": 100
+        },
+        {
+          "id": "c85dfa32-17b3-4120-b72f-32768db116e6",
+          "chips": 100
+        }
+      ],
+      "batches": [],
+      "passed": true
+    },
+    {
+      "money": false,
+      "outcome": "abort",
+      "chips": [
+        {
+          "id": "45e4200f-1eb7-444d-a7ac-9955fc7bcfea",
+          "chips": 100
+        },
+        {
+          "id": "bdbdcb95-9cbc-435c-a7cc-6e870b5f6ebb",
+          "chips": 100
+        }
+      ],
+      "batches": [],
+      "passed": true
+    },
+    {
+      "money": true,
+      "outcome": "winner",
+      "chips": [
+        {
+          "id": "b955437c-0701-4454-95f8-c58435dbb744",
+          "chips": 95
+        },
+        {
+          "id": "ddbe9076-0ec3-47ae-a36f-d68659c45008",
+          "chips": 105
+        }
+      ],
+      "batches": [
+        {
+          "transfers": [
+            {
+              "id": "7f62ee3e-3ef0-4b78-b05b-8a5ca4927bdf:1:1",
+              "to": {
+                "kind": "player",
+                "playerId": "ddbe9076-0ec3-47ae-a36f-d68659c45008"
+              },
+              "from": {
+                "kind": "player",
+                "playerId": "b955437c-0701-4454-95f8-c58435dbb744"
+              },
+              "amount": 5
+            }
+          ],
+          "unmatched_deltas": {}
+        }
+      ],
+      "passed": true
+    },
+    {
+      "money": true,
+      "outcome": "tie",
+      "chips": [
+        {
+          "id": "671d383f-4389-44f6-ade8-79f27966ba10",
+          "chips": 100
+        },
+        {
+          "id": "ad6729f2-0d2c-47ca-a8e2-d325204b14ab",
+          "chips": 100
+        }
+      ],
+      "batches": [],
+      "passed": true
+    },
+    {
+      "money": true,
+      "outcome": "abort",
+      "chips": [
+        {
+          "id": "4293ac60-e793-433f-87f3-9ba9c65b22c8",
+          "chips": 100
+        },
+        {
+          "id": "5dfabee4-3727-4fef-ada0-81b6a2b589f1",
+          "chips": 100
+        }
+      ],
+      "batches": [],
+      "passed": true
+    }
+  ],
+  "moneyModeAdmission": true,
+  "bootstrapGate": true,
+  "acceptedOfferStartsAfterNewAdmissionCloses": true,
+  "admittedMatchesContinueWhenAdmissionCloses": true,
+  "existingBalancesPreserved": true,
+  "releaseGatesPreserved": true,
+  "fixtureUsersRemoved": true
+}

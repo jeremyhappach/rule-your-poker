@@ -479,3 +479,13 @@ proof units are pinned in the production qualification plan. No production write
 grant, main integration, push, deployment or activation occurred in this follow-up.
 Physical iPhone acceptance and live production service/race qualification remain
 pending. No scoring, prolonged-play, match stake or settlement rule changed.
+
+## Current-main reconciliation — October 21, 2026
+
+The isolated Golf branch now incorporates main
+`6b15f4eb060df319df13d576948c343920a23b21`. Shared registration is additive and
+the three stale guards match read-only deployed evidence. Exact migration bytes,
+combined authority/financial/control checks, client/build/browser evidence and
+reserved two-account fake-money smoke scope are recorded in
+[SIX_CARD_GOLF_RECONCILIATION.md](SIX_CARD_GOLF_RECONCILIATION.md).
+This pass makes no production writes, main integration, push, deployment or grants.

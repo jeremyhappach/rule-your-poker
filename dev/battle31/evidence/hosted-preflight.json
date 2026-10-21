@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "cases": [
+    "accepts three successful recent executions and actual healthy dispatcher",
+    "metadata stub rejected",
+    "missing job rejected",
+    "stale cron rejected",
+    "failed cron rejected",
+    "stale dispatcher rejected",
+    "partial dispatcher rejected",
+    "absent package refused before fixture writes"
+  ],
+  "readOnlyPreflightQueries": 22,
+  "hostedExecutionPerformed": false
+}

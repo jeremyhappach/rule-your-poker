@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-21T20:09:12.481Z",
+  "database": "battle31_package_1792613350794",
+  "main": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
+  "passed": true,
+  "cases": [
+    "missing publication refused",
+    "canonical drift refused",
+    "obsolete pre-11-Up-bot shared owner refused",
+    "partial installation refused",
+    "scheduler collision rolls back all game objects",
+    "late registration failure is atomic",
+    "busy shared table fails without waiting",
+    "fresh atomic install against CRLF shared definitions",
+    "exact repeat no-op twice",
+    "CRLF-only installed definition repeat accepted",
+    "substantive body drift refused",
+    "bare CR is not normalized away",
+    "spaces are not normalized away",
+    "installed function drift refused",
+    "installed ACL drift refused",
+    "installed schema drift refused",
+    "scheduler drift refused",
+    "publication drift refused",
+    "repeat preserves existing gates",
+    "released Race Poker v2, 11 Up bots/Ready, shared controls, ACLs and defaults preserved exactly"
+  ],
+  "limitations": [
+    "cron.schedule is a local metadata stub; no actual scheduler dispatch",
+    "publication catalog tested with wal_level=replica; no logical replication transport"
+  ]
+}

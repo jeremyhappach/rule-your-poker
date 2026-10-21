@@ -1,0 +1,26 @@
+{
+  "candidate": "19f717d31900bd82408545ada16e91a313029f9c",
+  "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
+  "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+  "rollbackProofSha256": "a140fc391375962f9c6860e138337f683c1dbcdaac9e9f5e073b70e151fb7283",
+  "productionCandidateProof": {
+    "passed": true,
+    "financial_cases": 6,
+    "existing_balances_unchanged": true,
+    "residual_users": 0,
+    "residual_profiles": 0,
+    "residual_players": 0,
+    "residual_snapshots": 0
+  },
+  "clientChecks": {"focusedTests": 107, "typecheck": "passed", "viteBuild": "passed"},
+  "applyMigration": {"attempted": true, "error": "McpServerError: Invalid or expired requestState", "errorCode": "INVALID_ARGUMENT", "reason": "invalid_request_state", "retried": false},
+  "readOnlyFollowup": {
+    "migrationEntries": 0,
+    "botPolicyInstalled": false,
+    "configureMd5": "5223ae79e005c0217b568be8f199a412",
+    "consentMd5": "945999601e8e3f61301292631f14d513",
+    "recoveryMd5": "04bf0a7fc02b168d20e45179990f0deb",
+    "result": "Original production owners unchanged; migration not installed"
+  },
+  "status": "Stopped at migration tool failure; no main integration, push or client publication"
+}

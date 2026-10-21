@@ -37,6 +37,9 @@
 .eleven-controls button,.eleven-take-score,.eleven-finish,.eleven-error button{pointer-events:auto;touch-action:manipulation;border:1px solid #f2e1a266;background:#113b2c;border-radius:.6rem;padding:.5rem .7rem;font-weight:700;min-height:2.75rem}
 .eleven-controls button:disabled,.eleven-take-score:disabled{opacity:.45}.eleven-controls .eleven-draw{padding:0;border:0;background:none;opacity:1;width:max(2.75rem,min(15cqw,15cqh));height:max(2.75rem,min(15cqw,15cqh));border-radius:50%}
 .eleven-current{grid-column:2;display:grid;place-items:center}
+.eleven-autoplay{position:absolute;left:2%;bottom:0;width:28%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.25rem;min-height:2.75rem;font-size:clamp(.65rem,2.7cqw,.85rem);pointer-events:auto;cursor:pointer;z-index:5}
+.eleven-autoplay input{width:1rem;height:1rem;accent-color:#f6d766}
+.eleven-autoplay-icon{display:inline-block;width:1em;height:1em;vertical-align:middle;color:#f6d766}
 .eleven-pass{grid-column:3;justify-self:start;position:relative;min-width:4.2rem;font-size:.9rem}
 .eleven-stock-count{position:absolute;top:0;left:0;transform:translate(-35%,-40%);display:grid;place-items:center;min-width:1.8em;height:1.8em;padding:0 .2em;border:2px solid #eed58a;border-radius:50%;background:#113f48;color:#fff;font-size:.8rem;font-weight:800;font-variant-numeric:tabular-nums;pointer-events:none}
 .eleven-take-score{grid-column:3;justify-self:end;max-width:100%;font-size:clamp(.7rem,2.8cqw,.85rem);padding:.4rem .3rem;white-space:nowrap}

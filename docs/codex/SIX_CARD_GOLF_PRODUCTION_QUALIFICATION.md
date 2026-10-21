@@ -6,17 +6,19 @@ by this preparation task. The game and financial contract are unchanged.
 
 ## Pinned candidate and production observations
 
-The candidate incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c`,
-preserving its Box Drop numeral correction. The release-note conflict was
-additive and both workstreams remain documented.
+The revised candidate incorporates main
+`6b15f4eb060df319df13d576948c343920a23b21`, preserving released Battle 31,
+Race Poker v2, 11 Up bots/Ready and other games. See the exact local evidence in
+[reconciliation](SIX_CARD_GOLF_RECONCILIATION.md).
 
 Migration: `supabase/migrations/20261021011905_six_card_golf_v1.sql`.
 Exact SHA-256:
-`5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054`.
+`95c20197069e1139da8ea7b1b1d786fb5672f40e02573ab2be9189bc654be41e`.
 The still-unpublished migration now includes the approved exact-account/session
 qualification gate and canonical autoplay control projection/reclaim. Its eight
 shared-authority guards include `public.set_automatic_play`; this additional
-guard is locally verified and still requires a fresh production comparison.
+guard is locally verified. Read-only production inspection at 20:58 UTC on
+October 21 matched all eight revised preimages; recheck at eventual execution.
 
 The preceding read-only inspection on October 21, about 08:15 CDT, found all
 seven shared-function guard hashes matching production, pg_cron 1.6.4, logical
@@ -148,11 +150,22 @@ UTC expiry from the manifest, require it to be in the future, and verify the
 returned rows before commit. Do not create accounts or change profile eligibility.
 No production grants have been written by this local task.
 
+The later smoke scope is now resolved: Hap
+(`d7dc1928-3727-4351-b0ff-0e80c81c2953`) and Happach Gmail
+(`fb835d1f-db2f-4de4-84e2-ce0074512e46`), with bots, in exact fake-money sessions.
+Both identities were verified against active admin/Auth records. Each grant
+expires 24 hours after actual enablement, with that timestamp recorded in the
+reviewed manifest. The window has not started. Verify `real_money=false` and
+canonical money-mode protections before admitting the session. Other accounts
+and real-money admission remain closed; do not turn on general Golf flags.
+
 Then use this order:
 
 1. Recheck current main/deployed definitions, financial constraints, grants and
    migration history; pin the final application and complete SQL package.
-   Preserve the Race Poker source/applied-version mapping. Never issue an
+   Preserve Battle 31 source `20261021202023` / hosted `20261021202045` and
+   Race Poker/11 Up source-to-hosted-version mappings. Never reapply Battle 31.
+   Never issue an
    unrestricted pending-migration push or history repair.
 2. Pass the complete production candidate rollback proofs in both modes, then
    install the exact approved package with general admission closed. Publish the
@@ -160,8 +173,9 @@ Then use this order:
 3. Pass installed rollback proofs and verify exact migration history, private
    projection permissions, revision publication and recovery job/command.
 4. Apply only the reviewed exact-session/account expiry grants described above.
-   Start with two humans
-   and fake money through real setup and Ante Up. Exercise whole turns, private
+   Use the approved owner accounts with bots and fake money through real setup
+   and Ante Up. Required multi-client checks must stay within those accounts;
+   never add another tester implicitly. Exercise whole turns, private
    pending draws, lost responses, reconnects, prolonged-play queue, nine holes,
    exact balance/ledger/result/snapshot agreement, Run Back fresh consent,
    connected Session Ended and cold routing. Then cover mixed bots and 3/4 seats.
@@ -186,8 +200,9 @@ Then use this order:
    sessions. Cleanup must use the established authorized synthetic-session
    mechanism, prove no orphaned records and retain audit evidence; if cleanup
    is not available, retain the isolated test records and report that explicitly.
-8. After every applicable gate passes, activate only the explicitly authorized
-   active-account scope, preserving stricter platform money-mode restrictions.
+8. After every applicable gate passes and the revised package is released under
+   authorization, enable only the two-account, exact-session, 24-hour fake-money
+   scope above. General and real-money admission remain closed.
    Jeremy then performs production iPhone portrait/landscape smoke. Revoke the
    temporary admission grant; do not strand in-progress qualification matches.
 
@@ -199,10 +214,11 @@ forward correction. No historical score or balance repair is authorized.
 
 ## Exact remaining decision and evidence limits
 
-The scoped gate implementation is complete locally. The remaining release
-decision is authorization for the production phase with the exact existing tester
-accounts, test sessions and fixed expiry recorded in a reviewed manifest. Do not
-substitute global admission for scoped qualification.
+The scoped gate and current-main reconciliation are complete locally. This pass
+requires return of the revised package before release. The two accounts are
+selected, but exact fake-money session identity and enablement/expiry timestamps
+must be recorded during the later authorized phase. Do not substitute global
+admission for scoped qualification. Recheck completion of preceding releases.
 
 Eleven candidate units are generated; none has run on production. Positive live
 Auth/PostgREST/Realtime and actual pg_cron qualification remain unexecuted. The

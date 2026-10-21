@@ -5,9 +5,9 @@ import {candidate,connect,localContext,installLocalReference} from './database.m
 // Previously inspected canonical authority, checked again against the isolated
 // reference. Any drift at eventual installation aborts before shared replacement.
 export const expected={
- 'private.megatouch_begin(uuid,uuid)':'2a7cc30da1908e929e54791b4d5766b0',
- 'private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)':'f3582431c00322facc1daaa81c20b682',
- 'private.megatouch_frozen_stake()':'b42707fd97a6547a849a801190da8ac1',
+ 'private.megatouch_begin(uuid,uuid)':'26754906038b83e7ca739196957376d0',
+ 'private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)':'7b6ca8feaa35c1fcce8b00491783e9d4',
+ 'private.megatouch_frozen_stake()':'66207ae4a79447ec634f8b3afaff9512',
  'public.settle_gameplay_chip_transfers(uuid,jsonb,text)':'86c0feb55524f14ab9f58a06cdee2ef6',
  'public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)':'c633a318c7f2605104c92e03d3b3b09a',
  'public.set_game_paused(uuid,boolean,uuid,bigint)':'1fa2220c33734d1cf14c11f3eaef432b',

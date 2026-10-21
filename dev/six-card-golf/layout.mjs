@@ -32,7 +32,7 @@ try{for(const n of [2,3,4]){
    await p.locator('[data-public-seat-tableau]').first().click();await p.locator('.golf-inspect').waitFor();
    assert.equal(await p.locator('.golf-inspect').evaluate(e=>e.children.length),6);
    if(width===568)await p.screenshot({path:'qualification.local/six-card-golf/inspect-'+n+'-'+viewer+'.png'});
-   await p.keyboard.press('Escape');await p.locator('.golf-inspect').waitFor({state:'hidden'});
+   await p.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await p.locator('.golf-inspect').waitFor({state:'hidden'});
   }await p.close();
  }}}catch(e){console.error(e);process.exitCode=1;}finally{writeFileSync('qualification.local/six-card-golf/layout.json',JSON.stringify({cases,errors},null,2));await browser.close();}
 assert.deepEqual(errors,[]);console.log('Rendered layout cases:',cases.length);

@@ -1,5 +1,11 @@
 # Race Poker / 1 — approved Ptown adaptation
 
+V1 below remains frozen. The locally implemented v2 inactivity amendment is
+specified in [Race Poker timeout controls](RACE_POKER_TIMEOUT_CONTROLS.md):
+fake-money autoplay/sit-out, real-money canonical pause, immediate reclaim and
+preserved committed cards. All other rules below remain unchanged. V2 is not
+deployed; historical Merit findings remain separate from Ptown adaptations.
+
 Jeremy approved implementation on 2026-10-20, including 30-second hands and no replacement after selection five. This is the Ptown contract, not a claim that unresolved historical Merit rules have been recovered.
 
 Multiplayer only: exactly two admitted participants, at least one human, two horses. Canonical setup offers an editable integer stake; canonical participant consent precedes the frozen roster, rules, stake and money mode. Race points never substitute for canonical chips.

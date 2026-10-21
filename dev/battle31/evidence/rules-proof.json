@@ -1,0 +1,135 @@
+{
+  "boundaries": [
+    "PASS 5 respects final response",
+    "PASS 6 respects final response",
+    "PASS 7 respects final response",
+    "PASS 8 respects final response",
+    "eight all-three swaps conserve cards and terminate",
+    "timeout at 8",
+    "31 on 8 overrides cutoff",
+    "simultaneous initial 31 draw",
+    "AAA beats initial 31",
+    "round 12 tied losses draw"
+  ],
+  "bot": [
+    {
+      "action": "pass",
+      "ms": 30.995000000000005
+    },
+    {
+      "action": "swap",
+      "ms": 29.400499999999994
+    },
+    {
+      "action": "swap",
+      "ms": 27.832099999999997
+    },
+    {
+      "action": "swap",
+      "ms": 28.349999999999994
+    },
+    {
+      "action": "take_pot",
+      "ms": 30.446000000000026
+    },
+    {
+      "action": "take_pot",
+      "ms": 31.8562
+    },
+    {
+      "action": "swap",
+      "ms": 31.78539999999998
+    },
+    {
+      "action": "take_pot",
+      "ms": 31.17810000000003
+    },
+    {
+      "action": "take_pot",
+      "ms": 32.57570000000004
+    },
+    {
+      "action": "take_pot",
+      "ms": 31.72709999999995
+    },
+    {
+      "action": "take_pot",
+      "ms": 34.739400000000046
+    },
+    {
+      "action": "take_pot",
+      "ms": 31.015400000000056
+    }
+  ],
+  "simulation": [
+    {
+      "policies": [
+        "greedy",
+        "greedy"
+      ],
+      "pairs": 100,
+      "matches": 200,
+      "wins": [
+        100,
+        100
+      ],
+      "seatWins": [
+        94,
+        106
+      ],
+      "draws": 0,
+      "rounds": 1298,
+      "actions": 4706,
+      "forced": 2,
+      "caps": 0,
+      "meanRounds": 6.49,
+      "meanActions": 23.53
+    },
+    {
+      "policies": [
+        "greedy",
+        "pass"
+      ],
+      "pairs": 100,
+      "matches": 200,
+      "wins": [
+        199,
+        1
+      ],
+      "seatWins": [
+        101,
+        99
+      ],
+      "draws": 0,
+      "rounds": 917,
+      "actions": 2158,
+      "forced": 0,
+      "caps": 0,
+      "meanRounds": 4.585,
+      "meanActions": 10.79
+    },
+    {
+      "policies": [
+        "strategic",
+        "greedy"
+      ],
+      "pairs": 25,
+      "matches": 50,
+      "wins": [
+        31,
+        19
+      ],
+      "seatWins": [
+        20,
+        30
+      ],
+      "draws": 0,
+      "rounds": 329,
+      "actions": 1241,
+      "forced": 3,
+      "caps": 0,
+      "meanRounds": 6.58,
+      "meanActions": 24.82
+    }
+  ]
+}

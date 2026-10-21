@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-21T20:40:24Z",
+  "passed": true,
+  "mode": "fake-money committed transport/scheduler fixtures; both-money rollback financial proof retained",
+  "overlap": {
+    "at": "2026-10-21T20:39:44.265594+00:00",
+    "holder": 2333910,
+    "callers": [
+      {
+        "pid": 2328595,
+        "user": "authenticator",
+        "wait": "tuple",
+        "blockers": [
+          2328662
+        ],
+        "application": "PostgREST 14.5"
+      },
+      {
+        "pid": 2328662,
+        "user": "authenticator",
+        "wait": "transactionid",
+        "blockers": [
+          2333910
+        ],
+        "application": "PostgREST 14.5"
+      }
+    ]
+  },
+  "cleanup": {
+    "at": "2026-10-21T20:40:24.150897+00:00",
+    "gates": {
+      "enabled": false,
+      "singleton": true,
+      "fake_qualified": false,
+      "real_qualified": false,
+      "admission_enabled": false
+    },
+    "passed": true,
+    "perFixture": {
+      "stake": 5,
+      "status": "session_ended",
+      "results": 1,
+      "balances": [
+        95,
+        105
+      ],
+      "finalSnapshots": 2,
+      "transferBatches": 1,
+      "unmatchedDeltas": {}
+    },
+    "raceAdmission": {
+      "enabled": true,
+      "singleton": true,
+      "fake_qualified": true,
+      "real_qualified": false,
+      "admission_enabled": true
+    },
+    "schedulerMatch": {
+      "dealer": "bffc6978-cad6-4d9c-b030-f794d3d13b50",
+      "finished": true,
+      "revision": 4,
+      "settlement": {
+        "93a96202-8b60-4ae6-97a6-1b7f43eb4e19": 5,
+        "e1c1bd6b-f0f8-4ba3-8bac-b9a121cadc2a": -5
+      },
+      "terminalAt": "1792614851080"
+    },
+    "residualMatches": 0,
+    "fakeMoneyFixtures": 4,
+    "residualFixtureGames": 0,
+    "otherBalancesPreserved": true
+  },
+  "allInteractiveClientsClosedAt": "2026-10-21T20:33:36.783Z",
+  "schedulerFixtureCreatedAfterClientsClosed": true,
+  "remaining": [
+    "Owner multiplayer smoke after explicit admission scope",
+    "Physical iPhone smoke"
+  ],
+  "notes": [
+    "Initial interactive transport harness used an incorrect system-listener signature; corrected in the standalone qualification driver, with no product changes.",
+    "Initial test numeric sorting and SQL array-type assertions were corrected; authoritative balances were 95 and 105.",
+    "Repeated lock probes did not initially establish overlap. The retained probe directly records two PostgREST backend PIDs blocked through the qualification lock.",
+    "Existing test accounts authenticated only against the verified production service. No passwords or tokens persisted."
+  ]
+}

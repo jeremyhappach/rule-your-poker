@@ -20,7 +20,7 @@ export default function VersionedRules({game,version,mode='multiplayer',config}:
   if(alive)setLoaded({version:selected,config:data as unknown as Config|Rules});
  })().catch(e=>{if(alive)setError(e.message);});return()=>{alive=false};},[game,version,config,fixedVersion]);
  const resolved=config??loaded?.config, selected=version??(resolved as {version?:string}|undefined)?.version??loaded?.version??fixedVersion;
- if(fixedVersion&&selected!==fixedVersion)return <p role="alert">Rules are unavailable for this version.</p>;
+ if(fixedVersion&&selected!==fixedVersion&&!findGame(game)?.rules.supportedVersions?.includes(selected??''))return <p role="alert">Rules are unavailable for this version.</p>;
  if(error)return <p role="alert">{error}</p>;
  if(!resolved&&!fixedVersion)return <p role="status">Loading rules…</p>;
  const solo=mode==='arcade',Content=renderers.get(game);

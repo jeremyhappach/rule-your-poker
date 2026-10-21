@@ -1,5 +1,10 @@
 # Six-Card Golf — closed-admission qualification plan
 
+Current reconciled baseline: main `6b15f4eb060df319df13d576948c343920a23b21`.
+See [reconciliation evidence](SIX_CARD_GOLF_RECONCILIATION.md) for the revised
+guards, additive shared registration and approved later two-account fake-only
+24-hour smoke scope. This local pass grants no access and does not release.
+
 Local reconciliation target: main `88c798396bd0202551e36dcf4cd9efa39c9ef555`.
 Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa` (isolated Box Drop numeral contrast).
 Local preparation now also incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c` (dominant Box Drop numerals).
@@ -34,7 +39,7 @@ Official existing Supabase CLI 2.121.0 created
 `supabase/migrations/20261021011905_six_card_golf_v1.sql` using
 `supabase migration new six_card_golf_v1`. No tools were installed.
 The generated source is normalized to LF. SHA-256:
-`5771e026b2e652fb57c391b5ffe7848bb4421f47a75f469361f39e1f90723054`.
+`95c20197069e1139da8ea7b1b1d786fb5672f40e02573ab2be9189bc654be41e`.
 
 The migration checks eight canonical function definitions with newline-normalized
 hashes. It requires actual pg_cron, an existing Realtime publication and logical
@@ -72,6 +77,8 @@ access preserves existing liabilities and recovery.
    Stop on drift; do not remove a guard or overwrite another game's registration.
    Inspect migration history as well: main documents Race Poker source version
    `20261020190908` applied under production version `20261021002421`.
+   Battle 31 source `20261021202023` is already hosted as `20261021202045`;
+   do not reapply it. Preserve Race v2 and both 11 Up hosted mappings too.
    Do not run an unrestricted pending-migrations push that could reapply Race
    Poker, or repair history to force it through. Verify that mapping and select
    only the exact Golf migration under the later approved deployment workflow.
@@ -99,10 +106,11 @@ access preserves existing liabilities and recovery.
    while running the explicit browser/service/race procedure in the linked plan.
    The original global flags do not isolate named testers. Do not infer live
    qualification from simulated SDK responses or direct worker invocation.
-6. After every applicable gate passes, authorize the stated active-account
-   activation scope, preserving stricter platform money-mode gates. Both modes
-   require qualification before a shared gate opens. Jeremy's physical iPhone
-   Safari production smoke remains acceptance truth.
+6. After every applicable gate passes and the revised candidate is released,
+   enable only the two approved accounts in the exact fake-money smoke session
+   for 24 hours from enablement. Leave general flags and real money closed.
+   Preserve admitted matches after expiry. Jeremy's physical iPhone Safari
+   production smoke remains acceptance truth.
 
 If qualification fails, keep new admission closed and preserve evidence.
 If admission has later been opened, close admission without disabling the

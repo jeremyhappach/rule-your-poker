@@ -1,5 +1,6 @@
 import {readFileSync as read, writeFileSync as write, existsSync, mkdirSync} from 'node:fs';
 import pg from '../../qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
+import {installReleasedBaseline} from '../battle31/released-baseline.mjs';
 export async function connect(database) {
   const client = new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});
   await client.connect();
@@ -20,21 +21,11 @@ if (!existsSync(context)) {
 
 export async function installLocalReference(c){
  await c.query(read('supabase/six-card-golf/local-reference.sql','utf8'));
- // Reconcile the local reference with the Race Poker authority now on main.
- for(const part of ['rules','multiplayer','commands','registration'])await c.query(read('supabase/race-poker/'+part+'.sql','utf8'));
+ // Local reconstruction only: current-main Race Poker v2, 11 Up bots/Ready,
+ // then Battle 31 sources. Never include this bootstrap in a hosted package.
+ await installReleasedBaseline(c);
+ for(const part of ['rules','multiplayer','commands','bots','recovery','registration','grants'])await c.query(read('supabase/battle31/'+part+'.sql','utf8'));
 
- // Match the deployed pause owner (hash 1fa2220c33734d1cf14c11f3eaef432b).
- // The older isolated template predates this overload; never replace production.
- const pauseReference=read('supabase/migrations/20261015212154_farkle_active_account_and_recovery_lock_order.sql','utf8');
- const pauseStart=pauseReference.indexOf('CREATE OR REPLACE FUNCTION public.set_game_paused(p_game_id uuid, p_paused boolean, p_expected_dealer_game_id uuid, p_expected_pause_version bigint)');
- const pauseEnd=pauseReference.indexOf('$function$;',pauseStart)+'$function$;'.length;
- if(pauseStart<0||pauseEnd<pauseStart)throw Error('Missing exact canonical pause reference');
- await c.query(pauseReference.slice(pauseStart,pauseEnd));
- const automaticStart=pauseReference.indexOf('CREATE OR REPLACE FUNCTION public.set_automatic_play(');
- const automaticEnd=pauseReference.indexOf('$function$;',automaticStart)+'$function$;'.length;
- if(automaticStart<0||automaticEnd<automaticStart)throw Error('Missing canonical automatic-play reference');
- await c.query(pauseReference.slice(automaticStart,automaticEnd));
- await c.query('REVOKE ALL ON FUNCTION public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean) TO authenticated');
- const autoPause=read('supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql','utf8');
- await c.query(autoPause.slice(autoPause.indexOf('CREATE OR REPLACE FUNCTION private.pause_all_humans_auto_fold'),autoPause.indexOf('$guard$;')+'$guard$;'.length));
+ // installReleasedBaseline owns canonical lifecycle reconstruction, including
+ // the newer 11 Up Ready safeguard. Never reinstall an older pause helper here.
 }
