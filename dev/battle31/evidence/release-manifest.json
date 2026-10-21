@@ -1,11 +1,11 @@
 {
-  "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
-  "sourceSHA256": "8d437acaef8a07af1095405eb328164bfd22c325c38fec7e899595b4f8c0a4fe",
-  "packageSHA256": "c5a7b3eee6ec71a740de815946326d3268b0b0bfa5479eb4bdf1e1614cd07816",
+  "main": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "sourceSHA256": "2e372abcde1a79a1fa9fd8ae4ea5e7f432d351989f265ee4956aace693f71489",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
   "canonicalBefore": [
     {
       "signature": "private.megatouch_begin(uuid,uuid)",
-      "hash": "2a7cc30da1908e929e54791b4d5766b0"
+      "hash": "b472381c64aad306d7a7359a8ccc2248"
     },
     {
       "signature": "private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)",

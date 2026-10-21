@@ -1,10 +1,27 @@
 # Repository map
 
+Battle 31 reconciliation: `registration.sql` performs guarded additive shared
+authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
+release locally; `released-games-proof.mjs` verifies Race Poker and 11 Up against
+the combined package. See `BATTLE31_RECONCILIATION.md`.
+
 Battle 31 timeout/control: `supabase/battle31/commands.sql` bridges canonical pause
 and automatic play; `recovery.sql` dispatches strategic controlled turns;
 `multiplayer.sql` projects control flags. `Battle31View.tsx` owns checkbox/robot
 presentation. Local authority/browser proofs: `dev/battle31/timeout-lifecycle.mjs`
 and `timeout-browser.mjs`; see `BATTLE31_TIMEOUT_QUALIFICATION.md`.
+
+11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
+forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
+`dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared
+rules and settlement remain in their original owners. See `ELEVEN_UP_HUMAN_READY.md`.
+
+Race Poker: `supabase/race-poker/` owns rules, commands, settlement and recovery.
+`v2.sql` adds canonical inactivity controls while preserving v1 matches; its
+guarded migration remains local/unapplied. `src/components/racePoker/`,
+`src/hooks/useRacePoker.ts` and `src/lib/racePoker/` own presentation and redacted
+transport. `dev/race-poker/v2-proof.mjs` and `v2-concurrency.mjs` qualify controls
+against isolated local PostgreSQL. See `RACE_POKER_TIMEOUT_CONTROLS.md`.
 
 Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 

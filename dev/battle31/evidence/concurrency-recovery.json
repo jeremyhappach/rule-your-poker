@@ -7,7 +7,7 @@
     "pause": true,
     "realTimeoutPaused": false,
     "realAutoplayExplicitConsent": false,
-    "zeroClientSteps": 34,
+    "zeroClientSteps": 38,
     "zeroClientRound": 6,
     "postgameRecovered": true,
     "resignation": true
@@ -20,8 +20,8 @@
     "pause": true,
     "realTimeoutPaused": true,
     "realAutoplayExplicitConsent": true,
-    "zeroClientSteps": 35,
-    "zeroClientRound": 7,
+    "zeroClientSteps": 36,
+    "zeroClientRound": 6,
     "postgameRecovered": true,
     "resignation": true
   }

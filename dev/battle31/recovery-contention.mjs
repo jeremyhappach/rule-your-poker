@@ -1,4 +1,4 @@
-import {installCanonicalLifecycle} from './canonical-lifecycle.mjs';
+import {installReleasedBaseline} from './released-baseline.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
@@ -29,7 +29,7 @@ async function boxdrop(real,users){
 try{
  await c.query('BEGIN');
  for(const name of ['rules','multiplayer','arcade','bots','recovery'])await c.query(readFileSync('supabase/boxdrop/'+name+'.sql','utf8'));
- await installCanonicalLifecycle(c);await c.query(candidate());await c.query('COMMIT');
+ await installReleasedBaseline(c);await c.query(candidate());await c.query('COMMIT');
  for(const client of [c,other])await client.query("SET statement_timeout='1500ms'");
  for(const real of [false,true]){
   const fixtures=[];

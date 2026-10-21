@@ -1,3 +1,4 @@
+import {Bot} from 'lucide-react';
 import {RacePokerRules} from '@/components/rules/RacePokerRules';
 export {RacePokerRules} from '@/components/rules/RacePokerRules';
 import {useLayoutEffect,useRef,useState,type ReactNode} from 'react';
@@ -54,10 +55,11 @@ export function RacePokerView({view:v,userId,now,pending,connected,error,epoch,l
  useRacePokerAudio(v,userId,epoch,seconds,connected,error,activeTab,sessionEnded,presentation.reduced);
  const canAct=v.canAct&&connected&&!error&&!v.paused&&window.playable&&!pending&&!submitting&&activeTab==='cards'&&!sessionEnded;
  const choose=(slot:number)=>{if(!canAct||flight.current)return;flight.current=true;setSubmitting(true);void Promise.resolve(onIntent({type:'choose',items:[slot]})).finally(()=>{flight.current=false;setSubmitting(false);});};
+ const self=v.players.find(p=>p.id===v.viewerId),opponentTurn=!self?.active;
  const active=v.players.find(p=>p.active),winners=v.players.filter(p=>v.terminal?.winnerIds.includes(p.id));
  return <FullscreenGameShell className="race-scene" title="Race Poker" description={`Round ${v.round} / 16`} activeTab={activeTab} setActiveTab={setActiveTab} sessionEnded={sessionEnded} panel={panel}>
   <div ref={root}>{layer&&createPortal(<div className="race-plane">
-   <div className="race-scoreband">{v.players.map((p,i)=><div className="race-score" data-active={p.active&&!sessionEnded} key={p.id}><span title={p.name}><i data-horse={i}/>{p.name}</span><strong>{(p.active&&result?(presentation.displayScore??p.score):p.score).toLocaleString()}</strong>{balance(p)}</div>)}</div>
+   <div className="race-scoreband">{v.players.map((p,i)=><div className="race-score" data-active={p.active&&!sessionEnded} key={p.id}><span title={p.name}><i data-horse={i}/>{p.id!==v.viewerId&&p.autoPlay&&<Bot className="race-autoplay-icon" role="img" aria-label={`${p.name} is in Auto-play`}/>} {p.name}</span><strong>{(p.active&&result?(presentation.displayScore??p.score):p.score).toLocaleString()}</strong>{balance(p)}</div>)}</div>
    <div className="race-track" aria-label="Race to 48,000 points">
     <div className="race-finish" aria-hidden="true"/><span className="race-target">48,000</span>
     {v.players.map((p,i)=>{const score=p.active&&result?(presentation.displayScore??p.score):p.score;return <div className="race-lane" key={p.id}><div className="race-runner" style={{left:`${Math.min(1,score/48000)*83}%`}}><Horse index={i} moving={!!result&&p.active&&result.elapsed<1000&&!presentation.reduced}/></div></div>;})}
@@ -66,11 +68,11 @@ export function RacePokerView({view:v,userId,now,pending,connected,error,epoch,l
     <div className="race-clock" data-zone={seconds<=2?'red':seconds<=5?'amber':'green'} role="timer" aria-label={`${v.paused?'Paused, ':''}${seconds} seconds remaining`}>
      <div>{Array.from({length:30},(_,i)=><i key={i} data-lit={b.phase==='playing'&&i<seconds}/>)}</div><b>{v.paused?'PAUSED':b.phase==='stage_complete'?'RESULT':`${seconds}s`}</b>
     </div>
-    <div className="race-message" role="status">{result?<><strong>{result.label}</strong>{result.points>0&&<span>+{result.points.toLocaleString()}</span>}</>:<><strong>{b.finalHand?'Final hand':v.canAct?'Your turn':`${active?.name??'Opponent'}’s turn`}</strong><span>Choose five cards</span></>}</div>
-    <div className="race-choices" aria-label="Three card choices">{[0,1,2].map(i=><button key={i} disabled={!canAct} onClick={()=>choose(i)} aria-label={b.choices[i]===undefined?'No choice':`Choose ${raceCardName(b.choices[i])} from slot ${i+1}`}><Card id={b.choices[i]}/></button>)}</div>
+    <div className="race-message" role="status">{result?<><strong>{result.label}</strong>{result.points>0&&<span>+{result.points.toLocaleString()}</span>}</>:<><strong>{b.finalHand?'Final hand':self?.autoPlay&&self.active?'Auto-play':v.canAct?'Your turn':`${active?.name??'Opponent'}’s turn`}</strong><span>Choose five cards</span></>}</div>
+    <div className="race-choices" data-opponent-turn={opponentTurn} aria-label="Three card choices">{[0,1,2].map(i=><button key={i} disabled={!canAct} onClick={()=>choose(i)} aria-label={b.choices[i]===undefined?'No choice':`Choose ${raceCardName(b.choices[i])} from slot ${i+1}`}><Card id={b.choices[i]}/></button>)}</div>
     <div className="race-hand" aria-label="Your five-card hand">{[0,1,2,3,4].map(i=><div key={`${v.scope}:${i}:${b.hand[i]??'empty'}`} data-filled={b.hand[i]!==undefined} data-animate={animatedCard===i}><Card id={b.hand[i]}/></div>)}</div>
    </>}
-   <div className="race-connection" role="status">{error?<>{error} <button onClick={onReconnect}>Reconnect</button></>:!connected?'Connecting live updates…':pending||submitting?'Selecting…':''}</div>
+   <div className="race-connection">{b.rules.version==='race-poker/2'&&self&&!v.settled&&!sessionEnded&&<label className="race-autoplay"><input type="checkbox" aria-label="Auto-play" checked={!!self.autoPlay} disabled={pending||submitting||!connected||!!error} onChange={e=>void onIntent({type:'autoplay',enabled:e.target.checked})}/> Auto-play</label>}<span role="status">{error?<>{error} <button onClick={onReconnect}>Reconnect</button></>:!connected?'Connecting live updates…':pending||submitting?'Updating…':''}</span></div>
   </div>,layer)}</div>
  </FullscreenGameShell>;
 }

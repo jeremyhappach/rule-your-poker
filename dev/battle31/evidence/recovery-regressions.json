@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-21T15:59:58.243Z",
-  "database": "battle31_package_1792598392050",
-  "packageSHA256": "c5a7b3eee6ec71a740de815946326d3268b0b0bfa5479eb4bdf1e1614cd07816",
+  "at": "2026-10-21T20:05:57.761Z",
+  "database": "battle31_package_1792613134582",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
   "results": [
     {
       "script": "proof",
@@ -28,7 +28,7 @@
     },
     "matches": 5,
     "results": 5,
-    "requests": 93
+    "requests": 101
   },
   "localAdmissionClosedAfterProof": true
 }

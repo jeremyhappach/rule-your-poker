@@ -56,11 +56,16 @@ node dev/battle31/recovery-regressions.mjs
 
 Contention and package proofs create dedicated `battle31_*` clones of the existing
 money-qualification template. They never mutate the template or production.
-The package builder briefly installs current-main registration in a rolled-back
-local transaction to obtain its canonical preimage hashes. It writes the portable
+The package builder reconstructs pinned released main, including Race Poker v2
+and both 11 Up migrations, in a fresh loopback clone and rolled-back transaction.
+It obtains canonical preimage hashes and writes the portable
 atomic migration `supabase/battle31/release.sql` and hash manifest. No Supabase CLI
 is installed here; a history filename must be assigned on the approved release
 host using its CLI. Do not silently regenerate against unreviewed main changes.
+
+Registration performs strictly guarded additive changes, without copying full
+shared owners. `released-games-proof.mjs` exercises Race Poker and 11 Up against
+the combined installed local package without reinstalling either game.
 
 The package proof models cron registration with a local metadata stub and creates
 a publication catalog entry. It does not prove real pg_cron execution or logical

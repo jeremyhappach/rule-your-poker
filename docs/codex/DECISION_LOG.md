@@ -1,3 +1,11 @@
+# 2026-10-21 — Battle 31 registration preserves released shared owners
+
+Replace the stale copied shared definitions with strict preimage-guarded additive
+Battle 31 registration. Pin and reconstruct the released Race Poker/11 Up baseline
+for local qualification; prove existing functions, ACLs and defaults unchanged
+apart from the explicit new game branches. No gameplay redesign or activation.
+See [reconciliation](BATTLE31_RECONCILIATION.md).
+
 # 2026-10-21 — Battle 31 multiplayer timeout ownership
 
 Approved local correction: real-money human timeout pauses; fake-money human
@@ -8,6 +16,30 @@ is applied at the match boundary, not between internal life rounds. This
 supersedes earlier Battle 31 blanket timeout PASS claims without changing the
 frozen scoring/exchange reducer. No production release is authorized by this pass.
 See BATTLE31_TIMEOUT_QUALIFICATION.md.
+
+# 2026-10-21 — 11 Up Ready inactivity is separate from scoring time
+
+Jeremy selected Ready-only inactivity handling. Real money pauses through the
+canonical owner; fake money takes over through the existing strategic bot policy.
+Active scoring time is never renewed or automatically paused for inactivity or
+disconnect. It expires under the frozen shared rules; standard inactivity and
+all-human handling resumes at the next eligible Ready boundary. No second timer.
+Production's false/none defaults do not disable this 11 Up Ready safeguard:
+the canonical helper's two policy gates are specialized only for that game and
+phase, retaining canonical counts, locks and versioned pause. Defaults and other
+game policy gates remain unchanged; a forward migration preserves the bot package.
+Reclaim changes control only, including when paused. This local implementation
+does not authorize or recover the stalled release. See `ELEVEN_UP_HUMAN_READY.md`.
+
+# 2026-10-21 — Race Poker canonical inactivity controls
+
+Jeremy's smoke follow-up replaces new-game zero-point human expiry with canonical
+fake-money autoplay/sit-out or real-money pause. Freeze this as race-poker/2;
+preserve existing v1 games. Reuse shared control owners without replacing them,
+publish participation changes through Race revisions, and apply sit-out only at
+the next dealer game after the frozen two-seat race settles. Bot policy stays
+separately versioned. Authorization ends at local commit. See
+[exact contract and qualification](RACE_POKER_TIMEOUT_CONTROLS.md).
 
 # 2026-10-20 — Boxdrop / 1 and first-32 bonus qualification
 

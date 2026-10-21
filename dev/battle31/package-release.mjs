@@ -1,17 +1,19 @@
 import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {installCanonicalLifecycle} from './canonical-lifecycle.mjs';
-import {connect,localContext,candidate} from './database.mjs';
+import {installReleasedBaseline,releasedMain} from './released-baseline.mjs';
+import {connect,candidate} from './database.mjs';
 
 // Portable atomic migration; assign history identity with the release host's CLI.
 // This builder uses a rolled-back local transaction and never installs the package.
 const main=execFileSync('git',['rev-parse','main'],{encoding:'utf8'}).trim();
 const reference=execFileSync('git',['show',main+':supabase/race-poker/registration.sql'],{encoding:'utf8'});
 const signatures=['private.megatouch_begin(uuid,uuid)','private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)','private.megatouch_frozen_stake()','public.settle_gameplay_chip_transfers(uuid,jsonb,text)','public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)','public.set_game_paused(uuid,boolean,uuid,bigint)','public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)'];
-const c=await connect(localContext().database);let expected;
+const database='battle31_baseline_'+Date.now(),admin=await connect('postgres');
+await admin.query('CREATE DATABASE '+database+' TEMPLATE money_qualification_1792441147994');await admin.end();
+const c=await connect(database);let expected;
 try{
- await c.query('BEGIN');await installCanonicalLifecycle(c);await c.query(reference);
+ await c.query('BEGIN');await installReleasedBaseline(c);
  expected=(await c.query('SELECT signature,md5(replace(pg_get_functiondef(to_regprocedure(signature)),chr(13)||chr(10),chr(10))) hash FROM unnest($1::text[]) signature',[signatures])).rows;
  if(expected.some(x=>!x.hash))throw Error('Missing canonical baseline');
 }finally{await c.query('ROLLBACK');await c.end();}

@@ -1,0 +1,2 @@
+# Preserve the qualified release artifact bytes on Windows checkouts.
+supabase/migrations/20261021002901_eleven_up_bots.sql text eol=lf

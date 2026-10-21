@@ -882,7 +882,7 @@ const DealerGameSetupInner = ({
     if (gameType === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1)) return;
     if (gameType === 'take-two' && (!takeTwoAllowed||activeHumanCount<1)) return;
     if (gameType === 'royal-flash' && (!royalAllowed||activeHumanCount<1)) return;
-    if (gameType === 'eleven-up' && (!elevenAllowed||activeHumanCount!==activePlayerCount)) return;
+    if (gameType === 'eleven-up' && (!elevenAllowed||activeHumanCount<1)) return;
     if (gameType === TRI_TOWERS.id && !triTowersAllowed) return;
     // Check player count restrictions
     const gameInfo = GAME_CATALOG.find(g => g.id === gameType);
@@ -990,7 +990,7 @@ const DealerGameSetupInner = ({
     if (gameTypeToSubmit === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Trip Flip requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'take-two' && (!takeTwoAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Take 2 requires 2–7 players including a human'); return; }
     if (gameTypeToSubmit === 'royal-flash' && (!royalAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Royal Flash requires 2–7 players including a human'); return; }
-    if (gameTypeToSubmit === 'eleven-up' && (!elevenAllowed||activeHumanCount!==activePlayerCount||activePlayerCount<2||activePlayerCount>7)) { toast.error('11 Up requires 2–7 human players'); return; }
+    if (gameTypeToSubmit === 'eleven-up' && (!elevenAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('11 Up requires 2–7 players, including a human'); return; }
     if (gameTypeToSubmit === TRI_TOWERS.id && !triTowersAllowed) { toast.error('TriTowers is not released'); return; }
     if (gameTypeToSubmit === 'run21' && !run21Allowed) {
       toast.error('Run21 is unavailable');
