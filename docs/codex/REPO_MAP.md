@@ -5,6 +5,17 @@ candidate for post-expiry away state and next-Ready real-money pause.
 `src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
 `dev/eleven-up/smoke-controls-*.mjs` provides isolated qualification.
 
+Battle 31 reconciliation: `registration.sql` performs guarded additive shared
+authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
+release locally; `released-games-proof.mjs` verifies Race Poker and 11 Up against
+the combined package. See `BATTLE31_RECONCILIATION.md`.
+
+Battle 31 timeout/control: `supabase/battle31/commands.sql` bridges canonical pause
+and automatic play; `recovery.sql` dispatches strategic controlled turns;
+`multiplayer.sql` projects control flags. `Battle31View.tsx` owns checkbox/robot
+presentation. Local authority/browser proofs: `dev/battle31/timeout-lifecycle.mjs`
+and `timeout-browser.mjs`; see `BATTLE31_TIMEOUT_QUALIFICATION.md`.
+
 11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
 forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
 `dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared
@@ -1119,9 +1130,19 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
 
+## Battle 31 local candidate
 
-## Race Poker local candidate — 2026-10-20
+Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
+`src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
+`dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
 
-Race Poker: supabase/race-poker owns SQL rules, commands, canonical multiplayer adapter, registration guards and proofs. src/lib/racePoker owns public model/transport/audio; src/hooks/useRacePoker.ts owns client reconciliation; src/components/racePoker owns canonical fullscreen presentation and financial bridging. dev/race-poker contains local qualification utilities. Current-main catalog integration is documented in RACE_POKER_QUALIFICATION.md.
 
-Race Poker catalog integration: `src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the unexecuted production sequence.
+Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
+`package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
+atomic migration: `supabase/battle31/release.sql`; evidence/remaining gates:
+`docs/codex/BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
+shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
+controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
+preflight tests: `dev/battle31/hosted-qualification.test.mjs`.

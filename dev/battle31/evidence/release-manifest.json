@@ -1,0 +1,35 @@
+{
+  "main": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "sourceSHA256": "2e372abcde1a79a1fa9fd8ae4ea5e7f432d351989f265ee4956aace693f71489",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
+  "canonicalBefore": [
+    {
+      "signature": "private.megatouch_begin(uuid,uuid)",
+      "hash": "b472381c64aad306d7a7359a8ccc2248"
+    },
+    {
+      "signature": "private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)",
+      "hash": "f3582431c00322facc1daaa81c20b682"
+    },
+    {
+      "signature": "private.megatouch_frozen_stake()",
+      "hash": "b42707fd97a6547a849a801190da8ac1"
+    },
+    {
+      "signature": "public.settle_gameplay_chip_transfers(uuid,jsonb,text)",
+      "hash": "86c0feb55524f14ab9f58a06cdee2ef6"
+    },
+    {
+      "signature": "public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)",
+      "hash": "c633a318c7f2605104c92e03d3b3b09a"
+    },
+    {
+      "signature": "public.set_game_paused(uuid,boolean,uuid,bigint)",
+      "hash": "1fa2220c33734d1cf14c11f3eaef432b"
+    },
+    {
+      "signature": "public.set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)",
+      "hash": "a69f39fefb234c3b01114c8049fdbbb6"
+    }
+  ]
+}

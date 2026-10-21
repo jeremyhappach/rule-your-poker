@@ -6,6 +6,25 @@ rounds/bonuses: fake money delegates those turns to the existing bot; real money
 pauses at the next Ready boundary. Reclaim clears deferred sit-out without resume
 or clock reset. See `ELEVEN_UP_SMOKE_CONTROLS.md`. Approved scope is local only.
 
+# 2026-10-21 — Battle 31 registration preserves released shared owners
+
+Replace the stale copied shared definitions with strict preimage-guarded additive
+Battle 31 registration. Pin and reconstruct the released Race Poker/11 Up baseline
+for local qualification; prove existing functions, ACLs and defaults unchanged
+apart from the explicit new game branches. No gameplay redesign or activation.
+See [reconciliation](BATTLE31_RECONCILIATION.md).
+
+# 2026-10-21 — Battle 31 multiplayer timeout ownership
+
+Approved local correction: real-money human timeout pauses; fake-money human
+expiry enables strategic autoplay and canonical sit_out_next_hand. Reclaim uses
+set_automatic_play and clears both flags immediately. The match revision changes
+with control, so queued bot decisions cannot survive reclaim. Deferred sit-out
+is applied at the match boundary, not between internal life rounds. This
+supersedes earlier Battle 31 blanket timeout PASS claims without changing the
+frozen scoring/exchange reducer. No production release is authorized by this pass.
+See BATTLE31_TIMEOUT_QUALIFICATION.md.
+
 # 2026-10-21 — 11 Up Ready inactivity is separate from scoring time
 
 Jeremy selected Ready-only inactivity handling. Real money pauses through the
@@ -2576,15 +2595,40 @@ settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
 
-
-## Race Poker local candidate — 2026-10-20
-
-Race Poker freezes the approved multiplayer-only race-poker/1 contract and separately versioned race-poker-bot/1 policy. Human, bot and recovery commands share one private executor; canonical financial settlement remains authoritative. Local qualification does not authorize coordinated release. See RACE_POKER_RULES.md and RACE_POKER_QUALIFICATION.md.
-
 ## 2026-10-20 — Presentation catalog UI candidate
 
 Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.
 
-## Race Poker catalog integration — 2026-10-20
+## 2026-10-20 — Battle 31 local rules and implementation
 
-The isolated candidate incorporates catalog main 44dbd5a7d. Race Poker uses one multiplayer-only descriptor and the existing capability plus roster guards for selection, submission and Run Back. Its unchanged frozen help article is shared with gameplay; explicit fixedVersion metadata avoids querying Arcade for a multiplayer-only game. Existing games retain dynamic current/legacy resolution. No rules, SQL, financial authority or admission flags changed. Production remains on the coordinated release hold.
+Approved `battle-31/1` uses TAKE POT as all-three exchange, three normal turn
+pairs then one announced final turn each, and no artificial inter-move delay.
+Exactly two multiplayer seats, legal-information bots; historical fidelity is
+not a release gate. Local implementation/qualification/commits only; release is
+separately authorized. See `BATTLE31_LOCAL_CANDIDATE.md` for exact rules/evidence.
+
+
+## 2026-10-21 — Battle 31 bounded recovery and guarded local release package
+
+Recovery selects at most 20 gameplay and 20 terminal sessions. Locked round,
+session, match and participant rows are excluded before the batch limit so a
+locked queue head cannot starve healthy sessions. Existing command/postgame
+owners retain rule and financial authority. Both-money contention and installed
+package regressions pass locally; approved rules are unchanged.
+
+The atomic package preserves current-main Race Poker shared registration, verifies
+canonical preimages, installs closed, and fingerprints installed definitions and
+registration for exact replay without resetting data or gates. No hosted changes
+or branch integration occurred. See `BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+
+## 2026-10-21 — Battle 31 local release correction
+
+Normalize CRLF/LF only for definition fingerprints. Preserve all substantive
+and permission drift rejection. Separate server-owned fake/real qualification;
+new-admission closure stops new offers while accepted offers may drain in a still
+qualified mode. Keep active-match authority and canonical finance independent of
+new-admission flags. Capability v3 and current-main client integration are local.
+Hosted qualification requires actual successful scheduler health and rolls back
+fixtures; no production execution or activation occurred. See
+`BATTLE31_RELEASE_CORRECTIONS.md` for evidence and release limits.

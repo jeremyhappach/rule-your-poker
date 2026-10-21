@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-21T20:37:06.856Z",
+  "game": "a4f63c62-da78-46f3-aed0-154773f756b7",
+  "dealer": "82c30200-8318-4fad-880d-40a29d2dde4d",
+  "passed": true,
+  "elapsedMs": 372,
+  "requestId": "9d641c3a-2c68-40ac-bb62-76639c7c1bfd",
+  "revisionBefore": 0,
+  "resultId": "bbd4d24c-153f-4dce-9441-d11b40460248",
+  "balances": {
+    "48bd1e40-5933-4e31-a4cc-1e05df4fc921": 105,
+    "fcc121ca-8fc5-4da7-a087-6017f4df6b6c": 95
+  },
+  "batchId": "d46a06d2-8234-446e-bea6-2e9084bf67d4",
+  "revisions": [
+    2,
+    2
+  ],
+  "clientsClosedAt": "2026-10-21T20:37:11.307Z"
+}

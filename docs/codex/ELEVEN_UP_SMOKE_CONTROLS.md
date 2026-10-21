@@ -59,3 +59,32 @@ Arcade and manual selection remain unchanged.
 The original bot and Ready migration files are untouched. Production qualification,
 registration of a new forward migration, coordinated publication and physical
 phone/owner acceptance require a later release phase. This is not a deployed fix.
+
+## Local reconciliation after Battle 31
+
+Candidate `b1d2573e3672fc1b99e1f242d16c68ff1bf5eab8` is reconciled with main
+`6b15f4eb060df319df13d576948c343920a23b21` on the isolated task branch.
+Only additive documentation conflicts required resolution; the two product fixes
+and forward SQL bytes are unchanged. Golf retains the next production slot.
+No main integration, push, hosted qualification, migration, deployment or grants
+were performed in this continuation. Double Solitaire is not a local-work dependency.
+
+`node dev/eleven-up/smoke-reconciliation.mjs --prepare` creates an isolated
+loopback clone of the qualified combined Battle31/Race/11 Up package database.
+It validates the exact Battle31 package, installs and repeats the smoke candidate,
+and proves all other function bodies/ACLs and all three admission rows unchanged.
+Race rules, financial/injected-rollback and timeout controls pass; Battle31
+winner/tie/abort settlement passes in both money modes without residual fixtures.
+The smoke-controls and human-ready proofs also pass against that clone, including
+36-case financial coverage and independent bot/reclaim connections. Browser
+checks measure 784ms selection spacing and pass all six phone layouts, reload,
+expiry, reclaim and paused reclaim. Local scheduler metadata is stubbed; this
+does not qualify hosted scheduler/Realtime or physical-phone acceptance.
+
+The unchanged forward SQL still needs migration registration and fresh hosted
+parity/qualification during the explicitly cleared release slot. Reconcile again
+if Golf or another release advances main or shared authority before then.
+
+Reconciled `npm run build` passes TypeScript, 373 application files / 2,610 tests,
+12 harness files / 241 tests, and Vite. Only existing Browserslist/chunk warnings
+remain. See `supabase/eleven-up/smoke-reconciliation-evidence.json`.

@@ -1,0 +1,9 @@
+{
+  "focusedTests": 74,
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "packageSHA256": "c5a7b3eee6ec71a740de815946326d3268b0b0bfa5479eb4bdf1e1614cd07816",
+  "scope": "Battle31 controls, catalog, canonical terminal/ledger/pointer layers",
+  "productionWrites": false,
+  "published": false
+}

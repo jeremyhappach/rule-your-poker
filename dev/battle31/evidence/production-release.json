@@ -1,0 +1,125 @@
+{
+  "candidate": "d30e886cb861fd226337b9a067c6dd32de3ef43f",
+  "originalCandidate": "07e7131138ed097d704792c296e355ac041510f7",
+  "productionClientSha": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
+  "sourceSHA256": "2e372abcde1a79a1fa9fd8ae4ea5e7f432d351989f265ee4956aace693f71489",
+  "candidateProof": [
+    {
+      "evidence": {
+        "passed": true,
+        "residualUsers": 0,
+        "financialCases": 6,
+        "installedProof": false,
+        "residualPlayers": 0,
+        "residualProfiles": 0,
+        "battle31Installed": false,
+        "residualSnapshots": 0,
+        "failureTriggerExists": false,
+        "existingBalancesAndAuthorityPreserved": true
+      }
+    }
+  ],
+  "installedProof": {
+    "completedWithoutSqlError": true,
+    "financialCases": 6,
+    "method": "Exact candidate rollback proof repeated with installed package no-op verification. SQL result retains the final metadata query only; failures throw and abort."
+  },
+  "installedVerification": [
+    {
+      "verification": {
+        "cron": [
+          {
+            "jobid": 51,
+            "active": true,
+            "status": "succeeded",
+            "command": "SET statement_timeout='3s'; SELECT private.battle31_recover()",
+            "end_time": "2026-10-21T20:21:11.92318+00:00",
+            "schedule": "1 second",
+            "return_message": "1 row"
+          },
+          {
+            "jobid": 51,
+            "active": true,
+            "status": "succeeded",
+            "command": "SET statement_timeout='3s'; SELECT private.battle31_recover()",
+            "end_time": "2026-10-21T20:21:10.898152+00:00",
+            "schedule": "1 second",
+            "return_message": "1 row"
+          },
+          {
+            "jobid": 51,
+            "active": true,
+            "status": "succeeded",
+            "command": "SET statement_timeout='3s'; SELECT private.battle31_recover()",
+            "end_time": "2026-10-21T20:21:09.884006+00:00",
+            "schedule": "1 second",
+            "return_message": "1 row"
+          }
+        ],
+        "gates": {
+          "enabled": false,
+          "singleton": true,
+          "fake_qualified": false,
+          "real_qualified": false,
+          "admission_enabled": false
+        },
+        "migration": {
+          "name": "battle31_v1",
+          "version": "20261021202045",
+          "statementSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e"
+        },
+        "sourceSHA256": "2e372abcde1a79a1fa9fd8ae4ea5e7f432d351989f265ee4956aace693f71489",
+        "raceAdmission": {
+          "enabled": true,
+          "singleton": true,
+          "fake_qualified": true,
+          "real_qualified": false,
+          "admission_enabled": true
+        },
+        "canonicalRecovery": {
+          "singleton": true,
+          "last_outcome": "completed",
+          "safety_cursor": 5,
+          "last_duration_ms": 9,
+          "last_safety_task": "yahtzee",
+          "last_completed_at": "2026-10-21T20:21:11.540696+00:00",
+          "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+          "last_safety_task_at": "2026-10-21T20:21:11.531261+00:00",
+          "consecutive_partial_failures": 0
+        }
+      }
+    }
+  ],
+  "finalVerification": [
+    {
+      "evidence": {
+        "at": "2026-10-21T20:24:07.613842+00:00",
+        "gates": {
+          "enabled": false,
+          "singleton": true,
+          "fake_qualified": false,
+          "real_qualified": false,
+          "admission_enabled": false
+        },
+        "publication": true,
+        "fixtureUsers": 0,
+        "fixturePlayers": 0,
+        "battle31Matches": 0,
+        "failureTriggerExists": false
+      }
+    }
+  ],
+  "publication": {
+    "performed": false,
+    "deploymentId": "dpl_56JqyEFCzFzCmbQHcbkLtSmvhzKu",
+    "state": "READY",
+    "productionSha": "bb1ec308030065d1aa30fc79a18efd493315291e"
+  },
+  "remaining": [
+    "Owner multiplayer smoke after explicit admission scope",
+    "Physical iPhone smoke"
+  ],
+  "status": "Hosted qualification completed; matching client qualified for publication with admission closed.",
+  "initialHoldSupersededBy": "hosted-completion.json"
+}

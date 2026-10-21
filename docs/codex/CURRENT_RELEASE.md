@@ -4,7 +4,74 @@ Local follow-up from published `bb1ec308030065d1aa30fc79a18efd493315291e`:
 sequential bot ball highlights and gameplay-expiry away/rejoin handling while
 preserving all rounds and original scoring clocks. Fake money uses the existing
 bot policy for subsequent rounds; real money pauses before the next away turn.
-No production actions in this phase. See [scope and proof](ELEVEN_UP_SMOKE_CONTROLS.md).
+Locally reconciled with Battle31 main `6b15f4eb` without changing the two fixes.
+Combined local SQL/financial/control/browser checks pass. Golf owns the next
+production slot; fresh parity and qualification remain required before release.
+See [scope and proof](ELEVEN_UP_SMOKE_CONTROLS.md).
+
+# Battle 31 / 1 — 2026-10-21 — hosted qualification passed; admission stays closed
+
+Candidate and installed hosted rollback proofs pass all six financial cases.
+Exact unchanged package is installed as hosted migration 20261021202045.
+Authenticated PostgREST/Realtime, duplicate/competing/terminal/late-replay races
+and actual scheduler-driven zero-client settlement/continuation now pass. Two
+independent PostgREST backend connections were observed contending on the lock.
+Four fake-money fixtures were removed; historical balances and Race Poker/11 Up
+authority are preserved. All four Battle31 flags are false. Client publication
+is authorized; admission scope and owner/physical-iPhone smoke remain separate.
+See [hosted evidence](BATTLE31_HOSTED_QUALIFICATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — reconciled local candidate, not published
+
+Reconciled with released main bb1ec308, preserving Race Poker v2 and 11 Up
+bots/Ready. Shared registration now makes guarded additive changes instead of
+replacing copied owners. Approved Battle 31 gameplay is unchanged. Local package,
+cross-game financial/control, recovery, client and build checks pass. Hosted
+qualification and release remain outstanding; admission stays closed. See
+[BATTLE31_RECONCILIATION.md](BATTLE31_RECONCILIATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — timeout correction qualified locally, not published
+
+Real-money human expiry now pauses through the canonical owner. Fake-money
+expiry starts strategic autoplay and deferred sit-out. Auto-play uncheck reclaims
+control and clears both flags; the opponent robot follows authoritative control.
+The existing postgame owner applies deferred sit-out after the whole match.
+Approved scoring/rules, two-seat ownership and canonical settlement are preserved.
+
+Local authority/race/reconnect/continuation, browser, financial, package and
+recovery proofs pass. Hosted qualification and physical-device acceptance remain.
+No push, production write, deployment or activation occurred. See
+[BATTLE31_TIMEOUT_QUALIFICATION.md](BATTLE31_TIMEOUT_QUALIFICATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — local release corrections qualified, not published
+
+Definition fingerprints now tolerate CRLF/LF only; separate fake/real server
+qualification gates govern setup and bootstrap. Capability v3 supports fake-only
+admission. Current-main Race Poker and Box Drop client changes are integrated in
+the isolated candidate, with approved Battle 31 rules unchanged.
+
+Package/admission/financial/concurrency/recovery proofs, 146 focused client tests,
+typecheck, production build and both-money main-route journeys passed locally.
+A guarded hosted qualification driver is prepared but has not connected to
+production. Migration registration, hosted authority/transport/scheduler checks,
+branch ancestry integration, publication and activation remain separate.
+See [release corrections and evidence](BATTLE31_RELEASE_CORRECTIONS.md).
+
+# Battle 31 / 1 — 2026-10-21 — local recovery/package qualified, not released
+
+The isolated candidate now has bounded recovery (20 gameplay and 20 terminal
+sessions per invocation), lock skipping before the batch limit, and identity
+revalidation. Both-money contention proofs cover locked rounds/sessions/matches/
+players, healthy tails, competing workers, and independent Box Drop recovery.
+A guarded atomic migration package preserves current-main Race Poker registration,
+rejects drift/collisions, installs closed, and validates exact repeat installation.
+Financial/concurrency/human-bot regressions, TypeScript and 36 focused tests pass.
+
+See [recovery/package qualification](BATTLE31_RECOVERY_QUALIFICATION.md) and
+[earlier candidate and route evidence](BATTLE31_LOCAL_CANDIDATE.md). Current-main
+client integration, migration-history registration, hosted authority/scheduler/
+Realtime checks and physical-device smoke remain. No production mutation,
+admission activation, merge into main, push or deployment occurred.
 
 # 11 Up combined bots / Ready controls — installed and qualified for publication
 
