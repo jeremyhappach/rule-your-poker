@@ -1,13 +1,19 @@
-# Race Poker / 2 timeout controls — 2026-10-21 — local candidate only
+# Race Poker / 2 timeout controls — 2026-10-21 — installed and qualified for publication
 
 Opponent choices dim; fake-money human timeout starts strategic Auto-play and
 next-dealer-game sit-out; unchecking restores control and clears that intent.
 Real-money human timeout uses canonical pause. New admissions will freeze v2;
 existing v1 rules, scoring and financial ownership remain intact.
 Local SQL/financial/concurrency, focused tests, 50 layouts, TypeScript and build
-pass. Migration is prepared but unapplied. Local commit only: no push/deployment.
-Production v1 remains fake-money smoke only, superseding the historical closed
-status below. See [contract, evidence and release boundary](RACE_POKER_TIMEOUT_CONTROLS.md).
+pass. Jeremy authorized the first coordinated release slot. Migration
+`20261021183159` (`race_poker_timeout_controls_v2`) is installed; candidate and
+installed production rollback proofs passed both money modes, preserved existing
+balances/v1 history and left zero fixtures. Recovery and function parity pass.
+New admission is briefly closed during matching client publication; restore the
+existing fake-only availability after exact deployment verification. Real money
+stays closed. Checkpoint tag: `race-poker-timeout-2026-10-21`; the delivery report
+records its exact production SHA. Owner repeat smoke remains pending. See
+[contract, evidence and release boundary](RACE_POKER_TIMEOUT_CONTROLS.md).
 
 # Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
 

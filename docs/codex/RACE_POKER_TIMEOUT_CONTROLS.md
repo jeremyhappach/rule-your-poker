@@ -1,5 +1,8 @@
 # Race Poker timeout controls — local candidate, 2026-10-21
 
+Later coordinated authorization and installed qualification are recorded below;
+the local-only boundary in the original entry is historical.
+
 Jeremy's smoke follow-up authorizes local implementation and commit only.
 No push, production migration, deployment, admission change or real-money
 activation is included. Production v1 was subsequently opened for fake-money
@@ -86,3 +89,42 @@ Owner smoke after publication: two-human timeout, reconnect and mid-hand reclaim
 robot and checkbox state; next-game participation with and without reclaim;
 human/bot completion, balances, phone layouts and audio. Real-money pause remains
 local qualification until separately authorized for production.
+
+## Coordinated release — 2026-10-21
+
+Jeremy assigned Race the first release slot after stopping the original 11 Up
+task; the replacement 11 Up candidate is held for the second slot. All other
+game work remains isolated. Origin/main `0d9469ecc24345175b3cb07052d16283a1c4f42c`
+was merged into the tested Race candidate `5e5cc13c05f3e6a2d53731556c855779dd8f821c`
+at `978ff8d68daa37d7c4a933cd8bb0fba7f16da0d5`. The only conflict was release-note
+ordering; both entries and all Boxdrop code were preserved.
+
+All nine pre-install fingerprints matched. Two existing v1 matches were finished;
+their state hashes remained unchanged through both production proofs. The
+pre-install rollback proof used the exact guarded migration, actual scheduler
+health, core/financial proofs, after-chip failure injection and v2 control tests.
+Both money modes passed and left zero users/profiles/players/final snapshots or
+injection triggers. Existing canonical balances were unchanged.
+
+New admission was temporarily closed, preserving enabled/fake-qualified true and
+real-qualified false. Supabase installed `20261021183159`, named
+`race_poker_timeout_controls_v2`, from the exact local migration source
+`20261021143000_race_poker_timeout_controls.sql`. The installed rollback proof
+passed the same gates. All nine installed function-body hashes match the local
+candidate (normalizing line endings only); shared automatic-play/pause function
+hashes remain unchanged. Private execution is denied to authenticated clients;
+the public action grant and one participation trigger are present. The unchanged
+one-second recovery job is active with successful runs after installation.
+
+Reconciled client validation: 30 focused tests, TypeScript and production Vite
+build pass. Independent-connection both-money financial/control races pass again.
+The earlier 50-layout validation still applies: integration changed no Race UI.
+`dev/race-poker/v2-production-proof.mjs` builds auditable candidate/installed
+rollback payloads without connecting to production; control fixtures live in
+`supabase/race-poker/v2-controls-proof.sql` and never persist synthetic records.
+
+The matching client publication is the final release step, followed by restoring
+only the pre-existing fake-money admission. The delivery report records the
+verified production SHA and confirms that release operations are terminal before
+handing the shared lane to 11 Up. Physical iPhone and two-human/human-bot repeat
+smoke remain Jeremy's acceptance checks, not automated claims.
