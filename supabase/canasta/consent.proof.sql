@@ -3,10 +3,12 @@ DO $$
 DECLARE users uuid[]:=ARRAY[gen_random_uuid(),gen_random_uuid()];ids uuid[];g uuid;d uuid;deadline timestamptz;r jsonb;money integer;t uuid;source text;
 BEGIN
  source:=pg_get_functiondef('private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)'::regprocedure);
- PERFORM pg_temp.canasta_assert(md5(replace(replace(source,E'    WHEN v_game.game_type=''canasta'' THEN\n      SELECT private.canasta_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;\n',''),chr(13),''))='f3582431c00322facc1daaa81c20b682','all pre-existing dispatcher behavior preserved byte-for-byte');
- PERFORM pg_temp.canasta_assert(position('''race-poker''' IN source)>0 AND position('private.canasta_begin' IN source)>0,'preserves Race Poker dispatcher');
+ PERFORM pg_temp.canasta_assert(md5(replace(replace(source,E'    WHEN v_game.game_type=''canasta'' THEN\n      SELECT private.canasta_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;\n',''),chr(13),''))='7b6ca8feaa35c1fcce8b00491783e9d4','all pre-existing dispatcher behavior preserved byte-for-byte');
+ PERFORM pg_temp.canasta_assert(position('''race-poker''' IN source)>0 AND position('''battle-31''' IN source)>0 AND position('''eleven-up''' IN source)>0 AND position('private.canasta_begin' IN source)>0,'preserves released game dispatcher branches');
  INSERT INTO cron.job(jobname,schedule,command,nodename,nodeport,database,username,active)
-  VALUES('canasta-recovery','5 seconds','SELECT private.canasta_dispatch_recovery()','localhost',5432,'postgres','postgres',true);
+  SELECT 'canasta-recovery','5 seconds','SELECT private.canasta_dispatch_recovery()','localhost',5432,'postgres','postgres',true
+  WHERE NOT EXISTS(SELECT 1 FROM cron.job WHERE jobname='canasta-recovery');
+ UPDATE cron.job SET active=true WHERE jobname='canasta-recovery';
  UPDATE private.canasta_recovery_state SET last_completed_at=clock_timestamp();
  UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed',consecutive_partial_failures=0 WHERE singleton;
  UPDATE private.canasta_release SET enabled=true,admission_enabled=true;

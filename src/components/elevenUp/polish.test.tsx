@@ -13,6 +13,18 @@ afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 const snapshot=():ElevenSnapshot=>({id:'run',revision:1,serverAt:1000,scope:'run:round:actor:1',round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'user',name:'You',score:0,active:true}],board:{rules:{version:'eleven-up/2',stageMs:180000,introMs:2500,readyMs:30000,holdMs:5000,clearCelebrationMs:3000},phase:'playing',slots:[16,20,32,48],current:44,exposed:[0,1,2,3],passSlot:null,canPass:true,stockRemaining:28,groups:0,score:0,deadline:181000,event:{label:'',points:0}}});
 const props=(v=snapshot(),onIntent=vi.fn())=>({view:v,userId:'user',now:1000,pending:false,error:'',epoch:0,onIntent,onReconnect:vi.fn()});
 
+it('keeps reclaim available while paused or between rounds and identifies opponent autoplay',()=>{
+ const v=snapshot();v.solo=false;v.viewerId='user';v.paused=true;v.canAct=false;
+ v.players=[{...v.players[0],autoplay:true,sitOutNextHand:true},{id:'other',name:'Opponent',score:7,active:false,autoplay:true}];
+ const intent=vi.fn(),p=props(v,intent),ui=render(<ElevenUpView {...p}/>);
+ expect(ui.getByRole('img',{name:'Opponent: Auto-play'})).toBeTruthy();
+ fireEvent.click(ui.getByRole('checkbox',{name:'Auto-play'}));expect(intent).toHaveBeenCalledExactlyOnceWith({type:'reclaim'});
+ ui.rerender(<ElevenUpView {...p} view={{...v,board:{...v.board,phase:'stage_complete'}}}/>);
+ expect(ui.getByRole('checkbox',{name:'Auto-play'})).toBeTruthy();
+ ui.rerender(<ElevenUpView {...p} pending/>);expect((ui.getByRole('checkbox',{name:'Auto-play'}) as HTMLInputElement).disabled).toBe(true);
+ ui.rerender(<ElevenUpView {...p} sessionEnded/>);expect(ui.queryByRole('checkbox')).toBeNull();expect(ui.queryByRole('img',{name:/Auto-play/})).toBeNull();
+});
+
 it('shows named multiplayer achievements and winner pulse without changing Arcade results',()=>{
  const v=snapshot();v.solo=false;v.settled=true;v.board.phase='complete';v.players=[{id:'user',name:'Hap',score:103000,active:true},{id:'other',name:'Sam',score:90000,active:false}];
  v.terminal={resultId:'receipt',startedAt:0,deadline:3000,winnerIds:['user'],score:103000,achievements:{user:{kind:'broken',priorBest:100,overallKind:'broken',overallPriorBest:100,rank:1,topTen:true},other:{kind:'broken',priorBest:80,overallKind:'lower',overallPriorBest:100,rank:2,topTen:true}}};

@@ -10,5 +10,5 @@ SELECT jsonb_build_object(
   FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private')
   AND p.proname IN ('submit_ante_decision','settle_gameplay_chip_transfers','set_game_paused','set_automatic_play','advance_ante_phase_exact')),
  'indexes',(SELECT jsonb_agg(indexdef ORDER BY tablename,indexname) FROM pg_indexes WHERE schemaname IN ('private','public')
-  AND tablename IN ('dealer_game_setup_commits','gameplay_transfer_batches','game_results','session_player_snapshots'))
+  AND tablename IN ('dealer_game_setup_commits','gameplay_transfer_batches','game_results','session_player_snapshots','game_defaults'))
 );

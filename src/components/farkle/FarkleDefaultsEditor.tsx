@@ -12,7 +12,7 @@ const combos = [
 ] as const;
 
 /** Edits only the Farkle Admin Defaults row. Frozen dealer-game configs are never updated. */
-export function FarkleDefaultsEditor() {
+export function FarkleDefaultsEditor({onSaved}:{onSaved?:(value:FarkleAdminDefaults)=>void}={}) {
   const [defaults, setDefaults] = useState<FarkleAdminDefaults | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -36,7 +36,7 @@ export function FarkleDefaultsEditor() {
         onChange={event => onChange(Number(event.target.value))} /></Label>;
   const save = async () => {
     setSaving(true); setError(''); setSaved(false);
-    try { setDefaults(await saveFarkleAdminDefaults(defaults)); setSaved(true); }
+    try { const committed=await saveFarkleAdminDefaults(defaults);setDefaults(committed);onSaved?.(committed);setSaved(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save Farkle defaults.'); }
     finally { setSaving(false); }
   };
@@ -56,7 +56,7 @@ export function FarkleDefaultsEditor() {
       {numeric('Human turn seconds', defaults.decision_timer_seconds, decision_timer_seconds => update({ decision_timer_seconds }), 1)}
       {numeric('Bot action delay seconds', defaults.bot_decision_delay_seconds, bot_decision_delay_seconds => update({ bot_decision_delay_seconds }), 0.001, 0.001)}
     </div>
-    <div className="space-y-2 border-t pt-3"><h3 className="font-semibold">Scoring</h3>
+    <details className="catalog-settings-group"><summary>Game Options · Scoring</summary><div className="space-y-2">
       <p className="text-xs">Set a score to 0 to disable that scoring rule. The server uses the highest legal interpretation.</p>
       {numeric('Single 1', scoring.singles['1'], value => updateScoring({ singles: { ...scoring.singles, '1': value } }))}
       {numeric('Single 5', scoring.singles['5'], value => updateScoring({ singles: { ...scoring.singles, '5': value } }))}
@@ -75,6 +75,7 @@ export function FarkleDefaultsEditor() {
           onChange={event => updateScoring({ [key]: Number(event.target.value) })} />
       </div>)}
     </div>
+    </details>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {saved && <p role="status" className="text-sm">Farkle defaults saved for future games.</p>}
     <Button type="button" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Farkle Defaults'}</Button>

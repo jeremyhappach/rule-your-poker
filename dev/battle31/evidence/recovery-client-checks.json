@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-21T13:27:06.153Z",
+  "typescript": {
+    "command": "node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit",
+    "passed": true
+  },
+  "vitest": {
+    "files": [
+      "src/lib/battle31/model.test.ts",
+      "src/lib/audio/audioManager.test.ts",
+      "src/lib/gameTimerAuthority.test.ts",
+      "src/hooks/useRun21PresentationRetention.test.tsx",
+      "src/lib/canonicalShell/localTerminalPresentation.test.tsx"
+    ],
+    "passed": 36,
+    "failed": 0
+  },
+  "preservedUnchangedAgainst": "af34f37cb30d1314b7820491ac4976fc6c85e01a",
+  "preserved": [
+    "supabase/battle31/rules.sql",
+    "supabase/battle31/bots.sql",
+    "supabase/battle31/commands.sql",
+    "supabase/battle31/multiplayer.sql",
+    "supabase/battle31/grants.sql",
+    "src/components/battle31",
+    "src/hooks/useBattle31.ts",
+    "src/lib/battle31"
+  ],
+  "packageSHA256": "f7a83f5782e3a987efc9f085ec4435eaacaca50ec0ff28778b635218437977b4"
+}

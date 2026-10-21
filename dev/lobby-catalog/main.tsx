@@ -1,0 +1,8 @@
+import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {BrowserRouter} from 'react-router-dom';
+import {DealerGamePicker} from '@/components/catalog/DealerGamePicker';import {GameDefaultsConfig} from '@/components/GameDefaultsConfig';import {GameRules} from '@/components/GameRules';import {ArcadeSwitchboard} from '@/components/arcade/ArcadeSwitchboard';import {TooltipProvider} from '@/components/ui/tooltip';import {Toaster} from 'sonner';import {writes} from './mockSupabase';import '@/index.css';
+(window as any).catalogWrites=writes;
+function App(){const params=new URLSearchParams(location.search),surface=params.get('surface')??'dealer';const [open,setOpen]=useState(true),[selected,setSelected]=useState('');
+ return <TooltipProvider><BrowserRouter><main style={{minHeight:'100%',padding:16,background:'#103b2f',color:'white'}}><button onClick={()=>setOpen(true)} style={{minHeight:48}}>Open {surface}</button>
+ {surface==='dealer'&&<div style={{maxWidth:600,margin:'auto'}}><h1>Dealer Setup</h1><DealerGamePicker previousGame={params.get('game')??undefined} roster={{players:Number(params.get('players')??2),humans:Number(params.get('humans')??2),realMoney:false}} access={{run21:true,'tri-towers':true,'eleven-up':true,'royal-flash':true,'take-two':true,'trip-flip':true,boxdrop:true}} onSelect={setSelected}/><p role="status">{selected}</p></div>}
+ {surface==='defaults'&&<GameDefaultsConfig open={open} onOpenChange={setOpen}/>}{surface==='rules'&&<GameRules open={open} onOpenChange={setOpen}/>}{surface==='arcade'&&<ArcadeSwitchboard userId="local-fixture"/>}</main><Toaster/></BrowserRouter></TooltipProvider>}
+createRoot(document.getElementById('root')!).render(<App/>);

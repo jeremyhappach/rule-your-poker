@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-21T20:32:46.363Z",
+  "game": "2eac8320-cc06-4535-b7e9-6e5486e045db",
+  "dealer": "35f06ec6-f3bd-4227-a284-305df895d476",
+  "projectVerified": true,
+  "events": [
+    [
+      {
+        "revision": 7,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792614768088
+      },
+      {
+        "revision": 8,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792614768143
+      }
+    ],
+    [
+      {
+        "revision": 7,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792614768089
+      },
+      {
+        "revision": 8,
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "at": 1792614768144
+      }
+    ]
+  ],
+  "statuses": [
+    [
+      "SUBSCRIBED",
+      "CLOSED"
+    ],
+    [
+      "SUBSCRIBED",
+      "CLOSED"
+    ]
+  ],
+  "systems": [
+    [
+      {
+        "status": "ok",
+        "message": "Subscribed to PostgreSQL"
+      }
+    ],
+    [
+      {
+        "status": "ok",
+        "message": "Subscribed to PostgreSQL"
+      }
+    ]
+  ],
+  "masking": true,
+  "admissionClosed": true,
+  "duplicate": {
+    "responses": 2,
+    "from": 6,
+    "to": 7
+  },
+  "competing": {
+    "accepted": 1,
+    "stale": 1,
+    "to": 8
+  },
+  "deliveryMs": [
+    282,
+    283
+  ],
+  "passed": true,
+  "clientsClosedAt": "2026-10-21T20:32:48.344Z"
+}

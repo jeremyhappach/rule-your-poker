@@ -1,0 +1,28 @@
+[
+  {
+    "real": false,
+    "duplicateRace": true,
+    "competingRace": true,
+    "timeoutRace": true,
+    "pause": true,
+    "realTimeoutPaused": false,
+    "realAutoplayExplicitConsent": false,
+    "zeroClientSteps": 38,
+    "zeroClientRound": 6,
+    "postgameRecovered": true,
+    "resignation": true
+  },
+  {
+    "real": true,
+    "duplicateRace": true,
+    "competingRace": true,
+    "timeoutRace": true,
+    "pause": true,
+    "realTimeoutPaused": true,
+    "realAutoplayExplicitConsent": true,
+    "zeroClientSteps": 36,
+    "zeroClientRound": 6,
+    "postgameRecovered": true,
+    "resignation": true
+  }
+]

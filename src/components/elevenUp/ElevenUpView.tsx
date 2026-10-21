@@ -1,3 +1,5 @@
+import {ElevenUpRules} from '@/components/rules/ElevenUpRules';
+export {ElevenUpRules} from '@/components/rules/ElevenUpRules';
 import {useLayoutEffect,useRef,useState,type ReactNode,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
@@ -7,6 +9,7 @@ import {CountdownDots} from '@/components/ui/CountdownDots';
 import {ballPosition,ballValue,type ElevenIntent,type ElevenSnapshot} from '@/lib/elevenUp/model';
 import {useElevenGroupAudio} from '@/hooks/useElevenGroupAudio';
 import {winnerAchievementLabels} from '@/lib/arcade/scoreAchievements';
+import {Bot} from 'lucide-react';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
@@ -20,7 +23,7 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,r=b.result,hold=b.rules.holdMs+(r?.reason==='cleared'?b.rules.clearCelebrationMs:0);
  const result=r?{...r,id:r.id??v.scope,elapsed:Math.max(0,at-(b.deadline-hold))}:null;
  const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
- const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active} data-winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)}>{!v.solo&&<span title={p.name}>{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
+ const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active} data-winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)}>{!v.solo&&<span title={p.name}>{p.autoplay&&p.id!==v.viewerId&&!sessionEnded&&!v.settled&&<Bot className="eleven-autoplay-icon" role="img" aria-label={`${p.name}: Auto-play`}/>}{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
   activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
   announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription={`P-Town scoring · ${b.rules.version}`} panel={panel??<ElevenUpRules stageMs={b.rules.stageMs}/>}>
@@ -53,6 +56,7 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
     {scores}
     {!terminal&&!sessionEnded&&b.phase!=='stage_complete'&&<button className="eleven-take-score" disabled={!canAct||b.phase!=='playing'} onClick={()=>onIntent({type:'take_score'})}>Take Score</button>}
    </div>
+   {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.players.some(p=>p.id===v.viewerId&&p.autoplay)&&<label className="eleven-autoplay"><input type="checkbox" checked disabled={pending||!!error} onChange={()=>onIntent({type:'reclaim'})}/>Auto-play</label>}
    {!sessionEnded&&<div className="eleven-playfield">
    {!terminal&&<>
    <div className="eleven-rack" aria-label="Pool balls on felt">
@@ -83,4 +87,3 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
   </div>,layer)}
  </div>;
 }
-export function ElevenUpRules({stageMs=180000}:{stageMs?:number}={}){return <div className="eleven-rules"><p>Select exposed balls totaling exactly 11. You may use more than two balls and include the current draw ball. Covered numbers are visible, but cannot be selected.</p><p>Board rows award 600, 500, 400, 300, 200, then 100 points from back to front. The draw ball uses the next available pass position’s value, or zero if none is available.</p><p>Pass places the draw ball in the first open, uncovered position from back to front, left to right. It deducts that row’s value, stopping at zero. When the rack is full, Pass discards the draw ball and advances without a placement penalty.</p><p>Each eleven adds 1,000 when the round ends. Clear all balls for 10,000 plus 1,000 per unused draw/stock ball. Speed starts at 5,000 and loses 100 every 2.4 seconds; it reaches zero after two minutes. A timeout earns no speed bonus.</p><p>Two rounds. Reach 80,000 to earn one bonus round. No wild ball. Take Score ends the current round.</p><p>The 2.5-second bell introduction is followed by 30 seconds to make your first valid play and start the full {stageMs/60000}-minute clock. Results last five seconds; clearing adds the three-second fanfare first.</p></div>;}

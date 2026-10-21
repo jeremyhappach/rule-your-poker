@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "width": 320,
+      "height": 568,
+      "inside": true,
+      "minCardWidth": 44
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "inside": true,
+      "minCardWidth": 52.0625
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "inside": true,
+      "minCardWidth": 59
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "inside": true,
+      "minCardWidth": 65.390625
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "inside": true,
+      "minCardWidth": 44
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "inside": true,
+      "minCardWidth": 44
+    },
+    {
+      "width": 932,
+      "height": 430,
+      "inside": true,
+      "minCardWidth": 44
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "inside": true,
+      "minCardWidth": 82.84375
+    }
+  ],
+  "errors": [],
+  "privateViews": true,
+  "swapCommitted": true,
+  "reload": true
+}

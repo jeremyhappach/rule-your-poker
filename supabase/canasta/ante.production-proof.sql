@@ -122,7 +122,7 @@ BEGIN
       SELECT public.cribbage_begin_dealer_selection(p_game_id) INTO v_start;
     WHEN v_game.game_type='gin-rummy' THEN
       SELECT public.start_gin_rummy_initial_hand(p_game_id) INTO v_start;
-    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker') THEN
+    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker','battle-31') THEN
       SELECT private.megatouch_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;
     WHEN v_game.game_type='farkle' THEN
       SELECT private.farkle_begin_v1(p_game_id,p_expected_dealer_game_id) INTO v_start;

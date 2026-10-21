@@ -41,15 +41,16 @@ No migration version has been fabricated or applied.
 
 ## Required reconciliation and release sequence
 
-1. Serialize with other releases and re-read current remote main and deployed
-   authority. The last comparison baseline was `bb1ec308030065d1aa30fc79a18efd493315291e`;
-   this branch has not been merged with it. Preserve Race Poker, 11 Up and any
-   subsequently released games. Reconcile only Canasta additions in Game.tsx,
-   DealerGameSetup, setup authority, liveness contracts, shared catalog/routing
-   and deployment configuration. Regenerate hashes and rerun final checks. A changed
-   dispatcher must get a newly reviewed minimal insertion, never a replacement
-   using the captured clone definition. This package is blocked until that happens.
-2. On the reconciled candidate, rerun the app/server/fixture typechecks, full build,
+1. Local reconciliation is against `6b15f4eb060df319df13d576948c343920a23b21`,
+   including released Race Poker/11 Up and the installed Battle31 package. Canasta
+   uses the current catalog/setup and additive terminal-retention branches.
+   The read-only deployed Ante Up fingerprint on October 21 is
+   `7b6ca8feaa35c1fcce8b00491783e9d4`; reversing the Canasta insertion reproduces it.
+   Before release, serialize with other workstreams and re-read remote main and
+   deployed authority. Golf retains the next production slot. Any newer shared
+   change requires reconciliation and refreshed proof, never replacing a live
+   dispatcher with the captured clone definition.
+2. For any subsequent source change, rerun the app/server/fixture typechecks, full build,
    focused Canasta and shared-card/lifecycle tests, and all three local database
    runners. Run the exact closed-package proof as well. Capture commit and hashes.
 3. With separate release authorization, run candidate-rollback-proof.sql for fresh hosted rollback financial
@@ -116,3 +117,14 @@ and executes the installed rollback proof in the network-disabled local clone.
 It substitutes local health only in its harness, never in the installed proof.
 The earlier consent/control, independent concurrency and process-restart proofs
 remain separate. Local passes do not establish hosted readiness.
+
+`node supabase/canasta/reconciled-baseline.mjs` separately copies the existing local
+financial snapshot into a uniquely named disposable database, installs the exact
+released Race/11 Up/Battle31 owners using Battle31's baseline recipe, and checks the
+Canasta package plus released-game proofs together. It compares 305 prior function
+bodies, permits only the additive Ante Up change and drops its database afterward.
+Its old snapshot requires the exact deployed deferred financial trigger restored
+locally and uses the reference package's scheduler metadata fixture. Those harness
+repairs are excluded from release SQL. The source snapshot is never modified.
+The Docker proof separately exercises real pg_cron registration with job launching
+disabled and network mode none. Neither proves hosted dispatch delivery.

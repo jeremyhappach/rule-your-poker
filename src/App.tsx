@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { toast } from "sonner";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
-import Arcade from "./pages/Arcade";
+const LazyArcade = lazy(() => import("./pages/Arcade"));
+const Arcade = () => <Suspense fallback={<p role="status">Loading Arcade…</p>}><LazyArcade /></Suspense>;
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Game from "./pages/Game";

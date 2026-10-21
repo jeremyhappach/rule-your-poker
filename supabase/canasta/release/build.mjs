@@ -21,14 +21,17 @@ const candidateProof=install.replace(/COMMIT;\n$/,()=>read('supabase/canasta/rel
 emit('candidate-rollback-proof.sql',candidateProof);
 const worker=buildSync({absWorkingDir:root,entryPoints:['supabase/functions/canasta-recovery/index.ts'],bundle:true,platform:'node',format:'esm',write:false,logLevel:'silent'}).outputFiles[0].text;
 emit('worker/index.ts',worker);
-const files=[...order,'supabase/canasta/proof.sql','supabase/canasta/admission.proof.sql','supabase/canasta/consent.proof.sql','api/canasta.ts','vercel.json'];
+const files=[...order,'supabase/canasta/proof.sql','supabase/canasta/admission.proof.sql','supabase/canasta/consent.proof.sql','supabase/canasta/reconciled-baseline.mjs','api/canasta.ts','vercel.json',
+ 'src/pages/Game.tsx','src/components/DealerGameSetup.tsx','src/components/AnteUpDialog.tsx','src/lib/dealerGameSetupAuthority.ts','src/lib/dealerGameSetup/runBackConfig.ts',
+ 'src/lib/gameCatalog/index.ts','src/lib/gameCatalog/types.ts','src/lib/gameCatalog/games/canasta.ts','src/components/rules/CanastaRules.tsx',
+ 'src/hooks/useRun21PresentationRetention.ts','src/lib/canonicalShell/shellRouting.ts','src/lib/realMoneyLivenessContract.ts'];
 for(const base of ['server/canasta','src/lib/canasta','supabase/functions/canasta-recovery']){
  for(const name of readdirSync(path.join(root,base)).sort())if(name.endsWith('.ts'))files.push(`${base}/${name}`);
 }
 for(const name of ['.gitattributes','build.mjs','proof.mjs','preflight.sql','closed-verify.sql','close-admission.sql','edge-config.toml','README.md'])files.push(`supabase/canasta/release/${name}`);
-const manifest={schemaVersion:1,status:'BLOCKED: local package; unreconciled with released main; hosted qualification pending',
- candidateParent:'367310e6a8d7e06698a148373c69d7de231a60ad',referenceMain:'bb1ec308030065d1aa30fc79a18efd493315291e',
- expectedAnteMd5:'f3582431c00322facc1daaa81c20b682',encoding:'UTF-8 LF, no BOM',
+const manifest={schemaVersion:1,status:'Local reconciliation with released main; hosted qualification and activation pending',
+ candidateParent:'6e439fd40db267084c61a159ccc30ed04fb9c1af',referenceMain:'6b15f4eb060df319df13d576948c343920a23b21',
+ expectedAnteMd5:'7b6ca8feaa35c1fcce8b00491783e9d4',encoding:'UTF-8 LF, no BOM',
  projectRef:'xvhmbuppghwmwpwrkzao',installOrder:order,migrationRegistration:null,
  defaultState:{execution:false,admission:false,cronActive:false},moneyMode:'fake only',
  worker:{entrypoint:'worker/index.ts',esbuildVersion,platform:'node',format:'esm',hostedRuntimeVerified:false},

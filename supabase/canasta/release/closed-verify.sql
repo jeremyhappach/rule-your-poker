@@ -2,6 +2,7 @@
 DO $$
 BEGIN
  IF (SELECT count(*) FROM private.canasta_release WHERE NOT enabled AND NOT admission_enabled)<>1 THEN RAISE EXCEPTION 'canasta:release_not_closed';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.game_defaults WHERE game_type='canasta' AND ante_amount>0) THEN RAISE EXCEPTION 'canasta:stake_default_missing';END IF;
  IF (SELECT count(*) FROM cron.job WHERE jobname='canasta-recovery' AND NOT active AND schedule='5 seconds'
   AND command='SELECT private.canasta_dispatch_recovery()')<>1 THEN RAISE EXCEPTION 'canasta:scheduler_not_closed';END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='canasta_revisions') THEN RAISE EXCEPTION 'canasta:publication_missing';END IF;

@@ -1,5 +1,11 @@
 # Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
 
+Reconciled locally with main `6b15f4eb0`, retaining Race/11 Up/Battle31 and the
+shared catalog. Current dispatcher guard, canonical stake-default registration,
+300 focused tests, combined local financial/control proofs and 12 rendered mobile
+cases pass. Hosted qualification and native acceptance remain. Golf retains the
+next production slot. See `CANASTA_RECONCILIATION.md`; no production action occurred.
+
 Initial admission is now explicitly fake-money-only at discovery, locked setup
 and consent completion. Closed defaults remain unchanged. The local correction
 and exact closed SQL/worker package pass rollback, concurrency and restart proofs.
@@ -24,6 +30,165 @@ the 71-card witness. Native mobile/gameplay acceptance remains pending.
 Appearance follow-up removes preview-only dark styling. Authenticated production
 comparison confirms the shared amber border, bridge felt and white page treatment;
 side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
+
+# Battle 31 / 1 — 2026-10-21 — hosted qualification passed; admission stays closed
+
+Candidate and installed hosted rollback proofs pass all six financial cases.
+Exact unchanged package is installed as hosted migration 20261021202045.
+Authenticated PostgREST/Realtime, duplicate/competing/terminal/late-replay races
+and actual scheduler-driven zero-client settlement/continuation now pass. Two
+independent PostgREST backend connections were observed contending on the lock.
+Four fake-money fixtures were removed; historical balances and Race Poker/11 Up
+authority are preserved. All four Battle31 flags are false. Client publication
+is authorized; admission scope and owner/physical-iPhone smoke remain separate.
+See [hosted evidence](BATTLE31_HOSTED_QUALIFICATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — reconciled local candidate, not published
+
+Reconciled with released main bb1ec308, preserving Race Poker v2 and 11 Up
+bots/Ready. Shared registration now makes guarded additive changes instead of
+replacing copied owners. Approved Battle 31 gameplay is unchanged. Local package,
+cross-game financial/control, recovery, client and build checks pass. Hosted
+qualification and release remain outstanding; admission stays closed. See
+[BATTLE31_RECONCILIATION.md](BATTLE31_RECONCILIATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — timeout correction qualified locally, not published
+
+Real-money human expiry now pauses through the canonical owner. Fake-money
+expiry starts strategic autoplay and deferred sit-out. Auto-play uncheck reclaims
+control and clears both flags; the opponent robot follows authoritative control.
+The existing postgame owner applies deferred sit-out after the whole match.
+Approved scoring/rules, two-seat ownership and canonical settlement are preserved.
+
+Local authority/race/reconnect/continuation, browser, financial, package and
+recovery proofs pass. Hosted qualification and physical-device acceptance remain.
+No push, production write, deployment or activation occurred. See
+[BATTLE31_TIMEOUT_QUALIFICATION.md](BATTLE31_TIMEOUT_QUALIFICATION.md).
+
+# Battle 31 / 1 — 2026-10-21 — local release corrections qualified, not published
+
+Definition fingerprints now tolerate CRLF/LF only; separate fake/real server
+qualification gates govern setup and bootstrap. Capability v3 supports fake-only
+admission. Current-main Race Poker and Box Drop client changes are integrated in
+the isolated candidate, with approved Battle 31 rules unchanged.
+
+Package/admission/financial/concurrency/recovery proofs, 146 focused client tests,
+typecheck, production build and both-money main-route journeys passed locally.
+A guarded hosted qualification driver is prepared but has not connected to
+production. Migration registration, hosted authority/transport/scheduler checks,
+branch ancestry integration, publication and activation remain separate.
+See [release corrections and evidence](BATTLE31_RELEASE_CORRECTIONS.md).
+
+# Battle 31 / 1 — 2026-10-21 — local recovery/package qualified, not released
+
+The isolated candidate now has bounded recovery (20 gameplay and 20 terminal
+sessions per invocation), lock skipping before the batch limit, and identity
+revalidation. Both-money contention proofs cover locked rounds/sessions/matches/
+players, healthy tails, competing workers, and independent Box Drop recovery.
+A guarded atomic migration package preserves current-main Race Poker registration,
+rejects drift/collisions, installs closed, and validates exact repeat installation.
+Financial/concurrency/human-bot regressions, TypeScript and 36 focused tests pass.
+
+See [recovery/package qualification](BATTLE31_RECOVERY_QUALIFICATION.md) and
+[earlier candidate and route evidence](BATTLE31_LOCAL_CANDIDATE.md). Current-main
+client integration, migration-history registration, hosted authority/scheduler/
+Realtime checks and physical-device smoke remain. No production mutation,
+admission activation, merge into main, push or deployment occurred.
+
+# 11 Up combined bots / Ready controls — installed and qualified for publication
+
+Jeremy directly authorized the combined rollout after Race Poker. Reconciled
+with Race production `fe71aa33b596887e7647350c420162a5b66a8c80`, preserving its
+definitions and fake-only admission. Exact original and forward artifacts are
+installed as hosted versions `20261021185314` and `20261021185320` respectively.
+Candidate and installed production rollback proofs pass: six financial cases,
+Ready money-mode controls, reclaim, all-human safeguard, unchanged balances,
+Race authority and defaults, with no residual fixture identities. All 23 relevant
+installed definitions match qualification; the unchanged legacy pause overload
+matches its production baseline. One-second recovery succeeds. 55 reconciled
+client tests, TypeScript and Vite build pass. New 11 Up admission is closed until
+matching production SHA verification, then only its prior availability is restored.
+See `ELEVEN_UP_HUMAN_READY.md` and `supabase/eleven-up/combined-release-evidence.json`.
+Owner multiplayer and physical-phone smoke remain outstanding.
+
+## Earlier local qualification
+
+Isolated from preserved `0ecd5ab0`: real-money Ready expiry uses canonical pause;
+fake-money Ready expiry persists autoplay/deferred sit-out and starts the existing
+strategic policy atomically. Reclaim clears flags and invalidates stale bot work
+without clock changes or resume. Forward migration `20261021181947` makes the
+canonical all-human safeguard apply at Ready despite false/none defaults, with
+no inactivity pause during scoring and no changes to other games or defaults.
+Local SQL/race/financial proofs, browser and six phone layouts, 2,587 app tests,
+241 harness tests, TypeScript and build pass. No original package changes, push,
+production writes. Original task is interrupted and Jeremy confirms cards cleared;
+production remains separately gated and Race Poker is a separate waiting release.
+Ordered migrations, financial/race proof and 49 focused regressions pass for the
+SQL-only follow-up. See [qualification](ELEVEN_UP_HUMAN_READY.md).
+
+# 11 Up bots: production proof passed; migration request failed
+
+The approved corrected rollback-only production proof passed all six financial
+cases with unchanged existing balances and zero residual users/profiles/players/
+snapshots. The migration tool then returned `Invalid or expired requestState`.
+Read-only follow-up confirmed no migration entry, no bot policy and unchanged
+original functions. No retry, main integration, push or deployment occurred.
+See `supabase/eleven-up/production-release-evidence.json`.
+
+11 Up bot support adds visible-information server decisions through its existing
+versioned reducer and canonical recovery/consent/settlement owners. The unchanged
+2–7-seat multiplayer roster permits fake-money bots with at least one human,
+preserving canonical Add Bot's real-money restriction. Arcade, rules,
+leaderboards and financial semantics are preserved. Local rollback qualification
+and focused client checks pass; release requires separate approval and matching
+database/client publication. See [scope, evidence and smoke](ELEVEN_UP_BOTS.md).
+The [local release package](ELEVEN_UP_BOT_RELEASE_PACKAGE.md) now includes a
+deterministic transaction, hashes, preflight/verification and safe admission
+rollback. Official CLI registration is complete in migration
+`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Release approval followed Box Drop completion. Production preflight matched all 13
+qualified definitions, but rollback-only proof submission failed SQL parsing after
+query assembly collapsed dollar quotes. No migration was applied; read-only
+verification confirmed the original owners and zero bot migration entries.
+Production retry and publication remain stopped pending review of this failed gate.
+The isolated branch now includes main `88c798396bd0202551e36dcf4cd9efa39c9ef555`;
+combined Race Poker/11 Up database proofs and 131 focused client tests pass.
+
+# Race Poker / 2 timeout controls — 2026-10-21 — installed and qualified for publication
+
+Opponent choices dim; fake-money human timeout starts strategic Auto-play and
+next-dealer-game sit-out; unchecking restores control and clears that intent.
+Real-money human timeout uses canonical pause. New admissions will freeze v2;
+existing v1 rules, scoring and financial ownership remain intact.
+Local SQL/financial/concurrency, focused tests, 50 layouts, TypeScript and build
+pass. Jeremy authorized the first coordinated release slot. Migration
+`20261021183159` (`race_poker_timeout_controls_v2`) is installed; candidate and
+installed production rollback proofs passed both money modes, preserved existing
+balances/v1 history and left zero fixtures. Recovery and function parity pass.
+New admission is briefly closed during matching client publication; restore the
+existing fake-only availability after exact deployment verification. Real money
+stays closed. Checkpoint tag: `race-poker-timeout-2026-10-21`; the delivery report
+records its exact production SHA. Owner repeat smoke remains pending. See
+[contract, evidence and release boundary](RACE_POKER_TIMEOUT_CONTROLS.md).
+
+# Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
+
+Owner smoke rejected the contrast-only release because actual crate values remained too small. The shared crate renderer now gives bold sans-serif numerals 88% of the face, with a 10% colored edge marker. Single digits use a larger fitted size; two-digit values fit without clipping. Incoming, queued and placed crates share this styling. Crate positions, playfield, controls, rules and financial/admission behavior are unchanged. No landscape or dialog changes are included. Thirty-two focused phone/desktop visual cases pass for values 2, 7, 10 and 11, including exact unchanged crate/control geometry and glyph fit; before/after evidence is under `qualification.local/boxdrop/numeral`. Focused regressions (25 tests), typecheck and production build pass. Physical iPhone owner smoke remains pending.
+
+# Box Drop numeral contrast - 2026-10-21 - published, superseded by owner feedback
+
+Only the shared crate numeral paint changes: opaque cream background, dark foreground, no stroke or shadow. Font sizes, crate/playfield geometry, controls, dialog behavior, rules, timing, financial logic and admission are unchanged. The broader landscape candidate `5bf7556061d78bef6b8debf927b38705abe1766f` and pending reconciliation remain isolated in `codex/boxdrop-number-readability`; they are excluded from this release. Focused visual comparison passes 220 cases (values 1-11, five viewport sizes, four presentation states), preserving exact geometry and disabled states. Local before/after screenshots are under `qualification.local/boxdrop/contrast`. Focused regressions (25 tests), TypeScript checking and production build pass. Owner iPhone smoke remains pending; existing small multiplayer landscape geometry is intentionally unchanged under the narrowed approval.
+
+# Race Poker / 1 - 2026-10-20 - production published, admission closed
+
+Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false. Client fff4e8d39c4514c5c4370e993929ee858a453f04 is READY at holm357.com; authenticated capability closure, approved Rules and no Arcade entry passed. No money mode is activated. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.
+
+# Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
+
+Based on integrated `a150cd6aecc746143f246186a8b46421d0534355`, branch `codex/lobby-catalog-redesign`. Shared presentation descriptors drive compact dealer selection, category/game Defaults and Rules navigation, and two-column Arcade tiles. Existing rules articles are extracted verbatim; current/legacy help resolves through existing version owners. Geometry Lab UI, keys and descriptors are unchanged.
+
+Existing collection validation/save and the separate Farkle save adapter remain intact. Saved Farkle responses reconcile the parent draft to prevent a later collection save restoring old values. No migrations, admission activation or gameplay/financial changes are included. Release approval received for implementation 6137c7fe0838546c27292da8085cbea7b190e783. Main remains at the implementation base; 73 relevant tests, TypeScript and the production bundle passed again. Other development threads were idle and the latest Vercel deployment READY before integration. Publish through the established main push helper, then production-first owner smoke; no preview deployment required.
+
+Evidence and limitations: [LOBBY_CATALOG_REDESIGN.md](LOBBY_CATALOG_REDESIGN.md).
 
 # Boxdrop / 1 — 2026-10-20 — qualified release, owner smoke pending
 

@@ -1,5 +1,10 @@
 # Canasta local integration checkpoint — October 21, 2026
 
+Latest local reconciliation with main `6b15f4eb0` is recorded in
+`CANASTA_RECONCILIATION.md`. It preserves the released catalog and terminal owners,
+updates only the guarded Ante Up insertion, and qualifies Canasta with the released
+Race/11 Up/Battle31 database baseline. Hosted transport and native gates remain.
+
 ## October 21 fake-money admission and closed package
 
 Approved local-only follow-up adds authoritative fake-money guards to configure

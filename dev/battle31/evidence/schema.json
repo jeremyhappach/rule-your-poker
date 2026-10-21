@@ -1,0 +1,101 @@
+{
+  "indexes": [
+    {
+      "schemaname": "public",
+      "tablename": "session_player_snapshots",
+      "indexdef": "CREATE UNIQUE INDEX session_player_snapshots_pkey ON public.session_player_snapshots USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "session_player_snapshots",
+      "indexdef": "CREATE INDEX idx_session_snapshots_game_hand ON public.session_player_snapshots USING btree (game_id, hand_number)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "session_player_snapshots",
+      "indexdef": "CREATE INDEX idx_session_snapshots_game_dealer_hand ON public.session_player_snapshots USING btree (game_id, dealer_game_id, hand_number)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "session_player_snapshots",
+      "indexdef": "CREATE INDEX idx_session_snapshots_game_user ON public.session_player_snapshots USING btree (game_id, user_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "session_player_snapshots",
+      "indexdef": "CREATE UNIQUE INDEX session_player_snapshots_dealer_hand_participant_key ON public.session_player_snapshots USING btree (game_id, dealer_game_id, hand_number, player_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE UNIQUE INDEX game_results_pkey ON public.game_results USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE INDEX idx_game_results_game_id ON public.game_results USING btree (game_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE UNIQUE INDEX game_results_terminal_settlement_key ON public.game_results USING btree (dealer_game_id, hand_number, settlement_key) WHERE (settlement_key IS NOT NULL)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE UNIQUE INDEX game_results_357_ante_uniq ON public.game_results USING btree (dealer_game_id, hand_number) WHERE ((game_type = ANY (ARRAY['3-5-7'::text, '3-5-7-game'::text, '357'::text])) AND (winning_hand_description = 'Ante'::text))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE UNIQUE INDEX game_results_holm_terminal_uniq ON public.game_results USING btree (dealer_game_id, hand_number) WHERE ((game_type = ANY (ARRAY['holm'::text, 'holm-game'::text])) AND (event_kind = ANY (ARRAY['pussy_tax_carryforward'::holm_event_kind, 'chucky_loss_pot_match'::holm_event_kind, 'chucky_tiebreak_pot_match'::holm_event_kind, 'showdown_final_award'::holm_event_kind, 'partial_tie_final_award'::holm_event_kind, 'chucky_final_award'::holm_event_kind])))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE INDEX idx_game_results_dealer_game_id ON public.game_results USING btree (dealer_game_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "game_results",
+      "indexdef": "CREATE UNIQUE INDEX game_results_357_sweep_uniq ON public.game_results USING btree (dealer_game_id, hand_number) WHERE ((game_type = ANY (ARRAY['3-5-7'::text, '3-5-7-game'::text, '357'::text])) AND (winning_hand_description = '3-5-7 Sweep'::text))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "gameplay_transfer_batches",
+      "indexdef": "CREATE UNIQUE INDEX gameplay_transfer_batches_pkey ON public.gameplay_transfer_batches USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "gameplay_transfer_batches",
+      "indexdef": "CREATE UNIQUE INDEX gameplay_transfer_batches_game_id_cursor_key ON public.gameplay_transfer_batches USING btree (game_id, cursor)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "gameplay_transfer_batches",
+      "indexdef": "CREATE INDEX gameplay_transfer_batches_game_cursor_idx ON public.gameplay_transfer_batches USING btree (game_id, cursor)"
+    }
+  ],
+  "functions": [
+    {
+      "nspname": "private",
+      "proname": "advance_ante_phase_exact",
+      "hash": "2c2f0c5f5593f2726cd9cc2f0c43f791"
+    },
+    {
+      "nspname": "private",
+      "proname": "megatouch_begin",
+      "hash": "6acca35d68743bbfddfc12a01f83d91c"
+    },
+    {
+      "nspname": "public",
+      "proname": "settle_gameplay_chip_transfers",
+      "hash": "de14ab5df0a703cfd8c1ed43aa5a819c"
+    },
+    {
+      "nspname": "public",
+      "proname": "submit_ante_decision",
+      "hash": "c633a318c7f2605104c92e03d3b3b09a"
+    }
+  ]
+}

@@ -1,10 +1,40 @@
 # Repository map
 
+Canasta now joins `src/lib/gameCatalog/games/canasta.ts` and versioned
+`src/components/rules/CanastaRules.tsx`. Its reconciled local baseline proof is
+`supabase/canasta/reconciled-baseline.mjs`; rendered regression driver is
+`dev/canasta/reconciliation-browser.mjs`. See `CANASTA_RECONCILIATION.md`.
+
 Canasta closed release preparation: `supabase/canasta/release/build.mjs` produces
 the hashed installation, rollback proofs and recovery-worker bundle from existing
 Canasta owners. `admission.proof.sql` owns fake-money admission regressions.
 `CANASTA_RELEASE_PACKAGE.md` links exact artifacts and remaining hosted gates.
 No production migration is registered by this package.
+
+Battle 31 reconciliation: `registration.sql` performs guarded additive shared
+authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
+release locally; `released-games-proof.mjs` verifies Race Poker and 11 Up against
+the combined package. See `BATTLE31_RECONCILIATION.md`.
+
+Battle 31 timeout/control: `supabase/battle31/commands.sql` bridges canonical pause
+and automatic play; `recovery.sql` dispatches strategic controlled turns;
+`multiplayer.sql` projects control flags. `Battle31View.tsx` owns checkbox/robot
+presentation. Local authority/browser proofs: `dev/battle31/timeout-lifecycle.mjs`
+and `timeout-browser.mjs`; see `BATTLE31_TIMEOUT_QUALIFICATION.md`.
+
+11 Up Ready inactivity: `supabase/eleven-up/human-ready.sql` is the local-only
+forward candidate for Ready timeout, control projection/reclaim and bot scheduling.
+`dev/eleven-up/human-ready-*.mjs` qualifies isolated SQL/browser behavior. Shared
+rules and settlement remain in their original owners. See `ELEVEN_UP_HUMAN_READY.md`.
+
+Race Poker: `supabase/race-poker/` owns rules, commands, settlement and recovery.
+`v2.sql` adds canonical inactivity controls while preserving v1 matches; its
+guarded migration remains local/unapplied. `src/components/racePoker/`,
+`src/hooks/useRacePoker.ts` and `src/lib/racePoker/` own presentation and redacted
+transport. `dev/race-poker/v2-proof.mjs` and `v2-concurrency.mjs` qualify controls
+against isolated local PostgreSQL. See `RACE_POKER_TIMEOUT_CONTROLS.md`.
+
+Lobby presentation metadata: `src/lib/gameCatalog/` composes per-game descriptors. `components/catalog/DealerGamePicker.tsx` renders dealer choices inside the existing setup owner. `components/rules/` owns extracted shared help and version loading; `components/arcade/ArcadeSwitchboard.tsx` owns catalog tiles. `dev/lobby-catalog/` contains read-only parity fixtures and a local in-memory UI verification harness. See `LOBBY_CATALOG_REDESIGN.md`.
 
 Boxdrop: `supabase/boxdrop/rules.sql` owns the frozen `boxdrop/1` reducer.
 The adjoining Arcade/multiplayer adapters, bots and recovery follow the accepted
@@ -1126,3 +1156,20 @@ see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.
 - `src/hooks/useCanastaAccess.ts`: closed capability discovery; `src/pages/Game.tsx`: retained terminal ownership.
 - `dev/canasta/authorityPlugin.ts`, `authorityReview.tsx`: loopback reducer-backed review without database writes.
 - `supabase/canasta/{proof,concurrency.proof}.mjs`: rollback and competing-session qualification in isolated local PostgreSQL.
+
+## Battle 31 local candidate
+
+Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
+`src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
+`dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
+
+
+Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
+`package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
+atomic migration: `supabase/battle31/release.sql`; evidence/remaining gates:
+`docs/codex/BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
+shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
+controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
+preflight tests: `dev/battle31/hosted-qualification.test.mjs`.

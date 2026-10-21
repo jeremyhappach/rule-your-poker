@@ -3,7 +3,7 @@ DO $$
 DECLARE source text:=pg_get_functiondef('private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)'::regprocedure);
  anchor text:='    WHEN v_game.game_type=''farkle'' THEN';
 BEGIN
- IF md5(replace(source,chr(13),'')) <> 'f3582431c00322facc1daaa81c20b682' THEN
+ IF md5(replace(source,chr(13),'')) <> '7b6ca8feaa35c1fcce8b00491783e9d4' THEN
   RAISE EXCEPTION 'canasta:ante_authority_changed';
  END IF;
  IF position('''race-poker''' IN source)=0 OR (length(source)-length(replace(source,anchor,'')))/length(anchor)<>1 THEN
@@ -49,6 +49,11 @@ END $$;
 CREATE TRIGGER canasta_publish_revision AFTER INSERT OR UPDATE OF revision ON private.canasta_matches FOR EACH ROW EXECUTE FUNCTION private.canasta_publish_revision();
 REVOKE ALL ON FUNCTION private.canasta_publish_revision() FROM PUBLIC,anon,authenticated,service_role;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.canasta_revisions;
+
+-- Canonical Defaults owns the editable suggested stake. Match timing stays frozen
+-- in private.canasta_rules(); preserve any existing administrator choice.
+INSERT INTO public.game_defaults(game_type,ante_amount) VALUES('canasta',5)
+ ON CONFLICT(game_type) DO NOTHING;
 
 CREATE FUNCTION public.canasta_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',

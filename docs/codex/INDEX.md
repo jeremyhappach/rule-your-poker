@@ -9,12 +9,16 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `GAME_RULES.md` | Any change touching legal actions, scoring, settlement, dealer/hand flow, bots |
 | `CARD_FACE_CONTRACT.md` | Card rendering, private/masked projections, deal/reveal admission, and face caches in Holm, Gin, Cribbage or 3-5-7 |
 | `CANASTA_CONTRACT.md` | Approved Classic two-player rules, fixed stake, timeout policy and legality correction |
+| `CANASTA_RECONCILIATION.md` | Current-main catalog/lifecycle reconciliation, combined local evidence and remaining hosted gates |
 | `CANASTA_AUTHORITY_CHECKPOINT.md` | Local reducer/server/SQL checkpoint, qualification evidence and unfinished integration |
 | `CANASTA_MAXIMUM_HAND.md` | 71-card legal witness, count upper bound and proof boundaries |
 | `CANASTA_MOBILE_CHECKPOINT.md` | Isolated mobile checkpoint, shared-owner inventory, evidence and remaining review gates |
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `RACE_POKER_RULES.md` | Approved multiplayer-only rules and bot information contract |
+| `RACE_POKER_QUALIFICATION.md` | Local authority/financial/browser evidence and coordinated release hold |
+| `RACE_POKER_RELEASE_PLAN.md` | Exact coordinated integration, migration, qualification, publication and activation sequence |
 | `TRIP_FLIP_RULES.md` | Frozen Trip Flip rules, timing boundaries and approved P-Town adaptations |
 | `TRIP_FLIP_QUALIFICATION.md` | Trip Flip authority, financial/concurrency proofs, browser/audio/layout evidence and owner smoke |
 | `RUN21_PRODUCTION_QUALIFICATION.md` | Run21 financial authority, recovery, inactivity policy, release evidence and owner smoke |

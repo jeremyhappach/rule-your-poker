@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T20:07:27.977Z",
+  "database": "battle31_package_1792613134582",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
+  "passed": true,
+  "checks": [
+    "Race v1/v2 rules, both-money financial/rollback/replay and timeout/reclaim controls",
+    "11 Up fake-money human/bot admission and shared bootstrap succeed; real-money setup and bootstrap reject bots",
+    "11 Up Ready real pause/fake autoplay, reclaim, scoring clock and all-human safeguard"
+  ],
+  "rollbackPreservesExistingState": true
+}

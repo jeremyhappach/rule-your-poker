@@ -1,0 +1,53 @@
+{
+  "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
+  "exactCurrentMainFiles": [
+    "src/components/AnteUpDialog.test.tsx",
+    "src/components/DealerGameSetup.runBack.test.tsx",
+    "src/components/boxdrop/BoxdropView.tsx",
+    "src/components/boxdrop/boxdrop.css",
+    "src/components/catalog/RacePokerCatalog.test.tsx",
+    "src/components/racePoker/RacePokerTable.tsx",
+    "src/components/racePoker/RacePokerView.tsx",
+    "src/components/racePoker/racePoker.css",
+    "src/components/racePoker/useRacePokerFinancial.ts",
+    "src/components/rules/RacePokerRules.tsx",
+    "src/components/rules/VersionedRules.tsx",
+    "src/hooks/useRacePoker.test.tsx",
+    "src/hooks/useRacePoker.ts",
+    "src/hooks/useRacePokerAccess.ts",
+    "src/hooks/useRacePokerAudio.test.tsx",
+    "src/hooks/useRacePokerAudio.ts",
+    "src/lib/dealerGameSetupAuthority.test.ts",
+    "src/lib/gameCatalog/games/race-poker.ts",
+    "src/lib/racePoker/audio.test.ts",
+    "src/lib/racePoker/audio.ts",
+    "src/lib/racePoker/client.ts",
+    "src/lib/racePoker/model.test.ts",
+    "src/lib/racePoker/model.ts"
+  ],
+  "combinedBattle31AndCurrentMainFiles": [
+    "src/components/AnteUpDialog.tsx",
+    "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+    "src/components/DealerGameSetup.tsx",
+    "src/hooks/useRun21PresentationRetention.ts",
+    "src/lib/canonicalShell/ChipTransportProvider.tsx",
+    "src/lib/canonicalShell/shellRouting.ts",
+    "src/lib/dealerGameSetup/runBackConfig.ts",
+    "src/lib/dealerGameSetupAuthority.ts",
+    "src/lib/gameCatalog/catalog.test.ts",
+    "src/lib/gameCatalog/index.ts",
+    "src/lib/gameCatalog/types.ts",
+    "src/lib/realMoneyLivenessContract.ts",
+    "src/pages/Game.tsx"
+  ],
+  "branchAncestryIntegrated": false,
+  "tests": {
+    "focusedClientTests": 146,
+    "typecheck": true,
+    "productionBuild": true,
+    "fakeOnlyRoute": true,
+    "realOnlyRoute": true,
+    "frozenHelpWithoutArcade": true
+  },
+  "routeTransport": "loopback; hosted transport not qualified"
+}

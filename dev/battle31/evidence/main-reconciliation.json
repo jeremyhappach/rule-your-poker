@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-21T13:19:50.522Z",
+  "base": "44dbd5a7d4de4635b258f731558fe346473d82b9",
+  "main": "0d9469ecc24345175b3cb07052d16283a1c4f42c",
+  "head": "af34f37cb30d1314b7820491ac4976fc6c85e01a",
+  "sharedSQL": "supabase/battle31/registration.sql preserves current main Race Poker registration plus Battle 31 additions",
+  "overlappingPaths": [
+    "docs/codex/CURRENT_RELEASE.md",
+    "docs/codex/DECISION_LOG.md",
+    "docs/codex/REPO_MAP.md",
+    "src/components/AnteUpDialog.tsx",
+    "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+    "src/components/DealerGameSetup.tsx",
+    "src/hooks/useRun21PresentationRetention.ts",
+    "src/lib/canonicalShell/ChipTransportProvider.tsx",
+    "src/lib/canonicalShell/shellRouting.ts",
+    "src/lib/dealerGameSetup/runBackConfig.ts",
+    "src/lib/dealerGameSetupAuthority.ts",
+    "src/lib/gameCatalog/catalog.test.ts",
+    "src/lib/gameCatalog/index.ts",
+    "src/lib/gameCatalog/types.ts",
+    "src/lib/realMoneyLivenessContract.ts",
+    "src/pages/Game.tsx"
+  ],
+  "branchIntegrated": false,
+  "notes": "No merge/rebase/cherry-pick or unrelated Box Drop source changes. Client integration must preserve both game registrations before publication."
+}

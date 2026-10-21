@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-21T20:11:35.096Z",
+  "main": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "packageSHA256": "2b8ec87378a03cb595dd7ebfc6963844b41eb73021231446077e761c3600de3e",
+  "applicationTests": 2607,
+  "harnessTests": 241,
+  "typecheck": true,
+  "productionBuild": true,
+  "packageCases": 20,
+  "hostedPreflightMockCases": 8,
+  "hostedExecutionPerformed": false,
+  "productionMutations": false,
+  "rulesChanged": false,
+  "browserMoneyModes": [
+    "fake",
+    "real"
+  ],
+  "browserTransport": "actual Game route; loopback transport and authenticated SQL role",
+  "remaining": [
+    "Fresh production parity and activity",
+    "Hosted rollback and authentication/Realtime qualification",
+    "Actual pg_cron and zero-client qualification",
+    "Authorized migration and publication",
+    "Explicit admission scope",
+    "Owner physical-device smoke"
+  ]
+}

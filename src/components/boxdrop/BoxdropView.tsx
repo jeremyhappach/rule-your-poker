@@ -1,3 +1,5 @@
+import {BoxdropRules} from '@/components/rules/BoxdropRules';
+export {BoxdropRules} from '@/components/rules/BoxdropRules';
 import {useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
@@ -10,7 +12,7 @@ import {BoxdropScorePill} from './BoxdropScorePill';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {boxdropCue} from '@/lib/boxdrop/audio';
 import './boxdrop.css';
-function Crate({box}:{box:BoxdropBox}){return <span className="box-crate" data-color={box.recycled?'white':box.color}><i aria-hidden="true">▧</i><b>{box.value}</b></span>;}
+function Crate({box}:{box:BoxdropBox}){return <span className="box-crate" data-color={box.recycled?'white':box.color}><i aria-hidden="true">▧</i><b data-digits={String(box.value).length}>{box.value}</b></span>;}
 export function BoxdropLoading({solo=false,error,onReconnect,activeTab,setActiveTab}:{solo?:boolean;error:string;onReconnect:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void}){
  const [tab,setTab]=useState<ShellTabId>('cards');
  const shell=<FullscreenGameShell className="box-scene" ready={false} title="Boxdrop" description="" activeTab={activeTab??tab} setActiveTab={setActiveTab??setTab} panel={<BoxdropRules/>} announcement={solo?false:undefined}><div role="status">{error||'Loading Boxdrop…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;
@@ -56,4 +58,3 @@ export function BoxdropView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  <p className="box-status" role="status">{error?<>{error} <button onClick={onReconnect}>Reconnect</button></>:!connected?'Connecting live updates…':pending||submitting?'Placing…':!v.solo&&!v.canAct?`${active?.name??'Opponent'} is playing`:result?(result.reason==='timeout'?'Time Up':clearing?'':'Round Complete'):b.phase==='intro'?'':b.event.label}</p></>}
  </div>,layer)}</div></FullscreenGameShell>;
 }
-export function BoxdropRules({version='boxdrop/1'}:{version?:string}){return <div className="box-rules"><p>Place each box on one of four scales. Reach exactly 32 using at most six boxes to earn 3,200, then exactly 21 using at most three boxes. Successful closures earn 5,000, 10,000, 15,000 and 25,000 in order. An exact last-slot match counts.</p><p>A full but short scale retires and pays 20 per accumulated point once. Going over breaks it without partial credit; previous points stay. Take Score banks active partial stacks. Timeout pays no new partial credit.</p><p>Recycling holds six boxes in order. Before it fills, each recycle draws a fresh box. Once full, it returns the oldest box. Recycled boxes stay white and keep their value, even when recycled again. Fresh values 1–11 are equally likely; colored labels do not affect scoring.</p><p>Each round has 100 active seconds. Early completion earns 100 per complete remaining half-second plus 1,000 per unused recycling slot, only if you completed a 32 order in that round. The clock continues during animations.</p><p>Two regular rounds. Reach 100,000 total after round two to earn one bonus round. Multiplayer alternates players on independent boxes, with each player qualifying separately. Highest total wins.</p><small>P-Town rules {version}</small></div>;}

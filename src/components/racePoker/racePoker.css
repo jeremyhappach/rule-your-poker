@@ -1,0 +1,63 @@
+.race-scene{--race-purple:#53278b;background:radial-gradient(ellipse at top,#70549b,#261744);color:#fff9eb}
+.race-plane{position:absolute;inset:0;container-type:size;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1.25fr) auto auto minmax(0,.85fr) minmax(0,.85fr) auto;gap:clamp(3px,1.2cqh,12px);padding:clamp(4px,min(1.5cqi,1.5cqh),16px);pointer-events:auto;overflow:hidden}
+.race-scoreband{display:flex;justify-content:center;gap:clamp(6px,3cqi,25px)}
+.race-score{background:linear-gradient(#7044a6,#43206c);border:2px solid #c99af4;border-radius:999px;min-width:0;width:min(38cqi,210px);padding:clamp(3px,1cqh,8px) 12px;text-align:center;box-shadow:0 3px 0 #1e102f;display:grid}
+.race-score[data-active=true]{border-color:#ffe78a;box-shadow:0 0 14px #ffda6266}
+.race-score>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;line-height:1.1;font-size:clamp(9px,min(2.6cqi,4.5cqh),14px)}
+.race-score strong{font-size:clamp(14px,min(5cqi,6cqh),30px);line-height:1.05;font-variant-numeric:tabular-nums}
+.race-score small{line-height:1.1;font-size:clamp(8px,min(2.1cqi,4cqh),12px)}
+.race-score i{display:inline-block;width:.6em;height:.6em;border-radius:50%;margin-right:.3em;background:#38bdf8}.race-score i[data-horse="1"]{background:#fb7185}
+.race-track{position:relative;display:grid;grid-template-rows:1fr 1fr;min-height:0;border:4px solid #f6ecc3;border-radius:12px;background:repeating-linear-gradient(100deg,#469c43 0 5%,#40923d 5% 10%);box-shadow:inset 0 0 20px #163e29;overflow:hidden}
+.race-lane{position:relative;min-height:0;border-bottom:2px dashed #ffffb966}.race-lane:last-child{border:0}
+.race-finish{position:absolute;right:4%;inset-block:0;width:3%;background:conic-gradient(#fff 25%,#252525 0 50%,#fff 0 75%,#252525 0) 0 0/100% 16px;opacity:.95}
+.race-target{position:absolute;right:6%;top:50%;transform:translateY(-50%);font-size:clamp(9px,2.4cqi,13px);background:#22432b;border-radius:0 0 6px 6px;padding:0 5px;z-index:1}
+.race-runner{position:absolute;top:0;bottom:0;width:17%;display:flex;align-items:center}
+.race-horse{width:100%;max-height:100%;overflow:visible}
+.race-horse[data-moving=true] .race-leg-a{transform-origin:60px 60px;animation:race-gallop .2s alternate infinite}
+.race-horse[data-moving=true] .race-leg-b{transform-origin:80px 60px;animation:race-gallop .2s alternate-reverse infinite}
+@keyframes race-gallop{to{transform:rotate(16deg)}}
+.race-clock{display:flex;align-items:center;gap:8px;justify-content:center;min-height:14px}
+.race-clock>div{display:flex;gap:clamp(1px,.6cqi,4px);max-width:85%;flex:1}
+.race-clock i{aspect-ratio:1;border-radius:50%;flex:1;background:#ffffff25;max-width:12px}
+.race-clock i[data-lit=true]{background:#9de979;box-shadow:0 0 5px #c0ff9280}.race-clock[data-zone=amber] i[data-lit=true]{background:#ffc654}.race-clock[data-zone=red] i[data-lit=true]{background:#ff7272}
+.race-clock b{font-size:clamp(9px,min(2.8cqi,5cqh),14px);line-height:1.2;min-width:3em}
+.race-message{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;column-gap:10px;min-height:1.4em;text-align:center;font-size:clamp(10px,min(3.5cqi,6cqh),20px)}
+.race-message span{font-size:.8em;color:#ffdf8c}
+.race-choices,.race-hand{display:flex;align-items:stretch;justify-content:center;gap:clamp(4px,2cqi,14px);min-height:0}
+.race-choices button,.race-hand>div{height:100%;aspect-ratio:2/3;min-width:0;max-width:16%;border:2px solid #e6ccff80;border-radius:8px;background:#311a4f80;padding:0;display:flex;align-items:center;justify-content:center}
+.race-choices button{max-width:20%;border-color:#ffe7a4;background:#f3e5c325;cursor:pointer}.race-choices button:enabled:active{transform:scale(.96)}.race-choices button:disabled{cursor:default}
+.race-card{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:0;min-width:0}
+.race-hand>div[data-animate=true]{animation:race-card-in .18s ease-out}
+@keyframes race-card-in{from{transform:translateY(-45%);opacity:.25}to{transform:translateY(0);opacity:1}}
+.race-connection{font-size:12px;line-height:1.2;min-height:1.2em;text-align:center}.race-connection button{text-decoration:underline}
+.race-result{grid-row:3/7;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:15px}.race-result strong{font-size:clamp(20px,6cqi,40px)}
+.race-rules{font-size:16px;line-height:1.55}.race-rules p{margin-bottom:1em}.race-rules table{width:100%;margin-bottom:1em}.race-rules th{text-align:left;font-weight:600}.race-rules td{text-align:right}.race-rules small{font-size:14px}
+@media(prefers-reduced-motion:reduce){.race-plane *{animation:none!important;transition:none!important}}
+
+/* Short, wide canonical boards keep the track above one shared card row. */
+@container fullscreen-board (min-aspect-ratio: 2/1){
+ .race-plane{grid-template-columns:minmax(0,3fr) minmax(0,5fr);grid-template-rows:auto minmax(0,1.15fr) auto minmax(0,1fr) auto;gap:2px;padding:2px}
+ .race-scoreband{grid-column:1/-1;grid-row:1}
+ .race-score{width:min(42cqi,270px);grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;padding:2px 10px;border-radius:16px;column-gap:8px}
+ .race-score>span{grid-column:1;grid-row:1/3;align-self:center;font-size:12px}
+ .race-score strong{grid-column:2;grid-row:1;font-size:18px}
+ .race-score small{grid-column:2;grid-row:2;font-size:10px}
+ .race-track{grid-column:1/-1;grid-row:2}
+ .race-clock{grid-column:1;grid-row:3}
+ .race-clock b{font-size:11px}
+ .race-clock>div{gap:2px}
+ .race-message{grid-column:2;grid-row:3;font-size:13px;min-height:0;white-space:nowrap;overflow:hidden}
+ .race-choices{grid-column:1;grid-row:4}
+ .race-hand{grid-column:2;grid-row:4}
+ .race-choices,.race-hand{gap:6px}
+ .race-choices button{max-width:30%}
+ .race-hand>div{max-width:18%}
+ .race-connection{grid-column:1/-1;grid-row:5;min-height:0;font-size:11px}
+ .race-connection:empty{display:none}
+ .race-result{grid-column:1/-1;grid-row:3/6}
+}
+
+.race-choices[data-opponent-turn=true]{opacity:.42}
+.race-autoplay{display:inline-flex;align-items:center;gap:6px;margin-right:12px;min-height:24px;cursor:pointer}
+.race-autoplay input{width:18px;height:18px;accent-color:#c99af4}
+.race-autoplay-icon{display:inline-block;width:15px;height:15px;margin-left:4px;vertical-align:middle;color:#ffe78a}

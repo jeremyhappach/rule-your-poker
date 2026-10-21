@@ -1,0 +1,78 @@
+{
+  "candidate": "33e7a1cc90af69d6bbdd0027733bd888ce6dab74",
+  "preservedRaceProduction": "fe71aa33b596887e7647350c420162a5b66a8c80",
+  "project": "xvhmbuppghwmwpwrkzao",
+  "status": "Both migrations installed and verified; client publication pending; new admission closed",
+  "parity": {
+    "functions": [
+      "private.eleven_up_settle(uuid)",
+      "private.eleven_up_reduce(jsonb,text,integer[],bigint)",
+      "eleven_up_capabilities(uuid)",
+      "private.eleven_up_admission_rules()",
+      "eleven_up_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "private.eleven_up_recover()",
+      "private.eleven_up_record_scores(uuid)",
+      "private.eleven_up_board_reduce(jsonb,text,integer[],bigint)",
+      "create_session_bot(uuid,uuid,text,integer,boolean,boolean,uuid)",
+      "submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)",
+      "advance_ante_phase(uuid,uuid)",
+      "private.megatouch_begin(uuid,uuid)",
+      "eleven_up_action(uuid,uuid,bigint,text,integer[])",
+      "set_game_paused(uuid,boolean,uuid,bigint)",
+      "private.pause_all_humans_auto_fold(uuid)",
+      "private.eleven_up_bot_choice(jsonb,bigint)",
+      "eleven_up_reclaim(uuid,bigint)",
+      "eleven_up_snapshot(uuid)",
+      "private.eleven_up_ready_timeout(uuid)",
+      "private.eleven_up_control_changed()",
+      "private.eleven_up_schedule_bot()",
+      "private.capture_recovery_context()",
+      "private.restore_recovery_context(jsonb)"
+    ],
+    "migrations": [
+      {
+        "version": "20261021185314",
+        "name": "eleven_up_bots",
+        "sha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d"
+      },
+      {
+        "version": "20261021185320",
+        "name": "eleven_up_human_ready",
+        "sha256": "6a17ff25e9bf8f611d4f969ec9f5c1fd9d8d677032582a5b33ef21750552e507"
+      }
+    ],
+    "raceDefinitionsUnchanged": true,
+    "raceAdmission": {
+      "enabled": true,
+      "singleton": true,
+      "fake_qualified": true,
+      "real_qualified": false,
+      "admission_enabled": true
+    }
+  },
+  "candidateProofSha256": "b3202438d5631fb4621b7712239ca15ab22afb32427c8ef41f71008afa62ab35",
+  "installedProofSha256": "80952273162d9f3a3509f6842bfa2f670b6ce63cbe60327c230353f04893edff",
+  "productionProof": {
+    "candidate": "passed",
+    "installed": "passed",
+    "financialCasesEach": 6,
+    "existingBalancesUnchanged": true,
+    "raceAuthorityAndAdmissionUnchanged": true,
+    "globalDefaultsUnchanged": true,
+    "readyMoneyModes": true,
+    "reclaim": true,
+    "scoringClockPreserved": true,
+    "allHumanGuardWithDisabledDefaults": true,
+    "residualFixtureIdentities": 0
+  },
+  "recovery": "Three latest one-second runs succeeded after installation",
+  "migrationVerification": "All release-verify.sql booleans true; exact history statement bytes match qualified source",
+  "validation": {
+    "focusedTests": 55,
+    "typecheck": "passed",
+    "viteBuild": "passed",
+    "phoneLayouts": "Six prior layouts unchanged; physical acceptance pending"
+  },
+  "originalTask": "Interrupted, owner confirmed approval cards cleared; never restarted",
+  "remaining": "Publish matching client, verify exact production SHA, restore only prior 11 Up admission; owner and physical-phone smoke"
+}

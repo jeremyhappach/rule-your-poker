@@ -1,0 +1,37 @@
+{
+  "base": "a150cd6aecc746143f246186a8b46421d0534355",
+  "checkedOn": "2026-10-20",
+  "constraints": {
+    "run21_configure": [
+      "  IF g.real_money AND EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND is_bot) THEN",
+      "  IF (SELECT count(*) FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out)<>2",
+      "    RAISE EXCEPTION 'run21:two_eligible_players_required';"
+    ],
+    "boxdrop_configure": [
+      " IF coalesce(jsonb_array_length(people),0) <>2 THEN RAISE EXCEPTION 'boxdrop:player_count';END IF;\r"
+    ],
+    "take_two_configure": [
+      " IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'take_two:player_count';END IF;"
+    ],
+    "eleven_up_configure": [
+      " IF EXISTS(SELECT 1 FROM jsonb_array_elements(people) p WHERE (p->>'isBot')::boolean) THEN RAISE EXCEPTION 'eleven_up:bots_not_supported';END IF;",
+      " IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'eleven_up:player_count';END IF;"
+    ],
+    "trip_flip_configure": [
+      " IF coalesce(jsonb_array_length(people),0) <>2 THEN RAISE EXCEPTION 'trip_flip:player_count';END IF;\r"
+    ],
+    "tri_towers_configure": [
+      " IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'tri_towers:player_count';END IF;"
+    ],
+    "royal_flash_configure": [
+      " IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 7 THEN RAISE EXCEPTION 'royal_flash:player_count';END IF;",
+      " INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'royal-flash',jsonb_build_object('ante_amount',stake_i,'rules',private.royal_flash_rules_v3())) RETURNING * INTO dg;"
+    ]
+  },
+  "legacyGuards": {
+    "start_cribbage_initial_hand": "IF v_player_count < 2 OR v_player_count > 4 THEN invalid_player_count",
+    "start_gin_rummy_initial_hand": "IF coalesce(cardinality(v_player_ids),0)<>2 THEN requires_two_admitted_players",
+    "start_yahtzee_round": "IF cardinality(v_player_ids)<2 THEN insufficient_players",
+    "start_holm_initial_hand": "IF coalesce(v_player_count,0)<2 THEN insufficient players; platform lobby has seven seats"
+  }
+}

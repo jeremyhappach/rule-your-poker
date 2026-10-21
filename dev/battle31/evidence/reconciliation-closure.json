@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-21T20:12:00.044Z",
+  "closed": [
+    {
+      "database": "battle31_package_1792613350794",
+      "gates": {
+        "enabled": false,
+        "admission_enabled": false,
+        "fake_qualified": false,
+        "real_qualified": false
+      }
+    },
+    {
+      "database": "battle31_package_1792613134582",
+      "gates": {
+        "enabled": false,
+        "admission_enabled": false,
+        "fake_qualified": false,
+        "real_qualified": false
+      }
+    },
+    {
+      "database": "battle31_recovery_1792613152181",
+      "gates": {
+        "enabled": false,
+        "admission_enabled": false,
+        "fake_qualified": false,
+        "real_qualified": false
+      }
+    }
+  ],
+  "productionTouched": false
+}

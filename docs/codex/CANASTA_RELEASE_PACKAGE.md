@@ -5,6 +5,10 @@ preserve closed defaults, prepare hosted qualification. No main merge, push,
 production SQL, deployment or activation. Candidate parent:
 `367310e6a8d7e06698a148373c69d7de231a60ad`.
 
+The subsequent authorized local reconciliation starts from `6e439fd40` and
+integrates main `6b15f4eb0` into the isolated candidate only. See
+`CANASTA_RECONCILIATION.md` for 300 tests, browser and combined SQL evidence.
+
 The exact procedures, artifacts, tester matrix and rollback policy are in
 [`supabase/canasta/release/README.md`](../../supabase/canasta/release/README.md).
 [`manifest.json`](../../supabase/canasta/release/manifest.json) records ordered
@@ -26,14 +30,16 @@ candidate and installed proof bodies pass in the network-disabled PostgreSQL clo
 The installed proof requires genuine health when eventually run hosted; only the
 local harness substitutes a heartbeat. No hosted evidence is inferred.
 
-The package deliberately remains outside migration registration. Current main
-has released Race/11 Up changes missing from this branch; other releases may
-advance the shared dispatcher. Reconcile onto the latest verified baseline and
-repeat final whole-candidate checks before any installation. A hash mismatch
-must stop the guarded dispatcher insertion. Do not deploy the captured reference
-dispatcher from the local proof harness.
+The package deliberately remains outside migration registration. Local
+reconciliation now includes main `6b15f4eb060df319df13d576948c343920a23b21` and
+its Race/11 Up/Battle31 integrations. The shared catalog and terminal branches
+retain all released games. The combined local proof compares 305 prior functions
+and changes only the Ante Up dispatcher through its guarded Canasta insertion.
+Other releases may advance the baseline; Golf retains the next production slot.
+A hash mismatch must stop the insertion. Do not deploy the captured reference
+dispatcher or local snapshot repairs from qualification.
 
-Remaining decisions/evidence: authorize a bounded reconciliation/release pass;
+Remaining decisions/evidence: authorize a hosted qualification/release pass;
 identify two human testers, canonical bot and negative-test identities with exact
 fake-money session scope; authorize hosted synthetic rollback and isolated session
 provisioning; collect authenticated end-to-end, real Realtime/cron/Edge, terminal/

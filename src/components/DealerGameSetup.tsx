@@ -1,4 +1,8 @@
 import {useCanastaAccess} from '@/hooks/useCanastaAccess';
+import {useRacePokerAccess} from '@/hooks/useRacePokerAccess';
+import {useBattle31Access} from '@/hooks/useBattle31Access';
+import {DealerGamePicker} from '@/components/catalog/DealerGamePicker';
+import {GAME_CATALOG,findGame,eligibility,isDiscovered} from '@/lib/gameCatalog';
 import {useBoxdropAccess} from '@/hooks/useBoxdropAccess';
 import {useTripFlipAccess} from '@/hooks/useTripFlipAccess';
 import {useTakeTwoAccess} from '@/hooks/useTakeTwoAccess';
@@ -157,6 +161,7 @@ interface DealerGameSetupProps {
   gameSetupTimerSeconds: number; // Cached at session start
   anteDecisionTimerSeconds: number; // Cached at session start
   activePlayerCount?: number; // Number of active players for game restrictions
+  realMoney?: boolean;
   activeHumanCount?: number; // Number of active human (non-bot) players
   onConfigComplete: (result: DealerGameSetupCommitResult) => void | Promise<void>;
   onSessionEnd: () => void;
@@ -191,6 +196,7 @@ const DealerGameSetupInner = ({
   gameSetupTimerSeconds,
   activePlayerCount = 0,
   activeHumanCount = 0,
+  realMoney,
   onConfigComplete,
   onSessionEnd,
   onSitOut,
@@ -199,11 +205,15 @@ const DealerGameSetupInner = ({
   const triTowersAllowed = useTriTowersTestAccess(gameId);
   const elevenAllowed = useElevenUpAccess(gameId);
   const canastaAllowed = useCanastaAccess(gameId);
+  const racePokerAllowed = useRacePokerAccess(gameId);
+  const battle31Allowed = useBattle31Access(gameId);
   const boxdropAllowed = useBoxdropAccess(gameId);
   const tripFlipAllowed = useTripFlipAccess(gameId);
   const takeTwoAllowed = useTakeTwoAccess(gameId);
   const royalAllowed = useRoyalFlashAccess(gameId);
-  const otherAllowed = canastaAllowed || tripFlipAllowed || takeTwoAllowed || royalAllowed || run21Allowed || triTowersAllowed || elevenAllowed;
+  const catalogAccess = {'canasta':canastaAllowed,'race-poker':racePokerAllowed,'battle-31':battle31Allowed,'run21':run21Allowed,'tri-towers':triTowersAllowed,'eleven-up':elevenAllowed,'boxdrop':boxdropAllowed,'trip-flip':tripFlipAllowed,'take-two':takeTwoAllowed,'royal-flash':royalAllowed};
+  const catalogRoster = {players:activePlayerCount,humans:activeHumanCount,realMoney};
+  const selectionReason = (id:string) => { const game=findGame(id); return game?eligibility(game,catalogRoster,catalogAccess):'Game unavailable'; };
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
@@ -743,6 +753,7 @@ const DealerGameSetupInner = ({
     if (isSubmitting || hasSubmittedRef.current) return;
 
     const gameTypeToSubmit = overrideGameType || selectedGameType;
+    if (selectionReason(gameTypeToSubmit)) return;
     if (gameTypeToSubmit !== 'holm-game' && gameTypeToSubmit !== '3-5-7') {
       toast.error('Select a card game (Holm or 3-5-7)');
       return;
@@ -841,35 +852,18 @@ const DealerGameSetupInner = ({
 
   const isHolmGame = selectedGameType === 'holm-game';
 
-  const getGameDisplayName = (gameType: string) => {
-    switch (gameType) {
-      case '3-5-7': return '3-5-7';
-      case 'holm-game': return 'Holm';
-      case 'horses': return 'Horses';
-      case 'ship-captain-crew': return 'Ship';
-      case 'gin-rummy': return 'Gin Rummy';
-      case 'yahtzee': return 'Yahtzee';
-      case 'run21': return 'Run21';
-      case 'canasta': return 'Canasta';
-      case 'boxdrop': return 'Boxdrop';
-      case 'trip-flip': return 'Trip Flip';
-      case 'take-two': return 'Take 2';
-      case 'royal-flash': return 'Royal Flash';
-      case 'eleven-up': return '11 Up';
-      case 'tri-towers': return 'TriTowers';
-      default: return gameType;
-    }
-  };
-  
+  const getGameDisplayName = (id:string) => findGame(id)?.name??id;
+
   const isDiceGame = (gameType: string) => {
     return gameType === 'horses' || gameType === 'ship-captain-crew' || gameType === 'yahtzee';
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'canasta' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
+    return gameType === 'canasta' || isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
   };
 
   const handleGameSelect = async (gameType: string) => {
+    if (selectionReason(gameType)) return;
     const generation = ++selectionGeneration.current;
     if (gameType === 'farkle') {
       if (!isFarkleLocalQualification(import.meta.env, window.location.hostname)) {
@@ -886,16 +880,17 @@ const DealerGameSetupInner = ({
     }
     if (gameType === 'run21' && !run21Allowed) return;
     if (gameType === 'canasta' && (!canastaAllowed||activeHumanCount<1)) return;
+    if (gameType === 'battle-31' && (!battle31Allowed||activeHumanCount<1)) return;
     if (gameType === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1)) return;
     if (gameType === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1)) return;
     if (gameType === 'take-two' && (!takeTwoAllowed||activeHumanCount<1)) return;
     if (gameType === 'royal-flash' && (!royalAllowed||activeHumanCount<1)) return;
-    if (gameType === 'eleven-up' && (!elevenAllowed||activeHumanCount!==activePlayerCount)) return;
+    if (gameType === 'eleven-up' && (!elevenAllowed||activeHumanCount<1)) return;
     if (gameType === TRI_TOWERS.id && !triTowersAllowed) return;
     // Check player count restrictions
-    const gameInfo = allGames.find(g => g.id === gameType);
-    if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
-      toast.error(`${gameInfo.name} requires ${gameInfo.maxPlayers} or fewer players`);
+    const gameInfo = GAME_CATALOG.find(g => g.id === gameType);
+    if (gameInfo?.players.max && activePlayerCount > gameInfo.players.max) {
+      toast.error(`${gameInfo.name} requires ${gameInfo.players.max} or fewer players`);
       return;
     }
     
@@ -982,45 +977,6 @@ const DealerGameSetupInner = ({
     setSelectionStep('config');
   };
 
-  // Game definitions for unified grid
-  const allGames = [
-    // Card Games
-    { id: 'holm-game', name: 'Holm', description: 'Beat Chucky!', category: 'cards', enabled: true },
-    { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
-    { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
-    { id: 'gin-rummy', name: 'Gin Rummy', description: 'Meld & knock', category: 'cards', enabled: true, maxPlayers: 2 },
-    
-    // Dice Games
-    { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
-    { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
-    { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
-    { id: 'farkle', name: 'Farkle', description: 'Risk it or bank it', category: 'dice', enabled: true },
-    ...(run21Allowed ? [{ id: 'run21', name: 'Run21', description: 'Five columns · Three rounds', category: 'other', enabled: true, maxPlayers: 2 }] : []),
-    ...(canastaAllowed ? [{id:'canasta',name:'Canasta',description:'Classic two-player · 5,000 points',category:'other',enabled:true,maxPlayers:2}] : []),
-    ...(boxdropAllowed ? [{id:'boxdrop',name:'Boxdrop',description:'Complete factory orders',category:'other',enabled:true,maxPlayers:2}] : []),
-    ...(tripFlipAllowed ? [{id:'trip-flip',name:'Trip Flip',description:'Build Trips and Runs',category:'other',enabled:true,maxPlayers:2}] : []),
-    ...(takeTwoAllowed ? [{id:'take-two',name:'Take 2',description:'Pair cards and clear the board',category:'other',enabled:true,maxPlayers:7}] : []),
-    ...(royalAllowed ? [{id:'royal-flash',name:'Royal Flash',description:'Build poker hands',category:'other',enabled:true,maxPlayers:7}] : []),
-    ...(elevenAllowed ? [{id:'eleven-up',name:'11 Up',description:'Clear the pool balls',category:'other',enabled:true,maxPlayers:7}] : []),
-    ...(triTowersAllowed ? [{id:TRI_TOWERS.id,name:TRI_TOWERS.label,description:'Sequential arcade competition',category:'other',enabled:true,maxPlayers:TRI_TOWERS.maxPlayers}] : []),
-  ];
-
-  const cardGames = allGames.filter(g => g.category === 'cards');
-  const diceGames = allGames.filter(g => g.category === 'dice');
-
-  const isGameDisabled = (game: typeof allGames[0]) => {
-    if (!game.enabled) return true;
-    if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
-    return false;
-  };
-
-  const getPlayerRestrictionLabel = (game: typeof allGames[0]) => {
-    if (game.maxPlayers) {
-      return `${game.maxPlayers} max`;
-    }
-    return null;
-  };
-  
   const handleSimpleAnteGameSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
 
@@ -1031,19 +987,21 @@ const DealerGameSetupInner = ({
     }
 
     const gameTypeToSubmit = overrideGameType || selectedGameType;
+    if (selectionReason(gameTypeToSubmit)) return;
+    if (gameTypeToSubmit === 'battle-31' && (!battle31Allowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Battle 31 requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'canasta' && (!canastaAllowed||activeHumanCount<1||activePlayerCount!==2)) { toast.error('Canasta requires exactly 2 players including a human'); return; }
     if (gameTypeToSubmit === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Boxdrop requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Trip Flip requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'take-two' && (!takeTwoAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Take 2 requires 2–7 players including a human'); return; }
     if (gameTypeToSubmit === 'royal-flash' && (!royalAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Royal Flash requires 2–7 players including a human'); return; }
-    if (gameTypeToSubmit === 'eleven-up' && (!elevenAllowed||activeHumanCount!==activePlayerCount||activePlayerCount<2||activePlayerCount>7)) { toast.error('11 Up requires 2–7 human players'); return; }
+    if (gameTypeToSubmit === 'eleven-up' && (!elevenAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('11 Up requires 2–7 players, including a human'); return; }
     if (gameTypeToSubmit === TRI_TOWERS.id && !triTowersAllowed) { toast.error('TriTowers is not released'); return; }
     if (gameTypeToSubmit === 'run21' && !run21Allowed) {
       toast.error('Run21 is unavailable');
       return;
     }
     const simpleTypes = new Set<DealerGameType>([
-      'canasta', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'boxdrop',
+      'canasta', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'battle-31', 'boxdrop', 'race-poker',
     ]);
     if (!simpleTypes.has(gameTypeToSubmit as DealerGameType)) {
       toast.error('Select a supported game');
@@ -1118,14 +1076,7 @@ const DealerGameSetupInner = ({
   };
 
   const handleRunBack = async () => {
-    if (previousGameType === 'run21' && !run21Allowed) return;
-    if (previousGameType === 'canasta' && (!canastaAllowed||activeHumanCount<1)) return;
-    if (previousGameType === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1)) return;
-    if (previousGameType === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1)) return;
-    if (previousGameType === 'take-two' && (!takeTwoAllowed||activeHumanCount<1)) return;
-    if (previousGameType === 'royal-flash' && (!royalAllowed||activeHumanCount<1)) return;
-    if (previousGameType === 'eleven-up' && (!elevenAllowed||activeHumanCount!==activePlayerCount)) return;
-    if (previousGameType === TRI_TOWERS.id && !triTowersAllowed) return;
+    if (!previousGameType || selectionReason(previousGameType)) return;
     if (isSubmitting || hasSubmittedRef.current || !previousGameType) return;
     const exactConfig = previousGameConfig?.game_type === previousGameType
       ? resolveExactRunBackConfig(previousGameType, previousGameConfig.run_back_config) : null;
@@ -1164,22 +1115,6 @@ const DealerGameSetupInner = ({
     setSelectionStep('game');
   };
 
-  // Determine which tab to default to based on previous game
-  const getDefaultTab = () => {
-    if (previousGameType === 'canasta' && canastaAllowed) return 'other';
-    if (previousGameType === 'run21' && run21Allowed) return 'other';
-    if (previousGameType === 'boxdrop' && boxdropAllowed) return 'other';
-    if (previousGameType === 'trip-flip' && tripFlipAllowed) return 'other';
-    if (previousGameType === 'take-two' && takeTwoAllowed) return 'other';
-    if (previousGameType === 'royal-flash' && royalAllowed) return 'other';
-    if (previousGameType === 'eleven-up' && elevenAllowed) return 'other';
-    if (previousGameType === TRI_TOWERS.id && triTowersAllowed) return 'other';
-    if (previousGameType) {
-      return isDiceGame(previousGameType) ? 'dice' : 'cards';
-    }
-    return 'cards';
-  };
-
   // Game selection step - tabbed layout with Cards vs Dice
   if (selectionStep === 'game') {
     return (
@@ -1189,8 +1124,8 @@ const DealerGameSetupInner = ({
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
         style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
       >
-        <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
-          <CardContent className="pt-6 pb-6 space-y-5">
+        <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[100%] overflow-y-auto">
+          <CardContent className="p-3 space-y-3 sm:p-5">
             {/* Header with Timer */}
             <div className="flex items-center justify-between">
               <div>
@@ -1208,124 +1143,15 @@ const DealerGameSetupInner = ({
               )}
             </div>
 
-            {/* Tabbed Game Selection */}
-            <Tabs defaultValue={getDefaultTab()} className="w-full">
-              <TabsList className={`grid w-full ${otherAllowed ? 'grid-cols-3' : 'grid-cols-2'} bg-poker-felt-dark border border-poker-gold/30`}>
-                <TabsTrigger 
-                  value="cards" 
-                  className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
-                >
-                  <Spade className="w-4 h-4" />
-                  Card Games
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="dice" 
-                  className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
-                >
-                  <Dice5 className="w-4 h-4" />
-                  Dice Games
-                </TabsTrigger>
-                {otherAllowed && <TabsTrigger value="other" className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark">Other</TabsTrigger>}
-              </TabsList>
-
-              {/* Card Games Tab */}
-              <TabsContent value="cards" className="mt-4">
-                <div className="flex flex-col gap-2">
-                  {cardGames.map((game) => {
-                    const disabled = isGameDisabled(game);
-                    const restriction = getPlayerRestrictionLabel(game);
-                    
-                    return (
-                      <button
-                        key={game.id}
-                        data-dealer-game-option={game.id}
-                        onClick={() => handleGameSelect(game.id)}
-                        disabled={disabled}
-                        className={`
-                          relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
-                          ${disabled
-                            ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
-                            : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center gap-3">
-                          {activeHarnessMap[game.id]?.active && <HarnessBadge />}
-                          {!game.enabled && (
-                            <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          )}
-
-                          <span className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
-                            {game.name}
-                          </span>
-                          <span className={`text-sm ${disabled ? 'text-gray-500' : 'text-amber-200/80'}`}>
-                            — {game.description}
-                          </span>
-                        </div>
-                        {restriction && (
-                          <span className={`text-xs font-medium flex-shrink-0 ${
-                            activePlayerCount > (game.maxPlayers || 99) 
-                              ? 'text-red-400' 
-                              : 'text-amber-400'
-                          }`}>
-                            {restriction}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-
-              {/* Dice Games Tab */}
-              <TabsContent value="dice" className="mt-4">
-                <div className="flex flex-col gap-2">
-                  {diceGames.map((game) => (
-                    <button
-                      key={game.id}
-                      data-dealer-game-option={game.id}
-                      disabled={!game.enabled}
-                      onClick={() => handleGameSelect(game.id)}
-                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center gap-3 border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
-                    >
-                      {activeHarnessMap[game.id]?.active && <HarnessBadge />}
-                      <span className="text-base font-bold text-poker-gold">
-                        {game.name}
-                      </span>
-                      <span className="text-sm text-amber-200/80">
-
-                        — {game.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </TabsContent>
-              {otherAllowed && (
-                <TabsContent value="other" className="mt-4">
-                  {run21Allowed && <button type="button" data-dealer-game-option="run21" onClick={() => handleGameSelect('run21')}
-                    disabled={activePlayerCount > 2}
-                    className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">
-                    <span className="font-bold">Run21</span>{activeHarnessMap.run21?.active && <HarnessBadge/>}<span className="ml-3 text-sm">Five columns · Three rounds · 2 players</span>
-                  </button>}
-                  {elevenAllowed && <button type="button" data-dealer-game-option="eleven-up" onClick={()=>handleGameSelect('eleven-up')} disabled={activeHumanCount!==activePlayerCount||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">11 Up · 2–7 human players</button>}
-                  {canastaAllowed && <button type="button" data-dealer-game-option="canasta" onClick={()=>handleGameSelect('canasta')} disabled={activeHumanCount<1||activePlayerCount!==2} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Canasta · 2 players · Bots supported</button>}
-                  {boxdropAllowed && <button type="button" data-dealer-game-option="boxdrop" onClick={()=>handleGameSelect('boxdrop')} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>2} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Boxdrop · 2 players · Bots supported</button>}
-                  {tripFlipAllowed && <button type="button" data-dealer-game-option="trip-flip" onClick={()=>handleGameSelect('trip-flip')} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>2} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Trip Flip · 2 players · Bots supported</button>}
-                  {takeTwoAllowed && <button type="button" data-dealer-game-option="take-two" onClick={()=>handleGameSelect('take-two')} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Take 2 · 2–7 players · Bots supported</button>}
-                  {royalAllowed && <button type="button" data-dealer-game-option="royal-flash" onClick={()=>handleGameSelect('royal-flash')} disabled={activeHumanCount<1||activePlayerCount<2||activePlayerCount>7} className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">Royal Flash · 2–7 players · Bots supported</button>}
-                  {triTowersAllowed && <button type="button" data-dealer-game-option="tri-towers" onClick={()=>handleGameSelect(TRI_TOWERS.id)}
-                    disabled={activeHumanCount<1||activePlayerCount<TRI_TOWERS.minPlayers||activePlayerCount>TRI_TOWERS.maxPlayers}
-                    className="w-full rounded-lg border-2 border-poker-gold bg-amber-900/30 px-4 py-3 text-left text-poker-gold disabled:opacity-50">TriTowers · 2–7 players</button>}
-                </TabsContent>
-              )}
-            </Tabs>
+            <DealerGamePicker previousGame={previousGameType} roster={catalogRoster} access={catalogAccess} onSelect={handleGameSelect} harnesses={activeHarnessMap}/>
 
             {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && previousGameType && previousGameConfig && (previousGameType !== TRI_TOWERS.id || triTowersAllowed) && (previousGameType !== 'run21' || run21Allowed) && (previousGameType !== 'canasta' || canastaAllowed) && (previousGameType !== 'boxdrop' || boxdropAllowed) && (previousGameType !== 'trip-flip' || tripFlipAllowed) && (previousGameType !== 'take-two' || takeTwoAllowed) && (previousGameType !== 'royal-flash' || royalAllowed) && (previousGameType !== 'eleven-up' || elevenAllowed && activeHumanCount===activePlayerCount) && (
+            {!isFirstHand && previousGameType && previousGameConfig && !!findGame(previousGameType) && isDiscovered(findGame(previousGameType)!, catalogAccess) && (
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !!previousGameType && !!selectionReason(previousGameType)}
+                  title={previousGameType ? selectionReason(previousGameType)??undefined : undefined}
                   className="w-full py-3 px-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="w-5 h-5 text-amber-400" />
@@ -1395,7 +1221,7 @@ const DealerGameSetupInner = ({
         <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
         <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
         <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Scoring rules are frozen when this game starts.'}</p>
-        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
+        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting || !!selectionReason("farkle")} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
       </CardContent></Card>
     </div>;
   }
@@ -1410,8 +1236,8 @@ const DealerGameSetupInner = ({
       const isRun21 = selectedGameType === 'run21';
       const isTriTowers = selectedGameType === TRI_TOWERS.id;
       
-      const gameDisplayName = selectedGameType==='canasta'?'Canasta': selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
-      const gameRulesText = selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake': selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
+      const gameDisplayName = selectedGameType==='canasta'?'Canasta':selectedGameType==='race-poker'?'Race Poker':selectedGameType==='battle-31'?'Battle 31':selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
+      const gameRulesText = selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake':selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
@@ -1436,7 +1262,7 @@ const DealerGameSetupInner = ({
               <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='canasta' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='canasta' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
                   {activeHarnessMap[selectedGameType]?.active && (
                     <p className="mt-1 text-sm font-bold text-red-500">
                       Harness: {activeHarnessMap[selectedGameType].label}
@@ -1458,7 +1284,7 @@ const DealerGameSetupInner = ({
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
 
                 <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='canasta' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='canasta' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
                   <Input
                     id="ante-simple"
                     type="text"
@@ -1632,7 +1458,7 @@ const DealerGameSetupInner = ({
                 <Button
                   data-dealer-game-start={selectedGameType}
                   onClick={() => handleSimpleAnteGameSubmit()}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !!selectionReason(selectedGameType)}
                   className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
                 >
                   <Lock className="w-4 h-4 mr-2" />
