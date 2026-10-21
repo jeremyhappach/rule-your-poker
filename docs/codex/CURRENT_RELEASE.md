@@ -1,4 +1,4 @@
-# 11 Up bots — 2026-10-20 — local candidate, release not authorized
+# 11 Up bots: release stopped at production qualification gate
 
 11 Up bot support adds visible-information server decisions through its existing
 versioned reducer and canonical recovery/consent/settlement owners. The unchanged
@@ -18,8 +18,6 @@ Production retry and publication remain stopped pending review of this failed ga
 The isolated branch now includes main `88c798396bd0202551e36dcf4cd9efa39c9ef555`;
 combined Race Poker/11 Up database proofs and 131 focused client tests pass.
 
-# Race Poker / 1 — 2026-10-20 — production published, admission closed
-=======
 # Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
 
 Owner smoke rejected the contrast-only release because actual crate values remained too small. The shared crate renderer now gives bold sans-serif numerals 88% of the face, with a 10% colored edge marker. Single digits use a larger fitted size; two-digit values fit without clipping. Incoming, queued and placed crates share this styling. Crate positions, playfield, controls, rules and financial/admission behavior are unchanged. No landscape or dialog changes are included. Thirty-two focused phone/desktop visual cases pass for values 2, 7, 10 and 11, including exact unchanged crate/control geometry and glyph fit; before/after evidence is under `qualification.local/boxdrop/numeral`. Focused regressions (25 tests), typecheck and production build pass. Physical iPhone owner smoke remains pending.
