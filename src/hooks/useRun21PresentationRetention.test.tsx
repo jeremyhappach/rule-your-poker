@@ -3,7 +3,7 @@ import {act,renderHook} from '@testing-library/react';
 import {expect,it} from 'vitest';
 import {useRun21PresentationRetention} from './useRun21PresentationRetention';
 const first={dealerGameId:'match',firstRoundId:'first',players:['a','b']};
-it.each(['run21','eleven-up'] as const)('retains the observed match across setup and successor arrival until its immutable completion for %s',family=>{
+it.each(['run21','eleven-up','six-card-golf'] as const)('retains the observed match across setup and successor arrival until its immutable completion for %s',family=>{
  const {result,rerender}=renderHook(({live})=>useRun21PresentationRetention('session',live,family),{initialProps:{live:first as typeof first|null}});
  rerender({live:{...first,firstRoundId:'third'}});
  rerender({live:null});expect(result.current.pending?.snapshot.firstRoundId).toBe('first');

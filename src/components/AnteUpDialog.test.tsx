@@ -47,7 +47,7 @@ const baseProps = {
 };
 
 describe('AnteUpDialog authoritative Sit Out submission', () => {
-  it.each([['eleven-up','11 Up'],['tri-towers','TriTowers'],['run21','Run21']])('shows the offered %s stake and requires a button press despite saved auto-ante',async(gameType,name)=>{
+  it.each([['six-card-golf','Six-Card Golf'],['eleven-up','11 Up'],['tri-towers','TriTowers'],['run21','Run21']])('shows the offered %s stake and requires a button press despite saved auto-ante',async(gameType,name)=>{
     submitAnteDecisionMock.mockResolvedValue({outcome:'accepted'});
     render(<AnteUpDialog {...baseProps} gameType={gameType} anteAmount={17} autoAnte autoAnteRunback onDecisionMade={vi.fn()} onDecisionRejected={vi.fn()}/>);
     expect(screen.getByText(name)).toBeTruthy();expect(screen.getByText('$17')).toBeTruthy();

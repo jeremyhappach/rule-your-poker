@@ -43,8 +43,8 @@ Only public revision notifications and authorized snapshot/action RPCs are
 exposed; private cards are excluded from public history frames.
 
 The shared ante dispatcher and frozen configuration guard are extended only in
-the **uninstalled candidate SQL**. Existing shared catalog/shell/route owners have narrow additive Golf integration. Recovery dispatch/publication registration and release guards still
-need their final integration.
+the **uninstalled candidate SQL**. Existing shared catalog/shell/route owners have narrow additive Golf integration. Recovery dispatch/publication registration and release guards
+are now prepared in guarded release SQL. Their real scheduler/Realtime execution still needs a complete Supabase environment.
 
 ## Evidence executed
 
@@ -96,12 +96,12 @@ This bounded pass stops at the repository execution-budget circuit breaker. No a
 
 ## Remaining implementation and release blockers
 
-1. Finish and visually qualify canonical two/four-seat geometry, especially landscape card readability/tap size, text collisions, opponent projection, safe areas and changing Safari chrome. Do not label viewport bounds checks as layout approval. Card transport/audio now has focused and browser evidence; see the latest checkpoint below.
-2. Finish closed-admission migration assembly, current deployed-definition guards, recovery scheduler and public revision publication registration. No Golf production authority/migration exists. Reference/installed-authority parity remains unproved.
-3. Extend independent-connection proofs for timeout/final-action races and earned zero-client settlement. Successor races, old requests after terminal continuation and corrupted committed-state hold now pass; continuation into a newly admitted match still needs proof.
-4. Qualify complete mixed-bot matches, Run Back consent, chip transport, terminal hold, Session Ended and cold-mount routing through the actual application route. Two-human nine-hole browser operation passes in the direct canonical-shell harness; this does not establish full-route coverage.
-5. Final application regression is green: 2,563 tests across 366 files, with one worker. The full application TypeScript check and production build pass. The earlier parallel timeout remains recorded as qualification-resource sensitivity, without a proven root cause.
-6. Installed-authority proofs and coordinated release approval remain mandatory before any publication or activation. Both money-mode admissions remain closed; Jeremy has not performed production smoke.
+1. Physical iPhone Safari acceptance remains pending. The latest 63-case rendered matrix now checks actual artifact intersections, 44-pixel local targets, unchanged chip anchors and working public-tableau inspection. Compact public previews intentionally open readable full-size cards; concealed values stay hidden.
+2. Guarded closed-admission SQL and installed-proof artifacts are prepared. The local host lacks the actual pg_cron extension and logical replication; scheduler execution and Realtime delivery cannot be qualified here. A formal migration identifier has not been assigned (the Supabase CLI is unavailable); no production migration exists.
+3. Timeout/action and final-action races, exact successors, earned service final settlement, old requests after a newly admitted match and corruption hold now pass locally. Actual scheduled recovery still needs the deployed/full-stack proof.
+4. Complete mixed-bot matches and Run Back consent now pass. Full authenticated `Game.tsx` routing, including production Session Ended/cold-entry handoff, remains unqualified. The local loopback adapter is not the complete Auth/PostgREST/Realtime stack.
+5. TypeScript and production build pass. Latest regression outcomes and retained timeout evidence are recorded in the follow-up section below; do not conflate split-run results with one green full-suite invocation.
+6. Fresh deployed-authority comparison, installed-production financial proof and matching app/database publication remain mandatory before activation. Both money-mode admissions remain closed; Jeremy has not performed production smoke.
 
 The accepted Boxdrop pattern supplied consent/finance ownership, but its fullscreen board does not provide Golf's shared hidden tableau, multi-hole identity or responsive canonical table artifacts. These differences require the remaining presentation and lifecycle work; no approved rule has been changed.
 
@@ -174,3 +174,104 @@ without explaining its cause. No additional implementation is started in this
 bounded checkpoint. The next pass begins with the unresolved canonical mobile
 artifact geometry and remaining release qualification; no product-rule decision
 is needed.
+
+## Expanded local qualification — 2026-10-20
+
+Starting checkpoint: `815ac99d3ff4f2b964433dec880311da2ba450c9`.
+Approved rules, admission policy, stake consent and financial authority are unchanged.
+
+The middle-seat public artifacts now clear the canonical 1%-versus-4% seat
+inset plus a whole adjacent tableau. The local tableau/pile group is centered
+using card dimensions. Nameplates attach outside the public grids. These are
+artifact/name placements only: the canonical seat and chip cells are unchanged.
+All 63 configurations (2/3/4 seats, every viewer, seven sizes) pass pairwise
+card/pile intersection checks, viewport bounds, local 44-pixel targets, exactly
+one interaction layer, and public inspection dialogs. Removing public artifacts
+in the rendered DOM leaves every measured chip rectangle identical. Screenshots
+include both left- and right-side compact projections and enlarged inspection.
+
+Database evidence:
+- `candidate-followup.log`: complete rollback suite, including core rules,
+  six human matches, all winner counts in both modes, after-chip failure,
+  recovery/corruption, and six additional complete mixed-bot matches.
+- `mixed-proof.sql`: 2/3/4 participants in both modes; ordinary redacted bot
+  decisions and actual recovery actions finish nine holes. At least one match
+  earns its final action and settlement entirely in the service recovery path,
+  without a browser callback. The fixture advances due times, not card values
+  or winners. New Run Back matches require new human consent; old receipts do
+  not affect their first hole.
+- Both independent-connection race logs pass duplicate/lost-response handling,
+  successor races, expired action versus recovery, final-action contention,
+  settlement replay and terminal continuation. Recovery may SKIP LOCKED while
+  a rejected action holds the row; a subsequent worker wake recovers exactly
+  once. Real-money pause is resumed by the authorized host. Stake 9 produces
+  exact final balances 91/109 and a single result/transfer batch.
+- `install-local.mjs` installs authority into `golf_installed_1792543146476`,
+  then runs the entire proof against installed definitions inside rollback.
+  Final assertions: admission false/false, zero Golf matches/revisions, actual
+  `supabase_realtime` publication membership and authenticated private-state denial.
+  No real cron or logical replication evidence is inferred from that membership.
+
+Release preparation:
+- `release.mjs` emits guarded SQL and a complete installed-authority proof.
+  Six reference signatures/hashes are checked, allowing only LF/CRLF equivalence.
+  The deployable script rejects missing pg_cron, missing publication or nonlogical
+  WAL before installing Golf. A legacy test `cron.schedule` stub does not satisfy
+  the extension prerequisite and is never used as scheduler evidence.
+- Prepared SQL SHA-256:
+  `fedd1d34fd385102212165c2d3eb552057166d7061e8b4c79fc78097a013caef`.
+- Artifacts: `qualification.local/six-card-golf/migration.sql`,
+  `installed-proof.sql`, `release-manifest.json`, `installed-local.json`.
+  These are local artifacts, not a production migration/history entry.
+
+Rendered lifecycle scope:
+The local browser harness mounts the real Golf table, canonical shell, shared
+Session Ended results/action/announcement components and actual local database
+results. It uses a thin loopback RPC/subscription adapter. Its fixture-specific
+cold-lobby routing does **not** prove authenticated `Game.tsx` routing. That remains
+an explicit full-stack gate. Golf's actual retention hook, stake setup, saved
+Run Back stake and noncaller explicit consent have 26 passing component checks.
+The preview adapter was corrected to support subscriptions without a status
+callback, as used by the shared results component; no production transport code
+changed for that harness correction.
+
+Verification also passed the application TypeScript check, production bundle
+and all 241 harness tests. The initial full application run hit two unchanged
+Run21 timeout cases (5s and 60s) while other qualification was running and was
+stopped. Its log is retained. Timeouts were not increased and Run21 code was not
+changed. The remaining-suite and isolated-Run21 outcomes are recorded below.
+
+Final checks for this local checkpoint:
+- `regression-followup-rest.log`: 2,549 tests in 365 files passed.
+- `run21-followup-isolated.log`: all 18 unchanged Run21 authority tests passed
+  in 29.58 seconds. Total: 2,567 passing application tests across two final runs,
+  not one uninterrupted green full-suite invocation. The cause of the earlier
+  concurrent-run timeouts is not established.
+- `session-ended-browser-verified.log` and `session-ended-browser.json`: two
+  humans completed nine holes through 162 actions; exact +5/-5 settlement,
+  shared audio, actual shared Session Ended results, local Back to Lobby with
+  unchanged settlement, and silent cold reload passed with zero page errors.
+  Match: `dffcd429-59ba-49b8-bddb-2a4a2e89b7c1`.
+- `session-ended.png` shows no Golf cards, but retains a visible +5 presentation
+  label below Back to Lobby at capture time. Terminal visual retirement is
+  therefore not fully qualified; the full application run must establish and
+  correct its owner/lifetime if it persists across the Session Ended boundary.
+- `layout-followup-final.log`: 63 cases passed. Representative evidence:
+  `layout-4-0-568x320.png`, `layout-4-3-568x320.png`,
+  `layout-4-0-390x844.png`, and `inspect-4-0.png`.
+
+All named logs/screenshots are under `qualification.local/six-card-golf/`.
+Repeat with the existing local prerequisites: `node dev/six-card-golf/proof.mjs`,
+`node dev/six-card-golf/concurrency.mjs` (also `--real`),
+`node dev/six-card-golf/install-local.mjs`, and with the local preview running,
+`node dev/six-card-golf/layout.mjs` and
+`node dev/six-card-golf/full-browser.mjs --end-session`.
+Local proof scripts create isolated fixtures/databases; they are not read-only
+production commands. Do not point the harness at production.
+
+No merge, push, production migration, deployment or admission activation was
+performed. Real pg_cron/logical Realtime, fresh deployed authority comparison,
+installed production financial proof and authenticated full application routing
+remain blocking gates. The local reference proves SQL behavior but cannot
+replace those service-level checks. Physical iPhone Safari and Jeremy's smoke
+remain pending. This bounded qualification pass stops at its local checkpoint.

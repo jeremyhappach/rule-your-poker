@@ -39,6 +39,6 @@
 .golf-pane[data-hand-in-felt="false"] .golf-summary {font-size:11px}
 .golf-inspect {display:grid;grid-template-columns:repeat(3,72px);gap:8px;justify-content:center}
 .golf-piles {flex-direction:column;top:20%;gap:16px}
-@container (min-aspect-ratio:3/2) {.golf-piles {flex-direction:row;top:36%;gap:8px}}
+@container (min-aspect-ratio:3/2) {.golf-piles {flex-direction:row;left:calc(50% - (3 * var(--golf-card-w) + 16px) / 2);top:36%;gap:8px}}
 .golf-local {--golf-card-w:44px}
-.golf-local-compact {left:72%}
+.golf-local-compact {left:calc(50% + (2 * var(--golf-card-w) + 16px) / 2)}

@@ -20,13 +20,14 @@ const plugin={name:'golf-local-authority',configureServer(server){server.middlew
   console.log('Local seats inserted');const setup=await transaction(users[0],c=>query(c,"SELECT public.golf_configure($1,$2,4,'six-card-golf','{\"ante_amount\":5}',$3) v",[g,ids[0],deadline])),d=setup.dealer_game.id;
   console.log('Local consent offer created');for(let i=1;i<n;i++)await transaction(users[i],c=>query(c,"SELECT public.submit_ante_decision($1,$2,$3,'ante_up') v",[g,d,ids[i]]));
   await transaction(users[0],c=>query(c,'SELECT public.advance_ante_phase($1,$2) v',[g,d]));
-  value={id:d,session:g,users,players:ids.map((id,i)=>({id,user:users[i],seat:4-i})),user:users[0]};
+  if(input.endSession)await transaction(null,c=>c.query('UPDATE public.games SET pending_session_end=true WHERE id=$1',[g]));
+  value={id:d,session:g,users,players:ids.map((id,i)=>({id,user:users[i],seat:4-i})),user:users[0],endSession:!!input.endSession};
  }else if(req.url==='/rpc'){
   if(!['golf_snapshot','golf_action','golf_close','golf_history','set_game_paused'].includes(input.name)||Object.keys(input.args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid RPC');
   try{value={data:await transaction(input.user,c=>query(c,'SELECT public.'+input.name+'('+Object.keys(input.args).map((k,i)=>k+' => $'+(i+1)).join(',')+') v',Object.values(input.args))),error:null,status:200};}
   catch(e){value={data:null,error:{message:e.message,code:e.code??'P0001'},status:400};}
  }else if(req.url==='/read'){
-  if(!['players','games','gameplay_transfer_batches','profiles'].includes(input.table))value={data:input.single?null:[],error:null};
+  if(!['players','games','gameplay_transfer_batches','profiles','session_player_snapshots'].includes(input.table))value={data:input.single?null:[],error:null};
   else{const keys=Object.keys(input.filters??{});if(!keys.length||keys.some(k=>!['id','game_id','user_id','cursor'].includes(k)))throw Error('Filter required');const rows=(await admin.query('SELECT * FROM public.'+input.table+' WHERE '+keys.map((k,i)=>k+'=$'+(i+1)).join(' AND '),Object.values(input.filters))).rows;value={data:input.single?rows[0]??null:rows,error:null};}
  }else throw Error('Unknown operation');
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value??{}));
