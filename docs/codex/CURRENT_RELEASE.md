@@ -1,4 +1,8 @@
-# Race Poker / 1 — 2026-10-20 — production published, admission closed
+# Box Drop numeral contrast - 2026-10-21 - narrowed release approved
+
+Only the shared crate numeral paint changes: opaque cream background, dark foreground, no stroke or shadow. Font sizes, crate/playfield geometry, controls, dialog behavior, rules, timing, financial logic and admission are unchanged. The broader landscape candidate `5bf7556061d78bef6b8debf927b38705abe1766f` and pending reconciliation remain isolated in `codex/boxdrop-number-readability`; they are excluded from this release. Focused visual comparison passes 220 cases (values 1-11, five viewport sizes, four presentation states), preserving exact geometry and disabled states. Local before/after screenshots are under `qualification.local/boxdrop/contrast`. Focused regressions (25 tests), TypeScript checking and production build pass. Owner iPhone smoke remains pending; existing small multiplayer landscape geometry is intentionally unchanged under the narrowed approval.
+
+# Race Poker / 1 - 2026-10-20 - production published, admission closed
 
 Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false. Client fff4e8d39c4514c5c4370e993929ee858a453f04 is READY at holm357.com; authenticated capability closure, approved Rules and no Arcade entry passed. No money mode is activated. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.
 
