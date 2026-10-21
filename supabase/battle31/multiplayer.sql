@@ -1,7 +1,7 @@
--- Additive authority candidate. Both release gates start CLOSED.
+-- Additive authority candidate. All release and money-mode gates start CLOSED.
 SET LOCAL lock_timeout = '100ms';
 SET LOCAL statement_timeout = '10s';
-CREATE TABLE private.battle31_release (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), enabled boolean NOT NULL DEFAULT false, admission_enabled boolean NOT NULL DEFAULT false);
+CREATE TABLE private.battle31_release (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), enabled boolean NOT NULL DEFAULT false, admission_enabled boolean NOT NULL DEFAULT false, fake_qualified boolean NOT NULL DEFAULT false, real_qualified boolean NOT NULL DEFAULT false);
 INSERT INTO private.battle31_release DEFAULT VALUES;
 ALTER TABLE private.battle31_release ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.battle31_release FROM PUBLIC,anon,authenticated,service_role;
@@ -59,13 +59,13 @@ CREATE OR REPLACE FUNCTION public.battle31_capabilities(p_session_id uuid DEFAUL
 AS $function$
 DECLARE actor uuid:=auth.uid(); allowed boolean:=private.battle31_actor_allowed(actor);
 BEGIN
- allowed:=allowed AND EXISTS(SELECT 1 FROM private.battle31_release WHERE singleton AND admission_enabled);
+ allowed:=allowed AND EXISTS(SELECT 1 FROM private.battle31_release WHERE singleton AND admission_enabled AND (fake_qualified OR real_qualified));
  IF p_session_id IS NOT NULL THEN
-  allowed:=allowed AND EXISTS(SELECT 1 FROM public.games WHERE id=p_session_id)
+  allowed:=allowed AND EXISTS(SELECT 1 FROM public.games g CROSS JOIN private.battle31_release r WHERE g.id=p_session_id AND r.singleton AND CASE WHEN g.real_money THEN r.real_qualified ELSE r.fake_qualified END)
    AND EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=actor AND status<>'left')
    AND NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND status<>'left' AND NOT is_bot AND NOT private.battle31_actor_allowed(user_id));
  END IF;
- RETURN jsonb_build_object('version',2,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',false);
+ RETURN jsonb_build_object('version',3,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',(SELECT fake_qualified AND NOT real_qualified FROM private.battle31_release WHERE singleton));
 END $function$
 ;
 CREATE OR REPLACE FUNCTION private.battle31_publish()
@@ -175,7 +175,7 @@ BEGIN
   RETURN claim.result||'{"outcome":"already_configured","deduped":true}'::jsonb;
  END IF;
  -- Admission controls creation only; existing setup retries and match authority remain live.
- IF NOT EXISTS(SELECT 1 FROM private.battle31_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'battle31:admission_closed' USING ERRCODE='42501';END IF;
+ IF NOT EXISTS(SELECT 1 FROM private.battle31_release WHERE singleton AND enabled AND admission_enabled AND CASE WHEN g.real_money THEN real_qualified ELSE fake_qualified END) THEN RAISE EXCEPTION 'battle31:admission_closed' USING ERRCODE='42501';END IF;
  IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'battle31:setup_identity';END IF;

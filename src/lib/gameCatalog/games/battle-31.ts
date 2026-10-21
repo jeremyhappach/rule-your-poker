@@ -4,7 +4,7 @@ export default {
   "defaultsKey": "battle-31",
   "name": "Battle 31",
   "category": "other",
-  "order": 15,
+  "order": 16,
   "family": "megatouch",
   "modes": [
     "multiplayer"
@@ -21,6 +21,7 @@ export default {
   "rules": {
     "kind": "versioned",
     "key": "battle-31",
+    "fixedVersion": "battle-31/1",
     load:()=>import("@/components/rules/Battle31Rules")
   },
   "defaultsEditor": "stake",

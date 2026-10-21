@@ -11,7 +11,7 @@ const signatures=['private.megatouch_begin(uuid,uuid)','private.advance_ante_pha
 const c=await connect(localContext().database);let expected;
 try{
  await c.query('BEGIN');await c.query(reference);
- expected=(await c.query('SELECT signature,md5(pg_get_functiondef(to_regprocedure(signature))) hash FROM unnest($1::text[]) signature',[signatures])).rows;
+ expected=(await c.query('SELECT signature,md5(replace(pg_get_functiondef(to_regprocedure(signature)),chr(13)||chr(10),chr(10))) hash FROM unnest($1::text[]) signature',[signatures])).rows;
  if(expected.some(x=>!x.hash))throw Error('Missing canonical baseline');
 }finally{await c.query('ROLLBACK');await c.end();}
 const payload=(candidate()+'\n'+read('supabase/battle31/deployment.sql','utf8')).replaceAll('\r\n','\n');
@@ -19,7 +19,7 @@ const digest=createHash('sha256').update(payload).digest('hex');
 const quote=s=>"'"+s.replaceAll("'","''")+"'";
 // Exact replay preserves data and gates, and refuses drift instead of repairing it.
 const manifest=`SELECT jsonb_build_object(
- 'functions',(SELECT jsonb_object_agg(p.oid::regprocedure::text,md5(pg_get_functiondef(p.oid)||coalesce(p.proacl::text,''))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('private','public') AND (p.proname LIKE 'battle31_%' OR p.oid=ANY(ARRAY[${signatures.map(s=>quote(s)+'::regprocedure').join(',')}]))),
+ 'functions',(SELECT jsonb_object_agg(p.oid::regprocedure::text,md5(replace(pg_get_functiondef(p.oid),chr(13)||chr(10),chr(10))||coalesce(p.proacl::text,''))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('private','public') AND (p.proname LIKE 'battle31_%' OR p.oid=ANY(ARRAY[${signatures.map(s=>quote(s)+'::regprocedure').join(',')}]))),
  'tables',(SELECT jsonb_object_agg(n.nspname||'.'||r.relname,jsonb_build_object('rls',r.relrowsecurity,'acl',r.relacl::text,
   'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,a.atttypid::regtype::text,a.attnotnull,pg_get_expr(d.adbin,d.adrelid)) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=r.oid AND a.attnum>0 AND NOT a.attisdropped),
   'constraints',(SELECT jsonb_agg(pg_get_constraintdef(oid) ORDER BY conname) FROM pg_constraint WHERE conrelid=r.oid),
@@ -50,10 +50,10 @@ BEGIN
  END IF;
  IF EXISTS(SELECT 1 FROM pg_proc WHERE proname LIKE 'battle31_%') OR EXISTS(SELECT 1 FROM pg_class WHERE relname LIKE 'battle31_%') THEN RAISE EXCEPTION 'battle31:partial_installation';END IF;
  FOR f IN SELECT * FROM (VALUES ${expected.map(x=>'('+quote(x.signature)+','+quote(x.hash)+')').join(',')}) expected(signature,hash) LOOP
-  IF md5(pg_get_functiondef(to_regprocedure(f.signature))) IS DISTINCT FROM f.hash THEN RAISE EXCEPTION 'battle31:canonical_definition_drift:%',f.signature;END IF;
+  IF md5(replace(pg_get_functiondef(to_regprocedure(f.signature)),chr(13)||chr(10),chr(10))) IS DISTINCT FROM f.hash THEN RAISE EXCEPTION 'battle31:canonical_definition_drift:%',f.signature;END IF;
  END LOOP;
  EXECUTE $battle31_payload$${payload}$battle31_payload$;
- IF EXISTS(SELECT 1 FROM private.battle31_release WHERE enabled OR admission_enabled) THEN RAISE EXCEPTION 'battle31:admission_must_be_closed';END IF;
+ IF EXISTS(SELECT 1 FROM private.battle31_release WHERE enabled OR admission_enabled OR fake_qualified OR real_qualified) THEN RAISE EXCEPTION 'battle31:admission_must_be_closed';END IF;
  ${manifest} INTO actual;
  EXECUTE format('COMMENT ON TABLE private.battle31_release IS %L',jsonb_build_object('sourceSHA256','${digest}','main','${main}','manifest',actual)::text);
 END $battle31_release_package$;

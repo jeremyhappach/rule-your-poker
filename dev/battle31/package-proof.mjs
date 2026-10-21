@@ -33,23 +33,29 @@ try{
  await locker.query('BEGIN');await locker.query('LOCK TABLE public.games IN ROW EXCLUSIVE MODE');
  await reject('busy shared table fails without waiting',null,/could not obtain lock|lock timeout/);
  await locker.query('ROLLBACK');
- await c.query(sql);cases.push('fresh atomic install');
- assert.deepEqual((await c.query('SELECT enabled,admission_enabled FROM private.battle31_release')).rows,[{enabled:false,admission_enabled:false}]);
+ await c.query(reference.replaceAll('\r\n','\n').replaceAll('\n','\r\n'));
+ await c.query(sql);cases.push('fresh atomic install against CRLF shared definitions');
+ assert.deepEqual((await c.query('SELECT enabled,admission_enabled,fake_qualified,real_qualified FROM private.battle31_release')).rows,[{enabled:false,admission_enabled:false,fake_qualified:false,real_qualified:false}]);
  const before=(await c.query("SELECT obj_description('private.battle31_release'::regclass,'pg_class') marker")).rows[0].marker;
  await c.query(sql);await c.query(sql);cases.push('exact repeat no-op twice');
  assert.equal((await c.query("SELECT obj_description('private.battle31_release'::regclass,'pg_class') marker")).rows[0].marker,before);
  assert.equal((await c.query("SELECT count(*)::int n FROM cron.job WHERE jobname='battle31-recovery'")).rows[0].n,1);
  assert.equal((await c.query("SELECT count(*)::int n FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='battle31_revisions'")).rows[0].n,1);
+ const recoverDef=(await c.query("SELECT pg_get_functiondef('private.battle31_recover()'::regprocedure) d")).rows[0].d;
+ await c.query('BEGIN');await c.query(recoverDef.replaceAll('\r\n','\n').replaceAll('\n','\r\n'));await c.query(sql);await c.query('ROLLBACK');cases.push('CRLF-only installed definition repeat accepted');
+ await reject('substantive body drift refused',recoverDef.replace('BEGIN','BEGIN /* changed */'),/installed_definition_drift/);
+ await reject('bare CR is not normalized away',recoverDef.replace('BEGIN','BEGIN\r '),/installed_definition_drift/);
+ await reject('spaces are not normalized away',recoverDef.replace('BEGIN','BEGIN '),/installed_definition_drift/);
  await reject('installed function drift refused',"ALTER FUNCTION private.battle31_recover() SET search_path=public",/installed_definition_drift/);
  await reject('installed ACL drift refused',"GRANT SELECT ON private.battle31_matches TO authenticated",/installed_definition_drift/);
  await reject('installed schema drift refused',"ALTER TABLE private.battle31_matches ADD COLUMN unauthorized text",/installed_definition_drift/);
  await reject('scheduler drift refused',"UPDATE cron.job SET active=false WHERE jobname='battle31-recovery'",/installed_definition_drift/);
  await reject('publication drift refused',"ALTER PUBLICATION supabase_realtime DROP TABLE public.battle31_revisions",/installed_definition_drift/);
- await c.query('BEGIN');await c.query('UPDATE private.battle31_release SET enabled=true,admission_enabled=true');await c.query(sql);
+ await c.query('BEGIN');await c.query('UPDATE private.battle31_release SET enabled=true,admission_enabled=true,fake_qualified=true,real_qualified=true');await c.query(sql);
  assert.equal((await c.query('SELECT admission_enabled FROM private.battle31_release')).rows[0].admission_enabled,true);await c.query('ROLLBACK');cases.push('repeat preserves existing gates');
  // Reconstructing the previous main registration must be exact except the
  // explicitly additive Battle 31 branches and game-list entries.
- const combined=read('supabase/battle31/registration.sql','utf8').replaceAll('\r\n','\n').replaceAll(",'battle-31')",')').replace("  IF g.game_type='battle-31' THEN\n   s:=private.battle31_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);\n   INSERT INTO private.battle31_matches(dealer_game_id,game_id,round_id,state,stake) VALUES(p_dealer,p_game,r,s,stake_i);\n  ELSIF g.game_type='race-poker' THEN","  IF g.game_type='race-poker' THEN");
+ const combined=read('supabase/battle31/registration.sql','utf8').replaceAll('\r\n','\n').replaceAll(",'battle-31')",')').replace("  IF g.game_type='battle-31' THEN\n   IF NOT EXISTS(SELECT 1 FROM private.battle31_release WHERE singleton AND enabled AND CASE WHEN g.real_money THEN real_qualified ELSE fake_qualified END) THEN RAISE EXCEPTION 'battle31:admission_closed';END IF;\n   s:=private.battle31_deal(s,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);\n   INSERT INTO private.battle31_matches(dealer_game_id,game_id,round_id,state,stake) VALUES(p_dealer,p_game,r,s,stake_i);\n  ELSIF g.game_type='race-poker' THEN","  IF g.game_type='race-poker' THEN");
  assert.equal(combined.replaceAll('\r\n','\n'),reference.replaceAll('\r\n','\n'));cases.push('current-main Race Poker registration preserved exactly');
  const evidence={at:new Date().toISOString(),database,main:meta.main,packageSHA256:createHash('sha256').update(sql).digest('hex'),passed:true,cases,limitations:['cron.schedule is a local metadata stub; no actual scheduler dispatch','publication catalog tested with wal_level=replica; no logical replication transport']};
  write('dev/battle31/evidence/package-proof.json',JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence));

@@ -1,7 +1,7 @@
 import type {ComponentType} from 'react';
 export interface RuleRendererProps {config?:unknown;version?:string;solo?:boolean}
 export type Category = 'cards' | 'dice' | 'other';
-export type Capability = 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'boxdrop';
+export type Capability = 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'boxdrop' | 'race-poker';
 export type GameDescriptor = {
  id: string; defaultsKey: string; name: string; category: Category; order: number;
  family: 'traditional' | 'megatouch'; modes: readonly ('multiplayer' | 'arcade')[];
@@ -9,6 +9,6 @@ export type GameDescriptor = {
  bots: 'supported' | 'fake-money-only' | 'unsupported';
  availability: 'existing-setup' | Capability;
  development: 'integrated'; ownerSmoke: 'existing-release' | 'pending';
- rules: {kind: 'traditional' | 'versioned'; key: string; load?:()=>Promise<{default:ComponentType<RuleRendererProps>}>};
+ rules: {kind: 'traditional' | 'versioned'; key: string; fixedVersion?:string; load?:()=>Promise<{default:ComponentType<RuleRendererProps>}>};
  defaultsEditor: 'legacy' | 'farkle' | 'stake'; geometry?: string; artwork?: string;
 };

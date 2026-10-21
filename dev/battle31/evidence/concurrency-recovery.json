@@ -5,8 +5,8 @@
     "competingRace": true,
     "timeoutRace": true,
     "pause": true,
-    "zeroClientSteps": 12,
-    "zeroClientRound": 4,
+    "zeroClientSteps": 32,
+    "zeroClientRound": 9,
     "postgameRecovered": true,
     "resignation": true
   },
@@ -16,8 +16,8 @@
     "competingRace": true,
     "timeoutRace": true,
     "pause": true,
-    "zeroClientSteps": 28,
-    "zeroClientRound": 8,
+    "zeroClientSteps": 20,
+    "zeroClientRound": 6,
     "postgameRecovered": true,
     "resignation": true
   }

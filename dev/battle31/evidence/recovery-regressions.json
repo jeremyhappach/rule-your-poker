@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-21T13:26:28.227Z",
-  "database": "battle31_package_1792589183665",
-  "packageSHA256": "f7a83f5782e3a987efc9f085ec4435eaacaca50ec0ff28778b635218437977b4",
+  "at": "2026-10-21T14:41:18.175Z",
+  "database": "battle31_package_1792593672768",
+  "packageSHA256": "b0c5610a3eef4b25ca2e0323ad4f694bff7ae11b8b6c5e40fd6396aafc659ff2",
   "results": [
     {
       "script": "proof",
@@ -22,11 +22,13 @@
     "gates": {
       "enabled": true,
       "singleton": true,
+      "fake_qualified": true,
+      "real_qualified": true,
       "admission_enabled": true
     },
     "matches": 5,
     "results": 5,
-    "requests": 65
+    "requests": 80
   },
   "localAdmissionClosedAfterProof": true
 }

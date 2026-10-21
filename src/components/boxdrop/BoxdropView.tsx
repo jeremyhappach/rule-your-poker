@@ -12,7 +12,7 @@ import {BoxdropScorePill} from './BoxdropScorePill';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {boxdropCue} from '@/lib/boxdrop/audio';
 import './boxdrop.css';
-function Crate({box}:{box:BoxdropBox}){return <span className="box-crate" data-color={box.recycled?'white':box.color}><i aria-hidden="true">▧</i><b>{box.value}</b></span>;}
+function Crate({box}:{box:BoxdropBox}){return <span className="box-crate" data-color={box.recycled?'white':box.color}><i aria-hidden="true">▧</i><b data-digits={String(box.value).length}>{box.value}</b></span>;}
 export function BoxdropLoading({solo=false,error,onReconnect,activeTab,setActiveTab}:{solo?:boolean;error:string;onReconnect:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void}){
  const [tab,setTab]=useState<ShellTabId>('cards');
  const shell=<FullscreenGameShell className="box-scene" ready={false} title="Boxdrop" description="" activeTab={activeTab??tab} setActiveTab={setActiveTab??setTab} panel={<BoxdropRules/>} announcement={solo?false:undefined}><div role="status">{error||'Loading Boxdrop…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;

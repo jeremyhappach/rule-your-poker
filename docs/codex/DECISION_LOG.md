@@ -2569,3 +2569,15 @@ The atomic package preserves current-main Race Poker shared registration, verifi
 canonical preimages, installs closed, and fingerprints installed definitions and
 registration for exact replay without resetting data or gates. No hosted changes
 or branch integration occurred. See `BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+
+## 2026-10-21 — Battle 31 local release correction
+
+Normalize CRLF/LF only for definition fingerprints. Preserve all substantive
+and permission drift rejection. Separate server-owned fake/real qualification;
+new-admission closure stops new offers while accepted offers may drain in a still
+qualified mode. Keep active-match authority and canonical finance independent of
+new-admission flags. Capability v3 and current-main client integration are local.
+Hosted qualification requires actual successful scheduler health and rolls back
+fixtures; no production execution or activation occurred. See
+`BATTLE31_RELEASE_CORRECTIONS.md` for evidence and release limits.

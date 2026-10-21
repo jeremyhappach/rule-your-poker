@@ -1113,3 +1113,8 @@ Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`
 `package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
 atomic migration: `supabase/battle31/release.sql`; evidence/remaining gates:
 `docs/codex/BATTLE31_RECOVERY_QUALIFICATION.md`.
+
+Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
+shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
+controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
+preflight tests: `dev/battle31/hosted-qualification.test.mjs`.

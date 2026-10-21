@@ -1,3 +1,17 @@
+# Battle 31 / 1 — 2026-10-21 — local release corrections qualified, not published
+
+Definition fingerprints now tolerate CRLF/LF only; separate fake/real server
+qualification gates govern setup and bootstrap. Capability v3 supports fake-only
+admission. Current-main Race Poker and Box Drop client changes are integrated in
+the isolated candidate, with approved Battle 31 rules unchanged.
+
+Package/admission/financial/concurrency/recovery proofs, 146 focused client tests,
+typecheck, production build and both-money main-route journeys passed locally.
+A guarded hosted qualification driver is prepared but has not connected to
+production. Migration registration, hosted authority/transport/scheduler checks,
+branch ancestry integration, publication and activation remain separate.
+See [release corrections and evidence](BATTLE31_RELEASE_CORRECTIONS.md).
+
 # Battle 31 / 1 — 2026-10-21 — local recovery/package qualified, not released
 
 The isolated candidate now has bounded recovery (20 gameplay and 20 terminal

@@ -1,31 +1,39 @@
 {
   "passed": true,
+  "residual": {
+    "games": 0,
+    "batches": 0,
+    "players": 0,
+    "results": 0,
+    "profiles": 0,
+    "snapshots": 0
+  },
   "cases": [
     {
       "money": false,
       "outcome": "winner",
       "chips": [
         {
-          "id": "6f1d607d-2b09-44c7-9dac-ea68fe3ce77d",
-          "chips": 95
+          "id": "1b375d8c-b25c-4407-80ab-b50d69bf8c75",
+          "chips": 105
         },
         {
-          "id": "c87268a3-7096-448b-a4a3-b3a53927b50e",
-          "chips": 105
+          "id": "6476370b-9a5b-4f37-b706-efa47b6b0225",
+          "chips": 95
         }
       ],
       "batches": [
         {
           "transfers": [
             {
-              "id": "153577e1-ef9d-4124-98d3-d8f595c0869a:1:1",
+              "id": "ab44b786-0de2-43f5-acf5-2faefe3b1322:1:1",
               "to": {
                 "kind": "player",
-                "playerId": "c87268a3-7096-448b-a4a3-b3a53927b50e"
+                "playerId": "1b375d8c-b25c-4407-80ab-b50d69bf8c75"
               },
               "from": {
                 "kind": "player",
-                "playerId": "6f1d607d-2b09-44c7-9dac-ea68fe3ce77d"
+                "playerId": "6476370b-9a5b-4f37-b706-efa47b6b0225"
               },
               "amount": 5
             }
@@ -40,11 +48,11 @@
       "outcome": "tie",
       "chips": [
         {
-          "id": "1934f0be-9b48-45f6-b0af-a63d01cb583e",
+          "id": "727df025-5374-4a9e-aa0d-3e54ddddb78d",
           "chips": 100
         },
         {
-          "id": "6bf80537-ea84-45f9-ac90-4cb902cce88b",
+          "id": "74bcf3b2-4bb9-41c4-ab8a-b3f3a05f79c2",
           "chips": 100
         }
       ],
@@ -56,11 +64,11 @@
       "outcome": "abort",
       "chips": [
         {
-          "id": "09872c27-6562-42bd-b3f5-8fc7ad6e0dd2",
+          "id": "05e2dcc1-fe80-4110-bd13-48347c7cc43f",
           "chips": 100
         },
         {
-          "id": "cfb14eaa-ad88-4a95-b8fc-13da8442f826",
+          "id": "c0a2dc60-6b8b-48e1-83bf-6206a9f77c59",
           "chips": 100
         }
       ],
@@ -72,26 +80,26 @@
       "outcome": "winner",
       "chips": [
         {
-          "id": "162ee2b8-21e2-4f1e-a0dd-8418620b80d3",
-          "chips": 95
+          "id": "17fdc282-f820-4c31-b326-c6daecb5eee1",
+          "chips": 105
         },
         {
-          "id": "feb269d8-2ce0-44a0-8a3f-58c77f230a62",
-          "chips": 105
+          "id": "9d4dfee3-2fb6-4438-ac02-c2b6d17cb6e9",
+          "chips": 95
         }
       ],
       "batches": [
         {
           "transfers": [
             {
-              "id": "35804223-367a-45f4-bd2d-ebb406b63bd9:1:1",
+              "id": "ef207d1e-95ba-4c2f-bc2f-f77440cd6d74:1:1",
               "to": {
                 "kind": "player",
-                "playerId": "feb269d8-2ce0-44a0-8a3f-58c77f230a62"
+                "playerId": "17fdc282-f820-4c31-b326-c6daecb5eee1"
               },
               "from": {
                 "kind": "player",
-                "playerId": "162ee2b8-21e2-4f1e-a0dd-8418620b80d3"
+                "playerId": "9d4dfee3-2fb6-4438-ac02-c2b6d17cb6e9"
               },
               "amount": 5
             }
@@ -106,11 +114,11 @@
       "outcome": "tie",
       "chips": [
         {
-          "id": "260cf3ce-4cb8-417e-ae62-75ac20fd1b3e",
+          "id": "3b6769ae-bf28-48bf-a997-91fddd4a7764",
           "chips": 100
         },
         {
-          "id": "6b8f4b74-bea5-47e1-b184-dd755c337fea",
+          "id": "d9b11dfb-4a40-46ca-b1bf-eb89439e56ee",
           "chips": 100
         }
       ],
@@ -122,16 +130,23 @@
       "outcome": "abort",
       "chips": [
         {
-          "id": "0d560831-98b3-4fc8-8fa4-c34bafed91e5",
+          "id": "04b4a4a1-8809-46b9-b944-a46103948ee9",
           "chips": 100
         },
         {
-          "id": "eac9bae7-e749-4eeb-a150-37641a7d908b",
+          "id": "940d0c40-bb9b-4c99-ae88-b484c127a331",
           "chips": 100
         }
       ],
       "batches": [],
       "passed": true
     }
-  ]
+  ],
+  "moneyModeAdmission": true,
+  "bootstrapGate": true,
+  "acceptedOfferStartsAfterNewAdmissionCloses": true,
+  "admittedMatchesContinueWhenAdmissionCloses": true,
+  "existingBalancesPreserved": true,
+  "releaseGatesPreserved": true,
+  "fixtureUsersRemoved": true
 }

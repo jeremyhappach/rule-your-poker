@@ -80,27 +80,27 @@
     }
   ],
   "errors": [],
-  "session": "3eee2abe-5cc1-4093-9a86-e56e779192f2",
-  "firstDealer": "f4f52aa8-9c0f-4242-807a-162dc79f36ba",
-  "secondDealer": "c4d393d6-8345-4c3a-9e31-76cb528e224e",
+  "session": "042c51da-34af-4ddd-b2f8-9e4a2cbc4318",
+  "firstDealer": "bdc47766-6050-45a3-b19d-51cf729f293b",
+  "secondDealer": "66d63b17-fae2-40de-b091-ce5af56eef9f",
   "balances": [
     {
-      "user_id": "e12338a4-e2ed-446b-9fbb-123c497e538d",
+      "user_id": "04807238-1f09-4bb2-95e8-acf93fb8a9c2",
       "chips": 91
     },
     {
-      "user_id": "83c809f2-efff-41bd-9380-97f97062fd6d",
+      "user_id": "942e09d8-7ddd-47df-931e-0a02a7e9a2a8",
       "chips": 109
     }
   ],
   "finalBalances": [
     {
-      "user_id": "83c809f2-efff-41bd-9380-97f97062fd6d",
-      "chips": 118
+      "user_id": "04807238-1f09-4bb2-95e8-acf93fb8a9c2",
+      "chips": 82
     },
     {
-      "user_id": "e12338a4-e2ed-446b-9fbb-123c497e538d",
-      "chips": 82
+      "user_id": "942e09d8-7ddd-47df-931e-0a02a7e9a2a8",
+      "chips": 118
     }
   ],
   "realMoney": true

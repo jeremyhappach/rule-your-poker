@@ -1,5 +1,8 @@
 # Battle 31 recovery and release package — October 21, 2026
 
+Historical checkpoint 0446: superseded for current integration, gates and package
+hashes by [release corrections](BATTLE31_RELEASE_CORRECTIONS.md).
+
 Status: locally implemented and qualified; no production changes, push, deployment
 or admission activation. Approved `battle-31/1` rules are unchanged. The earlier
 research/no-changes response was incorrect for the continuation and is superseded

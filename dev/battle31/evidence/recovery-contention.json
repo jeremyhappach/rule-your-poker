@@ -1,6 +1,6 @@
 {
-  "at": "2026-10-21T13:23:13.650Z",
-  "database": "battle31_recovery_1792588983258",
+  "at": "2026-10-21T14:35:33.552Z",
+  "database": "battle31_recovery_1792593322303",
   "recoverySHA256": "1906555b0aed6125c319546b9c11eab27bdc9876a08834dd601af600db3e8f3c",
   "statementTimeoutMs": 1500,
   "results": [
@@ -34,7 +34,7 @@
       "competingWorkers": true,
       "canonicalResults": 42,
       "chipTotal": 8400,
-      "firstBatchMs": 5
+      "firstBatchMs": 7
     }
   ]
 }

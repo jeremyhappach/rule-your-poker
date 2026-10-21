@@ -70,3 +70,21 @@ databases. Fixtures deliberately enable local admission and write synthetic
 recovery-health timestamps; these runners must never become hosted proof scripts.
 The regression wrapper checks package replay over settled fixture data and closes
 its local admission gates afterward. Retained proof results are in `evidence/`.
+
+
+## Hosted qualification preparation (separate authorization required)
+
+`node dev/battle31/hosted-qualification.mjs` only prints preparation status.
+It makes no connection by default. An authorized operator must explicitly supply
+`--run-installed` and `BATTLE31_QUALIFICATION_URL` through the approved secret
+channel. Do not print or commit the connection value. The driver requires the
+exact installed package and all four release flags closed, checks actual cron
+execution and canonical health, then runs rollback-only financial fixtures.
+It does not install, schedule, activate, or manufacture health. Local
+`proof.mjs` explicitly opts into synthetic health; the hosted driver does not.
+
+Run `node dev/battle31/hosted-qualification.test.mjs` for mocked preflight tests.
+These tests prove fail-closed handling, not hosted health. See
+`docs/codex/BATTLE31_RELEASE_CORRECTIONS.md` for qualification limits and current
+package identity. Closing new admission preserves accepted offers in qualified
+modes; do not revoke enabled/money qualification before pending offers drain.
