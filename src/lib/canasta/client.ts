@@ -1,15 +1,17 @@
 import type {Action,Command,Projection} from './engine';
-export type Snapshot={state:Projection;serverAt:number;settlement:unknown;finished:boolean};
-export interface Transport {load():Promise<Snapshot>;send(command:Command):Promise<Snapshot>;subscribe(refresh:()=>void):()=>void}
+import type {ChipPresentationBatch} from '../canonicalShell/ChipPresentationLedger';
+export type Settlement={key:string;resultId:string;transferBatchId:string;batch:ChipPresentationBatch;winner:string;loser:string;amount:number;scores:Record<string,number>;startedAt:number;deadline:number};
+export type Snapshot={state:Projection;serverAt:number;firstRoundId?:string;settlement:Settlement|null;finished:boolean};
+export interface Transport {load():Promise<Snapshot>;send(command:Command):Promise<Snapshot>;takeControl?():Promise<Snapshot>;subscribe(refresh:()=>void):()=>void}
 export class CommandRejected extends Error {}
 export function httpTransport(id:string,token:()=>Promise<string>,subscribe:Transport['subscribe']):Transport{
-  async function request(operation:'state'|'action',command?:Command):Promise<Snapshot>{
-    const response=await fetch(`/__canasta/${id}/${operation}`,{method:command?'POST':'GET',headers:{Authorization:`Bearer ${await token()}`,'Content-Type':'application/json'},
+  async function request(operation:'state'|'action'|'take-control',command?:Command):Promise<Snapshot>{
+    const response=await fetch(`/__canasta/${id}/${operation}`,{method:operation==='state'?'GET':'POST',headers:{Authorization:`Bearer ${await token()}`,'Content-Type':'application/json'},
       ...(command?{body:JSON.stringify(command)}:{})});
     const body=await response.json();if(!response.ok){if(response.status>=400&&response.status<500)throw new CommandRejected(body.error);throw Error('Connection uncertain');}
     return body as Snapshot;
   }
-  return {load:()=>request('state'),send:c=>request('action',c),subscribe};
+  return {load:()=>request('state'),send:c=>request('action',c),takeControl:()=>request('take-control'),subscribe};
 }
 export function commandFor(state:Projection,action:Action):Command{
   const h=state.hand;if(!h||!state.viewer)throw Error('canasta:not_ready');

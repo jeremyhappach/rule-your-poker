@@ -73,6 +73,7 @@ export const AnteUpDialog = ({
     if (gameType === 'royal-flash') return 'Royal Flash';
     if (gameType === 'eleven-up') return '11 Up';
     if (gameType === 'tri-towers') return 'TriTowers';
+    if (gameType === 'canasta') return 'Canasta';
     if (gameType === 'run21') return 'Run21';
     return '3-5-7';
   };

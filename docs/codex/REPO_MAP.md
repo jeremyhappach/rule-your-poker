@@ -1108,3 +1108,11 @@ owns the shared paged editor and unregistered authoritative gameplay contents;
 dev/canasta reuses the editor for offline review. CanonicalTableHeader.tsx shares
 route header presentation. Live dispatcher/scheduler/route integration remains;
 see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.
+# Canasta local integration owners (2026-10-21; admission closed)
+
+- `api/canasta.ts`, `server/canasta/{production,recovery}.ts`: authenticated route and leased recovery orchestration.
+- `supabase/canasta/{registration,recovery,schedule}.candidate.sql`: guarded Ante Up insertion, immutable config, revision signal, disabled scheduler; unapplied.
+- `src/components/canasta/{CanastaTable,CanastaArtifacts,useCanastaCardPresentation}.tsx`: canonical table adapter, artifacts and observed card presentation (the hook is a `.ts` file).
+- `src/hooks/useCanastaAccess.ts`: closed capability discovery; `src/pages/Game.tsx`: retained terminal ownership.
+- `dev/canasta/authorityPlugin.ts`, `authorityReview.tsx`: loopback reducer-backed review without database writes.
+- `supabase/canasta/{proof,concurrency.proof}.mjs`: rollback and competing-session qualification in isolated local PostgreSQL.

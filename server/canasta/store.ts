@@ -1,7 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
 import type {Store,RecordState} from './authority';
 
-/** No route or production instantiation is registered while the release gate is closed. */
+/** Private RPC adapter. Client roles cannot submit reducer state. */
 export function createStore(url:string,key:string):Store{
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
   async function rpc(name:string,args:Record<string,unknown>):Promise<RecordState>{

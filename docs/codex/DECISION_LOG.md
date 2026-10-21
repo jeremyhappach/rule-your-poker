@@ -2543,3 +2543,13 @@ Multiplayer adds only consent, participant order, pause, bots, canonical chip
 settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
+# 2026-10-21 — Canasta local canonical integration
+
+Preserve the exact deployed Ante Up dispatcher, including Race Poker, by a guarded
+single-branch insertion; do not install the stale local dispatcher. Freeze the
+two-seat roster with configuration, require fresh canonical consent and recovery
+health, and retain the authoritative first round for terminal presentation. Keep
+admission closed and all SQL candidates unapplied until full qualification.
+The loopback browser fixture shares the production reducer but is not evidence
+of authenticated Realtime, durable recovery or financial browser completion.
+No change to `canasta-classic-two/1`, the 120-second clock or accepted appearance.

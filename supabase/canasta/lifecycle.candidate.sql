@@ -84,7 +84,7 @@ END $$;
 CREATE TRIGGER canasta_pause AFTER UPDATE OF is_paused ON public.games FOR EACH ROW EXECUTE FUNCTION private.canasta_pause();
 CREATE FUNCTION public.canasta_server_due() RETURNS SETOF uuid LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
  SELECT m.dealer_game_id FROM private.canasta_matches m JOIN public.games g ON g.id=m.game_id
- WHERE NOT m.finished AND g.current_game_uuid=m.dealer_game_id AND g.game_type='canasta' AND NOT g.is_paused
+ WHERE NOT m.finished AND g.current_game_uuid=m.dealer_game_id AND g.game_type='canasta' AND (m.settlement IS NOT NULL OR NOT g.is_paused)
  AND EXISTS(SELECT 1 FROM private.canasta_release WHERE enabled)
  AND (m.state->'hand'='null'::jsonb OR m.state#>>'{hand,phase}'='complete' OR
   least((m.state#>>'{hand,deadline}')::bigint,m.bot_due_at)<=floor(extract(epoch FROM clock_timestamp())*1000))

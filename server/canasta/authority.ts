@@ -24,15 +24,15 @@ export class CanastaAuthority {
   async read(id:string,userId:string){return this.visible(await this.store.load(id,userId),userId);}
   private visible(row:RecordState,userId:string){
     const seat=row.state.seats.find(s=>s.kind==='human'&&s.userId===userId);
-    if(!seat)throw Error('canasta:unauthorized');
-    return {state:project(row.state,seat.id),serverAt:row.serverAt,settlement:row.settlement,finished:row.finished};
+    return {state:project(row.state,seat?.id??null),firstRoundId:row.firstRoundId,serverAt:row.serverAt,settlement:row.settlement,finished:row.finished};
   }
   /** Invoked by durable server scheduling; all transition identities remain in the store. */
   async recover(id:string){
     for(let attempt=0;attempt<3;attempt++){
       const row=await this.store.load(id);let state=row.state;const at=row.serverAt,h=state.hand;
-      if(row.finished||state.pause)return row;
+      if(row.finished)return row;
       if(row.settlement){await this.store.finish(id);return this.store.load(id);}
+      if(state.pause)return row;
       if(!h||h.phase==='complete'){
         if(!state.winner)state=startHand(state,h?randomUUID():row.firstRoundId,this.deck(),at);
       }else if(at>=h.deadline)state=expire(state,at,row.activeHumans);

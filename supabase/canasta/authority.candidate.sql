@@ -24,8 +24,9 @@ BEGIN
  SELECT * INTO STRICT m FROM private.canasta_matches WHERE dealer_game_id=p_match;
  SELECT * INTO STRICT g FROM public.games WHERE id=m.game_id;
  IF NOT EXISTS(SELECT 1 FROM private.canasta_release WHERE enabled) THEN RAISE EXCEPTION 'canasta:closed';END IF;
- IF p_user IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=m.game_id AND p.user_id=p_user AND NOT p.is_bot AND p.status<>'left'
-   AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) s WHERE s->>'id'=p.id::text AND s->>'userId'=p_user::text)) THEN RAISE EXCEPTION 'canasta:unauthorized' USING ERRCODE='42501';END IF;
+ IF p_user IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.profiles pr WHERE pr.id=p_user AND pr.is_active AND (
+  EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=m.game_id AND p.user_id=p_user AND NOT p.is_bot AND p.status<>'left')
+  OR (m.settlement IS NOT NULL AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) seat WHERE seat->>'userId'=p_user::text)))) THEN RAISE EXCEPTION 'canasta:unauthorized' USING ERRCODE='42501';END IF;
  SELECT coalesce(jsonb_agg(p.id),'[]'::jsonb) INTO humans FROM public.players p WHERE p.game_id=m.game_id AND NOT p.is_bot AND p.status='active'
   AND NOT p.sitting_out AND NOT p.auto_fold AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) s WHERE s->>'id'=p.id::text);
  RETURN jsonb_build_object('state',m.state,'firstRoundId',m.first_round_id,'activeHumans',humans,'botDue',m.bot_due_at,'serverAt',floor(extract(epoch FROM clock_timestamp())*1000),
@@ -47,7 +48,7 @@ BEGIN
  IF p_context->>'kind' NOT IN('command','recover','control') THEN RAISE EXCEPTION 'canasta:context';END IF;
  IF p_context->>'kind'<>'recover' THEN
   actor:=(p_context->>'userId')::uuid;
-  IF actor IS NULL OR NOT EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=m.game_id AND p.user_id=actor AND NOT p.is_bot AND p.status<>'left'
+  IF actor IS NULL OR NOT EXISTS(SELECT 1 FROM public.players p JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=m.game_id AND p.user_id=actor AND NOT p.is_bot AND p.status<>'left' AND pr.is_active
    AND EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) s WHERE s->>'id'=p.id::text AND s->>'userId'=actor::text)) THEN RAISE EXCEPTION 'canasta:unauthorized' USING ERRCODE='42501';END IF;
  END IF;
  IF p_context->>'kind'='command' THEN
@@ -65,7 +66,7 @@ BEGIN
   OR g.status<>'in_progress' THEN RAISE EXCEPTION 'canasta:inactive';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.dealer_games WHERE id=p_match AND session_id=m.game_id AND (config->>'ante_amount')::integer=m.stake)
   OR EXISTS(SELECT 1 FROM jsonb_array_elements(m.seats) s WHERE NOT EXISTS(SELECT 1 FROM public.players p WHERE p.id=(s->>'id')::uuid AND p.game_id=m.game_id
-    AND p.is_bot=(s->>'kind'='bot') AND (p.is_bot OR p.user_id=(s->>'userId')::uuid))) THEN RAISE EXCEPTION 'canasta:frozen_identity';END IF;
+    AND p.position=(s->>'seat')::integer AND p.is_bot=(s->>'kind'='bot') AND (p.is_bot OR p.user_id=(s->>'userId')::uuid))) THEN RAISE EXCEPTION 'canasta:frozen_identity';END IF;
  IF g.is_paused AND p_context->>'kind'<>'control' THEN RAISE EXCEPTION 'canasta:paused';END IF;
  IF p_context->>'kind'='recover' AND nullif(p_state->'pause','null'::jsonb) IS NULL
   AND (p_state->'automatic') ? (m.state#>>'{hand,active}')
@@ -121,7 +122,7 @@ BEGIN
   INSERT INTO public.session_player_snapshots(game_id,dealer_game_id,player_id,user_id,username,chips,is_bot,hand_number)
    SELECT p.game_id,p_match,p.id,p.user_id,coalesce(pr.username,'Player'),p.chips,p.is_bot,1 FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id
    WHERE p.game_id=m.game_id ON CONFLICT(game_id,dealer_game_id,hand_number,player_id) DO NOTHING;
-  m.settlement:=jsonb_build_object('key','canasta:'||p_match,'resultId',result_id,'transferBatchId',batch_id,'winner',winner,'loser',loser,'amount',m.stake,'scores',p_state->'totals','startedAt',at_ms,'deadline',at_ms+3000);
+  m.settlement:=jsonb_build_object('key','canasta:'||p_match,'resultId',result_id,'transferBatchId',batch_id,'batch',(SELECT to_jsonb(b) FROM public.gameplay_transfer_batches b WHERE id=batch_id),'winner',winner,'loser',loser,'amount',m.stake,'scores',p_state->'totals','startedAt',at_ms,'deadline',at_ms+3000);
   UPDATE public.rounds SET status='completed' WHERE dealer_game_id=p_match;
   UPDATE public.games SET status=CASE WHEN pending_session_end THEN 'session_ended' ELSE 'game_over' END,
     session_ended_at=CASE WHEN pending_session_end THEN clock_timestamp() ELSE session_ended_at END,

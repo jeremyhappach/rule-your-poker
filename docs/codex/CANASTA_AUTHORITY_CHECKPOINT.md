@@ -1,4 +1,69 @@
-# Canasta local authority checkpoint — October 20, 2026
+# Canasta local integration checkpoint — October 21, 2026
+
+## October 21 local integration addendum
+
+This section supersedes the implementation gaps in the October 20 record below.
+The approved local pass reconciles Ante Up and adds consent, recovery and canonical
+multiplayer wiring. Rules and accepted appearance are unchanged. Nothing has been
+pushed, installed in production, deployed or activated.
+
+- The old local dispatcher clone predates the Megatouch branches. The candidate
+  now checks the normalized hash of the October 21 deployed definition and inserts
+  only the Canasta branch. Removing that insertion reproduces the deployed hash,
+  preserving Race Poker and every other branch and replay guard. The captured
+  production definition is qualification input only, never a production replacement.
+- Setup uses closed capabilities, exactly two seats, positive match stake and fresh
+  canonical Ante Up consent. Configuration and roster freeze together. Run Back
+  carries the stake only and requires fresh consent. Commit revalidates active
+  profile, participant UUID, user/bot kind and frozen seat position.
+- Authenticated HTTP route, private revision-CAS store, public revision-only signal,
+  bounded recovery lease/worker and disabled scheduler candidate are wired locally.
+  Admission requires recent successful recovery health. SQL remains unapplied.
+- Game.tsx mounts CanastaTable in the canonical shell with retained roster and
+  actual first-round identity, including reconnect during later hands. Existing
+  identity, HUD/tabs, announcements, card transport/audio, chip admission, celebration
+  and terminal completion owners are reused. No second rules engine or table exists.
+- Browser review uses the real reducer and private projection behind loopback HTTP
+  and SSE, with synthetic participants. It is in-memory and has no authentication,
+  financial writes or durable worker. It is not full-stack release qualification.
+
+Validation: 120 focused tests across 14 files; app, server and fixture TypeScript;
+full application build and recovery-worker bundle passed. Three autonomous matches
+reached the match boundary with physical-card conservation on every action. Existing
+Browserslist age, mixed-import and large-chunk build advisories remain.
+
+The network-disabled local PostgreSQL clone passed actual canonical consent,
+both-money settlement and lease proofs inside rollback. Disposable competing-session
+proofs passed duplicate/different-request settlement, deadline expiration while
+waiting for the canonical lock, and injected failure after chip transfer. Each
+successful settlement had one result, one balanced batch, two snapshots and exact
++S/-S canonical chips. The disposable concurrency database was dropped afterward.
+
+Rendered evidence: duplicate physical aces survived selection/sorting and qualified
+a frozen-pile opening. The committed meld and 14-card hand survived reconnect;
+final discard advanced the turn with 13 cards and without resetting the active
+deadline. The 320x568 safe-area audit covered those 13 cards, not the maximum hand
+(its old harness label says maximum). The 812x375 audit covers 15 cards in a paused
+fixture. Both report no layout failures. Prior 71-card evidence remains separate.
+See evidence/canasta-mobile/integrated-{narrow,landscape}.png and matching audit JSON.
+Review URL: http://127.0.0.1:4328/mobile.html?authority=1 (local server required).
+
+Remaining release blockers: authenticated two-human/human-bot consent-to-terminal
+browser runs; actual Supabase Realtime membership transitions; worker restart and
+zero-client recovery; pause/Take Back Control races; Run Back and sit-out flows;
+terminal hold/Session Ended/fresh reconnect; native iPhone acceptance; installed
+authority and deployment qualification. In particular, verify revision visibility
+when a participant becomes left at terminal completion: the current revision RLS
+requires non-left membership even though terminal projection reads permit frozen
+participants. Resolve any missed terminal signal before release. Initial deal
+transport on live admission also needs qualification; fresh snapshot baselines
+deliberately avoid replaying old flights. No release readiness is claimed.
+
+This pass stops at the repository's bounded execution checkpoint. The canonical
+patterns supplied the adapters, but full authenticated lifecycle qualification is
+an additional pass; it cannot be inferred from the local reducer fixture.
+
+## October 20 record (historical)
 
 Jeremy accepted the canonical appearance and authorized local implementation via
 the originating workstream. Base: c63c7bfd3. No merge, push, production migration,

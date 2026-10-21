@@ -9,6 +9,11 @@
 <script type="module">
 import '@/index.css';
 const device=document.querySelector('#device'),frame=document.querySelector('iframe'),safe=document.querySelector('#safe');
+if(new URLSearchParams(location.search).has('authority')){
+ frame.src='/authority.html';document.querySelector('#scene').disabled=true;document.querySelector('#scene').replaceChildren(new Option('Live authority','authority',true,true));
+ document.querySelector('header strong').textContent='Canasta · integrated local authority';
+ document.querySelector('header a').href='/authority.html';
+}
 function size(){const [w,h]=device.value.split(',').map(Number),landscape=w>h;
   const top=safe.checked&&!landscape?47:1,bottom=safe.checked?(landscape?21:34):1,side=safe.checked&&landscape?44:1;
   frame.width=w-side*2;frame.height=h-top-bottom;

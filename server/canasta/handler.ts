@@ -4,7 +4,7 @@ import {CanastaAuthority} from './authority';
 import {createStore} from './store';
 import type {Command} from '../../src/lib/canasta/engine';
 
-/** Factory only: no API route, credential default, rewrite, or production registration. */
+/** Authenticated adapter; credentials and database release gates are supplied separately. */
 export function createCanastaHandler(url:string,serviceKey:string){
   const db=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}}),authority=new CanastaAuthority(createStore(url,serviceKey));
   async function handler(req:IncomingMessage,res:ServerResponse){

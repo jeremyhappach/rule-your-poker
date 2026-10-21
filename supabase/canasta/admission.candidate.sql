@@ -25,6 +25,7 @@ BEGIN
  END IF;
  -- Admission controls creation only; existing setup retries and match authority remain live.
  IF NOT EXISTS(SELECT 1 FROM private.canasta_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'canasta:admission_closed' USING ERRCODE='42501';END IF;
+ PERFORM private.canasta_assert_recovery_health();
  IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'canasta:setup_identity';END IF;
@@ -43,7 +44,7 @@ BEGIN
  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
  IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;
- INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'canasta',jsonb_build_object('ante_amount',stake_i,'rules',private.canasta_rules())) RETURNING * INTO dg;
+ INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'canasta',jsonb_build_object('ante_amount',stake_i,'rules',private.canasta_rules(),'roster',people)) RETURNING * INTO dg;
  UPDATE public.players SET ante_decision=CASE WHEN id=p_dealer_player_id THEN 'ante_up' ELSE NULL END,current_decision=NULL,decision_locked=false,auto_fold=false WHERE game_id=g.id AND id IN(SELECT (p->>'id')::uuid FROM jsonb_array_elements(people) p);
  UPDATE public.games SET game_type='canasta',current_game_uuid=dg.id,config_complete=true,config_deadline=NULL,ante_decision_deadline=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.ante_decision_timer_seconds,30))),status='ante_decision',ante_amount=stake_i,current_round=NULL,total_hands=0,replay_contract_version=NULL,all_decisions_in=false,all_decisions_in_round_id=NULL WHERE id=g.id RETURNING * INTO g;
  SELECT jsonb_agg(to_jsonb(p) ORDER BY position) INTO setup_players FROM public.players p WHERE game_id=g.id;
@@ -54,9 +55,10 @@ END $function$
 ;
 -- Called by canonical Ante Up progression only after every frozen participant consents.
 CREATE FUNCTION private.canasta_begin(p_game uuid,p_dealer uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE g public.games;dg public.dealer_games;seats_i jsonb;s jsonb;r uuid:=gen_random_uuid();at_ms bigint;
+DECLARE g public.games;dg public.dealer_games;seats_i jsonb;initial_state jsonb;first_round_i uuid:=gen_random_uuid();at_ms bigint;
 BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=p_game FOR UPDATE;
+ PERFORM private.canasta_assert_recovery_health();
  SELECT * INTO STRICT dg FROM public.dealer_games WHERE id=p_dealer AND session_id=p_game;
  IF g.current_game_uuid IS DISTINCT FROM p_dealer OR g.game_type IS DISTINCT FROM 'canasta' OR g.status<>'ante_decision' OR g.is_paused
   OR dg.config->'rules' IS DISTINCT FROM private.canasta_rules() THEN RAISE EXCEPTION 'canasta:begin_identity';END IF;
@@ -67,12 +69,16 @@ BEGIN
  FROM public.players p WHERE p.game_id=p_game AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL AND p.ante_decision='ante_up';
  IF jsonb_array_length(seats_i) IS DISTINCT FROM 2 OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(seats_i) s WHERE s->>'kind'='human')
   OR (g.real_money AND EXISTS(SELECT 1 FROM jsonb_array_elements(seats_i) s WHERE s->>'kind'='bot')) THEN RAISE EXCEPTION 'canasta:consent';END IF;
+ IF jsonb_array_length(dg.config->'roster') IS DISTINCT FROM 2 OR EXISTS(
+  SELECT 1 FROM jsonb_array_elements(seats_i) s WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(dg.config->'roster') r
+   WHERE r->>'id'=s->>'id' AND r->>'seat'=s->>'seat' AND (r->>'isBot')::boolean=(s->>'kind'='bot')
+    AND (s->>'kind'='bot' OR r->>'userId'=s->>'userId'))) THEN RAISE EXCEPTION 'canasta:roster_changed';END IF;
  at_ms:=floor(extract(epoch FROM clock_timestamp())*1000);
- s:=jsonb_build_object('version','canasta-classic-two/1','id',p_dealer,'sessionId',p_game,'stake',(dg.config->>'ante_amount')::integer,
+ initial_state:=jsonb_build_object('version','canasta-classic-two/1','id',p_dealer,'sessionId',p_game,'stake',(dg.config->>'ante_amount')::integer,
    'realMoney',g.real_money,'seats',seats_i,'revision',0,'updatedAt',at_ms,'hand',NULL,'totals',(SELECT jsonb_object_agg(p->>'id',0) FROM jsonb_array_elements(seats_i) p),
    'completed','[]'::jsonb,'winner',NULL,'receipts','{}'::jsonb,'automatic','[]'::jsonb,'pause',NULL,'pauseEpisode',0);
- INSERT INTO public.rounds(id,game_id,dealer_game_id,hand_number,round_number,cards_dealt,status,pot) VALUES(r,p_game,p_dealer,1,1,0,'betting',0);
- INSERT INTO private.canasta_matches(dealer_game_id,game_id,first_round_id,state,revision,stake,seats) VALUES(p_dealer,p_game,r,s,0,(dg.config->>'ante_amount')::integer,seats_i);
+ INSERT INTO public.rounds(id,game_id,dealer_game_id,hand_number,round_number,cards_dealt,status,pot) VALUES(first_round_i,p_game,p_dealer,1,1,0,'betting',0);
+ INSERT INTO private.canasta_matches(dealer_game_id,game_id,first_round_id,state,revision,stake,seats) VALUES(p_dealer,p_game,first_round_i,initial_state,0,(dg.config->>'ante_amount')::integer,seats_i);
  UPDATE public.games SET status='in_progress',current_round=1,total_hands=1,ante_decision_deadline=NULL WHERE id=p_game;
  RETURN jsonb_build_object('outcome','started','dealerGameId',p_dealer);
 END $$;

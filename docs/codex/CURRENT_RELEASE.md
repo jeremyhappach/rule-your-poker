@@ -1,9 +1,9 @@
-# Canasta / 1 — 2026-10-20 — local authority checkpoint, integration incomplete
+# Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
 
 Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
 inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Appearance accepted; local implementation
 authorized. See `CANASTA_AUTHORITY_CHECKPOINT.md` for completed reducer, server
-adapters, rollback-only SQL evidence and remaining integration. No production
+adapters, canonical integration, rollback/concurrency SQL evidence and remaining qualification. No production
 admission, database changes or deployment. Full financial qualification is incomplete.
 Bounded checkpoint correction: canonical configuration/header/identity, paged
 shared-dialog editor, legal 71-card witness and bound. Full reducer now reproduces

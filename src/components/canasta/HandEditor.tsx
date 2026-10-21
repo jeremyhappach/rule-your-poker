@@ -4,10 +4,12 @@ import {PlayingCard} from '@/components/PlayingCard';
 import {isResolvedJoker,physicalCardLabel,type PhysicalCard} from '@/lib/cardGames/physicalCard';
 import {meldError,openingReport,pileStatus,type Meld} from '@/lib/canasta/rules';
 import type {Rank} from '@/lib/cardUtils';
+import {useCardTransportInternal} from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 export interface EditorView {hand:PhysicalCard[];pile:PhysicalCard[];melds:Meld[];score:number;opened:boolean;phase:'draw'|'meld'|'ended';notice:string;stockCount?:number}
 
 function CardPage({cards,selected,onSelect,annotation,disabled=false,viewerId}:{cards:PhysicalCard[];selected:string[];onSelect:(id:string)=>void;annotation?:(id:string)=>string;disabled?:boolean;viewerId?:string}) {
   const ref=useRef<HTMLDivElement>(null);
+  const flights=useCardTransportInternal()?.__activeIntents??[];
   const [size,setSize]=useState(4),[page,setPage]=useState(0);
   useLayoutEffect(()=>{
     const node=ref.current;if(!node)return;
@@ -21,7 +23,7 @@ function CardPage({cards,selected,onSelect,annotation,disabled=false,viewerId}:{
         disabled={disabled} className="canasta-card" aria-label={physicalCardLabel(c)+' copy '+c.id}
         aria-pressed={selected.includes(c.id)} onClick={()=>onSelect(c.id)}>
         <PlayingCard card={isResolvedJoker(c.face)?undefined:c.face} jokerFace={isResolvedJoker(c.face)?c.face:undefined}
-          physicalId={c.id} highlight={selected.includes(c.id)?'gold':null} activeHandShell tier="large" faceFillPx={48} style={{width:48,height:68}}/>
+          physicalId={c.id} highlight={selected.includes(c.id)?'gold':null} activeHandShell tier="large" faceFillPx={48} style={{width:48,height:68,visibility:flights.some(f=>f.cardId===c.id)?'hidden':undefined}}/>
         <span>{annotation?.(c.id)|| (selected.includes(c.id)?'Selected':'Select')}</span>
       </button>)}
     </div>
@@ -44,7 +46,7 @@ export function HandEditor({view,hand,selected,setSelected,drafts,rank,setRank,f
   const pile=pileStatus(view.pile,view.opened),top=view.pile.at(-1);
   const change=(p:string)=>setPane(p);
   const status=message||view.notice;
-  return <div className="canasta-launcher">
+  return <div className="canasta-launcher" data-card-anchor={!open&&viewerId?`hand-${viewerId}`:undefined}>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><button>Arrange {view.hand.length} cards</button></DialogTrigger>
       <span>{view.melds.map(m=>m.rank+' × '+m.cards.length).join(' · ')||'No melds'} · Score {view.score}</span>
