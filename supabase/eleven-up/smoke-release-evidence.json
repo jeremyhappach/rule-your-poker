@@ -1,0 +1,78 @@
+{
+  "candidate": "ef39ce02282b3c9395bb5940dd56c68a086ccccf",
+  "mainBase": "6b15f4eb060df319df13d576948c343920a23b21",
+  "localMigration": "20261021221318_eleven_up_smoke_controls.sql",
+  "hostedMigration": "20261021221415",
+  "sqlSHA256": "01d79eea3a187446f31e7ed8193b9c92c9fa6a33d776ff033accb9ffb71546c7",
+  "exactHostedStatement": true,
+  "installedDefinitionsMatchLocal": true,
+  "hostedCandidateProof": {
+    "passed": true,
+    "financialCases": 6,
+    "timeoutCases": 4,
+    "sqlSHA256": "576b13e0ce181544f24f38a5031196fdf123d01e4685d46523c17bbe9f93857c"
+  },
+  "hostedInstalledProof": {
+    "completedWithoutSqlError": true,
+    "financialCases": 6,
+    "timeoutCases": 4,
+    "sqlSHA256": "6c743a3e113834d28e6cb1834a884318be6c1eda8b4959df226b3eccaeaa75f0"
+  },
+  "preserved": {
+    "admission": {
+      "enabled": true,
+      "singleton": true,
+      "admission_enabled": true
+    },
+    "race": {
+      "enabled": true,
+      "singleton": true,
+      "fake_qualified": true,
+      "real_qualified": false,
+      "admission_enabled": true
+    },
+    "battle": {
+      "enabled": false,
+      "singleton": true,
+      "fake_qualified": false,
+      "real_qualified": false,
+      "admission_enabled": false
+    },
+    "balances": true,
+    "existingMatches": true,
+    "otherFunctionsAndACLs": true,
+    "defaults": true
+  },
+  "cron": [
+    {
+      "active": true,
+      "status": "succeeded",
+      "end_time": "2026-10-21T22:14:26.479252+00:00",
+      "schedule": "1 second"
+    },
+    {
+      "active": true,
+      "status": "succeeded",
+      "end_time": "2026-10-21T22:14:25.472609+00:00",
+      "schedule": "1 second"
+    },
+    {
+      "active": true,
+      "status": "succeeded",
+      "end_time": "2026-10-21T22:14:24.413439+00:00",
+      "schedule": "1 second"
+    }
+  ],
+  "recovery": {
+    "singleton": true,
+    "last_outcome": "completed",
+    "safety_cursor": 1,
+    "last_duration_ms": 14,
+    "last_safety_task": "canonical_timers",
+    "last_completed_at": "2026-10-21T22:14:26.505632+00:00",
+    "last_five_second_at": "2026-09-01T13:57:06.431687+00:00",
+    "last_safety_task_at": "2026-10-21T22:14:26.491205+00:00",
+    "consecutive_partial_failures": 0
+  },
+  "status": "Installed and qualified; matching client publication pending"
+}

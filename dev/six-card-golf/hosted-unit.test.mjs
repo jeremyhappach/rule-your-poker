@@ -9,6 +9,9 @@ await c.connect();
 try{
  await c.query('CREATE TEMP TABLE transport_guard(n integer); INSERT INTO transport_guard VALUES(1)');
  const unit=`BEGIN ISOLATION LEVEL REPEATABLE READ;
+ CREATE TEMP TABLE preparation ON COMMIT DROP AS SELECT n,pg_backend_pid() pid,txid_current_snapshot() snapshot FROM transport_guard;
+-- golf-proof:rehearsal-start
+ DO $$ BEGIN IF current_setting('transaction_isolation')<>'repeatable read' OR (SELECT pid<>pg_backend_pid() OR snapshot::text<>txid_current_snapshot()::text FROM preparation) THEN RAISE EXCEPTION 'transaction changed';END IF;END $$;
  UPDATE transport_guard SET n=2;
  CREATE TEMP TABLE candidate_only(n integer);
  SELECT jsonb_build_object('unit','transport','observed',(SELECT n FROM transport_guard)) candidate_evidence;
@@ -18,6 +21,10 @@ ROLLBACK;
  const result=await c.query(wrapUnit(unit));const row=result.at(-1).rows[0];
  assert.equal(row.candidate_evidence.observed,2);assert.equal(row.rollback_evidence.rollback_verified,true);
  assert.equal((await c.query('SELECT n FROM transport_guard')).rows[0].n,1);
+ assert.equal((await c.query("SELECT to_regclass('pg_temp.preparation') v")).rows[0].v,null);
+ const preservation=unit.replace('CREATE TEMP TABLE candidate_only(n integer);',()=>"DO $$ BEGIN IF (SELECT n FROM transport_guard)<>(SELECT n FROM preparation) THEN RAISE EXCEPTION 'preservation rejected';END IF;END $$;");
+ await assert.rejects(c.query(wrapUnit(preservation)),/preservation rejected/);await c.query('ROLLBACK');
+ assert.equal((await c.query('SELECT n FROM transport_guard')).rows[0].n,1);
  const failing=unit.replace('CREATE TEMP TABLE candidate_only(n integer);',()=>"DO $$ BEGIN RAISE EXCEPTION 'deliberate_error';END $$;");
  await assert.rejects(c.query(wrapUnit(failing)),/deliberate_error/);
  await c.query('ROLLBACK');
@@ -26,5 +33,10 @@ ROLLBACK;
  await assert.rejects(c.query(wrapUnit(actual)),/live_services_required/);
  await c.query('ROLLBACK');
  assert.equal((await c.query("SELECT to_regclass('private.golf_release') v")).rows[0].v,null);
- console.log('PASS combined evidence capture, actual subtransaction rollback, propagated failures and unchanged live-service rejection.');
+ const timed=unit.replace('-- golf-proof:rehearsal-start','SELECT pg_sleep(8.1);\n-- golf-proof:rehearsal-start\nSELECT pg_sleep(8.1);');
+ const started=performance.now();const timing=await c.query(wrapUnit(timed));
+ const elapsedMs=Math.round(performance.now()-started);assert(elapsedMs>=16000);
+ assert.equal(timing.at(-1).rows[0].rollback_evidence.rollback_verified,true);
+ console.log(JSON.stringify({elapsedMs,statementLimit:'15s',sameRequest:true,rollbackVerified:true}));
+ console.log('PASS same-transaction/snapshot top-level preparation, evidence capture, rollback, preservation rejection, failure propagation and live-service rejection.');
 }finally{await c.end();}

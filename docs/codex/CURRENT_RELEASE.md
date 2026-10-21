@@ -1,5 +1,17 @@
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
+October 21 connector retry against released 11 Up main
+`55a896b1f84fcd31d32a1a135622af99fca1a3c9`: 14/16 hosted candidate units
+passed. Mixed real 3 failed canonical Run Back admission because the visible
+scheduler heartbeat was 13.1 seconds old against a 10-second guard; mixed real 4
+was not run. Repeatable-read visibility and an overlapping 32-second canonical
+dispatcher call require bounded follow-up; neither is waived. Rollback is
+verified. Local 409-function preservation, 2,629 application tests, 241 harness
+tests and build pass. Migration bytes are unchanged. No Golf install, main
+integration, push, deployment or grants; both money modes remain closed.
+The connector works without new credentials, superseding the binding blocker
+below. See [current evidence and blocker](SIX_CARD_GOLF_CONNECTOR_RETRY.md).
+
 Local continuation corrected the qualification transport: original SQL statements
 now run through a dedicated PostgreSQL connection and preserve both evidence rows.
 A local 16.209-second unit passes while the old wrapper times out at 15.020 seconds;
@@ -23,6 +35,27 @@ October 21 local candidate incorporates main `0d9469ecc24345175b3cb07052d16283a1
 Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa`'s isolated Box Drop contrast correction. The exact canonical Session Ended heading is preserved during terminal admission; 30 affected tests and the complete local browser match pass. No gameplay or financial rules changed.
 
 The local Golf candidate is reconciled with main `88c798396bd0202551e36dcf4cd9efa39c9ef555`, preserving Race Poker. Actual Game route tests pass with a simulated SDK, including cold terminal routing, sign-out and exact completion admission. The retained Golf browser now retires controls/cards and the lingering +5 label at Session Ended without changing settlement. The 63-case layout result remains intact. Both-mode local financial/race proofs, Race Poker preservation and installed Golf proofs pass. Migration source `20261021011905_six_card_golf_v1.sql` is registered through the existing CLI. Live Auth/PostgREST/Realtime, actual pg_cron execution and fresh deployed-authority qualification remain gates. Golf admission is closed in both modes. No merge to main, push, production access/migration, deployment or activation occurred. See [evidence](SIX_CARD_GOLF_IMPLEMENTATION.md) and [closed-admission production plan](SIX_CARD_GOLF_RELEASE_PLAN.md).
+# 11 Up smoke controls — installed and qualified for publication
+
+Jeremy directly authorized the release slot. Unchanged candidate `ef39ce022`
+passes hosted candidate and installed rollback proofs: six financial cases, four
+timeout-control cases, and preservation of balances, matches, other-game authority,
+ACLs, defaults and admission. Exact forward SQL is installed as hosted migration
+`20261021221415`; both changed definitions match local qualification. Recovery
+succeeds every second. Matching client publication is the remaining release step.
+Existing 11 Up/Race admission remains unchanged; Battle31 remains closed.
+See `supabase/eleven-up/smoke-release-evidence.json`. Owner smoke is pending.
+
+# 11 Up smoke controls — local candidate only
+
+Local follow-up from published `bb1ec308030065d1aa30fc79a18efd493315291e`:
+sequential bot ball highlights and gameplay-expiry away/rejoin handling while
+preserving all rounds and original scoring clocks. Fake money uses the existing
+bot policy for subsequent rounds; real money pauses before the next away turn.
+Locally reconciled with Battle31 main `6b15f4eb` without changing the two fixes.
+Combined local SQL/financial/control/browser checks pass. Golf owns the next
+production slot; fresh parity and qualification remain required before release.
+See [scope and proof](ELEVEN_UP_SMOKE_CONTROLS.md).
 
 # Battle 31 / 1 — 2026-10-21 — hosted qualification passed; admission stays closed
 

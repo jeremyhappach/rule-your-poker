@@ -156,7 +156,7 @@ export function buildProofs({migration,fixtures,installed=false,fingerprints,cat
   // in returned counts rather than falsifying a per-case bot-finish assertion.
   const botAssertion="PERFORM pg_temp.golf_assert(bot_finishes>0,'earned zero-client bot final action and settlement');";
   if(sql.split(botAssertion).length!==2)throw Error('Mixed bot-finish assertion changed');
-  sql=sql.replace(botAssertion,"INSERT INTO pg_temp.golf_metrics VALUES('bot_finishes',bot_finishes);");
+  sql=sql.replace(botAssertion,"INSERT INTO pg_temp.golf_metrics VALUES('bot_finishes',bot_finishes),('dealer_draws',dealer_draws);");
   suites.push([`mixed-${money?'real':'fake'}-${n}`,sql]);
  }
  const guard=installed?installedGuard(fingerprints,catalogFingerprint):`DO $$ BEGIN IF to_regclass('private.golf_release') IS NOT NULL THEN RAISE EXCEPTION 'golf_proof:candidate_already_installed';END IF;END $$;`;
@@ -171,6 +171,7 @@ ${healthCheck}
 ${guard}
 ${residualCheck(prefix)}
 ${containment(prefix)}
+-- golf-proof:rehearsal-start
 ${installed?'':body(migration)}
 SET LOCAL statement_timeout='15s';
 ${assertFn}

@@ -1,5 +1,10 @@
 # Repository map
 
+11 Up smoke controls: `supabase/eleven-up/smoke-controls.sql` is the local forward
+candidate for post-expiry away state and next-Ready real-money pause.
+`src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
+`dev/eleven-up/smoke-controls-*.mjs` provides isolated qualification.
+
 Battle 31 reconciliation: `registration.sql` performs guarded additive shared
 authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
 release locally; `released-games-proof.mjs` verifies Race Poker and 11 Up against

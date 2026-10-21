@@ -13,6 +13,47 @@ afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 const snapshot=():ElevenSnapshot=>({id:'run',revision:1,serverAt:1000,scope:'run:round:actor:1',round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'user',name:'You',score:0,active:true}],board:{rules:{version:'eleven-up/2',stageMs:180000,introMs:2500,readyMs:30000,holdMs:5000,clearCelebrationMs:3000},phase:'playing',slots:[16,20,32,48],current:44,exposed:[0,1,2,3],passSlot:null,canPass:true,stockRemaining:28,groups:0,score:0,deadline:181000,event:{label:'',points:0}}});
 const props=(v=snapshot(),onIntent=vi.fn())=>({view:v,userId:'user',now:1000,pending:false,error:'',epoch:0,onIntent,onReconnect:vi.fn()});
 
+it('shows each confirmed automatic ball with human selection styling 750ms apart, then clears',()=>{
+ const before=snapshot();before.solo=false;before.canAct=false;before.players[0].isBot=true;
+ const intent=vi.fn(),p=props(before,intent),ui=render(<ElevenUpView {...p}/>);
+ // 2 (rack) + 9 (draw) is a confirmed legal group.
+ const after={...before,revision:2,board:{...before.board,slots:[null,20,32,48],current:4,groups:1}};
+ ui.rerender(<ElevenUpView {...p} view={after}/>);
+ expect(ui.getByRole('button',{name:/Ball 2, exposed/}).getAttribute('aria-pressed')).toBe('true');
+ expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('false');
+ ui.rerender(<ElevenUpView {...p} view={after} now={1749}/>);
+ expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('false');
+ ui.rerender(<ElevenUpView {...p} view={after} now={1750}/>);
+ expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('true');
+ expect(ui.getByLabelText('Selected total 11')).toBeTruthy();
+ ui.rerender(<ElevenUpView {...p} view={after} now={2500}/>);
+ expect(ui.queryByRole('button',{name:/Ball 2, exposed/})).toBeNull();
+ expect(ui.getByRole('button',{name:'Draw ball 1'}).getAttribute('aria-pressed')).toBe('false');
+ expect(intent).not.toHaveBeenCalled();
+});
+
+it('cancels automatic highlights at expiry, reclaim, reconnect, hidden tab and new scope; never replays on mount',()=>{
+ const before=snapshot();before.solo=false;before.canAct=false;before.players[0].autoplay=true;
+ before.board.deadline=1800;
+ const after={...before,revision:2,board:{...before.board,slots:[null,20,32,48],current:4,groups:1}};
+ for(const change of [{now:1800},{epoch:1},{view:{...after,scope:'next'}},{activeTab:'chat' as const},{view:{...after,paused:true}},{view:{...after,players:[{...before.players[0],autoplay:false}]}}]){
+  const p=props(before),ui=render(<ElevenUpView {...p}/>);
+  ui.rerender(<ElevenUpView {...p} view={after}/>);
+  ui.rerender(<ElevenUpView {...p} view={after} {...change}/>);
+  expect(ui.queryByRole('button',{name:/Ball 2, exposed/})).toBeNull();ui.unmount();
+ }
+ const ui=render(<ElevenUpView {...props(after)}/>);
+ expect(ui.queryByRole('button',{name:/Ball 2, exposed/})).toBeNull();
+});
+
+it('shows the authoritative scoring clock during an automatic Ready-to-playing group',()=>{
+ const before=snapshot();before.solo=false;before.canAct=false;before.players[0].autoplay=true;before.board.phase='ready';before.board.deadline=31000;
+ const after={...before,revision:4,board:{...before.board,phase:'playing' as const,deadline:181000,slots:[null,20,32,48],current:4,groups:1}};
+ const p=props(before),ui=render(<ElevenUpView {...p}/>);ui.rerender(<ElevenUpView {...p} view={after}/>);
+ expect(ui.getByRole('progressbar',{name:'Round time remaining'}).getAttribute('aria-valuenow')).toBe('180');
+ expect(ui.queryByRole('timer')).toBeNull();expect(ui.getByRole('button',{name:/Ball 2, exposed/}).getAttribute('aria-pressed')).toBe('true');
+});
+
 it('keeps reclaim available while paused or between rounds and identifies opponent autoplay',()=>{
  const v=snapshot();v.solo=false;v.viewerId='user';v.paused=true;v.canAct=false;
  v.players=[{...v.players[0],autoplay:true,sitOutNextHand:true},{id:'other',name:'Opponent',score:7,active:false,autoplay:true}];

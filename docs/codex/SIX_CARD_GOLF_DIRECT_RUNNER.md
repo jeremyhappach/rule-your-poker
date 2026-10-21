@@ -1,5 +1,11 @@
 # Golf bounded direct runner — local preparation, October 21, 2026
 
+Historical record: the [later connector retry](SIX_CARD_GOLF_CONNECTOR_RETRY.md)
+supersedes the connection requirement and retired-wrapper status below. Corrected
+single-request MCP execution passed 14/16 hosted units without new credentials.
+Release is now blocked by the mixed-real-3 Run Back liveness proof, not by a
+missing PostgreSQL binding. Do not request a new credential for this path.
+
 The enclosing-statement limitation is corrected locally. Hosted qualification
 remains blocked on an approved existing PostgreSQL connection binding and the
 owner's production-slot decision. This continuation performed no hosted SQL,

@@ -25,6 +25,8 @@ export async function installLocalReference(c){
  // then Battle 31 sources. Never include this bootstrap in a hosted package.
  await installReleasedBaseline(c);
  for(const part of ['rules','multiplayer','commands','bots','recovery','registration','grants'])await c.query(read('supabase/battle31/'+part+'.sql','utf8'));
+ // Reconstruct the subsequently released 11 Up smoke controls locally only.
+ await c.query(read('supabase/eleven-up/smoke-controls.sql','utf8').replace(/^BEGIN;\r?$/m,'').replace(/^COMMIT;\r?$/m,''));
 
  // installReleasedBaseline owns canonical lifecycle reconstruction, including
  // the newer 11 Up Ready safeguard. Never reinstall an older pause helper here.

@@ -64,7 +64,7 @@ test('local PostgreSQL proves aggregate time above 15s, original per-statement l
   const version=(await c.query("SELECT current_setting('server_version_num')::integer n")).rows[0].n;assert(version>=130000);
   await c.query('CREATE TEMP TABLE direct_guard(n integer); INSERT INTO direct_guard VALUES(1)');
   const wrappedStart=performance.now();
-  await assert.rejects(c.query(wrapUnit(sql)),e=>e.code==='57014');
+  await assert.rejects(c.query(wrapUnit(sql,{legacy:true})),e=>e.code==='57014');
   const wrapperMs=Math.round(performance.now()-wrappedStart);await c.query('ROLLBACK');
   assert.equal((await c.query('SELECT n FROM direct_guard')).rows[0].n,1);
   const directStart=performance.now();const receipt=await runUnit(c,sql,unit);

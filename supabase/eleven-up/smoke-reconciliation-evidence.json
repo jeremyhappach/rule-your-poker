@@ -1,0 +1,141 @@
+{
+  "sourceCandidate": "b1d2573e3672fc1b99e1f242d16c68ff1bf5eab8",
+  "reconciledMain": "6b15f4eb060df319df13d576948c343920a23b21",
+  "status": "Local only; Golf retains next production slot",
+  "sqlCandidateSha256": "01d79eea3a187446f31e7ed8193b9c92c9fa6a33d776ff033accb9ffb71546c7",
+  "localDatabase": "eleven_up_timeout_1792619758907",
+  "sql": {
+    "passed": true,
+    "allOtherFunctionBodiesAndACLsUnchanged": true,
+    "allThreeAdmissionRowsUnchanged": true,
+    "idempotent": true,
+    "race": "core, financial, injected rollback, v2 controls passed",
+    "battleFinancialCases": [
+      {
+        "money": false,
+        "outcome": "winner",
+        "passed": true
+      },
+      {
+        "money": false,
+        "outcome": "tie",
+        "passed": true
+      },
+      {
+        "money": false,
+        "outcome": "abort",
+        "passed": true
+      },
+      {
+        "money": true,
+        "outcome": "winner",
+        "passed": true
+      },
+      {
+        "money": true,
+        "outcome": "tie",
+        "passed": true
+      },
+      {
+        "money": true,
+        "outcome": "abort",
+        "passed": true
+      }
+    ],
+    "battleResidual": {
+      "games": 0,
+      "batches": 0,
+      "players": 0,
+      "results": 0,
+      "profiles": 0,
+      "snapshots": 0
+    }
+  },
+  "smokeControls": {
+    "evidence": [
+      "fake scheduler expiry: exact zero/result, flags/reload, normal next-round schedule, bot takeover, reclaim and stale rejection",
+      "fake late RPC expiry: exact zero/result, flags/reload, normal next-round schedule, bot takeover, reclaim and stale rejection",
+      "real scheduler expiry: exact zero/result, flags/reload, normal next-round schedule, pause, reclaim and stale rejection",
+      "real late RPC expiry: exact zero/result, flags/reload, normal next-round schedule, pause, reclaim and stale rejection",
+      "reclaim before the next real-money Ready phase prevents away pause",
+      "750ms per selected ball paces bot decisions; unchanged scoring deadline preempts presentation delay",
+      "36 financial cases pass; reducers, settlement and every Race function unchanged"
+    ]
+  },
+  "readyControls": {
+    "database": "eleven_up_timeout_1792619758907",
+    "evidence": [
+      "real Ready pauses without score/advance; canonical resume retains Ready allowance",
+      "real scoring expiry matches unchanged reducer exactly",
+      "fake Ready strategic takeover; snapshot persistence; reclaim clears flags/due time; stale action rejected; scoring clock unchanged",
+      "fake scoring expiry matches unchanged reducer exactly",
+      "late human RPC uses the same Ready timeout boundary in both money modes",
+      "nonmember and anonymous reclaim rejected without state changes",
+      "inherited production false/none defaults still pause all humans at Ready; paused reclaim clears flags without resume or clock shift",
+      "explicit false/none policy also honors canonical Ready all-human safeguard",
+      "sit-out deferred through competition; canonical close excludes player from next-game eligibility and clears transient flags",
+      "all-human inactivity does not freeze active scoring; safeguard applies at next Ready boundary",
+      "existing flagged match installs at a new revision; repeat install does not mutate it again",
+      "36 both-money financial cases, canonical ledger/snapshots, injected failure and duplicate settlement",
+      "independent-connection bot/reclaim races: bot-first stale reclaim rejected; retry succeeds; reclaim-first blocks/skips bot without duplicate action"
+    ]
+  },
+  "browser": {
+    "selectionSpacingMs": 784,
+    "layouts": [
+      {
+        "width": 320,
+        "height": 568
+      },
+      {
+        "width": 375,
+        "height": 667
+      },
+      {
+        "width": 390,
+        "height": 844
+      },
+      {
+        "width": 430,
+        "height": 932
+      },
+      {
+        "width": 844,
+        "height": 390
+      },
+      {
+        "width": 667,
+        "height": 375
+      }
+    ],
+    "errors": [],
+    "expiryScore": 0,
+    "reclaimClearsCheckbox": true,
+    "pausedReclaimDoesNotResume": true,
+    "limitation": "Local SQL; desktop phone emulation, not physical device acceptance"
+  },
+  "limitations": [
+    "Loopback database; cron metadata stub, no hosted scheduler or Realtime claim",
+    "Fresh shared-state parity and hosted qualification required in cleared release slot",
+    "Forward migration still unregistered",
+    "Physical phone and owner smoke pending"
+  ],
+  "validation": {
+    "command": "npm run build",
+    "exitCode": 0,
+    "typecheck": true,
+    "application": {
+      "files": 373,
+      "tests": 2610
+    },
+    "harness": {
+      "files": 12,
+      "tests": 241
+    },
+    "vite": true,
+    "warnings": [
+      "existing Browserslist database age",
+      "large bundle chunks"
+    ]
+  }
+}

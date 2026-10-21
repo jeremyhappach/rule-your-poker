@@ -1,5 +1,13 @@
 # Golf production qualification preparation — 2026-10-21
 
+Current result: [connector retry](SIX_CARD_GOLF_CONNECTOR_RETRY.md) against
+released 11 Up main `55a896b1` passed 14/16 candidate units. Mixed real 3 failed
+the existing Run Back liveness guard; mixed real 4 was not run. Rollback is
+verified and all release/admission gates remain closed. The connector now works
+without new credentials. The direct-binding blocker and preparation-only scope
+below are historical; the complete sixteen-unit and installed/live gates remain
+mandatory.
+
 The [corrected direct runner](SIX_CARD_GOLF_DIRECT_RUNNER.md) supersedes the MCP
 wrapper. Its local timeout/rollback proof passes; hosted execution still requires
 an approved existing PostgreSQL binding and production-slot authorization.

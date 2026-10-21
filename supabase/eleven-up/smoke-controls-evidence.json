@@ -1,0 +1,88 @@
+{
+  "base": "bb1ec308030065d1aa30fc79a18efd493315291e",
+  "branch": "codex/eleven-up-smoke-controls",
+  "status": "Local candidate; not deployed",
+  "sqlCandidateSha256": "01d79eea3a187446f31e7ed8193b9c92c9fa6a33d776ff033accb9ffb71546c7",
+  "sql": {
+    "evidence": [
+      "fake scheduler expiry: exact zero/result, flags/reload, normal next-round schedule, bot takeover, reclaim and stale rejection",
+      "fake late RPC expiry: exact zero/result, flags/reload, normal next-round schedule, bot takeover, reclaim and stale rejection",
+      "real scheduler expiry: exact zero/result, flags/reload, normal next-round schedule, pause, reclaim and stale rejection",
+      "real late RPC expiry: exact zero/result, flags/reload, normal next-round schedule, pause, reclaim and stale rejection",
+      "reclaim before the next real-money Ready phase prevents away pause",
+      "750ms per selected ball paces bot decisions; unchanged scoring deadline preempts presentation delay",
+      "36 financial cases pass; reducers, settlement and every Race function unchanged"
+    ]
+  },
+  "regression": {
+    "database": "eleven_up_timeout_1792601764738",
+    "evidence": [
+      "real Ready pauses without score/advance; canonical resume retains Ready allowance",
+      "real scoring expiry matches unchanged reducer exactly",
+      "fake Ready strategic takeover; snapshot persistence; reclaim clears flags/due time; stale action rejected; scoring clock unchanged",
+      "fake scoring expiry matches unchanged reducer exactly",
+      "late human RPC uses the same Ready timeout boundary in both money modes",
+      "nonmember and anonymous reclaim rejected without state changes",
+      "inherited production false/none defaults still pause all humans at Ready; paused reclaim clears flags without resume or clock shift",
+      "explicit false/none policy also honors canonical Ready all-human safeguard",
+      "sit-out deferred through competition; canonical close excludes player from next-game eligibility and clears transient flags",
+      "all-human inactivity does not freeze active scoring; safeguard applies at next Ready boundary",
+      "existing flagged match installs at a new revision; repeat install does not mutate it again",
+      "36 both-money financial cases, canonical ledger/snapshots, injected failure and duplicate settlement",
+      "independent-connection bot/reclaim races: bot-first stale reclaim rejected; retry succeeds; reclaim-first blocks/skips bot without duplicate action"
+    ]
+  },
+  "browser": {
+    "selectionSpacingMs": 816,
+    "layouts": [
+      {
+        "width": 320,
+        "height": 568
+      },
+      {
+        "width": 375,
+        "height": 667
+      },
+      {
+        "width": 390,
+        "height": 844
+      },
+      {
+        "width": 430,
+        "height": 932
+      },
+      {
+        "width": 844,
+        "height": 390
+      },
+      {
+        "width": 667,
+        "height": 375
+      }
+    ],
+    "errors": [],
+    "expiryScore": 0,
+    "reclaimClearsCheckbox": true,
+    "pausedReclaimDoesNotResume": true,
+    "limitation": "Local SQL; desktop phone emulation, not physical device acceptance"
+  },
+  "validation": {
+    "fullBuild": "passed",
+    "applicationFiles": 370,
+    "applicationTests": 2594,
+    "harnessFiles": 12,
+    "harnessTests": 241,
+    "focusedFinalFiles": 4,
+    "focusedFinalTests": 37,
+    "additionalReadyClockTest": "passed after full application run",
+    "finalTypecheck": "passed",
+    "viteBundle": "passed"
+  },
+  "productionActions": [],
+  "registeredMigration": false,
+  "limitations": [
+    "Future release needs a new forward migration and production authority qualification",
+    "Physical-phone and owner acceptance remain pending",
+    "Animations are cancelled at expiry/scope changes and are not replayed after reconnect"
+  ]
+}

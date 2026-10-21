@@ -1,6 +1,6 @@
 DO $$
 DECLARE g uuid;d uuid;next_d uuid;u uuid[];p uuid[];n integer;money integer;i integer;t integer;human_count integer;
- m private.golf_matches;v jsonb;offer timestamptz;actor jsonb;items integer[];action text;bot_finishes integer:=0;
+ m private.golf_matches;v jsonb;offer timestamptz;actor jsonb;items integer[];action text;bot_finishes integer:=0;dealer_draws integer:=0;
  old_round uuid;old_rev bigint;old_request uuid;old_actor uuid;old_action text;old_items integer[];old_receipt jsonb;
 BEGIN
  FOR money IN 0..1 LOOP FOR n IN 2..4 LOOP
@@ -52,6 +52,18 @@ BEGIN
   PERFORM pg_sleep(greatest(0,((m.state#>>'{terminal,deadline}')::bigint-floor(extract(epoch FROM clock_timestamp())*1000))/1000.0)+0.01);
   PERFORM private.golf_recover();
   PERFORM pg_temp.golf_assert((SELECT finished FROM private.golf_matches WHERE dealer_game_id=d),'autonomous postgame finish');
+  -- Production Make It Take It can require the canonical dealer draw after a
+  -- bot win or shared tie. The uncommitted fixture is invisible to cron; invoke
+  -- its existing owners and retain the real presentation hold before Run Back.
+  IF EXISTS(SELECT FROM public.games WHERE id=g AND status='dealer_selection') THEN
+   PERFORM pg_temp.golf_login(u[1]);
+   v:=private.prepare_session_dealer_selection(g,(SELECT timer_generation FROM public.games WHERE id=g));
+   PERFORM pg_temp.golf_assert(v->>'outcome' IN('prepared','already_prepared'),'canonical dealer draw prepared');
+   PERFORM pg_sleep(greatest(0,extract(epoch FROM ((SELECT (dealer_selection_state->>'preparedAt')::timestamptz FROM public.games WHERE id=g)+interval '3 seconds'-clock_timestamp())))+0.01);
+   v:=public.advance_session_dealer_selection(g);
+   PERFORM pg_temp.golf_assert(v->>'outcome'='advanced','canonical dealer draw completed');
+   dealer_draws:=dealer_draws+1;
+  END IF;
   SELECT config_deadline INTO offer FROM public.games WHERE id=g;
   SELECT jsonb_build_object('id',p0.id,'user_id',p0.user_id) INTO actor FROM public.players p0 JOIN public.games g0 ON g0.id=p0.game_id AND p0.position=g0.dealer_position WHERE g0.id=g;
   -- Run Back uses a new dealer-game and the canonical fresh consent path.

@@ -14,7 +14,8 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
 | `SIX_CARD_GOLF_RECONCILIATION.md` | Current-main/Battle 31 reconciliation, migration hash, preservation proofs and reserved two-account smoke scope |
 | `SIX_CARD_GOLF_HOSTED_ATTEMPT.md` | Executed hosted candidate proofs, four-human containment timeout, verified rollback and unopened smoke window |
-| `SIX_CARD_GOLF_DIRECT_RUNNER.md` | Local runner correction, per-statement timeout proof, missing PostgreSQL binding and exact next hosted step |
+| `SIX_CARD_GOLF_DIRECT_RUNNER.md` | Historical direct-runner timeout evidence and binding discovery; superseded by connector retry |
+| `SIX_CARD_GOLF_CONNECTOR_RETRY.md` | Current 11 Up baseline, corrected connector, 14/16 hosted passes, Run Back liveness blocker and verified rollback |
 | `SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md` | Offline production proofs, implemented scoped qualification gate, canonical autoplay/reclaim and later activation procedure |
 | `RACE_POKER_RULES.md` | Approved multiplayer-only rules and bot information contract |
 | `RACE_POKER_QUALIFICATION.md` | Local authority/financial/browser evidence and coordinated release hold |
