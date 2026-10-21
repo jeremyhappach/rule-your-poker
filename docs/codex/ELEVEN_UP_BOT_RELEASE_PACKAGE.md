@@ -155,3 +155,11 @@ migration history is not rewritten. Any later removal must wait until there are
 no unfinished bot matches and receive a separate reviewed migration. Re-enabling
 after rollback likewise uses an approved forward migration; do not repair or
 rewrite migration history to force a rerun.
+
+## 2026-10-21 production attempt — stopped before mutation
+
+Box Drop production `0d9469ecc24345175b3cb07052d16283a1c4f42c` was READY and its task idle. Main was fetched and reconciled locally, preserving both release notes. All 13 preflight function definitions matched the qualified baseline after CRLF normalization; the existing recovery job is active at one second, and no bot migration or active bot match existed.
+
+The bounded installed proof passed locally: six financial cases, canonical bot replay, real-money bot refusal, legal visible-state policy, rollback safeguards, unchanged existing balances and zero residual fixture identities. Production query assembly used a JavaScript replacement string that collapsed SQL dollar quotes, causing SQLSTATE 42601 before qualification. The migration artifact itself is unchanged. Read-only follow-up confirmed no bot policy, zero bot migration entries and unchanged configure/consent/recovery hashes. No migration application, main integration, push or deployment occurred.
+
+The local proof builder now writes a complete candidate SQL artifact using a replacement callback and asserts exact migration-body containment. Future execution must read this artifact directly, without replacement-string transformations. Production retry is stopped under the explicit failed-validation gate; installed qualification and release remain pending.

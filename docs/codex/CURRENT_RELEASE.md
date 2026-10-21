@@ -10,11 +10,25 @@ database/client publication. See [scope, evidence and smoke](ELEVEN_UP_BOTS.md).
 The [local release package](ELEVEN_UP_BOT_RELEASE_PACKAGE.md) now includes a
 deterministic transaction, hashes, preflight/verification and safe admission
 rollback. Official CLI registration is complete in migration
-`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Box Drop retains the production release slot; no release is authorized.
+`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Release approval followed Box Drop completion. Production preflight matched all 13
+qualified definitions, but rollback-only proof submission failed SQL parsing after
+query assembly collapsed dollar quotes. No migration was applied; read-only
+verification confirmed the original owners and zero bot migration entries.
+Production retry and publication remain stopped pending review of this failed gate.
 The isolated branch now includes main `88c798396bd0202551e36dcf4cd9efa39c9ef555`;
 combined Race Poker/11 Up database proofs and 131 focused client tests pass.
 
 # Race Poker / 1 — 2026-10-20 — production published, admission closed
+=======
+# Box Drop dominant crate numerals - 2026-10-21 - owner correction approved
+
+Owner smoke rejected the contrast-only release because actual crate values remained too small. The shared crate renderer now gives bold sans-serif numerals 88% of the face, with a 10% colored edge marker. Single digits use a larger fitted size; two-digit values fit without clipping. Incoming, queued and placed crates share this styling. Crate positions, playfield, controls, rules and financial/admission behavior are unchanged. No landscape or dialog changes are included. Thirty-two focused phone/desktop visual cases pass for values 2, 7, 10 and 11, including exact unchanged crate/control geometry and glyph fit; before/after evidence is under `qualification.local/boxdrop/numeral`. Focused regressions (25 tests), typecheck and production build pass. Physical iPhone owner smoke remains pending.
+
+# Box Drop numeral contrast - 2026-10-21 - published, superseded by owner feedback
+
+Only the shared crate numeral paint changes: opaque cream background, dark foreground, no stroke or shadow. Font sizes, crate/playfield geometry, controls, dialog behavior, rules, timing, financial logic and admission are unchanged. The broader landscape candidate `5bf7556061d78bef6b8debf927b38705abe1766f` and pending reconciliation remain isolated in `codex/boxdrop-number-readability`; they are excluded from this release. Focused visual comparison passes 220 cases (values 1-11, five viewport sizes, four presentation states), preserving exact geometry and disabled states. Local before/after screenshots are under `qualification.local/boxdrop/contrast`. Focused regressions (25 tests), TypeScript checking and production build pass. Owner iPhone smoke remains pending; existing small multiplayer landscape geometry is intentionally unchanged under the narrowed approval.
+
+# Race Poker / 1 - 2026-10-20 - production published, admission closed
 
 Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false. Client fff4e8d39c4514c5c4370e993929ee858a453f04 is READY at holm357.com; authenticated capability closure, approved Rules and no Arcade entry passed. No money mode is activated. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.
 
