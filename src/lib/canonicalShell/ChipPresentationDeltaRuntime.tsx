@@ -121,17 +121,24 @@ export function projectFeltFacingRimOrigin(
 export interface ChipPresentationDeltaRuntimeProps {
   containerRef: RefObject<HTMLElement>;
   overlayRootRef: RefObject<HTMLElement>;
+  enabled?: boolean;
 }
 
 export function ChipPresentationDeltaRuntime({
   containerRef,
   overlayRootRef,
+  enabled = true,
 }: ChipPresentationDeltaRuntimeProps) {
   const deltas = useChipPresentationBalanceDeltas();
   const [positioned, setPositioned] = useState<PositionedDelta[]>([]);
   const seenIdsRef = useRef(new Set<string>());
 
   useLayoutEffect(() => {
+    if (!enabled) {
+      for (const delta of deltas) seenIdsRef.current.add(delta.id);
+      setPositioned([]);
+      return;
+    }
     const container = containerRef.current;
     const overlayRoot = overlayRootRef.current;
     if (!container || !overlayRoot) return;
@@ -161,7 +168,7 @@ export function ChipPresentationDeltaRuntime({
     if (additions.length > 0) {
       setPositioned((previous) => [...previous, ...additions]);
     }
-  }, [containerRef, deltas, overlayRootRef]);
+  }, [containerRef, deltas, overlayRootRef, enabled]);
 
   useEffect(() => {
     const liveIds = new Set(deltas.map((delta) => delta.id));
@@ -169,7 +176,7 @@ export function ChipPresentationDeltaRuntime({
   }, [deltas]);
 
   const overlayRoot = overlayRootRef.current;
-  if (!overlayRoot || positioned.length === 0) return null;
+  if (!enabled || !overlayRoot || positioned.length === 0) return null;
 
   return createPortal(
     <>

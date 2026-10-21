@@ -121,7 +121,7 @@ BEGIN
       SELECT public.cribbage_begin_dealer_selection(p_game_id) INTO v_start;
     WHEN v_game.game_type='gin-rummy' THEN
       SELECT public.start_gin_rummy_initial_hand(p_game_id) INTO v_start;
-    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop') THEN
+    WHEN v_game.game_type IN ('eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker') THEN
       SELECT private.megatouch_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;
     WHEN v_game.game_type='six-card-golf' THEN
       SELECT private.golf_begin(p_game_id,p_expected_dealer_game_id) INTO v_start;
@@ -151,6 +151,6 @@ CREATE OR REPLACE FUNCTION private.megatouch_frozen_stake()
  SET search_path TO ''
 AS $function$
 BEGIN
- IF OLD.game_type IN('six-card-golf','eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop') AND NEW.config IS DISTINCT FROM OLD.config THEN RAISE EXCEPTION 'megatouch:configuration_frozen';END IF;RETURN NEW;
+ IF OLD.game_type IN('six-card-golf','eleven-up','tri-towers','run21','royal-flash','take-two','trip-flip','boxdrop','race-poker') AND NEW.config IS DISTINCT FROM OLD.config THEN RAISE EXCEPTION 'megatouch:configuration_frozen';END IF;RETURN NEW;
 END $function$
 ;

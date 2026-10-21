@@ -5,9 +5,10 @@ import {candidate,connect,localContext,installLocalReference} from './database.m
 // Previously inspected canonical authority, checked again against the isolated
 // reference. Any drift at eventual installation aborts before shared replacement.
 export const expected={
- 'private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)':'4103ca5c1f6acd06c89c4d86fcfa2c91',
- 'private.megatouch_frozen_stake()':'d3efe1f605eea056169a8b674017958f',
- 'public.settle_gameplay_chip_transfers(uuid,jsonb,text)':'de14ab5df0a703cfd8c1ed43aa5a819c',
+ 'private.megatouch_begin(uuid,uuid)':'2a7cc30da1908e929e54791b4d5766b0',
+ 'private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)':'f3582431c00322facc1daaa81c20b682',
+ 'private.megatouch_frozen_stake()':'b42707fd97a6547a849a801190da8ac1',
+ 'public.settle_gameplay_chip_transfers(uuid,jsonb,text)':'86c0feb55524f14ab9f58a06cdee2ef6',
  'public.submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)':'c633a318c7f2605104c92e03d3b3b09a',
  'public.set_game_paused(uuid,boolean,uuid,bigint)':'1fa2220c33734d1cf14c11f3eaef432b',
  'private.split_whole_chips_clockwise(uuid,uuid[],integer,integer)':'b6eb18407c38efdc17d6b181820cfa9a',
@@ -21,12 +22,14 @@ const prerequisites=`DO $requirements$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_publication WHERE pubname='supabase_realtime') THEN RAISE EXCEPTION 'golf:realtime_publication_required';END IF;
  IF current_setting('wal_level')<>'logical' THEN RAISE EXCEPTION 'golf:logical_replication_required';END IF;
 END $requirements$;`;
-const sql=[prerequisites,guard,candidate(),publication,schedule].join('\n');
+const sql=[prerequisites,guard,candidate(),publication,schedule].join('\n').replaceAll('\r\n','\n');
+export const migrationPath='supabase/migrations/20261021011905_six_card_golf_v1.sql';
+write(migrationPath,sql);
 const c=await connect(localContext().database);
 try{await c.query('BEGIN');await installLocalReference(c);await c.query(guard);await c.query('ROLLBACK');}
 catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}
-const proof="BEGIN; SET LOCAL statement_timeout='60s';\n"+['core-proof','proof','financial-proof','recovery-proof','mixed-proof'].map(n=>read('supabase/six-card-golf/'+n+'.sql','utf8')).join('\n')+"\nROLLBACK;";
+const proof="-- LOCAL qualification: fixtures seed scheduler health. Not a production proof payload.\nBEGIN; SET LOCAL statement_timeout='60s';\n"+['core-proof','proof','financial-proof','recovery-proof','mixed-proof'].map(n=>read('supabase/six-card-golf/'+n+'.sql','utf8')).join('\n')+'\n'+['core-proof','financial-proof','rollback-failure-proof'].map(n=>read('supabase/race-poker/'+n+'.sql','utf8')).join('\n')+"\nROLLBACK;";
 write('qualification.local/six-card-golf/migration.sql',sql);
 write('qualification.local/six-card-golf/installed-proof.sql',proof);
-write('qualification.local/six-card-golf/release-manifest.json',JSON.stringify({preparedAt:new Date().toISOString(),sha256:createHash('sha256').update(sql).digest('hex'),expected,admission:'closed',productionApplied:false,formalMigrationId:null},null,2));
+write('qualification.local/six-card-golf/release-manifest.json',JSON.stringify({preparedAt:new Date().toISOString(),sha256:createHash('sha256').update(sql).digest('hex'),expected,admission:'closed',productionApplied:false,formalMigrationId:'20261021011905'},null,2));
 console.log('Prepared guarded closed-admission SQL and installed-authority proof; no production execution');

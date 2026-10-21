@@ -25,7 +25,7 @@ try{
  await pages[0].waitForFunction(()=>!!window.__golfCompleted,null,{timeout:20000});
  const sounds=await Promise.all(pages.map(p=>p.evaluate(()=>window.__golfAudioStarts)));assert.ok(sounds.some(n=>n>0),'real shared audio nodes started');
  if(endSession){
-  await pages[0].locator('[data-session-ended-panel]').waitFor();assert.equal(await pages[0].locator('[data-golf-position]').count(),0);
+  await pages[0].locator('[data-session-ended-panel]').waitFor();assert.equal(await pages[0].locator('[data-golf-position]').count(),0);assert.equal(await pages[0].locator('[data-chip-balance-delta]').count(),0);assert.equal(await pages[0].locator('.golf-controls,.golf-hole-result,[data-public-seat-tableau]').count(),0);
   await pages[0].screenshot({path:'qualification.local/six-card-golf/session-ended.png'});
   const before=await snap();await pages[0].getByRole('button',{name:'Back to Lobby'}).click();await pages[0].locator('[data-local-lobby]').waitFor();assert.deepEqual((await snap()).settlement,before.settlement);
  }

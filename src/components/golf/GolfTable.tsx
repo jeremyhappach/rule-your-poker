@@ -71,8 +71,8 @@ export function GolfTable(props:Props) {
  const warning=v?golfWarning(v):null;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v?.holes.map(h=><p key={h.hole}>Hole {h.hole}: {v.players.map(p=>p.name+' '+h.scores[p.id]).join(' · ')}</p>)}</div>:<GolfRules/>;
  return <>
-  <Dialog open={!!inspectPlayer} onOpenChange={open=>{if(!open)setInspectPlayer(null);}}><DialogContent><DialogHeader><DialogTitle>{v?.players.find(p=>p.id===inspectPlayer)?.name} · public tableau</DialogTitle><DialogDescription>Face-down cards remain concealed. Total from completed holes: {inspectPlayer?v?.scores[inspectPlayer]:0}</DialogDescription></DialogHeader><div className="golf-inspect">{inspectPlayer&&v?.tableaus[inspectPlayer]?.cards.map((card,i)=><TableauCard key={i} card={golfCard(card)} isHidden={card===null} style={{width:72,height:101}}/>)}</div></DialogContent></Dialog>
-  <Dialog open={rulesOpen} onOpenChange={setRulesOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Six-Card Golf rules</DialogTitle><DialogDescription>six-card-golf/1 · frozen for this match</DialogDescription></DialogHeader><div className="catalog-scroll"><GolfRules/></div></DialogContent></Dialog>
+  <Dialog open={!!inspectPlayer&&!props.sessionEnded} onOpenChange={open=>{if(!open)setInspectPlayer(null);}}><DialogContent><DialogHeader><DialogTitle>{v?.players.find(p=>p.id===inspectPlayer)?.name} · public tableau</DialogTitle><DialogDescription>Face-down cards remain concealed. Total from completed holes: {inspectPlayer?v?.scores[inspectPlayer]:0}</DialogDescription></DialogHeader><div className="golf-inspect">{inspectPlayer&&v?.tableaus[inspectPlayer]?.cards.map((card,i)=><TableauCard key={i} card={golfCard(card)} isHidden={card===null} style={{width:72,height:101}}/>)}</div></DialogContent></Dialog>
+  <Dialog open={rulesOpen&&!props.sessionEnded} onOpenChange={setRulesOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Six-Card Golf rules</DialogTitle><DialogDescription>six-card-golf/1 · frozen for this match</DialogDescription></DialogHeader><div className="catalog-scroll"><GolfRules/></div></DialogContent></Dialog>
   <div aria-hidden data-canonical-shell-play-top-spacer="" style={{flex:'0 0 var(--play-top-safe-area, 0px)',pointerEvents:'none'}}/>
   <div style={{position:'relative',height:'var(--shell-felt-h)',flex:'0 0 var(--shell-felt-h)',pointerEvents:'none'}}>
   {v&&!props.sessionEnded&&<GameplayOpponentSeatLayer family="six-card-golf" participants={v.players.filter(p=>p.id!==self?.id).map(p=>({...p,position:p.seat}))} presentation={{
@@ -94,7 +94,7 @@ export function GolfTable(props:Props) {
   </div>,layer)}
   {self&&(compact?layer:handSlot)&&!props.sessionEnded&&createPortal(self&&<div className={'golf-local'+(compact?' golf-local-compact':'')} aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><TableauCard card={golfCard(card)} isHidden={card===null} highlight={selected.includes(i)?'gold':null} style={{width:'100%',height:'100%',visibility:flying.get(self.id)?.includes(i)?'hidden':'visible'}}/></button>)}</div></div>,(compact?layer:handSlot)!)}
   <div aria-hidden data-canonical-shell-play-bottom-spacer="" style={{flex:'0 0 var(--play-bottom-safe-area, 0px)',pointerEvents:'none'}}/>
-  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?<div className="golf-pane" data-hand-in-felt={compact}><div className="golf-hand-slot" ref={setHandSlot}/><div className="golf-controls">
+  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane" data-hand-in-felt={compact}><div className="golf-hand-slot" ref={setHandSlot}/><div className="golf-controls">
    <div className="golf-info">{v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9 · Completed totals</strong>{v.players.map(p=><span key={p.id} title={p.name+': '+v.scores[p.id]}>{p.id===v.viewerId?'You':p.name}: {v.scores[p.id]}</span>)}</div>}
    <p role="status">{props.sessionEnded?'Session ended':status}</p>{warning&&!props.sessionEnded&&<p className="golf-warning">{warning}</p>}
    </div><div className="golf-actions">
@@ -102,6 +102,6 @@ export function GolfTable(props:Props) {
    {v?.phase==='opening'&&acting&&<button aria-label="Reveal selected two" disabled={selected.length!==2} onClick={()=>void game.act({type:'open',items:selected})}>Reveal 2</button>}
    {(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}
    </div>
-  </div></div>:<div className="golf-panel">{panel}</div>} identity={self?<span>{self.name} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips}/></span>:<span>Observer</span>}/>
+  </div></div>):<div className="golf-panel">{panel}</div>} identity={self?<span>{self.name} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips}/></span>:<span>Observer</span>}/>
  </>;
 }

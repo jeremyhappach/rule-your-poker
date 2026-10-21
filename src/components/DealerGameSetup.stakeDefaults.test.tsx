@@ -9,6 +9,7 @@ vi.mock('@/hooks/useTakeTwoAccess',()=>({useTakeTwoAccess:()=>true}));
 vi.mock('@/hooks/useTripFlipAccess',()=>({useTripFlipAccess:()=>true}));
 vi.mock('@/hooks/useGolfAccess',()=>({useGolfAccess:()=>true}));
 vi.mock('@/hooks/useBoxdropAccess',()=>({useBoxdropAccess:()=>true}));
+vi.mock('@/hooks/useRacePokerAccess',()=>({useRacePokerAccess:()=>true}));
 vi.mock('@/hooks/useRun21Access',()=>({useRun21Access:()=>false}));
 vi.mock('@/lib/canonicalShell/lifecycleDebug',()=>({useLifecycleMount:()=>{}}));
 vi.mock('@/lib/canonicalShell/waitingTableFlight',()=>({useWaitingMount:()=>{},recordSurfaceOwnership:()=>{},recordWaitingLifecycle:()=>{}}));
@@ -31,7 +32,7 @@ describe('dealer stake defaults cannot overwrite a financial offer',()=>{
   const button=await screen.findByRole('button',{name:'Run Back Six-Card Golf'});fireEvent.click(button);fireEvent.click(button);
   await waitFor(()=>expect(state.configure).toHaveBeenCalledTimes(1));expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:'six-card-golf',config:{ante_amount:17}}));
  });
- it.each([['six-card-golf','Six-Card Golf'],['tri-towers','TriTowers'],['eleven-up','11 Up'],['royal-flash','Royal Flash'],['take-two','Take 2'],['trip-flip','Trip Flip'],['boxdrop','Boxdrop']])('%s resolves defaults before admitting edits and ignores late initial defaults',async(game,label)=>{
+ it.each([['six-card-golf','Six-Card Golf'],['race-poker','Race Poker'],['tri-towers','TriTowers'],['eleven-up','11 Up'],['royal-flash','Royal Flash'],['take-two','Take 2'],['trip-flip','Trip Flip'],['boxdrop','Boxdrop']])('%s resolves defaults before admitting edits and ignores late initial defaults',async(game,label)=>{
   const initial=defer('holm'),selected=defer(game);
   render(<DealerGameSetup gameId="session" dealerUsername="Caller" isBot={false} dealerPlayerId="caller" dealerPosition={2} configDeadline={new Date(Date.now()+600000).toISOString()} gameSetupTimerSeconds={600} anteDecisionTimerSeconds={30} activePlayerCount={2} activeHumanCount={2} onConfigComplete={()=>{}} onSessionEnd={()=>{}}/>);
   fireEvent.mouseDown(await screen.findByRole('tab',{name:game==='six-card-golf'?'Cards':'Other'}),{button:0,ctrlKey:false});

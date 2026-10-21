@@ -6,7 +6,7 @@ import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>g.id!=='six-card-golf').map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
+ expect(GAME_CATALOG.filter(g=>g.id!=='six-card-golf'&&g.id!=='race-poker').map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
  expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);

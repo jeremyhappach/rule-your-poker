@@ -124,6 +124,8 @@ import {
 } from './PreSessionSeatLayer';
 
 export interface PersistentTableShellProps {
+  /** Local terminal presentation completed; retire gameplay-only delta labels. */
+  sessionEnded?: boolean;
   presentationMode?: PresentationMode;
   presentationTransitionBlocked?: boolean;
   gameId?: string;
@@ -462,6 +464,7 @@ export function PersistentTableShell(props: PersistentTableShellProps) {
         overlayRootRef={overlayRootRef}
       />
       <ChipPresentationDeltaRuntime
+        enabled={!props.sessionEnded}
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />

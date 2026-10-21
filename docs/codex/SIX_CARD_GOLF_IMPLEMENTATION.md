@@ -275,3 +275,78 @@ installed production financial proof and authenticated full application routing
 remain blocking gates. The local reference proves SQL behavior but cannot
 replace those service-level checks. Physical iPhone Safari and Jeremy's smoke
 remain pending. This bounded qualification pass stops at its local checkpoint.
+
+## Route and migration reconciliation — 2026-10-20
+
+Local starting commit: `79292bcedecddc2b08b1b46447884631d6ed5f09`.
+Reconciled main: `88c798396bd0202551e36dcf4cd9efa39c9ef555`.
+Only the Golf candidate branch receives main; main itself is not changed.
+Additive conflicts preserve both games in consent, catalog, setup, retained
+presentation and shared SQL registration. Golf Rules now use main's common
+fixed-version resolver. No approved rules, financial amounts or pause behavior
+changed. The unrelated Cribbage snapshot remains excluded.
+
+The +5 label was a shell-owned positioned chip-delta effect lasting beyond
+terminal admission. The existing route's Session Ended phase now disables that
+renderer synchronously; late deltas are consumed without replay. The financial
+ledger remains authoritative and untouched. Golf's own controls and open
+inspection dialogs also retire. The browser harness keeps the actual GolfTable
+mounted through Session Ended, matching the production route lifecycle.
+
+Actual `Game.tsx` route tests use its auth guard and shared shell with simulated
+SDK responses and a contract-compatible gameplay body. They pass cold
+ended-session routing, confirmed sign-out, connected retention, stale completion
+rejection, exact completion, shared Results and local Back to Lobby. Initial
+fixture failures (UPDATE sent to DELETE listeners; missing HUD portal target)
+are retained in logs and do not establish production route defects. No live
+Auth/PostgREST/Realtime service qualification is inferred from these tests.
+
+Evidence under `qualification.local/six-card-golf/`:
+- `regression-integration.log`: 2,597 tests in 372 files passed, including
+  all 18 Run21 authority cases in the same run.
+- `route-final.log`: all three newly added actual-route cases passed.
+  `ChipPresentationDeltaRuntime.lifecycle.test.tsx` also passes immediate
+  retirement, late-arrival suppression and a new successor's distinct delta.
+- `session-ended-retained.log`: nine-hole two-human browser run, 162 actions,
+  exact +5/-5, zero browser errors, no cards/public tableaus/controls/result
+  artifacts/delta labels at Session Ended, unchanged settlement after Back to
+  Lobby, silent cold reload. Match `264f3ee8-03bc-4b2f-a41c-c7644c469eaa`.
+  Updated `session-ended.png` is the retained-component capture.
+- `candidate-integration.log`: complete candidate rollback suite including
+  mixed bots and service-earned final settlement passed.
+- `concurrency-integration.log` and `concurrency-integration-real.log`:
+  both-mode duplicate, timeout/action, final-action, successor and settlement
+  races passed on the reconciled registration.
+- `installed-final.log`: complete installed Golf plus Race Poker
+  core/financial/failure-rollback proof passed in local database
+  `golf_installed_1792546226509`. Admission false/false, zero Golf matches and
+  revisions, real publication membership and private-state denial verified.
+- `race-preservation.log`: separate Race Poker core, both-mode financial and
+  after-chip-write failure proofs passed through Golf registration, rolled back.
+- `harness-integration.log`: 241 tests in 12 files passed.
+- `typecheck-complete.log` and `build-final.log`: TypeScript and final production
+  build passed. Earlier reconciliation/test-fixture type errors were corrected.
+
+Official CLI 2.121.0 created migration `20261021011905`; the guarded SQL is
+tracked in the normal migration directory. Seven newline-normalized reference
+hashes include main's Race Poker authority. The generated source has normalized
+LF and SHA-256
+`815408fbc2cf2a37948b87a91656fc7d56e1d546d28e8f45c48961fd1c73e121`.
+Local pg_cron is absent and WAL is replica; the full migration rejects those
+prerequisites before creating Golf. The authority/publication subset is proven
+locally, but no actual scheduler or migration-history application is claimed.
+The installed local proof includes isolated heartbeat seeds and is explicitly
+marked unsuitable for production unchanged.
+
+No credentials were created, security settings changed, production accessed,
+main updated, code pushed, deployment performed or admission activated.
+Remaining service-level gates and the exact later production sequence are in
+[the closed-admission release plan](SIX_CARD_GOLF_RELEASE_PLAN.md).
+
+Final retained-component rerun with the real route's neutral lobby branding:
+`session-ended-final.log` passed for match `fbc9224b-3f89-41b8-9795-fbcf1294dd47`,
+162 actions, nine holes, exact +5/-5 and zero page errors.
+`route-terminal-contract.log` passed all three route cases with an authoritative
+terminal result/completed-round fixture and active/completion callbacks.
+`final-affected.log` passed 29 affected checks. The current screenshot is
+`qualification.local/six-card-golf/session-ended.png`.

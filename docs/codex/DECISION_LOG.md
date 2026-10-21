@@ -2544,6 +2544,15 @@ settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
 
+
+## Race Poker local candidate — 2026-10-20
+
+Race Poker freezes the approved multiplayer-only race-poker/1 contract and separately versioned race-poker-bot/1 policy. Human, bot and recovery commands share one private executor; canonical financial settlement remains authoritative. Local qualification does not authorize coordinated release. See RACE_POKER_RULES.md and RACE_POKER_QUALIFICATION.md.
+
 ## 2026-10-20 — Presentation catalog UI candidate
 
 Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.
+
+## Race Poker catalog integration — 2026-10-20
+
+The isolated candidate incorporates catalog main 44dbd5a7d. Race Poker uses one multiplayer-only descriptor and the existing capability plus roster guards for selection, submission and Run Back. Its unchanged frozen help article is shared with gameplay; explicit fixedVersion metadata avoids querying Arcade for a multiplayer-only game. Existing games retain dynamic current/legacy resolution. No rules, SQL, financial authority or admission flags changed. Production remains on the coordinated release hold.

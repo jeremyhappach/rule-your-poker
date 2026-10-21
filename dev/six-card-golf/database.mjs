@@ -20,6 +20,9 @@ if (!existsSync(context)) {
 
 export async function installLocalReference(c){
  await c.query(read('supabase/six-card-golf/local-reference.sql','utf8'));
+ // Reconcile the local reference with the Race Poker authority now on main.
+ for(const part of ['rules','multiplayer','commands','registration'])await c.query(read('supabase/race-poker/'+part+'.sql','utf8'));
+
  // Match the deployed pause owner (hash 1fa2220c33734d1cf14c11f3eaef432b).
  // The older isolated template predates this overload; never replace production.
  const pauseReference=read('supabase/migrations/20261015212154_farkle_active_account_and_recovery_lock_order.sql','utf8');
