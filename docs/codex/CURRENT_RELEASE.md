@@ -1,4 +1,11 @@
-# 11 Up bots: release stopped at production qualification gate
+# 11 Up bots: production proof passed; migration request failed
+
+The approved corrected rollback-only production proof passed all six financial
+cases with unchanged existing balances and zero residual users/profiles/players/
+snapshots. The migration tool then returned `Invalid or expired requestState`.
+Read-only follow-up confirmed no migration entry, no bot policy and unchanged
+original functions. No retry, main integration, push or deployment occurred.
+See `supabase/eleven-up/production-release-evidence.json`.
 
 11 Up bot support adds visible-information server decisions through its existing
 versioned reducer and canonical recovery/consent/settlement owners. The unchanged
