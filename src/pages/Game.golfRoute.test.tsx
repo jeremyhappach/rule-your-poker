@@ -53,6 +53,7 @@ it('connected terminal route retains Golf until exact completion, then admits lo
  expect(screen.getByTestId('golf-route-child')).toBeTruthy();
  fireEvent.click(screen.getByText('Complete Golf presentation'));
  await waitFor(()=>expect(document.querySelector('[data-session-ended-panel]')).toBeTruthy());
+ await screen.findByText('Session Ended');
  expect(screen.queryByTestId('golf-route-child')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Back to Lobby'}));
  await screen.findByText('Lobby destination');

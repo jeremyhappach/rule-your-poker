@@ -350,3 +350,33 @@ Final retained-component rerun with the real route's neutral lobby branding:
 terminal result/completed-round fixture and active/completion callbacks.
 `final-affected.log` passed 29 affected checks. The current screenshot is
 `qualification.local/six-card-golf/session-ended.png`.
+
+## Final terminal announcement correction — 2026-10-20
+
+Visual review of that neutral-branding capture found that the shared lobby
+announcement cleanup also removed the legitimate Session Ended heading.
+The cleanup now preserves only the exact current game's `session_ended`
+ambient while the canonical Session Ended phase is active. Late gameplay
+announcements and other-session announcements still retire; leaving the phase
+clears the exception. No second announcement owner or timer was introduced.
+Settlement, rules, pauses and financial ledger authority remain unchanged.
+
+After this correction, `terminal-phase-final.log` passes 30 tests across the
+actual Game route, persistent shell, chip-delta retirement and Session Ended
+panel. `terminal-phase-browser.log` passes the complete two-human match
+`082cad69-f89d-497a-aec3-7c21c136895d`: 162 actions, nine holes, exact -5/+5,
+zero browser errors, shared audio, local Back to Lobby without settlement
+changes and silent cold replay. The updated `session-ended.png` was visually
+reviewed: Session Ended, Results, HUD and Back to Lobby remain, while Golf
+cards/controls and the transient +5 delta are absent.
+
+`typecheck-terminal-final.log` is clean and `build-terminal-final.log` passes
+(20.85 seconds, existing chunk-size warnings). The full 2,597-test regression
+run preceded this small final guard correction; the affected 30-test suite and
+production build were rerun afterward. The 241 harness tests and 63 layout
+cases were not repeated for this announcement-only correction.
+
+These remain local results. Live authentication/PostgREST/Realtime, actual
+scheduled pg_cron recovery, deployed-authority comparison and production-safe
+candidate/installed proofs remain release blockers. No production deployment
+or activation is claimed.

@@ -71,6 +71,21 @@ describe('lobby announcement ownership', () => {
     expect(context.ambient).toBe(ready);
   });
 
+  it('preserves only the current Session Ended owner while its phase is admitted', () => {
+    const ended = (active = true) => <PersistentTableShell gameId="g1" lobbyMode sessionEnded={active}><Probe /></PersistentTableShell>;
+    act(() => root.render(ended()));
+    act(() => context.emit({id:'g1:session-ended',type:'session_ended',scope:{dealerGameId:'g1'}}));
+    expect(context.ambient?.id).toBe('g1:session-ended');
+    act(() => context.emit({id:'late-win',type:'match_win',scope:{dealerGameId:'g1'}}));
+    expect(context.transient).toBeNull();
+    expect(context.ambient?.id).toBe('g1:session-ended');
+    act(() => root.render(ended(false)));
+    expect(context.ambient).toBeNull();
+    act(() => root.render(ended()));
+    act(() => context.emit({id:'other:session-ended',type:'session_ended',scope:{dealerGameId:'other'}}));
+    expect(context.ambient).toBeNull();
+  });
+
   it('preserves fresh waiting announcements but clears stale gameplay on entry and late arrival', () => {
     act(() => root.render(tree(false, 'g1', false)));
     act(() => context.emit({ id: 'ante', type: 'awaiting_ante', scope: { dealerGameId: 'g1' } }));

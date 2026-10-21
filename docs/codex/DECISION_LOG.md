@@ -2556,3 +2556,15 @@ Use typed per-game UI descriptors with existing server capabilities/version/defa
 ## Race Poker catalog integration — 2026-10-20
 
 The isolated candidate incorporates catalog main 44dbd5a7d. Race Poker uses one multiplayer-only descriptor and the existing capability plus roster guards for selection, submission and Run Back. Its unchanged frozen help article is shared with gameplay; explicit fixedVersion metadata avoids querying Arcade for a multiplayer-only game. Existing games retain dynamic current/legacy resolution. No rules, SQL, financial authority or admission flags changed. Production remains on the coordinated release hold.
+
+## 2026-10-20 — Golf terminal presentation uses canonical phase ownership
+
+The canonical route's Session Ended admission retires positioned chip-delta
+labels and Golf controls without changing balances, settlement or ledger
+cursors. The shell's lobby announcement cleanup preserves the exact current
+Session Ended ambient only while that phase is active; stale gameplay and
+other-session announcements still clear. Actual-route tests use simulated SDK
+responses, and a complete local browser match verifies retained Results/HUD,
+the Session Ended heading and local Back to Lobby. This is local qualification,
+not live service or production acceptance. See SIX_CARD_GOLF_IMPLEMENTATION.md
+and SIX_CARD_GOLF_RELEASE_PLAN.md for evidence and closed-admission gates.
