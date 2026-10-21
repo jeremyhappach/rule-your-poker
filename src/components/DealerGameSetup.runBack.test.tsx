@@ -4,6 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const triAccess = vi.hoisted(() => ({allowed:false}));
+const raceAccess = vi.hoisted(() => ({allowed:false}));
+vi.mock('@/hooks/useRacePokerAccess',()=>({useRacePokerAccess:()=>raceAccess.allowed}));
 vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>triAccess.allowed}));
 vi.mock('@/lib/canonicalShell/lifecycleDebug', () => ({ useLifecycleMount: vi.fn() }));
 vi.mock('@/lib/canonicalShell/waitingTableFlight', () => ({ useWaitingMount: vi.fn(), recordSurfaceOwnership: vi.fn(), recordWaitingLifecycle: vi.fn() }));
@@ -56,7 +58,7 @@ const deadline = new Date(Date.now() + 120_000).toISOString();
 const onComplete = vi.fn();
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  vi.useFakeTimers(); vi.clearAllMocks(); triAccess.allowed=false;
+  vi.useFakeTimers(); vi.clearAllMocks(); triAccess.allowed=false; raceAccess.allowed=false;
   vi.mocked(configureDealerGame).mockResolvedValue({ dealer_game: { id: 'new-dealer-game' }, game: { status: 'ante_decision' }, deduped: false } as any);
   container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
 });
@@ -77,6 +79,21 @@ function button() {
   expect(control).toBeTruthy(); return control!;
 }
 describe('the actual Run Back button across all seven games', () => {
+  it('keeps Race Poker Run Back hidden while capability is closed',async()=>{
+    await mount('race-poker',{ante_amount:9});
+    expect(document.querySelector('[data-dealer-game-option="race-poker"]')).toBeNull();
+    expect([...document.querySelectorAll('button')].some(node=>/Run Back/.test(node.textContent??''))).toBe(false);
+    expect(configureDealerGame).not.toHaveBeenCalled();
+  });
+  it('submits exact Race Poker Run Back stake for one human and one bot',async()=>{
+    raceAccess.allowed=true;await mount('race-poker',{ante_amount:9},'race-poker',{players:2,humans:1});
+    await act(async()=>{button().click();button().click();});
+    expect(configureDealerGame).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'dealer-player',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'race-poker',config:{ante_amount:9}});
+  });
+  it.each([{players:1,humans:1},{players:3,humans:2},{players:2,humans:0}])('blocks Race Poker Run Back for invalid roster %j',async counts=>{
+    raceAccess.allowed=true;await mount('race-poker',{ante_amount:9},'race-poker',counts);
+    expect(button().disabled).toBe(true);await act(async()=>button().click());expect(configureDealerGame).not.toHaveBeenCalled();
+  });
   it('explains server admission denial from a previously loaded Run Back', async () => {
     triAccess.allowed=true;
     vi.mocked(configureDealerGame).mockRejectedValueOnce({message:'tri_towers:admission_closed'});

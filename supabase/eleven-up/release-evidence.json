@@ -15,16 +15,16 @@
       },
       {
         "name": "Complete human/bot match and reconnect/replay/continuation fake",
-        "moves": 73,
+        "moves": 81,
         "humanMoves": 4,
         "reconnects": 4,
         "balances": [
           {
-            "id": "7783bd25-ffcc-4b85-8906-3e3e7c2e30de",
+            "id": "f8002454-f238-4e9e-88c3-8aba0921fbec",
             "chips": 93
           },
           {
-            "id": "0f61d27a-239e-426a-a760-313b86aea000",
+            "id": "29643ded-4034-4c36-8d30-10f31f4b2bd9",
             "chips": 107
           }
         ]
@@ -62,9 +62,127 @@
     "unrelatedDefinitions": "unchanged",
     "laterSharedAdapterChange": "preserved by surgical rollback"
   },
-  "clientRegression": "Unchanged product client at 3b0d01eb9: 56 focused tests, tsc, vite build and six browser layouts passed",
-  "production": "Not accessed or modified; separate release approval and combined-main qualification pending",
+  "clientRegression": {
+    "tests": 131,
+    "files": 13,
+    "typecheck": "tsc -p tsconfig.app.json --noEmit passed",
+    "bundle": "vite build passed",
+    "warnings": "Existing browser-data age, dynamic/static imports and chunk-size warnings"
+  },
+  "production": "Not accessed or modified; separate release approval and installed-authority qualification pending",
   "installedPackageFullRerun": "passed",
   "registeredMigration": "supabase/migrations/20261021002901_eleven_up_bots.sql",
-  "registeredFileFullRerun": "passed"
+  "registeredFileFullRerun": "passed",
+  "reconciliation": {
+    "database": "eleven_up_bots_1792536250433",
+    "main": "88c798396bd0202551e36dcf4cd9efa39c9ef555",
+    "migrationSha256": "dcea1133d1df64b755b5c492ea8923d74bdea38ba050184f1463e5c9da22387d",
+    "raceSourceHashes": {
+      "rules": "324da9663f26f176883bea5049ad22f465fba197713d42b244e49b0770b2a52d",
+      "multiplayer": "3b21a528a253037f081f81306c4aa4acd12f2d61fbfd814bf3bfb199ac63e982",
+      "commands": "e4e2af20454d0cc8b2d2f56a2fe67e6636b925b46949367eec4df53eab53a172",
+      "registration": "4f7c54154d0e385d59bad8f18d84368996af87d937e16401c81ad498d3b11972"
+    },
+    "changedByBots": [
+      "private.megatouch_begin(uuid,uuid)"
+    ],
+    "proofs": [
+      "core-proof",
+      "financial-proof",
+      "rollback-failure-proof"
+    ],
+    "withAdmissionRollback": "passed",
+    "raceDefinitions": "preserved",
+    "production": "not accessed; deployment/cron not installed in local fixture"
+  },
+  "concurrency": {
+    "database": "eleven_up_bots_1792536250433",
+    "evidence": [
+      {
+        "real": false,
+        "game": "6e882afe-1103-4fe4-86d1-d1915b47a406",
+        "dealer": "a3e15876-d8b0-4030-a28b-da0f07a0f3a7",
+        "balances": [
+          {
+            "id": "790ecdbc-bc7a-4066-80d1-77a7c052927b",
+            "chips": 93
+          },
+          {
+            "id": "1d00a7fc-292a-4dbf-ae5a-b818d3b2d50c",
+            "chips": 107
+          }
+        ],
+        "concurrentBotMove": "one",
+        "settlements": 1
+      },
+      {
+        "real": true,
+        "game": "2313bc8a-8141-4cb6-a005-77ea4f8aaa41",
+        "dealer": "ce81eead-49c9-40cb-9746-e42855212eb5",
+        "balances": [
+          {
+            "id": "aa0ed582-f678-4991-8c32-54c87fa1ba6e",
+            "chips": 93
+          },
+          {
+            "id": "05677a53-0f38-4f69-8f7d-612652e11b89",
+            "chips": 107
+          }
+        ],
+        "concurrentBotMove": "not admitted in real money",
+        "settlements": 1
+      }
+    ],
+    "cleanup": "Fake-money fixture removed; synthetic real-money fixture retained only in dedicated local DB because canonical history retention forbids deletion."
+  },
+  "browser": {
+    "database": "eleven_up_bots_1792536250433",
+    "id": "633f6140-55a8-45a5-9a1c-6aafc319e5a9",
+    "layouts": [
+      {
+        "width": 320,
+        "height": 568,
+        "overflow": false,
+        "scores": 2
+      },
+      {
+        "width": 375,
+        "height": 667,
+        "overflow": false,
+        "scores": 2
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "overflow": false,
+        "scores": 2
+      },
+      {
+        "width": 430,
+        "height": 932,
+        "overflow": false,
+        "scores": 2
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "overflow": false,
+        "scores": 2
+      },
+      {
+        "width": 1280,
+        "height": 800,
+        "overflow": false,
+        "scores": 2
+      }
+    ],
+    "humanActions": 4,
+    "settlement": {
+      "5be74d57-55a7-45e1-9195-f01957a4fb23": 5,
+      "aa7c3086-0de6-4e53-a5b4-5a7eff3a2e6d": -5
+    },
+    "errors": [],
+    "limitations": "Desktop Chromium mobile emulation; synthetic SQL clocks accelerated only at intro/result holds. Not physical-phone or production smoke.",
+    "initialAttempt": "Local navigation timed out at 30 seconds during initial compile; one warmed retry passed"
+  }
 }

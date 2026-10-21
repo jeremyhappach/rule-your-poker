@@ -17,7 +17,7 @@
     "command": "supabase migration new eleven_up_bots",
     "telemetry": "SUPABASE_TELEMETRY_DISABLED=1, process-local only"
   },
-  "production": "No execution authorized",
-  "observedLocalMain": "fff4e8d39c4514c5c4370e993929ee858a453f04",
-  "reconciliation": "Read-only Race Poker overlap review; combined release candidate not integrated or qualified"
+  "reconciledMain": "88c798396bd0202551e36dcf4cd9efa39c9ef555",
+  "reconciliation": "Merged current main into isolated branch; see release-evidence.json for combined qualification",
+  "production": "No execution authorized"
 }

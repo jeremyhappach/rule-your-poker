@@ -2,16 +2,14 @@
 
 Implementation candidate: `3b0d01eb9ac6418dfd78765de7ee2f34aca8d119`.
 Implementation base remains `44dbd5a7d4de4635b258f731558fe346473d82b9`.
-At migration registration, local main had advanced to `fff4e8d39c4514c5c4370e993929ee858a453f04`
-(Race Poker). Read-only comparison found Race Poker additions in shared dealer
-setup/catalog tests and a replacement of `private.megatouch_begin`. Its 11 Up
-bot-exclusion fragment still exactly matches this migration's surgical target;
-its Race Poker branches are preserved by fragment replacement. No 11 Up source
-or canonical bot-creation change was found in that main delta. No merge/rebase,
-remote refresh or unrelated worktree edits were performed. The actual combined
-candidate still requires reconciliation and regression checks at release time.
-Race Poker owns the serialized production release; this package does not claim
-that slot or authorize any production action.
+Reconciled in the isolated branch with current local main
+`88c798396bd0202551e36dcf4cd9efa39c9ef555` on 2026-10-21. The original
+candidate was `f1a441cb34d03a16195eae489d0180ee70057ffb`. Git combined the
+client changes automatically; the release-note conflict was resolved by retaining
+both entries. No product-code changes beyond those candidates were needed.
+Box Drop owns the serialized production release; this package does not claim
+that slot or authorize any production action. Main and other worktrees were
+not modified. Recheck for newer main changes when the release slot is assigned.
 
 ## Package identity and registration
 
@@ -76,10 +74,23 @@ source functions, remain documented in `ELEVEN_UP_BOTS.md`.
   reapply. All unrelated function definitions are unchanged after normalizing
   line endings. A later unrelated shared-adapter sentinel survives surgical
   rollback; the rollback does not restore a stale full shared function.
-- The implementation's independent-connection races, 56 focused client tests,
-  TypeScript, production bundle and six browser layouts remain applicable:
-  no product client files or gameplay/financial logic changed in this packaging
-  commit. Physical iPhone and production-installed verification remain pending.
+- Reconciliation regression uses `bots-reconcile.mjs` to install Race Poker's
+  accepted source-level local harness into the dedicated database, without its
+  production deployment/cron operations. Race Poker rules, consent, financial
+  and injected-failure proofs pass with bot admission open and rolled back.
+  All Race Poker definitions survive unchanged; only the intended 11 Up branch
+  in shared consent changes. This is not a production schema/cron qualification.
+- Independent-connection bot-action and duplicate/concurrent settlement proofs
+  pass in both modes (human-only real-money fixture). The retained synthetic
+  real-money history stays only in the dedicated database under canonical
+  history retention; no production data is involved.
+- 131 focused client tests across 13 files cover 11 Up, Race Poker, shared dealer
+  setup/Run Back/defaults and catalog eligibility. TypeScript (`tsc -p
+  tsconfig.app.json --noEmit`) and production Vite bundle passed.
+  Actual-SQL browser bot play, reload, human controls, settlement and six layouts
+  passed on one warmed retry after an initial navigation timeout. The command
+  transport briefly disconnected and recovered. Physical iPhone and
+  production-installed verification remain pending.
 
 Durable package evidence: `supabase/eleven-up/release-evidence.json`.
 Raw local results: `qualification.local/eleven-up-bots/release-proof.json` and
@@ -87,7 +98,7 @@ Raw local results: `qualification.local/eleven-up-bots/release-proof.json` and
 
 ## Proposed serialized production sequence — requires separate approval
 
-1. Wait until Race Poker's release is complete and the release owner explicitly
+1. Wait until Box Drop's release is complete and the release owner explicitly
    assigns the slot. Fetch current main again. Review changes to dealer setup,
    catalog, `private.megatouch_begin`, canonical bot creation and recovery since
    the recorded base. Stop on conflicts or unexpected ownership changes; never
@@ -97,7 +108,12 @@ Raw local results: `qualification.local/eleven-up-bots/release-proof.json` and
    and record/tag that candidate under the repository release procedure.
 3. With explicit production-read approval, execute `release-preflight.sql` and
    save the complete result as the release's rollback snapshot. Compare current
-   definitions/indexes/admission to the reviewed source. Separately verify that
+   definitions/indexes/admission to the reviewed source. Verify migration history:
+   Race Poker's recorded installed version is `20261021002421`, while its source
+   artifact is `20261020190908_race_poker_v1.sql`. Do not bulk-push pending files
+   or replay Race Poker because of that filename difference. Resolve any history
+   mismatch through the release owner before applying only the approved 11 Up
+   artifact; no history repair is authorized here. Separately verify that
    `cron.job` has active `eleven-up-recovery`, schedule `1 second`, and the
    existing `private.eleven_up_recover()` command. Production schema/recovery
    differences are a stop condition, not permission to patch infrastructure.

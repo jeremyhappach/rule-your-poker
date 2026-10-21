@@ -10,7 +10,13 @@ database/client publication. See [scope, evidence and smoke](ELEVEN_UP_BOTS.md).
 The [local release package](ELEVEN_UP_BOT_RELEASE_PACKAGE.md) now includes a
 deterministic transaction, hashes, preflight/verification and safe admission
 rollback. Official CLI registration is complete in migration
-`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Race Poker retains the production release slot; no release is authorized.
+`20261021002901_eleven_up_bots.sql`; its exact bytes match the tested transaction. Box Drop retains the production release slot; no release is authorized.
+The isolated branch now includes main `88c798396bd0202551e36dcf4cd9efa39c9ef555`;
+combined Race Poker/11 Up database proofs and 131 focused client tests pass.
+
+# Race Poker / 1 — 2026-10-20 — production published, admission closed
+
+Approved multiplayer-only race-poker/1 and race-poker-bot/1 are qualified locally and against production canonical authority. Corrected production proof omits the isolated-test heartbeat seed and relies on actual scheduler health. Candidate and installed rollback proofs pass in both money modes, including after-chip-write failure containment, unchanged existing balances and zero residual fixtures. Production migration `20261021002421` (race_poker_v1) installs the exact prepared source `20261020190908_race_poker_v1.sql`. All four flags remain false. Client fff4e8d39c4514c5c4370e993929ee858a453f04 is READY at holm357.com; authenticated capability closure, approved Rules and no Arcade entry passed. No money mode is activated. Physical iPhone and multiplayer owner smoke remain pending. See `RACE_POKER_QUALIFICATION.md` and `RACE_POKER_RELEASE_PLAN.md`.
 
 # Lobby/settings catalog redesign — 2026-10-20 — release approved, owner smoke pending
 

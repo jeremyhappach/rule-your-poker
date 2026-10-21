@@ -1,6 +1,5 @@
 import {readFileSync as read,writeFileSync as write,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
 export const normalized=path=>read(path,'utf8').replaceAll('\r\n','\n');
 export const hash=s=>createHash('sha256').update(s).digest('hex');
 export const migrationPath='supabase/migrations/20261021002901_eleven_up_bots.sql';
@@ -8,7 +7,7 @@ export function registeredSql(){const sql=read(migrationPath,'utf8');if(sql!==mi
 export function migrationSql(){return `-- 11 Up bots: fake money only; unchanged rules, consent and finances.\nBEGIN;\nDO $preflight$ BEGIN\n IF position('create_session_bot:fake_money_only' IN pg_get_functiondef('public.create_session_bot(uuid,uuid,text,integer,boolean,boolean,uuid)'::regprocedure))=0 THEN RAISE EXCEPTION 'eleven_up:canonical_bot_policy_drift';END IF;\nEND $preflight$;\n${normalized('supabase/eleven-up/bots.sql')}\n${normalized('supabase/eleven-up/bot-recovery.sql')}\nCOMMIT;\n`;}
 if(process.argv[2]==='record'){
  const paths=['supabase/eleven-up/bots.sql','supabase/eleven-up/bot-recovery.sql','supabase/eleven-up/release-preflight.sql','supabase/eleven-up/release-verify.sql','supabase/eleven-up/rollback-bot-admission.sql'];
- const manifest={base:execFileSync('git',['rev-parse','FETCH_HEAD'],{encoding:'utf8'}).trim(),candidate:'3b0d01eb9ac6418dfd78765de7ee2f34aca8d119',encoding:'UTF-8, LF, no BOM',migrationSha256:hash(migrationSql()),sources:Object.fromEntries(paths.map(p=>[p,hash(normalized(p))])),migrationRegistration:{path:migrationPath,sha256:hash(registeredSql()),cliVersion:'2.121.0',command:'supabase migration new eleven_up_bots',telemetry:'SUPABASE_TELEMETRY_DISABLED=1, process-local only'},observedLocalMain:execFileSync('git',['rev-parse','main'],{encoding:'utf8'}).trim(),reconciliation:'Read-only Race Poker overlap review; combined release candidate not integrated or qualified',production:'No execution authorized'};
+ const manifest={base:'44dbd5a7d4de4635b258f731558fe346473d82b9',candidate:'3b0d01eb9ac6418dfd78765de7ee2f34aca8d119',encoding:'UTF-8, LF, no BOM',migrationSha256:hash(migrationSql()),sources:Object.fromEntries(paths.map(p=>[p,hash(normalized(p))])),migrationRegistration:{path:migrationPath,sha256:hash(registeredSql()),cliVersion:'2.121.0',command:'supabase migration new eleven_up_bots',telemetry:'SUPABASE_TELEMETRY_DISABLED=1, process-local only'},reconciledMain:'88c798396bd0202551e36dcf4cd9efa39c9ef555',reconciliation:'Merged current main into isolated branch; see release-evidence.json for combined qualification',production:'No execution authorized'};
  write('supabase/eleven-up/release-manifest.json',JSON.stringify(manifest,null,2)+'\n');console.log(manifest);
 }
 if(process.argv[2]==='fill'){
