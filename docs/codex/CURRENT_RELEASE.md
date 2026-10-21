@@ -1,13 +1,14 @@
-# Battle 31 / 1 — 2026-10-21 — migration installed closed; client publication held
+# Battle 31 / 1 — 2026-10-21 — hosted qualification passed; admission stays closed
 
 Candidate and installed hosted rollback proofs pass all six financial cases.
-Exact unchanged package is installed as hosted migration `20261021202045`.
-Recovery jobs succeed; Race Poker/11 Up authority and existing balances were
-preserved. All four Battle31 flags remain false. Hosted authenticated transport,
-independent-connection races and scheduler-driven zero-client match qualification
-remain; no main integration, push or new deployment occurred. Production client
-is still `bb1ec308030065d1aa30fc79a18efd493315291e`. See
-[hosted evidence and remaining gates](BATTLE31_HOSTED_QUALIFICATION.md).
+Exact unchanged package is installed as hosted migration 20261021202045.
+Authenticated PostgREST/Realtime, duplicate/competing/terminal/late-replay races
+and actual scheduler-driven zero-client settlement/continuation now pass. Two
+independent PostgREST backend connections were observed contending on the lock.
+Four fake-money fixtures were removed; historical balances and Race Poker/11 Up
+authority are preserved. All four Battle31 flags are false. Client publication
+is authorized; admission scope and owner/physical-iPhone smoke remain separate.
+See [hosted evidence](BATTLE31_HOSTED_QUALIFICATION.md).
 
 # Battle 31 / 1 — 2026-10-21 — reconciled local candidate, not published
 

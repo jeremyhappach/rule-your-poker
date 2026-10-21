@@ -117,10 +117,9 @@
     "productionSha": "bb1ec308030065d1aa30fc79a18efd493315291e"
   },
   "remaining": [
-    "Hosted authenticated PostgREST and Realtime",
-    "Hosted independent-connection concurrency",
-    "Actual scheduler-driven zero-client match qualification",
-    "Owner multiplayer and physical iPhone smoke"
+    "Owner multiplayer smoke after explicit admission scope",
+    "Physical iPhone smoke"
   ],
-  "status": "Migration installed with admission closed; client publication held for remaining hosted qualification."
+  "status": "Hosted qualification completed; matching client qualified for publication with admission closed.",
+  "initialHoldSupersededBy": "hosted-completion.json"
 }
