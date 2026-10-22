@@ -1,0 +1,10 @@
+{
+  "game": "428e1129-57ed-4bab-9809-870d5ad00850",
+  "sha": "cf759114f75e31b2d2541f13dd24dff5f15e64a3",
+  "passed": true,
+  "match": "7941407f-3e90-4343-af40-19d9c62b0dc6",
+  "freshConsent": true,
+  "privateProjection": true,
+  "reconnect": true,
+  "browserTurn": true
+}

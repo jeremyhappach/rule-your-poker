@@ -1,3 +1,15 @@
+# Canasta / 1 — October 22 — hosted transition passes; final cleanup pending
+
+Published `cf759114f75e31b2d2541f13dd24dff5f15e64a3` is Vercel READY at
+`dpl_64wNHPwhyrJfYYW8KJtaBqyZhQzL` with an exact public manifest. The fresh
+scoped fixture passes real browser draw/discard/reconnect, frozen 180-second
+pacing, private projection, exact +5/-5 settlement/replay, connected Session
+Ended and cold-ended reconnect to lobby. The historical failed session is intact.
+Visual review found residual game winner/seat-score text in Session Ended;
+the small Canasta-only cleanup passes focused terminal tests and is being
+qualified for publication. A five-card whole-pile rendered transport check passes.
+General admission remains closed until final verification and CI publication.
+
 # Canasta / 1 — October 22 — forward installed, admission still closed
 
 Forward migration `20261022194338_canasta_beginner_expert_pacing` and recovery

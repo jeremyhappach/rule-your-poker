@@ -1,0 +1,53 @@
+{
+  "game": "428e1129-57ed-4bab-9809-870d5ad00850",
+  "match": "7941407f-3e90-4343-af40-19d9c62b0dc6",
+  "passed": true,
+  "settlement": {
+    "key": "canasta:7941407f-3e90-4343-af40-19d9c62b0dc6",
+    "batch": {
+      "id": "ff79011f-baca-4e9a-93c1-246db315bcd1",
+      "cursor": 1,
+      "reason": "win",
+      "game_id": "428e1129-57ed-4bab-9809-870d5ad00850",
+      "transfers": [
+        {
+          "id": "428e1129-57ed-4bab-9809-870d5ad00850:1:1",
+          "to": {
+            "kind": "player",
+            "playerId": "224de3ed-32d6-4e41-9f9c-56ee8b07ed5f"
+          },
+          "from": {
+            "kind": "player",
+            "playerId": "9c8cc00e-8c02-4ac5-9084-63ef3d7accb1"
+          },
+          "amount": 5
+        }
+      ],
+      "created_at": "2026-10-22T19:50:31.021459+00:00",
+      "dealer_game_id": "7941407f-3e90-4343-af40-19d9c62b0dc6",
+      "closing_balances": {
+        "player:224de3ed-32d6-4e41-9f9c-56ee8b07ed5f": 105,
+        "player:9c8cc00e-8c02-4ac5-9084-63ef3d7accb1": 95
+      },
+      "opening_balances": {
+        "player:224de3ed-32d6-4e41-9f9c-56ee8b07ed5f": 100,
+        "player:9c8cc00e-8c02-4ac5-9084-63ef3d7accb1": 100
+      },
+      "unmatched_deltas": {}
+    },
+    "loser": "9c8cc00e-8c02-4ac5-9084-63ef3d7accb1",
+    "amount": 5,
+    "scores": {
+      "224de3ed-32d6-4e41-9f9c-56ee8b07ed5f": 5360,
+      "9c8cc00e-8c02-4ac5-9084-63ef3d7accb1": 5240
+    },
+    "winner": "224de3ed-32d6-4e41-9f9c-56ee8b07ed5f",
+    "deadline": 1792698634025,
+    "resultId": "bbfa90a1-3d2d-406c-b5db-f38833df2ab3",
+    "startedAt": 1792698631025,
+    "transferBatchId": "ff79011f-baca-4e9a-93c1-246db315bcd1"
+  },
+  "replay": true,
+  "connectedSessionEnded": true,
+  "coldEndedRoutesToLobby": true
+}

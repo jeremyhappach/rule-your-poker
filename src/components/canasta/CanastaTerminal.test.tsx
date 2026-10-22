@@ -10,7 +10,7 @@ import type {Snapshot} from '@/lib/canasta/client';
 vi.mock('@/hooks/useCanastaHelpers',()=>({useCanastaHelpers:()=>({helpers:true,setHelpers:vi.fn(),error:''})}));
 const ui=vi.hoisted(()=>({snapshot:null as Snapshot|null,cursor:'pending',emit:vi.fn(),celebrate:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{}}));
-vi.mock('./CanastaGame',()=>({CanastaGame:({onSnapshot,ended}:{onSnapshot:(s:Snapshot)=>void;ended:boolean})=>{useEffect(()=>{if(ui.snapshot)onSnapshot(ui.snapshot);},[ui.snapshot,onSnapshot]);return <div>{ended?'Session Ended':'Table retained'}</div>;}}));
+vi.mock('./CanastaGame',()=>({CanastaGame:({onSnapshot,ended,panel}:{onSnapshot:(s:Snapshot)=>void;ended:boolean;panel:React.ReactNode})=>{useEffect(()=>{if(ui.snapshot)onSnapshot(ui.snapshot);},[ui.snapshot,onSnapshot]);return <div>{ended?'Session Ended':'Table retained'}{panel}</div>;}}));
 vi.mock('./CanastaArtifacts',()=>({CanastaArtifacts:({ended}:{ended:boolean})=><div>{ended?'Results only':'Gameplay artifacts'}</div>}));
 vi.mock('./useCanastaCardPresentation',()=>({useCanastaCardPresentation:()=>{}}));
 vi.mock('@/lib/canonicalShell/CanonicalPlayerIdentityRow',()=>({CanonicalPlayerIdentityRow:()=>null}));
@@ -36,7 +36,8 @@ describe('Canasta terminal ownership',()=>{
   act(()=>vi.advanceTimersByTime(3500));expect(complete).not.toHaveBeenCalled();
   ui.snapshot={...ui.snapshot,serverAt:Date.now(),finished:true,state:{...ui.snapshot.state,revision:3}};view.rerender(<CanastaTable {...props}/>);expect(complete).not.toHaveBeenCalled();
   ui.cursor='settled';view.rerender(<CanastaTable {...props}/>);expect(complete).toHaveBeenCalledExactlyOnceWith(`canasta|winseq|${id(2)}|${id(1)}|1|${id(8)}|${id(7)}`);
-  view.rerender(<CanastaTable {...props} sessionEnded/>);expect(view.getByText('Results only')).toBeTruthy();expect(view.queryByText('Gameplay artifacts')).toBeNull();
+  expect(view.getByText(/wins · 5100 points/)).toBeTruthy();
+  view.rerender(<CanastaTable {...props} sessionEnded/>);expect(view.getByText('Results only')).toBeTruthy();expect(view.queryByText('Gameplay artifacts')).toBeNull();expect(view.queryByText(/wins · 5100 points/)).toBeNull();
   act(()=>vi.advanceTimersByTime(5000));expect(complete).toHaveBeenCalledTimes(1);
  });
  it('retains a later-hand reconnect with the match first round, rejects wrong tokens and does not retain a fresh ended entry',()=>{

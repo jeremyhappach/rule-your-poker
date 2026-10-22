@@ -61,9 +61,9 @@ export function CanastaTable(props:Props){
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>
   :props.activeTab==='history'?<div className="h-full overflow-auto text-sm">{state?.seats.map(seat=><p key={seat.id}>{props.players.find(p=>p.id===seat.id)?.profiles?.username??'Player'}: {state.totals[seat.id]} · {state.hand?.players[seat.id].melds.map(m=>`${m.rank} × ${m.cards.length}`).join(' · ')}</p>)}</div>
   :props.activeTab!=='cards'?<div className="h-full overflow-auto text-sm">Classic two-player Canasta · Draw two, discard one. Two canastas to go out. Reach 5,000; tied qualifying totals continue. One accepted match stake. {state?turnBudget(state)/1000:120} seconds per turn · {state?.config?.mode??'expert'} pacing. No action resets. {help.error}</div>
-  :props.sessionEnded||s?<div className="text-center text-sm">{s?`${props.players.find(p=>p.id===s.winner)?.profiles?.username??'Winner'} wins · ${s.scores[s.winner]} points`:null}</div>:undefined;
+  :props.sessionEnded?null:s?<div className="text-center text-sm">{`${props.players.find(p=>p.id===s.winner)?.profiles?.username??'Winner'} wins · ${s.scores[s.winner]} points`}</div>:undefined;
  return <>
   <CanastaArtifacts snapshot={snapshot} players={props.players} ended={props.sessionEnded}/>
-  <CanastaGame helpers={help.helpers} onHelpersChange={value=>void help.setHelpers(value)} transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={state?.hand?.active===viewer.id}/>:null}/>
+  <CanastaGame helpers={help.helpers} onHelpersChange={value=>void help.setHelpers(value)} transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={!props.sessionEnded&&state?.hand?.active===viewer.id}/>:null}/>
  </>;
 }
