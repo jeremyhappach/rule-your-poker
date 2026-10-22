@@ -1,3 +1,18 @@
+# Canasta / 1 — 2026-10-21 — closed hosted installation, transport gate pending
+
+Migration `20261021235336` and recovery worker v1 are installed. Actual scheduled
+heartbeats and three candidate/five installed rollback units pass. General
+admission is closed with zero grants; no client push/deployment or smoke activation.
+Reconciled against released main `52aa55281`; local build/typechecks and 135 focused
+tests pass. Real Auth/consent/Realtime/initial dealing and scheduled terminal
+continuation pass. A completed qualification fixture is paused with grants removed.
+The connector race did not prove overlapping connections; independent transport
+and deployed API/browser gates remain. Golf returned the production window unchanged.
+Stopped at the required execution-budget checkpoint; no writes are outstanding.
+See `CANASTA_HOSTED_QUALIFICATION.md` for exact state and gates.
+
+The earlier local-only release notes below are historical and superseded above.
+
 # Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
 
 Reconciled locally with main `6b15f4eb0`, retaining Race/11 Up/Battle31 and the
@@ -30,6 +45,76 @@ the 71-card witness. Native mobile/gameplay acceptance remains pending.
 Appearance follow-up removes preview-only dark styling. Authenticated production
 comparison confirms the shared amber border, bridge felt and white page treatment;
 side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
+# Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
+
+October 21 qualified publication checkpoint: candidate **22/22** and installed
+**22/22** hosted proofs pass. Unchanged Golf source is installed as migration
+`20261021230433`. Live Auth/privacy/Realtime, final-action competition, two
+observed independent PostgREST connections, Run Back consent/late replay,
+deliberate pause, genuine timeout/reclaim and actual zero-client bot settlement
+pass. General admission remains closed; temporary qualification grants were
+revoked, and admitted paused state is preserved. Matching client publication
+and the exact two-account fake-money smoke session follow the approved release
+workflow. Jeremy's physical-device acceptance is pending. See
+[current qualification evidence](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md).
+The blocked checkpoints below are historical and superseded.
+
+October 21 connector retry against released 11 Up main
+`55a896b1f84fcd31d32a1a135622af99fca1a3c9`: 14/16 hosted candidate units
+passed. Mixed real 3 failed canonical Run Back admission because the visible
+scheduler heartbeat was 13.1 seconds old against a 10-second guard; mixed real 4
+was not run. Repeatable-read visibility and an overlapping 32-second canonical
+dispatcher call require bounded follow-up; neither is waived. Rollback is
+verified. Local 409-function preservation, 2,629 application tests, 241 harness
+tests and build pass. Migration bytes are unchanged. No Golf install, main
+integration, push, deployment or grants; both money modes remain closed.
+The connector works without new credentials, superseding the binding blocker
+below. See [current evidence and blocker](SIX_CARD_GOLF_CONNECTOR_RETRY.md).
+
+Local continuation corrected the qualification transport: original SQL statements
+now run through a dedicated PostgreSQL connection and preserve both evidence rows.
+A local 16.209-second unit passes while the old wrapper times out at 15.020 seconds;
+the original limits remain unchanged. Five runner tests and six package tests pass.
+No supported production PostgreSQL credential binding was found in documented
+project configuration. Hosted work awaits that binding and the production-slot
+decision. No hosted action occurred in this continuation. See
+[runner evidence and setup requirement](SIX_CARD_GOLF_DIRECT_RUNNER.md).
+
+October 21 hosted attempt: the owner promoted Golf to the next smoke candidate.
+Fresh main/READY production and all eight preimages match `6b15f4eb`. Six candidate
+rollback units pass; the four-human unit times out during final existing-record
+containment. Qualification is incomplete, so no Golf installation, main change,
+push, deployment or grant occurred. The migration hash is unchanged and the
+24-hour smoke window has not started. See [hosted results and exact blocker](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
+
+October 21 reconciliation now incorporates released main `6b15f4eb060df319df13d576948c343920a23b21` without changing main or publishing. Three stale preimages are updated to verified deployed authority; guarded additive ante/stake registration preserves Battle 31, Race Poker v2, 11 Up bots/Ready and other games. Combined local SQL/financial/control proofs, 408-function/permission preservation, both-mode Golf races, 2,626 application tests, 241 harness tests, TypeScript and production build pass. The later 24-hour fake-money smoke scope is reserved for the verified Hap and Happach Gmail accounts with bots; no grants exist and the window has not started. See [revised package and evidence](SIX_CARD_GOLF_RECONCILIATION.md). Hosted qualification and release remain held pending review of this revised candidate.
+
+October 21 local candidate incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c`. The approved qualification gate is implemented for exact existing accounts and sessions with expiry, default closed. Frozen admitted access preserves existing liabilities after expiry; new admission and Run Back close. Canonical fake-money autoplay now exposes a self checkbox and peer score robot, survives reload and reclaims through the shared player-intent owner. Real-money human timeout and deliberate pauses remain preserved; deferred sit-out applies after the nine-hole match. Eleven bounded production proof units are prepared with eight authority guards. Local SQL, RLS, installed financial/Race Poker preservation, both-mode races, browser reclaim and offline containment checks pass. General admission remains closed; no production writes or publication occurred. See [explicit qualification procedure](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
+
+Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa`'s isolated Box Drop contrast correction. The exact canonical Session Ended heading is preserved during terminal admission; 30 affected tests and the complete local browser match pass. No gameplay or financial rules changed.
+
+The local Golf candidate is reconciled with main `88c798396bd0202551e36dcf4cd9efa39c9ef555`, preserving Race Poker. Actual Game route tests pass with a simulated SDK, including cold terminal routing, sign-out and exact completion admission. The retained Golf browser now retires controls/cards and the lingering +5 label at Session Ended without changing settlement. The 63-case layout result remains intact. Both-mode local financial/race proofs, Race Poker preservation and installed Golf proofs pass. Migration source `20261021011905_six_card_golf_v1.sql` is registered through the existing CLI. Live Auth/PostgREST/Realtime, actual pg_cron execution and fresh deployed-authority qualification remain gates. Golf admission is closed in both modes. No merge to main, push, production access/migration, deployment or activation occurred. See [evidence](SIX_CARD_GOLF_IMPLEMENTATION.md) and [closed-admission production plan](SIX_CARD_GOLF_RELEASE_PLAN.md).
+# 11 Up smoke controls — installed and qualified for publication
+
+Jeremy directly authorized the release slot. Unchanged candidate `ef39ce022`
+passes hosted candidate and installed rollback proofs: six financial cases, four
+timeout-control cases, and preservation of balances, matches, other-game authority,
+ACLs, defaults and admission. Exact forward SQL is installed as hosted migration
+`20261021221415`; both changed definitions match local qualification. Recovery
+succeeds every second. Matching client publication is the remaining release step.
+Existing 11 Up/Race admission remains unchanged; Battle31 remains closed.
+See `supabase/eleven-up/smoke-release-evidence.json`. Owner smoke is pending.
+
+# 11 Up smoke controls — local candidate only
+
+Local follow-up from published `bb1ec308030065d1aa30fc79a18efd493315291e`:
+sequential bot ball highlights and gameplay-expiry away/rejoin handling while
+preserving all rounds and original scoring clocks. Fake money uses the existing
+bot policy for subsequent rounds; real money pauses before the next away turn.
+Locally reconciled with Battle31 main `6b15f4eb` without changing the two fixes.
+Combined local SQL/financial/control/browser checks pass. Golf owns the next
+production slot; fresh parity and qualification remain required before release.
+See [scope and proof](ELEVEN_UP_SMOKE_CONTROLS.md).
 
 # Battle 31 / 1 — 2026-10-21 — hosted qualification passed; admission stays closed
 

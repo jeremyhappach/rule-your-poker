@@ -1,0 +1,30 @@
+// @vitest-environment jsdom
+import {createRef} from 'react';
+import {render,cleanup} from '@testing-library/react';
+import {afterEach,expect,it,vi} from 'vitest';
+import type {ChipPresentationBalanceDelta} from './ChipPresentationLedger';
+const state=vi.hoisted(()=>({deltas:[] as ChipPresentationBalanceDelta[]}));
+vi.mock('./ChipTransportProvider',()=>({CHIP_BALANCE_DELTA_DURATION_MS:2000,useChipPresentationBalanceDeltas:()=>state.deltas}));
+import {ChipPresentationDeltaRuntime} from './ChipPresentationDeltaRuntime';
+afterEach(()=>{cleanup();document.body.replaceChildren();vi.restoreAllMocks();});
+it('retires visible and late delta labels at Session Ended without replay on a successor',()=>{
+ const container=document.createElement('div'),overlay=document.createElement('div'),anchor=document.createElement('div');
+ anchor.setAttribute('data-chip-delta-anchor','player:p');container.append(anchor,overlay);document.body.append(container);
+ vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({left:10,top:20,width:40,height:40} as DOMRect);
+ const containerRef=createRef<HTMLElement>(),overlayRootRef=createRef<HTMLElement>();
+ Object.assign(containerRef,{current:container});Object.assign(overlayRootRef,{current:overlay});
+ const first:ChipPresentationBalanceDelta={id:'a',batchId:'batch',cursor:1,endpoint:{kind:'player',playerId:'p'},amount:5,boundary:'arrived',reason:'win'};
+ state.deltas=[first];
+ const ui=render(<ChipPresentationDeltaRuntime containerRef={containerRef} overlayRootRef={overlayRootRef}/>);
+ expect(overlay.querySelectorAll('[data-chip-balance-delta]')).toHaveLength(1);
+ ui.rerender(<ChipPresentationDeltaRuntime enabled={false} containerRef={containerRef} overlayRootRef={overlayRootRef}/>);
+ expect(overlay.querySelectorAll('[data-chip-balance-delta]')).toHaveLength(0);
+ state.deltas=[first,{...first,id:'late'}];
+ ui.rerender(<ChipPresentationDeltaRuntime enabled={false} containerRef={containerRef} overlayRootRef={overlayRootRef}/>);
+ ui.rerender(<ChipPresentationDeltaRuntime containerRef={containerRef} overlayRootRef={overlayRootRef}/>);
+ expect(overlay.querySelectorAll('[data-chip-balance-delta]')).toHaveLength(0);
+ expect(state.deltas).toHaveLength(2);
+ state.deltas=[{...first,id:'next',batchId:'next-batch',cursor:2}];
+ ui.rerender(<ChipPresentationDeltaRuntime containerRef={containerRef} overlayRootRef={overlayRootRef}/>);
+ expect(overlay.querySelector('[data-chip-balance-delta]')?.getAttribute('data-chip-balance-delta')).toBe('next');
+});

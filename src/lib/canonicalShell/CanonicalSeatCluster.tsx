@@ -90,6 +90,7 @@ export interface CanonicalSeatClusterProps {
   /** Optional secondary line rendered below the chip bubble (e.g. running
    *  score for games that track per-player totals). Hidden when null. */
   scoreLine?: string | null;
+  scoreAutoPlay?: boolean;
   /**
    * Canonical participant status — drives the chip bubble fill color
    * via the shared `getParticipantChipBgClass` palette. Defaults to
@@ -240,6 +241,8 @@ export interface CanonicalSeatClusterProps {
    * Default 'above-chip' preserves every existing consumer's layout.
    */
   namePlacement?: 'above-chip' | 'below-chip' | 'none';
+  /** Keep a perimeter nameplate extending toward the table interior. */
+  keepNameInward?: boolean;
   /**
    * Wave 5D follow-up — slot-aware growth opt-in.
    *
@@ -284,6 +287,7 @@ export interface CanonicalSeatClusterProps {
 
 export function CanonicalSeatCluster({
   slot,
+  keepNameInward = false,
   position,
   name,
   isDealer = false,
@@ -291,6 +295,7 @@ export function CanonicalSeatCluster({
   chipAmount,
   status = 'active',
   scoreLine,
+  scoreAutoPlay = false,
   children,
   innerDecoration,
   outerDecoration,
@@ -569,7 +574,7 @@ export function CanonicalSeatCluster({
       ? 'upper'
       : namePlateCfg.anchorStart;
   const effectiveAttachment: 'inner' | 'center' | 'outer' =
-    isCenterAnchoredSlot ? 'center' : namePlateCfg.attachment;
+    isCenterAnchoredSlot ? 'center' : keepNameInward ? 'outer' : namePlateCfg.attachment;
 
   let anchorXcss = 0;
   let anchorYcss = 0;
@@ -592,14 +597,15 @@ export function CanonicalSeatCluster({
   const dyOffsetPx = namePlateCfg.yOffsetDia * chipDiameterPx;
 
   const namePlateMaxWidthStyle: CSSProperties = {
-    maxWidth: `${namePlateCfg.maxWidthDia * chipDiameterPx}px`,
+    maxWidth: keepNameInward && innerDecoration ? 'var(--seat-public-width)' : `${namePlateCfg.maxWidthDia * chipDiameterPx}px`,
   };
   const namePlateAnchoredStyle: CSSProperties = {
     position: 'absolute',
     left: '50%',
     top: '50%',
-    transform:
-      `translate(${anchorXcss}px, ${anchorYcss}px)` +
+    transform: keepNameInward && innerDecoration
+      ? `translate(calc(${inwardCssSignForName} * (${chipRadiusPx - 2}px + var(--seat-public-margin) + var(--seat-public-width) / 2)), calc(${isBottomPerimeterSeat ? 1 : -1} * (var(--seat-public-height) / 2 + 2px))) translate(-50%, ${isBottomPerimeterSeat ? '0' : '-100%'})`
+      : `translate(${anchorXcss}px, ${anchorYcss}px)` +
       ` translate(${attachXpct}%, ${attachYpct}%)` +
       ` translate(${dxOffsetPx}px, ${dyOffsetPx}px)`,
   };
@@ -744,7 +750,7 @@ export function CanonicalSeatCluster({
         className="text-[10px] font-semibold text-white leading-none whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5"
         style={{ minWidth: '2.75rem', textAlign: 'center' }}
       >
-        {scoreLine}
+        {scoreAutoPlay&&<span role="img" aria-label="Auto-play" className="mr-1">🤖</span>}{scoreLine}
       </span>,
     );
   }

@@ -10,6 +10,10 @@ the hashed installation, rollback proofs and recovery-worker bundle from existin
 Canasta owners. `admission.proof.sql` owns fake-money admission regressions.
 `CANASTA_RELEASE_PACKAGE.md` links exact artifacts and remaining hosted gates.
 No production migration is registered by this package.
+11 Up smoke controls: `supabase/eleven-up/smoke-controls.sql` is the local forward
+candidate for post-expiry away state and next-Ready real-money pause.
+`src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
+`dev/eleven-up/smoke-controls-*.mjs` provides isolated qualification.
 
 Battle 31 reconciliation: `registration.sql` performs guarded additive shared
 authority changes. `dev/battle31/released-baseline.mjs` reconstructs the pinned
@@ -1163,6 +1167,33 @@ Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
 `src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
 `dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
 
+
+## Race Poker catalog integration
+
+`src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the release sequence.
+
+## Six-Card Golf local candidate — 2026-10-21
+
+`supabase/six-card-golf/` owns versioned rules, redacted snapshots, multiplayer
+admission/consent, canonical settlement and durable recovery. `multiplayer.sql`
+owns private exact-session/user qualification grants and frozen admitted access;
+`recovery.sql` projects canonical player intent and delegates reclaim to
+`public.set_automatic_play`. `qualification-proof.sql` covers expiry, RLS and
+timeout/reclaim/next-match intent. The registered unpublished migration is
+`20261021011905_six_card_golf_v1.sql`.
+
+`src/components/golf/GolfTable.tsx` renders canonical Golf artifacts and autoplay
+controls; `src/hooks/useGolf.ts` reconciles authoritative revisions/receipts.
+`dev/six-card-golf/` contains local browser/SQL/race tools and separate offline
+production proof/evidence builders. The production qualification plan records
+the exact pinned hash, eleven rollback units and remaining live-service gates.
+
+Golf `registration.sql` makes guarded additive changes to the current shared
+ante/stake owners. `dev/six-card-golf/reconciliation-proof.mjs` compares existing
+definitions/permissions and runs released-game proofs against combined local
+authority. `SIX_CARD_GOLF_RECONCILIATION.md` records baseline and evidence.
+
+## Battle 31 qualification tools
 
 Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
 `package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated

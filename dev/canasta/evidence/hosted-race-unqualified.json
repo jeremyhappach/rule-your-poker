@@ -1,0 +1,36 @@
+{
+  "observation": [],
+  "outcomes": [
+    [
+      {
+        "result": {
+          "backend": 2452043,
+          "accepted": true
+        }
+      }
+    ],
+    {
+      "name": "HttpException",
+      "message": "Failed to run sql query: ERROR:  P0001: canasta:conflict\nCONTEXT:  PL/pgSQL function public.canasta_server_commit(uuid,bigint,jsonb,jsonb) line 28 at RAISE\n"
+    }
+  ],
+  "independentConcurrencyProven": false,
+  "cleanup": [
+    {
+      "result": {
+        "game": "3ec92708-bf27-4433-9140-beb0db4fec6b",
+        "chips": [
+          105,
+          95
+        ],
+        "grants": 0,
+        "paused": true,
+        "results": 1,
+        "finished": true,
+        "admission": false,
+        "snapshots": 2,
+        "balanced_batches": 1
+      }
+    }
+  ]
+}

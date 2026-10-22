@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-21T23:58:03.640Z",
+  "game": "3ec92708-bf27-4433-9140-beb0db4fec6b",
+  "events": [
+    [
+      {
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "revision": 0
+      },
+      {
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "revision": 1
+      }
+    ],
+    [
+      {
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "revision": 0
+      },
+      {
+        "keys": [
+          "dealer_game_id",
+          "game_id",
+          "revision"
+        ],
+        "revision": 1
+      }
+    ]
+  ],
+  "passed": true,
+  "authenticated": true,
+  "subscribed": true,
+  "dealer": "2b918113-88ed-41c0-9597-1e76cbd53b23",
+  "freshConsent": true,
+  "scheduledInitialDeal": true
+}

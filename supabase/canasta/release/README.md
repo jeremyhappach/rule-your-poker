@@ -1,3 +1,18 @@
+# Current checkpoint — October 21, 2026
+
+The later conditional release authorization supersedes historical local-only
+restrictions below. Exact SQL is installed as migration `20261021235336`; worker
+v1 reports real scheduled heartbeats. General admission remains false and zero
+account/session grants exist. No client publication or smoke activation occurred.
+Golf returned the production window without changes. Canasta remains blocked on independent transport concurrency and deployed API/browser qualification.
+
+Use `hosted-proof.mjs` for independent hosted rollback units; the legacy aggregate
+proof bodies below are local qualification inputs, not the hosted transport.
+Three candidate and five installed units passed. Remaining API/Realtime/race/
+recovery/browser gates are documented in
+`docs/codex/CANASTA_HOSTED_QUALIFICATION.md`. The local production adapter reuses
+the existing server-only project credential pair if no dedicated override exists.
+
 # Canasta closed release package — October 21, 2026
 
 **Prepared locally; NOT approved for installation, publication or activation.**

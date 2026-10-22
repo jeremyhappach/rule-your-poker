@@ -25,6 +25,7 @@ export type CardEndpoint =
   | { kind: 'hand'; playerId: string }
   | { kind: 'community'; index: number }
   | { kind: 'chucky'; index: number }
+  | { kind: 'tableau'; playerId: string; index: number }
   | { kind: 'stock' }
   | { kind: 'discard' }
   /**
@@ -53,6 +54,8 @@ export interface CardTransportIntent {
   to: CardEndpoint;
   /** Flight duration. Defaults to 110ms — zip, not dealer simulator. */
   durationMs?: number;
+  /** Optional shared card cue, admitted only when the shell actually launches. */
+  soundUserId?: string;
   /** Per-card stagger applied at dispatch time. Defaults to 0. */
   launchDelayMs?: number;
   /** Delay after arrival before the destination claims ownership. Defaults to global Deal Timing. */
@@ -139,6 +142,7 @@ export function describeCardEndpoint(ep: CardEndpoint): string {
     case 'hand':           return `hand:${ep.playerId}`;
     case 'community':      return `community:${ep.index}`;
     case 'chucky':         return `chucky:${ep.index}`;
+    case 'tableau':        return `tableau:${ep.playerId}:${ep.index}`;
     case 'stock':          return 'stock';
     case 'discard':        return 'discard';
     case 'feltDealOrigin': return 'felt-deal-origin';

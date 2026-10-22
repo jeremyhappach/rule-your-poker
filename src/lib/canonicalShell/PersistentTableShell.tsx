@@ -73,7 +73,7 @@ import { SettlementRuntime } from './settlement/SettlementRuntime';
  * Lives inside CanonicalAnnouncementProvider so it can dispatch
  * clearAmbient / dismiss against the same context the rail consumes.
  */
-function LobbyAnnouncementReset({ lobbyMode, gameId }: { lobbyMode: boolean; gameId?: string | null }) {
+function LobbyAnnouncementReset({ lobbyMode, gameId, sessionEnded = false }: { lobbyMode: boolean; gameId?: string | null; sessionEnded?: boolean }) {
   const ctx = useAnnouncementContext();
   // Both waiting-table presentations own this scoped ambient until unmount.
   // Lobby cleanup must retire gameplay messages without stealing that slot.
@@ -81,6 +81,9 @@ function LobbyAnnouncementReset({ lobbyMode, gameId }: { lobbyMode: boolean; gam
     && ctx.ambient.scope.dealerGameId === gameId
     && (ctx.ambient.id === `${gameId}:waiting-table:ready`
       || ctx.ambient.id === `${gameId}:waiting-table:waiting`);
+  const isCurrentPhaseAmbient = isCurrentWaitingAmbient || (sessionEnded && !!gameId
+    && ctx?.ambient?.type === 'session_ended' && ctx.ambient.scope.dealerGameId === gameId
+    && ctx.ambient.id === `${gameId}:session-ended`);
   const prevRef = useRef(false);
   useEffect(() => {
     const wasLobby = prevRef.current;
@@ -89,16 +92,16 @@ function LobbyAnnouncementReset({ lobbyMode, gameId }: { lobbyMode: boolean; gam
     // Edge: clear on the transition into lobby. Also clear on the
     // first paint when we mount already in lobby (wasLobby === false).
     if (wasLobby) return;
-    if (!isCurrentWaitingAmbient) ctx.clearAmbient();
+    if (!isCurrentPhaseAmbient) ctx.clearAmbient();
     if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
-  }, [lobbyMode, ctx, isCurrentWaitingAmbient]);
+  }, [lobbyMode, ctx, isCurrentPhaseAmbient]);
   // Also reactively dismiss any NEW gameplay ambient/transient that
   // arrives while we're in lobby (late-firing publisher cleanup).
   useEffect(() => {
     if (!lobbyMode || !ctx) return;
-    if (ctx.ambient && !isCurrentWaitingAmbient) ctx.clearAmbient();
+    if (ctx.ambient && !isCurrentPhaseAmbient) ctx.clearAmbient();
     if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
-  }, [lobbyMode, ctx, ctx?.ambient?.id, ctx?.transient?.id, isCurrentWaitingAmbient]);
+  }, [lobbyMode, ctx, ctx?.ambient?.id, ctx?.transient?.id, isCurrentPhaseAmbient]);
   return null;
 }
 import { ShellTabBarProvider } from './ShellTabBar';
@@ -124,6 +127,8 @@ import {
 } from './PreSessionSeatLayer';
 
 export interface PersistentTableShellProps {
+  /** Local terminal presentation completed; retire gameplay-only delta labels. */
+  sessionEnded?: boolean;
   presentationMode?: PresentationMode;
   presentationTransitionBlocked?: boolean;
   gameId?: string;
@@ -462,6 +467,7 @@ export function PersistentTableShell(props: PersistentTableShellProps) {
         overlayRootRef={overlayRootRef}
       />
       <ChipPresentationDeltaRuntime
+        enabled={!props.sessionEnded}
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />
@@ -502,7 +508,7 @@ export function PersistentTableShell(props: PersistentTableShellProps) {
             <ShellTabBarProvider>
               <ShellTimerProvider>
                 <ShellFeltContextProvider>
-                  <LobbyAnnouncementReset lobbyMode={lobbyMode} gameId={gameId} />
+                  <LobbyAnnouncementReset lobbyMode={lobbyMode} gameId={gameId} sessionEnded={props.sessionEnded} />
                   <CinematicPresentationContext.Provider value={cinematic.context}>{body}</CinematicPresentationContext.Provider>
                 </ShellFeltContextProvider>
               </ShellTimerProvider>

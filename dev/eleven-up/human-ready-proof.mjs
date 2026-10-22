@@ -27,6 +27,7 @@ async function fixture(real){
 try{
  await c.query('BEGIN');await c.query("set local statement_timeout='15s'");
  await c.query(body(read('supabase/eleven-up/human-ready.sql','utf8')));
+ if(process.argv.includes('--smoke-controls'))await c.query(body(read('supabase/eleven-up/smoke-controls.sql','utf8')));
  for(const real of [true,false]){
   const f=await fixture(real),before=await match(f);
   await service();await c.query('select private.eleven_up_recover()');
@@ -139,7 +140,7 @@ try{
  // Independent connections exercise the real row locks and CAS, not mocks.
  await c.query('BEGIN');const race=await fixture(false);await c.query('COMMIT');
  await c.query('BEGIN');await service();await c.query('select private.eleven_up_recover()');await c.query('COMMIT');
- let rm=await match(race);await c.query('select pg_sleep(0.8)');
+ let rm=await match(race);await c.query('select pg_sleep(greatest(0,($1::bigint-extract(epoch from clock_timestamp())*1000)/1000)+0.05)',[rm.bot_due_at]);
  const second=await connect(context().database);
  try{
   await c.query('BEGIN');await c.query('select 1 from public.rounds where id=$1 for update',[rm.round_id]);

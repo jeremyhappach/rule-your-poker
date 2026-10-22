@@ -3,7 +3,7 @@ DO $$
 DECLARE source text:=pg_get_functiondef('private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)'::regprocedure);
  anchor text:='    WHEN v_game.game_type=''farkle'' THEN';
 BEGIN
- IF md5(replace(source,chr(13),'')) <> '7b6ca8feaa35c1fcce8b00491783e9d4' THEN
+ IF md5(replace(source,chr(13),'')) <> '71a82570740f60593bdb09e504aa744c' THEN
   RAISE EXCEPTION 'canasta:ante_authority_changed';
  END IF;
  IF position('''race-poker''' IN source)=0 OR (length(source)-length(replace(source,anchor,'')))/length(anchor)<>1 THEN
@@ -57,9 +57,10 @@ INSERT INTO public.game_defaults(game_type,ante_amount) VALUES('canasta',5)
 
 CREATE FUNCTION public.canasta_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',
-  private.canasta_actor_allowed(auth.uid()) AND EXISTS(SELECT 1 FROM private.canasta_release WHERE admission_enabled)
-  AND (p_session_id IS NULL OR EXISTS(SELECT 1 FROM public.players p JOIN public.games g ON g.id=p.game_id
-   WHERE p.game_id=p_session_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status='active' AND g.real_money=false)))
+  private.canasta_admission_allowed(auth.uid(),p_session_id)
+  AND EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=p_session_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status='active')
+  AND NOT EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=p_session_id AND p.status<>'left' AND NOT p.is_bot
+   AND NOT private.canasta_admission_allowed(p.user_id,p_session_id)))
 $$;
 REVOKE ALL ON FUNCTION public.canasta_capabilities(uuid) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.canasta_capabilities(uuid) TO authenticated;

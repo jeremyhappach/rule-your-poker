@@ -2,6 +2,8 @@
 
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
+Canasta installed closed qualification and coordination hold: `CANASTA_HOSTED_QUALIFICATION.md`.
+
 | File | Read when |
 |---|---|
 | `PROJECT_CONTEXT.md` | First session, product overview, stack, operating constraints |
@@ -16,6 +18,13 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
+| `SIX_CARD_GOLF_RECONCILIATION.md` | Current-main/Battle 31 reconciliation, migration hash, preservation proofs and reserved two-account smoke scope |
+| `SIX_CARD_GOLF_HOSTED_ATTEMPT.md` | Executed hosted candidate proofs, four-human containment timeout, verified rollback and unopened smoke window |
+| `SIX_CARD_GOLF_DIRECT_RUNNER.md` | Historical direct-runner timeout evidence and binding discovery; superseded by connector retry |
+| `SIX_CARD_GOLF_CONNECTOR_RETRY.md` | Current 11 Up baseline, corrected connector, 14/16 hosted passes, Run Back liveness blocker and verified rollback |
+| `SIX_CARD_GOLF_HOSTED_QUALIFICATION.md` | Superseding 22/22 candidate and installed proofs, installed migration, actual hosted transport/race/recovery and release checkpoint |
+| `SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md` | Offline production proofs, implemented scoped qualification gate, canonical autoplay/reclaim and later activation procedure |
 | `RACE_POKER_RULES.md` | Approved multiplayer-only rules and bot information contract |
 | `RACE_POKER_QUALIFICATION.md` | Local authority/financial/browser evidence and coordinated release hold |
 | `RACE_POKER_RELEASE_PLAN.md` | Exact coordinated integration, migration, qualification, publication and activation sequence |

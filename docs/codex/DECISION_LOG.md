@@ -1,3 +1,15 @@
+# 2026-10-21 — Canasta restricted hosted qualification
+
+Jeremy authorized conditional release with exact Hap/Happach Gmail account and
+session grants lasting 24 hours, preserving existing admitted matches on expiry.
+The installed private qualification table follows the accepted Golf pattern;
+global and real-money admission remain closed. Migration `20261021235336` and
+worker v1 pass bounded hosted financial/admission proofs. A later coordination
+instruction briefly yielded production writes to Golf; that window returned
+unchanged. Auth/Realtime and scheduled continuation now pass, but independent
+transport concurrency remains unproved. No Canasta client publication or smoke
+activation yet. See `CANASTA_HOSTED_QUALIFICATION.md`.
+
 # 2026-10-21 — Canasta initial admission is fake money only
 
 The authorized local reconciliation incorporates main `6b15f4eb0`: use the released
@@ -16,6 +28,13 @@ qualification therefore needs explicitly approved identities/session provisionin
 Accepted match execution, canonical money owners and real-money regression fixtures
 remain intact. Package/current-main reconciliation and hosted acceptance are still
 required before release. See `CANASTA_RELEASE_PACKAGE.md`.
+# 2026-10-21 — 11 Up expired humans retain their round schedule
+
+Jeremy superseded the earlier Ready-only control policy: gameplay expiry preserves
+the exact result but marks the human away. Keep their seat and all subsequent
+rounds/bonuses: fake money delegates those turns to the existing bot; real money
+pauses at the next Ready boundary. Reclaim clears deferred sit-out without resume
+or clock reset. See `ELEVEN_UP_SMOKE_CONTROLS.md`. Approved scope is local only.
 
 # 2026-10-21 — Battle 31 registration preserves released shared owners
 
@@ -2630,6 +2649,58 @@ No change to `canasta-classic-two/1`, the 120-second clock or accepted appearanc
 ## 2026-10-20 — Presentation catalog UI candidate
 
 Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.
+
+## Race Poker catalog integration — 2026-10-20
+
+The isolated candidate incorporates catalog main 44dbd5a7d. Race Poker uses one multiplayer-only descriptor and the existing capability plus roster guards for selection, submission and Run Back. Its unchanged frozen help article is shared with gameplay; explicit fixedVersion metadata avoids querying Arcade for a multiplayer-only game. Existing games retain dynamic current/legacy resolution. No rules, SQL, financial authority or admission flags changed. Production remains on the coordinated release hold.
+
+## 2026-10-20 — Golf terminal presentation uses canonical phase ownership
+
+The canonical route's Session Ended admission retires positioned chip-delta
+labels and Golf controls without changing balances, settlement or ledger
+cursors. The shell's lobby announcement cleanup preserves the exact current
+Session Ended ambient only while that phase is active; stale gameplay and
+other-session announcements still clear. Actual-route tests use simulated SDK
+responses, and a complete local browser match verifies retained Results/HUD,
+the Session Ended heading and local Back to Lobby. This is local qualification,
+not live service or production acceptance. See SIX_CARD_GOLF_IMPLEMENTATION.md
+and SIX_CARD_GOLF_RELEASE_PLAN.md for evidence and closed-admission gates.
+
+## 2026-10-21 — Golf production proof preparation, live gate still proposed
+
+Production proof generation is offline and separate from local bootstrap tools.
+It pins the unchanged migration, removes fixture heartbeat writes, refuses stale
+live scheduler health, preserves integrity triggers and requires complete
+rollback/containment evidence. Installed proofs use reviewed candidate function
+and catalog fingerprints. Deliberate committed-corruption injection stays local.
+An exact-account/session qualification gate is recommended to resolve live
+browser/cron testing before general admission; it is not approved or implemented
+by this preparation. No global active-account opening is inferred. See
+SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md.
+
+## 2026-10-21 — Golf scoped qualification and canonical autoplay follow-up
+
+The later approved local implementation supersedes the proposed-gate status above.
+Private expiring grants bind exact existing users and sessions, while frozen
+admitted access preserves liabilities after expiry without admitting another match.
+General admission stays closed. Canonical player intent owns autoplay/reclaim;
+Golf publishes only its public controls with authoritative revisions. Real human
+timeout pauses; fake timeout marks autoplay and deferred next-match sit-out.
+Uncheck clears those flags without resuming pause or disposing of a pending draw.
+Opponent robots are an opt-in score decoration. Rules and finances are unchanged.
+Production qualification/publication remains a separate authorized phase with
+fresh authority checks and actual Auth/Realtime/cron/race evidence.
+
+## 2026-10-21 — Golf preserves released shared owners during reconciliation
+
+Reconcile against main `6b15f4eb060df319df13d576948c343920a23b21` using strict
+preimage guards and single-anchor additive ante/stake changes. Do not replace
+copied shared bodies or replay Battle 31's installed migration. Preserve Race
+Poker v2, 11 Up bots/Ready and other game definitions/permissions. Combined local
+qualification compares 408 existing functions and exercises released financial
+and control paths. The revised package returns for review before release; future
+smoke stays limited to the two verified owner accounts, exact fake sessions and
+24 hours after enablement, with admitted-match recovery preserved after expiry.
 
 ## 2026-10-20 — Battle 31 local rules and implementation
 

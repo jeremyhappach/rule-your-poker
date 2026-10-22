@@ -1,3 +1,6 @@
+import './publicTableau.css';
+import {TableauCard} from '@/lib/canonicalShell/TableauCard';
+import type {Card} from '@/lib/cardUtils';
 /**
  * GameplayOpponentSeatLayer — shell-owned gameplay opponent seat
  * cluster set for canonical card-family game tables (cribbage, gin
@@ -88,6 +91,10 @@ export interface CardBacksPresentation {
 }
 
 export interface GameplayOpponentSeatPresentation {
+  /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
+  onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
+  hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
+  publicTableau?: (p: GameplayOpponentSeatParticipant) => (Card|undefined)[];
   /** A separately persisted local test ledger must not read the session money cursor. */
   isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
   /** Public one-use pass availability; contains no private card evidence. */
@@ -98,6 +105,7 @@ export interface GameplayOpponentSeatPresentation {
   chipValue?: (p: GameplayOpponentSeatParticipant) => string | undefined;
   hideChipBubble?: (p: GameplayOpponentSeatParticipant) => boolean;
   scoreLine?: (p: GameplayOpponentSeatParticipant) => string | undefined;
+  scoreAutoPlay?: (p: GameplayOpponentSeatParticipant) => boolean;
   cardBacks?: (p: GameplayOpponentSeatParticipant) => CardBacksPresentation | null;
   /** Presentation-only marker for a fake-money human currently auto-rolling. */
   autoRoll?: (p: GameplayOpponentSeatParticipant) => boolean;
@@ -111,7 +119,7 @@ export interface GameplayOpponentSeatPresentation {
 
 export interface GameplayOpponentSeatLayerProps {
   /** Game family used in ownerLabel + diagnostics. */
-  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
+  family: 'six-card-golf' | 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
   /** Opponents to project (caller filters self / observers as needed). */
   participants: GameplayOpponentSeatParticipant[];
   /** Typed presentation accessors. All fields optional. */
@@ -273,6 +281,7 @@ export function GameplayOpponentSeatLayer({
         // coordinate frame and pulled seats inward vs. the
         // MobileGameTable canonical clusters. --shell-felt-w stays
         // owned by ShellOwnedFeltHost for the ellipse paint only.
+        containerType:'size',containerName:'seat-frame',
         position: 'fixed',
         top: 'calc(var(--shell-header-h, 0px) + var(--play-top-safe-area, 0px))',
         left: 0,
@@ -331,8 +340,11 @@ export function GameplayOpponentSeatLayer({
             chipHUD={chipHUD}
             chipDiscChildren={chipDiscChildren}
             scoreLine={scoreLine ?? null}
+            scoreAutoPlay={presentation?.scoreAutoPlay?.(p)??false}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
+            keepNameInward={!!presentation?.publicTableau}
+            innerDecoration={presentation?.publicTableau ? <button type="button" className="canonical-public-tableau" data-public-seat-tableau={p.position} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}>{presentation.publicTableau(p).map((card,i)=><div key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:presentation.hiddenTableauCards?.(p).includes(i)?'hidden':'visible'}}><TableauCard card={card} isHidden={!card} tier="small" style={{width:'100%',height:'100%'}}/></div>)}</button> : undefined}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
             {renderCardBacks && cardBacks ? (

@@ -157,8 +157,25 @@ GRANT EXECUTE ON FUNCTION public.canasta_server_load(uuid,uuid),public.canasta_s
 
 -- SOURCE: supabase/canasta/admission.candidate.sql
 -- LOCAL CANDIDATE. Closed configure gate; canonical Ante Up owner retains consent.
+-- Exact existing account/session grants. Expiry affects new setup only: the
+-- frozen roster and committed setup continue through consent and match recovery.
+CREATE TABLE private.canasta_qualification (
+ game_id uuid NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ expires_at timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY(game_id,user_id),CHECK(expires_at>created_at)
+);
+ALTER TABLE private.canasta_qualification ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.canasta_qualification FROM PUBLIC,anon,authenticated,service_role;
 CREATE FUNCTION private.canasta_rules() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS 'SELECT ''{"version":"canasta-classic-two/1","participants":2,"handSize":15,"drawCount":2,"requiredCanastas":2,"target":5000,"turnMs":120000}''::jsonb';
 CREATE FUNCTION private.canasta_actor_allowed(actor uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS 'SELECT actor IS NOT NULL AND EXISTS(SELECT 1 FROM public.profiles WHERE id=actor AND is_active) AND EXISTS(SELECT 1 FROM private.canasta_release WHERE enabled)';
+CREATE FUNCTION private.canasta_admission_allowed(actor uuid,session_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT private.canasta_actor_allowed(actor)
+ AND EXISTS(SELECT 1 FROM public.games WHERE id=session_id AND real_money=false)
+ AND (EXISTS(SELECT 1 FROM private.canasta_release WHERE singleton AND admission_enabled)
+  OR EXISTS(SELECT 1 FROM private.canasta_qualification WHERE game_id=session_id AND user_id=actor AND expires_at>clock_timestamp()))
+$$;
+REVOKE ALL ON FUNCTION private.canasta_admission_allowed(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
 CREATE OR REPLACE FUNCTION public.canasta_configure(p_game_id uuid, p_dealer_player_id uuid, p_expected_dealer_position integer, p_game_type text, p_config jsonb, p_expected_config_deadline timestamp with time zone)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -185,13 +202,13 @@ BEGIN
   RETURN claim.result||'{"outcome":"already_configured","deduped":true}'::jsonb;
  END IF;
  -- Admission controls creation only; existing setup retries and match authority remain live.
- IF NOT EXISTS(SELECT 1 FROM private.canasta_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'canasta:admission_closed' USING ERRCODE='42501';END IF;
+ IF NOT private.canasta_admission_allowed(actor,g.id) THEN RAISE EXCEPTION 'canasta:admission_closed' USING ERRCODE='42501';END IF;
  PERFORM private.canasta_assert_recovery_health();
  IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position
  OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')
  OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'canasta:setup_identity';END IF;
  PERFORM 1 FROM public.players WHERE game_id=g.id ORDER BY id FOR UPDATE;
- IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.canasta_actor_allowed(user_id)) THEN RAISE EXCEPTION 'canasta:tester_required' USING ERRCODE='42501';END IF;
+ IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.canasta_admission_allowed(user_id,g.id)) THEN RAISE EXCEPTION 'canasta:tester_required' USING ERRCODE='42501';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND NOT waiting AND position IS NOT NULL AND NOT is_bot) THEN RAISE EXCEPTION 'canasta:human_required';END IF;
  SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position,'isBot',p.is_bot)
  ORDER BY CASE WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,p.position DESC,p.id) INTO people
@@ -376,7 +393,7 @@ DO $$
 DECLARE source text:=pg_get_functiondef('private.advance_ante_phase_exact(uuid,uuid,timestamptz,timestamptz)'::regprocedure);
  anchor text:='    WHEN v_game.game_type=''farkle'' THEN';
 BEGIN
- IF md5(replace(source,chr(13),'')) <> '7b6ca8feaa35c1fcce8b00491783e9d4' THEN
+ IF md5(replace(source,chr(13),'')) <> '71a82570740f60593bdb09e504aa744c' THEN
   RAISE EXCEPTION 'canasta:ante_authority_changed';
  END IF;
  IF position('''race-poker''' IN source)=0 OR (length(source)-length(replace(source,anchor,'')))/length(anchor)<>1 THEN
@@ -430,9 +447,10 @@ INSERT INTO public.game_defaults(game_type,ante_amount) VALUES('canasta',5)
 
 CREATE FUNCTION public.canasta_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',
-  private.canasta_actor_allowed(auth.uid()) AND EXISTS(SELECT 1 FROM private.canasta_release WHERE admission_enabled)
-  AND (p_session_id IS NULL OR EXISTS(SELECT 1 FROM public.players p JOIN public.games g ON g.id=p.game_id
-   WHERE p.game_id=p_session_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status='active' AND g.real_money=false)))
+  private.canasta_admission_allowed(auth.uid(),p_session_id)
+  AND EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=p_session_id AND p.user_id=auth.uid() AND NOT p.is_bot AND p.status='active')
+  AND NOT EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=p_session_id AND p.status<>'left' AND NOT p.is_bot
+   AND NOT private.canasta_admission_allowed(p.user_id,p_session_id)))
 $$;
 REVOKE ALL ON FUNCTION public.canasta_capabilities(uuid) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.canasta_capabilities(uuid) TO authenticated;

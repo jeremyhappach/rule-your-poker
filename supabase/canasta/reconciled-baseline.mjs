@@ -18,7 +18,10 @@ try{
  CREATE FUNCTION cron.alter_job(job_id bigint,active boolean) RETURNS void LANGUAGE sql AS $$ UPDATE cron.job SET active=$2 WHERE jobid=$1 $$;
  CREATE PUBLICATION supabase_realtime;`);
  const battle=readFileSync('supabase/migrations/20261021202023_battle31_v1.sql','utf8').replace(/^BEGIN;\r?$/m,'').replace(/^COMMIT;\r?$/m,'');
- await c.query(battle);await c.query('COMMIT');
+ await c.query(battle);
+ await c.query(readFileSync('supabase/eleven-up/smoke-controls.sql','utf8').replace(/^BEGIN;\r?$/m,'').replace(/^COMMIT;\r?$/m,''));
+ for(const part of ['rules','multiplayer','lifecycle','bots','recovery','registration','grants'])await c.query(readFileSync('supabase/six-card-golf/'+part+'.sql','utf8'));
+ await c.query('COMMIT');
  const fingerprint=async()=> (await c.query("SELECT n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' AS name,md5(replace(pg_get_functiondef(p.oid),chr(13),'')) AS hash FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private') AND p.prokind='f' AND p.proname NOT LIKE 'canasta%' ORDER BY 1")).rows;
  const before=await fingerprint();
  const defaults=(await c.query('SELECT to_jsonb(d) d FROM public.game_defaults d ORDER BY game_type')).rows;
@@ -31,7 +34,7 @@ try{
  const after=await fingerprint(),differences=after.filter((row,i)=>JSON.stringify(row)!==JSON.stringify(before[i]));
  assert.equal(differences.length,1,'only Ante Up dispatcher may change');assert(differences[0].name.startsWith('private.advance_ante_phase_exact('));
  await c.query('BEGIN');
- for(const file of ['proof.sql','consent.proof.sql','admission.proof.sql','concurrency.fixture.sql','terminal-control.proof.sql'])await c.query(readFileSync('supabase/canasta/'+file,'utf8').replaceAll('SET LOCAL ROLE postgres','RESET ROLE'));
+ for(const file of ['proof.sql','consent.proof.sql','admission.proof.sql','qualification.proof.sql','concurrency.fixture.sql','terminal-control.proof.sql'])await c.query(readFileSync('supabase/canasta/'+file,'utf8').replaceAll('SET LOCAL ROLE postgres','RESET ROLE'));
  await c.query('ROLLBACK');await c.query('BEGIN');
  for(const file of ['core-proof','financial-proof','rollback-failure-proof','v2-controls-proof'])await c.query(readFileSync('supabase/race-poker/'+file+'.sql','utf8'));
  const controls=/const controls=`([\s\S]*?)`;/.exec(readFileSync('dev/eleven-up/combined-production-proof.mjs','utf8'));assert(controls);
