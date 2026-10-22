@@ -16,7 +16,7 @@ try{
   assert.equal(v.paused,false,'active humans do not time out');
   const actor=v.players[v.turnIndex],p=pages[f.users.indexOf(actor.userId)],revision=v.revision;
   if(v.phase==='opening'){
-   await p.locator('[data-golf-position="0"]:not([disabled])').click();await p.locator('[data-golf-position="3"]:not([disabled])').click();await p.getByRole('button',{name:'Reveal selected two',exact:true}).click();
+   await p.locator('[data-golf-position="0"]:not([disabled])').click();await p.locator('[data-golf-position="3"]:not([disabled])').click();
   }else if(!v.hasPending)await p.locator('[data-golf-stock]:not([disabled])').click();
   else{const board=v.tableaus[actor.id],index=board.exposed.findIndex(x=>!x);await p.locator('[data-golf-position="'+(index<0?0:index)+'"]:not([disabled])').click();}
   for(let i=0;i<100;i++){v=await snap();if(v.revision>revision)break;await p.waitForTimeout(50);}assert.ok(v.revision>revision);moves++;

@@ -1,0 +1,1 @@
+.canonical-card-count-badge {position:absolute;top:0;left:0;transform:translate(-35%,-40%);display:grid;place-items:center;min-width:1.8em;height:1.8em;padding:0 .2em;border:2px solid #eed58a;border-radius:50%;background:#113f48;color:#fff;font-size:var(--canonical-card-count-font-size,.8rem);font-weight:800;font-variant-numeric:tabular-nums;pointer-events:none;z-index:2}

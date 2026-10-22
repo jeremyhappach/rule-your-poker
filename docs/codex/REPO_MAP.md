@@ -1184,6 +1184,13 @@ timeout/reclaim/next-match intent. The registered unpublished migration is
 
 `src/components/golf/GolfTable.tsx` renders canonical Golf artifacts and autoplay
 controls; `src/hooks/useGolf.ts` reconciles authoritative revisions/receipts.
+The local centered-layout candidate places public grids in the canonical felt
+interaction slot; shared opponent seats retain identity/chips/totals only.
+MY owns the centered local grid and Info opens ancillary controls. See
+`SIX_CARD_GOLF_CENTERED_LAYOUT.md`; other games' seat artifacts are unchanged.
+`src/components/canonicalShell/CanonicalCardCountBadge.tsx` is the reusable
+nonfinancial stock-count circle; Golf is its first consumer. The default
+discard-left / stock-right convention is in `ARCHITECTURE.md`.
 `dev/six-card-golf/` contains local browser/SQL/race tools and separate offline
 production proof/evidence builders. The production qualification plan records
 the exact pinned hash, eleven rollback units and remaining live-service gates.

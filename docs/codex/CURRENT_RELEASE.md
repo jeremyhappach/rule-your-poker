@@ -1,18 +1,82 @@
-# Canasta / 1 — 2026-10-21 — OWNER HOLD for Golf smoke corrections
+# Canasta / 1 — October 22 — qualification resumed, activation conditional
 
-All Canasta release work is held by Jeremy's reprioritization. No further push,
-deployment, migration, grant or activation until resumed. The already-published
-closed candidate is `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da` at holm357.com,
-deployment `dpl_8SHB6u8CmcMscgemm3zuTuPaeCzx`. Its Canasta API fails at native ESM
-module resolution; no gameplay admission is open. The packaging correction is
-branch-pushed as `823262a3b9f9bf7d4d6c82b7a2d5a6b6b5041342`, but its production
-deployment `dpl_rLg9Ar8UxZEho583nnKmHyF1TsPS` was canceled on the hold.
-The automatic preview finished before cancellation; no Canasta deployment remains
-in flight. General admission is false, grants are zero, the retained qualification
-session is paused, and the smoke window never opened. Golf's two flags remain true.
-Migration `20261021235336` and recovery worker v1 remain installed, unchanged.
-Main was not integrated or pushed. See `CANASTA_HOSTED_QUALIFICATION.md` for the
-exact retained identities, local checks and unfinished transport/browser gates.
+Jeremy authorized completion of hosted API, concurrency, recovery and lifecycle
+qualification. Only after all gates pass, Canasta may open to every user in play
+money, without an account allowlist or expiration. Real-money admission remains
+server-denied. Migration `20261021235336` is already installed and must not be
+reapplied. The native ESM correction and retained qualification work are preserved.
+General admission remains closed pending the actual hosted gates.
+Integration retains Golf's published `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`
+and both-money availability; unpublished Golf work is excluded. Other releases
+remain held. See `CANASTA_HOSTED_QUALIFICATION.md` for evidence and prior checkpoints.
+
+# Golf interaction release — October 22 — approved, integrated qualification
+
+Jeremy approved candidate `5d2db057f3e15476c28a9a0274b16863b506e9c9` for publication.
+The integration preserves deployed closed Canasta checkpoint `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`
+and released main `52aa5528143fe031c4ddf8c3787eff85c0392aa9`. Later Canasta changes
+remain outside this release. Only Golf presentation and interaction change.
+
+Visible first-card selection, second-tap opening, centered MY/opponent grids,
+Info controls, discard-left/stock-right, stock count and proportional card corners
+are retained from the reviewed candidate. Rules, finances and SQL are unchanged.
+Migration `20261021230433` is already installed and is not reapplied. Read-only
+preflight confirms Golf enabled/admission enabled, Canasta admission closed with
+zero active grants, and the owner's paused opening at revision 4 with zero actions.
+
+Final validation passes: 2,706 application tests, 241 harness tests, TypeScript,
+production build, 63 rendered cases and isolated browser actions. The two stale
+Canasta source-contract assertions were corrected without runtime changes.
+
+See [release qualification](SIX_CARD_GOLF_UI_RELEASE.md). Historical holds below
+are superseded only for this approved Golf release. Owner production smoke remains
+acceptance truth.
+
+# Golf felt-card shape — October 21 — local review, release held
+
+The built candidate reproduced an 8px panel radius on 16–18px exposed cards,
+making them appear capsule-shaped. Golf's felt cards now use proportional 10%
+corners; the count chip remains circular. Opponent cards are slightly larger
+(about 7–8% in the owner's two captured viewports). MY and pile conventions remain.
+19 focused tests, 63 rendered geometry/shape cases, isolated actions and build pass.
+Final owner portrait/landscape screenshots were inspected directly. See
+[cause, comparison and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, deployment, migration, admission or live-session changes.
+
+# Golf pile refinement — October 21 — preceding local candidate
+
+Discard is now left and stock right. Opponent cards are 12% larger than pile
+cards; visible piles are 8px apart and MY gaps are 2px. Stock uses the reusable
+upper-left circular count with no visible Stock word. The future-game convention
+is recorded in `ARCHITECTURE.md`; other games are unchanged.
+19 focused tests, 63 rendered cases, isolated actions, typecheck and build pass.
+Fresh final owner-session portrait/landscape screenshots were inspected directly.
+See [refinement and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, publication, deployment, migration, admission or live-state changes.
+
+# Golf centered layout — October 21 — preceding local candidate
+
+Jeremy rejected the prior seat-attached opponent grids and split MY pane.
+The revised candidate centers opponents on the felt, centers the local grid in
+MY, moves ancillary controls into Info, and centers piles below opponents.
+18 focused tests, 63 rendered layout cases, isolated browser actions, typecheck
+and build pass; final owner-session images were visually inspected. See
+[centered layout and provenance](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, merge, deployment or admission changes. Owner review remains pending.
+
+# Golf interaction/layout — October 21 — superseded layout proposal
+
+The owner-session investigation found invisible face-down selection feedback and
+an extra opening confirmation step. The candidate visibly marks the first card,
+submits the existing legal opening action on the second distinct tap, keeps the
+local grid in MY in both orientations, and centers piles at the bottom of the
+felt. Focused tests, typecheck/build, authenticated inspection and isolated action
+qualification pass. See [findings and evidence](SIX_CARD_GOLF_INTERACTION_POLISH.md).
+No push/deployment is authorized yet. The published Golf build remains
+`52aa5528143fe031c4ddf8c3787eff85c0392aa9`, with both-money general admission enabled
+by the owner on October 21 at 19:04 Central. The owner's paused session and all
+financial/history records are preserved.
+
 
 # Canasta / 1 — 2026-10-21 — closed hosted installation, transport gate pending
 
@@ -61,6 +125,7 @@ the 71-card witness. Native mobile/gameplay acceptance remains pending.
 Appearance follow-up removes preview-only dark styling. Authenticated production
 comparison confirms the shared amber border, bridge felt and white page treatment;
 side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
+
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
 October 21 qualified publication checkpoint: candidate **22/22** and installed

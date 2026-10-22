@@ -1,0 +1,308 @@
+{
+  "at": "2026-10-22T01:40:48.294Z",
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 106,
+          "y": 561.234375,
+          "w": 58,
+          "h": 81.1875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 166,
+          "y": 561.234375,
+          "w": 58,
+          "h": 81.1875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 226,
+          "y": 561.234375,
+          "w": 58,
+          "h": 81.1875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 106,
+          "y": 644.421875,
+          "w": 58,
+          "h": 81.203125,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 166,
+          "y": 644.421875,
+          "w": 58,
+          "h": 81.203125,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 226,
+          "y": 644.421875,
+          "w": 58,
+          "h": 81.203125,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        }
+      ]
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 354,
+          "y": 243.859375,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 400,
+          "y": 243.859375,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 446,
+          "y": 243.859375,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 354,
+          "y": 298.625,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 400,
+          "y": 298.625,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 446,
+          "y": 298.625,
+          "w": 44,
+          "h": 52.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "rpc": [
+    {
+      "name": "golf_snapshot",
+      "status": 200
+    }
+  ],
+  "websocket": [
+    {
+      "topic": "realtime:golf:100b31e9-e196-494a-b94c-d6c7c9a95ae7:2339c538-3789-4f13-9b6e-88b61a5b40ee",
+      "status": "ok"
+    }
+  ],
+  "text": "Info",
+  "shapes": [
+    {
+      "width": 390,
+      "height": 844,
+      "cards": [
+        {
+          "face": true,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-8 h-12 sm:w-9 sm:h-14 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": true,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-8 h-12 sm:w-9 sm:h-14 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 52,
+          "h": 72.796875,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": true,
+          "w": 46.421875,
+          "h": 65,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-8 h-12 sm:w-9 sm:h-14 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 46.421875,
+          "h": 65,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        }
+      ],
+      "badge": {
+        "w": 24.015625,
+        "h": 22.5625,
+        "radius": "50%"
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "cards": [
+        {
+          "face": true,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-12 h-16 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": true,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-12 h-16 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 17.734375,
+          "h": 24.828125,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        },
+        {
+          "face": true,
+          "w": 15.828125,
+          "h": 22.171875,
+          "radius": "8px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "rounded-lg border bg-card text-card-foreground w-12 h-16 relative flex flex-col items-center justify-center p-0 shadow-xl border-gray-300 transition-transform duration-200 overflow-hidden"
+        },
+        {
+          "face": false,
+          "w": 15.828125,
+          "h": 22.171875,
+          "radius": "4px",
+          "clipPath": "none",
+          "overflow": "hidden",
+          "className": "relative overflow-hidden"
+        }
+      ],
+      "badge": {
+        "w": 18.390625,
+        "h": 16.1875,
+        "radius": "50%"
+      }
+    }
+  ]
+}

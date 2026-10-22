@@ -1,0 +1,16 @@
+{
+  "baseline": false,
+  "passed": true,
+  "errors": [],
+  "actions": [
+    "opening",
+    "opening",
+    "stock/reload/replace",
+    "discard/replace"
+  ],
+  "selection": {
+    "pressed": true,
+    "highlight": 1,
+    "text": "Hole 1 / 9 · Completed totals\nPlayer 2 bcbf05bd: 0\nYou: 0\n\n1 of 2 selected · tap a second card to reveal both"
+  }
+}

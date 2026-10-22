@@ -15,7 +15,6 @@ try{
   const v=await snap(f.users[0]),actor=v.players[v.turnIndex],p=pages[f.users.indexOf(actor.userId)];
   await p.locator('[data-golf-position="0"]:not([disabled])').click();
   await p.locator('[data-golf-position="3"]:not([disabled])').click();
-  await p.getByRole('button',{name:'Reveal selected two',exact:true}).click();
   await p.waitForFunction(()=>!document.querySelector('button[aria-label="Row 1, column 1, face down"]:not([disabled])'),null,{timeout:5000});
  }
  let v=await snap(f.users[0]);assert.equal(v.phase,'playing');

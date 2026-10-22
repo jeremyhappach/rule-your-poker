@@ -1,7 +1,8 @@
 import {useGolfCardPresentation} from './useGolfCardPresentation';
-import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {TableauCard} from '@/lib/canonicalShell/TableauCard';
+import {CanonicalCardCountBadge} from '@/components/canonicalShell/CanonicalCardCountBadge';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {useGolf} from '@/hooks/useGolf';
 import {golfTransport,golfRpc} from '@/lib/golf/client';
@@ -26,9 +27,8 @@ export function GolfTable(props:Props) {
  const v=game.snapshot,ready=useGolfFinancial(v,props.sessionEnded),layer=useCanonicalFeltInteractionLayerElement(!props.sessionEnded);
  const [selected,setSelected]=useState<number[]>([]),[discard,setDiscard]=useState(false),[error,setError]=useState('');
  const [rulesOpen,setRulesOpen]=useState(false),[inspectPlayer,setInspectPlayer]=useState<string|null>(null);
+ const [infoOpen,setInfoOpen]=useState(false);
  const [reclaiming,setReclaiming]=useState(false);
- const [handSlot,setHandSlot]=useState<HTMLDivElement|null>(null),[compact,setCompact]=useState(false);
- useLayoutEffect(()=>{if(!layer)return;const update=()=>{const r=layer.getBoundingClientRect();setCompact(r.width/r.height>=1.5);};update();const observer=new ResizeObserver(update);observer.observe(layer);return()=>observer.disconnect();},[layer]);
  const announced=useRef(''),closing=useRef(false),completed=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const chat=useGameChatContext(),announcements=useAnnouncements();
  const flying=useGolfCardPresentation(v,game.epoch,props.userId);
@@ -65,14 +65,28 @@ export function GolfTable(props:Props) {
  },[v,ready,props.sessionEnded,game.now]);
  const choose=(i:number)=>{
   if(!v||!acting)return;
-  if(v.phase==='opening'){setSelected(old=>old.includes(i)?old.filter(x=>x!==i):old.length<2?[...old,i]:[old[1],i]);return;}
+  if(v.phase==='opening'){
+   const next=selected.includes(i)?selected.filter(x=>x!==i):[...selected,i];
+   setSelected(next);
+   if(next.length===2)void game.act({type:'open',items:next});
+   return;
+  }
   if(v.pending)void game.act({type:'replace',items:[i]});
   else if(discard)void game.act({type:'discard',items:[i]});
  };
- const status=!v?'Connecting to table…':v.settled?'Match complete':v.phase==='hole_complete'?'Hole '+v.hole+' complete':v.phase==='opening'?(acting?'Choose two cards to reveal':actor?.name+' is choosing two cards'):acting?(v.pending?'Replace a card or discard your draw':discard?'Choose a card to replace':'Choose stock or discard'):actor?.name+"'s turn";
+ const status=!v?'Connecting to table…':v.settled?'Match complete':v.paused?(self&&v.playerControls?.[self.id]?.autoPlay?'Paused · uncheck Auto-play to rejoin, then the host can resume':'Paused · waiting for the host to resume'):!game.connected?'Connecting to live table…':game.pending?'Sending your move…':self&&v.playerControls?.[self.id]?.autoPlay?'Auto-play is on · uncheck to take control':v.phase==='hole_complete'?'Hole '+v.hole+' complete':v.phase==='opening'?(acting?(selected.length?'1 of 2 selected · tap a second card to reveal both':'Tap any two of your cards to reveal them'):actor?.name+' is choosing two cards'):acting?(v.pending?'Replace a card or discard your draw':discard?'Choose a card to replace':'Choose stock or discard'):actor?.name+"'s turn";
+ const localTableau=self&&v&&!props.sessionEnded?<div className="golf-local" aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><span className="golf-card-artifact"><TableauCard card={golfCard(card)} isHidden={card===null} style={{width:'100%',height:'100%',visibility:flying.get(self.id)?.includes(i)?'hidden':'visible'}}/>{selected.includes(i)&&<span aria-hidden className="golf-selection"/>}</span></button>)}</div></div>:null;
  const warning=v?golfWarning(v):null;
+ const opponents=v?.players.filter(p=>p.id!==self?.id)??[];
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v?.holes.map(h=><p key={h.hole}>Hole {h.hole}: {v.players.map(p=>p.name+' '+h.scores[p.id]).join(' · ')}</p>)}</div>:<GolfRules/>;
  return <>
+  <Dialog open={infoOpen&&!props.sessionEnded} onOpenChange={setInfoOpen}><DialogContent><DialogHeader><DialogTitle>Table information</DialogTitle><DialogDescription>Scores are totals from completed holes.</DialogDescription></DialogHeader><div className="golf-controls">
+   {v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9</strong>{v.players.map(p=>p.id===v.viewerId?<span key={p.id}>You: {v.scores[p.id]}</span>:<button key={p.id} onClick={()=>{setInfoOpen(false);setInspectPlayer(p.id);}}>View {p.name} · Total {v.scores[p.id]}</button>)}</div>}
+   <p>{status}</p>{warning&&<p className="golf-warning">{warning}</p>}
+   <button onClick={()=>{setInfoOpen(false);setRulesOpen(true);}}>Rules</button>
+   {self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}
+   {(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}
+  </div></DialogContent></Dialog>
   <Dialog open={!!inspectPlayer&&!props.sessionEnded} onOpenChange={open=>{if(!open)setInspectPlayer(null);}}><DialogContent><DialogHeader><DialogTitle>{v?.players.find(p=>p.id===inspectPlayer)?.name} · public tableau</DialogTitle><DialogDescription>Face-down cards remain concealed. Total from completed holes: {inspectPlayer?v?.scores[inspectPlayer]:0}</DialogDescription></DialogHeader><div className="golf-inspect">{inspectPlayer&&v?.tableaus[inspectPlayer]?.cards.map((card,i)=><TableauCard key={i} card={golfCard(card)} isHidden={card===null} style={{width:72,height:101}}/>)}</div></DialogContent></Dialog>
   <Dialog open={rulesOpen&&!props.sessionEnded} onOpenChange={setRulesOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Six-Card Golf rules</DialogTitle><DialogDescription>six-card-golf/1 · frozen for this match</DialogDescription></DialogHeader><div className="catalog-scroll"><GolfRules/></div></DialogContent></Dialog>
   <div aria-hidden data-canonical-shell-play-top-spacer="" style={{flex:'0 0 var(--play-top-safe-area, 0px)',pointerEvents:'none'}}/>
@@ -81,31 +95,24 @@ export function GolfTable(props:Props) {
    dealerPip:p=>p.id===v.players[v.dealerIndex]?.id,
    scoreLine:p=>'Total '+v.scores[p.id],
    scoreAutoPlay:p=>!!v.playerControls?.[p.id]?.autoPlay,
-   onInspectTableau:p=>setInspectPlayer(p.id),
-   hiddenTableauCards:p=>flying.get(p.id)??[],
-   publicTableau:p=>v.tableaus[p.id].cards.map(golfCard),
    activeTimer:p=>p.id===actor?.id&&!v.paused&&!v.settled?{timeLeft:Math.max(0,Math.ceil((v.deadline-game.now)/1000)),maxTime:30,activePlayerId:p.id}:null,
   }}/>}
   </div>
   {layer&&v&&!props.sessionEnded&&createPortal(<div className="golf-felt" data-golf-phase={v.phase}>
+   <div className="golf-center-play" style={{'--golf-opponent-count':Math.max(1,opponents.length)} as CSSProperties}>
+   <div className="golf-opponents" data-opponent-count={opponents.length}>{opponents.map(p=><button key={p.id} className="golf-public-grid" data-golf-public-tableau={p.id} aria-label={'View '+p.name+' tableau'} onClick={()=>setInspectPlayer(p.id)}>
+    <span className="golf-public-cards">{v.tableaus[p.id].cards.map((card,i)=><span key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:flying.get(p.id)?.includes(i)?'hidden':'visible'}}><TableauCard card={golfCard(card)} isHidden={card===null} tier="small" style={{width:'100%',height:'100%'}}/></span>)}</span>
+    {opponents.length>1&&<span className="golf-public-label">{p.name}</span>}
+   </button>)}</div>
    {v.phase==='hole_complete'||v.settled?<div className="golf-hole-result"><strong>{v.settled?'Match complete':'Hole '+v.hole+' scored'}</strong>{v.players.map(p=><div key={p.id}>{p.name}: {v.holes.at(-1)?.scores[p.id]} · total {v.scores[p.id]}</div>)}</div>:<div className="golf-piles">
-    <button data-card-anchor="stock" data-golf-stock disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>void game.act({type:'draw'})} aria-label={'Draw stock, '+v.stockCount+' cards'}><TableauCard isHidden style={{width:'100%',height:'100%'}}/><small>Stock {v.stockCount}</small></button>
-    <button data-card-anchor="discard" data-golf-discard disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/><small>Discard</small></button>
-    {v.pending&&<button data-card-anchor={'tableau-'+v.viewerId+'-6'} data-golf-pending disabled={!acting} onClick={()=>void game.act({type:'reject'})} aria-label="Discard drawn card"><TableauCard card={golfCard(v.pending.card)} style={{width:'100%',height:'100%',visibility:flying.get(v.viewerId)?.includes(6)?'hidden':'visible'}}/><small>Discard draw</small></button>}
-   </div>}
+    <button data-golf-discard disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><span className="golf-pile-artifact" data-card-anchor="discard"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/></span><small>Discard</small></button>
+    <div className="golf-stock-slot"><button data-golf-stock disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>void game.act({type:'draw'})} aria-label={'Draw stock, '+v.stockCount+' cards'}><span className="golf-pile-artifact" data-card-anchor="stock"><TableauCard isHidden style={{width:'100%',height:'100%'}}/><CanonicalCardCountBadge count={v.stockCount}/></span></button>
+    {v.pending&&<button data-golf-pending disabled={!acting} onClick={()=>void game.act({type:'reject'})} aria-label="Discard drawn card"><span className="golf-pile-artifact" data-card-anchor={'tableau-'+v.viewerId+'-6'}><TableauCard card={golfCard(v.pending.card)} style={{width:'100%',height:'100%',visibility:flying.get(v.viewerId)?.includes(6)?'hidden':'visible'}}/></span><small>Discard draw</small></button>}
+    </div>
+   </div>}</div>
 
   </div>,layer)}
-  {self&&(compact?layer:handSlot)&&!props.sessionEnded&&createPortal(self&&<div className={'golf-local'+(compact?' golf-local-compact':'')} aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><TableauCard card={golfCard(card)} isHidden={card===null} highlight={selected.includes(i)?'gold':null} style={{width:'100%',height:'100%',visibility:flying.get(self.id)?.includes(i)?'hidden':'visible'}}/></button>)}</div></div>,(compact?layer:handSlot)!)}
   <div aria-hidden data-canonical-shell-play-bottom-spacer="" style={{flex:'0 0 var(--play-bottom-safe-area, 0px)',pointerEvents:'none'}}/>
-  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane" data-hand-in-felt={compact}><div className="golf-hand-slot" ref={setHandSlot}/><div className="golf-controls">
-   <div className="golf-info">{v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9 · Completed totals</strong>{v.players.map(p=><span key={p.id} title={p.name+': '+v.scores[p.id]}>{p.id===v.viewerId?'You':p.name}: {v.scores[p.id]}</span>)}</div>}
-   <p role="status">{props.sessionEnded?'Session ended':status}</p>{warning&&!props.sessionEnded&&<p className="golf-warning">{warning}</p>}
-   </div><div className="golf-actions">
-   <button onClick={()=>setRulesOpen(true)}>Rules</button>
-   {self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}
-   {v?.phase==='opening'&&acting&&<button aria-label="Reveal selected two" disabled={selected.length!==2} onClick={()=>void game.act({type:'open',items:selected})}>Reveal 2</button>}
-   {(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}
-   </div>
-  </div></div>):<div className="golf-panel">{panel}</div>} identity={self?<span>{self.name} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips}/></span>:<span>Observer</span>}/>
+  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-hand-slot">{localTableau}</div><button className="golf-info-toggle" onClick={()=>setInfoOpen(true)} aria-label="Table information">Info</button></div>):<div className="golf-panel">{panel}</div>} identity={<div className="golf-identity">{self?<span>{self.name} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips}/></span>:<span>Observer</span>}<p role="status" title={warning??status}>{props.sessionEnded?'Session ended':warning??(v?.paused?'Paused · Info for rejoin controls':status)}</p>{v&&<span>Hole {v.hole}/9{self?' · Total '+v.scores[self.id]:''}</span>}</div>}/>
  </>;
 }
