@@ -558,6 +558,9 @@ export function CardTransportRuntime({
 // the dbg panel can prove the flight is a single continuous animation.
 // ---------------------------------------------------------------------------
 
+import { isResolvedJoker } from '@/lib/cardGames/physicalCard';
+import { JokerCardFace } from '@/components/canonicalShell/JokerCardFace';
+
 interface FlyingCardProps {
   card: RuntimeCard;
   containerRef: RefObject<HTMLElement>;
@@ -572,7 +575,10 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const dx = card.to.x - card.from.x;
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const isHidden = card.intent.face === 'hidden' || !isCardFaceResolved(card.intent.visibleFace);
+  const joker = isResolvedJoker(card.intent.jokerFace) && !card.intent.visibleFace;
+  const isHidden = card.intent.face === 'hidden'
+    || (!!card.intent.jokerFace && !!card.intent.visibleFace)
+    || (!joker && !isCardFaceResolved(card.intent.visibleFace));
   // Hidden-card colors are owned by CanonicalCardBack (reads useVisualPreferences
   // directly). `card.intent.cardBackColors` is retained on the intent for debug
   // parity but no longer drives paint here.
@@ -828,6 +834,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           alignItems: 'center',
           justifyContent: isHidden ? 'center' : 'space-between',
           padding: isHidden ? 0 : '2px 0',
+          ...(joker ? {fontSize: flyW * .4} : {}),
           overflow: 'hidden',
           opacity: 0,
           animation: `${kf} ${card.flightMs}ms ${easing} 0ms 1 forwards`,
@@ -847,7 +854,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
             radiusPx={2}
             style={{ width: '100%', height: '100%' }}
           />
-        ) : vf ? (
+        ) : joker ? <JokerCardFace /> : vf ? (
           <>
             <span style={{ fontSize: `${flyW * 0.55}px`, fontWeight: 900, lineHeight: 1, color: suitColor }}>{vf.rank}</span>
             <span style={{ fontSize: `${flyW * 0.7}px`, lineHeight: 1, color: suitColor }}>{suitChar}</span>

@@ -1,5 +1,15 @@
 # Repository map
 
+Canasta now joins `src/lib/gameCatalog/games/canasta.ts` and versioned
+`src/components/rules/CanastaRules.tsx`. Its reconciled local baseline proof is
+`supabase/canasta/reconciled-baseline.mjs`; rendered regression driver is
+`dev/canasta/reconciliation-browser.mjs`. See `CANASTA_RECONCILIATION.md`.
+
+Canasta closed release preparation: `supabase/canasta/release/build.mjs` produces
+the hashed installation, rollback proofs and recovery-worker bundle from existing
+Canasta owners. `admission.proof.sql` owns fake-money admission regressions.
+`CANASTA_RELEASE_PACKAGE.md` links exact artifacts and remaining hosted gates.
+No production migration is registered by this package.
 11 Up smoke controls: `supabase/eleven-up/smoke-controls.sql` is the local forward
 candidate for post-expiry away state and next-Ready real-money pause.
 `src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
@@ -1129,6 +1139,27 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
   enables new admissions after compatible client deployment.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
+
+Canasta: src/lib/canasta/engine.ts owns full transitions over the frozen rules;
+engine.test.ts contains the complete 71-card legal replay. server/canasta contains
+unregistered authority/HTTP/store factories. supabase/canasta contains unapplied
+closed-admission SQL candidates and rollback-only proofs. src/components/canasta
+owns the shared paged editor and unregistered authoritative gameplay contents;
+dev/canasta reuses the editor for offline review. CanonicalTableHeader.tsx shares
+route header presentation. Live dispatcher/scheduler/route integration remains;
+see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.
+# Canasta local integration owners (2026-10-21; admission closed)
+
+- `supabase/canasta/terminal-control.proof.sql`: terminal revision RLS and canonical Auto-play/reclaim assertions.
+- `supabase/canasta/recovery.proof.mjs`, `recovery.process-proof.ts`: disposable SQL database and fresh worker-process crash/restart proof; HTTP dispatch delivery is stubbed locally.
+- `src/components/canasta/CanastaTerminal.test.tsx`, `src/lib/canasta/recoveryLifecycle.test.ts`: terminal retention, cold reconnect and timeout control qualification.
+
+- `api/canasta.ts`, `server/canasta/{production,recovery}.ts`: authenticated route and leased recovery orchestration.
+- `supabase/canasta/{registration,recovery,schedule}.candidate.sql`: guarded Ante Up insertion, immutable config, revision signal, disabled scheduler; unapplied.
+- `src/components/canasta/{CanastaTable,CanastaArtifacts,useCanastaCardPresentation}.tsx`: canonical table adapter, artifacts and observed card presentation (the hook is a `.ts` file).
+- `src/hooks/useCanastaAccess.ts`: closed capability discovery; `src/pages/Game.tsx`: retained terminal ownership.
+- `dev/canasta/authorityPlugin.ts`, `authorityReview.tsx`: loopback reducer-backed review without database writes.
+- `supabase/canasta/{proof,concurrency.proof}.mjs`: rollback and competing-session qualification in isolated local PostgreSQL.
 
 ## Battle 31 local candidate
 

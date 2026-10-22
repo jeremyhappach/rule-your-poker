@@ -1,4 +1,5 @@
 vi.mock('@/hooks/useBattle31Access',()=>({useBattle31Access:()=>true}));
+vi.mock('@/hooks/useCanastaAccess',()=>({useCanastaAccess:()=>false}));
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';

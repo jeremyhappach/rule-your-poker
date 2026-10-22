@@ -1,5 +1,9 @@
 # Golf centered layout — October 21, 2026
 
+Publication of final candidate `5d2db057` is now owner-approved. See
+[SIX_CARD_GOLF_UI_RELEASE.md](SIX_CARD_GOLF_UI_RELEASE.md) for integration and
+release evidence; the earlier local-only holds below are historical.
+
 ## Card shape and opponent enlargement — latest local candidate
 
 Based on `e77b771794dacb24771593b19da6a77c18effafc`. The reported circular felt

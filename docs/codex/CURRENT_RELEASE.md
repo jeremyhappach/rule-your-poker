@@ -1,3 +1,25 @@
+# Golf interaction release — October 22 — approved, integrated qualification
+
+Jeremy approved candidate `5d2db057f3e15476c28a9a0274b16863b506e9c9` for publication.
+The integration preserves deployed closed Canasta checkpoint `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`
+and released main `52aa5528143fe031c4ddf8c3787eff85c0392aa9`. Later Canasta changes
+remain outside this release. Only Golf presentation and interaction change.
+
+Visible first-card selection, second-tap opening, centered MY/opponent grids,
+Info controls, discard-left/stock-right, stock count and proportional card corners
+are retained from the reviewed candidate. Rules, finances and SQL are unchanged.
+Migration `20261021230433` is already installed and is not reapplied. Read-only
+preflight confirms Golf enabled/admission enabled, Canasta admission closed with
+zero active grants, and the owner's paused opening at revision 4 with zero actions.
+
+Final validation passes: 2,706 application tests, 241 harness tests, TypeScript,
+production build, 63 rendered cases and isolated browser actions. The two stale
+Canasta source-contract assertions were corrected without runtime changes.
+
+See [release qualification](SIX_CARD_GOLF_UI_RELEASE.md). Historical holds below
+are superseded only for this approved Golf release. Owner production smoke remains
+acceptance truth.
+
 # Golf felt-card shape — October 21 — local review, release held
 
 The built candidate reproduced an 8px panel radius on 16–18px exposed cards,
@@ -42,6 +64,55 @@ No push/deployment is authorized yet. The published Golf build remains
 `52aa5528143fe031c4ddf8c3787eff85c0392aa9`, with both-money general admission enabled
 by the owner on October 21 at 19:04 Central. The owner's paused session and all
 financial/history records are preserved.
+
+
+# Canasta / 1 — 2026-10-21 — closed hosted installation, transport gate pending
+
+Migration `20261021235336` and recovery worker v1 are installed. Actual scheduled
+heartbeats and three candidate/five installed rollback units pass. General
+admission is closed with zero grants; no client push/deployment or smoke activation.
+Reconciled against released main `52aa55281`; local build/typechecks and 135 focused
+tests pass. Real Auth/consent/Realtime/initial dealing and scheduled terminal
+continuation pass. A completed qualification fixture is paused with grants removed.
+The connector race did not prove overlapping connections; independent transport
+and deployed API/browser gates remain. Golf returned the production window unchanged.
+Stopped at the required execution-budget checkpoint; no writes are outstanding.
+See `CANASTA_HOSTED_QUALIFICATION.md` for exact state and gates.
+
+The earlier local-only release notes below are historical and superseded above.
+
+# Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
+
+Reconciled locally with main `6b15f4eb0`, retaining Race/11 Up/Battle31 and the
+shared catalog. Current dispatcher guard, canonical stake-default registration,
+300 focused tests, combined local financial/control proofs and 12 rendered mobile
+cases pass. Hosted qualification and native acceptance remain. Golf retains the
+next production slot. See `CANASTA_RECONCILIATION.md`; no production action occurred.
+
+Initial admission is now explicitly fake-money-only at discovery, locked setup
+and consent completion. Closed defaults remain unchanged. The local correction
+and exact closed SQL/worker package pass rollback, concurrency and restart proofs.
+See `CANASTA_RELEASE_PACKAGE.md` and `supabase/canasta/release/README.md` for hashes,
+tester scope and remaining hosted gates. No main integration, push, production
+mutation, deployment or admission activation is authorized or performed.
+
+Local recovery follow-up fixes final revision visibility for frozen participants
+after Stand Up, aligns fake-money expiry with approved bot Auto-play and clears
+queued sit-out on reclaim. Real-money and all-human inactivity still pause.
+Terminal ownership and separate worker-process crash/restart proofs are included;
+installed Realtime/Edge delivery and native device acceptance remain unqualified.
+
+Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
+inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Appearance accepted; local implementation
+authorized. See `CANASTA_AUTHORITY_CHECKPOINT.md` for completed reducer, server
+adapters, canonical integration, rollback/concurrency SQL evidence and remaining qualification. No production
+admission, database changes or deployment. Full financial qualification is incomplete.
+Bounded checkpoint correction: canonical configuration/header/identity, paged
+shared-dialog editor, legal 71-card witness and bound. Full reducer now reproduces
+the 71-card witness. Native mobile/gameplay acceptance remains pending.
+Appearance follow-up removes preview-only dark styling. Authenticated production
+comparison confirms the shared amber border, bridge felt and white page treatment;
+side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
 
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 

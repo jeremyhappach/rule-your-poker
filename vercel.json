@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "routes": [
+    { "src": "/(?:__canasta|api/canasta)/(.*)", "dest": "/api/canasta?canasta_path=$1" },
     {
       "src": "/(?:__run21|api/run21)/(.*)",
       "dest": "/api/run21?run21_path=$1"

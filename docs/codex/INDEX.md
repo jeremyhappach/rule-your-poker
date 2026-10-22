@@ -2,15 +2,23 @@
 
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
+Canasta installed closed qualification and coordination hold: `CANASTA_HOSTED_QUALIFICATION.md`.
+
 | File | Read when |
 |---|---|
 | `PROJECT_CONTEXT.md` | First session, product overview, stack, operating constraints |
 | `ARCHITECTURE.md` | State ownership, canonical shell, lifecycle, sync, geometry, terminal flow |
 | `GAME_RULES.md` | Any change touching legal actions, scoring, settlement, dealer/hand flow, bots |
 | `CARD_FACE_CONTRACT.md` | Card rendering, private/masked projections, deal/reveal admission, and face caches in Holm, Gin, Cribbage or 3-5-7 |
+| `CANASTA_CONTRACT.md` | Approved Classic two-player rules, fixed stake, timeout policy and legality correction |
+| `CANASTA_RECONCILIATION.md` | Current-main catalog/lifecycle reconciliation, combined local evidence and remaining hosted gates |
+| `CANASTA_AUTHORITY_CHECKPOINT.md` | Local reducer/server/SQL checkpoint, qualification evidence and unfinished integration |
+| `CANASTA_MAXIMUM_HAND.md` | 71-card legal witness, count upper bound and proof boundaries |
+| `CANASTA_MOBILE_CHECKPOINT.md` | Isolated mobile checkpoint, shared-owner inventory, evidence and remaining review gates |
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `SIX_CARD_GOLF_UI_RELEASE.md` | Approved interaction release, preserved Canasta checkpoint, regression correction and owner smoke |
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
 | `SIX_CARD_GOLF_INTERACTION_POLISH.md` | Owner opening-interaction investigation, MY/felt layout candidate, evidence and explicit release hold |
 | `SIX_CARD_GOLF_CENTERED_LAYOUT.md` | Revised centered felt/MY layout, final screenshot provenance and local-only visual review |

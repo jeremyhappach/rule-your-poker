@@ -156,6 +156,7 @@ const TRACE_GAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   cribbage: 'CRIBBAGE',
   'six-card-golf': 'SIX-CARD GOLF',
   run21: 'RUN 21',
+  canasta: 'CANASTA',
 };
 
 function tracePublisherTable(value: ShellFeltContextValue | null | undefined): string {
@@ -481,6 +482,7 @@ export function deriveFeltGameKind(
     case 'three-five-seven':
     case 'horses':
     case 'ship-captain-crew':
+    case 'canasta':
     case 'run21':
     case 'six-card-golf':
       return gameType;

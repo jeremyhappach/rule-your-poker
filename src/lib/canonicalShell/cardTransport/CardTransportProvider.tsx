@@ -75,6 +75,8 @@ function isSameManifestIdentity(
     && (existing.handGeneration ?? null) === (incoming.handGeneration ?? null)
     && (existing.recipientPlayerId ?? null) === (incoming.recipientPlayerId ?? null)
     && existing.face === incoming.face
+    && (existing.jokerFace?.kind ?? null) === (incoming.jokerFace?.kind ?? null)
+    && (existing.jokerFace?.masked ?? false) === (incoming.jokerFace?.masked ?? false)
     && describeCardEndpoint(existing.from) === describeCardEndpoint(incoming.from)
     && describeCardEndpoint(existing.to) === describeCardEndpoint(incoming.to)
     && (existing.visibleFace?.rank ?? null) === (incoming.visibleFace?.rank ?? null)

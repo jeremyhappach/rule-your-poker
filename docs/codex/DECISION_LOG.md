@@ -1,3 +1,10 @@
+# 2026-10-21 — Publish approved Golf interaction candidate
+
+Jeremy approved the final rectangular-card candidate for publication. Preserve
+the closed Canasta checkpoint already served by production while integrating
+Golf; later unreleased Canasta work remains held. This release does not alter
+rules, SQL, finances, both-money Golf admission or paused sessions.
+
 # 2026-10-21 — Right-handed stock/discard and public count convention
 
 Jeremy set the shared default: discard left, stock right; nearby pile cards;
@@ -16,6 +23,38 @@ the side information column. Golf uses canonical card primitives and existing
 transport anchors inside the canonical interaction layer. Ancillary controls
 move into Info; no shared shell geometry, rules or authority changes. Release
 remains held for visual review. See `SIX_CARD_GOLF_CENTERED_LAYOUT.md`.
+
+
+# 2026-10-21 — Canasta restricted hosted qualification
+
+Jeremy authorized conditional release with exact Hap/Happach Gmail account and
+session grants lasting 24 hours, preserving existing admitted matches on expiry.
+The installed private qualification table follows the accepted Golf pattern;
+global and real-money admission remain closed. Migration `20261021235336` and
+worker v1 pass bounded hosted financial/admission proofs. A later coordination
+instruction briefly yielded production writes to Golf; that window returned
+unchanged. Auth/Realtime and scheduled continuation now pass, but independent
+transport concurrency remains unproved. No Canasta client publication or smoke
+activation yet. See `CANASTA_HOSTED_QUALIFICATION.md`.
+
+# 2026-10-21 — Canasta initial admission is fake money only
+
+The authorized local reconciliation incorporates main `6b15f4eb0`: use the released
+catalog and preserve all Race/11 Up/Battle31 owners. Add only Canasta's descriptor,
+versioned help, fake-money eligibility and canonical suggested stake (existing
+fallback 5, preserving prior administrator settings). Gameplay rules stay frozen.
+Golf retains the next production slot; no release or access grant is authorized.
+
+Jeremy authorized the local correction and exact hosted qualification/release
+package, with no production changes, merge, push, deployment or activation.
+Use the authoritative locked session mode at both configure and consent completion;
+filter session capabilities consistently. Existing admission defaults stay closed.
+No new allowlist or alternate gate infrastructure. The active-profile capability
+would allow all eligible active accounts if globally opened; restricted hosted
+qualification therefore needs explicitly approved identities/session provisioning.
+Accepted match execution, canonical money owners and real-money regression fixtures
+remain intact. Package/current-main reconciliation and hosted acceptance are still
+required before release. See `CANASTA_RELEASE_PACKAGE.md`.
 
 # 2026-10-21 — 11 Up expired humans retain their round schedule
 
@@ -2613,6 +2652,27 @@ Multiplayer adds only consent, participant order, pause, bots, canonical chip
 settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
+# 2026-10-21 — Canasta local canonical integration
+
+Follow-up approval aligns fake-money human expiry with Horses/SSC Auto-play:
+the existing private-information bot acts, canonical next-hand sit-out is queued,
+uncheck restores control and clears that intent, and opponents see the shared robot.
+Real-money expiry and all-human inactivity still pause. This explicitly supersedes
+the earlier mechanical-only timeout policy; game legality, scoring, stake and
+120-second deadline are unchanged. Mechanical completion remains a legal fallback.
+Settled frozen participants retain revision visibility after Stand Up. Canonical
+pause also freezes postgame continuation; workers retry after authorized resume.
+Installed Realtime/Edge delivery remains a separate release qualification gate.
+
+Preserve the exact deployed Ante Up dispatcher, including Race Poker, by a guarded
+single-branch insertion; do not install the stale local dispatcher. Freeze the
+two-seat roster with configuration, require fresh canonical consent and recovery
+health, and retain the authoritative first round for terminal presentation. Keep
+admission closed and all SQL candidates unapplied until full qualification.
+The loopback browser fixture shares the production reducer but is not evidence
+of authenticated Realtime, durable recovery or financial browser completion.
+No change to `canasta-classic-two/1`, the 120-second clock or accepted appearance.
+
 
 ## 2026-10-20 — Presentation catalog UI candidate
 

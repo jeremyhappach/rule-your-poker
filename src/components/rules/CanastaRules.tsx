@@ -1,0 +1,12 @@
+import type {RuleRendererProps} from '@/lib/gameCatalog/types';
+export default function CanastaRules({version}:RuleRendererProps){return <article>
+ <h3>Canasta</h3><p>Ptown · {version??'canasta-classic-two/1'}</p>
+ <p>Two players, human versus human or a bot, with two decks and four Jokers. Each hand starts with 15 cards. Draw two from stock or legally take the discard pile, then meld and discard one.</p>
+ <p>Melds need at least three cards, including two matching naturals, with at most three wild cards. Twos and Jokers are wild. Seven cards make a canasta. You need two canastas to go out; melding your entire hand without a discard is allowed.</p>
+ <p>The opening minimum uses your score at the start of the hand: below zero, 15 points; below 1,500, 50; below 3,000, 90; otherwise 120. Only hand cards and the qualifying top discard count toward an opening pickup.</p>
+ <p>A wild card or initial red three in the pile freezes it until the entire pile is taken. Before your opening meld it is also frozen for you. A frozen pickup needs two matching natural cards from your hand. A top wild card or any three blocks pickup; covering a black three removes its block but never a separate freeze. An unfrozen top natural may also join your existing meld, or form a new meld with a matching natural and a wild.</p>
+ <p>Red threes from the deal or stock are exposed and replaced from stock when possible. Red threes acquired from the discard pile are exposed without replacement. Black threes may be melded only while going out, without wilds. If stock runs out, mandatory legal pickups and the hand-end rules still apply.</p>
+ <p>Card values: Joker 50; ace or two 20; eight through king 10; four through seven and black three 5. Melded cards score positively and cards left in hand subtract. Natural canastas score 500; mixed canastas 300. Going out scores 100, or 200 total concealed. Red threes score 100 each, or 800 for all four, positive with a meld and negative without one.</p>
+ <p>The match target is 5,000 at hand end. Equal qualifying totals continue another hand under the same stake. The winner receives the accepted match stake and the loser pays it once. There are no hand payments or score multipliers.</p>
+ <p>You have 120 seconds for the whole turn. Drawing, arranging and melding do not reset it. Eligible fake-money expiry uses canonical Auto-play; sole-human or all-human inactivity pauses. Reclaim and resume use the shared table controls.</p>
+ </article>;}

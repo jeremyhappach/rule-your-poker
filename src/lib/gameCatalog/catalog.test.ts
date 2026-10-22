@@ -6,7 +6,7 @@ import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>!['six-card-golf','battle-31','race-poker'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
+ expect(GAME_CATALOG.filter(g=>!['canasta','six-card-golf','battle-31','race-poker'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
  expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);
@@ -22,7 +22,7 @@ describe('integrated catalog parity',()=>{
  const access=Object.fromEntries(GAME_CATALOG.map(g=>[g.availability,true]));
  expect(eligibility(game,{players:0,humans:0},access)).not.toBeNull();
  expect(eligibility(game,{players:game.players.max+1,humans:2},access)).not.toBeNull();
- expect(eligibility(game,{players:game.players.min,humans:game.players.min},access)).toBeNull();
+ expect(eligibility(game,{players:game.players.min,humans:game.players.min,realMoney:false},access)).toBeNull();
  if(game.availability!=='existing-setup'){expect(isDiscovered(game,{})).toBe(false);expect(eligibility(game,{players:2,humans:2},{})).toBe('Currently unavailable');}
  });
  it('keeps bot policy distinct from seat count and money mode',()=>{

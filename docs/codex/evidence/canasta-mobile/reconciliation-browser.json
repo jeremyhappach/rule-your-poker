@@ -1,0 +1,106 @@
+{
+  "at": "2026-10-21T22:04:39.016Z",
+  "passed": true,
+  "checks": [
+    "two redacted human views",
+    "draw preserves deadline",
+    "selection survives sorting",
+    "draft cancellation has no commit",
+    "discard and reconnect preserve committed cards",
+    "eligible expiry Auto-play",
+    "all-human pause without drawing",
+    "reclaim separate from resume",
+    "single canonical shell"
+  ],
+  "layouts": [
+    {
+      "width": 320,
+      "height": 568,
+      "scene": "15",
+      "count": 15,
+      "minTarget": 55.274383544921875
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "scene": "30",
+      "count": 30,
+      "minTarget": 54.81706237792969
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "scene": "60",
+      "count": 60,
+      "minTarget": 54.81307601928711
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "scene": "maximum",
+      "count": 71,
+      "minTarget": 55.27439880371094
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scene": "15",
+      "count": 15,
+      "minTarget": 55.584625244140625
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scene": "30",
+      "count": 30,
+      "minTarget": 55.27580261230469
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scene": "60",
+      "count": 60,
+      "minTarget": 55.2740478515625
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scene": "maximum",
+      "count": 71,
+      "minTarget": 55.27583312988281
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "scene": "15",
+      "count": 15,
+      "minTarget": 55.58575439453125
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "scene": "30",
+      "count": 30,
+      "minTarget": 55.584503173828125
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "scene": "60",
+      "count": 60,
+      "minTarget": 55.5853271484375
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "scene": "maximum",
+      "count": 71,
+      "minTarget": 55.27508544921875
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "loopback in-memory reducer transport; no hosted Auth/Realtime/financial evidence",
+    "emulated mobile viewports, not native iPhone acceptance"
+  ]
+}

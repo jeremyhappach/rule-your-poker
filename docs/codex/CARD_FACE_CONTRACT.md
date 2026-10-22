@@ -48,3 +48,15 @@ preview and sweep celebration use fixed literal faces.
   draw/knock/layoff, Cribbage cut/counting and 3-5-7 reveal with both deck modes.
 
 Server cards, RPCs, financial settlement and historical data are unchanged.
+
+## Canasta checkpoint: explicit suitless Joker
+
+`physicalCard.ts` adds physical IDs and an explicit `{kind:'joker'}` presentation
+face. It does not widen `Card`, `Rank`, `Suit`, poker evaluation or the existing
+standard-face resolver. PlayingCard and canonical transport accept an opt-in
+`jokerFace`; masked/malformed values and ambiguous simultaneous standard/Joker
+faces remain backs. Both use `JokerCardFace` artwork. Hidden visibility always
+wins. Transport flight identity is distinct from physical-card identity.
+
+This is local checkpoint support, not production Canasta admission. See
+`CANASTA_MOBILE_CHECKPOINT.md` for consumer inventory and regressions.
