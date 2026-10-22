@@ -22,6 +22,13 @@ describe('Golf public projection boundary',()=>{
   expect(golfWarning({...v,consecutiveNoRevealTurns:8})).toContain('2 completed turns');
   expect(golfWarning({...v,finalReason:'prolonged_play',finalQueue:['b']} as GolfSnapshot)).toBe('Final turns: 1 remaining');
  });
+ it('accepts /2 and warns only on its public pending-draw threshold',()=>{
+  const v=golfSnapshot({...fixture(),rules:{version:'six-card-golf/2'},consecutiveNoRevealTurns:999,stockCount:3,hasPending:true});
+  expect(golfWarning(v)).toBeNull();expect(golfWarning({...v,stockCount:2})).toBe('Finish this turn · then one final turn each.');
+  expect(golfWarning({...v,stockCount:1})).toBeNull();expect(golfWarning({...v,stockCount:2,hasPending:false})).toBeNull();
+  expect(golfWarning({...v,finalReason:'stock_threshold',finalQueue:['a','b']})).toBe('Final turns: 2 remaining');
+  expect(()=>golfSnapshot({...fixture(),rules:{version:'six-card-golf/3'}})).toThrow('identity');
+ });
 });
 
 it('uses durable bot aliases consistently without renumbering by viewer position',()=>{

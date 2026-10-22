@@ -15,5 +15,5 @@ const strokes:Record<string,string>={
 };
 export function GolfPencilScore({value}:{value:number|string}){
  const text=String(value);
- return <svg className="golf-pencil-score" viewBox={'0 0 '+(text.length*15+4)+' 27'} role="img" aria-label={text}><title>{text}</title>{[...text].map((digit,i)=><g key={i} transform={'translate('+(i*15+2)+' '+(i%2?'.4':'0')+') rotate('+(i%2?'-2':'1')+' 7 13)'} fill="none" stroke="#555957" strokeLinecap="round" strokeLinejoin="round"><path d={strokes[digit]} strokeWidth="1.4" opacity=".76"/><path d={strokes[digit]} strokeWidth=".55" opacity=".34" transform="translate(.45 -.25)"/></g>)}</svg>;
+ return <svg className="golf-pencil-score" viewBox={'0 0 '+(text.length*15+4)+' 27'} role="img" aria-label={text}><title>{text}</title>{[...text].map((digit,i)=><g key={i} transform={'translate('+(i*15+2)+' '+(i%2?'.4':'0')+') rotate('+(i%2?'-2':'1')+' 7 13)'} fill="none" stroke="#555957" strokeLinecap="round" strokeLinejoin="round"><path pathLength="1" d={strokes[digit]} strokeWidth="1.4" opacity=".76"/><path pathLength="1" d={strokes[digit]} strokeWidth=".55" opacity=".34" transform="translate(.45 -.25)"/></g>)}</svg>;
 }

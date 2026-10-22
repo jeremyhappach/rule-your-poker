@@ -1182,6 +1182,14 @@ Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
 
 ## Six-Card Golf local candidate — 2026-10-21
 
+October 22 local `/2` follow-up: `supabase/six-card-golf/rules-v2.candidate.sql`
+contains the unapplied version-aware stock-threshold reducer/admission candidate;
+`dev/six-card-golf/rules-v2-proof.mjs` rehearses it with rollback only. The shared
+seat layer accepts an optional public exposure mask, used by Golf to render
+white exposed indicators without ranks. `golfPresentedScores` in
+`GolfScorecard.tsx` owns the presentation-only completed-hole projection.
+See `SIX_CARD_GOLF_RULES_V2_LOCAL.md` for exact scope and release gates.
+
 `supabase/six-card-golf/` owns versioned rules, redacted snapshots, multiplayer
 admission/consent, canonical settlement and durable recovery. `multiplayer.sql`
 owns private exact-session/user qualification grants and frozen admitted access;

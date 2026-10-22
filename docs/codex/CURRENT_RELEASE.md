@@ -1,3 +1,14 @@
+# Golf rules/display follow-up — October 22 — local candidate only
+
+Owner approved the six smoke observations and clarified that a threshold draw
+finishes normally before every player receives one final turn, including its
+actor. The candidate is isolated on `codex/golf-rules-display-v2`, based on
+published `bd6418ed884e2c517d095e4cde3b2846fc66fffe`. No main integration, push,
+production SQL, admission change or deployment is authorized for this pass.
+See [candidate scope, exact rules and evidence](SIX_CARD_GOLF_RULES_V2_LOCAL.md).
+Existing `/1` matches retain their frozen rules. Canasta and unpublished
+`c8059c2ff4eab5f72b5906397f621b19177555f3` remain outside this candidate.
+
 # Golf smoke follow-up — October 22 — approved publication
 
 Owner-approved local corrections on published `8e7af0299`: explicit Discard pill,

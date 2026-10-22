@@ -2,12 +2,12 @@
 import {cleanup, render} from '@testing-library/react';
 import {afterEach, expect, it, vi} from 'vitest';
 const cluster = vi.hoisted(() => vi.fn());
-vi.mock('./CanonicalSeatCluster', () => ({CanonicalSeatCluster: (props: unknown) => {cluster(props); return null;}}));
+vi.mock('./CanonicalSeatCluster', () => ({CanonicalSeatCluster: (props: any) => {cluster(props); return props.children??null;}}));
 vi.mock('./SeatAnchorLayer', () => ({useSeatAnchorsOptional: () => ({byPosition: new Map([[2, {slot: 1}]])})}));
 vi.mock('./PreSessionSeatLayer', () => ({usePreSessionSeatOwned: () => false}));
 vi.mock('./ActivePlayerHUD', () => ({ActivePlayerHUD: () => null}));
 vi.mock('@/components/AutoRollIndicator', () => ({AutoRollIndicator: () => null}));
-vi.mock('@/components/canonicalShell/CanonicalCardBack', () => ({CanonicalCardBack: () => null}));
+vi.mock('@/components/canonicalShell/CanonicalCardBack', () => ({CanonicalCardBack: () => <span data-test-card-back/>}));
 import {GameplayOpponentSeatLayer} from './GameplayOpponentSeatLayer';
 afterEach(() => {cleanup(); cluster.mockClear();});
 const participants = [{id: 'player', name: 'Player', position: 2, chips: 50}];
@@ -27,4 +27,13 @@ it('opts into existing inward name and card-row attachments without moving seats
 it.each(['gin-rummy','cribbage','yahtzee','run21','farkle'] as const)('leaves %s default geometry untouched',family=>{
  render(<GameplayOpponentSeatLayer family={family} participants={participants}/>);
  expect(cluster.mock.calls.at(-1)?.[0]).toMatchObject({keepNameInward:false,opponentShowdownPlacement:undefined});
+});
+it('represents Golf exposure without ranks and preserves all backs for existing callers',()=>{
+ const view=render(<GameplayOpponentSeatLayer family="six-card-golf" participants={participants} presentation={{cardBacks:()=>({count:6,visible:true,variant:'cribbage',exposed:[true,false,true,false,false,false]})}}/>);
+ expect(document.querySelectorAll('[data-seat-card-exposed]')).toHaveLength(2);
+ expect(document.querySelectorAll('[data-test-card-back]')).toHaveLength(4);
+ expect([...document.querySelectorAll('[data-seat-card-exposed]')].every(e=>e.textContent==='')).toBe(true);
+ view.rerender(<GameplayOpponentSeatLayer family="cribbage" participants={participants} presentation={{cardBacks:()=>({count:6,visible:true,variant:'cribbage'})}}/>);
+ expect(document.querySelectorAll('[data-seat-card-exposed]')).toHaveLength(0);
+ expect(document.querySelectorAll('[data-test-card-back]')).toHaveLength(6);
 });

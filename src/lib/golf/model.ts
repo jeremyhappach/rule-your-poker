@@ -5,14 +5,14 @@ export type GolfIntent={type:'open'|'replace'|'discard';items:number[]}|{type:'d
 export interface GolfSnapshot {
  id:string;scope:string;stake:number;revision:number;serverAt:number;viewerId:string;
  identity:{sessionId:string;dealerGameId:string;roundId:string};
- rules:{version:'six-card-golf/1';turnSeconds:30;holes:9;holeResultSeconds?:number;presentation?:{version:1;scoringDelayMs:number;resultsDurationMs:number}};
+ rules:{version:'six-card-golf/1'|'six-card-golf/2';turnSeconds:30;holes:9;holeResultSeconds?:number;presentation?:{version:1;scoringDelayMs:number;resultsDurationMs:number}};
  phase:'opening'|'playing'|'hole_complete'|'complete';hole:number;dealerIndex:number;turnIndex:number;openingRemaining:number;
  players:{id:string;userId:string;name:string;seat:number;isBot:boolean;chips:number}[];
  playerControls?:Record<string,{autoPlay:boolean;sitOutNextHand:boolean;intentVersion:number}>;
  tableaus:Record<string,{cards:(number|null)[];exposed:boolean[]}>;
  scores:Record<string,number>;holes:{hole:number;roundId:string;scores:Record<string,number>}[];
  pending:{actor:string;card:number}|null;hasPending:boolean;stockCount:number;discardTop:number|null;
- consecutiveNoRevealTurns:number;finalQueue:string[];finalReason:'six_exposed'|'prolonged_play'|null;
+ consecutiveNoRevealTurns:number;finalQueue:string[];finalReason:'six_exposed'|'prolonged_play'|'stock_threshold'|null;
  deadline:number;pausedAt:number|null;paused:boolean;canAct:boolean;finished:boolean;settled:boolean;
  settlement:Record<string,number>|null;financial:{balances:Record<string,number>;resultId:string|null;batch:ChipPresentationBatch|null};
  presentation?:{version:1;startedAt:number;resultsAt:number;endsAt:number;hidden:Record<string,number[]>}|null;
@@ -24,7 +24,7 @@ export function golfCard(value:number|null):Card|undefined {
 }
 export function golfSnapshot(raw:unknown):GolfSnapshot {
  const v=raw as GolfSnapshot;
- if(!v?.identity?.dealerGameId||v.rules?.version!=='six-card-golf/1'||!Array.isArray(v.players)||v.players.length<2||v.players.length>4)throw Error('Golf snapshot identity mismatch');
+ if(!v?.identity?.dealerGameId||!['six-card-golf/1','six-card-golf/2'].includes(v.rules?.version)||!Array.isArray(v.players)||v.players.length<2||v.players.length>4)throw Error('Golf snapshot identity mismatch');
  for(const p of v.players) {
   const board=v.tableaus?.[p.id];
   if(!board||board.cards.length!==6||board.exposed.length!==6||board.cards.some((c,i)=>!board.exposed[i]&&c!==null))throw Error('Golf projection rejected');
@@ -43,6 +43,7 @@ export function acceptGolfSnapshot(old:GolfSnapshot|null,next:GolfSnapshot,id:st
 export function golfPlayWindow(v:GolfSnapshot,at:number) {return {playable:(v.phase==='opening'||v.phase==='playing')&&at<v.deadline};}
 export function golfWarning(v:GolfSnapshot) {
  if(v.finalReason)return 'Final turns: '+v.finalQueue.length+' remaining';
+ if(v.rules.version==='six-card-golf/2')return v.hasPending&&v.stockCount===v.players.filter(p=>v.tableaus[p.id].exposed.some(e=>!e)).length?'Finish this turn · then one final turn each.':null;
  const left=5*v.players.length-v.consecutiveNoRevealTurns;
  return v.consecutiveNoRevealTurns>=4*v.players.length?'Ptown house rule: final turns in '+left+' completed turn'+(left===1?'':'s')+' without a new reveal.':null;
 }

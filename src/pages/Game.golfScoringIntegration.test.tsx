@@ -38,12 +38,17 @@ it('actual Game and Golf retain counting and scorecard before winner, then retir
  const publish=async(v:any)=>{s.golf=v;await act(async()=>{for(const {filter,fn}of s.listeners)if(filter.table==='golf_revisions')fn({new:{dealer_game_id:'d',revision:v.revision}});await new Promise(r=>setTimeout(r,40));});};
  await publish(result);
  expect(document.querySelector('.golf-final-scorecard')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Open nine-hole scorecard'}));
+ expect(document.querySelector('[role="dialog"] .golf-scorecard tbody tr td:nth-last-child(2)')?.textContent).toBe('');
+ expect(document.querySelectorAll('[role="dialog"] .golf-scorecard tbody tr:first-child td svg')).toHaveLength(9); // eight holes + total
+ fireEvent.click(screen.getByRole('button',{name:'Close'}));
  await waitFor(()=>expect(document.querySelector('[data-golf-score-kind="card"]')).toBeTruthy(),{timeout:4000});
  await publish({...result,revision:1,phase:'playing',presentation:null,terminal:null,settlement:null,serverAt:Date.now()}); // late stale snapshot is ignored
  expect(document.querySelector('[data-golf-score-kind]')).toBeTruthy();
  await publish({...result,serverAt:Date.now()}); // repeated revision must not restart counting
  expect(document.querySelector('.golf-final-scorecard')).toBeNull();
  await waitFor(()=>expect(document.querySelector('[role="dialog"] .golf-scorecard')).toBeTruthy(),{timeout:10000});
+ expect(document.querySelectorAll('[role="dialog"] .golf-scorecard tbody tr:first-child td svg')).toHaveLength(10); // nine holes + total
  expect(document.querySelector('.golf-final-scorecard')).toBeNull();
  const previous=s.game;s.game={...s.game,status:'session_ended',last_round_result:'Golf complete',session_ended_at:new Date().toISOString()};
  await act(async()=>{for(const {filter,fn}of s.listeners)if(filter.table==='games'&&filter.event!=='DELETE'&&filter.event!=='INSERT')fn({eventType:'UPDATE',new:s.game,old:previous});});

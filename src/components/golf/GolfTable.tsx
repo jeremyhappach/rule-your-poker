@@ -22,7 +22,7 @@ import {MobileChatPanel} from '@/components/MobileChatPanel';
 import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
 import {golfScoreFrame,signedGolf} from './golfScoring';
 import {GolfHoleFlag} from './GolfHoleFlag';
-import {GolfLeaderboard,GolfScorecard} from './GolfScorecard';
+import {GolfLeaderboard,GolfScorecard,golfPresentedScores} from './GolfScorecard';
 import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import './golf.css';
 interface Props {dealerGameId:string;retentionRoundId?:string;userId:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(token:string)=>void}
@@ -41,6 +41,8 @@ export function GolfTable(props:Props) {
  const scoring=!!v&&!presentation.busy&&!scoringPresentation.waiting&&(v.phase==="hole_complete"||v.phase==="complete");
  const scoreFrame=v&&scoring?golfScoreFrame(v,scoringPresentation.now,scoringPresentation.seek):null;
  const scoreBeat=scoreFrame?.beat;
+ const scoresReleased=!!v&&!presentation.busy&&!scoringPresentation.waiting&&(v.presentation?scoringPresentation.now>=v.presentation.resultsAt:!!scoreFrame?.results||winnerReady);
+ const scoreView=v?golfPresentedScores(v,scoresReleased):null;
  const flipAdmission=useRef({key:'',elapsed:0});
  const flipKey=v?.scope+':'+scoreFrame?.index;
  if(flipAdmission.current.key!==flipKey)flipAdmission.current={key:flipKey,elapsed:scoreFrame&&'beatElapsedMs' in scoreFrame?scoreFrame.beatElapsedMs??0:0};
@@ -103,7 +105,7 @@ export function GolfTable(props:Props) {
  const tableauFace=(player:string,i:number)=>{const m=presentation.move,displaced=m?.actor===player&&m.index===i&&(m.stage==='incoming'||m.stage==='landed'||m.stage==='outgoing'),old=displaced?m.before.tableaus[player].cards[i]:null;
   const card=scoringPresentation.waiting&&v?.presentation?.hidden[player]?.includes(i)?null:presentation.card(player,i);
   const tier=player===v?.viewerId?'medium':'small';
-  return <>{displaced&&<span data-card-anchor={'tableau-'+player+'-7'} data-golf-displaced={m.stage} className="golf-displaced" style={{opacity:m.stage==='outgoing'?0:1}}><TableauCard card={golfCard(old)} isHidden={old===null} style={{width:'100%',height:'100%'}}/></span>}
+  return <>{displaced&&<span data-card-anchor={'tableau-'+player+'-7'} data-golf-displaced={m.stage} className="golf-displaced" style={{opacity:m.stage==='outgoing'?0:1}}><TableauCard tier={tier} card={golfCard(old)} isHidden={old===null} style={{width:'100%',height:'100%'}}/></span>}
    {(!displaced||m.stage!=='incoming')&&<TableauCard tier={tier} card={golfCard(card)} isHidden={card===null} style={{width:'100%',height:'100%'}}/>}</>;
  };
  const localTableau=self&&v&&!props.sessionEnded&&!scoring?<div className="golf-local" aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><span className="golf-card-artifact">{tableauFace(self.id,i)}{selected.includes(i)&&<span aria-hidden className="golf-selection"/>}</span></button>)}</div></div>:null;
@@ -111,26 +113,26 @@ export function GolfTable(props:Props) {
  const shownActor=presentation.move?.actor??actor?.id;
  const opponents=v?.players.filter(p=>p.id!==self?.id&&p.id===shownActor)??[];
  const helper=props.sessionEnded?'Session ended':v?.paused?'Paused - Info for rejoin controls':scoring?(scoreBeat&&scoreBeat.kind!=='exit'?'Scoring '+v?.players.find(p=>p.id===scoreBeat.playerId)?.name+'/Hole '+v?.hole+': '+signedGolf(scoreBeat.subtotal):'Hole '+v?.hole+' results'):warning??(acting&&v?.phase==='opening'?'Select 2 cards to flip up':acting&&v?.pending?'Choose a spot to put it!':status);
- const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v?.holes.map(h=><p key={h.hole}>Hole {h.hole}: {v.players.map(p=>p.name+' '+h.scores[p.id]).join(' · ')}</p>)}</div>:<GolfRules/>;
+ const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{scoreView?.holes.map(h=><p key={h.hole}>Hole {h.hole}: {v.players.map(p=>p.name+' '+h.scores[p.id]).join(' · ')}</p>)}</div>:<GolfRules version={v?.rules.version}/>;
  return <>
-  <Dialog open={scorecardOpen&&!props.sessionEnded} onOpenChange={setScorecardOpen}><DialogContent className="golf-scorecard-dialog"><DialogHeader><DialogTitle>Nine-hole scorecard</DialogTitle><DialogDescription>Only completed holes count toward the total.</DialogDescription></DialogHeader>{v&&<GolfScorecard snapshot={v}/>}</DialogContent></Dialog>
+  <Dialog open={scorecardOpen&&!props.sessionEnded} onOpenChange={setScorecardOpen}><DialogContent className="golf-scorecard-dialog"><DialogHeader><DialogTitle>Nine-hole scorecard</DialogTitle><DialogDescription>Only counted holes appear in the total.</DialogDescription></DialogHeader>{scoreView&&<GolfScorecard snapshot={scoreView}/>}</DialogContent></Dialog>
   <Dialog open={!!scoreFrame?.results&&!props.sessionEnded} onOpenChange={()=>{}}><DialogContent className="golf-scorecard-dialog" showCloseButton={false} onEscapeKeyDown={e=>e.preventDefault()} onPointerDownOutside={e=>e.preventDefault()}><DialogHeader><DialogTitle>Nine-hole scorecard</DialogTitle><DialogDescription>Hole {v?.hole} complete · cumulative totals.</DialogDescription></DialogHeader>{v&&<GolfScorecard snapshot={v} writeHole={scoringPresentation.seek?undefined:v.hole}/>}</DialogContent></Dialog>
   <Dialog open={infoOpen&&!props.sessionEnded} onOpenChange={setInfoOpen}><DialogContent><DialogHeader><DialogTitle>Table information</DialogTitle><DialogDescription>Scores are totals from completed holes.</DialogDescription></DialogHeader><div className="golf-controls">
-   {v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9</strong>{v.players.map(p=>p.id===v.viewerId?<span key={p.id}>You: {v.scores[p.id]}</span>:<button key={p.id} onClick={()=>{setInfoOpen(false);setInspectPlayer(p.id);}}>View {p.name} · Total {v.scores[p.id]}</button>)}</div>}
+   {v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9</strong>{v.players.map(p=>p.id===v.viewerId?<span key={p.id}>You: {scoreView!.scores[p.id]}</span>:<button key={p.id} onClick={()=>{setInfoOpen(false);setInspectPlayer(p.id);}}>View {p.name} · Total {scoreView!.scores[p.id]}</button>)}</div>}
    <p>{status}</p>{warning&&<p className="golf-warning">{warning}</p>}
    <button onClick={()=>{setInfoOpen(false);setRulesOpen(true);}}>Rules</button>
    {self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}
    {(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}
   </div></DialogContent></Dialog>
-  <Dialog open={!!inspectPlayer&&!props.sessionEnded} onOpenChange={open=>{if(!open)setInspectPlayer(null);}}><DialogContent><DialogHeader><DialogTitle>{v?.players.find(p=>p.id===inspectPlayer)?.name} · public tableau</DialogTitle><DialogDescription>Face-down cards remain concealed. Total from completed holes: {inspectPlayer?v?.scores[inspectPlayer]:0}</DialogDescription></DialogHeader><div className="golf-inspect">{inspectPlayer&&v?.tableaus[inspectPlayer]?.cards.map((card,i)=><TableauCard key={i} card={golfCard(card)} isHidden={card===null} style={{width:72,height:101}}/>)}</div></DialogContent></Dialog>
-  <Dialog open={rulesOpen&&!props.sessionEnded} onOpenChange={setRulesOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Six-Card Golf rules</DialogTitle><DialogDescription>six-card-golf/1 · frozen for this match</DialogDescription></DialogHeader><div className="catalog-scroll"><GolfRules/></div></DialogContent></Dialog>
+  <Dialog open={!!inspectPlayer&&!props.sessionEnded} onOpenChange={open=>{if(!open)setInspectPlayer(null);}}><DialogContent><DialogHeader><DialogTitle>{v?.players.find(p=>p.id===inspectPlayer)?.name} · public tableau</DialogTitle><DialogDescription>Face-down cards remain concealed. Total from completed holes: {inspectPlayer?scoreView?.scores[inspectPlayer]:0}</DialogDescription></DialogHeader><div className="golf-inspect">{inspectPlayer&&v?.tableaus[inspectPlayer]?.cards.map((card,i)=><TableauCard key={i} card={golfCard(card)} isHidden={card===null} style={{width:72,height:101}}/>)}</div></DialogContent></Dialog>
+  <Dialog open={rulesOpen&&!props.sessionEnded} onOpenChange={setRulesOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Six-Card Golf rules</DialogTitle><DialogDescription>{v?.rules.version} · frozen for this match</DialogDescription></DialogHeader><div className="catalog-scroll"><GolfRules version={v?.rules.version}/></div></DialogContent></Dialog>
   <div aria-hidden data-canonical-shell-play-top-spacer="" style={{flex:'0 0 var(--play-top-safe-area, 0px)',pointerEvents:'none'}}/>
   <div style={{position:'relative',height:'var(--shell-felt-h)',flex:'0 0 var(--shell-felt-h)',pointerEvents:'none'}}>
   {v&&!props.sessionEnded&&<GameplayOpponentSeatLayer family="six-card-golf" participants={v.players.filter(p=>p.id!==self?.id).map(p=>({...p,position:p.seat}))} presentation={{
    inwardSeatContent:true,
-   cardBacks:p=>({count:6,visible:!scoring&&p.id!==shownActor,variant:'cribbage'}),
+   cardBacks:p=>({count:6,visible:true,variant:'cribbage',exposed:v.tableaus[p.id].exposed}),
    dealerPip:p=>p.id===v.players[v.dealerIndex]?.id,
-   scoreLine:p=>'Total '+v.scores[p.id],
+   scoreLine:p=>'Total '+scoreView!.scores[p.id],
    scoreAutoPlay:p=>!!v.playerControls?.[p.id]?.autoPlay,
    activeTimer:p=>p.id===actor?.id&&!v.paused&&!v.settled?{timeLeft:Math.max(0,Math.ceil((v.deadline-game.now)/1000)),maxTime:30,activePlayerId:p.id}:null,
   }}/>}
@@ -154,7 +156,7 @@ export function GolfTable(props:Props) {
 
   </div>,layer)}
   <div aria-hidden data-canonical-shell-play-bottom-spacer="" style={{flex:'0 0 var(--play-bottom-safe-area, 0px)',pointerEvents:'none'}}/>
-  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-helper" role="status"><strong>{helper}</strong></div><div className="golf-hand-row"><div className="golf-hole-label">{v&&<GolfHoleFlag hole={v.hole}/>}</div><div className="golf-hand-slot">{localTableau}</div>{v&&<GolfLeaderboard snapshot={v} onOpen={()=>setScorecardOpen(true)}/>}</div><button className="golf-info-toggle" onClick={()=>setInfoOpen(true)} aria-label="Table information">Info</button></div>):<div className="golf-panel">{panel}</div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={actor?.id===self.id&&!scoring&&!v?.paused}/>:<span>Observer</span>}/>
+  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-helper" role="status"><strong>{helper}</strong></div><div className="golf-hand-row"><div className="golf-hole-label">{v&&<GolfHoleFlag hole={v.hole}/>}</div><div className="golf-hand-slot">{localTableau}</div>{v&&<GolfLeaderboard snapshot={scoreView!} onOpen={()=>setScorecardOpen(true)}/>}</div><button className="golf-info-toggle" onClick={()=>setInfoOpen(true)} aria-label="Table information">Info</button></div>):<div className="golf-panel">{panel}</div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={actor?.id===self.id&&!scoring&&!v?.paused}/>:<span>Observer</span>}/>
 
  </>;
 }

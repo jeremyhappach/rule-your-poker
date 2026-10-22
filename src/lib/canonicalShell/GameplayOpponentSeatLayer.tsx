@@ -88,6 +88,8 @@ export interface CardBacksPresentation {
   count: number;
   visible: boolean;
   variant: 'cribbage' | 'gin';
+  /** Public exposure only; never card rank/suit. Omitted preserves all backs. */
+  exposed?: readonly boolean[];
 }
 
 export interface GameplayOpponentSeatPresentation {
@@ -135,6 +137,7 @@ function defaultChipValue(n: number): string {
 interface ShellOpponentCardBacksProps {
   count: number;
   variant: 'cribbage' | 'gin';
+  exposed?: readonly boolean[];
   /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
   color?: string;
   /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
@@ -144,7 +147,7 @@ interface ShellOpponentCardBacksProps {
   position: number;
 }
 
-function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardBacksProps) {
+function ShellOpponentCardBacks({ count, variant, position, exposed }: ShellOpponentCardBacksProps) {
   // Subscribe to the global Shell / Opponent Card Backs config
   // (Geometry Lab → Seat Cluster → Opponent Card Backs). The authored
   // maxFanSpanPct is the source of truth; runtime pixels are derived
@@ -238,7 +241,9 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
         minHeight: cardHeight,
       }}
     >
-      {Array.from({ length: count }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => exposed?.[i] ? (
+        <div key={i} data-seat-card-exposed="true" aria-label="Exposed card" className="shrink-0" style={{width:cardWidth,height:cardHeight,marginLeft:i===0?0:-overlapPx,background:'#fff',border:'1px solid #cbd5e1',borderRadius:Math.max(3,cardWidth*.08)}}/>
+      ) : (
         <CanonicalCardBack
           key={i}
           widthPx={cardWidth}
@@ -354,6 +359,7 @@ export function GameplayOpponentSeatLayer({
               <ShellOpponentCardBacks
                 count={cardBacks.count}
                 variant={cardBacks.variant}
+                exposed={cardBacks.exposed}
                 position={p.position}
               />
             ) : (

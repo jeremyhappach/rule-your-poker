@@ -1,3 +1,19 @@
+# 2026-10-22 — Golf /2 stock threshold; local candidate, publication held
+
+Owner replaces the no-reveal turn limit for future Golf matches with an exact
+stock-draw boundary. When the draw leaves one stock card per player with any
+concealed cards, its actor finishes normally; then every player gets one final
+turn, ending with that actor. If the triggering turn exposes all six, preserve
+the ordinary opponents-only queue. Existing final queues cannot restart.
+Freeze this as `six-card-golf/2`; preserve `/1`, including its bot urgency and
+progress warning. No elapsed pause time can advance either version.
+
+All score summaries withhold the just-resolved hole until counting finishes.
+Financial settlement remains immediate and authoritative. Keep pencil-written
+numerals, animate only the new hole, and use three seconds of the default
+five-second results hold. Details and publication gates:
+[Golf /2 local candidate](SIX_CARD_GOLF_RULES_V2_LOCAL.md).
+
 # 2026-10-22 — Canasta pacing and helper separation; active-match liveness
 
 The local follow-up freezes Beginner 180-second or Expert configured pacing
