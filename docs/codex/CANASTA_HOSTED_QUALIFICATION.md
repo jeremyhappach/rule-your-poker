@@ -1,5 +1,23 @@
 # Canasta hosted qualification — 2026-10-21
 
+## October 22 resumed authorization and preflight
+
+The owner superseded the former two-account/24-hour proposal: after all hosted
+gates pass, open general play-money admission without allowlist or expiration;
+real money stays denied. Golf's published `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`
+and both-money flags are preserved. The documentation-only merge retains both
+release histories. No installed migration is reapplied.
+
+Installed rollback proof `supabase/canasta/open-play-money.proof.sql` passes:
+ordinary accounts without grants can discover/configure in a play-money session
+with general admission enabled; real-money discovery is false and setup raises
+`canasta:fake_money_only`. The transaction rolls back. No new mode switch is needed.
+The host-parsed-body regression reproduced four failures before correction;
+the Run21-compatible adapter now passes all five body tests. Ninety-one focused
+tests, application/server typechecks, native Node entry proof and Vite build pass.
+The installed SQL and recovery worker bundle hashes remain unchanged.
+The following sections are chronological historical checkpoints, not activation.
+
 Jeremy authorized conditional release and a 24-hour fake-money smoke window for
 Hap (`d7dc1928-3727-4351-b0ff-0e80c81c2953`) and Happach Gmail
 (`fb835d1f-db2f-4de4-84e2-ce0074512e46`). No general or real-money opening.

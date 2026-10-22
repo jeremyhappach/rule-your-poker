@@ -39,7 +39,7 @@
   "sourceSha256": {
     "api/canasta.ts": "3b23292a73710a36d117dc19eb6af612da4993405af5c6a19798beac6c8ca4c2",
     "server/canasta/authority.ts": "ba837ac7775c79368e015b13eb4bd15712d50e66ef5c96bcb6671e7d55410381",
-    "server/canasta/handler.ts": "59b90c5b1a027e2b7ab495854dd883f705fb85b7e127c76c9b8d06d63aebcad9",
+    "server/canasta/handler.ts": "e71f7e4e99f7e9d722a513f44902c95739f08c4ae1e2644563bdfd7a286caaa1",
     "server/canasta/production.ts": "9f0091b319c8ecf1cf90c9f34115215496aad3b0bffe8f8790f033ead64cb18b",
     "server/canasta/recovery.ts": "7699d909b58e9d192f99a0ef2ef26033a4ca449b32d10d9f032989d6ac8dd533",
     "server/canasta/shuffle.ts": "593a7213e71945761387d4c9908731fefcfffe91958e354ab51216ce42abc9a3",
@@ -53,6 +53,7 @@
     "src/lib/canasta/client.ts": "f05309955e57f63d8ffa90d21cae6b470a33d15922bcb0f823d43c49d8b47e94",
     "src/lib/canasta/engine.test.ts": "ac16702b196c59c60fd1b3f4aae97527bd53d66a3edd3fdd5f41143714ef21a3",
     "src/lib/canasta/engine.ts": "48ed63fcd38fb221acdd71da5fecef92de4bd543443cf55bb31473aa7558c327",
+    "src/lib/canasta/hostedRequest.test.ts": "e6937f15fc766c80ba606e4f4ba7e02ac9cf2f79729c022bb0206ce69d6ffada",
     "src/lib/canasta/integration.test.ts": "e63873bd4da16d8c0bbac9bd4428465102339d2434bf605570caab2204877611",
     "src/lib/canasta/maximumHand.fixture.ts": "e69d61b11c90b65807c934f499621155c8613be55c2667618fbc3a355d8b8228",
     "src/lib/canasta/maximumHand.test.ts": "9c7754b0edcc3e54cc47f641a353180b8af5d4355d31daab02c357ec5142b0d8",
