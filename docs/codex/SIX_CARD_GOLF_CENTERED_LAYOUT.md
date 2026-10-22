@@ -1,5 +1,39 @@
 # Golf centered layout — October 21, 2026
 
+## Subsequent pile refinement — local only
+
+Based on `185ee06493ebc4aa32ed456f266075a4ed6595c0`, Jeremy requested discard
+left / stock right, smaller closer piles, opponent cards slightly larger than
+piles, tighter MY spacing and the standard upper-left circular stock count.
+The final refinement uses a shared size budget: opponent card art is 12% larger
+than pile art, visible pile edges are 8px apart, and MY grid gaps are 2px.
+All primary targets retain at least 44×44 px. Compact art scales with the
+canonical felt; enlarged public views remain available through Info.
+
+`CanonicalCardCountBadge` reuses the established Take 2 / 11 Up circular styling.
+Golf is the only new consumer; financial chip rendering and other games are
+unchanged. Stock has no visible word label; its accessible button name retains
+the action and authoritative count. Discard precedes stock in DOM and visual
+order. Pending draws still occupy the actor-private stock-side slot.
+
+The shared default is now in `ARCHITECTURE.md` under Stock/discard convention.
+It applies to future work without authorizing unrelated retrofits.
+
+19 focused tests, application typecheck, production build, isolated browser
+actions and all 63 rendered geometry cases pass. The geometry proof now also
+checks the 12% card-size relation, 8px visible pile gap, left/right order and
+count-only stock text. Final owner-session portrait/landscape images and
+four-player images were inspected directly. Actual owner capture remained
+read-only: snapshot HTTP 200, Realtime OK, no page errors or gameplay actions.
+No financial campaign or other-game runtime sweep was repeated for this change.
+
+Final evidence and source/image hashes are in
+`dev/six-card-golf/evidence/right-handed-layout/`. The earlier centered-layout
+evidence remains intact. Physical-device owner acceptance and release approval
+remain pending; no push, deployment, migration, admission or live-state changes.
+
+## Earlier centered-layout candidate
+
 Local review candidate on `codex/golf-interaction-polish`, based on
 `5edc96f904dabf71c4192ccf094930131dda1da5`. **No release approval.**
 Jeremy rejected that candidate's seat-attached opponent cards and split MY pane.

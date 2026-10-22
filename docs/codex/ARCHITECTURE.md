@@ -69,6 +69,24 @@ face-reveal completion requires a resolved face and existing visibility admissio
 - Interactive felt elements mount in the canonical interaction layer.
 - Elliptical felt content must respect an inscribed safe region, not the full bounding rectangle.
 
+### Stock/discard convention
+
+For new or revised card-game pile layouts, place **discard on the left and stock
+on the right** in the active player's view for right-handed play. Use nearby,
+separate targets with at least 44×44 px hit areas; scale visible card art without
+overlapping those targets. DOM/keyboard order must match the visible order.
+
+Show the public stock count in `CanonicalCardCountBadge` at the stock card's
+upper-left corner, using the established Take 2 / 11 Up circular treatment.
+Do not print a separate visible "Stock" label. Keep a descriptive accessible
+control name such as "Draw stock, 39 cards". The badge is a presentation-only
+card artifact, not a financial balance or a chip-transfer anchor. Preserve the
+canonical card aspect ratio and existing transport anchors.
+
+This is the default for future game work; adopting it does not authorize broad
+retroactive changes to other released games. An intentional exception requires
+an explicit product decision recorded with that game's specification.
+
 ## 5. Realtime and scheduler behavior
 
 Realtime edges are not sufficient alone. A client that mounts, reconnects, regains focus, or misses an edge must evaluate current authoritative state.

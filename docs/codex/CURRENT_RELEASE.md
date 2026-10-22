@@ -1,4 +1,15 @@
-# Golf centered layout — October 21 — revised local candidate for visual review
+# Golf pile refinement — October 21 — local visual review, release held
+
+Discard is now left and stock right. Opponent cards are 12% larger than pile
+cards; visible piles are 8px apart and MY gaps are 2px. Stock uses the reusable
+upper-left circular count with no visible Stock word. The future-game convention
+is recorded in `ARCHITECTURE.md`; other games are unchanged.
+19 focused tests, 63 rendered cases, isolated actions, typecheck and build pass.
+Fresh final owner-session portrait/landscape screenshots were inspected directly.
+See [refinement and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, publication, deployment, migration, admission or live-state changes.
+
+# Golf centered layout — October 21 — preceding local candidate
 
 Jeremy rejected the prior seat-attached opponent grids and split MY pane.
 The revised candidate centers opponents on the felt, centers the local grid in

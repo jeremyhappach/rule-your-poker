@@ -63,3 +63,11 @@ it('retains opponent reveal anchors while presenting completed-hole results',()=
  expect(state.layer!.querySelector('[data-golf-stock]')).toBeNull();
  expect(screen.getByText('Hole 1 scored')).not.toBeNull();
 });
+it('places discard before stock and exposes the stock count through its accessible label',()=>{
+ state.game.snapshot.stockCount=39;render(<GolfTable {...props}/>);
+ const stock=screen.getByRole('button',{name:'Draw stock, 39 cards'});
+ expect(document.querySelector('.golf-piles')!.firstElementChild!.hasAttribute('data-golf-discard')).toBe(true);
+ expect(stock.textContent).toBe('39');
+ expect(stock.querySelector('[data-card-anchor="stock"] [data-canonical-card-count]')?.getAttribute('aria-hidden')).toBe('true');
+ expect(screen.queryByText(/^Stock\b/)).toBeNull();
+});

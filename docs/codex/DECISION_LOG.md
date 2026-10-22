@@ -1,3 +1,13 @@
+# 2026-10-21 — Right-handed stock/discard and public count convention
+
+Jeremy set the shared default: discard left, stock right; nearby pile cards;
+no visible Stock word; the existing circular count treatment on stock's
+upper-left. `CanonicalCardCountBadge` reuses the Take 2 / 11 Up styling as a
+nonfinancial card primitive. Golf adopts it locally; other games are unchanged.
+The convention is recorded under Geometry in `ARCHITECTURE.md` for future work.
+Golf's opponent cards are 12% larger than pile cards and MY gaps tighten to 2px.
+No release, migration, admission or live-game changes are authorized.
+
 # 2026-10-21 — Golf grids separate from seat identity
 
 Jeremy's revised local-only direction puts opponent grids in the middle of the

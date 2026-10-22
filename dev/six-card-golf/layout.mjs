@@ -1,21 +1,22 @@
 import {chromium} from '@playwright/test';import {existsSync,writeFileSync} from 'node:fs';import assert from 'node:assert/strict';
 const executablePath=['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe'].find(existsSync);
 const browser=await chromium.launch({headless:true,executablePath}),base='http://127.0.0.1:5198',cases=[],errors=[];
+const quick=process.argv.includes('--quick');
 const post=async(op,body)=>{const r=await fetch(base+'/__golf/'+op,{method:'POST',body:JSON.stringify(body)});return r.json();};
-try{for(const n of [2,3,4]){
+try{for(const n of quick?[2,4]:[2,3,4]){
  const f=await post('new',{players:n});assert.ok(f.id,JSON.stringify(f));
  const g=(await post('read',{table:'games',filters:{id:f.session},single:true})).data;
  const paused=await post('rpc',{user:f.user,name:'set_game_paused',args:{p_game_id:f.session,p_paused:true,p_expected_dealer_game_id:f.id,p_expected_pause_version:g.pause_version}});assert.equal(paused.error,null);
- for(let viewer=0;viewer<n;viewer++){
+ for(let viewer=0;viewer<(quick?1:n);viewer++){
   const p=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});p.on('pageerror',e=>errors.push(e.message));
   await p.addInitScript(f=>sessionStorage.setItem('golf-fixture:'+f.id,JSON.stringify(f)),f);
   await p.goto(base+'/dev/six-card-golf/live.html?id='+f.id+'&user='+f.users[viewer],{waitUntil:'domcontentloaded'});await p.locator('.golf-local').waitFor();
-  for(const [width,height] of [[320,568],[390,844],[430,932],[568,320],[844,390],[932,430],[390,664]]){
+  for(const [width,height] of quick?[[390,844],[844,390]]:[[320,568],[390,844],[430,932],[568,320],[844,390],[932,430],[390,664]]){
    await p.setViewportSize({width,height});await p.waitForTimeout(100);
    const result=await p.evaluate(()=>{
     const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
     const local=[...document.querySelectorAll('[data-golf-position]')].map(rect),opponents=[...document.querySelectorAll('[data-golf-public-tableau]')].map(rect),pane=document.querySelector('[data-hud-row="pane"]');
-    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},grid:rect(document.querySelector('.golf-local')),felt:rect(document.querySelector('.golf-felt')),center:rect(document.querySelector('.golf-opponents')),title:rect(document.querySelector('[data-canonical-felt-plate-title]'))};
+    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),stock:rect(document.querySelector('[data-card-anchor="stock"]')),discard:rect(document.querySelector('[data-card-anchor="discard"]')),opponentCard:rect(document.querySelector('.golf-public-cards>span')),badge:rect(document.querySelector('[data-canonical-card-count]')),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},grid:rect(document.querySelector('.golf-local')),felt:rect(document.querySelector('.golf-felt')),center:rect(document.querySelector('.golf-opponents')),title:rect(document.querySelector('[data-canonical-felt-plate-title]'))};
    });
    for(const r of result.local){assert.ok(r.w>=43.9&&r.h>=43.9,JSON.stringify({n,viewer,width,height,r}));assert.ok(r.x>=0&&r.x+r.w<=width+.5);}
    // Short landscape panes retain full touch targets with contained scrolling;
@@ -36,6 +37,11 @@ try{for(const n of [2,3,4]){
    assert.ok(Math.abs(result.center.x+result.center.w/2-result.felt.x-result.felt.w/2)<1,'opponent group centered on felt');
    for(const r of result.opponents)assert.ok(r.y+r.h<=result.piles.y+.5,'opponents above piles');
    for(const r of result.opponents)assert.ok(r.y>=result.title.y+result.title.h-.5,JSON.stringify({n,viewer,width,height,opponent:r,title:result.title,felt:result.felt,center:result.center}));
+   assert.ok(result.discard.x<result.stock.x,'discard left, stock right');
+   assert.ok(Math.abs(result.stock.x-result.discard.x-result.discard.w-8)<.5,'visible piles 8px apart');
+   assert.ok(result.opponentCard.w>result.stock.w*1.1&&result.opponentCard.w<result.stock.w*1.14,JSON.stringify({n,width,height,opponent:result.opponentCard,stock:result.stock}));
+   assert.ok(result.badge.x<result.stock.x&&result.badge.y<result.stock.y,'count attached to stock upper-left');
+   assert.equal(await p.locator('[data-golf-stock]').innerText(),String(52-6*n-1),'stock has count only, no visible Stock word');
    const intersects=(a,b)=>Math.min(a.x+a.w,b.x+b.w)>Math.max(a.x,b.x)+1&&Math.min(a.y+a.h,b.y+b.h)>Math.max(a.y,b.y)+1;
    for(const r of result.pileCards)assert.ok(r.w>=43.9&&r.h>=43.9&&r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5);
    const artifacts=[...result.opponents,...result.local,...result.pileCards];

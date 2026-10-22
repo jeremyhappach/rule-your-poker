@@ -1,7 +1,8 @@
 import {useGolfCardPresentation} from './useGolfCardPresentation';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {TableauCard} from '@/lib/canonicalShell/TableauCard';
+import {CanonicalCardCountBadge} from '@/components/canonicalShell/CanonicalCardCountBadge';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {useGolf} from '@/hooks/useGolf';
 import {golfTransport,golfRpc} from '@/lib/golf/client';
@@ -98,16 +99,16 @@ export function GolfTable(props:Props) {
   }}/>}
   </div>
   {layer&&v&&!props.sessionEnded&&createPortal(<div className="golf-felt" data-golf-phase={v.phase}>
-   <div className="golf-center-play">
+   <div className="golf-center-play" style={{'--golf-opponent-count':Math.max(1,opponents.length)} as CSSProperties}>
    <div className="golf-opponents" data-opponent-count={opponents.length}>{opponents.map(p=><button key={p.id} className="golf-public-grid" data-golf-public-tableau={p.id} aria-label={'View '+p.name+' tableau'} onClick={()=>setInspectPlayer(p.id)}>
     <span className="golf-public-cards">{v.tableaus[p.id].cards.map((card,i)=><span key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:flying.get(p.id)?.includes(i)?'hidden':'visible'}}><TableauCard card={golfCard(card)} isHidden={card===null} tier="small" style={{width:'100%',height:'100%'}}/></span>)}</span>
     {opponents.length>1&&<span className="golf-public-label">{p.name}</span>}
    </button>)}</div>
    {v.phase==='hole_complete'||v.settled?<div className="golf-hole-result"><strong>{v.settled?'Match complete':'Hole '+v.hole+' scored'}</strong>{v.players.map(p=><div key={p.id}>{p.name}: {v.holes.at(-1)?.scores[p.id]} · total {v.scores[p.id]}</div>)}</div>:<div className="golf-piles">
-    <div className="golf-stock-slot"><button data-golf-stock disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>void game.act({type:'draw'})} aria-label={'Draw stock, '+v.stockCount+' cards'}><span className="golf-pile-artifact" data-card-anchor="stock"><TableauCard isHidden style={{width:'100%',height:'100%'}}/></span><small>Stock {v.stockCount}</small></button>
+    <button data-golf-discard disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><span className="golf-pile-artifact" data-card-anchor="discard"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/></span><small>Discard</small></button>
+    <div className="golf-stock-slot"><button data-golf-stock disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>void game.act({type:'draw'})} aria-label={'Draw stock, '+v.stockCount+' cards'}><span className="golf-pile-artifact" data-card-anchor="stock"><TableauCard isHidden style={{width:'100%',height:'100%'}}/><CanonicalCardCountBadge count={v.stockCount}/></span></button>
     {v.pending&&<button data-golf-pending disabled={!acting} onClick={()=>void game.act({type:'reject'})} aria-label="Discard drawn card"><span className="golf-pile-artifact" data-card-anchor={'tableau-'+v.viewerId+'-6'}><TableauCard card={golfCard(v.pending.card)} style={{width:'100%',height:'100%',visibility:flying.get(v.viewerId)?.includes(6)?'hidden':'visible'}}/></span><small>Discard draw</small></button>}
     </div>
-    <button data-golf-discard disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><span className="golf-pile-artifact" data-card-anchor="discard"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/></span><small>Discard</small></button>
    </div>}</div>
 
   </div>,layer)}
