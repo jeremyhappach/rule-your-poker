@@ -1,44 +1,32 @@
 .golf-felt {position:absolute;inset:0;pointer-events:none;container-type:size;color:#fff;--golf-card-w:clamp(44px,19cqh,58px)}
-.golf-summary {display:flex;flex-wrap:wrap;justify-content:center;gap:.1em .6em;font-size:.8rem}
-.golf-summary strong,.golf-summary>span:first-of-type {flex-basis:100%}
-.golf-piles {position:absolute;left:50%;top:max(8px,calc(100% - (var(--golf-card-w)*4.2 + 28px)));transform:translateX(-50%);display:flex;gap:8px}
+/* Clear the inward public tableau and chip, accounting for the felt inset. */
+.golf-piles {position:absolute;left:50%;bottom:9%;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100% - 2 * (76px + 44px - 4px));gap:18px 12px}
+@container (min-aspect-ratio:3/2) {.golf-piles {max-width:none}}
+.golf-stock-slot {position:relative;width:var(--golf-card-w);height:calc(var(--golf-card-w)*1.4)}
 .golf-piles button {width:var(--golf-card-w);height:calc(var(--golf-card-w)*1.4);position:relative}
 .golf-piles:has([data-golf-pending]) [data-golf-stock] {visibility:hidden}
 .golf-piles [data-golf-pending] {position:absolute;left:0;top:0}
 .golf-piles small {position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;line-height:14px}
-.golf-local {position:absolute;left:50%;bottom:2%;width:calc(var(--golf-card-w)*3 + 8px);height:calc(var(--golf-card-w)*2.8 + 4px);transform:translateX(-50%)}
+.golf-pane {height:100%;display:grid;grid-template-columns:minmax(140px,45%) minmax(0,1fr);gap:.3rem;padding-inline:4px}
+.golf-hand-slot {height:100%;min-width:0;container-type:size;display:flex;align-items:safe center;justify-content:center;overflow:auto}
+.golf-local {--golf-card-h:clamp(44px,calc((100cqh - 4px)/2),81.2px);--golf-card-w:min(calc((100cqw - 8px)/3),calc(var(--golf-card-h)/1.4));width:max(140px,calc(var(--golf-card-w)*3 + 8px));height:calc(var(--golf-card-w)*2.8 + 4px);flex-shrink:0}
 .golf-tableau {width:100%;height:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:4px}
-.golf-tableau button,.golf-piles button {pointer-events:auto;border:0;padding:0;background:transparent;min-width:44px;min-height:44px;touch-action:manipulation}
+.golf-tableau button,.golf-piles button {pointer-events:auto;border:0;padding:0;background:transparent;touch-action:manipulation}
+.golf-tableau button {display:flex;justify-content:center;min-width:44px;min-height:0}
+.golf-card-artifact {display:block;position:relative;width:var(--golf-card-w);height:100%}
+.golf-selection {position:absolute;inset:0;border:3px solid #facc15;border-radius:4px;box-shadow:0 0 8px #facc15;pointer-events:none}
 .golf-tableau button:disabled,.golf-piles button:disabled {opacity:1;cursor:default}
 .golf-tableau button:focus-visible,.golf-piles button:focus-visible {outline:2px solid #facc15;outline-offset:2px}
 .golf-hole-result {position:absolute;left:22%;top:28%;width:56%;text-align:center;font-size:.8rem}
-.golf-controls {height:100%;display:flex;flex-wrap:wrap;align-content:center;align-items:center;justify-content:center;gap:.25em .7em;text-align:center;overflow:auto;font-size:.85rem}
-.golf-controls .golf-summary,.golf-controls>p {flex-basis:100%}
+@container (min-aspect-ratio:3/2) {.golf-hole-result {left:2%;top:20%;width:40%;font-size:.65rem}}
+.golf-controls {height:100%;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;overflow:auto;font-size:.75rem}
+.golf-info {min-width:0}
+.golf-summary {display:flex;flex-wrap:wrap;justify-content:center;gap:.1em .6em;font-size:11px;line-height:1.2}
+.golf-summary strong {flex-basis:100%}
+.golf-summary>span {max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.golf-actions {display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.3rem}
 .golf-controls button {border:1px solid #eab308;border-radius:.4em;padding:.3em .8em;min-height:44px;background:#312714;color:#fef3c7}
 .golf-controls button:disabled {opacity:.5}
 .golf-warning {color:#fde68a}
 .golf-panel {height:100%;overflow:auto;padding:.5rem;font-size:.8rem}
-/* Fit the same artifacts to the available felt container, independent of device. */
-@container (min-aspect-ratio:3/2) {
- .golf-local {left:72%;bottom:2%}
- .golf-piles {left:20%;top:36%}
- .golf-hole-result {left:2%;top:20%;width:40%;font-size:.65rem}
-}
-.golf-controls {display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:center;padding:0 .4rem;gap:.4rem;font-size:.75rem}
-.golf-info {min-width:0}
-.golf-actions {display:flex;align-items:center;gap:.3rem}
-.golf-summary {font-size:.75rem;line-height:1.2}
-.golf-summary strong {flex-basis:100%}
-.golf-summary>span {max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-basis:auto}
-.golf-pane {height:100%;display:grid;grid-template-columns:minmax(140px,45%) minmax(0,1fr);gap:.3rem}
-.golf-pane[data-hand-in-felt="true"] {grid-template-columns:1fr}
-.golf-pane[data-hand-in-felt="true"] .golf-hand-slot {display:none}
-.golf-hand-slot {height:100%;min-width:0;container-type:size;display:flex;align-items:center;justify-content:center}
-.golf-hand-slot .golf-local {--golf-card-w:clamp(44px,min(calc((100cqh - 4px)/2.8),calc((100cqw - 8px)/3)),58px);position:relative;left:auto;bottom:auto;transform:none}
-.golf-pane[data-hand-in-felt="false"] .golf-controls {display:flex;flex-direction:column;flex-wrap:nowrap;padding:0;gap:3px;justify-content:center}
-.golf-pane[data-hand-in-felt="false"] .golf-summary {font-size:11px}
 .golf-inspect {display:grid;grid-template-columns:repeat(3,72px);gap:8px;justify-content:center}
-.golf-piles {flex-direction:column;top:20%;gap:16px}
-@container (min-aspect-ratio:3/2) {.golf-piles {flex-direction:row;left:calc(50% - (3 * var(--golf-card-w) + 16px) / 2);top:36%;gap:8px}}
-.golf-local {--golf-card-w:44px}
-.golf-local-compact {left:calc(50% + (2 * var(--golf-card-w) + 16px) / 2)}

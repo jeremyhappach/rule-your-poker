@@ -1,0 +1,386 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 390,
+      "height": 664
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 320,
+      "height": 568
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 430,
+      "height": 932
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 568,
+      "height": 320
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 844,
+      "height": 390
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 932,
+      "height": 430
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 390,
+      "height": 664
+    }
+  ],
+  "minimumLocalTarget": 44,
+  "minimumPileTarget": 44,
+  "errors": []
+}

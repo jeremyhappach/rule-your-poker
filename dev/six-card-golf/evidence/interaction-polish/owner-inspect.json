@@ -1,0 +1,140 @@
+{
+  "at": "2026-10-22T00:15:14.444Z",
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 0,
+          "y": 563.265625,
+          "w": 55.828125,
+          "h": 78.15625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 59.828125,
+          "y": 563.265625,
+          "w": 55.828125,
+          "h": 78.15625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 119.65625,
+          "y": 563.265625,
+          "w": 55.828125,
+          "h": 78.15625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 0,
+          "y": 645.421875,
+          "w": 55.828125,
+          "h": 78.171875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 59.828125,
+          "y": 645.421875,
+          "w": 55.828125,
+          "h": 78.171875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 119.65625,
+          "y": 645.421875,
+          "w": 55.828125,
+          "h": 78.171875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        }
+      ]
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 404,
+          "y": 57.90625,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        },
+        {
+          "disabled": true,
+          "x": 452,
+          "y": 57.90625,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        },
+        {
+          "disabled": true,
+          "x": 500,
+          "y": 57.90625,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        },
+        {
+          "disabled": true,
+          "x": 404,
+          "y": 123.5,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        },
+        {
+          "disabled": true,
+          "x": 452,
+          "y": 123.5,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        },
+        {
+          "disabled": true,
+          "x": 500,
+          "y": 123.5,
+          "w": 44,
+          "h": 61.59375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": false
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "rpc": [
+    {
+      "name": "golf_snapshot",
+      "status": 200
+    }
+  ],
+  "websocket": [
+    {
+      "topic": "realtime:golf:100b31e9-e196-494a-b94c-d6c7c9a95ae7:5d133fc2-5f6c-4342-a8f4-7485f7a6ea63",
+      "status": "ok"
+    }
+  ],
+  "text": "Hole 1 / 9 · Completed totals\nBot 1-3eaff4: 0\nYou: 0\n\nHap is choosing two cards\n\nRules\nAuto-play · uncheck to rejoin"
+}

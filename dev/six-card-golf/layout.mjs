@@ -15,13 +15,23 @@ try{for(const n of [2,3,4]){
    const result=await p.evaluate(()=>{
     const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
     const local=[...document.querySelectorAll('[data-golf-position]')].map(rect),opponents=[...document.querySelectorAll('[data-public-seat-tableau]')].map(rect),pane=document.querySelector('[data-hud-row="pane"]');
-    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},controls:rect(document.querySelector('.golf-controls'))};
+    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},controls:rect(document.querySelector('.golf-controls'))};
    });
-   for(const r of result.local){assert.ok(r.w>=43.9&&r.h>=43.9,JSON.stringify({n,viewer,width,height,r}));assert.ok(r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5);}
+   for(const r of result.local){assert.ok(r.w>=43.9&&r.h>=43.9,JSON.stringify({n,viewer,width,height,r}));assert.ok(r.x>=0&&r.x+r.w<=width+.5);}
+   // Short landscape panes retain full touch targets with contained scrolling;
+   // no local card may escape into the felt or identity row.
+   for(const card of await p.locator('[data-golf-position]').all()){
+    assert.ok(await card.evaluate(e=>!!e.closest('[data-hud-row="pane"]')));
+    await card.scrollIntoViewIfNeeded();const r=await card.boundingBox();
+    assert.ok(r&&r.y>=result.pane.y-.5&&r.y+r.height<=result.pane.y+result.pane.h+.5,JSON.stringify({n,viewer,width,height,r,pane:result.pane}));
+    const hit=await card.evaluate(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return {inside:e.contains(hit),target:hit?.outerHTML.slice(0,200),rect:{x:r.x,y:r.y,w:r.width,h:r.height}};});
+    assert.ok(hit.inside,JSON.stringify({n,viewer,width,height,hit}));
+   }
    for(const r of result.opponents)assert.ok(r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5,JSON.stringify({n,viewer,width,height,r}));
    assert.equal(result.opponents.length,n-1);assert.equal(await p.locator('[data-canonical-felt-interaction-layer]').count(),1);
    const intersects=(a,b)=>Math.min(a.x+a.w,b.x+b.w)>Math.max(a.x,b.x)+1&&Math.min(a.y+a.h,b.y+b.h)>Math.max(a.y,b.y)+1;
-   const artifacts=[...result.opponents,...result.local,result.piles];
+   for(const r of result.pileCards)assert.ok(r.w>=43.9&&r.h>=43.9&&r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5);
+   const artifacts=[...result.opponents,...result.local,...result.pileCards];
    for(let i=0;i<artifacts.length;i++)for(let j=i+1;j<artifacts.length;j++)assert.ok(!intersects(artifacts[i],artifacts[j]),JSON.stringify({n,viewer,width,height,overlap:[i,j],a:artifacts[i],b:artifacts[j]}));
    cases.push({n,viewer,width,height,...result});
    await p.screenshot({path:'qualification.local/six-card-golf/layout-'+n+'-'+viewer+'-'+width+'x'+height+'.png'});
@@ -32,7 +42,8 @@ try{for(const n of [2,3,4]){
    await p.locator('[data-public-seat-tableau]').first().click();await p.locator('.golf-inspect').waitFor();
    assert.equal(await p.locator('.golf-inspect').evaluate(e=>e.children.length),6);
    if(width===568)await p.screenshot({path:'qualification.local/six-card-golf/inspect-'+n+'-'+viewer+'.png'});
-   await p.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await p.locator('.golf-inspect').waitFor({state:'hidden'});
+   await p.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await p.locator('.golf-inspect').waitFor({state:'detached'});
+   await p.waitForFunction(()=>getComputedStyle(document.body).pointerEvents!=='none'&&!document.querySelector('[role="dialog"]'));
   }await p.close();
  }}}catch(e){console.error(e);process.exitCode=1;}finally{writeFileSync('qualification.local/six-card-golf/layout.json',JSON.stringify({cases,errors},null,2));await browser.close();}
 assert.deepEqual(errors,[]);console.log('Rendered layout cases:',cases.length);

@@ -1,3 +1,16 @@
+# Golf interaction/layout — October 21 — candidate awaiting release approval
+
+The owner-session investigation found invisible face-down selection feedback and
+an extra opening confirmation step. The candidate visibly marks the first card,
+submits the existing legal opening action on the second distinct tap, keeps the
+local grid in MY in both orientations, and centers piles at the bottom of the
+felt. Focused tests, typecheck/build, authenticated inspection and isolated action
+qualification pass. See [findings and evidence](SIX_CARD_GOLF_INTERACTION_POLISH.md).
+No push/deployment is authorized yet. The published Golf build remains
+`52aa5528143fe031c4ddf8c3787eff85c0392aa9`, with both-money general admission enabled
+by the owner on October 21 at 19:04 Central. The owner's paused session and all
+financial/history records are preserved.
+
 # Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
 
 October 21 qualified publication checkpoint: candidate **22/22** and installed
