@@ -10,7 +10,7 @@ vi.mock('./useGolfCardPresentation',()=>({useGolfCardPresentation:()=>new Map()}
 vi.mock('@/lib/canonicalShell/TableauCard',()=>({TableauCard:({isHidden}:any)=><span data-face={isHidden?'back':'public'}/>}));
 vi.mock('@/lib/canonicalShell/ShellOwnedFeltHost',()=>({usePublishShellFelt:()=>{}}));
 vi.mock('@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement',()=>({useCanonicalFeltInteractionLayerElement:()=>state.layer}));
-vi.mock('@/lib/canonicalShell/ShellHudGrid',()=>({ShellHudGrid:({pane}:any)=><div data-hud-row="pane">{pane}</div>}));
+vi.mock('@/lib/canonicalShell/ShellHudGrid',()=>({ShellHudGrid:({pane,identity}:any)=><><div data-hud-row="pane">{pane}</div><div data-hud-row="identity">{identity}</div></>}));
 vi.mock('@/lib/canonicalShell/ShellTimerRail',()=>({useShellTimer:()=>{},ShellTimerRail:()=>null}));
 vi.mock('@/lib/canonicalShell/ShellTabBar',()=>({useShellTabBar:()=>{}}));
 vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer',()=>({GameplayOpponentSeatLayer:()=>null}));
@@ -44,8 +44,22 @@ it.each(['paused','opponent','disconnected','pending','expired'])('does not bypa
 });
 it('explains paused autoplay and preserves the public-only board',()=>{
  state.game.snapshot.paused=true;state.game.snapshot.playerControls.p.autoPlay=true;
- render(<GolfTable {...props}/>);expect(screen.getByRole('status').textContent).toContain('uncheck Auto-play');expect(document.querySelectorAll('[data-face="back"]')).toHaveLength(7);
+ render(<GolfTable {...props}/>);expect(screen.getByRole('status').textContent).toContain('Info for rejoin');expect(document.querySelectorAll('[data-face="back"]')).toHaveLength(13);
+ expect(state.layer!.querySelectorAll('[data-golf-public-tableau]')).toHaveLength(1);
+ expect(document.querySelector('.golf-pane .golf-controls')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Table information'}));expect(screen.getByRole('checkbox',{name:'Auto-play'})).not.toBeNull();expect(screen.getByText(/uncheck Auto-play to rejoin, then/)).not.toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'View Opponent · Total 0'}));expect(document.querySelectorAll('.golf-inspect [data-face="back"]')).toHaveLength(6);
 });
 it('clears an unfinished selection at a new authoritative revision',()=>{
  const ui=render(<GolfTable {...props}/>);fireEvent.click(card(0));state.game.snapshot={...state.game.snapshot,revision:2};ui.rerender(<GolfTable {...props}/>);expect(card(0).getAttribute('aria-pressed')).toBe('false');
+});
+it('retains opponent reveal anchors while presenting completed-hole results',()=>{
+ state.game.snapshot.phase='hole_complete';state.game.snapshot.canAct=false;
+ state.game.snapshot.tableaus.q.cards=[0,1,2,3,4,5];
+ state.game.snapshot.holes=[{hole:1,scores:{p:3,q:7}}];
+ render(<GolfTable {...props}/>);
+ expect(state.layer!.querySelectorAll('[data-golf-public-tableau] [data-card-anchor]')).toHaveLength(6);
+ expect(state.layer!.querySelectorAll('[data-golf-public-tableau] [data-face="public"]')).toHaveLength(6);
+ expect(state.layer!.querySelector('[data-golf-stock]')).toBeNull();
+ expect(screen.getByText('Hole 1 scored')).not.toBeNull();
 });

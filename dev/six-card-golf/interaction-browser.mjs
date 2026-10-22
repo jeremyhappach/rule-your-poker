@@ -13,7 +13,7 @@ try{
  for(let i=0;i<2;i++){
   const before=await snap(f.users[0]),actor=before.players[before.turnIndex],p=pages[f.users.indexOf(actor.userId)];
   const first=p.locator('[data-golf-position="0"]');await first.tap();assert.equal(await first.getAttribute('aria-pressed'),'true');
-  e.selection={pressed:true,highlight:await first.locator('[data-playing-card-highlight],.golf-selection').count(),text:await p.locator('.golf-info').innerText()};
+  e.selection={pressed:true,highlight:await first.locator('[data-playing-card-highlight],.golf-selection').count(),text:await p.locator(baseline?'.golf-info':'.golf-identity').innerText()};
   if(baseline){await p.screenshot({path:'qualification.local/six-card-golf/opening-selection-before.png'});assert.equal(e.selection.highlight,0);e.passed=true;break;}
   assert.equal(e.selection.highlight,1);assert.deepEqual((await snap(actor.userId)).tableaus[actor.id].cards,Array(6).fill(null));
   await p.locator('[data-golf-position="3"]').tap();

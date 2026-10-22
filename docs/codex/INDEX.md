@@ -13,6 +13,7 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
 | `SIX_CARD_GOLF_INTERACTION_POLISH.md` | Owner opening-interaction investigation, MY/felt layout candidate, evidence and explicit release hold |
+| `SIX_CARD_GOLF_CENTERED_LAYOUT.md` | Revised centered felt/MY layout, final screenshot provenance and local-only visual review |
 | `SIX_CARD_GOLF_RECONCILIATION.md` | Current-main/Battle 31 reconciliation, migration hash, preservation proofs and reserved two-account smoke scope |
 | `SIX_CARD_GOLF_HOSTED_ATTEMPT.md` | Executed hosted candidate proofs, four-human containment timeout, verified rollback and unopened smoke window |
 | `SIX_CARD_GOLF_DIRECT_RUNNER.md` | Historical direct-runner timeout evidence and binding discovery; superseded by connector retry |

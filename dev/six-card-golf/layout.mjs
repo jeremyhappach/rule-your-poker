@@ -14,8 +14,8 @@ try{for(const n of [2,3,4]){
    await p.setViewportSize({width,height});await p.waitForTimeout(100);
    const result=await p.evaluate(()=>{
     const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
-    const local=[...document.querySelectorAll('[data-golf-position]')].map(rect),opponents=[...document.querySelectorAll('[data-public-seat-tableau]')].map(rect),pane=document.querySelector('[data-hud-row="pane"]');
-    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},controls:rect(document.querySelector('.golf-controls'))};
+    const local=[...document.querySelectorAll('[data-golf-position]')].map(rect),opponents=[...document.querySelectorAll('[data-golf-public-tableau]')].map(rect),pane=document.querySelector('[data-hud-row="pane"]');
+    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},grid:rect(document.querySelector('.golf-local')),felt:rect(document.querySelector('.golf-felt')),center:rect(document.querySelector('.golf-opponents')),title:rect(document.querySelector('[data-canonical-felt-plate-title]'))};
    });
    for(const r of result.local){assert.ok(r.w>=43.9&&r.h>=43.9,JSON.stringify({n,viewer,width,height,r}));assert.ok(r.x>=0&&r.x+r.w<=width+.5);}
    // Short landscape panes retain full touch targets with contained scrolling;
@@ -29,6 +29,13 @@ try{for(const n of [2,3,4]){
    }
    for(const r of result.opponents)assert.ok(r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5,JSON.stringify({n,viewer,width,height,r}));
    assert.equal(result.opponents.length,n-1);assert.equal(await p.locator('[data-canonical-felt-interaction-layer]').count(),1);
+   assert.equal(await p.locator('[data-public-seat-tableau]').count(),0,'seat clusters must not contain Golf grids');
+   assert.ok(Math.abs(result.grid.x+result.grid.w/2-result.pane.x-result.pane.w/2)<1,'MY grid horizontally centered');
+   if(result.grid.h<=result.pane.h)assert.ok(Math.abs(result.grid.y+result.grid.h/2-result.pane.y-result.pane.h/2)<1,'MY grid vertically centered');
+   assert.ok(Math.abs(result.piles.x+result.piles.w/2-result.felt.x-result.felt.w/2)<1,'piles centered on felt');
+   assert.ok(Math.abs(result.center.x+result.center.w/2-result.felt.x-result.felt.w/2)<1,'opponent group centered on felt');
+   for(const r of result.opponents)assert.ok(r.y+r.h<=result.piles.y+.5,'opponents above piles');
+   for(const r of result.opponents)assert.ok(r.y>=result.title.y+result.title.h-.5,JSON.stringify({n,viewer,width,height,opponent:r,title:result.title,felt:result.felt,center:result.center}));
    const intersects=(a,b)=>Math.min(a.x+a.w,b.x+b.w)>Math.max(a.x,b.x)+1&&Math.min(a.y+a.h,b.y+b.h)>Math.max(a.y,b.y)+1;
    for(const r of result.pileCards)assert.ok(r.w>=43.9&&r.h>=43.9&&r.x>=0&&r.x+r.w<=width+.5&&r.y>=0&&r.y+r.h<=height+.5);
    const artifacts=[...result.opponents,...result.local,...result.pileCards];
@@ -37,9 +44,9 @@ try{for(const n of [2,3,4]){
    await p.screenshot({path:'qualification.local/six-card-golf/layout-'+n+'-'+viewer+'-'+width+'x'+height+'.png'});
    const anchors=await p.evaluate(()=>{
     const chips=()=>[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height];});
-    const before=chips(),boards=[...document.querySelectorAll('[data-public-seat-tableau]')];boards.forEach(e=>e.style.display='none');const after=chips();boards.forEach(e=>e.style.display='');return {before,after};
+    const before=chips(),boards=[...document.querySelectorAll('[data-golf-public-tableau]')];boards.forEach(e=>e.style.display='none');const after=chips();boards.forEach(e=>e.style.display='');return {before,after};
    });assert.deepEqual(anchors.after,anchors.before,'public artifacts cannot move canonical chips');
-   await p.locator('[data-public-seat-tableau]').first().click();await p.locator('.golf-inspect').waitFor();
+   await p.locator('[data-golf-public-tableau]').first().click();await p.locator('.golf-inspect').waitFor();
    assert.equal(await p.locator('.golf-inspect').evaluate(e=>e.children.length),6);
    if(width===568)await p.screenshot({path:'qualification.local/six-card-golf/inspect-'+n+'-'+viewer+'.png'});
    await p.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await p.locator('.golf-inspect').waitFor({state:'detached'});

@@ -1,0 +1,18 @@
+import {readFileSync as read,writeFileSync as write,mkdirSync,copyFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const input='qualification.local/six-card-golf/',output='dev/six-card-golf/evidence/centered-layout/';
+const sha=file=>createHash('sha256').update(read(file)).digest('hex');
+const layout=JSON.parse(read(input+'layout.json','utf8'));
+assert.equal(layout.cases.length,63);assert.deepEqual(layout.errors,[]);
+const owner=JSON.parse(read(input+'owner-candidate.json','utf8'));
+assert(owner.passed);assert.deepEqual(owner.errors,[]);assert(owner.rpc.every(x=>x.name==='golf_snapshot'&&x.status===200));
+const interaction=JSON.parse(read(input+'interaction-after.json','utf8'));assert(interaction.passed);
+mkdirSync(output,{recursive:true});
+const images=[['owner-candidate-390.png','portrait.png'],['owner-candidate-844.png','landscape.png'],['layout-4-0-390x844.png','four-player-portrait.png'],['layout-4-0-844x390.png','four-player-landscape.png'],['layout-4-0-568x320.png','four-player-short-landscape.png']];
+for(const [from,to] of images)copyFileSync(input+from,output+to);
+write(output+'owner.json',JSON.stringify(owner,null,2));
+write(output+'interaction.json',JSON.stringify(interaction,null,2));
+write(output+'layouts.json',JSON.stringify({passed:true,cases:layout.cases.map(({n,viewer,width,height,grid,pane,piles,felt,opponents,title})=>({players:n,viewer,width,height,myCenterError:Math.abs(grid.x+grid.w/2-pane.x-pane.w/2),pilesCenterError:Math.abs(piles.x+piles.w/2-felt.x-felt.w/2),minimumTitleClearance:Math.min(...opponents.map(r=>r.y-title.y-title.h)),minimumPileClearance:Math.min(...opponents.map(r=>piles.y-r.y-r.h))})),minimumLocalTarget:Math.min(...layout.cases.flatMap(x=>x.local.flatMap(r=>[r.w,r.h]))),minimumPileTarget:Math.min(...layout.cases.flatMap(x=>x.pileCards.flatMap(r=>[r.w,r.h]))),errors:layout.errors},null,2));
+write(output+'provenance.json',JSON.stringify({baseCommit:'5edc96f904dabf71c4192ccf094930131dda1da5',branch:'codex/golf-interaction-polish',capturedAt:owner.at,sourceHashes:Object.fromEntries(['src/components/golf/GolfTable.tsx','src/components/golf/golf.css'].map(p=>[p,sha(p)])),images:Object.fromEntries(images.map(([,p])=>[p,sha(output+p)])),ownerCapture:'Local production build; authenticated read-only view of the existing paused owner session. No gameplay action submitted.',fourPlayerCapture:'Isolated local authoritative fixture in the canonical shell.',libraryIds:null,libraryDelivery:'Direct library.create_library_file is unavailable in this session; local PNGs supplied instead.'},null,2));
+console.log('Recorded final centered-layout evidence and source/image hashes.');

@@ -1,4 +1,14 @@
-# Golf interaction/layout — October 21 — candidate awaiting release approval
+# Golf centered layout — October 21 — revised local candidate for visual review
+
+Jeremy rejected the prior seat-attached opponent grids and split MY pane.
+The revised candidate centers opponents on the felt, centers the local grid in
+MY, moves ancillary controls into Info, and centers piles below opponents.
+18 focused tests, 63 rendered layout cases, isolated browser actions, typecheck
+and build pass; final owner-session images were visually inspected. See
+[centered layout and provenance](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, merge, deployment or admission changes. Owner review remains pending.
+
+# Golf interaction/layout — October 21 — superseded layout proposal
 
 The owner-session investigation found invisible face-down selection feedback and
 an extra opening confirmation step. The candidate visibly marks the first card,

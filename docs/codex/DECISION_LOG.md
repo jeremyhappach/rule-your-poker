@@ -1,3 +1,12 @@
+# 2026-10-21 — Golf grids separate from seat identity
+
+Jeremy's revised local-only direction puts opponent grids in the middle of the
+felt, names/chips at canonical seats, and the local grid centered in MY without
+the side information column. Golf uses canonical card primitives and existing
+transport anchors inside the canonical interaction layer. Ancillary controls
+move into Info; no shared shell geometry, rules or authority changes. Release
+remains held for visual review. See `SIX_CARD_GOLF_CENTERED_LAYOUT.md`.
+
 # 2026-10-21 — 11 Up expired humans retain their round schedule
 
 Jeremy superseded the earlier Ready-only control policy: gameplay expiry preserves
