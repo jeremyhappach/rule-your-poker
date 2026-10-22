@@ -1,3 +1,20 @@
+# Golf timing and motion — October 22 — qualified publication checkpoint
+
+Jeremy approved candidate `714166fb5b2a7ea2b831cdb23bec484f70b2e9ce` for
+publication ahead of further Canasta work. Integration preserves deployed
+Canasta `5188ba145a7b3f28267bfdf2da69805514ade316` and its closed admission.
+Only Golf forward migration `20261022171731` was installed. Seventeen hosted
+candidate and seventeen installed rollback units pass with matching function
+fingerprints; both local independent-connection money-contract matrices pass.
+The five existing paused Golf matches and BOTH-money admission are unchanged.
+The approved 1200 ms scoring/reveal and 5000 ms Results settings apply to new
+matches; legacy admitted timing and immediate atomic settlement remain intact.
+See [release evidence and owner smoke](SIX_CARD_GOLF_TIMING_RELEASE.md).
+The integrated full Game-route run passed nine holes, immediate settlement,
+connected Session Ended for both clients and cold reconnect to lobby, with zero
+page errors. The exact deployment identity is recorded at delivery. Owner
+production smoke remains pending.
+
 # Canasta / 1 — October 22 — qualification resumed, activation conditional
 
 Jeremy authorized completion of hosted API, concurrency, recovery and lifecycle

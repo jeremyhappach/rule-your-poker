@@ -16,6 +16,7 @@ try {
   await admin.query(candidate());
   await admin.query('COMMIT');
  }
+ await admin.query(read('supabase/six-card-golf/presentation.candidate.sql','utf8'));
  await admin.query("UPDATE private.golf_release SET enabled=true,admission_enabled=true;UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed'");
  for(let i=0;i<2;i++) {
   await admin.query('INSERT INTO auth.users(id) VALUES($1)',[users[i]]);
@@ -85,7 +86,8 @@ try {
  assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY chips',[game])).rows.map(r=>r.chips),[91,109]);
  await login(a,users[1]);assert.deepEqual((await act(a,request,v,'draw')).receipt,draw[0].receipt);
  // No browser callback is needed to finish an already-settled terminal hold.
- await new Promise(resolve=>setTimeout(resolve,3100));
+ const terminalDeadline=await q(admin,"SELECT (state#>>'{terminal,deadline}')::bigint v FROM private.golf_matches WHERE dealer_game_id=$1",[dealer]);
+ await new Promise(resolve=>setTimeout(resolve,Math.max(0,Number(terminalDeadline)-Date.now())+100));
  await Promise.all([a,b].map(c=>q(c,'SELECT private.golf_recover() v')));
  assert.equal(await q(admin,'SELECT finished v FROM private.golf_matches WHERE dealer_game_id=$1',[dealer]),true);
  assert.equal(await q(admin,'SELECT current_game_uuid IS NULL v FROM public.games WHERE id=$1',[game]),true);

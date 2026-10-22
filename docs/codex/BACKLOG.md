@@ -1,13 +1,13 @@
 # Backlog
 
-## Implemented locally — Golf configurable scoring/reveal timing and smoke affordances — October 22, 2026
+## Approved publication — Golf configurable scoring/reveal timing and smoke affordances — October 22, 2026
 
 - Jeremy requests Scoring Delay = 1200 ms per card or cancelled pair, also used for sequential flips of cards still face down after a player's final turn; reveal that hand fully before scoring it. Add this to Six-Card Golf defaults.
 - Add Hole Results Duration = 5000 ms to defaults. Results has no X and remains through its server-owned display interval. Preserve running current-hole subtotal, two-second player-final-score holds, and public-only scoring.
 - Show stable Bot1/Bot2-style aliases without unique storage suffixes throughout Golf. Add persistent FINAL TURN above the felt cards for the authoritative final-turn queue, visible to every viewer.
 - Read-only diagnosis: deployed reducer uses a hardcoded 6000 ms hole deadline and overwrites all exposed flags before recording results; settlement starts a 3000 ms terminal hold immediately. Golf has no scoring/results default fields. Candidate client uses 650 ms beats compressed to fit the deadline. Shared DialogContent always supplies X. Golf bypasses getBotAlias; deployed Golf bot-name aggregate found five suffix-bearing entries out of five.
 - Proposed correction: freeze validated presentation settings at admission; persist pre-final-reveal masks and authoritative presentation boundaries, schedule reveal/count/results before next hole or terminal presentation, and retain immediate atomic settlement. Retain legacy admitted timing, pause/recovery behavior and UUID identity. Reuse canonical aliases and felt ownership.
-- Status: Jeremy approved local implementation, including selected-card enlargement, destination-card offset, and preservation of the outgoing face/back state. Local implementation and candidate/installed rollback proofs are complete; refreshed preview awaits owner review. Production publication, migration, admission and live-session changes remain held.
+- Status: Jeremy approved the preview and publication, including selected-card enlargement, destination-card offset, and preservation of the outgoing face/back state. The forward migration is installed; all 17 candidate and 17 installed hosted rollback units pass. Publication qualification is documented in SIX_CARD_GOLF_TIMING_RELEASE.md. Existing admission and paused matches are preserved; owner production smoke remains pending.
 - Provenance: direct owner feedback on review-20261022-subtotal/smoke-review.html, October 22, 2026. Detailed design below is recorded in SIX_CARD_GOLF_SMOKE_FLOW.md.
 
 

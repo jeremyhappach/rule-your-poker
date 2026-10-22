@@ -22,7 +22,7 @@ try{
   for(let i=0;i<100;i++){v=await snap();if(v.revision>revision)break;await p.waitForTimeout(50);}assert.ok(v.revision>revision);moves++;
  }
  assert.equal(v.holes.length,9);assert.ok(v.settlement);assert.equal(Object.values(v.financial.balances).reduce((a,b)=>a+b,0),200);
- await pages[0].waitForFunction(()=>!!window.__golfCompleted,null,{timeout:20000});
+ await pages[0].waitForFunction(()=>!!window.__golfCompleted,null,{timeout:Math.max(20000,v.terminal.deadline-Date.now()+10000)});
  const sounds=await Promise.all(pages.map(p=>p.evaluate(()=>window.__golfAudioStarts)));assert.ok(sounds.some(n=>n>0),'real shared audio nodes started');
  if(endSession){
   await pages[0].locator('[data-session-ended-panel]').waitFor();assert.equal(await pages[0].locator('[data-golf-position]').count(),0);assert.equal(await pages[0].locator('[data-chip-balance-delta]').count(),0);assert.equal(await pages[0].locator('.golf-controls,.golf-hole-result,[data-public-seat-tableau]').count(),0);
