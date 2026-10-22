@@ -17,9 +17,9 @@ describe('Canasta timeout control',()=>{
   expect(actual.hand!.players).toEqual(expected.hand!.players);expect(actual.hand!.pile).toEqual(expected.hand!.pile);
   expect(actual.automatic).toEqual([id(2)]);assertConservation(actual);
  });
- it('marks the last fake-money human automatic then pauses without playing their turn',()=>{
+ it('marks the last fake-money human automatic and completes the committed match turn',()=>{
   const m=base();m.automatic=[id(1)];const p=expire(m,120000,[]);
-  expect(p.automatic).toEqual([id(1),id(2)]);expect(p.pause?.reason).toBe('inactivity');expect(p.hand).toEqual(m.hand);
+  expect(p.automatic).toEqual([id(1),id(2)]);expect(p.pause).toBeNull();expect(p.hand!.turn).toBe(m.hand!.turn+1);
   const back=takeControl(p,id(2),{kind:'human',userId:id(4)},120001);
   expect(back.automatic).toEqual([id(1)]);expect(back.pause).toEqual(p.pause);expect(back.hand!.deadline).toBe(p.hand!.deadline);
  });

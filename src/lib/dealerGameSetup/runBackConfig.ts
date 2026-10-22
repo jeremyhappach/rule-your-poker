@@ -7,14 +7,14 @@ export function resolveExactRunBackConfig(gameType: string, value: unknown, deal
   const integer = (key: string, min: number) => Number.isInteger(config[key]) && Number(config[key]) >= min;
   const bool = (key: string) => typeof config[key] === 'boolean';
   if (!integer('ante_amount', 1)) return null;
-  if (gameType === 'farkle') {
+  if (gameType === 'farkle' || gameType === 'canasta') {
     // The server reads the immutable snapshot. Never resubmit scoring values.
     const id = dealerGameId ?? config.runBackDealerGameId;
     if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
     return { ante_amount: config.ante_amount, runBackDealerGameId: id };
   }
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
-  if (['canasta', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'six-card-golf','race-poker','battle-31','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up'].includes(gameType)) return { ante_amount: config.ante_amount };
+  if (['horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'six-card-golf','race-poker','battle-31','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {
     if (!integer('points_to_win', 1) || !bool('skunk_enabled') || !bool('double_skunk_enabled')
       || !integer('skunk_threshold', 0) || !integer('double_skunk_threshold', 0)

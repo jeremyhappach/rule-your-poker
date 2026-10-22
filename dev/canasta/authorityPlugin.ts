@@ -1,4 +1,5 @@
 import type {Plugin} from 'vite';
+import {canastaConfig} from '../../src/lib/canasta/config';
 import {createMatch,project,execute,startHand,expire,takeControl,resume,type Command} from '../../src/lib/canasta/engine';
 import {chooseBotAction} from '../../src/lib/canasta/bot';
 import {secureDeck} from '../../server/canasta/shuffle';
@@ -8,7 +9,7 @@ const id=(n:number)=>`40000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 /** Explicit loopback fixture. Real reducer and private projection; no database or financial writes. */
 export function canastaAuthorityFixture():Plugin{
  let offset=0;const now=()=>Date.now()+offset;
- const fresh=()=>startHand(createMatch({id:id(1),sessionId:id(2),stake:10,realMoney:false,seats:[
+ const fresh=()=>startHand(createMatch({id:id(1),sessionId:id(2),stake:10,realMoney:false,config:canastaConfig({canasta_mode:'beginner',decision_timer_seconds:120}),seats:[
   {id:id(3),userId:id(5),kind:'human',seat:1},{id:id(4),userId:id(6),kind:'human',seat:5},
  ]},Date.now()),id(7),secureDeck(),Date.now());
  let match=fresh();

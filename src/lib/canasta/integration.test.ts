@@ -38,6 +38,6 @@ describe('Canasta integrated authority',()=>{
  });
  it('uses canonical seating and preserves only the accepted stake for fresh Run Back consent',()=>{
   expect(isCanonicalShellFamily('canasta')).toBe(true);expect(isCanonicalSeatConsumer('canasta')).toBe(true);
-  expect(resolveExactRunBackConfig('canasta',{ante_amount:10,roster:['old-seat'],rules:{version:'canasta-classic-two/1'}})).toEqual({ante_amount:10});
+  expect(resolveExactRunBackConfig('canasta',{ante_amount:10,roster:['old-seat'],rules:{version:'canasta-classic-two/1'}},id(1))).toEqual({ante_amount:10,runBackDealerGameId:id(1)});
  });
 });

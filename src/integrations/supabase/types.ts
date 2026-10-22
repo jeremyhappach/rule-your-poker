@@ -1484,6 +1484,7 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+          canasta_mode: 'beginner' | 'expert'
           allow_bot_dealers: boolean
           ante_amount: number
           bot_decision_delay_seconds: number
@@ -1526,6 +1527,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          canasta_mode?: 'beginner' | 'expert'
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
@@ -1568,6 +1570,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          canasta_mode?: 'beginner' | 'expert'
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
@@ -2465,6 +2468,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          canasta_helpers: boolean
           aggression_level: string
           card_back_design: string
           created_at: string
@@ -2483,6 +2487,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          canasta_helpers?: boolean
           aggression_level?: string
           card_back_design?: string
           created_at?: string
@@ -2501,6 +2506,7 @@ export type Database = {
           username: string
         }
         Update: {
+          canasta_helpers?: boolean
           aggression_level?: string
           card_back_design?: string
           created_at?: string

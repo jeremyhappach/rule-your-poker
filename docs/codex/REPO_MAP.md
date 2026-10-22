@@ -1,5 +1,13 @@
 # Repository map
 
+Canasta local Beginner/Expert follow-up: `src/lib/canasta/config.ts` owns frozen
+pacing; `guidance.ts` derives UI guidance from shared rules;
+`src/hooks/useCanastaHelpers.ts` owns the personal profile preference. Existing
+Game Defaults edits the typed mode/timer. `supabase/canasta/beginner.candidate.sql`
+and `beginner-proof.mjs` are uninstalled candidate/proof artifacts. The real-ledger
+terminal regression is `CanastaLedgerTerminal.test.tsx`; rendered follow-up is
+`dev/canasta/beginner-browser.mjs`. See `CANASTA_BEGINNER_CHECKPOINT.md`.
+
 Canasta now joins `src/lib/gameCatalog/games/canasta.ts` and versioned
 `src/components/rules/CanastaRules.tsx`. Its reconciled local baseline proof is
 `supabase/canasta/reconciled-baseline.mjs`; rendered regression driver is

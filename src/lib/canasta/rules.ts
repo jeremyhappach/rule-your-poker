@@ -71,19 +71,19 @@ export function pileStatus(pile: PhysicalCard[], opened: boolean) {
 /** Does not consult timeout policy, and does not reject a legal pickup for timeout convenience. */
 export function pickupError(input: {
   hand: PhysicalCard[]; pile: PhysicalCard[]; opened: boolean; score: number;
-  existing: Meld[]; qualifierIds: string[]; opening: Meld[];
+  existing: Meld[]; qualifierIds: string[]; opening: Meld[]; pileCount?:number; pileFrozen?:boolean;
 }): string | null {
   const {hand,pile,opened,score,existing,qualifierIds,opening} = input;
   const status=pileStatus(pile,opened), top=pile.at(-1);
   if (status.blocked || !top) return 'The top card blocks pickup.';
-  if (hand.length===1 && pile.length===1) return 'A one-card hand cannot take a one-card pile.';
+  if (hand.length===1 && (input.pileCount??pile.length)===1) return 'A one-card hand cannot take a one-card pile.';
   if (new Set(qualifierIds).size!==qualifierIds.length) return 'Select distinct physical cards.';
   const q=qualifierIds.map(id=>hand.find(c=>c.id===id));
   if (q.some(c=>!c)) return 'Qualifier is not in your hand.';
   const rank=standard(top)!.rank;
   const matching=q.filter(c=>c && natural(c) && standard(c)?.rank===rank).length;
   const pair=q.length===2 && matching===2;
-  const frozen=status.globalFreeze||status.personalFreeze;
+  const frozen=(input.pileFrozen??status.globalFreeze)||status.personalFreeze;
   if (frozen && !pair) return 'Frozen pile: select two matching natural cards.';
   if (!frozen && !(pair || (q.length===2 && matching===1 && q.some(c=>c && wild(c)))
     || (q.length===0 && existing.some(m=>m.rank===rank)))) return 'The top card must join a qualifying meld.';

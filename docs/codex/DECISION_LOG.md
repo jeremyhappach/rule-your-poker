@@ -1,3 +1,19 @@
+# 2026-10-22 — Canasta pacing and helper separation; active-match liveness
+
+The local follow-up freezes Beginner 180-second or Expert configured pacing
+through existing typed defaults and match admission. Personal helper visibility
+persists independently on the profile. Run Back reads the prior immutable
+snapshot through its dealer-game identity and still requires fresh consent.
+The card rules remain canasta-classic-two/1.
+
+The follow-up inactivity clarification supersedes the earlier fake-money
+all-human pause restriction: an admitted play-money match continues legally
+when everyone is away; next-match eligibility, canonical reclaim/sit-out and
+real-money pause remain. No timeout-created financial result is introduced.
+Canasta joins the existing durable chip-presentation ledger to unblock terminal
+completion. SQL/hosted proof remains pending; Golf retains the production lane.
+See `CANASTA_BEGINNER_CHECKPOINT.md`.
+
 # 2026-10-21 — Publish approved Golf interaction candidate
 
 Jeremy approved the final rectangular-card candidate for publication. Preserve

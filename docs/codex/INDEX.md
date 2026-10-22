@@ -3,6 +3,8 @@
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
 Canasta installed closed qualification and coordination hold: `CANASTA_HOSTED_QUALIFICATION.md`.
+Local terminal correction and Beginner/Expert follow-up, with SQL qualification
+blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|

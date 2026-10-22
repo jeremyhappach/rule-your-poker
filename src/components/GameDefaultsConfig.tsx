@@ -1,3 +1,4 @@
+import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
 import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
 import {CategoryNavigation} from '@/components/catalog/CategoryNavigation';
@@ -21,6 +22,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 interface GameDefaults {
+  canasta_mode?:CanastaMode;
   id: string;
   game_type: string;
   decision_timer_seconds: number;
@@ -173,7 +175,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
       // Decision timer: 5-60 seconds
       const timer = Number(defaultConfig.decision_timer_seconds);
-      if (isNaN(timer) || timer < 5 || timer > 60) {
+      if (gameType === 'canasta') {
+        try { canastaConfig({canasta_mode:defaultConfig.canasta_mode??'beginner',decision_timer_seconds:timer}); } catch { validationErrors.push('Canasta: choose Beginner/Expert and a whole-number Expert timer from 30–300 seconds'); }
+      } else if (isNaN(timer) || timer < 5 || timer > 60) {
         validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
       }
 
@@ -328,6 +332,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           .from('game_defaults')
           .update({
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
+            ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
             holm_after_tabled_delay_ms: defaultConfig.holm_after_tabled_delay_ms,
@@ -1023,6 +1028,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const renderSettingsForGameType = () => {
     const inner = (() => {
       const entry=findGame(selectedGameType);
+      if(selectedGameType==='canasta') {const d=getDefaultByType('canasta');return d?<div className="space-y-2">
+        <Label htmlFor="canasta-mode">Match pacing</Label><select id="canasta-mode" value={d.canasta_mode??'beginner'} onChange={e=>updateDefault('canasta','canasta_mode',e.target.value)}><option value="beginner">Beginner · 180 seconds</option><option value="expert">Expert · configured timer</option></select>
+        <Label htmlFor="canasta-expert-timer">Expert turn timer (seconds)</Label><Input id="canasta-expert-timer" type="number" min={30} max={300} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('canasta','decision_timer_seconds',e.target.value)}/>
+        <p className="text-xs">Frozen for each new match. Each player can independently toggle Beginner help at the table. Rules and stake are identical.</p></div>:null;}
+
       if(entry?.defaultsEditor!=='legacy')return null;
       const editors:Record<string,()=>React.ReactNode>={'holm':renderHolmSettings,'3-5-7':render357Settings,'cribbage':renderCribbageSettings,'gin-rummy':renderGinRummySettings,'horses':renderHorsesSettings,'ship-captain-crew':renderSCCSettings,'yahtzee':renderYahtzeeSettings};
       if(editors[selectedGameType])return editors[selectedGameType]();

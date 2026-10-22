@@ -15,6 +15,7 @@ it('keeps physical identity independent from flights and detects changed Joker m
   act(()=>{
     const result=api!.reconcileMany([{...first,jokerFace:undefined,visibleFace:{rank:'Q',suit:'spades'}}]);
     expect(result.conflicts).toBe(1);
+    expect(api!.reconcileMany([{...first,stackCount:12}]).conflicts).toBe(1);
   });
   expect(api!.getHandIntentLifecycles('hand1')).toHaveLength(2);
 });

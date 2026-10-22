@@ -50,8 +50,10 @@ describe('complete Canasta reducer',()=>{
     const expired=expire(drawn,CONTRACT.turnMs,[A]);expect(expired.hand!.stock.length).toBe(drawn.hand!.stock.length);
     expect(expired.hand!.turn).toBe(2);expect(expired.automatic).toEqual([B]);assertConservation(expired);
   });
-  it('pauses human/bot and real-money expiry, resumes once with a new generation',()=>{
+  it('continues human/bot expiry; real-money expiry pauses and resumes once',()=>{
     let m=startHand(fresh(),id(7),fixtureDeck(),0);m.seats[0]={...m.seats[0],kind:'bot',userId:null};
+    expect(expire(m,CONTRACT.turnMs,[]).pause).toBeNull();
+    m=startHand(fresh(),id(7),fixtureDeck(),0);m.realMoney=true;
     const paused=expire(m,CONTRACT.turnMs,[]);expect(paused.pause?.reason).toBe('inactivity');
     expect(paused.hand!.stock).toEqual(m.hand!.stock);
     const resumed=resume(paused,CONTRACT.turnMs+500,paused.pause!.episode);

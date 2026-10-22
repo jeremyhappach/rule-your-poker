@@ -50,6 +50,8 @@ export interface CardTransportIntent {
    */
   cardId: string;
   face: CardFace;
+  /** One opaque stack moves as a unit; only its admitted top face is rendered. */
+  stackCount?: number;
   from: CardEndpoint;
   to: CardEndpoint;
   /** Flight duration. Defaults to 110ms — zip, not dealer simulator. */

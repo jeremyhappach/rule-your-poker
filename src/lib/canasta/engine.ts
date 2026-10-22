@@ -1,3 +1,4 @@
+import {turnBudget,type CanastaConfig} from './config.js';
 import type {Rank} from '../cardUtils';
 import type {PhysicalCard} from '../cardGames/physicalCard';
 import {chooseBotAction} from './bot.js';
@@ -14,7 +15,7 @@ export type Hand = {id:string;number:number;dealer:number;stock:PhysicalCard[];p
   players:Record<string,{cards:PhysicalCard[];reds:PhysicalCard[];melds:Meld[];opened:boolean;openingScore:number}>;
   active:string;turn:number;phase:'draw'|'meld'|'complete';source:'stock'|'pile'|null;
   openedAtTurnStart:boolean;deadline:number;generation:number;result:null|{scores:Record<string,number>;out:string|null;concealed:boolean}};
-export type Match = {version:typeof VERSION;id:string;sessionId:string;stake:number;realMoney:boolean;seats:Seat[];
+export type Match = {config?:CanastaConfig;version:typeof VERSION;id:string;sessionId:string;stake:number;realMoney:boolean;seats:Seat[];
   revision:number;updatedAt:number;hand:Hand|null;totals:Record<string,number>;
   completed:{id:string;number:number;scores:Record<string,number>}[];winner:string|null;
   receipts:Record<string,{signature:string;revision:number}>;automatic:string[];
@@ -24,7 +25,7 @@ const uuid=(s:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]
 function requireThat(ok:unknown,message:string):asserts ok {if(!ok)throw Error(`canasta:${message}`);}
 function tick(m:Match,at:number){requireThat(Number.isSafeInteger(at)&&at>=m.updatedAt,'clock');m.updatedAt=at;}
 function advance(m:Match,at:number){tick(m,at);m.revision++;assertConservation(m);return m;}
-export function createMatch(input:{id:string;sessionId:string;stake:number;realMoney:boolean;seats:Seat[]},at:number):Match {
+export function createMatch(input:{id:string;sessionId:string;stake:number;realMoney:boolean;seats:Seat[];config?:CanastaConfig},at:number):Match {
   requireThat(uuid(input.id)&&uuid(input.sessionId)&&input.seats.length===2&&new Set(input.seats.map(s=>s.id)).size===2
     &&new Set(input.seats.map(s=>s.seat)).size===2&&input.seats.every(s=>uuid(s.id)&&Number.isInteger(s.seat)&&s.seat>=0
       &&(s.kind==='human'?!!s.userId&&uuid(s.userId):s.kind==='bot'&&s.userId===null))
@@ -54,7 +55,7 @@ export function startHand(input:Match,id:string,deck:PhysicalCard[],at:number):M
   }
   const initial=rulesFor(m.version).initialPile(stock),active=m.seats[(dealer+1)%2].id;
   m.hand={id,number,dealer,...initial,players,active,turn:1,phase:'draw',source:null,openedAtTurnStart:false,
-    deadline:at+CONTRACT.turnMs,generation:1,result:null};
+    deadline:at+turnBudget(m),generation:1,result:null};
   return advance(m,at);
 }
 export function assertConservation(m:Match){
@@ -125,7 +126,7 @@ function applyAction(m:Match,action:Action,at:number){
   p.cards=plan.remaining;p.melds=plan.melds;if(drafts.length)p.opened=true;
   if(plan.out){score(m,h.active);return;}
   h.active=m.seats.find(s=>s.id!==h.active)!.id;h.turn++;h.phase='draw';h.source=null;
-  h.openedAtTurnStart=h.players[h.active].opened;h.deadline=at+CONTRACT.turnMs;h.generation++;
+  h.openedAtTurnStart=h.players[h.active].opened;h.deadline=at+turnBudget(m);h.generation++;
 }
 export function execute(input:Match,command:Command,principal:Principal,at:number):{state:Match;duplicate:boolean}{
   rulesFor(input.version);const seat=input.seats.find(s=>s.id===command.playerId);
@@ -149,19 +150,18 @@ export function pause(input:Match,at:number,reason:NonNullable<Match['pause']>['
 /** Canonical adapter authorizes resume and persists this transition atomically. */
 export function resume(input:Match,at:number,episode:number):Match{
   requireThat(input.pause?.episode===episode,'pause_episode');const m=structuredClone(input);
-  m.hand!.deadline=at+(m.pause!.expired?CONTRACT.turnMs:m.pause!.remaining);m.hand!.generation++;m.pause=null;return advance(m,at);
+  m.hand!.deadline=at+(m.pause!.expired?turnBudget(m):m.pause!.remaining);m.hand!.generation++;m.pause=null;return advance(m,at);
 }
 /** Approved fake-money autoplay uses the same bounded bot and private-seat projection. */
 export function expire(input:Match,at:number,activeHumans:string[]):Match{
   const h=input.hand;if(!h||input.pause||input.winner||h.phase==='complete'||at<h.deadline)return input;
   if(input.realMoney)return pause(input,at,'inactivity');
   const m=structuredClone(input);if(m.seats.find(s=>s.id===h.active)?.kind==='human'&&!m.automatic.includes(h.active))m.automatic.push(h.active);
-  if(!input.seats.some(s=>s.kind==='human'&&s.id!==h.active&&activeHumans.includes(s.id)&&!input.automatic.includes(s.id)))return pause(m,at,'inactivity');
   return autoplayCompletion(m,at);
 }
 export function automaticTurn(input:Match,at:number,activeHumans:string[]):Match{
   const h=input.hand;requireThat(h&&input.automatic.includes(h.active)&&!input.pause&&!input.winner&&h.phase!=='complete','automatic_identity');
-  if(input.realMoney||!input.seats.some(s=>s.kind==='human'&&s.id!==h.active&&activeHumans.includes(s.id)&&!input.automatic.includes(s.id)))return pause(input,at,'inactivity');
+  if(input.realMoney)return pause(input,at,'inactivity');
   return autoplayCompletion(structuredClone(input),at);
 }
 function autoplayCompletion(input:Match,at:number):Match{
@@ -196,10 +196,10 @@ export function takeControl(input:Match,playerId:string,principal:Principal,at:n
 }
 export function project(m:Match,viewer:string|null){
   requireThat(viewer===null||m.seats.some(s=>s.id===viewer),'viewer');const h=m.hand;
-  return structuredClone({version:m.version,id:m.id,sessionId:m.sessionId,stake:m.stake,revision:m.revision,seats:m.seats.map(({userId,...s})=>s),
+  return structuredClone({config:m.config,version:m.version,id:m.id,sessionId:m.sessionId,stake:m.stake,revision:m.revision,seats:m.seats.map(({userId,...s})=>s),
     totals:m.totals,winner:m.winner,automatic:m.automatic,pause:m.pause,viewer,
     hand:h?{id:h.id,number:h.number,active:h.active,turn:h.turn,generation:h.generation,deadline:h.deadline,phase:h.phase,source:h.source,
-      stockCount:h.stock.length,pile:h.pile,result:h.result,players:Object.fromEntries(Object.entries(h.players).map(([id,p])=>[id,
+      stockCount:h.stock.length,pile:h.pile.slice(-1),pileCount:h.pile.length,pileFrozen:pileStatus(h.pile,true).globalFreeze,freezeIndicator:h.pile.find(wild)??null,result:h.result,players:Object.fromEntries(Object.entries(h.players).map(([id,p])=>[id,
         {cards:id===viewer?p.cards:null,count:p.cards.length,reds:p.reds,melds:p.melds,opened:p.opened,openingScore:p.openingScore}]))}:null});
 }
 export type Projection=ReturnType<typeof project>;

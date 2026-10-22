@@ -595,7 +595,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   // the canonical constants when the destination is a 1×1 point anchor.
   const FINAL_SIZE_MIN_PX = 8;
   const useFinalRect =
-    Number.isFinite(card.to.w) &&
+    !card.intent.stackCount && Number.isFinite(card.to.w) &&
     Number.isFinite(card.to.h) &&
     card.to.w >= FINAL_SIZE_MIN_PX &&
     card.to.h >= FINAL_SIZE_MIN_PX;
@@ -827,7 +827,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           height: flyH,
           borderRadius: 2,
           border: isHidden ? 'none' : '1px solid rgba(255,255,255,0.2)',
-          boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
+          boxShadow: (card.intent.stackCount??1)>1 ? '2px 2px 0 #ddd, 4px 4px 0 #777, 0 6px 14px #0007' : '0 6px 14px rgba(0,0,0,0.45)',
           background: isHidden ? 'transparent' : '#ffffff',
           display: 'flex',
           flexDirection: 'column',
@@ -843,6 +843,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         onAnimationStart={() => logActualLaunch('animationstart')}
         onAnimationEnd={() => logActualArrival('animationend')}
       >
+        {(card.intent.stackCount??1)>1&&<span data-card-stack-count style={{position:'absolute',right:0,bottom:0,zIndex:1,background:'#111',color:'#fff',fontSize:12,padding:'1px 3px'}}>{card.intent.stackCount}</span>}
         {isHidden ? (
           // CANONICAL hidden-card renderer. Gradient/border/accent owned
           // by shell; stamped cardBackColors on the intent are ignored

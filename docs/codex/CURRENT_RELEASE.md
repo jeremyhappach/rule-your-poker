@@ -1,3 +1,19 @@
+# Canasta / 1 — October 22 — local terminal and Beginner/Expert follow-up
+
+The connected terminal defect is traced to missing durable chip-ledger
+registration. A local correction passes the real-ledger regression. Beginner
+180-second / Expert configured timing, independent persisted helpers, mobile
+guidance, private stacked-pile projection, and immutable Run Back pacing are
+implemented locally. Fake-money active matches continue when all humans are
+away, with eligibility reserved for between matches.
+
+Focused client/reducer checks and 12 rendered layouts pass. The new SQL remains
+an unexecuted candidate: the isolated Docker engine returned HTTP 500. Actual
+admission/Run Back SQL proof, financial gates and hosted terminal/reconnect
+qualification remain required. Golf owns production; no push, migration,
+deployment or activation occurred. Historical failed fixture evidence remains
+untouched. See `CANASTA_BEGINNER_CHECKPOINT.md` for the bounded handoff.
+
 # Canasta / 1 — October 22 — connected terminal gate blocks activation
 
 Closed production candidate `5188ba145a7b3f28267bfdf2da69805514ade316` is READY

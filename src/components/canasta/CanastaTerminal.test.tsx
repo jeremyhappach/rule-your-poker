@@ -7,6 +7,7 @@ import {useRun21PresentationRetention} from '@/hooks/useRun21PresentationRetenti
 import {createMatch,startHand,project} from '@/lib/canasta/engine';
 import {fixtureDeck} from '@/lib/canasta/rules';
 import type {Snapshot} from '@/lib/canasta/client';
+vi.mock('@/hooks/useCanastaHelpers',()=>({useCanastaHelpers:()=>({helpers:true,setHelpers:vi.fn(),error:''})}));
 const ui=vi.hoisted(()=>({snapshot:null as Snapshot|null,cursor:'pending',emit:vi.fn(),celebrate:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{}}));
 vi.mock('./CanastaGame',()=>({CanastaGame:({onSnapshot,ended}:{onSnapshot:(s:Snapshot)=>void;ended:boolean})=>{useEffect(()=>{if(ui.snapshot)onSnapshot(ui.snapshot);},[ui.snapshot,onSnapshot]);return <div>{ended?'Session Ended':'Table retained'}</div>;}}));

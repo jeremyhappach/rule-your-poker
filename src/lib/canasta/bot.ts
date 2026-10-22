@@ -9,12 +9,12 @@ export function chooseBotAction(view:Projection):Action|null {
   if(h.phase==='draw'){
     if(top&&natural(top)){
       const rank=standard(top)!.rank,pair=hand.filter(c=>natural(c)&&standard(c)?.rank===rank).slice(0,2);
-      const qualifiers=p.opened&&!pileStatus(h.pile,true).globalFreeze&&p.melds.some(g=>g.rank===rank)?[]:pair.map(c=>c.id);
+      const qualifiers=p.opened&&!h.pileFrozen&&p.melds.some(g=>g.rank===rank)?[]:pair.map(c=>c.id);
       const opening:Meld[]=p.opened?[]:[{rank,cards:[...pair,top]}];
       if(!p.opened)for(const r of ['A','4','5','6','7','8','9','10','J','Q','K'] as const){
         if(r===rank)continue;const cards=hand.filter(c=>natural(c)&&standard(c)?.rank===r);if(cards.length>=3)opening.push({rank:r,cards});
       }
-      if(!pickupError({hand,pile:h.pile,opened:p.opened,score:p.openingScore,existing:p.melds,qualifierIds:qualifiers,opening}))
+      if(!pickupError({hand,pile:h.pile,pileCount:h.pileCount,pileFrozen:h.pileFrozen,opened:p.opened,score:p.openingScore,existing:p.melds,qualifierIds:qualifiers,opening}))
         return {type:'pickup',qualifiers,opening:opening.map(g=>({rank:g.rank,ids:g.cards.map(c=>c.id)}))};
     }
     return h.stockCount?{type:'draw'}:{type:'end-exhausted'};

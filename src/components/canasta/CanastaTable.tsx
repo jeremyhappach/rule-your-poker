@@ -1,3 +1,5 @@
+import {useCanastaHelpers} from '@/hooks/useCanastaHelpers';
+import {turnBudget} from '@/lib/canasta/config';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 import {httpTransport,type Snapshot,type Transport} from '@/lib/canasta/client';
@@ -22,6 +24,7 @@ export function isCanastaTerminalBatch(batch:ChipPresentationBatch|null|undefine
 }
 interface Props {dealerGameId:string;userId:string;players:CanastaPlayer[];activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(token:string)=>void;transport?:Transport;onFirstRound?:(id:string)=>void}
 export function CanastaTable(props:Props){
+ const help=useCanastaHelpers(props.userId,!props.transport);
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[now,setNow]=useState(Date.now());
  const offset=useRef(0),sawLive=useRef(false),announced=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
  useEffect(()=>()=>callbacks.current.onTerminalActive(false),[]);
@@ -57,10 +60,10 @@ export function CanastaTable(props:Props){
  const viewer=props.players.find(p=>p.user_id===props.userId),state=snapshot?.state;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>
   :props.activeTab==='history'?<div className="h-full overflow-auto text-sm">{state?.seats.map(seat=><p key={seat.id}>{props.players.find(p=>p.id===seat.id)?.profiles?.username??'Player'}: {state.totals[seat.id]} · {state.hand?.players[seat.id].melds.map(m=>`${m.rank} × ${m.cards.length}`).join(' · ')}</p>)}</div>
-  :props.activeTab!=='cards'?<div className="h-full overflow-auto text-sm">Classic two-player Canasta · Draw two, discard one. Two canastas to go out. Reach 5,000; tied qualifying totals continue. One accepted match stake. Each turn has 120 seconds without action resets.</div>
+  :props.activeTab!=='cards'?<div className="h-full overflow-auto text-sm">Classic two-player Canasta · Draw two, discard one. Two canastas to go out. Reach 5,000; tied qualifying totals continue. One accepted match stake. {state?turnBudget(state)/1000:120} seconds per turn · {state?.config?.mode??'expert'} pacing. No action resets. {help.error}</div>
   :props.sessionEnded||s?<div className="text-center text-sm">{s?`${props.players.find(p=>p.id===s.winner)?.profiles?.username??'Winner'} wins · ${s.scores[s.winner]} points`:null}</div>:undefined;
  return <>
   <CanastaArtifacts snapshot={snapshot} players={props.players} ended={props.sessionEnded}/>
-  <CanastaGame transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={state?.hand?.active===viewer.id}/>:null}/>
+  <CanastaGame helpers={help.helpers} onHelpersChange={value=>void help.setHelpers(value)} transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={state?.hand?.active===viewer.id}/>:null}/>
  </>;
 }
