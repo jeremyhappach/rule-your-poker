@@ -120,6 +120,42 @@ broadening production commit grants. No main push or app publication is justifie
 by the incomplete concurrency proof.
 # Closed deployment transport follow-up — October 21
 
+## Owner hold at 2026-10-21 19:14 America/Chicago
+
+Jeremy prioritized Golf smoke corrections and held every other release. No further
+Canasta release action is authorized until resumed. At this safe boundary:
+
+- Public manifest: `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`, published
+  `2026-10-22T00:09:01.292Z`, bundle `assets/index-Duq1AZuT.js`.
+- READY production: `dpl_8SHB6u8CmcMscgemm3zuTuPaeCzx`.
+- Native ESM correction: branch-pushed commit
+  `823262a3b9f9bf7d4d6c82b7a2d5a6b6b5041342`; application and server typechecks,
+  75 focused tests, native emitted-entry proof and local build pass.
+- Its production deployment `dpl_rLg9Ar8UxZEho583nnKmHyF1TsPS` was BUILDING and
+  successfully CANCELED. Automatic preview `dpl_2dP3QEBU3QNM22DrM9LFZv539qZ7`
+  was already READY. Neither deployment has work remaining in flight.
+- At `2026-10-22T00:14:25.655196Z`, temporary grants were removed and canonical
+  pause completed on session `3ec92708-bf27-4433-9140-beb0db4fec6b`:
+  `game_selection`, paused, pause version 3. Zero grants verified afterward.
+- Original match `2b918113-88ed-41c0-9597-1e76cbd53b23` remains settled and
+  finished. No new match was configured; browser/final-race preparation was not run.
+- Canasta execution true / admission false; Golf execution true / admission true.
+  Installed migration and worker bytes are unchanged. Worker has no recorded
+  failure; completed heartbeat observed at `2026-10-22T00:14:29.090246Z`.
+- No main integration/push, owner-smoke activation, transaction or pending local
+  validation process remains. The 24-hour smoke period has never started.
+
+Resume gaps: successful deployed API startup; held two-connection HTTP replay and
+final-action race; actual browser/terminal/fresh Run Back; restart and zero-client
+gameplay; final controlled release. `hosted-api-replay.json` records the failed
+500 attempt honestly. `hosted-browser.mjs` and the fresh-final fixture option are
+prepared, syntax-checked/unexecuted scaffolding, not passing evidence. Source
+inspection additionally identifies host-preparsed `req.body` handling as a needed
+transport check against Run21's existing pattern; no correction or live proof is
+claimed for that boundary. Keep the original final fixture/receipt intact.
+
+The continuation narrative below predates this hold.
+
 The approved closed production deployment of `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`
 became READY as `dpl_8SHB6u8CmcMscgemm3zuTuPaeCzx`; the public build manifest matched.
 Its first authenticated Canasta API request returned 500 before authentication:

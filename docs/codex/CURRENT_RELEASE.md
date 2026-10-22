@@ -1,3 +1,19 @@
+# Canasta / 1 — 2026-10-21 — OWNER HOLD for Golf smoke corrections
+
+All Canasta release work is held by Jeremy's reprioritization. No further push,
+deployment, migration, grant or activation until resumed. The already-published
+closed candidate is `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da` at holm357.com,
+deployment `dpl_8SHB6u8CmcMscgemm3zuTuPaeCzx`. Its Canasta API fails at native ESM
+module resolution; no gameplay admission is open. The packaging correction is
+branch-pushed as `823262a3b9f9bf7d4d6c82b7a2d5a6b6b5041342`, but its production
+deployment `dpl_rLg9Ar8UxZEho583nnKmHyF1TsPS` was canceled on the hold.
+The automatic preview finished before cancellation; no Canasta deployment remains
+in flight. General admission is false, grants are zero, the retained qualification
+session is paused, and the smoke window never opened. Golf's two flags remain true.
+Migration `20261021235336` and recovery worker v1 remain installed, unchanged.
+Main was not integrated or pushed. See `CANASTA_HOSTED_QUALIFICATION.md` for the
+exact retained identities, local checks and unfinished transport/browser gates.
+
 # Canasta / 1 — 2026-10-21 — closed hosted installation, transport gate pending
 
 Migration `20261021235336` and recovery worker v1 are installed. Actual scheduled
