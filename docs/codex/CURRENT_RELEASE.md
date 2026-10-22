@@ -1,3 +1,19 @@
+# Canasta / 1 — October 22 — isolated forward proofs pass
+
+Docker is restored without recreating containers or volumes. The stale isolated
+Ante capture lacked the already released Golf branch; corrected local bootstrap
+preserves the original fingerprint guard and matches the deployed dispatcher.
+Rollback-contained forward financial/consent/admission checks, actual frozen
+pacing and Run Back admission, and independent-connection settlement/deadline/
+failure/reclaim races pass. See `supabase/canasta/qualification/README.md`.
+
+The owner lifted Canasta's hold for serialized release after remaining gates.
+Current main is Golf `568f8cc5d7eae5a8dac4097232860cad3132e570`; preserve it and
+installed migration `20261022171731`. Combined-main validation, required forward
+migration and hosted lifecycle qualification remain pending. General admission
+stays closed; the approved eventual scope is all users, play money only, with
+no expiration. No production action was taken in this local qualification step.
+
 # Canasta / 1 — October 22 — local terminal and Beginner/Expert follow-up
 
 The connected terminal defect is traced to missing durable chip-ledger

@@ -3,15 +3,16 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-const docker=path.join(process.env.LOCALAPPDATA,'Programs/DockerDesktop/resources/bin/docker.exe'),container='canasta-integration-proof-20261021',db='canasta_concurrency_proof';
+import {baseline,dispatchProof} from './qualification/bootstrap.mjs';
+const docker=path.join(process.env.LOCALAPPDATA,'Programs/DockerDesktop/resources/bin/docker.exe'),container='canasta-integration-proof-20261021',db='canasta_concurrency_proof_'+Date.now();
 assert.equal(execFileSync(docker,['inspect',container,'--format','{{.HostConfig.NetworkMode}}'],{encoding:'utf8'}).trim(),'none');
 const args=(database=db)=>['exec','-i',container,'psql','-X','-U','supabase_admin','-d',database,'-v','ON_ERROR_STOP=1','-Atq'];
 const sql=(query,database=db)=>execFileSync(docker,args(database),{input:query,encoding:'utf8',maxBuffer:4*1024*1024}).trim();
 // A new disposable database makes concurrent commits visible without touching the baseline.
 sql(`CREATE DATABASE ${db} OWNER postgres TEMPLATE postgres;`,'postgres');
 try{
- const files=['ante.production-proof.sql','authority.candidate.sql','admission.candidate.sql','lifecycle.candidate.sql','registration.candidate.sql','recovery.candidate.sql','concurrency.fixture.sql'];
- sql('SET ROLE postgres;\n'+files.map(f=>readFileSync(new URL(f,import.meta.url),'utf8')).join('\n')+'\nUPDATE private.canasta_release SET enabled=true;');
+ const files=['authority.candidate.sql','admission.candidate.sql','lifecycle.candidate.sql','registration.candidate.sql','recovery.candidate.sql','concurrency.fixture.sql',...(process.argv.includes('--beginner')?['beginner.candidate.sql']:[])];
+ sql('SET ROLE postgres;\n'+baseline+'\n'+files.map(f=>readFileSync(new URL(f,import.meta.url),'utf8')).join('\n')+'\n'+dispatchProof+'\nUPDATE private.canasta_release SET enabled=true;');
  const fixture=money=>JSON.parse(sql(`SET ROLE postgres; SELECT private.canasta_concurrency_fixture(${money});`));
  const commit=(f,command=f.command)=>`SELECT public.canasta_server_commit('${f.match}',1,'${JSON.stringify(f.next)}'::jsonb,'${JSON.stringify({kind:'command',command,userId:f.actor})}'::jsonb);`;
  const report=f=>JSON.parse(sql(`SELECT jsonb_build_object('results',(SELECT count(*) FROM public.game_results WHERE dealer_game_id='${f.match}'),'batches',(SELECT count(*) FROM public.gameplay_transfer_batches WHERE dealer_game_id='${f.match}' AND unmatched_deltas='{}'),'snapshots',(SELECT count(*) FROM public.session_player_snapshots WHERE dealer_game_id='${f.match}'),'chips',(SELECT jsonb_agg(chips ORDER BY position) FROM public.players WHERE game_id='${f.game}'),'revision',(SELECT revision FROM private.canasta_matches WHERE dealer_game_id='${f.match}'));`));
