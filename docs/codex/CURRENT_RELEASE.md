@@ -1,10 +1,14 @@
-# Golf rules/display follow-up — October 22 — local candidate only
+# Golf rules/display follow-up — October 22 — publication approved
 
 Owner approved the six smoke observations and clarified that a threshold draw
 finishes normally before every player receives one final turn, including its
 actor. The candidate is isolated on `codex/golf-rules-display-v2`, based on
-published `bd6418ed884e2c517d095e4cde3b2846fc66fffe`. No main integration, push,
-production SQL, admission change or deployment is authorized for this pass.
+published `bd6418ed884e2c517d095e4cde3b2846fc66fffe`. Owner subsequently approved
+publication of `756a41da843e046e3c39b5dd3391188af0e182fa` and its `/2` rule.
+All 25 hosted candidate rollback units, 2,764 application tests, 241 harness tests,
+TypeScript, build and both-money independent-connection `/2` races passed.
+Publish the compatible client first, then apply the guarded forward migration
+and rerun installed qualification. See [release package](SIX_CARD_GOLF_V2_RELEASE.md).
 See [candidate scope, exact rules and evidence](SIX_CARD_GOLF_RULES_V2_LOCAL.md).
 Existing `/1` matches retain their frozen rules. Canasta and unpublished
 `c8059c2ff4eab5f72b5906397f621b19177555f3` remain outside this candidate.

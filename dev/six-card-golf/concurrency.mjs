@@ -17,6 +17,7 @@ try {
   await admin.query('COMMIT');
  }
  await admin.query(read('supabase/six-card-golf/presentation.candidate.sql','utf8'));
+ if(process.argv.includes('--rules-v2'))await admin.query(read('supabase/six-card-golf/rules-v2.candidate.sql','utf8'));
  await admin.query("UPDATE private.golf_release SET enabled=true,admission_enabled=true;UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed'");
  for(let i=0;i<2;i++) {
   await admin.query('INSERT INTO auth.users(id) VALUES($1)',[users[i]]);
@@ -38,14 +39,20 @@ try {
  await assert.rejects(act(a,request,v,'open',[1,4]),/replay_conflict/);
  await login(a,users[0]);v=await snapshot();await act(a,uuid(),v,'open',[0,3]);
  for(const c of [a,b])await login(c,users[1]);
+ if(process.argv.includes('--rules-v2')){
+  // Card-conserving boundary fixture: next draw leaves two stock cards for two concealed players.
+  await admin.query("UPDATE private.golf_matches SET state=state||jsonb_build_object('stock',(SELECT jsonb_agg(value ORDER BY ord) FROM jsonb_array_elements(state->'stock') WITH ORDINALITY x(value,ord) WHERE ord<=3),'discard',(SELECT jsonb_agg(value ORDER BY ord) FROM jsonb_array_elements(state->'stock') WITH ORDINALITY x(value,ord) WHERE ord>3)||(state->'discard')),revision=revision+1 WHERE dealer_game_id=$1",[dealer]);
+ }
  v=await snapshot();request=uuid();
  const draw=await Promise.all([a,b].map(c=>act(c,request,v,'draw')));
  assert.equal(draw[0].revision,v.revision+1);assert.deepEqual(draw[0].pending,draw[1].pending);
+ if(process.argv.includes('--rules-v2')){assert.equal(draw[0].rules.version,'six-card-golf/2');assert.equal(draw[0].stockCount,2);assert.deepEqual(draw[0].finalQueue,[]);}
  // A lost draw response retries its original UUID: exactly one pending card.
  assert.deepEqual((await act(a,request,v,'draw')).pending,draw[0].pending);
  const race=await Promise.allSettled([a,b].map(c=>act(c,uuid(),draw[0],'replace',[1])));
  assert.equal(race.filter(r=>r.status==='fulfilled').length,1);
  assert.match(race.find(r=>r.status==='rejected').reason.message,/stale_revision/);
+ if(process.argv.includes('--rules-v2')){const queued=await snapshot();assert.equal(queued.finalReason,'stock_threshold');assert.equal(queued.finalQueue.length,2);assert.equal(queued.finalQueue.at(-1),draw[0].players[draw[0].turnIndex].id);}
  await assert.rejects(act(a,uuid(),await snapshot(),'draw'),/not_actor/);
  // A closed, card-conserving hole fixture isolates successor contention.
  const priorRound=(await snapshot()).identity.roundId;
@@ -94,6 +101,6 @@ try {
  assert.deepEqual((await act(a,request,v,'draw')).receipt,draw[0].receipt);
  await assert.rejects(act(a,uuid(),await snapshot(),'draw'),/inactive/);
  assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY chips',[game])).rows.map(r=>r.chips),[91,109]);
- write(`qualification.local/six-card-golf/concurrency${real?'-real':''}.json`,JSON.stringify({passed:true,at:new Date().toISOString(),database:db,game,dealer,balances:[91,109]}));
+ write(`qualification.local/six-card-golf/${process.argv.includes('--rules-v2')?'v2-':''}concurrency${real?'-real':''}.json`,JSON.stringify({passed:true,at:new Date().toISOString(),database:db,game,dealer,balances:[91,109],rulesV2:process.argv.includes('--rules-v2')}));
  console.log('PASS authenticated independent-connection duplicate opening/draw, lost response, competing replacements, actor rejection, successor race, timeout/action race, final-action race, concurrent settlement, zero-client terminal continuation, old receipt after continuation; money='+real);
 } finally {await Promise.all([a.end(),b.end(),admin.end()]);}

@@ -1,0 +1,252 @@
+{
+  "candidate": "756a41da843e046e3c39b5dd3391188af0e182fa",
+  "productionApplied": false,
+  "units": [
+    {
+      "name": "core",
+      "sqlSha256": "591719b60d7535ca4d14264e196a4f2ce882dd070efec3aec84bb24b6dfb3e04",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "recovery",
+      "sqlSha256": "60f699000ce6fd47319a0bb95b7c7bd9f98856fe4a6a7e507db86c9b5bb08bc7",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-0-2",
+      "sqlSha256": "29bb5acdf80a00c7a5ec0490a699700239054f5b4eba34ecca4b4630b0561477",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-0-2",
+      "sqlSha256": "146a6506dfee35f2fb696d05cc7377d0e1d3e45db58ac0d934bd3eaeec49ab6e",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-0-3",
+      "sqlSha256": "d2548ba784ddce02afc96d2320fc1724355a2e64d39f6dbd1074219d384dd1ac",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-0-3",
+      "sqlSha256": "bff215b9d48b6b006c8d5db4a91ca477538b2849a3d984e2aebd9f7a61f94a87",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-0-4",
+      "sqlSha256": "d63aa849585c1b612022f2517808a599597490b93f188f0983b649c12ce1a3e6",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-0-4",
+      "sqlSha256": "ace01d20fb33ee4b994a0104fc3edc1564f4ee43e715574b34b2553f6e200e2f",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-1-2",
+      "sqlSha256": "1a4456a1c160f514591c924cb327e9e8cdaa1940582a020b63af13eab324a418",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-1-2",
+      "sqlSha256": "6041071c0a4d1adcb3fa26b25732d89384ad717742553cc2dbd583bf93da2ce3",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-1-3",
+      "sqlSha256": "1d487c8caf42e17a90771ac817475ab27c6746049ba42c87c23fa8879495f814",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-1-3",
+      "sqlSha256": "72d3445b11ae9006f923a9ca5332fa2a7cad55034762a2df7eda1d6c15c5aa8a",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "proof-1-4",
+      "sqlSha256": "7d71daf1aec864af261c82074f7a64d358383d2593b35799bf4f8317caeeef44",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "financial-proof-1-4",
+      "sqlSha256": "cba0eed9ca5cb2e56ab39a6f6016e07f9875cb880c12c2176a68f5fa91a87463",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "presentation",
+      "sqlSha256": "33b8890d0d8a540b74ffbb8ea4879d62df58dfe7accaf437059d02516179ace2",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": true
+    },
+    {
+      "name": "v2-boundaries",
+      "sqlSha256": "a420954897caee9890de8d4c2aa91b45fc9a097a545de9f98ce18b23e670df85",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "v2-rpc",
+      "sqlSha256": "857b56dfe8d8fc886c61615656febbb09d4e8561cac632c1141cb9f82bf88ed1",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-0-2",
+      "sqlSha256": "99f8d30d71f1a94a92272e72f13b75cb5820b534fbe991be551aa94724b82091",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-0-3",
+      "sqlSha256": "cce8e142d232c09e164c13dcbdcea334705360c898c7c3511f5d878702644f40",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-0-4",
+      "sqlSha256": "3b624549c41a006aac139d0eb159df9f27349d617c00255a89c26629c9b051e4",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-1-2",
+      "sqlSha256": "d312e1ccce31c8f7fb8dd2af673cfd6e389f7127b78328cf06a8e9d5916d9ace",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-1-3",
+      "sqlSha256": "68e20994f557245674bb25cf69b00dfb5281d0052c9514e79da503401d6046bf",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "mixed-1-4",
+      "sqlSha256": "d3cae6f67569bafccf1299e19fea39604feefe87f4dd710944b0e4049999882b",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "terminal-0",
+      "sqlSha256": "584d84df890af204178f21e25f6fa9395fa12d30485f9a4f5282e817b23c51d8",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    },
+    {
+      "name": "terminal-1",
+      "sqlSha256": "adc1fd184de6a9563e992047583f91fff409d0e2f7eda3099951d292be12c8a5",
+      "passed": true,
+      "rollbackVerified": true,
+      "existingMatchesUnchanged": true,
+      "expectedLegacyAdmission": false
+    }
+  ],
+  "functions": {
+    "golf_close(uuid)": "9b9d56e41e9e9ffb90d4239c528aa3a6",
+    "golf_history(uuid)": "895bc4cdf28bc0c004ac5d178631b4df",
+    "golf_snapshot(uuid)": "484a2a9cc394b790f8a27780005dc4b3",
+    "private.golf_guard()": "ad53aec35132f5d51fd055f8a395f1f5",
+    "private.golf_pause()": "1cddce428e7c01ba94973beaa961c280",
+    "private.golf_rules()": "d198f72a64d9788eb566fca09dba51f5",
+    "private.golf_publish()": "30d9817e6798a81df48b15bec8a8dbc1",
+    "private.golf_recover()": "f697e0c82c68ba862fe85c0657b2aa5f",
+    "golf_capabilities(uuid)": "ff8e345bac8a71c340f1b32054eda045",
+    "private.golf_rules_v2()": "d514381919c05743cd4e0ca03fef5940",
+    "private.golf_score(jsonb)": "09f8e17f45c16d30983c8172128bac8b",
+    "private.golf_settle(uuid)": "875132690a94be20baf75d876bfb8548",
+    "private.golf_roster_guard()": "a9e0e3eac0597b45f7ffa1e4ae86f757",
+    "private.golf_schedule_bot()": "e2da2d1b139ced13b4d8a1ef18fad44b",
+    "private.golf_shuffle(jsonb)": "b081602bfef9607f21a9707df107e251",
+    "private.golf_points(integer)": "98f85e0db4289c0aca36f0e00f529e29",
+    "private.golf_begin(uuid,uuid)": "a348dda5794ed00944e1128b61a29ee9",
+    "private.golf_integrity(jsonb)": "bbc22389239148ddac215ef593120775",
+    "private.golf_admission_rules()": "5bba6a315826e18abde92399f76e5ad7",
+    "private.golf_bot_choice(jsonb)": "2d0b819bbfd8f1fedef57f7f388768cd",
+    "private.golf_player_controls()": "0b3bfcfcc43933dfc2f200c3f1ce4515",
+    "private.golf_deal(jsonb,bigint)": "e0e16cb3b85270bef6c75e1a9f4f473d",
+    "golf_revision_allowed(uuid,uuid)": "e5830ee4d1994e1e89477b58281065c8",
+    "private.golf_visible(jsonb,text)": "161bd7dca4ee4a4b6d3a631024c89e6c",
+    "private.megatouch_frozen_stake()": "4d6058383dd6903cf7c4f604f5088ac2",
+    "private.golf_finish_postgame(uuid)": "2dd3e871e26112ee9ef0dba5f7a81a9c",
+    "private.megatouch_begin(uuid,uuid)": "26754906038b83e7ca739196957376d0",
+    "private.golf_next_hole(uuid,bigint)": "6abef11274dc2aec5db29f8ba52b0697",
+    "private.golf_supported_rules(jsonb)": "f812263f882e05de3513963d40347ef6",
+    "golf_reclaim_control(uuid,uuid,bigint)": "92867ec60460bcdcbf26537a29cf87cb",
+    "private.golf_presentation(jsonb,bigint)": "57c9492ee5a1121806e84e21f69eda78",
+    "private.golf_admission_allowed(uuid,uuid)": "f37624b55d7af376a9e5675e7498d2bb",
+    "set_game_paused(uuid,boolean,uuid,bigint)": "1fa2220c33734d1cf14c11f3eaef432b",
+    "private.golf_actor_allowed(uuid,uuid,uuid)": "d16fe3b3aa2d37c989857ab9db98f12e",
+    "private.golf_shift_presentation(jsonb,bigint)": "2e5001c3519a590013910fe8ee10789c",
+    "settle_gameplay_chip_transfers(uuid,jsonb,text)": "86c0feb55524f14ab9f58a06cdee2ef6",
+    "private.golf_reduce(jsonb,text,integer[],bigint)": "d4603ec3b8aa8c1d51294102a32545f7",
+    "golf_action(uuid,uuid,uuid,bigint,text,integer[])": "575c8d37ee7f0bdc407f186b937d3981",
+    "set_automatic_play(uuid,uuid,uuid,uuid,bigint,boolean)": "a69f39fefb234c3b01114c8049fdbbb6",
+    "submit_ante_decision(uuid,uuid,uuid,text,boolean,boolean)": "c633a318c7f2605104c92e03d3b3b09a",
+    "private.split_whole_chips_clockwise(uuid,uuid[],integer,integer)": "b6eb18407c38efdc17d6b181820cfa9a",
+    "golf_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)": "09e55a6598f8fef53d12aa3e7041fdc0",
+    "private.advance_ante_phase_exact(uuid,uuid,timestamp with time zone,timestamp with time zone)": "ed70e8608f4a04b72cab66d55dcd9970"
+  },
+  "catalog": "b98aec0a9ee8493f377db1ec9fb7470d"
+}
