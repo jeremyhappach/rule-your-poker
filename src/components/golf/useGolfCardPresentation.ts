@@ -21,11 +21,12 @@ export function golfFlights(before:GolfSnapshot,after:GolfSnapshot,userId:string
  if(after.pending&&after.pending.card!==before.pending?.card)add(after.pending.actor,6,null,{kind:'stock'});
  return result;
 }
-export interface GolfMove {key:string;before:GolfSnapshot;after:GolfSnapshot;actor:string;index:number;stock:boolean;bundled:boolean;stage:'select'|'draw'|'drawn'|'incoming'|'landed'|'outgoing'|'reject'|'flip'|'arrived'}
+export interface GolfMove {key:string;before:GolfSnapshot;after:GolfSnapshot;actor:string;index:number;stock:boolean;bundled:boolean;stage:'select'|'draw'|'drawn'|'incoming'|'landed'|'outgoing'|'reject'|'flip'|'arrived'|'rest'}
 export function golfMove(before:GolfSnapshot,after:GolfSnapshot):GolfMove|null {
  if(before.id!==after.id||before.scope!==after.scope||after.revision<=before.revision||after.paused||before.phase!=='playing')return null;
  const actor=before.players[before.turnIndex].id,key=after.scope+':'+after.revision;
- const adjacent=after.revision===before.revision+1;
+ const settlementStep=after.phase==='complete'&&after.settled&&!before.settled?1:0;
+ const adjacent=after.revision===before.revision+1+settlementStep;
  if(adjacent&&after.hasPending&&!before.hasPending)return {key,before,after,actor,index:6,stock:true,bundled:false,stage:'draw'};
  // At final reveal, only positions already exposed before scoring can identify
  // the last replacement. Never animate the other newly public cards as moves.
@@ -34,7 +35,7 @@ export function golfMove(before:GolfSnapshot,after:GolfSnapshot):GolfMove|null {
  const changed=after.tableaus[actor].cards.flatMap((c,i)=>!hidden.includes(i)&&c!==before.tableaus[actor].cards[i]?[i]:[]);
  // Realtime may coalesce exactly draw + replace/reject. A changed stock count
  // and exactly two revisions distinguish this from a discard pickup.
- const bundled=!before.hasPending&&!after.hasPending&&after.revision===before.revision+2&&before.stockCount!==after.stockCount;
+ const bundled=!before.hasPending&&!after.hasPending&&after.revision===before.revision+2+settlementStep&&before.stockCount!==after.stockCount;
  if(!adjacent&&!bundled)return null;
  if(changed.length===1)return {key,before,after,actor,index:changed[0],stock:before.hasPending||bundled,bundled,stage:bundled?'draw':'select'};
  if((before.hasPending||bundled)&&!after.hasPending)return {key,before,after,actor,index:6,stock:true,bundled,stage:bundled?'draw':'reject'};
@@ -61,11 +62,11 @@ export function useGolfCardPresentation(v:GolfSnapshot|null,epoch:number,userId:
   if(stage==='arrived'||stage==='landed'){
    // The shell retires a settled flight on its next render. Keep both physical
    // cards represented while that ownership handoff paints before launching.
-   let second=0;const first=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>finish(key,stage,stage==='landed'?'outgoing':undefined));});
+   let second=0;const first=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>finish(key,stage,stage==='landed'?'outgoing':after.phase==='playing'&&before.turnIndex!==after.turnIndex?'rest':undefined));});
    return()=>{cancelAnimationFrame(first);cancelAnimationFrame(second);};
   }
-  if(stage==='select'||stage==='drawn'){
-   const timer=setTimeout(()=>finish(key,stage,stage==='select'?'incoming':bundled?(index===6?'reject':'incoming'):undefined),180);
+  if(stage==='select'||stage==='drawn'||stage==='rest'){
+   const timer=setTimeout(()=>finish(key,stage,stage==='rest'?undefined:stage==='select'?'incoming':bundled?(index===6?'reject':'incoming'):undefined),stage==='rest'?(after.rules?.presentation?.scoringDelayMs??1200):180);
    return()=>clearTimeout(timer);
   }
   const destination={kind:'tableau' as const,playerId:actor,index:stage==='draw'?6:index};
@@ -81,8 +82,8 @@ export function useGolfCardPresentation(v:GolfSnapshot|null,epoch:number,userId:
  },[active?.key,active?.stage,dispatch,userId]);
  const pendingActor=active?(active.stock&&['draw','drawn','select','incoming','reject'].includes(active.stage)?active.actor:null):v?.hasPending?v.players[v.turnIndex].id:null;
  const pending=active?(pendingActor?(active.stage==='draw'||active.stage==='drawn'?active.after.pending:active.before.pending):null):v?.pending;
- return {move:active,busy:!!active,finishFlip:()=>{if(active)finish(active.key,'flip');},
-  card:(player:string,index:number)=>active?(active.actor===player&&active.index===index&&['landed','outgoing','flip','arrived'].includes(active.stage)?active.after.tableaus[player].cards[index]:active.before.tableaus[player].cards[index]):v?.tableaus[player].cards[index]??null,
+ return {move:active,busy:!!active,finishFlip:()=>{if(active)finish(active.key,'flip','arrived');},
+  card:(player:string,index:number)=>active?(active.actor===player&&active.index===index&&['landed','outgoing','flip','arrived','rest'].includes(active.stage)?active.after.tableaus[player].cards[index]:active.before.tableaus[player].cards[index]):v?.tableaus[player].cards[index]??null,
   pending,pendingActor,pendingBack:active?.stage==='draw'||!!pendingActor&&!pending,
-  discard:active?(active.stage==='arrived'?active.after.discardTop:active.before.discardTop):v?.discardTop??null};
+  discard:active?(['arrived','rest'].includes(active.stage)?active.after.discardTop:active.before.discardTop):v?.discardTop??null};
 }

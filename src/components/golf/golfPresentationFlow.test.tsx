@@ -16,7 +16,7 @@ it('retains the draw source and occupied destination until incoming settles, the
  expect(transport.dispatch.mock.calls[0][0].from).toEqual({kind:'tableau',playerId:'a',index:6});
  act(()=>transport.dispatch.mock.calls[0][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.card('a',1)).toBe(51);expect(h.result.current.pending).toBeNull();
  const outgoing=transport.dispatch.mock.calls[1][0];expect(outgoing.face).toBe('visible');expect(outgoing.visibleFace?.rank).toBe('A');expect(outgoing.from).toEqual({kind:'tableau',playerId:'a',index:7});expect(outgoing.to).toEqual({kind:'discard'});expect(h.result.current.discard).toBe(5);
- act(()=>transport.dispatch.mock.calls[1][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.move).toBeNull();expect(h.result.current.discard).toBe(0);expect(h.result.current.busy).toBe(false);
+ act(()=>transport.dispatch.mock.calls[1][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.move?.stage).toBe('rest');act(()=>vi.advanceTimersByTime(1200));expect(h.result.current.move).toBeNull();expect(h.result.current.discard).toBe(0);expect(h.result.current.busy).toBe(false);
 });
 it('draw transport never includes private values and reconnect ignores late callbacks',()=>{
  const before=frame(),after={...before,revision:2,hasPending:true,pending:{actor:'a',card:51}};
@@ -43,7 +43,7 @@ it('queues a bot replacement behind its private draw without publishing its pend
  act(()=>transport.dispatch.mock.calls[0][1].onSettled());act(()=>vi.advanceTimersByTime(180));expect(h.result.current.move?.stage).toBe('select');
  act(()=>vi.advanceTimersByTime(180));expect(h.result.current.move?.stage).toBe('incoming');expect(transport.dispatch.mock.calls[1][0].from).toEqual({kind:'tableau',playerId:'a',index:6});
  act(()=>transport.dispatch.mock.calls[1][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.move?.stage).toBe('outgoing');expect(h.result.current.card('a',1)).toBe(51);
- act(()=>transport.dispatch.mock.calls[2][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.busy).toBe(false);
+ act(()=>transport.dispatch.mock.calls[2][1].onSettled());act(()=>vi.advanceTimersByTime(40));act(()=>vi.advanceTimersByTime(1200));expect(h.result.current.busy).toBe(false);
 });
 
 it('recognizes a coalesced stock replacement and animates a hidden rejection',()=>{
@@ -60,5 +60,11 @@ it('retains the last replacement without exposing the other final-reveal cards e
  const h=renderHook(({v})=>useGolfCardPresentation(v,0,'u'),{initialProps:{v:before as GolfSnapshot}});h.rerender({v:after});
  expect(h.result.current.move?.index).toBe(0);expect(h.result.current.card('a',2)).toBeNull();
  act(()=>vi.advanceTimersByTime(180));act(()=>transport.dispatch.mock.calls[0][1].onSettled());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.card('a',0)).toBe(51);expect(h.result.current.card('a',2)).toBeNull();
- act(()=>transport.dispatch.mock.calls[1][1].onSettled());act(()=>h.result.current.finishFlip());expect(h.result.current.card('a',2)).toBe(2);
+ act(()=>transport.dispatch.mock.calls[1][1].onSettled());act(()=>h.result.current.finishFlip());act(()=>vi.advanceTimersByTime(40));expect(h.result.current.card('a',2)).toBe(2);
+});
+
+it('recognizes the final move plus the atomic settlement revision as one visual replacement',()=>{
+ const before={...frame(),hasPending:true,pending:{actor:'a',card:51}};
+ const after={...before,revision:3,settled:true,phase:'complete',hasPending:false,pending:null,discardTop:8,presentation:{hidden:{a:[2,3,4,5]}},tableaus:{...before.tableaus,a:{cards:[51,0,2,3,4,5]}}} as unknown as GolfSnapshot;
+ expect(golfMove(before,after)).toMatchObject({actor:'a',index:0,stage:'select'});
 });

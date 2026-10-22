@@ -19,6 +19,13 @@
 .golf-pile-artifact {display:block;position:relative;width:var(--golf-card-w);height:calc(var(--golf-card-w)*1.4);--canonical-card-count-font-size:clamp(9px,calc(var(--golf-card-w)*.27),12.8px)}
 .golf-piles:has([data-golf-pending]) [data-golf-stock] {visibility:hidden}
 .golf-piles [data-golf-pending] {position:absolute;left:0;top:0}
+.golf-piles [data-golf-pending] {width:max(44px,var(--golf-card-w));height:max(44px,calc(var(--golf-card-w)*1.4));display:flex;align-items:center;pointer-events:none}
+.golf-piles .golf-reject-pill {position:absolute;left:calc(100% + 12px);top:50%;transform:translateY(-50%);width:auto;height:auto;min-height:44px;min-width:44px;padding:0 8px;border-radius:999px;background:#f4e9c6;color:#332b13;font-size:11px;font-weight:700;z-index:3}
+.golf-scorecard-hint {display:block;font-size:9px;line-height:12px;text-align:center;margin-top:3px;color:#e9f4ff}
+.golf-public-cards>span {display:block;min-width:0;min-height:0}
+[data-golf-write] .golf-pencil-score path {stroke-dasharray:100;stroke-dashoffset:100;animation:golf-write-score 1000ms ease-out forwards}
+@keyframes golf-write-score {to {stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){[data-golf-write] .golf-pencil-score path {animation:none;stroke-dashoffset:0}}
 .golf-piles small {position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;line-height:14px}
 /* Short canonical felts keep pile labels alongside the cards, preserving room
    for the complete opponent grids above without changing shell geometry. */

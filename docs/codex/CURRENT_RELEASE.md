@@ -1,3 +1,12 @@
+# Golf smoke follow-up — October 22 — local review only
+
+Owner-approved local corrections on published `8e7af0299`: explicit Discard pill,
+readable presentation pauses, automatic nine-hole pencil scorecard, tap-for-all
+helper, full counting/scorecard before winner and chip presentation, and canonical
+opponent face sizing. See [scope and evidence](SIX_CARD_GOLF_SMOKE_FOLLOWUP.md).
+55 focused tests, TypeScript and build pass; actual local hole/bot captures and
+labelled final-hole fixture are ready. No publication, SQL or admission changes.
+Canasta and unrelated work are preserved. Owner review/publication approval pending.
 # Golf visual polish — October 22 — approved publication checkpoint
 
 Jeremy approved corrected candidate `98a1172b5e201d9d1e568930e482f435d3bfab38`.

@@ -27,6 +27,12 @@ const snapshot=()=>({id:'d',scope:'r',identity:{sessionId:'s',dealerGameId:'d',r
 beforeEach(()=>{state.act.mockReset();state.emit.mockReset();state.dismiss.mockReset();state.game={snapshot:snapshot(),connected:true,pending:false,now:1000,epoch:0,act:state.act};state.layer=document.createElement('div');document.body.append(state.layer);});
 afterEach(()=>{cleanup();state.layer?.remove();});
 const card=(n:number)=>document.querySelector('[data-golf-position="'+n+'"]') as HTMLButtonElement;
+it('only the separate discard pill rejects a legal pending stock draw',()=>{
+ state.game.snapshot={...state.game.snapshot,phase:'playing',hasPending:true,pending:{actor:'p',card:8}};
+ const ui=render(<GolfTable {...props}/>);fireEvent.click(document.querySelector('[data-golf-pending]')!);expect(state.act).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Discard drawn card'}));expect(state.act).toHaveBeenCalledExactlyOnceWith({type:'reject'});
+ state.game.pending=true;ui.rerender(<GolfTable {...props}/>);expect(screen.queryByRole('button',{name:'Discard drawn card'})).toBeNull();
+});
 it('marks a concealed first selection and submits exactly the two tapped positions',()=>{
  render(<GolfTable {...props}/>);fireEvent.click(card(0));expect(card(0).getAttribute('aria-pressed')).toBe('true');expect(card(0).querySelector('.golf-selection')).not.toBeNull();expect(state.act).not.toHaveBeenCalled();
  fireEvent.click(card(3));expect(state.act).toHaveBeenCalledExactlyOnceWith({type:'open',items:[0,3]});
@@ -62,7 +68,7 @@ it('cold result mount shows authoritative totals without replaying a hand',()=>{
  render(<GolfTable {...props}/>);
  expect(state.layer!.querySelector('[data-golf-stock]')).toBeNull();
  expect(state.layer!.querySelectorAll('.golf-scoring-hand [data-card-anchor]')).toHaveLength(0);
- expect(screen.getByText('Results')).not.toBeNull();expect(screen.getByText('+7')).not.toBeNull();
+ expect(screen.getByRole('region',{name:'Nine-hole scorecard'})).not.toBeNull();expect(screen.queryByText('Results')).toBeNull();
 });
 it('places discard before stock and exposes the stock count through its accessible label',()=>{
  state.game.snapshot.stockCount=39;render(<GolfTable {...props}/>);
