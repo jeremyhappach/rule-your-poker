@@ -1,3 +1,13 @@
+# Canasta / 1 — October 22 — forward installed, admission still closed
+
+Forward migration `20261022194338_canasta_beginner_expert_pacing` and recovery
+worker v3 are installed. The original Canasta `20261021235336` and Golf
+`20261022171731` migrations were not reapplied. Five installed rollback units
+pass: both-money financial settlement, injected failure, admission and scoped
+qualification, all with verified rollback and unrelated-history preservation.
+General admission remains false; combined client publication and hosted terminal/
+reconnect validation are pending. See `supabase/canasta/followup-release/`.
+
 # Canasta / 1 — October 22 — isolated forward proofs pass
 
 Docker is restored without recreating containers or volumes. The stale isolated

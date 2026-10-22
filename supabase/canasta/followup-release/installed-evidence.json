@@ -1,0 +1,46 @@
+{
+  "migration": "20261022194338",
+  "workerVersion": 3,
+  "units": [
+    {
+      "unit": "financial-fake",
+      "passed": true,
+      "installed": true,
+      "namespace": "52b7b4c7-b530-4bb0",
+      "rollback_verified": true,
+      "unscoped_history_preserved": true
+    },
+    {
+      "unit": "financial-real",
+      "passed": true,
+      "installed": true,
+      "namespace": "0206a87e-c9af-4dea",
+      "rollback_verified": true,
+      "unscoped_history_preserved": true
+    },
+    {
+      "unit": "failure",
+      "passed": true,
+      "installed": true,
+      "namespace": "3eab32da-116b-49ee",
+      "rollback_verified": true,
+      "unscoped_history_preserved": true
+    },
+    {
+      "unit": "admission",
+      "passed": true,
+      "installed": true,
+      "namespace": "399ac9ef-7036-4f49",
+      "rollback_verified": true,
+      "unscoped_history_preserved": true
+    },
+    {
+      "unit": "qualification",
+      "passed": true,
+      "installed": true,
+      "namespace": "a628921a-1283-4760",
+      "rollback_verified": true,
+      "unscoped_history_preserved": true
+    }
+  ]
+}
