@@ -91,6 +91,8 @@ export interface CardBacksPresentation {
 }
 
 export interface GameplayOpponentSeatPresentation {
+  /** Reuse canonical inward name/row attachments without moving chip anchors. */
+  inwardSeatContent?: boolean;
   /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
   onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
   hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
@@ -343,7 +345,8 @@ export function GameplayOpponentSeatLayer({
             scoreAutoPlay={presentation?.scoreAutoPlay?.(p)??false}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
-            keepNameInward={!!presentation?.publicTableau}
+            keepNameInward={!!presentation?.publicTableau||!!presentation?.inwardSeatContent}
+            opponentShowdownPlacement={presentation?.inwardSeatContent?{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}:undefined}
             innerDecoration={presentation?.publicTableau ? <button type="button" className="canonical-public-tableau" data-public-seat-tableau={p.position} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}>{presentation.publicTableau(p).map((card,i)=><div key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:presentation.hiddenTableauCards?.(p).includes(i)?'hidden':'visible'}}><TableauCard card={card} isHidden={!card} tier="small" style={{width:'100%',height:'100%'}}/></div>)}</button> : undefined}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}

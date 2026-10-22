@@ -87,9 +87,10 @@ describe('the actual Run Back button across all seven games', () => {
     expect([...document.querySelectorAll('button')].some(node=>/Run Back/.test(node.textContent??''))).toBe(false);
   });
   it.each([1,2])('submits the exact Canasta match stake with %i humans',async humans=>{
-    canastaAccess.allowed=true;await mount('canasta',{ante_amount:9},'canasta',{players:2,humans});
+    const config={ante_amount:9,runBackDealerGameId:'10000000-0000-4000-8000-000000000001'};
+    canastaAccess.allowed=true;await mount('canasta',config,'canasta',{players:2,humans});
     await act(async()=>{button().click();button().click();});
-    expect(configureDealerGame).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'dealer-player',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'canasta',config:{ante_amount:9}});
+    expect(configureDealerGame).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'dealer-player',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'canasta',config});
   });
   it('blocks Canasta Run Back in real money even with a stale positive capability',async()=>{
     canastaAccess.allowed=true;await mount('canasta',{ante_amount:9},'canasta',{players:2,humans:2},true);

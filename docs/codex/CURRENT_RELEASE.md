@@ -9,7 +9,11 @@ failure/reclaim races pass. See `supabase/canasta/qualification/README.md`.
 
 The owner lifted Canasta's hold for serialized release after remaining gates.
 Current main is Golf `568f8cc5d7eae5a8dac4097232860cad3132e570`; preserve it and
-installed migration `20261022171731`. Combined-main validation, required forward
+installed migration `20261022171731`. Local integration retains both games'
+defaults/types and release histories. Validation covers 2,742 application tests
+(three stale contract expectations corrected and their 57-test suites rerun),
+241 harness tests, TypeScript, production build and 12 rendered mobile layouts.
+The exact guarded forward package passes isolated rollback proof. Required forward
 migration and hosted lifecycle qualification remain pending. General admission
 stays closed; the approved eventual scope is all users, play money only, with
 no expiration. No production action was taken in this local qualification step.
@@ -47,7 +51,24 @@ fixture is preserved. Golf's two flags remain true; no unrelated records changed
 No final main integration/push, required CI completion or general activation is claimed.
 See `CANASTA_HOSTED_QUALIFICATION.md` for exact evidence and the retained failure.
 
-# Canasta / 1 — October 22 — resumed scope, still conditional
+# Golf timing and motion — October 22 — qualified publication checkpoint
+
+Jeremy approved candidate `714166fb5b2a7ea2b831cdb23bec484f70b2e9ce` for
+publication ahead of further Canasta work. Integration preserves deployed
+Canasta `5188ba145a7b3f28267bfdf2da69805514ade316` and its closed admission.
+Only Golf forward migration `20261022171731` was installed. Seventeen hosted
+candidate and seventeen installed rollback units pass with matching function
+fingerprints; both local independent-connection money-contract matrices pass.
+The five existing paused Golf matches and BOTH-money admission are unchanged.
+The approved 1200 ms scoring/reveal and 5000 ms Results settings apply to new
+matches; legacy admitted timing and immediate atomic settlement remain intact.
+See [release evidence and owner smoke](SIX_CARD_GOLF_TIMING_RELEASE.md).
+The integrated full Game-route run passed nine holes, immediate settlement,
+connected Session Ended for both clients and cold reconnect to lobby, with zero
+page errors. The exact deployment identity is recorded at delivery. Owner
+production smoke remains pending.
+
+# Canasta / 1 — October 22 — qualification resumed, activation conditional
 
 Jeremy authorized completion of hosted API, concurrency, recovery and lifecycle
 qualification. Only after all gates pass, Canasta may open to every user in play
@@ -58,6 +79,12 @@ General admission remains closed pending the actual hosted gates.
 Integration retains Golf's published `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`
 and both-money availability; unpublished Golf work is excluded. Other releases
 remain held. See `CANASTA_HOSTED_QUALIFICATION.md` for evidence and prior checkpoints.
+
+# Golf timing and motion candidate - October 22 - local review, publication held
+
+Jeremy approved local implementation of configurable scoring/reveal timing and the smoke corrections. The candidate now freezes Scoring Delay (1200 ms) and Hole Results Duration (5000 ms) for new matches, preserves final-reveal masks, delays winner presentation until counting/results finish, and preserves immediate atomic settlement. Results has no close control. Golf uses stable Bot1-style aliases and a persistent FINAL TURN felt affordance. Selected piles enlarge; the displaced tableau card offsets; outgoing cards retain their prior face/back state, with only backs flipping at discard.
+
+Candidate and locally installed rollback proofs pass, including financial failure rollback, both money modes, shared ties, continuation, frozen offers, pauses and timing boundaries. 59 focused tests, TypeScript, build, 63 layouts and fresh 2/3/4-player browser sequences pass. The candidate SQL is installed ONLY in the existing loopback UI database. No production migration, publication, admission change or existing production-session mutation occurred. Owner review is pending; hosted authority/concurrency qualification remains required before any future release. See [scope, evidence and holds](SIX_CARD_GOLF_SMOKE_FLOW.md).
 
 # Golf interaction release — October 22 — approved, integrated qualification
 

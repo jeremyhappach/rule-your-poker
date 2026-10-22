@@ -34,7 +34,7 @@ BEGIN
     PERFORM public.submit_ante_decision(game,dealer,ids[i],'ante_up');
    END LOOP;
    SELECT * INTO STRICT m FROM private.golf_matches WHERE dealer_game_id=dealer;
-   PERFORM pg_temp.golf_assert(m.stake=5 AND m.state->'rules'=private.golf_rules(),'admission frozen');
+   PERFORM pg_temp.golf_assert(m.stake=5 AND m.state->'rules'=private.golf_admission_rules(),'admission frozen');
    BEGIN UPDATE private.golf_matches SET stake=10 WHERE dealer_game_id=dealer;RAISE EXCEPTION 'stake not protected';
     EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'golf:immutable_match' THEN RAISE;END IF;END;
    BEGIN UPDATE public.dealer_games SET config='{}' WHERE id=dealer;RAISE EXCEPTION 'config not protected';

@@ -1,0 +1,15 @@
+{
+  "game": "13d2ea4a-4de4-44d6-860a-4bd7a65e5857",
+  "passed": true,
+  "errors": [],
+  "events": [
+    172,
+    172
+  ],
+  "dealer": "efdb4e92-3917-4076-a146-af90c0e6a945",
+  "moves": 160,
+  "holes": 9,
+  "settlementBeforePresentationEnd": true,
+  "connectedSessionEnded": true,
+  "coldReconnectLobby": true
+}

@@ -21,6 +21,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
 | `SIX_CARD_GOLF_UI_RELEASE.md` | Approved interaction release, preserved Canasta checkpoint, regression correction and owner smoke |
+| `SIX_CARD_GOLF_TIMING_RELEASE.md` | Approved configurable scoring/motion release, forward migration, hosted qualification and owner smoke |
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |
 | `SIX_CARD_GOLF_INTERACTION_POLISH.md` | Owner opening-interaction investigation, MY/felt layout candidate, evidence and explicit release hold |
 | `SIX_CARD_GOLF_CENTERED_LAYOUT.md` | Revised centered felt/MY layout, final screenshot provenance and local-only visual review |

@@ -23,3 +23,8 @@ describe('Golf public projection boundary',()=>{
   expect(golfWarning({...v,finalReason:'prolonged_play',finalQueue:['b']} as GolfSnapshot)).toBe('Final turns: 1 remaining');
  });
 });
+
+it('uses durable bot aliases consistently without renumbering by viewer position',()=>{
+ const raw=fixture();const players=[{...raw.players[0],userId:'ua',name:'Bot 7-abcdef',isBot:true},{...raw.players[1],userId:'ub',name:'Human',isBot:false}];
+ expect(golfSnapshot({...raw,players}).players.map(p=>p.name)).toEqual(['Bot7','Human']);expect(golfSnapshot({...raw,players:[...players].reverse()}).players.map(p=>p.name)).toEqual(['Human','Bot7']);
+});

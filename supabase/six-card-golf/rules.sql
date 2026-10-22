@@ -62,6 +62,7 @@ CREATE OR REPLACE FUNCTION private.golf_deal(s jsonb, at_ms bigint) RETURNS json
 LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
 DECLARE deck jsonb; n integer:=jsonb_array_length(s->'players'); i integer; j integer; boards jsonb:='{}'; hand jsonb; id text;
 BEGIN
+ s:=s-'presentation';
  SELECT private.golf_shuffle(jsonb_agg(c ORDER BY c)) INTO deck FROM generate_series(0,51) c;
  FOR i IN 0..n-1 LOOP
   id:=s->'players'->i->>'id';hand:='[]';
@@ -88,11 +89,11 @@ BEGIN
  END LOOP;
  RETURN jsonb_build_object('identity',s->'identity','rules',s->'rules','players',s->'players','phase',s->'phase',
   'hole',s->'hole','dealerIndex',s->'dealerIndex','turnIndex',s->'turnIndex','openingRemaining',s->'openingRemaining',
-  'tableaus',boards,'stockCount',jsonb_array_length(s->'stock'),'discardTop',s->'discard'->-1,
+  'tableaus',boards,'stockCount',jsonb_array_length(s->'stock'),'discardTop',CASE WHEN s->>'phase'='opening' THEN 'null'::jsonb ELSE s->'discard'->-1 END,
   'pending',CASE WHEN s#>>'{pending,actor}'=viewer THEN s->'pending' ELSE 'null'::jsonb END,
   'hasPending',s->'pending'<>'null'::jsonb,'scores',s->'scores','holes',s->'holes',
   'consecutiveNoRevealTurns',s->'consecutiveNoRevealTurns','finalQueue',s->'finalQueue','finalReason',s->'finalReason',
-  'deadline',s->'deadline','startedAt',s->'startedAt','terminal',s->'terminal');
+  'deadline',s->'deadline','startedAt',s->'startedAt','terminal',s->'terminal','presentation',s->'presentation');
 END $$;
 
 CREATE OR REPLACE FUNCTION private.golf_reduce(s jsonb, action text, items integer[], at_ms bigint) RETURNS jsonb
@@ -152,6 +153,7 @@ BEGIN
  END IF;
  s:=s||jsonb_build_object('consecutiveNoRevealTurns',count_i,'finalQueue',queue,'turnIndex',next_i,'deadline',at_ms+30000);
  IF already_final AND jsonb_array_length(queue)=0 THEN
+  IF s#>'{rules,presentation}' IS NOT NULL THEN s:=s||jsonb_build_object('presentation',private.golf_presentation(s,at_ms));END IF;
   FOR p IN SELECT value FROM jsonb_array_elements(s->'players') LOOP
    score_i:=private.golf_score(s->'tableaus'->(p->>'id')->'cards');
    results:=results||jsonb_build_object(p->>'id',score_i);
@@ -160,7 +162,7 @@ BEGIN
   END LOOP;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(s->'holes') h WHERE h->>'hole'=s->>'hole') THEN RAISE EXCEPTION 'golf:integrity';END IF;
   s:=s||jsonb_build_object('scores',totals,'holes',(s->'holes')||jsonb_build_array(jsonb_build_object('hole',s->'hole','roundId',s#>'{identity,roundId}','scores',results,'tableaus',s->'tableaus')),
-    'phase',CASE WHEN (s->>'hole')::integer=9 THEN 'complete' ELSE 'hole_complete' END,'deadline',at_ms+6000);
+    'phase',CASE WHEN (s->>'hole')::integer=9 THEN 'complete' ELSE 'hole_complete' END,'deadline',coalesce((s#>>'{presentation,endsAt}')::bigint,at_ms+6000));
  END IF;
  PERFORM private.golf_integrity(s);RETURN s;
 END $$;

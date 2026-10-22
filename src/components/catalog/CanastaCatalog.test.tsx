@@ -18,7 +18,7 @@ it('allows exactly two fake-money participants behind the capability and exclude
 });
 it('renders frozen help locally without contacting Arcade or financial owners',async()=>{
  render(<RulesContent game="canasta"/>);await screen.findByText('Ptown · canasta-classic-two/1');
- expect(screen.getByText(/120 seconds/)).toBeTruthy();expect(supabase.rpc).not.toHaveBeenCalled();expect(arcadeRequest).not.toHaveBeenCalled();
+ expect(screen.getByText(/Beginner pacing \(180 seconds\).*configured Expert turn timer/)).toBeTruthy();expect(supabase.rpc).not.toHaveBeenCalled();expect(arcadeRequest).not.toHaveBeenCalled();
 });
 it('does not substitute current Canasta help for a historical unknown version',async()=>{
  render(<RulesContent game="canasta" version="canasta-classic-two/unknown"/>);await screen.findByRole('alert');

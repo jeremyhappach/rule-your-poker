@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {buildSync} from 'esbuild';
+import {authorityProof,dispatchProof} from './bootstrap.mjs';
+const out=new URL('../followup-release/',import.meta.url);mkdirSync(out,{recursive:true});
+const read=p=>readFileSync(new URL(p,import.meta.url),'utf8').replaceAll('\r\n','\n');
+const guard="DO $$ BEGIN IF EXISTS(SELECT 1 FROM private.canasta_release WHERE admission_enabled) OR EXISTS(SELECT 1 FROM private.canasta_matches WHERE NOT finished) OR EXISTS(SELECT 1 FROM private.canasta_qualification WHERE expires_at>clock_timestamp()) THEN RAISE EXCEPTION 'canasta:forward_requires_closed_idle';END IF; END $$;";
+const migration="-- Canasta Beginner/Expert forward update; preserves installed v1 and Golf.\nBEGIN;\nSET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='20s';\n"+guard+'\n'+dispatchProof+'\n'+authorityProof+'\n'+read('../beginner.candidate.sql')+'\nCOMMIT;\n';
+const worker=buildSync({entryPoints:['supabase/functions/canasta-recovery/index.ts'],bundle:true,platform:'node',format:'esm',write:false,logLevel:'silent'}).outputFiles[0].text;
+writeFileSync(new URL('forward.sql',out),migration);writeFileSync(new URL('worker.ts',out),worker);
+const sha=s=>createHash('sha256').update(s).digest('hex');
+writeFileSync(new URL('manifest.json',out),JSON.stringify({rules:'canasta-classic-two/1',baseCanasta:'20261021235336',preservedGolf:'20261022171731',migrationSha256:sha(migration),workerSha256:sha(worker),admission:'closed until hosted qualification; eventual play money only'},null,2)+'\n');
+console.log('Generated forward-only migration and worker; original release artifacts preserved.');

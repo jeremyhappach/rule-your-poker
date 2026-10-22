@@ -6,7 +6,7 @@ BEGIN
  SELECT * INTO STRICT dg FROM public.dealer_games WHERE id=p_dealer AND session_id=p_game;
  IF g.current_game_uuid IS DISTINCT FROM p_dealer OR g.status<>'ante_decision' OR g.game_type IS DISTINCT FROM 'six-card-golf' OR g.is_paused THEN RAISE EXCEPTION 'golf:ante_identity';END IF;
  stake_i:=(dg.config->>'ante_amount')::integer;
- IF g.ante_amount IS DISTINCT FROM stake_i OR dg.config->'rules' IS DISTINCT FROM private.golf_rules() THEN RAISE EXCEPTION 'golf:configuration_changed';END IF;
+ IF g.ante_amount IS DISTINCT FROM stake_i OR NOT private.golf_supported_rules(dg.config->'rules') THEN RAISE EXCEPTION 'golf:configuration_changed';END IF;
  PERFORM 1 FROM public.players WHERE game_id=p_game ORDER BY id FOR UPDATE;
  IF EXISTS(SELECT 1 FROM public.players WHERE game_id=p_game AND status='active' AND NOT sitting_out AND NOT waiting AND position IS NOT NULL AND ante_decision IS NULL) THEN RAISE EXCEPTION 'golf:acceptance_pending';END IF;
  SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position,'isBot',p.is_bot,'chips',p.chips)
@@ -82,7 +82,7 @@ CREATE OR REPLACE FUNCTION private.golf_guard() RETURNS trigger LANGUAGE plpgsql
 BEGIN
  IF TG_OP='UPDATE' AND (NEW.game_id<>OLD.game_id OR NEW.dealer_game_id<>OLD.dealer_game_id OR NEW.stake<>OLD.stake
   OR NEW.state->'players' IS DISTINCT FROM OLD.state->'players' OR NEW.state->'rules' IS DISTINCT FROM OLD.state->'rules'
-  OR (OLD.settlement IS NOT NULL AND (NEW.settlement IS DISTINCT FROM OLD.settlement OR NEW.state IS DISTINCT FROM OLD.state))) THEN RAISE EXCEPTION 'golf:immutable_match';END IF;
+  OR (OLD.settlement IS NOT NULL AND (NEW.settlement IS DISTINCT FROM OLD.settlement OR (NEW.state IS DISTINCT FROM OLD.state AND NOT coalesce((OLD.state ? 'presentation' AND OLD.paused_at IS NOT NULL AND NEW.paused_at IS NULL AND (NEW.state->>'deadline')::bigint>=(OLD.state->>'deadline')::bigint AND NEW.state=private.golf_shift_presentation(OLD.state,(NEW.state->>'deadline')::bigint-(OLD.state->>'deadline')::bigint)),false))))) THEN RAISE EXCEPTION 'golf:immutable_match';END IF;
  IF TG_OP='INSERT' OR NEW.state IS DISTINCT FROM OLD.state THEN PERFORM private.golf_integrity(NEW.state);END IF;
  RETURN NEW;
 END $$;

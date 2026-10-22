@@ -192,7 +192,7 @@ BEGIN
  INSERT INTO public.session_player_snapshots(game_id,dealer_game_id,player_id,user_id,username,chips,is_bot,hand_number)
  SELECT p.game_id,m.dealer_game_id,p.id,p.user_id,coalesce(pr.username,'Player'),p.chips,p.is_bot,1 FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=m.game_id
  ON CONFLICT(game_id,dealer_game_id,hand_number,player_id) DO UPDATE SET chips=EXCLUDED.chips,created_at=clock_timestamp();
- UPDATE private.golf_matches SET settlement=changes,revision=revision+1,state=state||jsonb_build_object('terminal',jsonb_build_object('resultId',result_id,'winnerIds',to_jsonb(winners),'score',(SELECT min(value::bigint) FROM jsonb_each_text(m.state->'scores')),'startedAt',floor(extract(epoch FROM clock_timestamp())*1000)::bigint,'deadline',floor(extract(epoch FROM clock_timestamp())*1000)::bigint+3000)) WHERE dealer_game_id=m.dealer_game_id;
+ UPDATE private.golf_matches SET settlement=changes,revision=revision+1,state=state||jsonb_build_object('terminal',jsonb_build_object('resultId',result_id,'winnerIds',to_jsonb(winners),'score',(SELECT min(value::bigint) FROM jsonb_each_text(m.state->'scores')),'startedAt',greatest(floor(extract(epoch FROM clock_timestamp())*1000)::bigint,coalesce((m.state#>>'{presentation,endsAt}')::bigint,0)),'deadline',greatest(floor(extract(epoch FROM clock_timestamp())*1000)::bigint,coalesce((m.state#>>'{presentation,endsAt}')::bigint,0))+3000)) WHERE dealer_game_id=m.dealer_game_id;
  UPDATE public.games SET status=CASE WHEN pending_session_end THEN 'session_ended' ELSE 'game_over' END,
   session_ended_at=CASE WHEN pending_session_end THEN clock_timestamp() ELSE session_ended_at END,pending_session_end=false,
   game_over_at=clock_timestamp(),last_round_result='Six-Card Golf complete',awaiting_next_round=false WHERE id=m.game_id;
@@ -239,7 +239,7 @@ BEGIN
  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
  IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;
- INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'six-card-golf',jsonb_build_object('ante_amount',stake_i,'rules',private.golf_rules())) RETURNING * INTO dg;
+ INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'six-card-golf',jsonb_build_object('ante_amount',stake_i,'rules',private.golf_admission_rules())) RETURNING * INTO dg;
  -- Freeze already-authorized access for this match. Expiry/revocation prevents
  -- new matches, but cannot strand accepted liabilities or an unresolved offer.
  INSERT INTO private.golf_qualified_matches(dealer_game_id,game_id,user_id)
@@ -266,7 +266,7 @@ BEGIN
  SELECT * INTO STRICT g FROM public.games WHERE id=m.game_id FOR UPDATE;
  SELECT * INTO STRICT m FROM private.golf_matches WHERE dealer_game_id=p_dealer_game_id FOR UPDATE;
  IF m.settlement IS NULL THEN RAISE EXCEPTION 'golf:close_denied' USING ERRCODE='42501';END IF;
- IF m.finished THEN RETURN;END IF;
+ IF m.finished OR g.is_paused OR m.paused_at IS NOT NULL THEN RETURN;END IF;
  IF coalesce((m.state#>>'{terminal,deadline}')::bigint,0)>floor(extract(epoch FROM clock_timestamp())*1000) THEN RETURN;END IF;
  IF g.current_game_uuid IS DISTINCT FROM m.dealer_game_id OR g.game_type IS DISTINCT FROM 'six-card-golf' OR g.status NOT IN ('game_over','session_ended') THEN RAISE EXCEPTION 'golf:close_identity';END IF;
  IF g.status<>'session_ended' THEN
@@ -321,8 +321,8 @@ AS $function$
 DECLARE at_ms bigint:=floor(extract(epoch FROM clock_timestamp())*1000);
 BEGIN
  IF NEW.game_type IS DISTINCT FROM 'six-card-golf' OR NEW.is_paused IS NOT DISTINCT FROM OLD.is_paused THEN RETURN NEW;END IF;
- IF NEW.is_paused THEN UPDATE private.golf_matches SET paused_at=at_ms,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND settlement IS NULL;
- ELSE UPDATE private.golf_matches SET state=state||jsonb_build_object('deadline',(state->>'deadline')::bigint+at_ms-paused_at)||CASE WHEN state ? 'startedAt' THEN jsonb_build_object('startedAt',(state->>'startedAt')::bigint+at_ms-paused_at) ELSE '{}'::jsonb END,paused_at=NULL,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND paused_at IS NOT NULL AND settlement IS NULL;END IF;
+ IF NEW.is_paused THEN UPDATE private.golf_matches SET paused_at=at_ms,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND NOT finished AND (settlement IS NULL OR state ? 'presentation');
+ ELSE UPDATE private.golf_matches SET state=private.golf_shift_presentation(state,at_ms-paused_at),paused_at=NULL,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND paused_at IS NOT NULL AND NOT finished AND (settlement IS NULL OR state ? 'presentation');END IF;
  RETURN NEW;
 END $function$
 ;
