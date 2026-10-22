@@ -1,7 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {CanastaAuthority} from './authority';
-import {createStore} from './store';
+import {CanastaAuthority} from './authority.js';
+import {createStore} from './store.js';
 import type {Command} from '../../src/lib/canasta/engine';
 
 /** Authenticated adapter; credentials and database release gates are supplied separately. */

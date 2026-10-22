@@ -1,4 +1,4 @@
-import {CanastaAuthority,type RecordState} from './authority';
+import {CanastaAuthority,type RecordState} from './authority.js';
 export type RecoveryRpc=<T>(name:string,args:Record<string,unknown>)=>Promise<T>;
 /** A restart can claim an expired lease; only the successful completion records health. */
 export async function recoverCanasta(rpc:RecoveryRpc,token:string){

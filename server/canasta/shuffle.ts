@@ -1,5 +1,5 @@
 import {randomInt,randomUUID} from 'node:crypto';
-import {fixtureDeck} from '../../src/lib/canasta/rules';
+import {fixtureDeck} from '../../src/lib/canasta/rules.js';
 
 /** Only faces are reused; neither order nor physical identity reaches a client before reveal. */
 export function secureDeck(){

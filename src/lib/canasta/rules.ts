@@ -1,5 +1,5 @@
 import type { Card, Rank, Suit } from '../cardUtils';
-import { isResolvedJoker, type PhysicalCard } from '../cardGames/physicalCard';
+import { isResolvedJoker, type PhysicalCard } from '../cardGames/physicalCard.js';
 
 export const VERSION = 'canasta-classic-two/1' as const;
 export const CONTRACT = Object.freeze({ version: VERSION, participants: 2, deckSize: 108,

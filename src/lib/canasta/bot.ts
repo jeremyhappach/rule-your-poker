@@ -1,5 +1,5 @@
 import type {Action,Projection,Group} from './engine';
-import {standard,natural,wild,points,compareCards,pickupError,turnPlan,pileStatus,type Meld} from './rules';
+import {standard,natural,wild,points,compareCards,pickupError,turnPlan,pileStatus,type Meld} from './rules.js';
 
 /** Bounded own-hand/public-information policy, also used by approved fake-money autoplay. */
 export function chooseBotAction(view:Projection):Action|null {

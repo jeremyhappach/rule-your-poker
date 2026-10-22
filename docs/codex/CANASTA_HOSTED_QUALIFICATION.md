@@ -118,3 +118,18 @@ Use a supported closed deployment/API qualification path or a carefully scoped
 temporary fixture bridge, with explicit containment and removal, rather than
 broadening production commit grants. No main push or app publication is justified
 by the incomplete concurrency proof.
+# Closed deployment transport follow-up — October 21
+
+The approved closed production deployment of `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`
+became READY as `dpl_8SHB6u8CmcMscgemm3zuTuPaeCzx`; the public build manifest matched.
+Its first authenticated Canasta API request returned 500 before authentication:
+the runtime reported `ERR_MODULE_NOT_FOUND` for the extensionless production import.
+Explicit `.js` imports now match the established Run21 native ESM convention through
+the eleven-module runtime chain. `dev/canasta/node-entry-proof.mjs` transpiles without
+bundling and imports the actual entry in Node, verifying the fail-closed 503 path.
+Seventy-five focused tests and the local Vite build pass. SQL and bundled recovery
+worker hashes are unchanged; no migration or RPC permission change is needed.
+This correction is pending closed redeployment and successful live transport gates.
+Temporary one-hour grants are restricted to the original two-account fixture;
+the owner smoke window has not started. Golf's two live release flags remain true.
+

@@ -1,8 +1,8 @@
 import type {Rank} from '../cardUtils';
 import type {PhysicalCard} from '../cardGames/physicalCard';
-import {chooseBotAction} from './bot';
+import {chooseBotAction} from './bot.js';
 import {VERSION,CONTRACT,fixtureDeck,redThree,standard,natural,wild,meldError,openingReport,
-  pileStatus,compareCards,canastas,rulesFor,type Meld} from './rules';
+  pileStatus,compareCards,canastas,rulesFor,type Meld} from './rules.js';
 
 export type Seat = {id:string;userId:string|null;kind:'human'|'bot';seat:number};
 export type Group = {rank:Rank;ids:string[]};

@@ -1,5 +1,5 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {createCanastaHandler} from './handler';
+import {createCanastaHandler} from './handler.js';
 /** Missing credentials fail closed; database release and admission gates remain independent. */
 export function createProductionAdapter(env:NodeJS.ProcessEnv){
  let runtime:ReturnType<typeof createCanastaHandler>|undefined;

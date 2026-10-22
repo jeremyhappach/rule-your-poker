@@ -1,4 +1,4 @@
-import { resolveCardFace } from './resolvedCardFace';
+import { resolveCardFace } from './resolvedCardFace.js';
 import type { Card } from '../cardUtils';
 
 /** Presentation extension only. Poker's Card/Rank/Suit universe stays unchanged. */

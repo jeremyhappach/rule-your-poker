@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
-import {execute,expire,automaticTurn,pause,startHand,takeControl,project,type Match,type Command} from '../../src/lib/canasta/engine';
-import {chooseBotAction} from '../../src/lib/canasta/bot';
-import {secureDeck} from './shuffle';
+import {execute,expire,automaticTurn,pause,startHand,takeControl,project,type Match,type Command} from '../../src/lib/canasta/engine.js';
+import {chooseBotAction} from '../../src/lib/canasta/bot.js';
+import {secureDeck} from './shuffle.js';
 
 export type RecordState={state:Match;firstRoundId:string;activeHumans:string[];botDue:number|null;serverAt:number;finished:boolean;settlement:unknown};
 export type CommitContext={kind:'command';command:Command;userId:string}|{kind:'recover'}|{kind:'control';userId:string};
