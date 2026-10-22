@@ -1,8 +1,11 @@
-# Golf smoke corrections — local candidate, October 22, 2026
+# Golf smoke corrections — approved publication, October 22, 2026
 
 Base: live `8e7af0299a3eb269f5ffbe62d1aadbe9f5f64878`.
-Branch: `codex/golf-smoke-followup`. Owner approved local implementation only.
-No main merge, push, deployment, migration, admission change or production gameplay.
+Branch: `codex/golf-smoke-followup`. Initial local candidate: `4c4e2227b`.
+The owner subsequently approved publishing Golf first, with one narrow correction:
+remove the redundant Discard helper beneath the pile. The distinct action pill,
+accessible labels, six corrections and writing animation are preserved.
+No migration, admission change, Canasta candidate or other game work is included.
 
 ## Diagnosis and correction
 
@@ -51,4 +54,20 @@ page errors. Screenshots and timed sequences are in
 Canasta code, its parallel checkout and live play-money-only access are untouched.
 Golf admission, rules, scoring, stakes, hidden information, server recovery and all
 database/financial authority remain unchanged. Unrelated Cribbage snapshot and
-Supabase temporary files stay excluded. Owner review and publication approval remain.
+Supabase temporary files stay excluded.
+
+## Narrow correction and release evidence
+
+The helper text beneath the discard pile is removed; its accessible Take discard
+label and the separate Discard drawn card action remain. Both rendering suites
+pass (21 tests). A 12-frame browser capture verifies only the new hole animates,
+prior-hole pixels are identical, and reduced motion disables the stroke animation.
+The captured sequence and actual local pending-draw screenshot are in
+`qualification.local/six-card-golf/review-20261022-label/index.html`.
+
+Fresh main, Vercel production and database release signal match `8e7af0299` before
+publication. Golf and Canasta remain enabled/admitted with existing money guards;
+Golf defaults remain 1200/5000 ms. Unpublished Canasta `c8059c2ff` is excluded.
+Final TypeScript, 2,759 application tests, 241 harness tests and production build
+pass. Validation, build and production checks are recorded alongside that capture.
+The delivery records the exact release SHA, Vercel deployment and CI identifiers.
