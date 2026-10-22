@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "status": "Installed closed; hosted financial/admission proofs passed; remaining live qualification and production-write window pending",
-  "candidateParent": "6e439fd40db267084c61a159ccc30ed04fb9c1af",
-  "referenceMain": "52aa5528143fe031c4ddf8c3787eff85c0392aa9",
+  "status": "Installed closed; hosted transport, concurrency and recovery pass; connected Session Ended gate failed; activation blocked",
+  "candidateParent": "5188ba145a7b3f28267bfdf2da69805514ade316",
+  "referenceMain": "cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce",
   "expectedAnteMd5": "71a82570740f60593bdb09e504aa744c",
   "encoding": "UTF-8 LF, no BOM",
   "projectRef": "xvhmbuppghwmwpwrkzao",
@@ -27,8 +27,8 @@
     "platform": "node",
     "format": "esm",
     "hostedRuntimeVerified": true,
-    "hostedVersion": 1,
-    "verification": "Actual scheduled empty-work heartbeats; gameplay delivery remains pending"
+    "hostedVersion": 2,
+    "verification": "Actual restarted-worker zero-client deadline recovery and scheduled terminal continuation pass"
   },
   "artifactSha256": {
     "closed-install.sql": "6d1ed68f5b744b628c46ef0452a3291e948cc857a509d9c3e9efad3b1537c7cf",
@@ -81,7 +81,7 @@
     "supabase/canasta/registration.candidate.sql": "a271d685e1230de85c228db6cffbcc736b468ccbc3831a19d8a2df4cdfc40989",
     "supabase/canasta/release/.gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
     "supabase/canasta/release/README.md": "5cd2d91d4e04eac9f152717f1659bd6d4f3447962aacda7bba8c87ae016064a0",
-    "supabase/canasta/release/build.mjs": "d2b2de300a420b2c4b979881b8cd3c595b9c4627a4f5ac7e1da5540bc5e9abda",
+    "supabase/canasta/release/build.mjs": "cb9e22eb750e06328cf0f934c4fe44d13497643262173f64c1f68171dfe634a9",
     "supabase/canasta/release/close-admission.sql": "0d2b7e9ce608423131dfe5e7a0e307d4dc9b8f55339201836b4751ff449c39b8",
     "supabase/canasta/release/closed-verify.sql": "77fc43fc230a2b9ec300e4aa9fb13b57cea28ebf08c642aeb7d6dddac0308219",
     "supabase/canasta/release/edge-config.toml": "82580e77116aae11d3b15e77d61fafb40f71109ff81f412cc71ae4114dfd0f65",

@@ -1,5 +1,53 @@
 # Canasta hosted qualification — 2026-10-21
 
+## October 22 outcome: connected terminal presentation blocks release
+
+Closed candidate `5188ba145a7b3f28267bfdf2da69805514ade316` is READY at
+`dpl_F2CrJwrnmvj5HgyyqPEK2V3Bnv2q`. Public manifest publishedAt
+`2026-10-22T16:39:32.078Z`, bundle `assets/index-CuTrEOiW.js`, matches exactly.
+It includes Golf's released code unchanged. Remote main remains
+`cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`; no final main push/CI/activation occurred.
+
+Passed hosted evidence under `dev/canasta/evidence/`:
+
+- `hosted-api-replay*.json`: real Auth/API, unauthenticated 401, two distinct
+  waiting PostgreSQL backends, two held exact replays in 5,749ms, no repayment.
+- `hosted-browser.json`: explicit fresh consent, private redaction, actual
+  draw/discard and reconnect, 320x568 / 430x932 / 932x430 tap targets >=44px.
+- `hosted-zero-client-restart.json`: unchanged worker source redeployed as v2;
+  all clients closed before the actual 120-second deadline. Revision 5/turn 2
+  advanced to revision 6/turn 3; chips stayed 100/100; actual heartbeat has no failure.
+- `hosted-final-race*.json`: independent waiting backends; one HTTP 200 and one
+  409; one result, balanced batch and two snapshots; exact replay preserved settlement.
+- `hosted-run-back.json`: next match retained stake 5, required fresh consent,
+  and was unchanged by the preceding match's exact receipt replay.
+- `hosted-financial-terminal.json`: both matches finished, each with precisely
+  one result, one balanced canonical batch and two snapshots. Combined chips 110/90.
+
+**Failed release gate:** `hosted-terminal-race.json` has `passed:false`. The host's
+canonical end-session request was accepted, two competing requests again produced
+one acceptance/one conflict, and PostgreSQL reached `session_ended`/finished.
+The connected 390x844 browser never showed exact canonical text `Session Ended`
+within 30 seconds. Source confirms that is the correct canonical announcement.
+The live tab closed on failure before diagnostic pixels/state were captured;
+therefore no exact client failure owner or correction is claimed. Failure capture
+is now included for the next authorized reproduction. Cold-ended reconnect was
+not reached and remains unqualified. Do not reopen the ended fixture to reproduce.
+
+Preserved fresh fake fixture: session `07f06622-4b34-40e6-98ae-f95792fc9046`;
+matches `c2c92d95-ea94-41ea-bf86-c96e07998bc2` and
+`9c16bffb-f635-47d6-84db-dfdd8f9bb9ec`. The first fixture naturally expired through
+canonical setup inactivity while the deployment was building, ending its session;
+its original history/settlement is untouched. Its departed actor's later action
+returned 403 as the membership gate requires. The fresh fixture's before-consent
+and browser checks were resumed after correcting that harness assumption.
+
+Cleanup verified zero temporary qualification grants, Canasta execution true /
+general admission false, Golf execution true / admission true. Both fixtures are
+ended; no transaction, browser harness or deployment remains in flight. The
+installed migration and worker engine bytes are unchanged. No real-money gameplay
+occurred. Stop at this material terminal gate under the owner's release condition.
+
 ## October 22 resumed authorization and preflight
 
 The owner superseded the former two-account/24-hour proposal: after all hosted

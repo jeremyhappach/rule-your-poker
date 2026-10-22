@@ -1,4 +1,21 @@
-# Canasta / 1 — October 22 — qualification resumed, activation conditional
+# Canasta / 1 — October 22 — connected terminal gate blocks activation
+
+Closed production candidate `5188ba145a7b3f28267bfdf2da69805514ade316` is READY
+and matches the public manifest (`dpl_F2CrJwrnmvj5HgyyqPEK2V3Bnv2q`). Golf's
+published code is preserved; remote main remains `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`.
+API startup/host bodies, two observed independent connections, final action versus
+conflict, exact settlement/replay, browser draw/discard/reconnect, fresh Run Back,
+and actual restarted-worker zero-client deadline recovery pass. Recovery worker
+v2 uses unchanged bundled source; the installed migration was not reapplied.
+The connected browser did NOT show Session Ended within 30 seconds although the
+database settled once and finished. The client failure boundary remains unresolved;
+cold-reconnect verification was not reached. Activation stops at this material gate.
+General admission stays false, temporary grants are zero, and the ended fake-money
+fixture is preserved. Golf's two flags remain true; no unrelated records changed.
+No final main integration/push, required CI completion or general activation is claimed.
+See `CANASTA_HOSTED_QUALIFICATION.md` for exact evidence and the retained failure.
+
+# Canasta / 1 — October 22 — resumed scope, still conditional
 
 Jeremy authorized completion of hosted API, concurrency, recovery and lifecycle
 qualification. Only after all gates pass, Canasta may open to every user in play

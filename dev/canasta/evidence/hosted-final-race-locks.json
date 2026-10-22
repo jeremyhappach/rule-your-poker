@@ -1,0 +1,1 @@
+{"holderPid":3101963,"observed":[{"pid":3096972,"blockers":[3101963],"wait_type":"Lock","wait_event":"transactionid"},{"pid":3099780,"blockers":[3096972],"wait_type":"Lock","wait_event":"tuple"}],"distinctRequests":2,"holderTransactionRolledBack":true,"accepted":1,"conflicted":1}

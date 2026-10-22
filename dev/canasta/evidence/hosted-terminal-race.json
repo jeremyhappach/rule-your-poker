@@ -1,0 +1,13 @@
+{
+  "game": "07f06622-4b34-40e6-98ae-f95792fc9046",
+  "match": "9c16bffb-f635-47d6-84db-dfdd8f9bb9ec",
+  "passed": false,
+  "endRequested": true,
+  "elapsedMs": 5794,
+  "resultId": "3ab817ca-5c8e-4702-a39d-6f52d0871b33",
+  "batchId": "479fdf97-0307-43ad-927e-76c6d65e7982",
+  "accepted": 1,
+  "conflicted": 1,
+  "replayPreservedSettlement": true,
+  "failure": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Session Ended', { exact: true }).first() to be visible\u001b[22m\n"
+}

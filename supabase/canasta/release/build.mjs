@@ -29,12 +29,12 @@ for(const base of ['server/canasta','src/lib/canasta','supabase/functions/canast
  for(const name of readdirSync(path.join(root,base)).sort())if(name.endsWith('.ts'))files.push(`${base}/${name}`);
 }
 for(const name of ['.gitattributes','build.mjs','proof.mjs','hosted-proof.mjs','preflight.sql','closed-verify.sql','close-admission.sql','edge-config.toml','README.md'])files.push(`supabase/canasta/release/${name}`);
-const manifest={schemaVersion:1,status:'Installed closed; hosted financial/admission proofs passed; remaining live qualification and production-write window pending',
- candidateParent:'6e439fd40db267084c61a159ccc30ed04fb9c1af',referenceMain:'52aa5528143fe031c4ddf8c3787eff85c0392aa9',
+const manifest={schemaVersion:1,status:'Installed closed; hosted transport, concurrency and recovery pass; connected Session Ended gate failed; activation blocked',
+ candidateParent:'5188ba145a7b3f28267bfdf2da69805514ade316',referenceMain:'cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce',
  expectedAnteMd5:'71a82570740f60593bdb09e504aa744c',encoding:'UTF-8 LF, no BOM',
  projectRef:'xvhmbuppghwmwpwrkzao',installOrder:order,migrationRegistration:'20261021235336_canasta_v1_scoped_qualification',
  defaultState:{execution:false,admission:false,cronActive:false},moneyMode:'fake only',
- worker:{entrypoint:'worker/index.ts',esbuildVersion,platform:'node',format:'esm',hostedRuntimeVerified:true,hostedVersion:1,verification:'Actual scheduled empty-work heartbeats; gameplay delivery remains pending'},
+ worker:{entrypoint:'worker/index.ts',esbuildVersion,platform:'node',format:'esm',hostedRuntimeVerified:true,hostedVersion:2,verification:'Actual restarted-worker zero-client deadline recovery and scheduled terminal continuation pass'},
  artifactSha256:{'closed-install.sql':hash(install),'candidate-rollback-proof.sql':hash(candidateProof),'installed-rollback-proof.sql':hash(installedProof),'worker/index.ts':hash(worker)},
  sourceSha256:Object.fromEntries(files.sort().map(p=>[p,hash(read(p))]))};
 emit('manifest.json',JSON.stringify(manifest,null,2)+'\n');

@@ -1,0 +1,29 @@
+{
+  "game": "07f06622-4b34-40e6-98ae-f95792fc9046",
+  "passed": true,
+  "layouts": [
+    {
+      "width": 320,
+      "height": 568,
+      "targets": 4
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "targets": 6
+    },
+    {
+      "width": 932,
+      "height": 430,
+      "targets": 14
+    }
+  ],
+  "match": "c2c92d95-ea94-41ea-bf86-c96e07998bc2",
+  "freshConsent": true,
+  "privateProjection": true,
+  "retiredActorReplayStatus": 403,
+  "oldReplayPreservesNewMatch": true,
+  "reconnectPreservesDraw": true,
+  "visibleTurnSubmitted": true,
+  "retainedPaused": true
+}
