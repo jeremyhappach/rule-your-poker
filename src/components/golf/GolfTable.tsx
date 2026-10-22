@@ -1,5 +1,5 @@
 import {useGolfCardPresentation} from './useGolfCardPresentation';
-import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {TableauCard} from '@/lib/canonicalShell/TableauCard';
 import {CanonicalCardCountBadge} from '@/components/canonicalShell/CanonicalCardCountBadge';
@@ -18,43 +18,54 @@ import {GameplayOpponentSeatLayer} from '@/lib/canonicalShell/GameplayOpponentSe
 import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import {useGameChatContext} from '@/hooks/GameChatContext';
 import {MobileChatPanel} from '@/components/MobileChatPanel';
-import {PresentationChipBalance} from '@/lib/canonicalShell/PresentationChipBalance';
+import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
+import {TurnSpotlight} from '@/components/TurnSpotlight';
+import {golfScoreFrame,golfVisibleSubtotal,signedGolf} from './golfScoring';
 import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import './golf.css';
 interface Props {dealerGameId:string;retentionRoundId?:string;userId:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(token:string)=>void}
 export function GolfTable(props:Props) {
  const transport=useMemo(()=>golfTransport(props.dealerGameId),[props.dealerGameId]),game=useGolf(props.dealerGameId,props.userId,transport);
  const v=game.snapshot,ready=useGolfFinancial(v,props.sessionEnded),layer=useCanonicalFeltInteractionLayerElement(!props.sessionEnded);
- const [selected,setSelected]=useState<number[]>([]),[discard,setDiscard]=useState(false),[error,setError]=useState('');
+ const [selected,setSelected]=useState<number[]>([]),[discard,setDiscard]=useState(false),[selectedStock,setSelectedStock]=useState(false),[error,setError]=useState('');
  const [rulesOpen,setRulesOpen]=useState(false),[inspectPlayer,setInspectPlayer]=useState<string|null>(null);
  const [infoOpen,setInfoOpen]=useState(false);
  const [reclaiming,setReclaiming]=useState(false);
  const announced=useRef(''),closing=useRef(false),completed=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const chat=useGameChatContext(),announcements=useAnnouncements();
- const flying=useGolfCardPresentation(v,game.epoch,props.userId);
+ const presentation=useGolfCardPresentation(v,game.epoch,props.userId);
+ const spotlightRef=useRef<HTMLDivElement>(null),scoringAdmission=useRef({scope:"",epoch:game.epoch,live:false});
+ if(v&&(scoringAdmission.current.scope!==v.scope||scoringAdmission.current.epoch!==game.epoch))scoringAdmission.current={scope:v.scope,epoch:game.epoch,live:false};
+ if(v?.phase==="playing"&&!v.paused)scoringAdmission.current.live=true;
+ const scoring=!!v&&(v.phase==="hole_complete"||v.phase==="complete");
+ const scoreFrame=v&&scoring?golfScoreFrame(v,v.paused?(v.pausedAt??game.now):game.now,!scoringAdmission.current.live):null;
+ const scoreBeat=scoreFrame?.beat;
  const self=v?.players.find(p=>p.id===v.viewerId),actor=v?.players[v.turnIndex];
  const reclaim=async()=>{if(!v||!self||reclaiming)return;setReclaiming(true);try{await golfRpc('golf_reclaim_control',{p_dealer_game_id:v.id,p_round_id:v.scope,p_expected_version:v.playerControls?.[self.id]?.intentVersion});setError('');}catch(e){setError((e as Error).message);}finally{setReclaiming(false);game.reconnect();}};
- const acting=!!v?.canAct&&!game.pending&&game.connected&&!v.paused&&game.now<v.deadline&&!props.sessionEnded;
+ const acting=!!v?.canAct&&!game.pending&&game.connected&&!v.paused&&game.now<v.deadline&&!props.sessionEnded&&!presentation.busy;
  if(v&&!v.settled)sawLive.current=true;
- useEffect(()=>{setSelected([]);setDiscard(false);},[v?.scope,v?.turnIndex,v?.revision]);
+ useEffect(()=>{setSelected([]);setDiscard(false);setSelectedStock(false);},[v?.scope,v?.turnIndex,v?.revision]);
  usePublishShellFelt({gameKind:'six-card-golf',anteAmount:v?.stake??0,publisherLabel:'GolfTable'});
  useShellTabBar({cardsIcon:"spade",activeTab:props.activeTab,setActiveTab:props.setActiveTab,cardsFlashing:acting?'green':null,isPaused:!!v?.paused});
  useShellTimer(v&&!v.settled&&v.phase!=='hole_complete'?{secondsRemaining:Math.max(0,Math.ceil((v.deadline-(v.paused?v.pausedAt??game.now:game.now))/1000)),totalSeconds:30,paused:v.paused,actorLabel:actor?.name,activePlayerId:actor?.id,identityKey:v.scope+':'+v.turnIndex+':'+v.deadline}:null);
  useEffect(()=>{
   if(!v)return;
-  const key=v.scope+':'+v.phase+':'+v.finalReason;
+  const winnerReady=!!v.terminal&&!v.paused&&game.now>=v.terminal.startedAt;
+  if(v.settled&&!props.sessionEnded)callbacks.current.onTerminalActive(true);
+  const key=v.scope+':'+v.phase+':'+v.finalReason+':'+winnerReady;
   if(announced.current===key)return;
   const first=!announced.current;announced.current=key;
-  if(!first&&v.finalReason&&v.phase==='playing')announcements.emit({id:'golf-final:'+v.scope,type:'gameplay_notice',scope:{dealerGameId:v.id,roundId:v.scope},payload:{text:v.finalReason==='prolonged_play'?'Ptown house rule: one final turn each':'Final turns'},ttlMs:2500});
-  if(v.settled&&v.terminal&&!props.sessionEnded) {
+  if(v.phase==='hole_complete'||v.phase==='complete')announcements.dismiss('golf-final:'+v.scope);
+  if(!first&&v.finalReason&&v.phase==='playing')announcements.emit({id:'golf-final:'+v.scope,type:'gameplay_notice',scope:{dealerGameId:v.identity.sessionId,roundId:v.scope},payload:{title:v.finalReason==='prolonged_play'?'Ptown house rule: one final turn each':'Final turns'},ttlMs:2500});
+  if(v.settled&&v.terminal&&winnerReady&&!props.sessionEnded) {
    callbacks.current.onTerminalActive(true);
    const names=v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name).join(' & ');
-   announcements.emit({id:'golf-win:'+v.terminal.resultId,type:'match_win',scope:{dealerGameId:v.id,roundId:v.scope},payload:{text:names+' win with '+v.terminal.score},ttlMs:Math.max(1,v.terminal.deadline-game.now)});
+   announcements.emit({id:'golf-win:'+v.terminal.resultId,type:'match_win',scope:{dealerGameId:v.identity.sessionId,roundId:v.scope},payload:{text:names+' win with '+v.terminal.score},ttlMs:Math.max(1,v.terminal.deadline-game.now)});
    celebrateCanonicalWinner(v.terminal.resultId,v.viewerId,v.terminal.winnerIds,sawLive.current&&game.epoch===0);
   }
- },[v,props.sessionEnded,announcements]);
+ },[v,props.sessionEnded,announcements,game.now]);
  useEffect(()=>{
-  if(!v?.settled||!ready||props.sessionEnded||completed.current||game.now<(v.terminal?.deadline??0))return;
+  if(v?.paused||!v?.settled||!ready||props.sessionEnded||completed.current||game.now<(v.terminal?.deadline??0))return;
   if(v.finished) {
    completed.current=true;
    callbacks.current.onTerminalComplete('six-card-golf|winseq|'+v.identity.sessionId+'|'+v.id+'|1|'+v.financial.resultId+'|'+(callbacks.current.retentionRoundId??v.holes[0]?.roundId??v.scope));
@@ -63,6 +74,17 @@ export function GolfTable(props:Props) {
   if(closing.current)return;closing.current=true;
   void golfRpc('golf_close',{p_dealer_game_id:v.id}).then(()=>game.reconnect()).catch(e=>{setError((e as Error).message);});
  },[v,ready,props.sessionEnded,game.now]);
+ // Retire the final-turn plate before the first scoring paint, not one frame later.
+ useLayoutEffect(()=>{if(scoring&&v)announcements.dismiss('golf-final:'+v.scope);},[scoring,v?.scope,announcements.dismiss]);
+ const announcementRef=useRef(announcements);announcementRef.current=announcements;
+ const ambientTitle=v?.paused||props.sessionEnded?null:scoring?(scoreBeat?.text??null):actor?.id!==self?.id?actor?.name+' is playing':null;
+ const ambientKey=v&&ambientTitle?[v.scope,scoring?'score:'+scoreFrame?.index:'turn:'+actor?.id+':'+v.deadline].join(':'):null;
+ useEffect(()=>{
+  if(!v||!ambientKey||!ambientTitle)return;
+  const id='golf-ambient:'+ambientKey;
+  announcementRef.current.emit({id,type:'gameplay_notice',behavior:'ambient',scope:{dealerGameId:v.identity.sessionId,roundId:v.scope},payload:{title:ambientTitle}});
+  return()=>announcementRef.current.dismiss(id);
+ },[ambientKey,ambientTitle]);
  const choose=(i:number)=>{
   if(!v||!acting)return;
   if(v.phase==='opening'){
@@ -75,11 +97,20 @@ export function GolfTable(props:Props) {
   else if(discard)void game.act({type:'discard',items:[i]});
  };
  const status=!v?'Connecting to table…':v.settled?'Match complete':v.paused?(self&&v.playerControls?.[self.id]?.autoPlay?'Paused · uncheck Auto-play to rejoin, then the host can resume':'Paused · waiting for the host to resume'):!game.connected?'Connecting to live table…':game.pending?'Sending your move…':self&&v.playerControls?.[self.id]?.autoPlay?'Auto-play is on · uncheck to take control':v.phase==='hole_complete'?'Hole '+v.hole+' complete':v.phase==='opening'?(acting?(selected.length?'1 of 2 selected · tap a second card to reveal both':'Tap any two of your cards to reveal them'):actor?.name+' is choosing two cards'):acting?(v.pending?'Replace a card or discard your draw':discard?'Choose a card to replace':'Choose stock or discard'):actor?.name+"'s turn";
- const localTableau=self&&v&&!props.sessionEnded?<div className="golf-local" aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><span className="golf-card-artifact"><TableauCard card={golfCard(card)} isHidden={card===null} style={{width:'100%',height:'100%',visibility:flying.get(self.id)?.includes(i)?'hidden':'visible'}}/>{selected.includes(i)&&<span aria-hidden className="golf-selection"/>}</span></button>)}</div></div>:null;
- const warning=v?golfWarning(v):null;
- const opponents=v?.players.filter(p=>p.id!==self?.id)??[];
+ const tableauFace=(player:string,i:number)=>{const m=presentation.move,displaced=m?.actor===player&&m.index===i&&(m.stage==='incoming'||m.stage==='outgoing'),old=displaced?m.before.tableaus[player].cards[i]:null;
+  return <>{displaced&&<span data-card-anchor={'tableau-'+player+'-7'} data-golf-displaced={m.stage} className="golf-displaced" style={{opacity:m.stage==='outgoing'?0:1}}><TableauCard card={golfCard(old)} isHidden={old===null} style={{width:'100%',height:'100%'}}/></span>}
+   {(!displaced||m.stage!=='incoming')&&<TableauCard card={golfCard(presentation.card(player,i))} isHidden={presentation.card(player,i)===null} style={{width:'100%',height:'100%'}}/>}</>;
+ };
+ const localTableau=self&&v&&!props.sessionEnded&&!scoring?<div className="golf-local" aria-label="Your six-card tableau"><div className="golf-tableau">{v.tableaus[self.id].cards.map((card,i)=><button key={i} data-card-anchor={'tableau-'+self.id+'-'+i} data-golf-position={i} disabled={!acting||v.phase==='playing'&&!v.pending&&!discard} aria-pressed={selected.includes(i)} aria-label={'Row '+(i<3?1:2)+', column '+(i%3+1)+(card===null?', face down':', '+golfCard(card)?.rank)} onClick={()=>choose(i)}><span className="golf-card-artifact">{tableauFace(self.id,i)}{selected.includes(i)&&<span aria-hidden className="golf-selection"/>}</span></button>)}</div></div>:null;
+ const warning=v&&!scoring?golfWarning(v):null;
+ const shownActor=presentation.move?.actor??actor?.id;
+ const opponents=v?.players.filter(p=>p.id!==self?.id&&p.id===shownActor)??[];
+ const helper=props.sessionEnded?'Session ended':v?.paused?'Paused - Info for rejoin controls':scoring?(scoreBeat&&scoreBeat.kind!=='exit'?'Scoring '+v?.players.find(p=>p.id===scoreBeat.playerId)?.name+'/Hole '+v?.hole+': '+signedGolf(scoreBeat.subtotal):'Hole '+v?.hole+' results'):warning??(acting&&v?.phase==='opening'?'Select 2 cards to flip up':acting&&v?.pending?'Choose a spot to put it!':status);
+ const partial=(id:string)=><span className="golf-score-pill" aria-label="Partial current-hole subtotal from visible cards only">This hole: {signedGolf(golfVisibleSubtotal(v!.tableaus[id].cards))} <small>visible only</small></span>;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v?.holes.map(h=><p key={h.hole}>Hole {h.hole}: {v.players.map(p=>p.name+' '+h.scores[p.id]).join(' · ')}</p>)}</div>:<GolfRules/>;
  return <>
+  <TurnSpotlight shellOwned containerRef={spotlightRef} currentTurnPosition={actor?.seat??null} currentPlayerPosition={self?.seat??null} isObserver={!self} getClockwiseDistance={position=>(position-(self?.seat??0)+7)%7} isVisible={!!v&&!scoring&&!v.paused&&!props.sessionEnded}/>
+  <Dialog open={!!scoreFrame?.results&&!props.sessionEnded} onOpenChange={()=>{}}><DialogContent className="golf-results" showCloseButton={false} onEscapeKeyDown={e=>e.preventDefault()} onPointerDownOutside={e=>e.preventDefault()}><DialogHeader><DialogTitle>Results</DialogTitle><DialogDescription>Completed hole scores and cumulative totals.</DialogDescription></DialogHeader><table><thead><tr><th>Player</th><th>Hole {v?.hole}</th><th>Total</th></tr></thead><tbody>{v?.players.map(p=><tr key={p.id}><td>{p.name}</td><td>{signedGolf(v.holes.find(h=>h.roundId===v.scope)?.scores[p.id]??0)}</td><td>{signedGolf(v.scores[p.id])}</td></tr>)}</tbody></table></DialogContent></Dialog>
   <Dialog open={infoOpen&&!props.sessionEnded} onOpenChange={setInfoOpen}><DialogContent><DialogHeader><DialogTitle>Table information</DialogTitle><DialogDescription>Scores are totals from completed holes.</DialogDescription></DialogHeader><div className="golf-controls">
    {v&&<div className="golf-summary" aria-label="Completed-hole totals"><strong>Hole {v.hole} / 9</strong>{v.players.map(p=>p.id===v.viewerId?<span key={p.id}>You: {v.scores[p.id]}</span>:<button key={p.id} onClick={()=>{setInfoOpen(false);setInspectPlayer(p.id);}}>View {p.name} · Total {v.scores[p.id]}</button>)}</div>}
    <p>{status}</p>{warning&&<p className="golf-warning">{warning}</p>}
@@ -92,6 +123,8 @@ export function GolfTable(props:Props) {
   <div aria-hidden data-canonical-shell-play-top-spacer="" style={{flex:'0 0 var(--play-top-safe-area, 0px)',pointerEvents:'none'}}/>
   <div style={{position:'relative',height:'var(--shell-felt-h)',flex:'0 0 var(--shell-felt-h)',pointerEvents:'none'}}>
   {v&&!props.sessionEnded&&<GameplayOpponentSeatLayer family="six-card-golf" participants={v.players.filter(p=>p.id!==self?.id).map(p=>({...p,position:p.seat}))} presentation={{
+   inwardSeatContent:true,
+   cardBacks:p=>({count:6,visible:!scoring&&p.id!==shownActor,variant:'cribbage'}),
    dealerPip:p=>p.id===v.players[v.dealerIndex]?.id,
    scoreLine:p=>'Total '+v.scores[p.id],
    scoreAutoPlay:p=>!!v.playerControls?.[p.id]?.autoPlay,
@@ -99,20 +132,24 @@ export function GolfTable(props:Props) {
   }}/>}
   </div>
   {layer&&v&&!props.sessionEnded&&createPortal(<div className="golf-felt" data-golf-phase={v.phase}>
+   {!scoring&&v.finalQueue.length>0&&opponents.length===0&&<div className="golf-final-turn" role="status">FINAL TURN{v.finalReason==='prolonged_play'&&<small>Ptown house rule</small>}</div>}
    <div className="golf-center-play" style={{'--golf-opponent-count':Math.max(1,opponents.length)} as CSSProperties}>
-   <div className="golf-opponents" data-opponent-count={opponents.length}>{opponents.map(p=><button key={p.id} className="golf-public-grid" data-golf-public-tableau={p.id} aria-label={'View '+p.name+' tableau'} onClick={()=>setInspectPlayer(p.id)}>
-    <span className="golf-public-cards">{v.tableaus[p.id].cards.map((card,i)=><span key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:flying.get(p.id)?.includes(i)?'hidden':'visible'}}><TableauCard card={golfCard(card)} isHidden={card===null} tier="small" style={{width:'100%',height:'100%'}}/></span>)}</span>
-    {opponents.length>1&&<span className="golf-public-label">{p.name}</span>}
-   </button>)}</div>
-   {v.phase==='hole_complete'||v.settled?<div className="golf-hole-result"><strong>{v.settled?'Match complete':'Hole '+v.hole+' scored'}</strong>{v.players.map(p=><div key={p.id}>{p.name}: {v.holes.at(-1)?.scores[p.id]} · total {v.scores[p.id]}</div>)}</div>:<div className="golf-piles">
-    <button data-golf-discard disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><span className="golf-pile-artifact" data-card-anchor="discard"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/></span><small>Discard</small></button>
-    <div className="golf-stock-slot"><button data-golf-stock disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>void game.act({type:'draw'})} aria-label={'Draw stock, '+v.stockCount+' cards'}><span className="golf-pile-artifact" data-card-anchor="stock"><TableauCard isHidden style={{width:'100%',height:'100%'}}/><CanonicalCardCountBadge count={v.stockCount}/></span></button>
-    {v.pending&&<button data-golf-pending disabled={!acting} onClick={()=>void game.act({type:'reject'})} aria-label="Discard drawn card"><span className="golf-pile-artifact" data-card-anchor={'tableau-'+v.viewerId+'-6'}><TableauCard card={golfCard(v.pending.card)} style={{width:'100%',height:'100%',visibility:flying.get(v.viewerId)?.includes(6)?'hidden':'visible'}}/></span><small>Discard draw</small></button>}
+   {scoring?<div className="golf-scoring-hand" data-golf-score-player={scoreBeat?.playerId} data-golf-score-kind={scoreBeat?.kind} data-golf-score-step={scoreFrame?.index}>
+    {scoreBeat&&scoreBeat.kind!=='exit'&&<div className="golf-public-cards">{v.tableaus[scoreBeat.playerId].cards.map((card,i)=><span key={i} data-card-anchor={'tableau-'+scoreBeat.playerId+'-'+i} className={scoreBeat.kind!=='reveal'&&scoreBeat.indices.includes(i)?'golf-score-highlight':scoreBeat.scored.includes(i)?'golf-scored':''}>{scoreBeat.kind==='reveal'&&!scoreFrame?.seeked&&scoreBeat.indices.includes(i)?<span className="golf-scoring-flip" key={v.scope+':'+scoreFrame?.index} style={{animationDuration:scoreBeat.duration+'ms',animationPlayState:v.paused?'paused':'running'}}><span className="golf-flip-back"><TableauCard isHidden style={{width:'100%',height:'100%'}}/></span><span className="golf-flip-front"><TableauCard card={golfCard(card)} style={{width:'100%',height:'100%'}}/></span></span>:<TableauCard card={scoreBeat.hidden.includes(i)?undefined:golfCard(card)} isHidden={card===null||scoreBeat.hidden.includes(i)} style={{width:'100%',height:'100%'}}/>}</span>)}</div>}
+   </div>:<>
+   <div className="golf-opponents" data-opponent-count={opponents.length}>{opponents.map(p=><div key={p.id} className="golf-public-grid" data-golf-public-tableau={p.id}>
+    {v.finalQueue.length>0?<div className="golf-final-turn" role="status">FINAL TURN{v.finalReason==='prolonged_play'&&<small>Ptown house rule</small>}</div>:partial(p.id)}<button aria-label={'View '+p.name+' tableau'} onClick={()=>setInspectPlayer(p.id)} className="golf-public-cards">{v.tableaus[p.id].cards.map((_,i)=>{const card=presentation.card(p.id,i);return <span key={i} data-card-anchor={'tableau-'+p.id+'-'+i}>{tableauFace(p.id,i)}</span>;})}</button>
+   </div>)}</div>
+   <div className="golf-piles">
+    <button data-golf-discard data-golf-selected={discard||presentation.move?.stage==='incoming'&&!presentation.move.before.hasPending||undefined} disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>setDiscard(x=>!x)} aria-pressed={discard} aria-label="Take discard"><span className="golf-pile-artifact" data-card-anchor="discard">{presentation.move?.stage==='flip'?<span className="golf-discard-flip" key={presentation.move.key} onAnimationEnd={presentation.finishFlip}><span className="golf-flip-back"><TableauCard isHidden style={{width:'100%',height:'100%'}}/></span><span className="golf-flip-front"><TableauCard card={golfCard(v.discardTop)} style={{width:'100%',height:'100%'}}/></span></span>:<TableauCard card={golfCard(presentation.discard)} isHidden={v.phase==='opening'||presentation.discard===null} style={{width:'100%',height:'100%'}} highlight={discard?'gold':null}/>}</span><small>Discard</small></button>
+    <div className="golf-stock-slot"><button data-golf-stock data-golf-selected={selectedStock||presentation.pendingBack||undefined} disabled={!acting||v.phase!=='playing'||v.hasPending} onClick={()=>{setSelectedStock(true);void game.act({type:'draw'});}} aria-label={'Draw stock, '+v.stockCount+' cards'}><span className="golf-pile-artifact" data-card-anchor="stock"><TableauCard isHidden style={{width:'100%',height:'100%'}}/><CanonicalCardCountBadge count={v.stockCount}/></span></button>
+    {presentation.pending&&<button data-golf-pending data-golf-selected disabled={!acting} onClick={()=>void game.act({type:'reject'})} aria-label="Discard drawn card"><span className="golf-pile-artifact" data-card-anchor={'tableau-'+v.viewerId+'-6'}><TableauCard card={presentation.pendingBack?undefined:golfCard(presentation.pending.card)} isHidden={presentation.pendingBack} style={{width:'100%',height:'100%'}}/></span><small>Discard draw</small></button>}
     </div>
-   </div>}</div>
+   </div></>}</div>
 
   </div>,layer)}
   <div aria-hidden data-canonical-shell-play-bottom-spacer="" style={{flex:'0 0 var(--play-bottom-safe-area, 0px)',pointerEvents:'none'}}/>
-  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-hand-slot">{localTableau}</div><button className="golf-info-toggle" onClick={()=>setInfoOpen(true)} aria-label="Table information">Info</button></div>):<div className="golf-panel">{panel}</div>} identity={<div className="golf-identity">{self?<span>{self.name} · <PresentationChipBalance playerId={self.id} rawBalance={self.chips}/></span>:<span>Observer</span>}<p role="status" title={warning??status}>{props.sessionEnded?'Session ended':warning??(v?.paused?'Paused · Info for rejoin controls':status)}</p>{v&&<span>Hole {v.hole}/9{self?' · Total '+v.scores[self.id]:''}</span>}</div>}/>
+  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-helper" role="status"><strong>{helper}</strong>{self&&v&&!scoring&&partial(self.id)}</div><div className="golf-hand-slot">{localTableau}</div><button className="golf-info-toggle" onClick={()=>setInfoOpen(true)} aria-label="Table information">Info</button></div>):<div className="golf-panel">{panel}</div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={actor?.id===self.id&&!scoring&&!v?.paused}/>:<span>Observer</span>}/>
+
  </>;
 }

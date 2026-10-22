@@ -22,7 +22,7 @@
 .golf-piles small {position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;line-height:14px}
 /* Short canonical felts keep pile labels alongside the cards, preserving room
    for the complete opponent grids above without changing shell geometry. */
-@container (max-height:160px) {
+@container golf-felt (max-height:160px) {
  .golf-center-play {inset:2rem 12% 3%;--golf-layout-gap:6px;padding-bottom:0}
  .golf-public-label {display:none}
  .golf-piles small {top:50%;left:auto;right:calc(100% + 4px);transform:translateY(-50%);max-width:52px;white-space:normal;text-align:right;font-size:10px;line-height:12px}
@@ -53,3 +53,48 @@
 .golf-warning {color:#fde68a}
 .golf-panel {height:100%;overflow:auto;padding:.5rem;font-size:.8rem}
 .golf-inspect {display:grid;grid-template-columns:repeat(3,72px);gap:8px;justify-content:center}
+
+.golf-pane {display:grid;grid-template-rows:auto minmax(0,1fr)}
+.golf-helper {min-height:40px;padding:1px 48px 2px 4px;text-align:center;font-size:12px;line-height:15px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.golf-helper strong {font-weight:800}
+.golf-score-pill {display:block;width:max-content;max-width:100%;margin:0 auto;padding:2px 8px;border-radius:999px;background:#172c23;color:#fff;font-size:11px;line-height:13px;white-space:nowrap}
+.golf-score-pill small {font-size:9px;opacity:.85}
+.golf-public-grid .golf-score-pill {position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%)}
+.golf-public-grid button {pointer-events:auto}
+.golf-piles button:disabled {opacity:.38}
+.golf-piles [data-golf-pending]:disabled {opacity:1}
+.golf-scoring-hand {--public-w:min(72px,calc((100cqw - 8px)/3),calc((100cqh - 4px)/2.8));grid-row:1 / -1;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.golf-score-highlight {outline:3px solid #facc15;border-radius:8%;filter:drop-shadow(0 0 6px #facc15)}
+.golf-scored {opacity:.4}
+.golf-results table {width:100%;font-variant-numeric:tabular-nums}
+.golf-results th,.golf-results td {padding:8px;text-align:right}
+.golf-results th:first-child,.golf-results td:first-child {text-align:left}
+.golf-discard-flip {position:absolute;inset:0;transform-style:preserve-3d;animation:golf-discard-turn 180ms ease-out forwards}
+.golf-flip-back,.golf-flip-front {position:absolute;inset:0;backface-visibility:hidden}
+.golf-flip-front {transform:rotateY(180deg)}
+@keyframes golf-discard-turn {from {transform:rotateY(0deg)}to {transform:rotateY(180deg)}}
+@media (prefers-reduced-motion:reduce) {.golf-discard-flip {animation-duration:1ms}}
+.golf-pane {overflow:auto;grid-template-rows:auto minmax(90px,1fr)}
+@container golf-felt (max-height:160px) {
+ .golf-center-play {inset:2rem 8% 5%;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr);padding-bottom:0;gap:12px}
+ .golf-center-play>* {--golf-public-w:min(58px,calc((100cqh - 20px)/2.8),calc((100cqw - 108px)/3));--golf-card-w:calc(var(--golf-public-w)/1.25)}
+ .golf-opponents {padding-top:20px}
+ .golf-piles {align-self:center}
+ .golf-scoring-hand {grid-column:1 / -1;grid-row:1 / -1}
+ .golf-public-grid .golf-score-pill {font-size:10px;padding:1px 4px}
+ .golf-public-grid .golf-score-pill small {display:block;font-size:8px;line-height:9px}
+}
+
+.golf-felt {container-name:golf-felt}
+
+.golf-piles [data-golf-selected] .golf-pile-artifact {transform:scale(1.22);transform-origin:center;z-index:2}
+.golf-piles [data-golf-selected]:disabled {opacity:1}
+.golf-displaced {position:absolute;inset:0;transform:translate(-32%,-14%) rotate(-7deg);z-index:1;pointer-events:none}
+.golf-public-cards>span {position:relative}
+.golf-final-turn {position:absolute;top:max(22%,2rem);left:12%;right:12%;text-align:center;color:#fde047;font-size:clamp(11px,3cqw,16px);font-weight:900;line-height:1.1;z-index:2;pointer-events:none}
+.golf-final-turn small {display:block;font-size:.65em}
+.golf-scoring-flip {position:absolute;inset:0;transform-style:preserve-3d;animation:golf-discard-turn linear forwards}
+@media(prefers-reduced-motion:reduce){.golf-scoring-flip {animation-duration:1ms !important}}
+@container golf-felt (max-height:160px){.golf-final-turn {top:24%;left:8%;right:8%;font-size:10px;text-align:center}.golf-final-turn small {display:inline;margin-left:.4em}.golf-felt:has(.golf-final-turn) .golf-public-grid .golf-score-pill {display:none}}
+
+.golf-public-grid .golf-final-turn {top:auto;bottom:calc(100% + 3px);left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;font-size:11px;line-height:13px}

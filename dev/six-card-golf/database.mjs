@@ -8,7 +8,7 @@ export async function connect(database) {
 }
 const context = 'qualification.local/six-card-golf/context.json';
 export const localContext = () => JSON.parse(read(context,'utf8'));
-export const candidate = () => ['rules','multiplayer','lifecycle','bots','recovery','registration','grants'].map(name => read(`supabase/six-card-golf/${name}.sql`,'utf8')).join('\n');
+export const candidate = () => ['rules','presentation','multiplayer','lifecycle','bots','recovery','registration','grants'].map(name => read(`supabase/six-card-golf/${name}.sql`,'utf8')).join('\n');
 if (!existsSync(context)) {
   mkdirSync('qualification.local/six-card-golf',{recursive:true});
   const database = 'golf_'+Date.now(), admin = await connect('postgres');

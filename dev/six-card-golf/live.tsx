@@ -21,7 +21,7 @@ function App(){
  const start=async(players:number)=>{const r=await fetch('/__golf/new',{method:'POST',body:JSON.stringify({players})}),v=await r.json();sessionStorage.setItem('golf-fixture:'+v.id,JSON.stringify(v));history.replaceState(null,'','?id='+v.id+'&user='+v.user);platformAudio.setUser(v.user);setF(v);};
  if(!f)return <main><button onClick={()=>void start(2)}>Two humans</button><button onClick={()=>void start(4)}>Four humans</button></main>;
  return <GameChatContextProvider value={{allMessages:[],sendMessage:async()=>{},isSending:false} as unknown as GameChatContextValue}>
-  <PersistentTableShell lobbyMode={ended} sessionEnded={ended} gameId={f.session} gameType="six-card-golf" presentationMode="table" projectionMode="active-canonical" viewerPosition={f.players.find((p:any)=>p.user===user)?.seat??null} seats={f.players.map((p:any)=>({position:p.seat,occupied:true}))} header={<div>P-Town Poker</div>}>
+  <PersistentTableShell lobbyMode={ended} sessionEnded={ended} gameId={f.session} gameType="six-card-golf" presentationMode="table" projectionMode="active-canonical" viewerPosition={f.players.find((p:any)=>p.user===user)?.seat??null} seats={f.players.map((p:any)=>({position:p.seat,occupied:true}))} header={<div>{query.has('timingReview')?'LOCAL REVIEW - scoring 1200ms - results 5000ms':'P-Town Poker'}</div>}>
   {ended&&<EndedTable f={f} user={user} tab={tab} setTab={setTab} onLobby={()=>setLobby(true)}/>}<GolfTable dealerGameId={f.id} userId={user} activeTab={tab} setActiveTab={setTab} sessionEnded={ended} onTerminalActive={()=>{}} onTerminalComplete={token=>{(window as any).__golfCompleted=token;if(f.endSession)setEnded(true);}}/>
  </PersistentTableShell></GameChatContextProvider>;
 }

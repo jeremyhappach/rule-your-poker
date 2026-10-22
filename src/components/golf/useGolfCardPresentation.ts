@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {useCardTransport} from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import type {CardTransportIntent} from '@/lib/canonicalShell/cardTransport/types';
 import {golfCard,type GolfSnapshot} from '@/lib/golf/model';
@@ -21,19 +21,45 @@ export function golfFlights(before:GolfSnapshot,after:GolfSnapshot,userId:string
  if(after.pending&&after.pending.card!==before.pending?.card)add(after.pending.actor,6,null,{kind:'stock'});
  return result;
 }
+export interface GolfMove {key:string;before:GolfSnapshot;after:GolfSnapshot;actor:string;index:number;stage:'draw'|'incoming'|'outgoing'|'flip'}
+export function golfMove(before:GolfSnapshot,after:GolfSnapshot):GolfMove|null {
+ if(before.id!==after.id||before.scope!==after.scope||after.revision!==before.revision+1||after.paused||before.phase!=='playing'||after.phase!=='playing')return null;
+ const actor=before.players[before.turnIndex].id,key=after.scope+':'+after.revision;
+ if(after.pending&&!before.hasPending)return {key,before,after,actor,index:6,stage:'draw'};
+ const changed=after.tableaus[actor].cards.flatMap((c,i)=>c!==before.tableaus[actor].cards[i]?[i]:[]);
+ if(changed.length===1)return {key,before,after,actor,index:changed[0],stage:'incoming'};
+ return null;
+}
+/** Retain occupied destinations and source anchors until real transport retirement.
+ * Recovery/new identities seek the current snapshot; they never wait for a peer. */
 export function useGolfCardPresentation(v:GolfSnapshot|null,epoch:number,userId:string){
- const {dispatch}=useCardTransport(),prior=useRef<{v:GolfSnapshot;epoch:number}|null>(null),tokens=useRef(new Map<string,string>()),[hidden,setHidden]=useState<Map<string,number[]>>(new Map());
+ const {dispatch}=useCardTransport(),prior=useRef<{v:GolfSnapshot;epoch:number}|null>(null);
+ const [move,setMove]=useState<GolfMove|null>(null);
  useLayoutEffect(()=>{
-  if(!v)return;
-  const old=prior.current;prior.current={v,epoch};
-  if(!old||old.epoch!==epoch||document.hidden){tokens.current.clear();setHidden(new Map());return;}
-  const intents=golfFlights(old.v,v,userId);if(!intents.length)return;
-  const active=new Map<string,number[]>();
-  for(const intent of intents){if(intent.to.kind!=='tableau')continue;const {playerId,index}=intent.to;
-   const key=playerId+':'+index;tokens.current.set(key,intent.id);
-   if(dispatch(intent,{onSettled:()=>{if(tokens.current.get(key)!==intent.id)return;tokens.current.delete(key);setHidden(previous=>{const next=new Map(previous);next.set(playerId,(next.get(playerId)??[]).filter(i=>i!==index));return next;});}}))active.set(playerId,[...(active.get(playerId)??[]),index]);
-  }
-  setHidden(active);
- },[v,epoch,userId,dispatch]);
- return hidden;
+  if(!v)return;const old=prior.current;prior.current={v,epoch};
+  if(!old||old.epoch!==epoch||old.v.scope!==v.scope||document.hidden){setMove(null);return;}
+  if(v.revision===old.v.revision)return;
+  setMove(golfMove(old.v,v));
+ },[v,epoch]);
+ const active=move&&v&&move.after.scope===v.scope&&move.after.revision===v.revision?move:null;
+ useEffect(()=>{
+  if(!active||active.stage==='flip')return;
+  const {actor,index,stage,before,after,key}=active;
+  const destination={kind:'tableau' as const,playerId:actor,index};
+  const from=stage==='draw'?{kind:'stock' as const}:stage==='outgoing'?{kind:'tableau' as const,playerId:actor,index:7}:
+   before.hasPending?(before.pending?{kind:'tableau' as const,playerId:actor,index:6}:{kind:'stock' as const}):{kind:'discard' as const};
+  const card=stage==='incoming'?golfCard(after.tableaus[actor].cards[index]):stage==='outgoing'?golfCard(before.tableaus[actor].cards[index]):undefined;
+  const id='golf-move:'+key+':'+stage;
+  const finish=()=>setMove(current=>current?.key===key&&current.stage===stage?
+   stage==='incoming'?{...current,stage:'outgoing'}:stage==='outgoing'&&before.tableaus[actor].cards[index]===null?{...current,stage:'flip'}:null:current);
+  if(!dispatch({id,cardId:id,handContextId:after.scope,recipientPlayerId:actor,from,
+   to:stage==='outgoing'?{kind:'discard'}:destination,face:card?'visible':'hidden',
+   ...(card?{visibleFace:{rank:card.rank,suit:({'♠':'spades','♥':'hearts','♦':'diamonds','♣':'clubs'} as const)[card.suit]}}:{}),
+   durationMs:180,ownershipClaimDelayMs:0,soundUserId:userId},{onSettled:finish}))finish();
+ },[active?.key,active?.stage,dispatch,userId]);
+ return {move:active,busy:!!active,finishFlip:()=>setMove(current=>current?.stage==='flip'?null:current),
+  card:(player:string,index:number)=>active?.stage==='incoming'&&active.actor===player&&active.index===index?active.before.tableaus[player].cards[index]:v?.tableaus[player].cards[index]??null,
+  pending:active?.stage==='incoming'?active.before.pending:v?.pending,
+  pendingBack:active?.stage==='draw',
+  discard:active&&active.stage!=='draw'?active.before.discardTop:v?.discardTop??null};
 }

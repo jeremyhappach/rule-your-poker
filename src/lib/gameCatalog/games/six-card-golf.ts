@@ -4,5 +4,5 @@ export default {
  family:'traditional',modes:['multiplayer'],players:{min:2,max:4,selection:'active-roster'},
  bots:'supported',availability:'six-card-golf',development:'integrated',ownerSmoke:'pending',
  rules:{kind:'versioned',key:'six-card-golf',fixedVersion:'six-card-golf/1',load:()=>import('@/components/rules/GolfRules')},
- defaultsEditor:'stake',
+ defaultsEditor:'legacy',
 } satisfies GameDescriptor;

@@ -1484,6 +1484,8 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+            golf_scoring_delay_ms: number
+            golf_results_duration_ms: number
           allow_bot_dealers: boolean
           ante_amount: number
           bot_decision_delay_seconds: number
@@ -1526,6 +1528,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+            golf_scoring_delay_ms?: number
+            golf_results_duration_ms?: number
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
@@ -1568,6 +1572,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+            golf_scoring_delay_ms?: number
+            golf_results_duration_ms?: number
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number

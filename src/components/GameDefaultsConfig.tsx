@@ -21,6 +21,8 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 interface GameDefaults {
+  golf_scoring_delay_ms?: number;
+  golf_results_duration_ms?: number;
   id: string;
   game_type: string;
   decision_timer_seconds: number;
@@ -205,6 +207,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         validationErrors.push(`${gameType}: Bot delay must be 0.1-10 seconds`);
       }
 
+      if(gameType==='six-card-golf')for(const [label,value,min,max] of [['Scoring Delay',defaultConfig.golf_scoring_delay_ms??1200,200,5000],['Hole Results Duration',defaultConfig.golf_results_duration_ms??5000,1000,30000]] as const){if(!Number.isInteger(Number(value))||Number(value)<min||Number(value)>max)validationErrors.push(label+': enter whole milliseconds from '+min+' to '+max);}
       // Game-specific validations
       if (gameType === 'holm') {
         const chucky2nd = Number(defaultConfig.chucky_second_to_last_delay_seconds);
@@ -327,6 +330,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         const { error } = await supabase
           .from('game_defaults')
           .update({
+            ...(defaultConfig.game_type==='six-card-golf'?{golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
@@ -1027,6 +1031,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       const editors:Record<string,()=>React.ReactNode>={'holm':renderHolmSettings,'3-5-7':render357Settings,'cribbage':renderCribbageSettings,'gin-rummy':renderGinRummySettings,'horses':renderHorsesSettings,'ship-captain-crew':renderSCCSettings,'yahtzee':renderYahtzeeSettings};
       if(editors[selectedGameType])return editors[selectedGameType]();
       switch(selectedGameType){
+        case 'six-card-golf': {const d=getDefaultByType('six-card-golf');return d?<details className="catalog-settings-group" open><summary>Timing</summary><div className="space-y-3">
+          <Label htmlFor="golf-scoring-delay">Scoring Delay (ms)</Label><Input id="golf-scoring-delay" type="number" min={200} max={5000} step={100} value={d.golf_scoring_delay_ms??1200} onChange={e=>updateDefault('six-card-golf','golf_scoring_delay_ms',e.target.value)}/>
+          <Label htmlFor="golf-results-duration">Hole Results Duration (ms)</Label><Input id="golf-results-duration" type="number" min={1000} max={30000} step={100} value={d.golf_results_duration_ms??5000} onChange={e=>updateDefault('six-card-golf','golf_results_duration_ms',e.target.value)}/>
+          <p className="text-xs text-muted-foreground">Applies to new matches. Scoring Delay controls each card, cancelled pair and face-down reveal. Results appears after every hand is scored.</p></div></details>:null;}
         case 'run21': {
           const run21Defaults = defaults.find(d => d.game_type === 'run21');
           return run21Defaults ? <details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-2">

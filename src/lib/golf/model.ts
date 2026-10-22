@@ -1,19 +1,21 @@
+import {getBotAlias} from '@/lib/botAlias';
 import type {Card,Rank,Suit} from '@/lib/cardUtils';
 import type {ChipPresentationBatch} from '@/lib/canonicalShell/ChipPresentationLedger';
 export type GolfIntent={type:'open'|'replace'|'discard';items:number[]}|{type:'draw'|'reject'};
 export interface GolfSnapshot {
  id:string;scope:string;stake:number;revision:number;serverAt:number;viewerId:string;
  identity:{sessionId:string;dealerGameId:string;roundId:string};
- rules:{version:'six-card-golf/1';turnSeconds:30;holes:9};
+ rules:{version:'six-card-golf/1';turnSeconds:30;holes:9;holeResultSeconds?:number;presentation?:{version:1;scoringDelayMs:number;resultsDurationMs:number}};
  phase:'opening'|'playing'|'hole_complete'|'complete';hole:number;dealerIndex:number;turnIndex:number;openingRemaining:number;
  players:{id:string;userId:string;name:string;seat:number;isBot:boolean;chips:number}[];
  playerControls?:Record<string,{autoPlay:boolean;sitOutNextHand:boolean;intentVersion:number}>;
  tableaus:Record<string,{cards:(number|null)[];exposed:boolean[]}>;
  scores:Record<string,number>;holes:{hole:number;roundId:string;scores:Record<string,number>}[];
- pending:{actor:string;card:number}|null;hasPending:boolean;stockCount:number;discardTop:number;
+ pending:{actor:string;card:number}|null;hasPending:boolean;stockCount:number;discardTop:number|null;
  consecutiveNoRevealTurns:number;finalQueue:string[];finalReason:'six_exposed'|'prolonged_play'|null;
  deadline:number;pausedAt:number|null;paused:boolean;canAct:boolean;finished:boolean;settled:boolean;
  settlement:Record<string,number>|null;financial:{balances:Record<string,number>;resultId:string|null;batch:ChipPresentationBatch|null};
+ presentation?:{version:1;startedAt:number;resultsAt:number;endsAt:number;hidden:Record<string,number[]>}|null;
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
 }
 export function golfCard(value:number|null):Card|undefined {
@@ -28,8 +30,8 @@ export function golfSnapshot(raw:unknown):GolfSnapshot {
   if(!board||board.cards.length!==6||board.exposed.length!==6||board.cards.some((c,i)=>!board.exposed[i]&&c!==null))throw Error('Golf projection rejected');
  }
  if(v.pending&&v.pending.actor!==v.viewerId)throw Error('Golf projection rejected');
- return {...v,id:v.identity.dealerGameId,scope:v.identity.roundId,settled:v.settlement!==null,
-  players:v.players.map(p=>({...p,chips:v.financial?.balances[p.id]??p.chips}))};
+ return {...v,discardTop:v.phase==='opening'?null:v.discardTop,id:v.identity.dealerGameId,scope:v.identity.roundId,settled:v.settlement!==null,
+  players:v.players.map(p=>({...p,name:p.isBot?getBotAlias(v.players.map(x=>({user_id:x.userId,is_bot:x.isBot,profiles:{username:x.name}})),p.userId).replace(/^Bot /,'Bot'):p.name,chips:v.financial?.balances[p.id]??p.chips}))};
 }
 export function acceptGolfSnapshot(old:GolfSnapshot|null,next:GolfSnapshot,id:string) {
  if(next.id!==id||!Number.isSafeInteger(next.revision))throw Error('Golf snapshot identity mismatch');

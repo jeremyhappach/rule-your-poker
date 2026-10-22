@@ -2,11 +2,11 @@
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {GolfSnapshot} from '@/lib/golf/model';
-const state=vi.hoisted(()=>({game:{} as any,layer:null as HTMLElement|null,act:vi.fn()}));
+const state=vi.hoisted(()=>({game:{} as any,layer:null as HTMLElement|null,act:vi.fn(),emit:vi.fn(),dismiss:vi.fn()}));
 vi.mock('@/hooks/useGolf',()=>({useGolf:()=>state.game}));
 vi.mock('@/lib/golf/client',()=>({golfTransport:()=>({}),golfRpc:vi.fn()}));
 vi.mock('./useGolfFinancial',()=>({useGolfFinancial:()=>true}));
-vi.mock('./useGolfCardPresentation',()=>({useGolfCardPresentation:()=>new Map()}));
+vi.mock('./useGolfCardPresentation',()=>({useGolfCardPresentation:()=>({move:null,busy:false,card:(id:string,i:number)=>state.game.snapshot.tableaus[id].cards[i],pending:state.game.snapshot.pending,pendingBack:false,discard:state.game.snapshot.discardTop})}));
 vi.mock('@/lib/canonicalShell/TableauCard',()=>({TableauCard:({isHidden}:any)=><span data-face={isHidden?'back':'public'}/>}));
 vi.mock('@/lib/canonicalShell/ShellOwnedFeltHost',()=>({usePublishShellFelt:()=>{}}));
 vi.mock('@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement',()=>({useCanonicalFeltInteractionLayerElement:()=>state.layer}));
@@ -14,15 +14,17 @@ vi.mock('@/lib/canonicalShell/ShellHudGrid',()=>({ShellHudGrid:({pane,identity}:
 vi.mock('@/lib/canonicalShell/ShellTimerRail',()=>({useShellTimer:()=>{},ShellTimerRail:()=>null}));
 vi.mock('@/lib/canonicalShell/ShellTabBar',()=>({useShellTabBar:()=>{}}));
 vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer',()=>({GameplayOpponentSeatLayer:()=>null}));
-vi.mock('@/lib/canonicalShell/announcements',()=>({useAnnouncements:()=>({emit:()=>{}})}));
+vi.mock('@/lib/canonicalShell/announcements',()=>({useAnnouncements:()=>({emit:state.emit,dismiss:state.dismiss})}));
 vi.mock('@/hooks/GameChatContext',()=>({useGameChatContext:()=>({allMessages:[],sendMessage:()=>{}})}));
 vi.mock('@/components/MobileChatPanel',()=>({MobileChatPanel:()=>null}));
 vi.mock('@/lib/canonicalShell/PresentationChipBalance',()=>({PresentationChipBalance:()=>null}));
 vi.mock('@/lib/canonicalShell/winnerCelebration',()=>({celebrateCanonicalWinner:()=>{}}));
+vi.mock('@/components/TurnSpotlight',()=>({TurnSpotlight:()=>null}));
+vi.mock('@/lib/canonicalShell/CanonicalPlayerIdentityRow',()=>({CanonicalPlayerIdentityRow:()=>null}));
 import {GolfTable} from './GolfTable';
 const props={dealerGameId:'d',userId:'u',activeTab:'cards' as const,setActiveTab:vi.fn(),sessionEnded:false,onTerminalActive:vi.fn(),onTerminalComplete:vi.fn()};
 const snapshot=()=>({id:'d',scope:'r',identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},rules:{version:'six-card-golf/1',turnSeconds:30,holes:9},revision:1,viewerId:'p',players:[{id:'p',userId:'u',name:'You',seat:4,isBot:false,chips:0},{id:'q',userId:'v',name:'Opponent',seat:7,isBot:false,chips:0}],tableaus:{p:{cards:Array(6).fill(null),exposed:Array(6).fill(false)},q:{cards:Array(6).fill(null),exposed:Array(6).fill(false)}},scores:{p:0,q:0},holes:[],phase:'opening',hole:1,turnIndex:0,dealerIndex:1,deadline:30000,paused:false,canAct:true,settled:false,pending:null,hasPending:false,consecutiveNoRevealTurns:0,finalQueue:[],finalReason:null,playerControls:{p:{autoPlay:false,intentVersion:0,sitOutNextHand:false}}} as unknown as GolfSnapshot);
-beforeEach(()=>{state.act.mockReset();state.game={snapshot:snapshot(),connected:true,pending:false,now:1000,epoch:0,act:state.act};state.layer=document.createElement('div');document.body.append(state.layer);});
+beforeEach(()=>{state.act.mockReset();state.emit.mockReset();state.dismiss.mockReset();state.game={snapshot:snapshot(),connected:true,pending:false,now:1000,epoch:0,act:state.act};state.layer=document.createElement('div');document.body.append(state.layer);});
 afterEach(()=>{cleanup();state.layer?.remove();});
 const card=(n:number)=>document.querySelector('[data-golf-position="'+n+'"]') as HTMLButtonElement;
 it('marks a concealed first selection and submits exactly the two tapped positions',()=>{
@@ -44,8 +46,8 @@ it.each(['paused','opponent','disconnected','pending','expired'])('does not bypa
 });
 it('explains paused autoplay and preserves the public-only board',()=>{
  state.game.snapshot.paused=true;state.game.snapshot.playerControls.p.autoPlay=true;
- render(<GolfTable {...props}/>);expect(screen.getByRole('status').textContent).toContain('Info for rejoin');expect(document.querySelectorAll('[data-face="back"]')).toHaveLength(13);
- expect(state.layer!.querySelectorAll('[data-golf-public-tableau]')).toHaveLength(1);
+ render(<GolfTable {...props}/>);expect(screen.getByRole('status').textContent).toContain('Info for rejoin');expect(document.querySelectorAll('[data-face="back"]')).toHaveLength(8);
+ expect(state.layer!.querySelectorAll('[data-golf-public-tableau]')).toHaveLength(0);
  expect(document.querySelector('.golf-pane .golf-controls')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Table information'}));expect(screen.getByRole('checkbox',{name:'Auto-play'})).not.toBeNull();expect(screen.getByText(/uncheck Auto-play to rejoin, then/)).not.toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'View Opponent · Total 0'}));expect(document.querySelectorAll('.golf-inspect [data-face="back"]')).toHaveLength(6);
@@ -53,15 +55,14 @@ it('explains paused autoplay and preserves the public-only board',()=>{
 it('clears an unfinished selection at a new authoritative revision',()=>{
  const ui=render(<GolfTable {...props}/>);fireEvent.click(card(0));state.game.snapshot={...state.game.snapshot,revision:2};ui.rerender(<GolfTable {...props}/>);expect(card(0).getAttribute('aria-pressed')).toBe('false');
 });
-it('retains opponent reveal anchors while presenting completed-hole results',()=>{
+it('cold result mount shows authoritative totals without replaying a hand',()=>{
  state.game.snapshot.phase='hole_complete';state.game.snapshot.canAct=false;
- state.game.snapshot.tableaus.q.cards=[0,1,2,3,4,5];
- state.game.snapshot.holes=[{hole:1,scores:{p:3,q:7}}];
+ state.game.snapshot.tableaus.q.cards=[0,1,2,3,4,5];state.game.snapshot.tableaus.p.cards=[6,7,8,9,10,11];
+ state.game.snapshot.holes=[{hole:1,roundId:'r',scores:{p:3,q:7}}];
  render(<GolfTable {...props}/>);
- expect(state.layer!.querySelectorAll('[data-golf-public-tableau] [data-card-anchor]')).toHaveLength(6);
- expect(state.layer!.querySelectorAll('[data-golf-public-tableau] [data-face="public"]')).toHaveLength(6);
  expect(state.layer!.querySelector('[data-golf-stock]')).toBeNull();
- expect(screen.getByText('Hole 1 scored')).not.toBeNull();
+ expect(state.layer!.querySelectorAll('.golf-scoring-hand [data-card-anchor]')).toHaveLength(0);
+ expect(screen.getByText('Results')).not.toBeNull();expect(screen.getByText('+7')).not.toBeNull();
 });
 it('places discard before stock and exposes the stock count through its accessible label',()=>{
  state.game.snapshot.stockCount=39;render(<GolfTable {...props}/>);
@@ -70,4 +71,37 @@ it('places discard before stock and exposes the stock count through its accessib
  expect(stock.textContent).toBe('39');
  expect(stock.querySelector('[data-card-anchor="stock"] [data-canonical-card-count]')?.getAttribute('aria-hidden')).toBe('true');
  expect(screen.queryByText(/^Stock\b/)).toBeNull();
+});
+
+it('scopes persistent opponent announcements to the canonical session provider',()=>{
+ state.game.snapshot.phase='playing';state.game.snapshot.turnIndex=1;state.game.snapshot.canAct=false;
+ render(<GolfTable {...props}/>);
+ expect(state.emit).toHaveBeenCalledWith(expect.objectContaining({behavior:'ambient',scope:{dealerGameId:'s',roundId:'r'},payload:{title:'Opponent is playing'}}));
+});
+
+it('retires Final turns at the scoring boundary, including the Info surface',()=>{
+ const v=state.game.snapshot;v.phase='playing';v.finalReason='six_exposed';v.finalQueue=['q'];
+ const ui=render(<GolfTable {...props}/>);
+ state.game.snapshot={...v,phase:'hole_complete',finalQueue:[],revision:2,deadline:7000,holes:[{hole:1,roundId:'r',scores:{p:3,q:7}}],tableaus:{p:{cards:[0,1,2,3,4,5],exposed:Array(6).fill(true)},q:{cards:[6,7,8,9,10,11],exposed:Array(6).fill(true)}}};
+ ui.rerender(<GolfTable {...props}/>);
+ expect(state.dismiss).toHaveBeenCalledWith('golf-final:r');expect(screen.getByRole('status').textContent).not.toContain('Final turns');
+ fireEvent.click(screen.getByRole('button',{name:'Table information'}));expect(screen.queryByText(/Final turns/)).toBeNull();
+});
+
+it('shows the scoring player and running hole subtotal in the active-player helper',()=>{
+ state.game.snapshot.phase='playing';const ui=render(<GolfTable {...props}/>);
+ state.game.snapshot={...state.game.snapshot,phase:'hole_complete',canAct:false,deadline:17000,rules:{...state.game.snapshot.rules,holeResultSeconds:16},scores:{p:200,q:300},holes:[{hole:1,roundId:'r',scores:{p:21,q:20}}],tableaus:{p:{cards:[1,10,12,14,9,0],exposed:Array(6).fill(true)},q:{cards:[3,8,10,5,21,12],exposed:Array(6).fill(true)}}};
+ const check=(now:number,text:string)=>{state.game.now=now;ui.rerender(<GolfTable {...props}/>);expect(screen.getByRole('status').textContent).toBe(text);};
+ check(1000,'Scoring Opponent/Hole 1: +0');
+ check(1800,'Scoring Opponent/Hole 1: +4');
+ check(2450,'Scoring Opponent/Hole 1: +10');
+ check(3100,'Scoring Opponent/Hole 1: +10');
+ expect(state.layer!.querySelectorAll('.golf-score-highlight')).toHaveLength(2);
+ check(7200,'Scoring You/Hole 1: +0');
+});
+
+it('keeps FINAL TURN on the felt through pauses and removes it at completion',()=>{
+ state.game.snapshot.phase='playing';state.game.snapshot.finalQueue=['q'];state.game.snapshot.finalReason='six_exposed';const ui=render(<GolfTable {...props}/>);
+ expect(state.layer!.querySelector('.golf-final-turn')?.textContent).toBe('FINAL TURN');state.game.snapshot.paused=true;ui.rerender(<GolfTable {...props}/>);expect(state.layer!.querySelector('.golf-final-turn')).not.toBeNull();
+ state.game.snapshot.phase='hole_complete';ui.rerender(<GolfTable {...props}/>);expect(state.layer!.querySelector('.golf-final-turn')).toBeNull();expect(screen.queryByRole('button',{name:/^Close$/})).toBeNull();
 });

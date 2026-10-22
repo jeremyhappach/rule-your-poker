@@ -10,6 +10,12 @@ Integration retains Golf's published `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`
 and both-money availability; unpublished Golf work is excluded. Other releases
 remain held. See `CANASTA_HOSTED_QUALIFICATION.md` for evidence and prior checkpoints.
 
+# Golf timing and motion candidate - October 22 - local review, publication held
+
+Jeremy approved local implementation of configurable scoring/reveal timing and the smoke corrections. The candidate now freezes Scoring Delay (1200 ms) and Hole Results Duration (5000 ms) for new matches, preserves final-reveal masks, delays winner presentation until counting/results finish, and preserves immediate atomic settlement. Results has no close control. Golf uses stable Bot1-style aliases and a persistent FINAL TURN felt affordance. Selected piles enlarge; the displaced tableau card offsets; outgoing cards retain their prior face/back state, with only backs flipping at discard.
+
+Candidate and locally installed rollback proofs pass, including financial failure rollback, both money modes, shared ties, continuation, frozen offers, pauses and timing boundaries. 59 focused tests, TypeScript, build, 63 layouts and fresh 2/3/4-player browser sequences pass. The candidate SQL is installed ONLY in the existing loopback UI database. No production migration, publication, admission change or existing production-session mutation occurred. Owner review is pending; hosted authority/concurrency qualification remains required before any future release. See [scope, evidence and holds](SIX_CARD_GOLF_SMOKE_FLOW.md).
+
 # Golf interaction release — October 22 — approved, integrated qualification
 
 Jeremy approved candidate `5d2db057f3e15476c28a9a0274b16863b506e9c9` for publication.
