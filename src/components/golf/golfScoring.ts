@@ -18,7 +18,7 @@ export function golfScoreFrame(v:GolfSnapshot,now:number,seek:boolean){
  const beats=golfScoreBeats(v),natural=beats.reduce((n,b)=>n+b.duration,0);
  if(v.presentation){const schedule=v.presentation;let elapsed=now-schedule.startedAt,index=0;const results=now>=schedule.resultsAt&&now<schedule.endsAt;
   if(now>=schedule.resultsAt)return {beat:null,index:-1,results,naturalMs:schedule.endsAt-schedule.startedAt};
-  for(const beat of beats){if(elapsed<beat.duration)return {beat,index,results:false,seeked:seek,naturalMs:schedule.endsAt-schedule.startedAt};elapsed-=beat.duration;index++;}
+  for(const beat of beats){if(elapsed<beat.duration)return {beat,index,beatElapsedMs:Math.max(0,elapsed),results:false,seeked:seek,naturalMs:schedule.endsAt-schedule.startedAt};elapsed-=beat.duration;index++;}
   return {beat:null,index:-1,results:false,naturalMs:schedule.endsAt-schedule.startedAt};
  }
  const windowMs=((v.rules as {holeResultSeconds?:number}).holeResultSeconds??6)*1000;

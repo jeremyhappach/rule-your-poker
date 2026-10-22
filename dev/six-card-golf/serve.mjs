@@ -2,6 +2,7 @@ import {createServer} from 'vite';import react from '@vitejs/plugin-react-swc';
 import {readFileSync as read} from 'node:fs';import {resolve} from 'node:path';import {randomUUID as uuid} from 'node:crypto';
 import {connect} from './database.mjs';
 const nativeClient=process.argv.includes('--native-client');
+const port=Number(process.env.GOLF_LOCAL_PORT??(nativeClient?5201:5198));
 const {database}=JSON.parse(read('qualification.local/six-card-golf/ui-context.json','utf8')),streams=new Set(),actors=new Set(),admin=await connect(database);
 const query=async(c,s,a=[])=>(await c.query(s,a)).rows[0]?.v;
 async function transaction(user,fn){const c=await connect(database);try{await c.query('BEGIN');if(user){if(!actors.has(user))throw Error('Unknown local actor');await c.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[user]);await c.query('SET LOCAL ROLE authenticated');}const v=await fn(c);await c.query('COMMIT');return v;}catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}}
@@ -16,10 +17,10 @@ const plugin={name:'golf-local-authority',configureServer(server){server.middlew
   await transaction(null,async c=>{
    for(let i=0;i<n;i++){await c.query('INSERT INTO auth.users(id) VALUES($1) ON CONFLICT(id) DO NOTHING',[users[i]]);await c.query('INSERT INTO public.profiles(id,username,is_active) VALUES($1,$2,true) ON CONFLICT(id) DO NOTHING',[users[i],'Player '+(i+1)+' '+users[i].slice(0,8)]);}
    await c.query("INSERT INTO public.games(id,status,current_host,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES($1,'game_selection',$3,false,4,$2,0,false,false)",[g,deadline,users[0]]);
-   for(let i=0;i<n;i++)await c.query('INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot) VALUES($1,$2,$3,$4,100,false)',[ids[i],g,users[i],4-i]);
+   for(let i=0;i<n;i++)await c.query('INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot) VALUES($1,$2,$3,$4,100,$5)',[ids[i],g,users[i],4-i,i>0&&i<=Number(input.bots??0)]);
   });
   console.log('Local seats inserted');const setup=await transaction(users[0],c=>query(c,"SELECT public.golf_configure($1,$2,4,'six-card-golf','{\"ante_amount\":5}',$3) v",[g,ids[0],deadline])),d=setup.dealer_game.id;
-  console.log('Local consent offer created');for(let i=1;i<n;i++)await transaction(users[i],c=>query(c,"SELECT public.submit_ante_decision($1,$2,$3,'ante_up') v",[g,d,ids[i]]));
+  console.log('Local consent offer created');for(let i=1;i<n;i++)if(i>Number(input.bots??0))await transaction(users[i],c=>query(c,"SELECT public.submit_ante_decision($1,$2,$3,'ante_up') v",[g,d,ids[i]]));
   await transaction(users[0],c=>query(c,'SELECT public.advance_ante_phase($1,$2) v',[g,d]));
   if(input.endSession)await transaction(null,c=>c.query('UPDATE public.games SET pending_session_end=true WHERE id=$1',[g]));
   value={id:d,session:g,users,players:ids.map((id,i)=>({id,user:users[i],seat:4-i})),user:users[0],endSession:!!input.endSession};
@@ -34,7 +35,7 @@ const plugin={name:'golf-local-authority',configureServer(server){server.middlew
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value??{}));
  }catch(e){res.statusCode=400;res.end(JSON.stringify({error:e.message}));}
  });}};
-const server=await createServer({configFile:false,cacheDir:'qualification.local/six-card-golf/vite-cache'+(nativeClient?'-native':''),optimizeDeps:{entries:[]},plugins:[react(),plugin],resolve:{alias:[...nativeClient?[]:[{find:'@/integrations/supabase/client',replacement:resolve('dev/six-card-golf/local-client.ts')}],{find:'@',replacement:resolve('src')}]},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false,...nativeClient?{'import.meta.env.VITE_SUPABASE_URL':JSON.stringify(process.env.VITE_SUPABASE_URL),'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY':JSON.stringify(process.env.VITE_SUPABASE_PUBLISHABLE_KEY)}:{}},server:{watch:{ignored:['**/qualification.local/**','**/supabase/.temp/**','**/temp videos/**']},host:'127.0.0.1',port:nativeClient?5201:5198,strictPort:true}});
+const server=await createServer({configFile:false,cacheDir:'qualification.local/six-card-golf/vite-cache'+(nativeClient?'-native':''),optimizeDeps:{entries:[]},plugins:[react(),plugin],resolve:{alias:[...nativeClient?[]:[{find:'@/integrations/supabase/client',replacement:resolve('dev/six-card-golf/local-client.ts')}],{find:'@',replacement:resolve('src')}]},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false,...nativeClient?{'import.meta.env.VITE_SUPABASE_URL':JSON.stringify(process.env.VITE_SUPABASE_URL),'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY':JSON.stringify(process.env.VITE_SUPABASE_PUBLISHABLE_KEY)}:{}},server:{watch:{ignored:['**/qualification.local/**','**/supabase/.temp/**','**/temp videos/**']},host:'127.0.0.1',port,strictPort:true}});
 let working=false;const worker=setInterval(async()=>{if(working)return;working=true;try{await transaction(null,c=>c.query('SELECT private.golf_recover()'));}catch(e){console.error(e.message);}finally{working=false;}},1000);
-await server.listen();console.log('Golf: http://127.0.0.1:'+(nativeClient?5201:5198)+'/dev/six-card-golf/live.html');
+await server.listen();console.log('Golf: http://127.0.0.1:'+port+'/dev/six-card-golf/live.html');
 process.on('SIGINT',async()=>{clearInterval(worker);await server.close();await admin.end();process.exit();});

@@ -1,3 +1,16 @@
+# Golf visual polish — October 22 — approved publication checkpoint
+
+Jeremy approved corrected candidate `98a1172b5e201d9d1e568930e482f435d3bfab38`.
+This integration starts from current published Canasta
+`dc894c3cfbd3da7a30c310271e90396ed93b25b8`, preserving its code, shared transport
+updates and all-user play-money admission. Golf's both-money admission, rule and
+financial authority, 1200 ms scoring and 5000 ms Results settings are unchanged.
+No migration is required or reapplied; installed Golf `20261022171731` remains.
+The release adds the reviewed flag, completed-hole standings, pencil scorecards,
+queued card motion and restored active-player dimensions. See
+[integration and release evidence](SIX_CARD_GOLF_POLISH_RELEASE.md).
+Automated publication verification is separate from Jeremy's production smoke.
+
 # Canasta / 1 — October 22 — hosted transition passes; final cleanup pending
 
 Published `cf759114f75e31b2d2541f13dd24dff5f15e64a3` is Vercel READY at

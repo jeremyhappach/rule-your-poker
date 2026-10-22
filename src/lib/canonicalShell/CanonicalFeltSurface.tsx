@@ -80,7 +80,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "three-five-seven": "3-5-7",
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
-  "six-card-golf": "SIX-CARD GOLF",
+  "six-card-golf": "GOLF",
   "farkle": "FARKLE",
   "yahtzee": "YAHTZEE",
   "gin-rummy": "GIN RUMMY",

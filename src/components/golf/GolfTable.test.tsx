@@ -105,3 +105,17 @@ it('keeps FINAL TURN on the felt through pauses and removes it at completion',()
  expect(state.layer!.querySelector('.golf-final-turn')?.textContent).toBe('FINAL TURN');state.game.snapshot.paused=true;ui.rerender(<GolfTable {...props}/>);expect(state.layer!.querySelector('.golf-final-turn')).not.toBeNull();
  state.game.snapshot.phase='hole_complete';ui.rerender(<GolfTable {...props}/>);expect(state.layer!.querySelector('.golf-final-turn')).toBeNull();expect(screen.queryByRole('button',{name:/^Close$/})).toBeNull();
 });
+
+it('replaces partial helpers with a completed-hole leaderboard and an accessible scorecard',()=>{
+ render(<GolfTable {...props}/>);expect(document.querySelector('.golf-score-pill')).toBeNull();expect(screen.getByRole('img',{name:'Hole 1'})).not.toBeNull();
+ const rows=document.querySelectorAll('.golf-leaderboard tbody tr');expect(rows).toHaveLength(2);expect(rows[0].textContent).toBe('You—');
+ fireEvent.click(screen.getByRole('button',{name:'Open nine-hole scorecard'}));expect(screen.getByRole('region',{name:'Nine-hole scorecard'})).not.toBeNull();
+ expect(document.querySelectorAll('.golf-scorecard thead th')).toHaveLength(11);
+});
+
+it('shows the final scorecard only at the winner hold and retires it for Session Ended',()=>{
+ state.game.snapshot={...state.game.snapshot,phase:'complete',settled:true,finished:false,financial:{resultId:'result'},terminal:{resultId:'result',winnerIds:['p','q'],score:0,startedAt:2000,deadline:60000},holes:Array.from({length:9},(_,i)=>({hole:i+1,roundId:'r'+i,scores:{p:0,q:0}}))};
+ const ui=render(<GolfTable {...props}/>);expect(props.onTerminalActive).toHaveBeenCalledWith(true);expect(document.querySelector('.golf-final-scorecard')).toBeNull();
+ state.game.now=2000;ui.rerender(<GolfTable {...props}/>);expect(document.querySelector('.golf-final-scorecard')).not.toBeNull();expect(state.emit).toHaveBeenCalledWith(expect.objectContaining({type:'match_win'}));
+ ui.rerender(<GolfTable {...props} sessionEnded/>);expect(document.querySelector('.golf-final-scorecard')).toBeNull();expect(document.querySelector('.golf-hole-flag')).toBeNull();
+});
