@@ -16,7 +16,8 @@ try{for(const n of quick?[2,4]:[2,3,4]){
    const result=await p.evaluate(()=>{
     const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
     const local=[...document.querySelectorAll('[data-golf-position]')].map(rect),opponents=[...document.querySelectorAll('[data-golf-public-tableau]')].map(rect),pane=document.querySelector('[data-hud-row="pane"]');
-    return {local,opponents,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),stock:rect(document.querySelector('[data-card-anchor="stock"]')),discard:rect(document.querySelector('[data-card-anchor="discard"]')),opponentCard:rect(document.querySelector('.golf-public-cards>span')),badge:rect(document.querySelector('[data-canonical-card-count]')),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},grid:rect(document.querySelector('.golf-local')),felt:rect(document.querySelector('.golf-felt')),center:rect(document.querySelector('.golf-opponents')),title:rect(document.querySelector('[data-canonical-felt-plate-title]'))};
+    const shapes=[...document.querySelectorAll('.golf-felt [data-playing-card-root]')].map(el=>{const r=rect(el),s=getComputedStyle(el),radius=s.borderTopLeftRadius;return {...r,face:el.hasAttribute('data-playing-card-face'),radius,clipPath:s.clipPath,radiusFraction:radius.endsWith('%')?parseFloat(radius)/100:parseFloat(radius)/r.w};});
+    return {local,opponents,shapes,badgeRadius:getComputedStyle(document.querySelector('[data-canonical-card-count]')).borderRadius,piles:rect(document.querySelector('.golf-piles')),pileCards:[...document.querySelectorAll('.golf-piles button')].map(rect),stock:rect(document.querySelector('[data-card-anchor="stock"]')),discard:rect(document.querySelector('[data-card-anchor="discard"]')),opponentCard:rect(document.querySelector('.golf-public-cards>span')),badge:rect(document.querySelector('[data-canonical-card-count]')),chips:[...document.querySelectorAll('[data-canonical-seat-chip-cell]')].map(rect),pane:{...rect(pane),scroll:pane.scrollHeight},grid:rect(document.querySelector('.golf-local')),felt:rect(document.querySelector('.golf-felt')),center:rect(document.querySelector('.golf-opponents')),title:rect(document.querySelector('[data-canonical-felt-plate-title]'))};
    });
    for(const r of result.local){assert.ok(r.w>=43.9&&r.h>=43.9,JSON.stringify({n,viewer,width,height,r}));assert.ok(r.x>=0&&r.x+r.w<=width+.5);}
    // Short landscape panes retain full touch targets with contained scrolling;
@@ -39,7 +40,10 @@ try{for(const n of quick?[2,4]:[2,3,4]){
    for(const r of result.opponents)assert.ok(r.y>=result.title.y+result.title.h-.5,JSON.stringify({n,viewer,width,height,opponent:r,title:result.title,felt:result.felt,center:result.center}));
    assert.ok(result.discard.x<result.stock.x,'discard left, stock right');
    assert.ok(Math.abs(result.stock.x-result.discard.x-result.discard.w-8)<.5,'visible piles 8px apart');
-   assert.ok(result.opponentCard.w>result.stock.w*1.1&&result.opponentCard.w<result.stock.w*1.14,JSON.stringify({n,width,height,opponent:result.opponentCard,stock:result.stock}));
+   assert.ok(result.opponentCard.w>result.stock.w*1.23&&result.opponentCard.w<result.stock.w*1.27,JSON.stringify({n,width,height,opponent:result.opponentCard,stock:result.stock}));
+   assert.equal(result.shapes.length,6*(n-1)+2);
+   for(const shape of result.shapes){assert.ok(shape.radiusFraction<=.101,JSON.stringify({n,width,height,shape}));assert.equal(shape.clipPath,'none');assert.ok(Math.abs(shape.h/shape.w-1.4)<.04);}
+   assert.equal(result.badgeRadius,'50%','only the count badge retains a circular radius');
    assert.ok(result.badge.x<result.stock.x&&result.badge.y<result.stock.y,'count attached to stock upper-left');
    assert.equal(await p.locator('[data-golf-stock]').innerText(),String(52-6*n-1),'stock has count only, no visible Stock word');
    const intersects=(a,b)=>Math.min(a.x+a.w,b.x+b.w)>Math.max(a.x,b.x)+1&&Math.min(a.y+a.h,b.y+b.h)>Math.max(a.y,b.y)+1;

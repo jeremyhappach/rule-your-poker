@@ -1,4 +1,15 @@
-# Golf pile refinement — October 21 — local visual review, release held
+# Golf felt-card shape — October 21 — local review, release held
+
+The built candidate reproduced an 8px panel radius on 16–18px exposed cards,
+making them appear capsule-shaped. Golf's felt cards now use proportional 10%
+corners; the count chip remains circular. Opponent cards are slightly larger
+(about 7–8% in the owner's two captured viewports). MY and pile conventions remain.
+19 focused tests, 63 rendered geometry/shape cases, isolated actions and build pass.
+Final owner portrait/landscape screenshots were inspected directly. See
+[cause, comparison and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, deployment, migration, admission or live-session changes.
+
+# Golf pile refinement — October 21 — preceding local candidate
 
 Discard is now left and stock right. Opponent cards are 12% larger than pile
 cards; visible piles are 8px apart and MY gaps are 2px. Stock uses the reusable

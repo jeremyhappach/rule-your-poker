@@ -1,8 +1,12 @@
 .golf-felt {position:absolute;inset:0;pointer-events:none;container-type:size;color:#fff}
-.golf-center-play {position:absolute;inset:max(22%,2rem) 16% 3%;container-type:size;--golf-layout-gap:14px;display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;gap:var(--golf-layout-gap);padding-bottom:14px}
-/* One size budget preserves the 12% tableau/pile difference, including the
+.golf-felt [data-playing-card-root] {border-radius:10% !important}
+/* Match the canonical active-hand shell's proportional corners. The scoped
+   override also replaces CanonicalCardBack's inline fixed 4px at tiny sizes;
+   the count badge is not a playing-card root and stays circular. */
+.golf-center-play {position:absolute;inset:max(22%,2rem) 12% 3%;container-type:size;--golf-layout-gap:14px;display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;gap:var(--golf-layout-gap);padding-bottom:14px}
+/* One size budget preserves the 25% tableau/pile difference, including the
    44px pile hit area when its visible card is smaller. */
-.golf-center-play>* {--golf-public-w:min(52px,calc((100cqw - (var(--golf-opponent-count) - 1)*12px - var(--golf-opponent-count)*4px)/(var(--golf-opponent-count)*3)),calc((100cqh - 44px - var(--golf-layout-gap) - 2px)/2.8),calc((100cqh - var(--golf-layout-gap) - 2px)/4.05));--golf-card-w:calc(var(--golf-public-w)/1.12)}
+.golf-center-play>* {--golf-public-w:min(58px,calc((100cqw - (var(--golf-opponent-count) - 1)*12px - var(--golf-opponent-count)*4px)/(var(--golf-opponent-count)*3)),calc((100cqh - 44px - var(--golf-layout-gap) - 2px)/2.8),calc((100cqh - var(--golf-layout-gap) - 2px)/3.92));--golf-card-w:calc(var(--golf-public-w)/1.25)}
 .golf-opponents {width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:12px}
 .golf-public-grid {--public-w:var(--golf-public-w);border:0;padding:0;background:transparent;pointer-events:auto;flex-shrink:0;color:white;position:relative}
 .golf-public-cards {display:grid;grid-template-columns:repeat(3,var(--public-w));grid-template-rows:repeat(2,calc(var(--public-w)*1.4));gap:2px}
@@ -19,7 +23,7 @@
 /* Short canonical felts keep pile labels alongside the cards, preserving room
    for the complete opponent grids above without changing shell geometry. */
 @container (max-height:160px) {
- .golf-center-play {inset:2rem 16% 3%;--golf-layout-gap:10px;padding-bottom:0}
+ .golf-center-play {inset:2rem 12% 3%;--golf-layout-gap:6px;padding-bottom:0}
  .golf-public-label {display:none}
  .golf-piles small {top:50%;left:auto;right:calc(100% + 4px);transform:translateY(-50%);max-width:52px;white-space:normal;text-align:right;font-size:10px;line-height:12px}
  .golf-stock-slot small {right:auto;left:calc(100% + 4px);text-align:left}

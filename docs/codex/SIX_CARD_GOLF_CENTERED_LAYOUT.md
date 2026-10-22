@@ -1,5 +1,39 @@
 # Golf centered layout — October 21, 2026
 
+## Card shape and opponent enlargement — latest local candidate
+
+Based on `e77b771794dacb24771593b19da6a77c18effafc`. The reported circular felt
+cards were reproduced in the built candidate: `PlayingCard` uses the generic UI
+`Card`, whose `rounded-lg` resolves through `--radius: 0.5rem` to **8px**.
+The owner landscape's exposed opponent card was 17.73×24.83px and discard was
+15.83×22.17px. An 8px radius therefore rounded almost the entire short edge.
+Computed clip-path was `none`; this was corner geometry, not a circular mask.
+
+The correction is scoped to `.golf-felt [data-playing-card-root]`: faces and
+backs use proportional **10%** corners, matching the canonical active-hand
+shell treatment. The scoped override is needed for the back renderer's inline
+fixed 4px radius. The stock-count badge is outside that selector and retains its
+50% radius. Shared renderers, other games, MY cards and financial chips are untouched.
+
+The centered felt region uses slightly more available width and a larger opponent
+card cap. In the actual owner-session captures, opponent width increases from
+52 to 55.61px in portrait and 17.73 to 19.16px in landscape (about 7% and 8%).
+Opponent art is now 25% larger than pile art. Discard-left / stock-right, 8px
+visible pile gap, upper-left count chip and tight centered MY cards remain intact.
+
+19 focused tests, isolated authoritative browser actions, production build and
+all 63 rendered geometry cases pass. The browser proof now verifies rectangular
+card proportions, corner radius at most 10%, no clip-path and the circular count
+badge across every case. Both final owner-session screenshots and four-player
+renders were inspected directly. The owner snapshot returned HTTP 200 and
+Realtime joined successfully, without page errors or gameplay actions.
+
+Evidence is in `dev/six-card-golf/evidence/rectangular-cards/`, including before
+and after computed styles, the before landscape, final PNGs, per-case shape
+checks and source/image hashes. This pass changes runtime CSS only; no additional
+financial campaign or unrelated game sweep. Physical-device owner approval is
+pending. No push, release, migration, admission changes or live-session mutation.
+
 ## Subsequent pile refinement — local only
 
 Based on `185ee06493ebc4aa32ed456f266075a4ed6595c0`, Jeremy requested discard
