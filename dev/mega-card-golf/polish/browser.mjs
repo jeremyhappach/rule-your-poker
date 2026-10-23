@@ -26,6 +26,7 @@ try{
   await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.querySelectorAll('.mega-course-tile')].map(el=>new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=reject;image.src=getComputedStyle(el).backgroundImage.match(/url\(["']?(.*?)["']?\)/)[1];})));});
   await page.screenshot({path:out+'/'+label+'-selection.png'});
   assert(fit.scroll<=fit.height+1,'Selection scrolls: '+label);assert(fit.tiles.every(r=>r.bottom<=height&&r.h>=44),'Tiles outside screen: '+label);
+  assert((await page.getByRole('button',{name:'Select Devil’s Canyon',exact:true}).textContent()).includes('1 discard per hole'));
   await page.getByText('Course record: +1',{exact:true}).waitFor();await page.getByText('Course record: +10',{exact:true}).waitFor();
   const panels=[];
   const before=requests.filter(r=>r.op==='start').length;
@@ -36,6 +37,8 @@ try{
    assert.equal(requests.filter(r=>r.op==='start').length,before,'Selection started run');
    await page.getByRole('button',{name:'All Time',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('tbody tr td:last-child')?.textContent?.match(/^-8$|^1$|^10$/));
+   if(name==='Devil’s Canyon')assert((await page.locator('.mega-course-heading').textContent()).includes('1 discard per hole'));
+   if(name==='Coastal Links'){const art=await page.locator('.mega-clubhouse').boundingBox(),panel=await page.locator('.mega-course-board').boundingBox();assert(art&&panel&&art.y+art.height-panel.y-panel.height>=39,'Coastal shoreline obscured below panel');}
    const key=name==='Sunny Meadows'?'sunny':name==='Coastal Links'?'coastal':'canyon';
    await page.screenshot({path:out+'/'+label+'-'+key+'.png'});
    assert.equal(await page.locator('tbody tr').count(),10);

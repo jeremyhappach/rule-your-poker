@@ -90,3 +90,32 @@ negative/missing records and loading/failure distinction; application TypeScript
 and Vite production build pass. Existing build warnings remain. Evidence logs:
 `record-followup-tests.log`, `record-followup-build.log`, and `browser-report.json`
 in the existing local evidence directory. No upload, transfer or publication.
+
+## Owner follow-up — discard copy and Coastal shoreline
+
+Continues `ad69ef4e8274b76ae39e35303b191555f35114ac`. Configured counts now render
+“1 discard per hole” or “0/3 discards per hole” on selection and intermediary screens.
+No configuration values changed. Coastal Links retains its name and original
+artwork; only its intermediary crop changes. The larger portrait crop places
+rocky surf below the board; landscape retains a wider crop and reserves a small
+shoreline strip below the board. Selection artwork and both other themes are unchanged.
+
+Actual Chrome fixture captures were visually inspected in portrait and landscape.
+Four-size checks verify the Canyon copy, visible Coastal space below the panel,
+all ten rows reachable, 44px controls and no page errors/external requests.
+14 focused tests, application TypeScript and Vite build pass. Existing build
+warnings remain. Evidence: coastal-followup-tests.log, coastal-followup-build.log,
+browser-report.json and refreshed screenshots/gallery in evidence.local.
+
+Exact files for this follow-up:
+- src/components/megaCardGolf/CourseSelection.tsx
+- src/components/megaCardGolf/CourseClubhouse.tsx
+- src/components/megaCardGolf/megaCardGolf.css
+- src/components/megaCardGolf/Navigation.test.tsx
+- dev/mega-card-golf/polish/browser.mjs
+- dev/mega-card-golf/polish/gallery.mjs
+- docs/codex/CURRENT_RELEASE.md
+- docs/codex/MEGA_CARD_GOLF_POLISH.md
+
+No asset files changed. No upload, file transfer, push, merge, deployment, production
+write or admission change. Gameplay, stored scores and ordering remain intact.

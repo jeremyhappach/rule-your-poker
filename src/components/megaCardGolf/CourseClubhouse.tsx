@@ -3,8 +3,8 @@ import {courseArtwork,courseTheme,type MegaRequest,type ScoreRow} from './Course
 import {MegaLeaderboard} from './MegaLeaderboard';
 
 export function CourseClubhouse({course,archives,request,busy,canStart,completedScore,onStart,onReturn}:{course:CourseConfig;archives:{config:CourseConfig;rows:ScoreRow[]}[];request:MegaRequest;busy:boolean;canStart:boolean;completedScore?:number;onStart:()=>void;onReturn:()=>void}){
- return <main className={'mega-clubhouse '+courseTheme(course.id)} style={courseArtwork(course.id)}>
-  <div className="mega-clubhouse-content"><header className="mega-course-heading"><span className="mega-difficulty">{course.difficulty}</span><h1>{course.name}</h1><p>{course.holes} holes · {course.discardAllowance} discards / hole · {course.stockAllowance} draws / hole</p></header>
+ return <main className={'mega-clubhouse '+courseTheme(course.id)} style={course.id==='coastal-links'?undefined:courseArtwork(course.id)}>
+  <div className="mega-clubhouse-content"><header className="mega-course-heading"><span className="mega-difficulty">{course.difficulty}</span><h1>{course.name}</h1><p>{course.holes} holes · {course.discardAllowance} {course.discardAllowance===1?'discard':'discards'} per hole · {course.stockAllowance} draws / hole</p></header>
    <div className="mega-course-actions"><button className="mega-start" disabled={busy||!canStart} onClick={onStart}>{canStart?'Start Game':'Course unavailable'}</button><button className="mega-secondary" disabled={busy} onClick={onReturn}>Return to Clubhouse</button></div>
    <div className="mega-course-board">{completedScore!==undefined&&<p className="mega-completed">Course complete · Final score <strong>{completedScore}</strong></p>}
     <MegaLeaderboard key={course.id+'/'+course.boardId} course={course.id} boardId={course.boardId} request={request}/>

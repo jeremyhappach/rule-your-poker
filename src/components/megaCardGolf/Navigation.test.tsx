@@ -2,6 +2,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {MegaArcade} from './MegaArcade';
+import {CourseClubhouse} from './CourseClubhouse';
 import {CourseSelection} from './CourseSelection';
 import {MegaLeaderboard} from './MegaLeaderboard';
 import {INITIAL_COURSES} from '@/lib/megaCardGolf/config';
@@ -76,4 +77,13 @@ it('keeps failed and loading records distinct from even par',async()=>{
  expect(screen.getByText('Course record: Loading…')).toBeTruthy();
  reject(Error('Board unavailable'));await screen.findByText('Course record: Unavailable');
  expect(screen.queryByText('Course record: E')).toBeNull();
+});
+
+it.each([[0,'discards'],[1,'discard'],[3,'discards']] as const)('uses configured %s %s per hole on tiles and course screens',async(count,noun)=>{
+ const course={...INITIAL_COURSES[2],discardAllowance:count};
+ const request=vi.fn(async()=>({rows:[],self:null,personalBest:null}));
+ render(<><CourseSelection courses={[course]} request={request as any} onSelect={vi.fn()} busy={false}/><CourseClubhouse course={course} archives={[]} request={request as any} busy={false} canStart onStart={vi.fn()} onReturn={vi.fn()}/></>);
+ await screen.findByText('Course record: —');
+ expect(document.querySelector('.mega-tile-limits')?.textContent).toContain(count+' '+noun+' per hole');
+ expect(document.querySelector('.mega-course-heading p')?.textContent).toContain(count+' '+noun+' per hole');
 });

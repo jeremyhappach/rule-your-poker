@@ -53,3 +53,8 @@
 .catalog-dialog:has(.mega-defaults-embedded){display:block;overflow-y:auto}
 .catalog-dialog:has(.mega-defaults-embedded)>.flex{margin-top:.75rem}
 .catalog-dialog:has(.mega-defaults-embedded) .catalog-scroll{overflow:visible}
+
+/* Coastal intermediary: expose the existing rocky surf below the board. Tiles keep their crop. */
+.mega-clubhouse.theme-1{background-image:url('/mega-card-golf/courses-v1.png');background-size:600% auto;background-position:50% 15%}
+.mega-clubhouse.theme-1 .mega-course-board{max-height:calc(100% - clamp(2.5rem,12cqh,4rem))}
+@container mega-app (min-aspect-ratio:6/5){.mega-clubhouse.theme-1{background-size:300% auto;background-position:50% 52%}}
