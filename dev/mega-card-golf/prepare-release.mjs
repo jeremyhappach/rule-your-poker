@@ -89,5 +89,5 @@ DO $outer$ DECLARE before_hash text;after_hash text;passed boolean:=false;BEGIN
 END $outer$;SELECT value FROM mega_evidence;`;
  write(dir+(installed?'/hosted-installed.sql':'/hosted-candidate.sql'),sql);
 }
-const bundle=await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'node',target:'es2022'});write(dir+'/arcade-recovery-bundle.js',bundle.outputFiles[0].text);
+const bundle=await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'neutral',external:['node:crypto'],target:'es2022'});write(dir+'/arcade-recovery-bundle.js',bundle.outputFiles[0].text);
 console.log(JSON.stringify({migration,sha256:createHash('sha256').update(guarded).digest('hex'),workerBytes:bundle.outputFiles[0].text.length}));
