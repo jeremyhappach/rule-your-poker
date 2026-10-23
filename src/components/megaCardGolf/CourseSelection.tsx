@@ -19,7 +19,7 @@ function CourseTile({course,request,onSelect,busy}:{course:CourseConfig;request:
  },[course.id,course.boardId,request]);
  return <button className={'mega-course-tile '+courseTheme(course.id)} style={courseArtwork(course.id)} disabled={busy} onClick={()=>onSelect(course.id)} aria-label={'Select '+course.name}>
   <span className="mega-tile-top"><strong>{course.name}</strong><span className="mega-difficulty">{course.difficulty}</span></span>
-  <span className="mega-record">Course record: {failed?'Unavailable':record===undefined?'Loading…':record===null?'—':record}</span>
+  <span className="mega-record">Course record: {failed?'Unavailable':record===undefined?'Loading…':record===null?'—':record===0?'E':record>0?'+'+record:record}</span>
   <span className="mega-tile-limits"><span><b>{course.holes}</b> holes</span><span><b>{course.discardAllowance}</b> discards / hole</span><span><b>{course.stockAllowance}</b> draws / hole</span></span>
  </button>;
 }

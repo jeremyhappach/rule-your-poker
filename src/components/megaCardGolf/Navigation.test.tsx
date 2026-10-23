@@ -28,7 +28,7 @@ it('opens each course without starting; only Start Game admits a run and Return 
 it('reads all-time records from the exact active board and never substitutes sample records',async()=>{
  const request=vi.fn(async(body:any)=>({rows:body.courseId==='sunny-meadows'?[row(0)]:[]}));
  render(<CourseSelection courses={INITIAL_COURSES} request={request as any} onSelect={vi.fn()} busy={false}/>);
- await screen.findByText('Course record: 0');expect(screen.getAllByText('Course record: —')).toHaveLength(2);
+ await screen.findByText('Course record: E');expect(screen.getAllByText('Course record: —')).toHaveLength(2);
  for(const course of INITIAL_COURSES)expect(request).toHaveBeenCalledWith({op:'leaderboard',courseId:course.id,boardId:course.boardId,window:'all'});
 });
 it('does not let a late prior-board response replace the new course record',async()=>{
@@ -62,4 +62,18 @@ it('keeps selection free of play controls and resumes the existing run from the 
  await screen.findByRole('heading',{name:'Select a Course'});expect(screen.queryByRole('button',{name:'Resume course'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Select Sunny Meadows'}));fireEvent.click(await screen.findByRole('button',{name:'Resume course'}));await screen.findByText('Active game');
  expect(request).toHaveBeenCalledWith({op:'state',runId:'existing-run'});expect(request.mock.calls.some(([b])=>b.op==='start')).toBe(false);
+});
+
+it.each([[7,'+7'],[0,'E'],[-4,'-4'],[null,'—']] as const)('formats course record %s as %s without changing its value',async(score,label)=>{
+ const request=vi.fn(async()=>({rows:score===null?[]:[row(score)]}));
+ render(<CourseSelection courses={[INITIAL_COURSES[0]]} request={request as any} onSelect={vi.fn()} busy={false}/>);
+ await screen.findByText('Course record: '+label);
+});
+it('keeps failed and loading records distinct from even par',async()=>{
+ let reject!:(error:Error)=>void;
+ const request=vi.fn(()=>new Promise((_resolve,fail)=>{reject=fail;}));
+ render(<CourseSelection courses={[INITIAL_COURSES[0]]} request={request as any} onSelect={vi.fn()} busy={false}/>);
+ expect(screen.getByText('Course record: Loading…')).toBeTruthy();
+ reject(Error('Board unavailable'));await screen.findByText('Course record: Unavailable');
+ expect(screen.queryByText('Course record: E')).toBeNull();
 });

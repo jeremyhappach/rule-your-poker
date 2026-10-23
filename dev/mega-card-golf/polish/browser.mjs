@@ -26,6 +26,8 @@ try{
   await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.querySelectorAll('.mega-course-tile')].map(el=>new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=reject;image.src=getComputedStyle(el).backgroundImage.match(/url\(["']?(.*?)["']?\)/)[1];})));});
   await page.screenshot({path:out+'/'+label+'-selection.png'});
   assert(fit.scroll<=fit.height+1,'Selection scrolls: '+label);assert(fit.tiles.every(r=>r.bottom<=height&&r.h>=44),'Tiles outside screen: '+label);
+  await page.getByText('Course record: +1',{exact:true}).waitFor();await page.getByText('Course record: +10',{exact:true}).waitFor();
+  const panels=[];
   const before=requests.filter(r=>r.op==='start').length;
   for(const name of ['Sunny Meadows','Coastal Links','Devil’s Canyon']){
    await page.getByRole('button',{name:'Select '+name,exact:true}).click();
@@ -37,6 +39,8 @@ try{
    const key=name==='Sunny Meadows'?'sunny':name==='Coastal Links'?'coastal':'canyon';
    await page.screenshot({path:out+'/'+label+'-'+key+'.png'});
    assert.equal(await page.locator('tbody tr').count(),10);
+   const panel=await page.locator('.mega-course-board').evaluate(el=>({height:el.clientHeight,content:el.firstElementChild.getBoundingClientRect().height,scroll:el.scrollHeight}));
+   assert(panel.height<=panel.content+26,'Leaderboard stretches beyond content: '+label+' '+name);panels.push({name,...panel});
    await page.locator('tbody tr').nth(9).scrollIntoViewIfNeeded();
    const last=await page.locator('tbody tr').nth(9).boundingBox();assert(last&&last.y>=0&&last.y+last.height<=height,'Last leaderboard row unreachable');
    if(label.includes('landscape'))await page.screenshot({path:out+'/'+label+'-'+key+'-bottom.png'});
@@ -60,7 +64,7 @@ try{
    await page.getByLabel('Course name',{exact:true}).scrollIntoViewIfNeeded();
    await page.screenshot({path:out+'/'+label+'-defaults-fields.png'});
   }
-  results.push({label,width,height,fit,passed:true});await context.close();
+  results.push({label,width,height,fit,panels,passed:true});await context.close();
  }
  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  console.log(JSON.stringify({results,errors,external,startRequests:requests.filter(r=>r.op==='start').length}));

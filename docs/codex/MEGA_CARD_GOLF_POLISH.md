@@ -69,3 +69,24 @@ MegaLeaderboard.tsx and megaCardGolf.css under src/components/megaCardGolf.
 Tests: Navigation.test.tsx and Defaults.test.tsx in that directory.
 Local tooling: dev/mega-card-golf/vite.config.ts and dev/mega-card-golf/polish/.
 Documentation: this report, CURRENT_RELEASE.md and REPO_MAP.md.
+
+## Owner follow-up — record notation and panel height
+
+Continues local checkpoint `330f25bbc5856731a69cfc2e65c73bf5fe62fb5c`.
+Only course-record presentation and intermediary leaderboard sizing changed:
+positive records use +, exactly zero uses E, and negative records keep their sign.
+Empty (—), loading and unavailable states remain distinct. Stored scores,
+leaderboard values, ordering, requests and gameplay are unchanged.
+
+The board panel now aligns to its intrinsic content, capped by its existing grid
+space. In the 390×844 fixture its content/panel heights are approximately 399/423
+pixels, eliminating the previous stretch to the bottom of the screen. Short
+portrait and landscape panels retain scrolling to every Top Ten row and the
+existing 44px controls. All four previous viewport checks pass with no page errors
+or external requests. Selection, all themes, and local gallery captures are refreshed.
+
+Validation: 11 focused navigation/format tests pass, including positive/zero/
+negative/missing records and loading/failure distinction; application TypeScript
+and Vite production build pass. Existing build warnings remain. Evidence logs:
+`record-followup-tests.log`, `record-followup-build.log`, and `browser-report.json`
+in the existing local evidence directory. No upload, transfer or publication.
