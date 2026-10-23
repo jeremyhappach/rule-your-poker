@@ -1,12 +1,18 @@
-# Mega Card Golf course navigation — 2026-10-23 — local review only
+# Mega Card Golf course navigation — 2026-10-23 — publication approved
 
 Approved selection/intermediary/Defaults navigation polish is isolated on
 `codex/mega-card-golf-polish`, based on verified live `adc76249827204d15242f066be2c9c3e7dc726af`.
 Local owner follow-up adds + / E / minus course-record labels and content-sized
 leaderboard panels. The next owner follow-up fixes configured discard singular/plural
 and crops only the Coastal intermediary to expose rocks/water below the board;
-14 focused checks, TypeScript, build and refreshed four-size browser previews pass. No publication, main integration, hosted writes or admission
-changes are authorized.
+14 focused checks, TypeScript, build and refreshed four-size browser previews pass.
+Jeremy approved publishing reviewed candidate `687f46910768439c14626cce2f5390834d8810cb`.
+Release validation identified two numeric leaderboard-rank renderers requiring
+registration in the card-face source inventory; that test-only correction leaves
+the reviewed app code unchanged. Main integration, push and automatic publication
+are authorized; migrations, leaderboard resets and admission changes are excluded.
+Exact deployed SHA and release-signal evidence will be reported at delivery.
+Owner production smoke remains pending.
 See [local implementation, validation and fixture previews](MEGA_CARD_GOLF_POLISH.md).
 
 # Mega Card Golf — production enabled; owner smoke pending

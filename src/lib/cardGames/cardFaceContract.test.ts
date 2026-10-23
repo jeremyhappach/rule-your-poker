@@ -35,6 +35,9 @@ describe('cross-game card face contract', () => {
       // Reviewed meld-rank selector label; actual cards use PlayingCard.
       'components/canasta/HandEditor.tsx',
       'components/hand-history/MiniPlayingCard.tsx',
+      // Reviewed numeric leaderboard positions; neither surface renders card faces.
+      'components/megaCardGolf/CourseClubhouse.tsx',
+      'components/megaCardGolf/MegaLeaderboard.tsx',
       'lib/canonicalShell/cardTransport/CardTransportRuntime.tsx',
       // Developer-only evaluators create/parse valid cards locally.
       'pages/HandEvalDebug.tsx',

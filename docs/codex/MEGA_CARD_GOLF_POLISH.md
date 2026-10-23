@@ -119,3 +119,22 @@ Exact files for this follow-up:
 
 No asset files changed. No upload, file transfer, push, merge, deployment, production
 write or admission change. Gameplay, stored scores and ordering remain intact.
+
+## Publication approval and release validation
+
+Jeremy subsequently approved publication of reviewed candidate
+`687f46910768439c14626cce2f5390834d8810cb`, including integration, normal release
+checks, push, deployment and exact live SHA/release-signal verification. This
+supersedes the earlier local-only publication hold. Gameplay, migrations,
+leaderboard resets and admission changes remain outside scope.
+
+The full release check passed TypeScript and 2,812 tests, then stopped on the
+card-face source inventory: the new current/archive leaderboard renderers expose
+numeric `ScoreRow.rank` values. Review confirmed they render leaderboard positions
+and no card faces. Both are now explicitly registered alongside the inventory's
+existing reviewed exceptions. This correction changes only the test inventory;
+the published application source remains identical to the reviewed candidate.
+The full `npm run build` rerun passed application TypeScript, all 2,813 source
+tests, all 241 harness tests and the Vite production build. Existing Browserslist
+and bundle-size warnings remain. Evidence is retained in the ignored local
+`evidence.local/release-build-final.log`. Owner gameplay smoke remains pending.
