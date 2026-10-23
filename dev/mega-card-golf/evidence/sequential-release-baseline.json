@@ -1,0 +1,92 @@
+{
+  "counts": [
+    {
+      "count": 2,
+      "status": "completed",
+      "ruleset": "mega-card-golf/1"
+    }
+  ],
+  "courses": [
+    {
+      "id": "sunny-meadows",
+      "name": "Sunny Meadows",
+      "holes": 9,
+      "boardId": "76bf83a5-1188-47fd-954f-929bd53f14c8",
+      "enabled": true,
+      "configId": "f9fd92d6-f2f8-4155-a90f-a0962f63e526",
+      "revision": 1,
+      "difficulty": "Easy",
+      "initialExposed": 2,
+      "stockAllowance": 16,
+      "discardAllowance": 5,
+      "completionSeconds": 300
+    },
+    {
+      "id": "coastal-links",
+      "name": "Coastal Links",
+      "holes": 9,
+      "boardId": "b09157ea-d454-4a67-b355-f71a59cd85dc",
+      "enabled": true,
+      "configId": "a1694de2-862d-41df-bff5-ee620a912cf2",
+      "revision": 1,
+      "difficulty": "Medium",
+      "initialExposed": 2,
+      "stockAllowance": 12,
+      "discardAllowance": 3,
+      "completionSeconds": 300
+    },
+    {
+      "id": "devils-canyon",
+      "name": "Devil's Canyon",
+      "holes": 9,
+      "boardId": "28021ecf-51fb-4447-b981-08aee6a32155",
+      "enabled": true,
+      "configId": "db220fa8-d3a9-405c-9f8e-d58c3a3b40eb",
+      "revision": 1,
+      "difficulty": "Hard",
+      "initialExposed": 2,
+      "stockAllowance": 8,
+      "discardAllowance": 1,
+      "completionSeconds": 300
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX arcade_command_receipts_pkey ON private.arcade_command_receipts USING btree (user_id, request_id)",
+    "CREATE INDEX arcade_receipts_run_revision ON private.arcade_command_receipts USING btree (run_id, revision)",
+    "CREATE UNIQUE INDEX arcade_results_pkey ON private.arcade_results USING btree (run_id)",
+    "CREATE INDEX arcade_results_window ON private.arcade_results USING btree (game, ruleset, completed_at DESC, user_id, score DESC)",
+    "CREATE INDEX arcade_results_best ON private.arcade_results USING btree (game, ruleset, user_id, score DESC, completed_at)",
+    "CREATE INDEX arcade_results_scores ON private.arcade_results USING btree (game, ruleset, score DESC, completed_at, run_id)",
+    "CREATE INDEX arcade_mega_board ON private.arcade_results USING btree (((final_state #>> '{config,id}'::text[])), ((final_state #>> '{config,boardId}'::text[])), score, completed_at, run_id) WHERE (game = 'mega-card-golf'::text)",
+    "CREATE UNIQUE INDEX arcade_runs_pkey ON private.arcade_runs USING btree (id)",
+    "CREATE UNIQUE INDEX arcade_one_unfinished ON private.arcade_runs USING btree (user_id, game) WHERE (status = 'active'::text)",
+    "CREATE INDEX arcade_due ON private.arcade_runs USING btree (due_at, id) WHERE (status = 'active'::text)"
+  ],
+  "rulesets": [
+    {
+      "id": "mega-card-golf/1",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/1",
+        "opening": "player-selected",
+        "finalDraw": "resolve"
+      },
+      "enabled": true
+    }
+  ],
+  "functions": [
+    {
+      "name": "arcade_mega_catalog(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.arcade_mega_catalog(p_actor uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n IF NOT private.arcade_allowed(p_actor) THEN RAISE EXCEPTION 'arcade:forbidden' USING ERRCODE='42501';END IF;\n RETURN jsonb_build_object('admission',EXISTS(SELECT 1 FROM private.arcade_rulesets WHERE id='mega-card-golf/1' AND enabled),\n  'isAdmin',EXISTS(SELECT 1 FROM public.profiles WHERE id=p_actor AND is_superuser),\n  'courses',(SELECT jsonb_agg(private.mega_config(c) ORDER BY CASE c.course WHEN 'sunny-meadows' THEN 1 WHEN 'coastal-links' THEN 2 ELSE 3 END) FROM private.arcade_mega_configs c JOIN private.arcade_mega_courses p ON p.config_id=c.id),\n  'boards',(SELECT jsonb_agg(public.arcade_mega_board(p_actor,id)) FROM private.arcade_mega_courses),\n  'archives',coalesce((SELECT jsonb_agg(jsonb_build_object('config',private.mega_config(c),'rows',public.arcade_mega_board(p_actor,c.course,c.board_id,'all')->'rows')) FROM(SELECT DISTINCT ON(c.board_id) c.* FROM private.arcade_mega_configs c WHERE NOT EXISTS(SELECT 1 FROM private.arcade_mega_courses p JOIN private.arcade_mega_configs active ON active.id=p.config_id WHERE active.board_id=c.board_id) ORDER BY c.board_id,c.revision)c),'[]'),\n  'active',(SELECT id FROM private.arcade_runs WHERE user_id=p_actor AND game='mega-card-golf' AND status='active'));\nEND $function$\n"
+    },
+    {
+      "name": "arcade_mega_commit(uuid,uuid,bigint,jsonb,uuid,text,uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.arcade_mega_commit(p_actor uuid, p_run uuid, p_revision bigint, p_state jsonb, p_request uuid DEFAULT NULL::uuid, p_fingerprint text DEFAULT NULL::text, p_token uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE r private.arcade_runs;receipt private.arcade_command_receipts;at_ms bigint;status_i text;score_i bigint;holes_i integer;result_i jsonb;count_i integer:=0;sum_i bigint:=0;prior bigint;old_results jsonb;\nBEGIN\n IF p_actor IS NULL THEN\n  IF NOT EXISTS(SELECT 1 FROM private.arcade_recovery_state WHERE singleton AND token=p_token AND claimed AND expires_at>clock_timestamp()) THEN RAISE EXCEPTION 'arcade:recovery_denied' USING ERRCODE='42501';END IF;\n ELSIF NOT private.arcade_allowed(p_actor) THEN RAISE EXCEPTION 'arcade:forbidden' USING ERRCODE='42501';END IF;\n SELECT * INTO r FROM private.arcade_runs WHERE id=p_run FOR UPDATE;at_ms:=floor(extract(epoch FROM clock_timestamp())*1000);\n IF NOT FOUND OR r.game<>'mega-card-golf' OR (p_actor IS NOT NULL AND r.user_id<>p_actor) THEN RAISE EXCEPTION 'arcade:not_found';END IF;\n IF p_request IS NOT NULL THEN\n  SELECT * INTO receipt FROM private.arcade_command_receipts WHERE user_id=r.user_id AND request_id=p_request;\n  IF FOUND THEN\n   IF receipt.run_id<>r.id OR receipt.fingerprint IS DISTINCT FROM p_fingerprint THEN RAISE EXCEPTION 'arcade:request_conflict';END IF;\n   RETURN jsonb_build_object('outcome','duplicate','record',to_jsonb(r)||jsonb_build_object('server_at',at_ms));\n  END IF;\n END IF;\n IF r.revision IS DISTINCT FROM p_revision OR r.status<>'active' THEN RETURN jsonb_build_object('outcome','conflict','record',to_jsonb(r)||jsonb_build_object('server_at',at_ms));END IF;\n IF p_request IS NOT NULL AND r.due_at<=at_ms THEN RETURN jsonb_build_object('outcome','deadline','record',to_jsonb(r)||jsonb_build_object('server_at',at_ms));END IF;\n status_i:=p_state->>'status';score_i:=(p_state->>'score')::bigint;holes_i:=(r.config->>'holes')::integer;\n IF p_state->>'id' IS DISTINCT FROM r.id::text OR p_state->>'owner' IS DISTINCT FROM r.user_id::text OR p_state->>'ruleset' IS DISTINCT FROM r.ruleset OR p_state->'config' IS DISTINCT FROM r.config\n  OR coalesce(status_i,'') NOT IN('active','completed','abandoned') OR score_i IS NULL OR (p_state->>'hole')::integer NOT BETWEEN 1 AND holes_i\n  OR jsonb_typeof(p_state->'results') IS DISTINCT FROM 'array' OR jsonb_typeof(p_state->'decks') IS DISTINCT FROM 'array'\n  OR jsonb_array_length(p_state->'decks')<>holes_i THEN RAISE EXCEPTION 'arcade:invalid_state';END IF;\n IF r.state IS NOT NULL AND r.state->'decks' IS DISTINCT FROM p_state->'decks' THEN RAISE EXCEPTION 'arcade:immutable_decks';END IF;\n old_results:=coalesce(r.state->'results','[]');\n FOR result_i IN SELECT value FROM jsonb_array_elements(p_state->'results') LOOP\n  count_i:=count_i+1;\n  IF (result_i->>'hole')::integer IS DISTINCT FROM count_i OR (result_i->>'score')::bigint IS DISTINCT FROM private.golf_score(result_i->'cards')\n   OR (count_i<=jsonb_array_length(old_results) AND result_i IS DISTINCT FROM old_results->(count_i-1)) THEN RAISE EXCEPTION 'arcade:invalid_result';END IF;\n  sum_i:=sum_i+(result_i->>'score')::bigint;\n  IF (result_i->>'total')::bigint IS DISTINCT FROM sum_i THEN RAISE EXCEPTION 'arcade:invalid_result';END IF;\n END LOOP;\n IF score_i<>sum_i OR count_i<jsonb_array_length(old_results) OR count_i>holes_i OR (status_i='completed' AND (count_i<>holes_i OR (p_state->>'hole')::integer<>holes_i)) OR (status_i='active' AND count_i>=holes_i) THEN RAISE EXCEPTION 'arcade:invalid_completion';END IF;\n UPDATE private.arcade_runs SET state=p_state,status=status_i,score=score_i,revision=revision+1,due_at=CASE WHEN status_i='active' THEN (p_state->>'deadline')::bigint END,\n  updated_at=clock_timestamp(),ended_at=CASE WHEN status_i<>'active' THEN clock_timestamp() END WHERE id=r.id RETURNING * INTO r;\n IF p_request IS NOT NULL THEN INSERT INTO private.arcade_command_receipts VALUES(r.user_id,p_request,r.id,p_fingerprint,r.revision);END IF;\n IF status_i='completed' THEN\n  SELECT min(score) INTO prior FROM private.arcade_results WHERE user_id=r.user_id AND game=r.game AND final_state#>>'{config,id}'=r.config->>'id' AND final_state#>>'{config,boardId}'=r.config->>'boardId';\n  INSERT INTO private.arcade_results(run_id,user_id,game,ruleset,score,revision,completed_at,final_state,record) VALUES(r.id,r.user_id,r.game,r.ruleset,r.score,r.revision,r.ended_at,p_state,\n   jsonb_build_object('priorBest',prior,'kind',CASE WHEN prior IS NULL THEN 'first' WHEN r.score<prior THEN 'broken' WHEN r.score=prior THEN 'matched' ELSE 'higher' END));\n END IF;\n UPDATE public.arcade_revisions SET revision=r.revision WHERE run_id=r.id;\n RETURN jsonb_build_object('outcome','committed','record',to_jsonb(r)||jsonb_build_object('server_at',at_ms));\nEND $function$\n"
+    },
+    {
+      "name": "arcade_mega_start(uuid,uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.arcade_mega_start(p_actor uuid, p_request uuid, p_course text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE r private.arcade_runs;c private.arcade_mega_configs;receipt private.arcade_command_receipts;fingerprint text:='mega:start:'||p_course;\nBEGIN\n IF NOT private.arcade_allowed(p_actor) THEN RAISE EXCEPTION 'arcade:forbidden' USING ERRCODE='42501';END IF;\n IF p_request IS NULL OR p_course IS NULL THEN RAISE EXCEPTION 'arcade:invalid_request';END IF;\n PERFORM pg_advisory_xact_lock(hashtextextended(p_actor::text||'mega-card-golf',0));\n SELECT * INTO receipt FROM private.arcade_command_receipts WHERE user_id=p_actor AND request_id=p_request;\n IF FOUND THEN\n  IF receipt.fingerprint IS DISTINCT FROM fingerprint THEN RAISE EXCEPTION 'arcade:request_conflict';END IF;\n  SELECT * INTO STRICT r FROM private.arcade_runs WHERE id=receipt.run_id;\n ELSE\n  SELECT * INTO r FROM private.arcade_runs WHERE user_id=p_actor AND game='mega-card-golf' AND status='active';\n  IF FOUND THEN\n   IF r.config->>'id' IS DISTINCT FROM p_course THEN RAISE EXCEPTION 'arcade:other_course_active';END IF;\n  ELSE\n   IF NOT EXISTS(SELECT 1 FROM private.arcade_rulesets WHERE id='mega-card-golf/1' AND enabled) THEN RAISE EXCEPTION 'arcade:unavailable';END IF;\n   IF EXISTS(SELECT 1 FROM public.system_settings WHERE key='maintenance_mode' AND value->>'enabled'='true') AND NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=p_actor AND is_superuser) THEN RAISE EXCEPTION 'arcade:maintenance';END IF;\n   IF NOT EXISTS(SELECT 1 FROM private.arcade_recovery_state WHERE singleton AND failure IS NULL AND last_completed_at>clock_timestamp()-interval '30 seconds') THEN RAISE EXCEPTION 'arcade:recovery_unavailable';END IF;\n   PERFORM 1 FROM private.arcade_mega_courses WHERE id=p_course FOR SHARE;\n   SELECT cfg.* INTO c FROM private.arcade_mega_configs cfg JOIN private.arcade_mega_courses p ON p.config_id=cfg.id WHERE p.id=p_course;\n   IF NOT FOUND OR c.settings->>'enabled'<>'true' THEN RAISE EXCEPTION 'arcade:unavailable';END IF;\n   INSERT INTO private.arcade_runs(user_id,game,ruleset,config,due_at) VALUES(p_actor,'mega-card-golf','mega-card-golf/1',private.mega_config(c),floor(extract(epoch FROM clock_timestamp())*1000)) RETURNING * INTO r;\n   INSERT INTO public.arcade_revisions VALUES(r.id,p_actor,0);\n  END IF;\n  INSERT INTO private.arcade_command_receipts VALUES(p_actor,p_request,r.id,fingerprint,r.revision);\n END IF;\n RETURN to_jsonb(r)||jsonb_build_object('server_at',floor(extract(epoch FROM clock_timestamp())*1000));\nEND $function$\n"
+    }
+  ]
+}

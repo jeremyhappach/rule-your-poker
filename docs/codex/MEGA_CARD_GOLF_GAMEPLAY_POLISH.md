@@ -1,3 +1,41 @@
+# Mega Card Golf /2 release package — 2026-10-23
+
+Approved reviewed candidate: f50bf3754c55b9983c706833cacea9f9ea56172d.
+The release adds only disabled /2 registration, version-aware start/catalog selection,
+a separate activation migration, and qualification evidence. The compatible recovery
+bundle is built from the reviewed service/engine; all other game code is identical
+to the installed worker. Existing /1 runs and receipts retain /1. New starts prefer
+enabled /2. Course configurations, board IDs, historical scores, scoring formulas,
+timers, access policy and multiplayer/financial state are unchanged. No timer bonus
+or leaderboard reset is included. Existing boards retain /1 history alongside new
+/2 results, as authorized by the preservation requirement.
+
+Release source checkpoint tag: mega-card-golf-polish-v2-20261023.
+Normal release checks PASS: application TypeScript, 2,848 source tests, 241 harness
+tests and production Vite build. Existing Browserslist/chunk-size warnings remain.
+
+Local release proof: `dev/mega-card-golf/polish/release-proof.mjs`. It uses
+127.0.0.1:55439 and a unique disposable database, validates disabled fallback,
+active/late /1 receipts, paired /1 opening, actual /2 start/sequential opening,
+shared worker initialization and zero-client completion, replay/continuation,
+immutable history and full rollback. The separate sequential-opening proof passes
+real two-connection competing-choice and duplicate-request races.
+
+Hosted registration migration 20261023204725 (local source
+20261023204524_mega_card_golf_sequential_opening.sql) applied successfully; installed-contract rollback
+proof passed start, legacy replay, version/owner guards, canonical completion,
+duplicate completion, continuation, service-only grants and historical preservation.
+Recovery worker v14 is ACTIVE; downloaded source matches the qualified bundle.
+Its existing verify_jwt=false and token/claim authentication are preserved.
+Bundle SHA256: c4ecb696545f85fcbca64d0e99ce4ec7c3c66f856bc670182b735fcaa468f76b.
+Before publication, /2 remains disabled. Activation occurs only after the matching
+site deployment and persisted release signal are verified. Production smoke remains
+pending Jeremy; this document is qualification evidence, not smoke acceptance.
+
+Security advisor baseline includes an existing unrelated RLS-disabled finding on
+public.gameplay_transfer_pending_changes. This release does not touch that table,
+policies or grants. Remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0007_policy_exists_rls_disabled
+
 # Mega Card Golf gameplay polish — local review checkpoint
 
 ## Local follow-up — card geometry, sequential opening and automatic stock (October 23)
