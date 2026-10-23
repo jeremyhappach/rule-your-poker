@@ -1,3 +1,14 @@
+# 2026-10-22 — Mega Card Golf local-only contract
+
+Owner-approved separate Arcade identity uses `mega-card-golf/1`, one engine for
+three course configurations, and canonical Golf scoring only. Owner selected
+completion of the final draw before scoring and a five-minute per-hole failsafe.
+Course history is retained or explicitly archived, never automatically reset;
+active runs retain their admitted config and board. Sunny Meadows was revised
+without altering Coastal/Canyon art. Production architecture remains proposed
+pending hosted proofs, final multiplayer Golf stability and separate approval.
+See [local implementation and boundaries](MEGA_CARD_GOLF_LOCAL.md).
+
 # 2026-10-22 — Golf /2 stock threshold; local candidate, publication held
 
 Owner replaces the no-reveal turn limit for future Golf matches with an exact

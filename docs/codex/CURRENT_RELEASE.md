@@ -1,3 +1,13 @@
+# Mega Card Golf — October 22 — isolated local prototype, publication prohibited
+
+Approved local research/prototype lives on `codex/mega-card-golf-v1`, based on
+`df48d4b73892e6965aafadb9768011af0e1906a3`. One Arcade-only engine, three courses,
+course Defaults/archive preview and original art are implemented locally. Owner
+selected final-draw completion and a five-minute per-hole failsafe. Production
+storage/authentication/catalog integration remains unimplemented and gated on
+final multiplayer Golf stability and separate approval. No push or production
+change occurred. See [scope, contracts and evidence](MEGA_CARD_GOLF_LOCAL.md).
+
 # Golf rules/display follow-up — October 22 — publication approved
 
 Owner approved the six smoke observations and clarified that a threshold draw

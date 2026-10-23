@@ -1,8 +1,7 @@
 import {golfCard,type GolfSnapshot} from '@/lib/golf/model';
+import {golfPublicValue} from '@/lib/golf/scoring';
+export {golfPublicValue,golfVisibleSubtotal} from '@/lib/golf/scoring';
 export const signedGolf=(n:number)=>n>=0?'+'+n:String(n);
-export function golfPublicValue(card:number){const rank=card%13;return rank===1?-2:rank===12?0:rank>=10?10:rank+1;}
-/** Public subtotal only: a hidden partner never cancels an exposed card. */
-export function golfVisibleSubtotal(cards:(number|null)[]){let total=0;for(let i=0;i<3;i++){const a=cards[i],b=cards[i+3];if(a!==null&&b!==null&&a%13===b%13)continue;if(a!==null)total+=golfPublicValue(a);if(b!==null)total+=golfPublicValue(b);}return total;}
 export interface GolfScoreBeat {playerId:string;indices:number[];scored:number[];hidden:number[];text:string;subtotal:number;duration:number;kind:'intro'|'reveal'|'card'|'total'|'exit'}
 export function golfScoreBeats(v:GolfSnapshot):GolfScoreBeat[]{
  if(!['hole_complete','complete'].includes(v.phase)||!v.holes.some(h=>h.roundId===v.scope)||v.players.some(p=>v.tableaus[p.id].cards.some(c=>c===null)))return [];
