@@ -1240,3 +1240,10 @@ Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
 shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
 controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
 preflight tests: `dev/battle31/hosted-qualification.test.mjs`.
+
+Mega Card Golf local navigation polish: `CourseSelection.tsx` owns selectable
+course tiles and exact-board all-time record reads; `CourseClubhouse.tsx` owns
+the intermediary artwork/start screen; `MegaLeaderboard.tsx` owns period reads.
+All live under `src/components/megaCardGolf/`. Existing GameLobby Defaults and
+MegaDefaultsConnected retain settings authorization/save ownership. Local fixture
+previews live in `dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_POLISH.md`.

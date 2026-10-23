@@ -11,3 +11,45 @@
 @keyframes mega-deal{from{opacity:0;transform:translateY(-10%) rotate(-3deg)}to{opacity:1;transform:none}}@keyframes mega-flip{from{opacity:.2;transform:scaleX(.7)}to{opacity:1;transform:scaleX(1)}}
 @media(prefers-reduced-motion:reduce){.mega-app *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .mega-tableau .mega-card[aria-pressed=true]{outline:4px solid #ffdc78;outline-offset:2px;transform:translateY(-3%)}
+/* Course selection fits the canonical fixed app container; artwork remains unchanged. */
+.mega-app[data-screen=courses],.mega-app[data-screen=board]{display:flex;flex-direction:column;overflow:hidden;container:mega-app/size}
+.mega-app[data-screen=courses]>.mega-topbar,.mega-app[data-screen=board]>.mega-topbar{flex:none;gap:.5rem;padding:.6rem clamp(.75rem,3cqw,2rem)}
+.mega-topbar nav button{min-height:44px}
+.mega-app[data-screen=courses] .mega-brand{font-size:clamp(1rem,3.8cqw,1.45rem)}
+.mega-app[data-screen=courses] .mega-topbar nav button{font-size:.8rem;padding:.6rem}
+.mega-selection{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;gap:clamp(.5rem,1.5cqh,1rem);padding:clamp(.5rem,1.5cqh,1rem) clamp(.75rem,3cqw,2rem) clamp(.75rem,2cqh,1.5rem);margin:0 auto}
+.mega-selection h1{flex:none;font:600 clamp(1.5rem,4cqh,2.5rem)/1.1 Georgia,serif;letter-spacing:-.035em}
+.mega-selection .mega-course-grid{flex:1;min-height:0;grid-template-columns:1fr;grid-template-rows:repeat(3,minmax(0,1fr));gap:clamp(.5rem,1.4cqh,1rem)}
+.mega-course-tile{--course:#205843;position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:stretch;min-width:0;min-height:0;border-radius:.9rem;overflow:hidden;text-align:left;color:#fff;padding:clamp(.65rem,1.7cqh,1.3rem);box-shadow:0 3px 10px #173d3222;background-repeat:no-repeat}
+.mega-course-tile::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#082c23c9,transparent 65%,#082c23e6)}
+.mega-course-tile:hover{box-shadow:0 0 0 3px #d9a937}
+.mega-course-tile.theme-1,.mega-clubhouse.theme-1{--course:#1c6478}.mega-course-tile.theme-2,.mega-clubhouse.theme-2{--course:#9b482d}
+.mega-tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.mega-tile-top>strong{font:600 clamp(1.2rem,3.2cqh,2rem)/1.1 Georgia,serif;text-shadow:0 2px 4px #0008;overflow-wrap:anywhere}
+.mega-difficulty{display:inline-block;flex:none;font:700 .75rem/1.2 system-ui;background:#fff8e6;color:var(--course,#205843);border-radius:2rem;padding:.35rem .7rem;white-space:nowrap}
+.mega-record{align-self:flex-start;background:#0b2f27d9;padding:.3rem .6rem;border:1px solid #ffffff45;border-radius:2rem;margin-top:.5rem;font-size:.8rem;line-height:1.2}
+.mega-tile-limits{display:flex;justify-content:space-between;gap:.4rem;margin-top:auto;padding-top:.5rem;font-size:clamp(.7rem,2cqw,.85rem);line-height:1.2;text-shadow:0 1px 3px #000}
+.mega-tile-limits b{font-size:1.1em}
+.mega-clubhouse{--course:#205843;position:relative;isolation:isolate;flex:1;min-height:0;overflow:auto;color:#fff;background-repeat:no-repeat;container:mega-course/size}
+.mega-clubhouse::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#071e18b0,#071e1840)}
+.mega-clubhouse-content{position:relative;display:grid;grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr);gap:.7rem;height:100%;max-width:1100px;margin:auto;padding:clamp(.75rem,2cqh,1.5rem) clamp(.75rem,3cqw,2rem)}
+.mega-course-heading{min-width:0;text-shadow:0 2px 5px #0009}.mega-course-heading h1{font:600 clamp(1.65rem,5cqh,3rem)/1.1 Georgia,serif;margin:.3rem 0}.mega-course-heading p{font-size:.78rem;line-height:1.5}
+.mega-course-actions{display:flex;gap:.6rem;align-items:stretch}.mega-course-actions>button{flex:1;min-width:0;min-height:44px;font-size:.85rem!important;padding:.6rem}
+.mega-course-board{min-height:0;overflow:auto;border:1px solid #fff8;border-radius:.9rem;background:#fffcf1f2;color:#153a32;padding:.75rem 1rem;box-shadow:0 8px 30px #0002}
+.mega-leaderboard-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}.mega-leaderboard-heading h2{font:600 1.35rem Georgia,serif}.mega-leaderboard-heading>span{font-size:.7rem}
+.mega-periods{display:flex;gap:.4rem;margin:.5rem 0}.mega-periods button{flex:1;min-height:44px;padding:.5rem;border-radius:.5rem;background:#e5e8dc;color:#153a32;font-size:.8rem;font-weight:650}.mega-periods [aria-pressed=true]{background:var(--course);color:white}
+.mega-course-board table{width:100%;border-collapse:collapse;text-align:left;table-layout:fixed;font-size:.8rem}.mega-course-board th,.mega-course-board td{padding:.28rem .2rem;border-bottom:1px solid #173d321a;overflow-wrap:anywhere;line-height:1.2}.mega-course-board th:first-child{width:15%}.mega-course-board th:last-child{width:20%}.mega-course-board td:last-child,.mega-course-board th:last-child{text-align:right;font-variant-numeric:tabular-nums}.mega-course-board tbody tr:first-child{font-weight:750;color:var(--course)}
+.mega-personal,.mega-completed{font-size:.75rem;padding:.6rem 0;line-height:1.4}.mega-empty{padding:1.5rem 0}.mega-archive{font-size:.75rem;border-top:1px solid #173d3222}.mega-archive summary{min-height:44px;padding:.7rem 0;cursor:pointer}.mega-archive p{padding:.5rem 0}
+.mega-defaults-embedded{container:mega-defaults/inline-size;color:inherit}.mega-defaults-embedded .mega-defaults{padding:.5rem 0;max-width:none}.mega-defaults-embedded .mega-defaults h1{font-size:1.5rem}.mega-defaults-embedded .mega-defaults-layout{grid-template-columns:1fr;gap:1rem;margin-top:1rem}.mega-defaults-embedded .mega-defaults nav{flex-direction:row;overflow:auto}.mega-defaults-embedded .mega-defaults nav button{flex:1;min-width:7rem;min-height:44px;padding:.65rem;font-size:.8rem}.mega-defaults-embedded .mega-fields{grid-template-columns:1fr}.mega-defaults-embedded .mega-defaults fieldset{min-width:0}.mega-defaults-embedded .mega-defaults input,.mega-defaults-embedded .mega-defaults select{min-height:44px}
+@container mega-app (min-aspect-ratio: 6/5){
+ .mega-selection .mega-course-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(0,1fr)}
+ .mega-tile-top{flex-wrap:nowrap}.mega-tile-top>strong{font-size:clamp(1.2rem,2.8cqw,2rem)}
+ .mega-tile-limits{flex-wrap:wrap;font-size:.75rem}.mega-tile-limits span{white-space:nowrap}
+ .mega-clubhouse-content{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-rows:1fr auto;gap:1rem}
+ .mega-course-heading{align-self:center}.mega-course-actions{grid-column:1;grid-row:2;flex-direction:column}
+ .mega-course-board{grid-column:2;grid-row:1/3}
+}
+/* Let the existing admin dialog scroll as one surface for Mega's longer form. */
+.catalog-dialog:has(.mega-defaults-embedded){display:block;overflow-y:auto}
+.catalog-dialog:has(.mega-defaults-embedded)>.flex{margin-top:.75rem}
+.catalog-dialog:has(.mega-defaults-embedded) .catalog-scroll{overflow:visible}

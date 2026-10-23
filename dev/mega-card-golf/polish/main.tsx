@@ -1,0 +1,13 @@
+import {createRoot} from 'react-dom/client';
+import {BrowserRouter} from 'react-router-dom';
+import {MegaArcade} from '@/components/megaCardGolf/MegaArcade';
+import {GameLobby} from '@/components/GameLobby';
+import {TooltipProvider} from '@/components/ui/tooltip';
+import {AudioManager} from '@/lib/audio/audioManager';
+import {arcadeRequest} from './request';
+import '@/index.css';
+import '../preview.css';
+import './preview.css';
+const audio=new AudioManager({createContext:()=>new AudioContext(),loadPreference:async()=>false,now:()=>performance.now(),storage:()=>sessionStorage,document:()=>document});
+const lobby=new URLSearchParams(location.search).get('surface')==='lobby';
+createRoot(document.getElementById('root')!).render(<TooltipProvider><BrowserRouter><div className="polish-fixture-label">LOCAL FIXTURE · Sample scores / admin · No production connection</div>{lobby?<GameLobby userId="local-fixture" isMaintenanceMode={false}/>:<MegaArcade request={arcadeRequest} audio={audio} userId="local-fixture" preview onBack={()=>{location.href='?surface=lobby';}}/>}</BrowserRouter></TooltipProvider>);

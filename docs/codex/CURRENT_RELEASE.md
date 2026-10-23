@@ -1,3 +1,10 @@
+# Mega Card Golf course navigation — 2026-10-23 — local review only
+
+Approved selection/intermediary/Defaults navigation polish is isolated on
+`codex/mega-card-golf-polish`, based on verified live `adc76249827204d15242f066be2c9c3e7dc726af`.
+No publication, main integration, hosted writes or admission changes are authorized.
+See [local implementation, validation and fixture previews](MEGA_CARD_GOLF_POLISH.md).
+
 # Mega Card Golf — production enabled; owner smoke pending
 
 All three Arcade courses were enabled after installed authority, authenticated
