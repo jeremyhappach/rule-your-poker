@@ -1,0 +1,12 @@
+{
+  "run": "1fc8557c-1f9f-4b15-a494-123ceac1b19d",
+  "account": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+  "passed": [
+    "real Supabase authentication, closed admission, other-owner refusal and direct RPC denial",
+    "second browser tab receives the opening through hosted Realtime",
+    "authenticated reload restores private projection and progress",
+    "nine-hole production API/browser completion and authoritative per-course result",
+    "no browser runtime errors"
+  ],
+  "errors": []
+}

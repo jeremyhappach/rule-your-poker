@@ -1,3 +1,13 @@
+# 2026-10-23 — Mega Card Golf production authority and low-score facts
+
+Production qualification and activation are complete; owner smoke remains pending.
+Mega reuses Arcade authority/recovery while its immutable record facts are scoped
+to course and frozen board identity, with lower scores winning. The generic
+high-score insert trigger now excludes only Mega; installed rollback proof preserves
+the trigger output for all seven existing Arcade games. See
+[release evidence](MEGA_CARD_GOLF_RELEASE.md). Course defaults remain nine holes,
+player-selected opening cards, final-draw resolution and five-minute hole recovery.
+
 # 2026-10-22 — Mega Card Golf local-only contract
 
 Owner-approved separate Arcade identity uses `mega-card-golf/1`, one engine for

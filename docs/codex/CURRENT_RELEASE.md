@@ -1,12 +1,16 @@
-# Mega Card Golf — approved release, hosted rollback qualified, admission closed
+# Mega Card Golf — production enabled; owner smoke pending
 
-Owner authorized the bounded production release in this same worktree. Current
-remote main and Vercel production remain `df48d4b73892e6965aafadb9768011af0e1906a3`;
-no competing deployment was found. Registered migration
-`20261023135206_mega_card_golf_v1.sql` has passed its hosted rollback proof.
-Terminal/recovery and admin/admission independent-connection races pass locally.
-The matching API/client/recovery worker still require installed qualification and
-publication verification before activation. See `MEGA_CARD_GOLF_RELEASE.md`.
+All three Arcade courses were enabled after installed authority, authenticated
+browser/Realtime/reconnect, nine-hole completion and actual worker-restart recovery
+passed. Activation used verified production `77ae80ad46793e7d80ae6eb89df6c776af85cf1c`;
+the final release checkpoint is tag `mega-card-golf-v1-live-20261023`.
+Hosted migrations are `20261023141036` (base), `20261023150632` (low-score facts),
+and `20261023151456` (three-fixture cleanup). Recovery worker v13 is healthy.
+The score-facts correction preserves all seven prior Arcade games; qualification
+rows were removed atomically with unrelated rows/configuration preserved.
+The live authenticated catalog exposes all three Start course buttons.
+See `MEGA_CARD_GOLF_RELEASE.md` for exact evidence. Jeremy's production smoke
+remains the acceptance gate; automated qualification does not claim that smoke.
 
 ## Prior local checkpoint
 

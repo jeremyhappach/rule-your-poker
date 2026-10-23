@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "level": "INFO",
+      "name": "rls_enabled_no_policy",
+      "metadata": {
+        "name": "arcade_mega_configs",
+        "type": "table",
+        "schema": "private"
+      }
+    },
+    {
+      "level": "INFO",
+      "name": "rls_enabled_no_policy",
+      "metadata": {
+        "name": "arcade_mega_courses",
+        "type": "table",
+        "schema": "private"
+      }
+    }
+  ],
+  "disposition": "Private service-owned tables intentionally have no browser policies or grants. INFO findings preserve deny-by-default access; authenticated direct RPC/table denials are proved. No Mega warning/error finding."
+}

@@ -9,7 +9,9 @@ canonical-fullscreen presentation. The existing catalog/Arcade entry and Game
 Defaults embed these adapters. Loopback runners and evidence live in
 `dev/mega-card-golf/`; art in `public/mega-card-golf/`. `src/lib/golf/scoring.ts`
 holds the unchanged public Golf scorer shared with multiplayer presentation.
-No hosted migration or admission occurred. See `MEGA_CARD_GOLF_BACKEND.md`.
+Hosted migrations `20261023141036`, `20261023150632` and `20261023151456` install
+authority, preserve course-scoped low-score facts and clean only qualification
+fixtures. Production admission is enabled; see `MEGA_CARD_GOLF_RELEASE.md`.
 
 Canasta local Beginner/Expert follow-up: `src/lib/canasta/config.ts` owns frozen
 pacing; `guidance.ts` derives UI guidance from shared rules;

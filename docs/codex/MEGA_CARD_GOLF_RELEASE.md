@@ -1,53 +1,84 @@
-# Mega Card Golf V1 approved release
+# Mega Card Golf V1 production release
 
-Jeremy authorized scoped migration, normal branch/main integration and push,
-matching deployment, and activation after required qualification. The dedicated
-worktree and `codex/mega-card-golf-v1` branch are retained. No other workstream is
-included. Existing remote/main and Vercel production SHA are
-`df48d4b73892e6965aafadb9768011af0e1906a3`, with no reconciliation delta.
+Jeremy authorized scoped migration, branch/main integration and push, matching
+deployment, and activation after qualification. All three courses were enabled at
+2026-10-23 15:16:03 UTC. Owner production smoke remains pending.
+The final release tag is `mega-card-golf-v1-live-20261023`.
 
-## Prepared and qualified
+## Publication and installed identities
 
-- CLI-created forward migration:
-  `supabase/migrations/20261023135206_mega_card_golf_v1.sql`.
-  SHA-256 `ca77436a823c245ce9693c5d7ef9cf081cf13a421635bacd45d52d7cbac37807`.
-  Guards installed Arcade/Golf definitions; new admission remains false.
-- `dev/mega-card-golf/evidence/hosted-baseline.json`: actual hosted definitions,
-  exact unfinished/result/receipt indexes and constraints, healthy recovery.
-- `hosted-candidate.json`: actual hosted rollback proof passes negative canonical
-  scores, ownership/admin grants, atomic injected failure, winner/ties,
-  duplicate/replay/late replay, continuation/terminal, immutable config/history and
-  course archival. Full Arcade row hashes agree after rollback. Initial fixture
-  corrections selected a non-admin explicitly and required the admin to have an
-  actual Auth user; no product authorization was weakened.
-- `release-races.json`: independent local PostgreSQL connections prove final action
-  versus recovery, deadline winning over a late action, and both orderings of
-  course edit versus admission with frozen configuration.
-- `worker-preservation.json`: bundling the existing main recovery owner produces
-  exactly hosted worker v10, excluding trailing newline normalization. Only the
-  Mega dispatcher/reducer additions enter the new worker.
-- TypeScript, application build and focused Mega/Arcade/catalog/Golf regressions
-  pass. Original local nine-hole browser, reload, owner refusal and explicit
-  retain/archive proofs remain in `backend-browser.json` and screenshots.
+- Verified client/API SHA at activation:
+  `77ae80ad46793e7d80ae6eb89df6c776af85cf1c`.
+- Vercel READY deployment `dpl_6LE1atBeNL2A7bKAewMHQTriqmxX`,
+  `https://ptown-poker-cdme9axw2-jeremy-8e2b.vercel.app`; public alias
+  `https://holm357.com/arcade/mega-card-golf` had an exact build manifest.
+- GitHub `Publish release signal` passed, run `39970181746`; the persisted
+  `release_publication` setting matched the exact SHA before activation.
+- Recovery worker `arcade-recovery` v13 ACTIVE, existing JWT policy preserved;
+  worker identity `899ae7d5-5e13-4fe7-a146-3a0001b00023`.
+- Hosted base migration `20261023141036` (`mega_card_golf_v1`), from local file
+  `20261023135206_mega_card_golf_v1.sql`, SHA-256
+  `ca77436a823c245ce9693c5d7ef9cf081cf13a421635bacd45d52d7cbac37807`.
+- Hosted score-facts migration `20261023150632`, local file
+  `20261023150143_mega_card_golf_low_score_facts.sql`.
+- Hosted qualification cleanup `20261023151456`, local file
+  `20261023151259_mega_card_golf_qualification_cleanup.sql`.
 
-The client now subscribes to the existing private-by-owner `arcade_revisions`
-transport. Busy requests queue a revision refresh. Recovery suppresses stale
-audio while live transitions retain their cue. Embedded course Defaults imports
-its own scoped styling. No shared shell or multiplayer rule was changed.
+The later source checkpoint records these installed migrations and evidence;
+client/API/worker source is unchanged from the verified 77ae80ad4 deployment.
+Its final exact SHA, deployment and release-signal verification are reported at
+delivery and discoverable through the release tag and public build manifest.
 
-## Publication checkpoints still required
+## Qualification evidence
 
-Apply only this reviewed migration with admission closed; run installed proof.
-Deploy the corresponding client/API and worker; verify the exact public manifest,
-READY deployment, GitHub release signal, fresh authenticated owner/other-owner
-behavior, Realtime/reconnect, zero-client recovery and worker restart. Qualified
-synthetic data must be isolated and cleaned without touching existing boards or
-financial/session records. Activate only `mega-card-golf/1` and the three approved
-courses after these checks pass. Record actual identifiers and evidence here.
+Evidence files below are in `dev/mega-card-golf/evidence/`.
 
-Owner smoke after activation: Arcade → Mega Card Golf; inspect all three course
-landscapes (Sunny revised; Coastal/Canyon unchanged), choose two opening cards,
-draw/replace/discard, reload, finish a course and confirm the course-specific low
-score board. Check the final draw resolves before scoring. A five-minute untouched
-hole reveals and counts its real cards without a penalty. Owner smoke is separate
-from automated qualification and is never performed on Jeremy's behalf.
+- `hosted-baseline.json`, `hosted-candidate.json`, `hosted-installed.json`:
+  actual hosted definitions/indexes and candidate/installed rollback proofs.
+  Canonical negative scores, ties, authentication/grants, atomic injected failure,
+  duplicate/replay/late replay, continuation/terminal, frozen history/configuration
+  and explicit course archival pass. Arcade row hashes match after rollback.
+- `release-races.json`: independent PostgreSQL connections prove final action
+  versus recovery, late-action deadline precedence, and both course-edit/admission
+  orderings. These contention tests ran locally against installed authority.
+- `worker-preservation.json`: original main's bundle matches deployed v10;
+  only the Mega reducer/dispatcher enters the updated worker. Edge deployment uses
+  neutral bundling with external `node:crypto`; no dependencies were installed.
+- `hosted-browser.json`: actual hosted bearer authentication, unauthorized and
+  other-owner denial, direct RPC refusal, second-tab Realtime, authenticated reload,
+  complete nine-hole production play, course board and no browser runtime errors.
+- `low-score-candidate.json`, `low-score-installed.json`: an existing high-score
+  trigger initially overwrote Mega's low-score record metadata. The forward fix
+  excludes only Mega, preserving its authoritative course/board facts. First,
+  matched, higher and broken records pass; all seven other Arcade games retain
+  their exact existing trigger behavior. Every proof fixture rolled back.
+- `worker-restart.json`: a persisted active revision-zero run was held with a
+  future due time, worker v13 was deployed, then only that fixture was released.
+  With zero clients or state API requests, the worker finished all nine untouched
+  holes using actual cards, creating one result at 15:10:55 UTC. The earlier
+  zero-client fixture finished before v12 deployment and is not restart evidence.
+- `fixture-cleanup.json`: exactly three recorded fixture fingerprints were removed
+  in one guarded migration. The result immutability trigger was restored within
+  the same transaction; unrelated Arcade rows, rules, course configs and boards
+  retain matching hashes. No multiplayer or financial table was written.
+- `activation.json`, `activation-browser.json`, `production-courses.png`: only
+  `mega-card-golf/1` admission changed. Three approved courses and their original
+  board IDs remain intact; authenticated API and three enabled Start buttons pass.
+- `security-review.json`: two INFO-only private RLS/no-policy findings are intended
+  deny-by-default behavior, supported by direct-grant denial proofs.
+
+135 focused Mega/Arcade/catalog/Golf checks, TypeScript and application build pass.
+Local proof additionally guarded 143 non-Arcade tables, including financial and
+multiplayer state. Local browser evidence retains full-course, Defaults/archive
+and mobile/landscape coverage. Shared shell, multiplayer rules and other games'
+admission flags are unchanged. The unrelated Cribbage snapshot edit on main is
+preserved and excluded from this release.
+
+## Owner smoke
+
+Open Arcade → Mega Card Golf. Inspect the three course landscapes, choose two
+opening cards, draw/replace/discard, reload and complete a course. Confirm the
+course-specific low-score board. Check that the final stock draw finishes before
+scoring. A five-minute untouched hole reveals and scores its actual cards without
+a penalty. Sunny uses the revised landscape; Coastal/Canyon art is unchanged.
+Jeremy's production smoke is separate from automated qualification.

@@ -1,0 +1,311 @@
+{
+  "passed": true,
+  "before": {
+    "runs": [
+      {
+        "id": "1fc8557c-1f9f-4b15-a494-123ceac1b19d",
+        "owner": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "due_at": null,
+        "status": "completed",
+        "no_state": false,
+        "revision": 90,
+        "created_at": "2026-10-23T14:34:25.947165+00:00"
+      },
+      {
+        "id": "bc89bba3-1b35-470a-8ae1-cdbb3c64f887",
+        "owner": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+        "due_at": null,
+        "status": "completed",
+        "no_state": false,
+        "revision": 1,
+        "created_at": "2026-10-23T13:49:33.18672+00:00"
+      },
+      {
+        "id": "bf4f0505-33aa-450f-8e3f-4eb1971e80f1",
+        "owner": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+        "due_at": 1792854587794,
+        "status": "active",
+        "no_state": true,
+        "revision": 0,
+        "created_at": "2026-10-23T14:19:47.794898+00:00"
+      }
+    ],
+    "trigger": "CREATE TRIGGER arcade_score_facts BEFORE INSERT ON private.arcade_results FOR EACH ROW WHEN ((new.game <> 'mega-card-golf'::text)) EXECUTE FUNCTION private.arcade_score_facts()",
+    "migrations": [
+      {
+        "name": "mega_card_golf_v1",
+        "version": "20261023141036"
+      },
+      {
+        "name": "mega_card_golf_low_score_facts",
+        "version": "20261023150632"
+      }
+    ]
+  },
+  "worker": {
+    "id": "899ae7d5-5e13-4fe7-a146-3a0001b00023",
+    "slug": "arcade-recovery",
+    "name": "arcade-recovery",
+    "status": "ACTIVE",
+    "version": 13,
+    "created_at": 1792182273687,
+    "updated_at": 1792768244456,
+    "verify_jwt": false,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_xvhmbuppghwmwpwrkzao_899ae7d5-5e13-4fe7-a146-3a0001b00023_13/source/index.ts",
+    "ezbr_sha256": "d00e68c8df07f4595e9b7b85fb2ad787a48518ffb2b01c47ba3dd59bc68aad7c"
+  },
+  "release": {
+    "id": "bf4f0505-33aa-450f-8e3f-4eb1971e80f1",
+    "status": "active",
+    "revision": 0,
+    "created_at": "2026-10-23 14:19:47.794898+00",
+    "due_at": 1792768253222,
+    "released_at": "2026-10-23 15:10:53.226468+00"
+  },
+  "after": {
+    "run": {
+      "id": "bf4f0505-33aa-450f-8e3f-4eb1971e80f1",
+      "owner": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "score": 279,
+      "status": "completed",
+      "results": [
+        {
+          "hole": 1,
+          "cards": [
+            51,
+            47,
+            6,
+            19,
+            4,
+            46
+          ],
+          "score": 36,
+          "total": 36,
+          "endsAt": 1792765495994,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792765487794
+        },
+        {
+          "hole": 2,
+          "cards": [
+            48,
+            46,
+            45,
+            43,
+            25,
+            33
+          ],
+          "score": 38,
+          "total": 74,
+          "endsAt": 1792765804194,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792765795994
+        },
+        {
+          "hole": 3,
+          "cards": [
+            8,
+            40,
+            46,
+            5,
+            34,
+            20
+          ],
+          "score": 22,
+          "total": 96,
+          "endsAt": 1792766112394,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792766104194
+        },
+        {
+          "hole": 4,
+          "cards": [
+            34,
+            48,
+            3,
+            24,
+            36,
+            44
+          ],
+          "score": 49,
+          "total": 145,
+          "endsAt": 1792766420594,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792766412394
+        },
+        {
+          "hole": 5,
+          "cards": [
+            22,
+            1,
+            28,
+            6,
+            41,
+            9
+          ],
+          "score": 31,
+          "total": 176,
+          "endsAt": 1792766728794,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792766720594
+        },
+        {
+          "hole": 6,
+          "cards": [
+            15,
+            3,
+            30,
+            17,
+            31,
+            26
+          ],
+          "score": 24,
+          "total": 200,
+          "endsAt": 1792767036994,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792767028794
+        },
+        {
+          "hole": 7,
+          "cards": [
+            15,
+            16,
+            14,
+            4,
+            24,
+            45
+          ],
+          "score": 27,
+          "total": 227,
+          "endsAt": 1792767345194,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792767336994
+        },
+        {
+          "hole": 8,
+          "cards": [
+            10,
+            32,
+            43,
+            49,
+            2,
+            48
+          ],
+          "score": 25,
+          "total": 252,
+          "endsAt": 1792767653394,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792767645194
+        },
+        {
+          "hole": 9,
+          "cards": [
+            30,
+            36,
+            10,
+            15,
+            49,
+            34
+          ],
+          "score": 27,
+          "total": 279,
+          "endsAt": 1792767961594,
+          "hidden": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "reason": "timeout",
+          "startedAt": 1792767953394
+        }
+      ],
+      "ended_at": "2026-10-23T15:10:55.50194+00:00",
+      "revision": 1,
+      "created_at": "2026-10-23T14:19:47.794898+00:00",
+      "hole_count": 9
+    },
+    "health": {
+      "claimed": false,
+      "failure": null,
+      "singleton": true,
+      "expires_at": "2026-10-23T15:11:29.80533+00:00",
+      "last_completed_at": "2026-10-23T15:11:05.460293+00:00"
+    },
+    "record": {
+      "kind": "higher",
+      "priorBest": 264
+    },
+    "checked_at": "2026-10-23T15:11:06.756936+00:00",
+    "immutable_result_count": 1
+  },
+  "clients": 0,
+  "notes": "Persisted active revision-zero fixture held for 24 hours, worker redeployed, then fixture due time released. No browser/API state request ran. The earlier fixture completed before v12 and is not restart evidence."
+}
