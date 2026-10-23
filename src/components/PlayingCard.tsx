@@ -7,6 +7,7 @@ import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPrefere
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
 import { CartoonCardFace } from './CartoonCardFace';
+import { MegatouchCardFace } from './canonicalShell/MegatouchCardFace';
 import {
   useCardFrontDesign,
   resolveCardFrontStyle,
@@ -28,7 +29,7 @@ const TEAM_LOGOS: Record<string, string> = {
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
-  frontStyle?: 'canonical' | 'cartoon';
+  frontStyle?: 'canonical' | 'cartoon' | 'megatouch';
   cartoonLayout?: 'standard' | 'tableau' | 'royal';
   card?: CardType;
   jokerFace?: JokerFace;
@@ -324,7 +325,7 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+          {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
             className={isFourColor ? cardFaceStyle.textColor : ''}
             style={face.rankStyle}
           >
@@ -373,7 +374,7 @@ export const PlayingCard = ({
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
-      {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+      {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
       >

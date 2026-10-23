@@ -1,3 +1,18 @@
+# Mega Card Golf gameplay polish — 2026-10-23 — local review only
+
+Jeremy approved the collected 15-item gameplay presentation pass through local
+implementation, tests, commits and actual previews only. The isolated worktree
+starts at published `067b7b9e2985718d5d4ee42186a90fe52f462a22`. The handoff reports
+successful release workflow attempt `40005517109-2` and matching persisted signal
+at `2026-10-23T18:56:44.755Z`; that release is not rerun or redeployed.
+
+This pass adds accepted replacement reveals, Tap In confirmation, counted hole
+presentation, course artwork/backs, canonical opt-in Large MegaTouch faces,
+streamlined controls and signed scores. See
+[`MEGA_CARD_GOLF_GAMEPLAY_POLISH.md`](MEGA_CARD_GOLF_GAMEPLAY_POLISH.md).
+No main integration, push, deployment, migration, admission change, leaderboard
+reset or production write is authorized. Owner local review remains pending.
+
 # Mega Card Golf course navigation — 2026-10-23 — publication approved
 
 Approved selection/intermediary/Defaults navigation polish is isolated on

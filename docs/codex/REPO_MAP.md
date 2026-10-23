@@ -1,5 +1,14 @@
 # Repository map
 
+Mega gameplay presentation: `src/lib/megaCardGolf/presentation.ts` derives queued
+replacement/scoring frames from accepted views and committed hole results.
+`MegaArcade.tsx` retains authority transport/recovery; `MegaCardGolfGame.tsx`
+renders those frames and confirmations. Shared `PlayingCard` opts into
+`canonicalShell/MegatouchCardFace.tsx` with existing Small/Medium/Large tier names.
+`CanonicalCardBack` admits explicit souvenir artwork without changing ordinary
+preference-based callers. Local replay/scrub fixtures and capture tools live in
+`dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_GAMEPLAY_POLISH.md`.
+
 Mega Card Golf: `src/lib/megaCardGolf/` owns the versioned reducer and course config;
 `server/megaCardGolf/service.ts` adapts the existing authenticated Arcade API and
 recovery dispatcher. `supabase/mega-card-golf/candidate.sql` prepares private
