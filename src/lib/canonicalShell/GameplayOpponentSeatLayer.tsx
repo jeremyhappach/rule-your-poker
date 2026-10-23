@@ -95,9 +95,10 @@ export interface CardBacksPresentation {
 export interface GameplayOpponentSeatPresentation {
   /** Reuse canonical inward name/row attachments without moving chip anchors. */
   inwardSeatContent?: boolean;
-  /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
+  /** Opt-in inspection from the seat's public tableau or card-back indicator. */
   onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
   hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
+  /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
   publicTableau?: (p: GameplayOpponentSeatParticipant) => (Card|undefined)[];
   /** A separately persisted local test ledger must not read the session money cursor. */
   isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
@@ -145,9 +146,11 @@ interface ShellOpponentCardBacksProps {
   /** Seat position — stamped as [data-card-anchor="opp-stack-${position}"]
    *  so canonical card transport can terminate exactly on this stack. */
   position: number;
+  onInspect?: () => void;
+  inspectLabel?: string;
 }
 
-function ShellOpponentCardBacks({ count, variant, position, exposed }: ShellOpponentCardBacksProps) {
+function ShellOpponentCardBacks({ count, variant, position, exposed, onInspect, inspectLabel }: ShellOpponentCardBacksProps) {
   // Subscribe to the global Shell / Opponent Card Backs config
   // (Geometry Lab → Seat Cluster → Opponent Card Backs). The authored
   // maxFanSpanPct is the source of truth; runtime pixels are derived
@@ -239,6 +242,7 @@ function ShellOpponentCardBacks({ count, variant, position, exposed }: ShellOppo
       style={{
         width: totalWidth || cardWidth,
         minHeight: cardHeight,
+        position: onInspect ? 'relative' : undefined,
       }}
     >
       {Array.from({ length: count }).map((_, i) => exposed?.[i] ? (
@@ -252,6 +256,16 @@ function ShellOpponentCardBacks({ count, variant, position, exposed }: ShellOppo
           style={{ marginLeft: i === 0 ? 0 : -overlapPx }}
         />
       ))}
+      {/* Extend the touch target upward without changing visible card geometry. */}
+      {onInspect && <button
+        type="button"
+        data-seat-card-inspect=""
+        aria-label={inspectLabel}
+        aria-haspopup="dialog"
+        onClick={onInspect}
+        className="absolute pointer-events-auto cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-400"
+        style={{left:'50%',bottom:0,transform:'translateX(-50%)',width:'max(100%, 44px)',height:'max(100%, 44px)',padding:0,border:0,background:'transparent',touchAction:'manipulation'}}
+      />}
     </div>
   );
 }
@@ -361,6 +375,8 @@ export function GameplayOpponentSeatLayer({
                 variant={cardBacks.variant}
                 exposed={cardBacks.exposed}
                 position={p.position}
+                onInspect={presentation?.onInspectTableau ? () => presentation.onInspectTableau?.(p) : undefined}
+                inspectLabel={'View '+p.name+' tableau'}
               />
             ) : (
               // Anchor-only placeholder so card transport endpoints

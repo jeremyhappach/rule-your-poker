@@ -13,7 +13,7 @@ vi.mock('@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement',()=>({use
 vi.mock('@/lib/canonicalShell/ShellHudGrid',()=>({ShellHudGrid:({pane,identity}:any)=><><div data-hud-row="pane">{pane}</div><div data-hud-row="identity">{identity}</div></>}));
 vi.mock('@/lib/canonicalShell/ShellTimerRail',()=>({useShellTimer:()=>{},ShellTimerRail:()=>null}));
 vi.mock('@/lib/canonicalShell/ShellTabBar',()=>({useShellTabBar:()=>{}}));
-vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer',()=>({GameplayOpponentSeatLayer:()=>null}));
+vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer',()=>({GameplayOpponentSeatLayer:({participants,presentation}:any)=><>{participants.map((p:any)=><button key={p.id} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}/>)}</>}));
 vi.mock('@/lib/canonicalShell/announcements',()=>({useAnnouncements:()=>({emit:state.emit,dismiss:state.dismiss})}));
 vi.mock('@/hooks/GameChatContext',()=>({useGameChatContext:()=>({allMessages:[],sendMessage:()=>{}})}));
 vi.mock('@/components/MobileChatPanel',()=>({MobileChatPanel:()=>null}));
@@ -60,6 +60,20 @@ it('explains paused autoplay and preserves the public-only board',()=>{
 });
 it('clears an unfinished selection at a new authoritative revision',()=>{
  const ui=render(<GolfTable {...props}/>);fireEvent.click(card(0));state.game.snapshot={...state.game.snapshot,revision:2};ui.rerender(<GolfTable {...props}/>);expect(card(0).getAttribute('aria-pressed')).toBe('false');
+});
+
+it('opens the existing redacted tableau from the seat indicator, not the felt cards',()=>{
+ state.game.snapshot.phase='playing';state.game.snapshot.turnIndex=1;state.game.snapshot.canAct=false;
+ state.game.snapshot.tableaus.q={cards:[0,null,12,null,null,null],exposed:[true,false,true,false,false,false]};
+ render(<GolfTable {...props}/>);
+ const felt=state.layer!.querySelector('.golf-public-cards')!;
+ expect(felt.tagName).toBe('DIV');fireEvent.click(felt);
+ expect(screen.queryByRole('dialog')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'View Opponent tableau'}));
+ expect(screen.getByRole('dialog').textContent).toContain('Opponent · public tableau');
+ expect(document.querySelectorAll('.golf-inspect [data-face="back"]')).toHaveLength(4);
+ expect(document.querySelectorAll('.golf-inspect [data-face="public"]')).toHaveLength(2);
+ expect(state.act).not.toHaveBeenCalled();
 });
 it('cold result mount shows authoritative totals without replaying a hand',()=>{
  state.game.snapshot.phase='hole_complete';state.game.snapshot.canAct=false;

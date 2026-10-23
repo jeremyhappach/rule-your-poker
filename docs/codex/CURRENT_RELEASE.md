@@ -1,3 +1,11 @@
+# Six-Card Golf card backs / seat inspection — local review only, 2026-10-23
+
+Isolated candidate adds definite opponent felt card slots and moves public-tableau
+inspection from the felt to the opponent seat indicator. No publication is authorized.
+Portrait/tablet interaction checks pass; short-landscape target obstruction and physical
+iPhone acceptance remain open. See [local checkpoint](SIX_CARD_GOLF_CARDBACK_LOCAL.md).
+The separate Mega release below is unchanged.
+
 # Mega Card Golf /2 release package — 2026-10-23
 
 Approved reviewed candidate: f50bf3754c55b9983c706833cacea9f9ea56172d.

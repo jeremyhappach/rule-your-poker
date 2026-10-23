@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup, render} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, expect, it, vi} from 'vitest';
 const cluster = vi.hoisted(() => vi.fn());
 vi.mock('./CanonicalSeatCluster', () => ({CanonicalSeatCluster: (props: any) => {cluster(props); return props.children??null;}}));
@@ -35,5 +35,24 @@ it('represents Golf exposure without ranks and preserves all backs for existing 
  expect([...document.querySelectorAll('[data-seat-card-exposed]')].every(e=>e.textContent==='')).toBe(true);
  view.rerender(<GameplayOpponentSeatLayer family="cribbage" participants={participants} presentation={{cardBacks:()=>({count:6,visible:true,variant:'cribbage'})}}/>);
  expect(document.querySelectorAll('[data-seat-card-exposed]')).toHaveLength(0);
+ expect(document.querySelectorAll('[data-test-card-back]')).toHaveLength(6);
+});
+
+it('inspects the selected participant even when aliases match and their cards are all exposed',()=>{
+ const onInspectTableau=vi.fn();
+ const players=[...participants,{...participants[0],id:'other-player',position:3}];
+ render(<GameplayOpponentSeatLayer family="six-card-golf" participants={players} presentation={{onInspectTableau,cardBacks:()=>({count:6,visible:true,variant:'cribbage',exposed:Array(6).fill(true)})}}/>);
+ const buttons=screen.getAllByRole('button',{name:'View Player tableau'});
+ expect(buttons).toHaveLength(2);
+ expect(buttons[1].getAttribute('aria-haspopup')).toBe('dialog');
+ expect(buttons[1].closest('[data-card-anchor]')?.getAttribute('data-card-anchor')).toBe('opp-stack-3');
+ fireEvent.click(buttons[1]);
+ expect(onInspectTableau).toHaveBeenCalledExactlyOnceWith(players[1]);
+ expect(document.querySelectorAll('[data-seat-card-exposed]')).toHaveLength(12);
+});
+
+it.each(['gin-rummy','cribbage','yahtzee','run21','farkle'] as const)('does not add an inspection target to %s without opt-in',family=>{
+ render(<GameplayOpponentSeatLayer family={family} participants={participants} presentation={{cardBacks:()=>({count:6,visible:true,variant:'cribbage'})}}/>);
+ expect(screen.queryByRole('button')).toBeNull();
  expect(document.querySelectorAll('[data-test-card-back]')).toHaveLength(6);
 });
