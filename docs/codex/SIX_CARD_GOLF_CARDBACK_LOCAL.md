@@ -72,3 +72,39 @@ availability. Screenshots include portrait/tablet cases and each obstructed targ
 Physical acceptance: verify the original iPhone's mixed exposed/concealed felt hand,
 seat-indicator opening for each participant, unchanged public-view concealment, reconnect,
 rotation and card-replacement animation anchors. Publication remains unapproved.
+
+## Approved medium face tier follow-up — 2026-10-23
+
+Starting from local candidate `754bfd6f26a5d39f0e7c91f5cf15eb0f3abb7235`,
+Jeremy approved only using the viewer's canonical medium face tier for opponent
+tableau fronts and displaced cards. `GolfTable.tsx` now selects `medium` for both
+participants in its existing tableau renderer. Container dimensions, layout,
+themed backs, privacy and the seat-indicator inspection callback are unchanged.
+
+Two-player portrait is the owner's priority. Four-player target polish is deferred;
+the previously recorded short-landscape limitations for 2–4 players remain unqualified.
+No canonical layout redesign is included.
+
+Validation: application TypeScript and 38 focused Golf/seat tests pass, including
+medium-tier displaced cards with both exposed and concealed predecessors. The actual
+390×680 Edge portrait proof passes with no browser errors, external requests or gameplay
+actions. Opponent cards and slots remain exactly 43.0625×60.296875 CSS pixels, equal to
+the prior checkpoint. Both players use the canonical medium rank/suit font-to-width
+ratios (0.56/0.50). Painted-glyph bounds clear card edges, and all 13 rank/four suit ink
+widths fit the unchanged containers. Themed backs, public-only dialog, visible seat-card
+taps, unobstructed portrait touch target, Enter/Space and Escape checks pass.
+
+Run `node dev/six-card-golf/cardback-seat-review.mjs --check --portrait` for this scoped
+proof. Evidence: `evidence-portrait-medium.json`; actual rendered screenshot:
+`Edge-2-390x680-medium.png`, under the same ignored qualification directory above.
+The full matrix remains available without `--portrait` and retains its nonzero exit
+for known short-landscape target failures. Physical iPhone Chrome remains pending;
+no WebKit executable is installed.
+
+Files changed in this follow-up: `src/components/golf/GolfTable.tsx`,
+`src/components/golf/GolfTable.test.tsx`, `dev/six-card-golf/cardback-seat-review.mjs`,
+`docs/codex/CURRENT_RELEASE.md`, and this checkpoint document.
+
+The actual two-player table can also be reviewed in a fixed portrait-sized iframe at
+`http://127.0.0.1:5221/__cardback-portrait`. This sizes only the review frame, not product
+card containers or canonical layout.

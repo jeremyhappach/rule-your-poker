@@ -104,7 +104,7 @@ export function GolfTable(props:Props) {
  const status=!v?'Connecting to table…':v.settled?'Match complete':v.paused?(self&&v.playerControls?.[self.id]?.autoPlay?'Paused · uncheck Auto-play to rejoin, then the host can resume':'Paused · waiting for the host to resume'):!game.connected?'Connecting to live table…':game.pending?'Sending your move…':self&&v.playerControls?.[self.id]?.autoPlay?'Auto-play is on · uncheck to take control':v.phase==='hole_complete'?'Hole '+v.hole+' complete':v.phase==='opening'?(acting?(selected.length?'1 of 2 selected · tap a second card to reveal both':'Tap any two of your cards to reveal them'):actor?.name+' is choosing two cards'):acting?(v.pending?'Replace a card or discard your draw':discard?'Choose a card to replace':'Choose stock or discard'):actor?.name+"'s turn";
  const tableauFace=(player:string,i:number)=>{const m=presentation.move,displaced=m?.actor===player&&m.index===i&&(m.stage==='incoming'||m.stage==='landed'||m.stage==='outgoing'),old=displaced?m.before.tableaus[player].cards[i]:null;
   const card=scoringPresentation.waiting&&v?.presentation?.hidden[player]?.includes(i)?null:presentation.card(player,i);
-  const tier=player===v?.viewerId?'medium':'small';
+  const tier='medium';
   return <>{displaced&&<span data-card-anchor={'tableau-'+player+'-7'} data-golf-displaced={m.stage} className="golf-displaced" style={{opacity:m.stage==='outgoing'?0:1}}><TableauCard tier={tier} card={golfCard(old)} isHidden={old===null} style={{width:'100%',height:'100%'}}/></span>}
    {(!displaced||m.stage!=='incoming')&&<TableauCard tier={tier} card={golfCard(card)} isHidden={card===null} style={{width:'100%',height:'100%'}}/>}</>;
  };

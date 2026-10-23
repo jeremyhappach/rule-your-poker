@@ -2,12 +2,12 @@
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {GolfSnapshot} from '@/lib/golf/model';
-const state=vi.hoisted(()=>({game:{} as any,layer:null as HTMLElement|null,act:vi.fn(),emit:vi.fn(),dismiss:vi.fn()}));
+const state=vi.hoisted(()=>({game:{} as any,move:null as any,layer:null as HTMLElement|null,act:vi.fn(),emit:vi.fn(),dismiss:vi.fn()}));
 vi.mock('@/hooks/useGolf',()=>({useGolf:()=>state.game}));
 vi.mock('@/lib/golf/client',()=>({golfTransport:()=>({}),golfRpc:vi.fn()}));
 vi.mock('./useGolfFinancial',()=>({useGolfFinancial:()=>true}));
-vi.mock('./useGolfCardPresentation',()=>({useGolfCardPresentation:()=>({move:null,busy:false,card:(id:string,i:number)=>state.game.snapshot.tableaus[id].cards[i],pending:state.game.snapshot.pending,pendingBack:false,discard:state.game.snapshot.discardTop})}));
-vi.mock('@/lib/canonicalShell/TableauCard',()=>({TableauCard:({isHidden}:any)=><span data-face={isHidden?'back':'public'}/>}));
+vi.mock('./useGolfCardPresentation',()=>({useGolfCardPresentation:()=>({move:state.move,busy:false,card:(id:string,i:number)=>state.game.snapshot.tableaus[id].cards[i],pending:state.game.snapshot.pending,pendingBack:false,discard:state.game.snapshot.discardTop})}));
+vi.mock('@/lib/canonicalShell/TableauCard',()=>({TableauCard:({isHidden,tier}:any)=><span data-face={isHidden?'back':'public'} data-tier={tier}/>}));
 vi.mock('@/lib/canonicalShell/ShellOwnedFeltHost',()=>({usePublishShellFelt:()=>{}}));
 vi.mock('@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement',()=>({useCanonicalFeltInteractionLayerElement:()=>state.layer}));
 vi.mock('@/lib/canonicalShell/ShellHudGrid',()=>({ShellHudGrid:({pane,identity}:any)=><><div data-hud-row="pane">{pane}</div><div data-hud-row="identity">{identity}</div></>}));
@@ -24,7 +24,7 @@ vi.mock('@/lib/canonicalShell/CanonicalPlayerIdentityRow',()=>({CanonicalPlayerI
 import {GolfTable} from './GolfTable';
 const props={dealerGameId:'d',userId:'u',activeTab:'cards' as const,setActiveTab:vi.fn(),sessionEnded:false,onTerminalActive:vi.fn(),onTerminalComplete:vi.fn()};
 const snapshot=()=>({id:'d',scope:'r',identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},rules:{version:'six-card-golf/1',turnSeconds:30,holes:9},revision:1,viewerId:'p',players:[{id:'p',userId:'u',name:'You',seat:4,isBot:false,chips:0},{id:'q',userId:'v',name:'Opponent',seat:7,isBot:false,chips:0}],tableaus:{p:{cards:Array(6).fill(null),exposed:Array(6).fill(false)},q:{cards:Array(6).fill(null),exposed:Array(6).fill(false)}},scores:{p:0,q:0},holes:[],phase:'opening',hole:1,turnIndex:0,dealerIndex:1,deadline:30000,paused:false,canAct:true,settled:false,pending:null,hasPending:false,consecutiveNoRevealTurns:0,finalQueue:[],finalReason:null,playerControls:{p:{autoPlay:false,intentVersion:0,sitOutNextHand:false}}} as unknown as GolfSnapshot);
-beforeEach(()=>{state.act.mockReset();state.emit.mockReset();state.dismiss.mockReset();state.game={snapshot:snapshot(),connected:true,pending:false,now:1000,epoch:0,act:state.act};state.layer=document.createElement('div');document.body.append(state.layer);});
+beforeEach(()=>{state.move=null;state.act.mockReset();state.emit.mockReset();state.dismiss.mockReset();state.game={snapshot:snapshot(),connected:true,pending:false,now:1000,epoch:0,act:state.act};state.layer=document.createElement('div');document.body.append(state.layer);});
 afterEach(()=>{cleanup();state.layer?.remove();});
 const card=(n:number)=>document.querySelector('[data-golf-position="'+n+'"]') as HTMLButtonElement;
 it('only the separate discard pill rejects a legal pending stock draw',()=>{
@@ -73,6 +73,18 @@ it('opens the existing redacted tableau from the seat indicator, not the felt ca
  expect(screen.getByRole('dialog').textContent).toContain('Opponent · public tableau');
  expect(document.querySelectorAll('.golf-inspect [data-face="back"]')).toHaveLength(4);
  expect(document.querySelectorAll('.golf-inspect [data-face="public"]')).toHaveLength(2);
+ expect(state.act).not.toHaveBeenCalled();
+});
+
+it.each([50,null])('uses the viewer medium face tier for opponent and displaced cards, retaining concealment (%s)',old=>{
+ state.game.snapshot.phase='playing';state.game.snapshot.turnIndex=1;state.game.snapshot.canAct=false;
+ state.game.snapshot.tableaus.q={cards:[50,null,12,null,null,null],exposed:[true,false,true,false,false,false]};
+ state.move={actor:'q',index:0,stage:'landed',before:{tableaus:{q:{cards:[old,null,12,null,null,null]}}}};
+ render(<GolfTable {...props}/>);
+ const faces=document.querySelectorAll('.golf-local [data-tier],.golf-public-grid [data-tier]');
+ expect(faces.length).toBeGreaterThan(12);expect([...faces].every(e=>e.getAttribute('data-tier')==='medium')).toBe(true);
+ expect(document.querySelector('[data-golf-displaced] [data-face]')?.getAttribute('data-face')).toBe(old===null?'back':'public');
+ expect(document.querySelectorAll('.golf-public-grid [data-face="back"]')).toHaveLength(old===null?5:4);
  expect(state.act).not.toHaveBeenCalled();
 });
 it('cold result mount shows authoritative totals without replaying a hand',()=>{

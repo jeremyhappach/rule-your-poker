@@ -2,6 +2,9 @@
 
 Isolated candidate adds definite opponent felt card slots and moves public-tableau
 inspection from the felt to the opponent seat indicator. No publication is authorized.
+The approved local follow-up uses canonical medium face typography for opponent and
+displaced cards, matching the viewer without resizing cards. Two-player portrait
+geometry, glyph clearance, privacy and inspection checks pass.
 Portrait/tablet interaction checks pass; short-landscape target obstruction and physical
 iPhone acceptance remain open. See [local checkpoint](SIX_CARD_GOLF_CARDBACK_LOCAL.md).
 The separate Mega release below is unchanged.

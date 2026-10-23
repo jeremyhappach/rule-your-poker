@@ -3,7 +3,7 @@
 import {createServer} from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import {chromium, webkit} from '@playwright/test';
-import {mkdirSync, writeFileSync, existsSync} from 'node:fs';
+import {mkdirSync, writeFileSync, readFileSync, existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -26,6 +26,9 @@ const server=await createServer({root,configFile:false,cacheDir:out+'/vite-cache
  transform(code,id){if(id.endsWith('/dev/six-card-golf/live.tsx'))return code.replace('<VisualPreferencesProvider>','<VisualPreferencesProvider userId="'+uuid(101)+'">').replace("'P-Town Poker'","'LOCAL REVIEW · static public cards'");},
  configureServer(vite){vite.middlewares.use(async(req,res,next)=>{
   const url=new URL(req.url,'http://127.0.0.1');
+  if(url.pathname==='/__cardback-portrait'){
+   res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Golf portrait review</title><style>body{margin:0;padding:20px;background:#e5e7eb;font:14px system-ui;text-align:center}iframe{display:block;width:390px;height:680px;border:0;margin:16px auto;background:white}</style><strong>Two-player portrait · medium face tier</strong><p>Local static review. Tap the seat card-back indicator to inspect its public tableau.</p><iframe title="Actual Golf table at 390 by 680 pixels" src="/__cardback-review?players=2"></iframe>');return;
+  }
   if(url.pathname==='/__cardback-review'){
    const s=snapshots.find(v=>v.players.length===Number(url.searchParams.get('players')||2))??snapshots[0],f=fixture(s);
    res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><script>sessionStorage.setItem('+JSON.stringify('golf-fixture:'+f.id)+','+JSON.stringify(JSON.stringify(f))+');location.replace('+JSON.stringify('/dev/six-card-golf/live.html?id='+f.id+'&user='+f.user)+');</script>');return;
@@ -47,11 +50,12 @@ const server=await createServer({root,configFile:false,cacheDir:out+'/vite-cache
 await server.listen();
 console.log('Local read-only preview: http://127.0.0.1:5221/__cardback-review?players=2 (also players=3 or 4)');
 if(process.argv.includes('--check')){
+ const portraitOnly=process.argv.includes('--portrait');
  const evidence={cases:[],issues:[],errors:[],externalRequests:[],webkit:{available:existsSync(webkit.executablePath()),path:webkit.executablePath()}};
  const engines=[['Edge',()=>chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'})]];
  if(evidence.webkit.available)engines.push(['WebKit',()=>webkit.launch({headless:true})]);
  try{for(const [engine,launch] of engines){const browser=await launch();try{
-  for(const count of [2,3,4])for(const viewport of [{width:390,height:680},{width:844,height:390},{width:1024,height:768}]){
+  for(const count of portraitOnly?[2]:[2,3,4])for(const viewport of portraitOnly?[{width:390,height:680}]:[{width:390,height:680},{width:844,height:390},{width:1024,height:768}]){
    console.log('Checking '+engine+' '+count+' players '+viewport.width+'x'+viewport.height);
    const p=await browser.newPage({viewport,isMobile:true,hasTouch:true});p.setDefaultTimeout(5000);p.on('pageerror',e=>evidence.errors.push(e.message));
    await p.route('**/*',route=>{if(new URL(route.request().url()).hostname!=='127.0.0.1'){evidence.externalRequests.push(route.request().url());return route.abort();}return route.continue();});
@@ -60,6 +64,25 @@ if(process.argv.includes('--check')){
    await grid.tap();assert.equal(await p.getByRole('dialog').count(),0);
    const sizes=await p.locator('.golf-public-grid .golf-public-cards>span').evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect(),card=e.querySelector('[data-playing-card-root]').getBoundingClientRect();return {slot:[r.width,r.height],card:[card.width,card.height],back:!!e.querySelector('[data-playing-card-hidden]')};}));
    for(const x of sizes){assert.ok(x.card[1]>4);assert.ok(Math.abs(x.card[1]-x.card[0]*1.4)<.15);assert.ok(Math.abs(x.slot[1]-x.card[1])<.15);}
+   const faces=await p.locator('.golf-public-grid [data-playing-card-face],.golf-local [data-playing-card-face]').evaluateAll(els=>els.map(e=>{
+    const r=e.getBoundingClientRect(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+    const glyphs=[...e.children].filter(n=>n.tagName==='SPAN').map((n,i)=>{
+     const b=n.getBoundingClientRect(),s=getComputedStyle(n);ctx.font=[s.fontStyle,s.fontWeight,s.fontSize,s.fontFamily].join(' ');
+     const m=ctx.measureText(n.textContent),baseline=b.top+(parseFloat(s.lineHeight)-m.fontBoundingBoxAscent-m.fontBoundingBoxDescent)/2+m.fontBoundingBoxAscent;
+     const samples=(i===0?['A','2','3','4','5','6','7','8','9','10','J','Q','K']:['♠','♥','♦','♣']).map(text=>{const g=ctx.measureText(text);return {text,inkWidth:g.actualBoundingBoxLeft+g.actualBoundingBoxRight};});
+     return{text:n.textContent,fontRatio:parseFloat(s.fontSize)/r.width,padding:{left:b.left-m.actualBoundingBoxLeft-r.left,right:r.right-b.left-m.actualBoundingBoxRight,top:baseline-m.actualBoundingBoxAscent-r.top,bottom:r.bottom-baseline-m.actualBoundingBoxDescent},samples};
+    });
+    return{owner:!!e.closest('.golf-local'),width:r.width,height:r.height,glyphs};
+   }));
+   for(const face of faces)for(const [i,g]of face.glyphs.entries()){
+    assert.ok(Math.abs(g.fontRatio-(i===0?.56:.5))<.002,'both players must use canonical medium glyph scale');
+    assert.ok(Object.values(g.padding).every(x=>x>=1),'painted glyphs must clear the card edges');
+    assert.ok(g.samples.every(x=>x.inkWidth<face.width-2),'all ranks/suits must fit the unchanged card width');
+   }
+   if(portraitOnly&&existsSync(out+'/evidence.json')){
+    const baseline=JSON.parse(readFileSync(out+'/evidence.json','utf8')).cases.find(c=>c.engine===engine&&c.count===count&&c.viewport.width===viewport.width&&c.viewport.height===viewport.height);
+    if(baseline)assert.deepEqual(sizes,baseline.sizes,'face-tier correction must not alter card or slot geometry');
+   }
    const backs=p.locator('.golf-public-grid [data-canonical-card-back]');assert.equal(await backs.count(),4);assert.equal(await backs.first().getAttribute('data-cb-pref-id'),'bears');
    const targets=p.locator('[data-seat-card-inspect]');assert.equal(await targets.count(),count-1);
    const hitSizes=[];
@@ -84,12 +107,12 @@ if(process.argv.includes('--check')){
    // Retain shape even if implicit grid stretching stops supplying a height.
    const style=await p.addStyleTag({content:'.golf-public-grid .golf-public-cards>span{align-self:start}'});
    const stressed=await backs.first().boundingBox();assert.ok(Math.abs(stressed.height-stressed.width*1.4)<.15);await style.evaluate(e=>e.remove());
-   await p.screenshot({path:out+'/'+engine+'-'+count+'-'+viewport.width+'x'+viewport.height+'.png'});
-   evidence.cases.push({engine,count,viewport,sizes,hitSizes,keyboard:true,privacy:true,stretchIndependent:true});await p.close();
+   await p.screenshot({path:out+'/'+engine+'-'+count+'-'+viewport.width+'x'+viewport.height+(portraitOnly?'-medium':'')+'.png'});
+   evidence.cases.push({engine,count,viewport,sizes,faces,hitSizes,keyboard:true,privacy:true,stretchIndependent:true});await p.close();
   }
  }finally{await browser.close();}}
  assert.deepEqual(evidence.errors,[]);assert.deepEqual(evidence.externalRequests,[]);assert.ok(requests.every(r=>r.path==='/__golf/read'||r.name==='golf_snapshot'));
- writeFileSync(out+'/evidence.json',JSON.stringify({...evidence,requests},null,2));console.log(JSON.stringify({checked:evidence.cases.length,issues:evidence.issues,errors:evidence.errors,webkit:evidence.webkit}));
+ writeFileSync(out+(portraitOnly?'/evidence-portrait-medium.json':'/evidence.json'),JSON.stringify({...evidence,requests},null,2));console.log(JSON.stringify({checked:evidence.cases.length,issues:evidence.issues,errors:evidence.errors,webkit:evidence.webkit}));
  if(evidence.issues.length)process.exitCode=1;
  }finally{await server.close();}
 }
