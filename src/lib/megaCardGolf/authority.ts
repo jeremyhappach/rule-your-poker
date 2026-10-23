@@ -1,4 +1,4 @@
-import {INITIAL_COURSES,changesCompetition,settings,type CourseConfig,type CourseId,type CourseSettings} from './config';
+import {INITIAL_COURSES,MEGA_RULESET,changesCompetition,settings,type MegaRuleset,type CourseConfig,type CourseId,type CourseSettings} from './config';
 import {applyIntent,createRun,projectRun,recoverRun,type Intent,type MegaRun} from './engine';
 export interface BoardResult {runId:string;owner:string;name:string;courseId:CourseId;boardId:string;configId:string;score:number;completedAt:number}
 export interface Store {courses:CourseConfig[];configs:CourseConfig[];runs:Record<string,MegaRun>;results:BoardResult[];receipts:Record<string,{fingerprint:string;runId:string}>}
@@ -9,7 +9,7 @@ export function rankBoard(rows:BoardResult[],courseId:CourseId,boardId:string){
 }
 /** Local single-process authority fixture. Production must replace its transaction/store with locked SQL. */
 export class MegaAuthority {
- constructor(public data:Store,private uuid:()=>string,private shuffle:()=>number[],private persist:(s:Store)=>void=()=>{}){}
+ constructor(public data:Store,private uuid:()=>string,private shuffle:()=>number[],private persist:(s:Store)=>void=()=>{},private ruleset:MegaRuleset=MEGA_RULESET){}
  private transaction<T>(fn:()=>T):T {const old=this.data;this.data=structuredClone(old);try{const result=fn();this.persist(this.data);return result;}catch(e){this.data=old;throw e;}}
  private finish(run:MegaRun){
   if(run.status==='completed'&&!this.data.results.some(r=>r.runId===run.id))this.data.results.push({runId:run.id,owner:run.owner,name:'Local player',courseId:run.config.id,boardId:run.config.boardId,configId:run.config.configId,score:run.score,completedAt:run.completedAt!});
@@ -26,7 +26,7 @@ export class MegaAuthority {
    const course=this.data.courses.find(c=>c.id===courseId);if(!course?.enabled)throw Error('Course is unavailable');
    const active=Object.values(this.data.runs).find(r=>r.owner===owner&&r.status==='active');
    if(active&&active.config.id!==courseId)throw Error('Finish or abandon your active course first');
-   const run=active??createRun(this.uuid(),owner,course,Array.from({length:course.holes},()=>this.shuffle()),at);
+   const run=active??createRun(this.uuid(),owner,course,Array.from({length:course.holes},()=>this.shuffle()),at,this.ruleset);
    this.data.runs[run.id]=run;this.data.receipts[key]={fingerprint,runId:run.id};return projectRun(run,at);
   });
  }

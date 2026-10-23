@@ -22,10 +22,12 @@ try{
    assert(geometry.every(r=>r.x>=0&&r.y>=0&&r.right<=w+1&&r.bottom<=h+1&&r.width>=44&&r.height>=44),JSON.stringify({layout,theme,geometry}));
    assert.equal(await page.getByRole('button',{name:'Draw a card',exact:true}).count(),0);
    assert.equal(await page.getByText('Visible cards',{exact:false}).count(),0);
-   await page.getByRole('button',{name:/Draw stock/}).click();
+   await page.locator('.mega-draw-card [data-megatouch-face]').waitFor();await page.waitForTimeout(400);
+   const priorStock=await page.locator('.mega-draw-card .mega-card').getAttribute('aria-label');
    assert.equal(await page.getByRole('button',{name:'Discard',exact:true}).count(),1);
    await page.getByRole('button',{name:'Discard',exact:true}).click();
-   assert.equal(await page.getByRole('button',{name:'Discard',exact:true}).count(),0);
+   await page.waitForFunction(prior=>document.querySelector('.mega-draw-card .mega-card')?.getAttribute('aria-label')!==prior,priorStock);
+   await page.locator('.mega-draw-card [data-megatouch-face]').waitFor();
    checks.push({layout,theme,geometry});
   }await ctx.close();
  }
@@ -42,7 +44,7 @@ try{
   if(scenario==='replacement'||scenario==='tap-in'){
    const seek=async value=>page.getByRole('slider',{name:'Presentation time'}).evaluate((el,value)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,String(value));el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));},value);
    await seek(500);await page.locator('[data-replacement-stage=reveal]').waitFor();await page.waitForTimeout(350);await page.screenshot({path:out+'/gameplay-'+scenario+'-old.png'});
-   assert(await page.getByRole('button',{name:/Draw stock/}).isDisabled());
+   assert(await page.getByRole('button',{name:/Next stock card/}).isDisabled());
    await seek(1600);await page.locator('[data-replacement-stage=dissolve]').waitFor();await page.screenshot({path:out+'/gameplay-'+scenario+'-dissolve.png'});
    await seek(2000);await page.locator('[data-replacement-stage=arrive]').waitFor();await page.screenshot({path:out+'/gameplay-'+scenario+'-arrive.png'});
    await page.getByRole('button',{name:'Live',exact:true}).click();

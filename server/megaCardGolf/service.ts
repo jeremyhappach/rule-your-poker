@@ -1,17 +1,17 @@
 import {randomInt} from 'node:crypto';
 import {createRun,recoverRun,applyIntent,projectRun,type MegaRun,type Intent} from '../../src/lib/megaCardGolf/engine.js';
-import {settings,COURSE_IDS,type CourseConfig} from '../../src/lib/megaCardGolf/config.js';
+import {settings,COURSE_IDS,MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,type MegaRuleset,type CourseConfig} from '../../src/lib/megaCardGolf/config.js';
 import {isUuid} from '../../src/lib/run21/model.js';
 type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 export interface MegaRecord {id:string;user_id:string;game:string;ruleset:string;config:CourseConfig;state:MegaRun|null;revision:number;server_at:number;created_at:string;status:string;receipt?:{run_id:string;fingerprint:string}|null}
 function decks(holes:number){return Array.from({length:holes},()=>{const a=Array.from({length:52},(_,i)=>i);for(let i=51;i>0;i--){const j=randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;});}
-function validRecord(row:MegaRecord){if(row.game!=='mega-card-golf'||row.ruleset!=='mega-card-golf/1')throw Error('arcade:wrong_game');}
+function validRecord(row:MegaRecord){if(row.game!=='mega-card-golf'||![MEGA_RULESET,MEGA_SEQUENTIAL_RULESET].includes(row.ruleset as MegaRuleset))throw Error('arcade:wrong_game');if(row.state&&row.state.ruleset!==row.ruleset)throw Error('arcade:ruleset_mismatch');}
 const projection=(r:MegaRecord)=>({...projectRun(r.state!,Number(r.server_at)),revision:Number(r.revision)});
 export async function synchronizeMega(rpc:Rpc,input:MegaRecord,actor:string|null,token:string|null=null){
  let row=input;validRecord(row);
  for(let attempt=0;attempt<3;attempt++){
   if(row.status!=='active')return row;
-  const state=row.state??createRun(row.id,row.user_id,row.config,decks(row.config.holes),Date.parse(row.created_at));
+  const state=row.state??createRun(row.id,row.user_id,row.config,decks(row.config.holes),Date.parse(row.created_at),row.ruleset as MegaRuleset);
   const next=recoverRun(state,Number(row.server_at));
   if(row.state&&JSON.stringify(next)===JSON.stringify(state))return row;
   const committed=await rpc('arcade_mega_commit',{p_actor:actor,p_run:row.id,p_revision:row.revision,p_state:next,p_token:token});

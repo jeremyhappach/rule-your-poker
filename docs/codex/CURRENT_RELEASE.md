@@ -1,5 +1,16 @@
 # Mega Card Golf gameplay polish — 2026-10-23 — local review only
 
+Local follow-up preserves the Sunny tree correction, fits stock/tableau/animation
+cards to the shared 5:7 shape, and implements item 17's automatic stock through
+existing authoritative draw actions. Hidden old-card reveal/dissolve precedes the
+played face-up arrival; next stock stays concealed until that arrival settles.
+Item 16's sequential authority change was subsequently approved: local v2 runs
+commit and reveal one opening choice at a time; existing v1 runs stay unchanged.
+Local PostgreSQL rollback/race proofs pass. Production v2 registration/start
+selection is still outside this checkpoint and remains inactive. Timer bonuses
+are deferred. Fresh 132-test, TypeScript, build and local browser evidence is recorded
+in the gameplay-polish document. No publication or production mutation is included.
+
 Jeremy approved the collected 15-item gameplay presentation pass through local
 implementation, tests, commits and actual previews only. The isolated worktree
 starts at published `067b7b9e2985718d5d4ee42186a90fe52f462a22`. The handoff reports

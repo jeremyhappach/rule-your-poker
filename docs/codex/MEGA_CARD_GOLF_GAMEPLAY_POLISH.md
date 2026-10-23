@@ -1,5 +1,124 @@
 # Mega Card Golf gameplay polish — local review checkpoint
 
+## Local follow-up — card geometry, sequential opening and automatic stock (October 23)
+
+This checkpoint continues `bceae120b697b4a6faba3f0d22b7641556783129` in the same
+isolated worktree. It is not evidence for a new production release. Published
+`067b7b9e2` remains separate; no integration, push or deployment occurred.
+
+### Card correction
+
+The distortion came from shared production CSS: tableau buttons filled grid cells
+with independently calculated width/height, while the stock used different width
+and height formulas. Compact hit-target minimums could change only one dimension.
+The card-back SVG also used `preserveAspectRatio="none"`. Both the production
+`MegaArcadePage → MegaArcade → MegaCardGolfGame` path and local preview use these
+same components/styles; this was not a fixture-only problem.
+
+All physical card roots and inner layers now fit their available slots at 5:7.
+Stock, tableau, revealed faces, concealed backs and transport use that same shape.
+Transport scales uniformly between actual felt-relative stock/tableau anchors.
+The compact landscape hand reserves room for the status label without covering
+the cards or scorecard. Only Sunny Meadows' emblem changes to a tree. Coastal
+and Devil's Canyon emblem paths/colors and the approved audio source are unchanged.
+The shared back SVG preserves its artwork ratio.
+
+### Item 17 — implemented locally
+
+The controller submits the existing authoritative `draw` action automatically
+when playing with no pending card, remaining stock, and no active presentation.
+It uses the same serialization lock, UUID request receipt, hole/revision and
+server deadline as manual actions. Draw/scoring rules, course settings, SQL and recovery worker are unchanged.
+The separately approved sequential-opening extension below changes the versioned
+engine and service initialization only for v2.
+
+For an accepted hidden replacement: the old board card flips up, remains visible
+in the 1.5-second reveal stage, dissolves for 350ms, then the played stock card
+travels to its destination face up for 350ms. An already exposed destination
+goes directly to that arrival. The next stock remains concealed throughout.
+Only after arrival settles does the controller request the next draw; its accepted
+card flips face up. Network latency may extend the concealed interval. A completed
+hole never requests that extra draw. Immediate discards use the same authoritative
+allowance and advance once. Tap In confirmation is unchanged.
+
+A failed draw stops at that revision rather than looping. Routine realtime
+refresh preserves the error. Explicit reconnect or a successful foreground/online
+recovery permits one fresh attempt. A lost accepted response restores its existing
+pending card and consumes no additional draw. Silent reconnect resumes current
+truth without replaying an interrupted animation.
+
+### Item 16 — approved sequential server choices, implemented locally
+
+Jeremy explicitly approved the authority change after the first investigation:
+seeing the first selected card before choosing the second requires individual
+server commitments. New local v2 runs use `mega-card-golf/2`. Each opening tap
+submits one index through the existing revision/UUID-receipt action path. Only
+an accepted response reveals that face, with a 350ms flip. There is no selection
+confirmation for v2. Input locks through acceptance/flip; exposed choices cannot
+be selected again. The configured count (0–5), original deadline, private unseen
+cards and frozen course configuration remain authoritative. The first stock is
+automatically requested only after the final opening flip settles.
+
+Existing v1 runs retain their two-choice contract and confirmation. No saved run
+is upgraded, reconfigured, rescored or rewritten. The production service accepts
+both versions and initializes an empty state using the admitted row's version.
+The legacy creation default remains v1; only explicitly admitted v2 records use
+sequential choices. This protects active and historical v1 runs.
+
+Local PostgreSQL proof: `sequential-opening-proof.mjs` cloned the existing local
+qualification database into `mega_golf_seq_1792787156082` on `127.0.0.1:55439`.
+The first proof used a full rollback; independent connections then tested competing
+choices and concurrent same-request retries through the actual service and SQL
+row-lock/CAS/receipt boundary. It also proved projection privacy, ownership,
+reconnect, stale/duplicate/late input, configured limits, version/config rejection,
+subsequent-hole persistence and unchanged historical result hashes. The initial
+fixture attempt encountered a copied profile without an auth user; selecting
+existing allowed identities present in both tables corrected the fixture.
+
+Release limitation: v2 qualification rows are explicitly seeded in the disposable
+clone with the new ruleset disabled. No production admission/default/ruleset flag
+or SQL definition changed. Production registration/start selection and any board
+retention/archive decision require a future release package; this local checkpoint
+must not be published as though v2 is already activated. No new scores were mixed
+into historical boards. Timer bonuses remain deferred. The relayed Library
+screenshot was not accessed or uploaded.
+
+### Fresh validation and preview
+
+132 focused tests pass, including actual controller + local authority coverage
+for v1/v2 compatibility, sequential opening counts/privacy, automatic opening-to-draw,
+duplicate refresh/rapid input, concealed and exposed
+replacement, discard, final stock/final hole, lost/rejected responses, foreground
+recovery, background expiry and abandon. Existing Tap In, canonical face, scoring,
+audio and engine tests remain in the suite. Application TypeScript and Vite build
+pass; the existing Browserslist and bundle warnings remain.
+
+`stock-geometry-browser.mjs` checks three themes at four sizes (390×844, 844×390,
+320×568, 568×320), root/inner 5:7 geometry, 44px targets, status/scorecard separation,
+artwork aspect preservation, uniform transport scaling, hidden/exposed replacement,
+reduced motion, landscape scoring separation and the real `MegaArcade` sequential
+opening plus automatic draw/discard sequence. It passed
+with no page errors or external requests. Screenshots were inspected locally.
+
+Local gallery: `http://127.0.0.1:5187/dev/mega-card-golf/polish/evidence.local/index.html#gameplay`.
+Actual controller demo: `http://127.0.0.1:5187/dev/mega-card-golf/polish/index.html?controller`.
+That demo uses an in-memory authority and Reset local demo starts fresh. Timeline demos include
+`?gameplay=replacement`, `?gameplay=face-up` and `?gameplay=cards`.
+Ignored evidence: `stock-geometry-tests.log`, `stock-geometry-build.log`,
+`stock-geometry-browser-report.json`, `sequential-opening-database.json`, refreshed theme/card screenshots and
+`stock-*.png`. This is local evidence, not hosted authority or physical iOS smoke.
+
+Files changed in this follow-up:
+- `src/components/megaCardGolf/{CourseCardBack.tsx,MegaArcade.tsx,MegaCardGolfGame.tsx,megaCardGolf.css,AutomaticStock.test.tsx}`
+- `src/lib/megaCardGolf/{config.ts,engine.ts,authority.ts,presentation.ts,presentation.test.ts,sequentialOpening.test.ts}`
+- `server/megaCardGolf/service.ts` and `src/components/rules/MegaCardGolfRules.tsx`
+- `dev/mega-card-golf/polish/{ControllerPreview.tsx,GameplayPreview.tsx,main.tsx,stock-geometry-browser.mjs,sequential-opening-proof.mjs,gameplay-browser.mjs,gameplay-gallery.mjs}`
+- `docs/codex/{CURRENT_RELEASE.md,MEGA_CARD_GOLF_GAMEPLAY_POLISH.md}`
+
+The sections below describe the preceding 15-item checkpoint and its earlier
+evidence; the fresh follow-up results above supersede its stock interaction and
+Sunny emblem descriptions.
+
 ## Scope and baseline
 
 Jeremy's collected pass was approved through local implementation, validation,

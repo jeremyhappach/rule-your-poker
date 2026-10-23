@@ -26,6 +26,19 @@ describe('presentation never owns gameplay',()=>{
   expect(receivePresentation(initial,projectRun(next,4),100,false,{type:'replace',index:1}).events).toHaveLength(0);
   expect(receivePresentation(initial,projectRun(next,4),100,true).events).toHaveLength(0);
  });
+ it('moves a played face-up card directly and masks an early next-stock snapshot until arrival ends',()=>{
+  const run=applyIntent(make(),{type:'draw'},2),before=projectRun(run,2);
+  const replaced=applyIntent(run,{type:'replace',index:0},3),drawn=applyIntent(replaced,{type:'draw'},4);
+  let state=receivePresentation(emptyPresentation(),before,0);
+  state=receivePresentation(state,projectRun(replaced,3),100,false,{type:'replace',index:0});
+  state=receivePresentation(state,projectRun(drawn,4),150);
+  for(const at of [100,200,449]){
+   const frame=presentationFrame(state,at)!;
+   expect(frame.replacement?.stage).toBe('arrive');expect(frame.view.cards[0]).toBe(before.pending);
+   expect(frame.view.pending).toBeNull();expect(frame.locked).toBe(true);
+  }
+  expect(presentationFrame(state,450)!.view.pending).toBe(drawn.pending);
+ });
  it('holds committed results through newer deals, conceals future totals, and deduplicates score cues',()=>{
   const run=make(),done=recoverRun(run,run.deadline),next=recoverRun(done,done.deadline);
   let state=receivePresentation(emptyPresentation(),projectRun(run,1),0);
