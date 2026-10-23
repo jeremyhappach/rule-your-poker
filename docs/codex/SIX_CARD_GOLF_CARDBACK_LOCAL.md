@@ -1,8 +1,11 @@
-# Golf opponent cards and seat inspection — local review, 2026-10-23
+# Golf opponent cards and seat inspection — release checkpoint, 2026-10-23
 
 Base: `7219f8340579908c029037d302b518fc20026a53`.
 Branch: `codex/golf-cardback-seat-inspect`.
-Local implementation only. No merge, push, deployment, database changes or admission changes.
+Initially qualified as a local candidate. Jeremy subsequently approved publication
+of `21435e361ba6714ebdd836c17c1b3a09f30564fc` and its parent
+`754bfd6f26a5d39f0e7c91f5cf15eb0f3abb7235`. This release excludes the separate
+new Mega presentation pass and includes no database or admission changes.
 
 ## Scope and evidence
 
@@ -71,7 +74,8 @@ availability. Screenshots include portrait/tablet cases and each obstructed targ
 
 Physical acceptance: verify the original iPhone's mixed exposed/concealed felt hand,
 seat-indicator opening for each participant, unchanged public-view concealment, reconnect,
-rotation and card-replacement animation anchors. Publication remains unapproved.
+rotation and card-replacement animation anchors. Publication is approved; physical
+iPhone smoke remains pending Jeremy.
 
 ## Approved medium face tier follow-up — 2026-10-23
 
@@ -108,3 +112,16 @@ Files changed in this follow-up: `src/components/golf/GolfTable.tsx`,
 The actual two-player table can also be reviewed in a fixed portrait-sized iframe at
 `http://127.0.0.1:5221/__cardback-portrait`. This sizes only the review frame, not product
 card containers or canonical layout.
+
+## Publication qualification — 2026-10-23
+
+Application TypeScript, all 2,857 source tests and 241 harness tests pass on the
+approved product tree. Two default-concurrency full-build attempts stopped at
+different timed UI assertions (Golf terminal admission, then Canasta help loading).
+Golf passed its isolated rerun; the complete source suite passed with
+`vitest run src --maxWorkers=2`, including both earlier failures. No application
+code, test expectations or timeout thresholds were changed for these reruns.
+The harness suite was then run separately through its normal package script.
+Production Vite build also passes; existing Browserslist, mixed-import and chunk-size
+warnings remain. Checkpoint tag: `six-card-golf-cardback-seat-release-20261023`.
+Release evidence logs remain under the ignored `qualification.local/` directory.

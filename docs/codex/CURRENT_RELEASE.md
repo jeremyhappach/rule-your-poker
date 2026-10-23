@@ -1,13 +1,26 @@
-# Six-Card Golf card backs / seat inspection — local review only, 2026-10-23
+# Six-Card Golf card backs / seat inspection — approved release, 2026-10-23
 
 Isolated candidate adds definite opponent felt card slots and moves public-tableau
-inspection from the felt to the opponent seat indicator. No publication is authorized.
+inspection from the felt to the opponent seat indicator. Jeremy approved publication
+of reviewed product candidate `21435e361ba6714ebdd836c17c1b3a09f30564fc`, including
+its parent `754bfd6f26a5d39f0e7c91f5cf15eb0f3abb7235`.
 The approved local follow-up uses canonical medium face typography for opponent and
 displaced cards, matching the viewer without resizing cards. Two-player portrait
 geometry, glyph clearance, privacy and inspection checks pass.
 Portrait/tablet interaction checks pass; short-landscape target obstruction and physical
 iPhone acceptance remain open. See [local checkpoint](SIX_CARD_GOLF_CARDBACK_LOCAL.md).
-The separate Mega release below is unchanged.
+Release base is `7219f8340579908c029037d302b518fc20026a53`; the separate new Mega
+presentation branch is excluded. Rules, financial logic, migrations, admission,
+score formatting, timeout/rejoin and pile-flash are outside this release. The
+pencil-written scorecard is unchanged. Publication verification and physical
+iPhone smoke are distinct; local qualification does not establish device acceptance.
+The existing Mega release below is unchanged.
+
+Release checks pass: application TypeScript, 2,857 source tests, 241 harness tests
+and production Vite build. The source suite passed with two workers after separate
+default-concurrency UI timeouts; no code or timeout thresholds were changed.
+Existing build warnings remain. Source checkpoint tag:
+`six-card-golf-cardback-seat-release-20261023`.
 
 # Mega Card Golf /2 release package — 2026-10-23
 
