@@ -1,0 +1,10 @@
+{
+  "database": "mega_golf_1792719651984",
+  "independentConnections": true,
+  "passed": [
+    "terminal submit/recovery serialize to one immutable result",
+    "expired terminal action loses to recovery",
+    "admin edit blocks admission; admitted config is the complete committed revision",
+    "admission blocks admin edit; active run keeps its original revision"
+  ]
+}

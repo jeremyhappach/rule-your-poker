@@ -1,3 +1,4 @@
+import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConnected';
 import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
 import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
@@ -1090,10 +1091,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <label className="grid gap-1 text-sm font-medium">Game<select className="catalog-select" value={selectedGameType} onChange={e=>setSelectedGameType(e.target.value)}>{GAME_CATALOG.map(game=>game.category===selectedGameInfo.category&&<option key={game.id} value={game.defaultsKey}>{game.name}</option>)}</select></label>
             {/* Settings for selected game */}
             <div className="catalog-scroll space-y-3">
-              {selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
-              {renderSettingsForGameType()}
+              {selectedGameInfo.modes.includes('multiplayer') && selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
+              {selectedGameType==='mega-card-golf'?<MegaDefaultsConnected/>:renderSettingsForGameType()}
               {open&&(farkleVisited||selectedGameType==='farkle')&&<div hidden={selectedGameType!=='farkle'}><Suspense fallback={<p role="status">Loading Farkle defaults…</p>}><FarkleDefaultsEditor onSaved={value=>setDefaults(rows=>rows.map(row=>row.game_type==='farkle'?{...row,...value}:row))}/></Suspense></div>}
-              <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">
+              {selectedGameInfo.modes.includes('multiplayer') && <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <FlaskConical className="h-4 w-4" />
                 Session Dealer Draw Smoke Fixture
@@ -1135,7 +1136,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               )}
             </div>
 
-</details>
+</details>}
             </div>
           </div>
         )}
@@ -1144,7 +1145,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {selectedGameType !== 'farkle' && <Button onClick={validateAndSave} disabled={saving || loading}>
+          {!['farkle','mega-card-golf'].includes(selectedGameType) && <Button onClick={validateAndSave} disabled={saving || loading}>
             {saving ? 'Saving...' : 'Save Defaults'}
           </Button>}
         </div>

@@ -20,6 +20,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 | `FULL_SEAM_GAUNTLET_PLAN.md` | Planning or executing the exhaustive human-to-human rule, chaos, timeout/rejoin, and dealer-game transition campaign |
 | `WORKFLOW.md` | Every new game: mandatory atomic financial release gate; debugging, database investigation, validation, smoke, task format |
 | `CURRENT_RELEASE.md` | Every session; current release candidate and active gate |
+| `MEGA_CARD_GOLF_BACKEND.md` | Mega local persistent authority, evidence, prepared SQL and unopened production gates |
 | `SIX_CARD_GOLF_UI_RELEASE.md` | Approved interaction release, preserved Canasta checkpoint, regression correction and owner smoke |
 | `SIX_CARD_GOLF_TIMING_RELEASE.md` | Approved configurable scoring/motion release, forward migration, hosted qualification and owner smoke |
 | `SIX_CARD_GOLF_RELEASE_PLAN.md` | Golf local integration evidence, registered migration and closed-admission production qualification gates |

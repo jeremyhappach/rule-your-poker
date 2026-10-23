@@ -7,7 +7,7 @@ export interface CourseSettings {
  stockAllowance:number; discardAllowance:number; initialExposed:number; completionSeconds:number;
 }
 export interface CourseConfig extends CourseSettings {id:CourseId;configId:string;boardId:string;revision:number}
-// Same typed catalog identity. Not registered: admission and catalog integration remain closed.
+// Shared catalog identity; gameplay admission is independently enforced by the server.
 export const MEGA_CATALOG_IDENTITY = {
  id:'mega-card-golf',defaultsKey:'mega-card-golf',name:'Mega Card Golf',category:'cards',
  family:'megatouch',modes:['arcade'],

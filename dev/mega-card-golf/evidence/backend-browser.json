@@ -1,0 +1,11 @@
+{
+  "passed": [
+    "HTTP missing/invalid identity and non-admin mutation rejection",
+    "player-selected opening and authenticated reload",
+    "full nine-hole browser completion and other-owner refusal",
+    "browser retains board after meaningful settings change",
+    "browser archives only the course and preserves completed history"
+  ],
+  "errors": [],
+  "external": []
+}

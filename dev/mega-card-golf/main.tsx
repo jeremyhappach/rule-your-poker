@@ -1,45 +1,7 @@
-import {useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {CourseSelection,type ScoreRow} from '../../src/components/megaCardGolf/CourseSelection';
-import {MegaDefaultsEditor} from '../../src/components/megaCardGolf/MegaDefaultsEditor';
-import {MegaCardGolfGame} from '../../src/components/megaCardGolf/MegaCardGolfGame';
-import {acceptView,type Intent,type MegaView} from '../../src/lib/megaCardGolf/engine';
-import type {CourseConfig,CourseId} from '../../src/lib/megaCardGolf/config';
+import {MegaArcade} from '../../src/components/megaCardGolf/MegaArcade';
 import {AudioManager} from '../../src/lib/audio/audioManager';
-import {megaHoleCue} from '../../src/lib/megaCardGolf/audio';
-import '../../src/components/megaCardGolf/megaCardGolf.css';
 import './preview.css';
 const audio=new AudioManager({createContext:()=>new AudioContext(),loadPreference:async()=>localStorage.getItem('mega-preview-sounds')==='true',now:()=>performance.now(),storage:()=>sessionStorage,document:()=>document});
-type Catalog={courses:CourseConfig[];boards:{id:CourseId;rows:ScoreRow[]}[];archives:{config:CourseConfig;rows:ScoreRow[]}[];active:string|null};
 async function request<T>(body:object):Promise<T>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const response=await fetch('/__mega',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const data=await response.json();if(!response.ok)throw Error(data.error);return data;}finally{clearTimeout(timer);}}
-function App(){
- const [catalog,setCatalog]=useState<Catalog|null>(null),[screen,setScreen]=useState<'courses'|'defaults'|'game'|'board'>('courses'),[view,setView]=useState<MegaView|null>(null),[board,setBoard]=useState<CourseId>('sunny-meadows'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now()),[sound,setSound]=useState(localStorage.getItem('mega-preview-sounds')==='true'),[saved,setSaved]=useState('');
- const clock=useRef({at:Date.now(),received:performance.now()}),lock=useRef(false),lastCue=useRef(''),current=useRef(view);current.current=view;
- const loadCatalog=async()=>setCatalog(await request<Catalog>({op:'catalog'}));
- const receive=(next:MegaView)=>{clock.current={at:next.serverAt,received:performance.now()};setNow(next.serverAt);setView(old=>acceptView(old,next));};
- const restore=async(id:string)=>{const next=await request<MegaView>({op:'state',runId:id});if(next.phase==='scoring')lastCue.current=next.id+'/'+next.hole;receive(next);};
- const perform=async(fn:()=>Promise<void>)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof Error?e.message:'Request failed');}finally{lock.current=false;setBusy(false);}};
- useEffect(()=>{const uninstall=audio.install();audio.setUser('local-preview');void perform(async()=>{await loadCatalog();const id=new URLSearchParams(location.search).get('run');if(id){await restore(id);setScreen('game');}});return uninstall;},[]);
- useEffect(()=>{const refresh=()=>{if(!document.hidden)void perform(async()=>{if(current.current&&screen==='game')await restore(current.current.id);else await loadCatalog();});};window.addEventListener('focus',refresh);window.addEventListener('online',refresh);document.addEventListener('visibilitychange',refresh);return()=>{window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',refresh);};},[screen]);
- useEffect(()=>{
-  if(!view||screen!=='game')return;
-  const due=view.dueAt;if(due===null)return;
-  const timer=setTimeout(()=>{void perform(async()=>{if(view.status==='completed'){setBoard(view.config.id);setScreen('board');history.replaceState(null,'',location.pathname);await loadCatalog();}else await restore(view.id);});},Math.max(0,due-view.serverAt)+60);
-  return()=>clearTimeout(timer);
- },[view?.id,view?.revision,view?.dueAt,screen]);
- useEffect(()=>{if(screen!=='game'||view?.phase!=='scoring')return;let raf:number;const frame=()=>{setNow(clock.current.at+performance.now()-clock.current.received);raf=requestAnimationFrame(frame);};raf=requestAnimationFrame(frame);return()=>cancelAnimationFrame(raf);},[screen,view?.id,view?.phase]);
- const scoreResult=view?.phase==='scoring'?view.results.at(-1):null;
- useEffect(()=>{if(!scoreResult||screen!=='game'||now<scoreResult.startedAt+scoreResult.hidden.length*650)return;const id=view!.id+'/'+scoreResult.hole;if(lastCue.current===id)return;lastCue.current=id;return audio.request({userId:'local-preview',id:'mega-hole/'+id,expiresAt:performance.now()+700,cue:megaHoleCue});},[scoreResult,screen,now>=((scoreResult?.startedAt??Infinity)+(scoreResult?.hidden.length??0)*650)]);
- const navigate=async(next:'courses'|'defaults')=>{setScreen(next);setSaved('');history.replaceState(null,'',location.pathname);await loadCatalog();};
- const act=(intent:Intent)=>void perform(async()=>{if(!view)return;const body={op:'action',runId:view.id,requestId:crypto.randomUUID(),revision:view.revision,hole:view.hole,intent};try{receive(await request<MegaView>(body));}catch(e){await restore(view.id);throw e;}});
- return <div className="mega-app"><header className="mega-topbar"><div className="mega-brand"><span>⚑</span> MEGA CARD GOLF</div><nav aria-label="Preview navigation"><span className="mega-local-label">LOCAL PROTOTYPE</span><button aria-current={screen==='courses'?'page':undefined} onClick={()=>void perform(()=>navigate('courses'))}>Courses</button><button aria-current={screen==='defaults'?'page':undefined} onClick={()=>void perform(()=>navigate('defaults'))}>Defaults</button><button aria-pressed={sound} onClick={()=>{const next=!sound;setSound(next);localStorage.setItem('mega-preview-sounds',String(next));audio.setPreference('local-preview',next);}}>Sound {sound?'on':'off'}</button></nav></header>
- {error&&<div role="alert" className="mega-error">{error}<button onClick={()=>void perform(async()=>{if(view&&screen==='game')await restore(view.id);else await loadCatalog();})}>Reconnect</button></div>}
- {!catalog?<p className="mega-full-board">Loading local courses…</p>:<>
- {screen==='courses'&&<>{catalog.active&&<div className="mega-resume">Your course is still in progress. <button onClick={()=>void perform(async()=>{await restore(catalog.active!);setScreen('game');history.replaceState(null,'','?run='+catalog.active);})}>Resume course</button> · <button onClick={()=>void perform(async()=>{const r=await request<MegaView>({op:'state',runId:catalog.active});await request({op:'action',runId:r.id,requestId:crypto.randomUUID(),revision:r.revision,hole:r.hole,intent:{type:'abandon'}});await loadCatalog();})}>Abandon unranked</button></div>}<CourseSelection courses={catalog.courses} boards={catalog.boards} busy={busy} onBoard={id=>{setBoard(id);setScreen('board');}} onStart={id=>void perform(async()=>{receive(await request<MegaView>({op:'start',courseId:id,requestId:crypto.randomUUID()}));const data=await request<Catalog>({op:'catalog'});setCatalog(data);setScreen('game');history.replaceState(null,'','?run='+data.active);})}/></>}
- {screen==='defaults'&&<>{saved&&<p role="status" className="mega-saved">{saved}</p>}<MegaDefaultsEditor key={catalog.courses.map(c=>c.revision).join('-')} courses={catalog.courses} busy={busy} onSave={async(course,draft,choice)=>{await perform(async()=>{await request({op:'defaults',id:course.id,revision:course.revision,settings:draft,boardChoice:choice});await loadCatalog();setSaved('Local settings saved. Active runs retain their original configuration.');});}}/></>}
- {screen==='game'&&view&&<MegaCardGolfGame view={view} now={now} busy={busy} onIntent={act} onExit={()=>void perform(()=>navigate('courses'))}/>}
- {screen==='board'&&<section className="mega-full-board"><p className="mega-eyebrow">COURSE LEADERBOARD · LOWEST SCORE WINS</p><h1>{catalog.courses.find(c=>c.id===board)?.name}</h1><p>Completed local runs only. Equal scores share a rank.</p>{view?.status==='completed'&&view.config.id===board&&<div className="mega-final">COURSE COMPLETE<strong>{view.score}</strong>{view.results.length} holes · final score</div>}{renderRows(catalog.boards.find(b=>b.id===board)?.rows??[])}<p className="mega-muted">Configuration identity stays with every score, including when an admin retains a board after changing its settings.</p>{catalog.archives.filter(a=>a.config.id===board).map(a=><details key={a.config.boardId}><summary>Archived board · {a.config.name} · {a.config.holes} holes / {a.config.stockAllowance} draws</summary>{renderRows(a.rows)}</details>)}<button className="mega-start" onClick={()=>void perform(()=>navigate('courses'))}>Back to courses</button></section>}
- </>}</div>;
-}
-function renderRows(rows:ScoreRow[]){return rows.length?<table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Frozen config</th></tr></thead><tbody>{rows.map(r=><tr key={r.runId}><td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td><td>{r.configId}</td></tr>)}</tbody></table>:<p style={{padding:'2rem 0'}}>This board is waiting for its first completed run.</p>;}
-createRoot(document.getElementById('root')!).render(<App/>);
+createRoot(document.getElementById('root')!).render(<MegaArcade request={request} audio={audio} userId="local-preview" preview/>);

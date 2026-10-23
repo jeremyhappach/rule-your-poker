@@ -6,8 +6,8 @@ import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>!['canasta','six-card-golf','battle-31','race-poker'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
- expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
+ expect(GAME_CATALOG.filter(g=>!['canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
+ expect(ARCADE_GAMES.filter(g=>g.id!=='mega-card-golf').map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);
  });
@@ -20,6 +20,7 @@ describe('integrated catalog parity',()=>{
  it('retains only existing geometry keys with real descriptors',()=>{const keys=GAME_CATALOG.flatMap(g=>g.geometry?[g.geometry]:[]);expect(keys.sort()).toEqual([...GAME_KEYS].sort());for(const key of keys)expect(enumerateAnchoredArtifacts(key as GameKey).length).toBeGreaterThan(0);});
  it.each(GAME_CATALOG)('$id fails closed on invalid roster and unavailable capability',game=>{
  const access=Object.fromEntries(GAME_CATALOG.map(g=>[g.availability,true]));
+ if(!game.modes.includes('multiplayer')){expect(game.id).toBe('mega-card-golf');expect(eligibility(game,{players:1,humans:1},access)).toBe('Arcade only');expect(isDiscovered(game,{})).toBe(false);return;}
  expect(eligibility(game,{players:0,humans:0},access)).not.toBeNull();
  expect(eligibility(game,{players:game.players.max+1,humans:2},access)).not.toBeNull();
  expect(eligibility(game,{players:game.players.min,humans:game.players.min,realMoney:false},access)).toBeNull();

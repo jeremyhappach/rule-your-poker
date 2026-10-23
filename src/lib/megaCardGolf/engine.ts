@@ -1,18 +1,17 @@
-import {golfVisibleSubtotal} from '../golf/scoring';
-import {MEGA_RULESET,type CourseConfig} from './config';
-export type Intent={type:'draw'|'discard'|'abandon'}|{type:'replace';index:number};
+import {golfVisibleSubtotal} from '../golf/scoring.js';
+import {MEGA_RULESET,type CourseConfig} from './config.js';
+export type Intent={type:'draw'|'discard'|'abandon'}|{type:'replace';index:number}|{type:'open';indices:number[]};
 export interface HoleResult {hole:number;cards:number[];score:number;total:number;reason:'exposed'|'stock'|'timeout';hidden:number[];startedAt:number;endsAt:number}
 export interface MegaRun {
  id:string;owner:string;ruleset:typeof MEGA_RULESET;config:CourseConfig;revision:number;
- status:'active'|'completed'|'abandoned';phase:'playing'|'scoring';hole:number;cards:number[];exposed:boolean[];
+ status:'active'|'completed'|'abandoned';phase:'opening'|'playing'|'scoring';hole:number;cards:number[];exposed:boolean[];
  decks:number[][];draws:number;discards:number;pending:number|null;discardTop:number|null;
  deadline:number;results:HoleResult[];score:number;completedAt:number|null;
 }
 export interface MegaView extends Omit<MegaRun,'decks'|'owner'|'cards'> {cards:(number|null)[];serverAt:number;dueAt:number|null;stockRemaining:number;discardsRemaining:number}
-const exposeOrder=[0,5,1,4,2];
 function deal(s:MegaRun,at:number){
- s.cards=s.decks[s.hole-1].slice(0,6);s.exposed=Array.from({length:6},(_,i)=>exposeOrder.slice(0,s.config.initialExposed).includes(i));
- s.draws=0;s.discards=0;s.pending=null;s.discardTop=null;s.phase='playing';s.deadline=at+s.config.completionSeconds*1000;
+ s.cards=s.decks[s.hole-1].slice(0,6);s.exposed=Array(6).fill(false);
+ s.draws=0;s.discards=0;s.pending=null;s.discardTop=null;s.phase=s.config.initialExposed?'opening':'playing';s.deadline=at+s.config.completionSeconds*1000;
 }
 export function createRun(id:string,owner:string,config:CourseConfig,decks:number[][],at:number):MegaRun {
  if(decks.length!==config.holes||decks.some(d=>d.length!==52||new Set(d).size!==52||d.some(c=>!Number.isInteger(c)||c<0||c>51)))throw Error('Invalid private decks');
@@ -34,7 +33,7 @@ export function recoverRun(input:MegaRun,at:number):MegaRun {
  const s=structuredClone(input);
  while(s.status==='active'&&at>=s.deadline){
   const boundary=s.deadline;
-  if(s.phase==='playing')closeHole(s,boundary,'timeout');
+  if(s.phase==='playing'||s.phase==='opening')closeHole(s,boundary,'timeout');
   else {s.hole++;deal(s,boundary);}
   s.revision++;
  }
@@ -45,6 +44,10 @@ export function applyIntent(input:MegaRun,intent:Intent,at:number):MegaRun {
  if(s.revision!==input.revision)throw Error('The hole changed. Reconnect to continue.');
  if(s.status!=='active')throw Error('This run has ended');
  if(intent.type==='abandon'){s.status='abandoned';s.pending=null;s.revision++;return s;}
+ if(s.phase==='opening'){
+  if(intent.type!=='open'||!Array.isArray(intent.indices)||intent.indices.length!==s.config.initialExposed||new Set(intent.indices).size!==intent.indices.length||intent.indices.some(i=>!Number.isInteger(i)||i<0||i>5))throw Error('Choose the required opening cards');
+  intent.indices.forEach(i=>{s.exposed[i]=true;});s.phase='playing';s.revision++;return s;
+ }
  if(s.phase!=='playing')throw Error('The hole is scoring');
  switch(intent.type){
   case 'draw':

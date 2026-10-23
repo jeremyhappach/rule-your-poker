@@ -1,12 +1,26 @@
-# Mega Card Golf — October 22 — isolated local prototype, publication prohibited
+# Mega Card Golf — approved release, hosted rollback qualified, admission closed
+
+Owner authorized the bounded production release in this same worktree. Current
+remote main and Vercel production remain `df48d4b73892e6965aafadb9768011af0e1906a3`;
+no competing deployment was found. Registered migration
+`20261023135206_mega_card_golf_v1.sql` has passed its hosted rollback proof.
+Terminal/recovery and admin/admission independent-connection races pass locally.
+The matching API/client/recovery worker still require installed qualification and
+publication verification before activation. See `MEGA_CARD_GOLF_RELEASE.md`.
+
+## Prior local checkpoint
 
 Approved local research/prototype lives on `codex/mega-card-golf-v1`, based on
 `df48d4b73892e6965aafadb9768011af0e1906a3`. One Arcade-only engine, three courses,
-course Defaults/archive preview and original art are implemented locally. Owner
-selected final-draw completion and a five-minute per-hole failsafe. Production
-storage/authentication/catalog integration remains unimplemented and gated on
-final multiplayer Golf stability and separate approval. No push or production
-change occurred. See [scope, contracts and evidence](MEGA_CARD_GOLF_LOCAL.md).
+course Defaults/archive flow and original art are implemented locally. Owner
+selected final-draw completion, a five-minute per-hole failsafe, and player-selected
+opening cards. The approved continuation adds persistent Arcade authority,
+authenticated API routing, course boards, admin Defaults and closed catalog
+integration. Candidate and installed-local rollback/atomicity/ownership proofs,
+independent-connection contention and a full nine-hole browser run pass. This is
+local qualification only: no push, hosted SQL, deployment or production admission
+change occurred. See [backend evidence and release requirements](MEGA_CARD_GOLF_BACKEND.md)
+and [original prototype contract](MEGA_CARD_GOLF_LOCAL.md).
 
 # Golf rules/display follow-up — October 22 — publication approved
 

@@ -1,4 +1,5 @@
 import {createSoloRun,advanceSolo,applySolo,nextDue,soloProjection} from '../../src/lib/arcade/run21.js';
+import {megaOperation,synchronizeMega,type MegaRecord} from '../megaCardGolf/service.js';
 import {isUuid} from '../../src/lib/run21/model.js';
 import type {ArcadeIntent,RunRecord} from '../../src/lib/arcade/model.js';
 export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
@@ -25,6 +26,7 @@ async function takeTwoStep(rpc:Rpc,userId:string,id:string,body:Record<string,an
  if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
 }
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='mega-card-golf')return await synchronizeMega(rpc,input as unknown as MegaRecord,actor,token) as unknown as RunRecord;
  if(input.game==='boxdrop')return (await rpc('arcade_boxdrop_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='trip-flip')return (await rpc('arcade_trip_flip_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='take-two')return (await rpc('arcade_take_two_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -44,6 +46,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  throw Error('arcade:concurrent_action');
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
+ if(body.game==='mega-card-golf')return megaOperation(rpc,userId,body);
  if(body.op==='leaderboard')return rpc('arcade_leaderboard',{p_actor:userId,p_game:body.game,p_window:body.window,p_result:body.result??null,...(body.ruleset?{p_ruleset:body.ruleset}:{})});
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
@@ -94,6 +97,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   if(result.outcome==='stale')throw Error('arcade:stale_action');
   return result.projection;
  }
+ if(row.game==='mega-card-golf')return megaOperation(rpc,userId,{...body,game:'mega-card-golf'});
  const receipt=row.receipt;
  row=await synchronize(rpc,row,userId);
  if(body.op==='action'){

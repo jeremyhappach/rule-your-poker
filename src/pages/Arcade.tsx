@@ -1,3 +1,4 @@
+import {MegaArcadePage} from '@/components/megaCardGolf/MegaArcadePage';
 import {ArcadeSwitchboard} from '@/components/arcade/ArcadeSwitchboard';
 import {findGame} from '@/lib/gameCatalog';
 import {SoloBoxdrop} from '@/components/arcade/SoloBoxdrop';
@@ -38,6 +39,7 @@ export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
  if(!game)return <ArcadeSwitchboard userId={user.id}/>;
+ if(game==='mega-card-golf')return <MegaArcadePage userId={user.id}/>;
  if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up'&&game!=='royal-flash'&&game!=='boxdrop'&&game!=='trip-flip'&&game!=='take-two')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?(game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game} game={game}/>;
 }

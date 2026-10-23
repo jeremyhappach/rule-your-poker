@@ -2,12 +2,15 @@
 
 Owner-approved separate Arcade identity uses `mega-card-golf/1`, one engine for
 three course configurations, and canonical Golf scoring only. Owner selected
-completion of the final draw before scoring and a five-minute per-hole failsafe.
+completion of the final draw before scoring, a five-minute per-hole failsafe,
+and player-selected opening cards. Opening selection never resets the deadline.
 Course history is retained or explicitly archived, never automatically reset;
 active runs retain their admitted config and board. Sunny Meadows was revised
-without altering Coastal/Canyon art. Production architecture remains proposed
-pending hosted proofs, final multiplayer Golf stability and separate approval.
-See [local implementation and boundaries](MEGA_CARD_GOLF_LOCAL.md).
+without altering Coastal/Canyon art. The local persistent implementation reuses
+Arcade runs, command receipts, results, revisions and recovery; immutable course
+configs add a board identity. There is no multiplayer or financial lifecycle.
+Hosted proofs, final multiplayer Golf stability and separate publication approval
+remain required. See [local backend evidence](MEGA_CARD_GOLF_BACKEND.md).
 
 # 2026-10-22 — Golf /2 stock threshold; local candidate, publication held
 

@@ -1,0 +1,11 @@
+import {build} from 'esbuild';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const base=execFileSync('C:/Program Files/Git/cmd/git.exe',['show','origin/main:server/arcade/service.ts'],{encoding:'utf8'});
+const r=await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'node',target:'es2022',plugins:[{name:'prior-owner',setup(build){build.onLoad({filter:/server[\\/]arcade[\\/]service\.ts$/},()=>({contents:base,loader:'ts',resolveDir:process.cwd()+'/server/arcade'}));}}]});
+const clean=x=>x.replaceAll('\r\n','\n').trim();
+const previous=clean(readFileSync('dev/mega-card-golf/backend.local/prior-worker.js','utf8')),built=clean(r.outputFiles[0].text);
+writeFileSync('dev/mega-card-golf/backend.local/base-worker.js',built);
+const evidence={matchesHostedVersion10:built===previous,baseSha:execFileSync('C:/Program Files/Git/cmd/git.exe',['rev-parse','origin/main'],{encoding:'utf8'}).trim(),sha256:createHash('sha256').update(built).digest('hex')};
+writeFileSync('dev/mega-card-golf/evidence/worker-preservation.json',JSON.stringify(evidence,null,2));console.log(JSON.stringify(evidence));if(!evidence.matchesHostedVersion10)process.exitCode=1;

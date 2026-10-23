@@ -1,12 +1,15 @@
 # Repository map
 
-Mega Card Golf local prototype: `src/lib/megaCardGolf/` owns the versioned reducer,
-course config and local authority contract; `src/components/megaCardGolf/` owns
-selection, course Defaults and canonical-fullscreen presentation. The isolated
-loopback runner/evidence lives in `dev/mega-card-golf/`; art in
-`public/mega-card-golf/`. `src/lib/golf/scoring.ts` now holds the unchanged pure
-Golf public scorer shared with multiplayer presentation. No production Arcade
-registration or persistence is added. See `MEGA_CARD_GOLF_LOCAL.md`.
+Mega Card Golf: `src/lib/megaCardGolf/` owns the versioned reducer and course config;
+`server/megaCardGolf/service.ts` adapts the existing authenticated Arcade API and
+recovery dispatcher. `supabase/mega-card-golf/candidate.sql` prepares private
+immutable configs and service-only RPCs over existing Arcade runs/results/receipts.
+`src/components/megaCardGolf/` owns selection, course Defaults, leaderboard and
+canonical-fullscreen presentation. The existing catalog/Arcade entry and Game
+Defaults embed these adapters. Loopback runners and evidence live in
+`dev/mega-card-golf/`; art in `public/mega-card-golf/`. `src/lib/golf/scoring.ts`
+holds the unchanged public Golf scorer shared with multiplayer presentation.
+No hosted migration or admission occurred. See `MEGA_CARD_GOLF_BACKEND.md`.
 
 Canasta local Beginner/Expert follow-up: `src/lib/canasta/config.ts` owns frozen
 pacing; `guidance.ts` derives UI guidance from shared rules;

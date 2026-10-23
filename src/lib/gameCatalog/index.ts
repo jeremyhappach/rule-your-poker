@@ -1,3 +1,4 @@
+import megaGolf from './games/mega-card-golf';
 import golf from './games/six-card-golf';
 import battle31 from './games/battle-31';
 import canasta from './games/canasta';
@@ -19,7 +20,7 @@ import game14 from './games/royal-flash';
 import racePoker from './games/race-poker';
 import type {GameDescriptor, Category, Capability} from './types';
 export type {GameDescriptor, Category, Capability} from './types';
-export const GAME_CATALOG: readonly GameDescriptor[] = [game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14,canasta,golf,racePoker,battle31];
+export const GAME_CATALOG: readonly GameDescriptor[] = [game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14,canasta,golf,racePoker,battle31,megaGolf];
 export const CATEGORIES: readonly Category[] = ['cards','dice','other'];
 export const CATEGORY_LABELS: Record<Category,string> = {cards:'Cards',dice:'Dice',other:'Other'};
 export function findGame(id: string | null | undefined) {
@@ -37,6 +38,7 @@ export function isDiscovered(game:GameDescriptor, access:Availability) {
 /** Presentation only: the setup RPC still validates the exact active roster and consent. */
 export function eligibility(game:GameDescriptor, roster:Roster, access:Availability): string | null {
  if(!isDiscovered(game,access)) return 'Currently unavailable';
+ if(!game.modes.includes('multiplayer')) return 'Arcade only';
  if(game.moneyModes&&!game.moneyModes.includes(roster.realMoney===false?'fake':'real')) return 'Fake money only';
  if(roster.humans<1||roster.humans>roster.players) return 'A human player is required';
  if(roster.players<game.players.min||roster.players>game.players.max)
