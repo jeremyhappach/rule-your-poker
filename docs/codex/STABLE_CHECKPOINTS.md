@@ -1,5 +1,20 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## 357 settlement, recovery and Sweep smoke — October 24, 2026
+
+- Jeremy reported “357 smoke is clean” and explicitly authorized real-money reopening.
+- Accepted production commit: `75df6c845502d502be27e960a852214aa01b753e`,
+  release tag `golf-sweep-smoke-20261024`; smoke tag `357-smoke-accepted-20261024`.
+- Installed financial corrections `20261024164227` and `20261024165504` retain
+  their passing financial/authority proofs. Sweep uses one overlay alongside
+  direct winner flights and waits for completion before the remaining pot.
+- The live real-money admission flag was already true when inspected, despite
+  prior CLOSED notes. Both admission triggers are active; no activation write
+  was necessary. This records observed state, not an inferred activation actor.
+- The frozen Set Your Soul Free incident remains paused. Acceptance does not
+  authorize historical repair or resume. Golf smoke acceptance remains pending.
+- See [incident qualification](357_INCIDENT_20261024.md).
+
 ## TriTowers multiplayer v2 — October 16, 2026
 
 - Jeremy explicitly reported the production smoke CLEAN and accepted multiplayer v2.

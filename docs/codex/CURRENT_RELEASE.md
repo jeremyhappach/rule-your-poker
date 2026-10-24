@@ -15,24 +15,29 @@ with exact function fingerprints, historical-row preservation and no synthetic
 residuals. Source checkpoint: `golf-sweep-smoke-20261024`; implementation commit
 `1c01bc090`. Publication is verified against the tagged release commit.
 No historical mutation, chip-accounting change or 357 admission reopening occurred.
-Owner smoke remains pending. Refresh all clients before a new Golf hole;
+Jeremy reported 357 smoke clean and authorized real-money reopening. The live
+357 admission flag was verified already enabled; no database write was needed.
+Golf owner smoke remains pending. Refresh all clients before a new Golf hole;
 already-dealt holes retain their original opening/draw contract.
 See [scope, evidence and remaining smoke](GOLF_SWEEP_SMOKE_20261024.md).
 
-# 357 real-money incident — admission closed, 2026-10-24
+# 357 real-money incident — smoke accepted, admission enabled, 2026-10-24
 
 Approved correction covers funded instant-sweep settlement, public winning proof,
 runback presentation retirement, fresh-identity Stop Automatic Play and one Sweep
 the Legs overlay. Database migrations `20261024164227` and `20261024165504` are
-installed; complete candidate and installed rollback proofs pass. Real-money
-admission remains CLOSED pending runtime acceptance. Set Your Soul Free remains
+installed; complete candidate and installed rollback proofs pass. Jeremy reported
+357 production smoke clean and explicitly authorized reopening. The deployed
+`real_money_admission_enabled` flag was already true when inspected; this differs
+from the prior CLOSED notes, and no activation write was performed. The enabled
+admission triggers and installed corrections were verified. Set Your Soul Free remains
 paused at revision 374 with every historical incident row preserved. No balance
 repair or resume is authorized by this release. See [incident qualification](357_INCIDENT_20261024.md).
 Client validation passes: TypeScript, 2,868 source tests (413 files), 241 harness
 tests and production build. Two-client browser terminal/reconnect proof passes;
 the fresh fake-money fixture was cleaned up. Release checkpoint tag:
-`357-incident-contained-20261024`. Jeremy's smoke remains pending before reopening
-real-money admission; publication is verified against the resulting tagged SHA.
+`357-incident-contained-20261024`. Accepted production source is `75df6c845`
+(`golf-sweep-smoke-20261024`); smoke checkpoint `357-smoke-accepted-20261024`.
 
 # Mega score and course-sequence polish — approved release — 2026-10-23
 
