@@ -12738,7 +12738,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Turn Spotlight - Dealer Selection Winner */}
-        {!sessionEndedPhase && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
+        {!sessionEndedPhase && (gameStatus === 'dealer_selection' || dealerSelectionPresentationActive) && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
           <TurnSpotlight
             currentTurnPosition={dealerSelectionWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -15573,11 +15573,6 @@ export const MobileGameTable = ({
 
 
 
-                    const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
-                      ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
-                      : [];
-                    const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
-
                     return (
                       <div className={cn(
                         // `flex-1 min-h-0` lets this column occupy the full
@@ -15592,36 +15587,9 @@ export const MobileGameTable = ({
 
 
 
-                        {showDealerSelectionCards ? (
-                          <div className="flex flex-col items-center gap-2 py-4">
-                            <div className="flex gap-2">
-                              {currentPlayerDealerCards.map((cardData, idx) => (
-                                <div
-                                  key={`dealer-card-${cardData.roundNumber}-${idx}`}
-                                  className="transition-all duration-500"
-                                  style={{
-                                    opacity: cardData.isRevealed ? 1 : 0.9,
-                                    transform: cardData.isRevealed
-                                      ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
-                                      : 'scale(1)',
-                                  }}
-                                >
-                                  <PlayingCard
-                                    card={cardData.card as CardType}
-                                    isHidden={!cardData.isRevealed}
-                                    size="xl"
-                                    isHighlighted={false}
-                                    isDimmed={cardData.isDimmed && cardData.isRevealed}
-                                    className={cn(
-                                      "shadow-2xl transition-all duration-500",
-                                      cardData.isDimmed && cardData.isRevealed && "opacity-50"
-                                    )}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
+                        {/* The canonical felt overlay owns every dealer-draw
+                            card, including self. Cached draw props must never
+                            create a second card surface in the gameplay HUD. */}
 
                         {/* EXPLICIT-OPT-IN CONTRACT: The Show Cards button
                             for a 3-5-7 winner is rendered in the STAYED-badge

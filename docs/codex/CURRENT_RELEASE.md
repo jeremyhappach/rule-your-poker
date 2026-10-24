@@ -1,3 +1,13 @@
+# October 24 multiplayer smoke — local investigation checkpoint, not released
+
+One verified client defect is corrected locally: duplicate dealer-draw cards
+could remain in the gameplay hand pane after the canonical felt overlay cleared.
+The duplicate renderer is removed and the dealer spotlight follows draw receipt
+eligibility. Sixty-six focused tests pass. Ship geometry, mcru81's timeout/rejoin
+and HOLM presentation recovery remain unqualified; no production mutation or
+publication occurred. Exact session/hand evidence and pending questions are in
+[the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
+
 # Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
 
 All five requested corrections are implemented on isolated branch
