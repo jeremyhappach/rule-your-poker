@@ -8,6 +8,7 @@ import {COURSE_IDS,INITIAL_COURSES,MEGA_SEQUENTIAL_RULESET,type CourseConfig} fr
 import type {Intent,MegaView} from '@/lib/megaCardGolf/engine';
 import {formatGolfScore,type MegaFrame} from '@/lib/megaCardGolf/presentation';
 import {CourseCardBack} from './CourseCardBack';
+import {MegaResultScorecard} from './MegaResultScorecard';
 const ranks:Rank[]=['A','2','3','4','5','6','7','8','9','10','J','Q','K'],suits:Suit[]=['♠','♥','♦','♣'];
 export function MegaCard({card,label,onClick,disabled,selected=false,highlight=false,course=INITIAL_COURSES[0],stage}:{card:number|null;label:string;onClick?:()=>void;disabled?:boolean;selected?:boolean;highlight?:boolean;course?:CourseConfig;stage?:string}){
  const face=card!==null&&Number.isInteger(card)&&card>=0&&card<52?{rank:ranks[card%13],suit:suits[Math.floor(card/13)]}:null;
@@ -37,7 +38,8 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
  const playable=view.status==='active'&&view.phase==='playing'&&now<view.deadline;
  const available=!busy&&!presentation?.locked;
  const canConfirm=!!tapIn&&available&&playable&&view.pending!==null&&tapIn.revision===view.revision;
- const total=scoring&&!scoring.finished?view.score-(result?.score??0):view.score;
+ const completedCount=view.results.length-(scoring&&!scoring.finished?1:0);
+ const total=completedCount?scoring&&!scoring.finished?view.score-(result?.score??0):view.score:null;
  useEffect(()=>{setTab('cards');setAbandon(false);},[view.id]);
  useEffect(()=>{setOpening([]);setTapIn(null);},[view.id,view.hole,view.phase,view.revision]);
  const choose=(index:number)=>{
@@ -66,6 +68,11 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
     {view.pending!==null&&<button className="mega-secondary" disabled={!available||!playable||view.discardsRemaining===0} onClick={()=>onIntent({type:'discard'})}>Discard</button>}
    </aside></div>
    <div className="mega-scorecard" aria-label="Hole scorecard">{Array.from({length:view.config.holes},(_,i)=><div key={i} data-current={i+1===view.hole||undefined}><small>{i+1}</small><b>{formatGolfScore(view.results[i]&&(i+1<view.hole||scoring?.finished)?view.results[i].score:null)}</b></div>)}<div className="mega-course-total"><small>Total</small><b>{formatGolfScore(total)}</b></div></div>
+   {presentation?.transition&&<section className="mega-transition" data-mega-transition={presentation.transition.kind} key={presentation.transition.key} aria-label={presentation.transition.kind==='honors'?'Hole start':presentation.transition.kind==='final'?'Final course result':'Hole result'}>
+    <div className="mega-transition-content">
+     {presentation.transition.kind==='honors'?<><span className="mega-tee-mark" aria-hidden>⚑</span><h2>Hole {view.hole}, you have honors</h2><p>{view.phase==='opening'?'Make your opening choices':'Your first stock card is next'}</p></>:<><p className="mega-result-eyebrow">{presentation.transition.kind==='final'?'COURSE COMPLETE':'HOLE COMPLETE'}</p><h2>{presentation.transition.kind==='final'?'Final score: '+formatGolfScore(view.score):'Hole '+view.hole+': '+formatGolfScore(result?.score)}</h2><MegaResultScorecard view={view} writeHole={presentation.transition.kind==='hole'?view.hole:undefined}/><p className="mega-result-next">{presentation.transition.kind==='final'?'Your course leaderboard is next':view.hole===view.config.holes?'Your final scorecard is next':'Next: Hole '+(view.hole+1)}</p></>}
+    </div>
+   </section>}
   </div>
   <AlertDialog open={!!tapIn&&canConfirm} onOpenChange={open=>{if(!open)setTapIn(null);}}><AlertDialogContent><AlertDialogTitle>Tap In?</AlertDialogTitle><AlertDialogDescription>This replacement exposes your last concealed card and ends the hole.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={()=>{if(canConfirm&&tapIn){onIntent({type:'replace',index:tapIn.index});setTapIn(null);}}}>Tap In?</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   <AlertDialog open={abandon&&view.status==='active'} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. Clocks continue while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={!available||!canAbandon} onClick={()=>{onExit();setAbandon(false);}}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

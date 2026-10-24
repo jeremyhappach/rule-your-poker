@@ -6,7 +6,7 @@ import {MegaCardGolfGame} from '@/components/megaCardGolf/MegaCardGolfGame';
 import {acceptView,type Intent,type MegaView} from '@/lib/megaCardGolf/engine';
 import type {CourseConfig,CourseId} from '@/lib/megaCardGolf/config';
 import {AudioManager} from '@/lib/audio/audioManager';
-import {megaHoleCue,megaCupCue} from '@/lib/megaCardGolf/audio';
+import {megaCue} from '@/lib/megaCardGolf/audio';
 import {emptyPresentation,receivePresentation,presentationFrame} from '@/lib/megaCardGolf/presentation';
 import '@/components/megaCardGolf/megaCardGolf.css';
 
@@ -18,7 +18,7 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
  const frame=presentationFrame(presentation,performance.now(),typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
  const clock=useRef({at:Date.now(),received:performance.now()}),lock=useRef(false),refreshQueued=useRef(false),refresh=useRef(()=>{}),alive=useRef(true),current=useRef(view);current.current=view;
  const loadCatalog=async()=>setCatalog(await request<Catalog>({op:'catalog'}));
- const receive=(next:MegaView,silent=false,intent?:Intent)=>{const accepted=acceptView(current.current,next);if(accepted!==next)return;current.current=next;clock.current={at:next.serverAt,received:performance.now()};setNow(next.serverAt);setView(next);setPresentation(old=>receivePresentation(old,next,performance.now(),silent,intent));};
+ const receive=(next:MegaView,silent=false,intent?:Intent,announceStart=false)=>{const accepted=acceptView(current.current,next);if(accepted!==next)return;current.current=next;clock.current={at:next.serverAt,received:performance.now()};setNow(next.serverAt);setView(next);setPresentation(old=>receivePresentation(old,next,performance.now(),silent,intent,announceStart));};
  const restore=async(id:string,silent=true)=>{receive(await request<MegaView>({op:'state',runId:id}),silent);};
  const perform=async(fn:()=>Promise<void>,clearError=true)=>{if(lock.current)return;lock.current=true;setBusy(true);if(clearError)setError('');try{await fn();}catch(e){if(alive.current)setError(e instanceof Error?e.message:'Request failed');}finally{lock.current=false;if(alive.current){setBusy(false);if(refreshQueued.current){refreshQueued.current=false;refresh.current();}}}};
  refresh.current=()=>{if(!alive.current||document.hidden)return;if(lock.current){refreshQueued.current=true;return;}void perform(async()=>{if(current.current&&screen==='game')await restore(current.current.id,false);else await loadCatalog();},false);};
@@ -35,7 +35,7 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
  },[view?.id,view?.revision,view?.dueAt,screen]);
  const animating=!!frame?.locked||view?.phase==='scoring';
  useEffect(()=>{if(screen!=='game'||!view||!animating)return;let raf:number;const tick=()=>{setNow(clock.current.at+performance.now()-clock.current.received);raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[screen,view?.id,animating]);
- useEffect(()=>{if(screen!=='game'||!frame?.cue?.fresh||document.hidden)return;return audio.request({userId,id:frame.cue.id,expiresAt:performance.now()+700,cue:frame.cue.kind==='cup'?megaCupCue:megaHoleCue});},[screen,frame?.cue?.id,audio,userId]);
+ useEffect(()=>{if(screen!=='game'||!frame?.cue?.fresh||document.hidden)return;return audio.request({userId,id:frame.cue.id,expiresAt:performance.now()+megaCue(frame.cue.kind).durationMs+200,cue:megaCue(frame.cue.kind)});},[screen,frame?.cue?.id,audio,userId]);
  const completedReady=view?.status==='completed'&&!frame?.locked&&now>=view.deadline;
  useEffect(()=>{if(screen!=='game'||!completedReady||!view||busy)return;void perform(async()=>{setBoard(view.config.id);setScreen('board');history.replaceState(null,'',location.pathname);await loadCatalog();});},[screen,completedReady,view?.id,busy]);
  const navigate=async(next:'courses')=>{setScreen(next);history.replaceState(null,'',location.pathname);await loadCatalog();};
@@ -50,7 +50,7 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
   if(autoDrawAttempt.current===key)return;
   autoDrawAttempt.current=key;act({type:'draw'});
  },[screen,view?.id,view?.hole,view?.revision,view?.serverAt,busy,error,frame?.locked]);
- const startCourse=()=>void perform(async()=>{const next=await request<MegaView>({op:'start',courseId:board,requestId:crypto.randomUUID()});receive(next);setScreen('game');history.replaceState(null,'','?run='+next.id);await loadCatalog();});
+ const startCourse=()=>void perform(async()=>{const next=await request<MegaView>({op:'start',courseId:board,requestId:crypto.randomUUID()});receive(next,false,undefined,true);setScreen('game');history.replaceState(null,'','?run='+next.id);await loadCatalog();});
  const selectedCourse=catalog?.courses.find(c=>c.id===board);
  return <div className="mega-app" data-screen={screen}><header className="mega-topbar"><div className="mega-brand"><span aria-hidden>⚑</span> MEGA CARD GOLF</div><nav aria-label="Mega Card Golf navigation">
  {screen==='courses'&&onBack&&<button onClick={onBack}>Back to Arcade</button>}

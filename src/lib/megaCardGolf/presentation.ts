@@ -14,14 +14,16 @@ export function scoreSteps(cards:number[]){
 type Replacement={kind:'replacement';key:string;start:number;end:number;view:MegaView;index:number;oldCard:number;newCard:number;hidden:boolean};
 type Draw={kind:'draw';key:string;start:number;end:number;view:MegaView};
 type Opening={kind:'opening';key:string;start:number;end:number;view:MegaView;index:number};
+export const MEGA_HOLE_RESULT_MS=4200,MEGA_FINAL_RESULT_MS=6500,MEGA_HONORS_MS=1800;
+type Interlude={kind:'honors'|'final';key:string;start:number;end:number;view:MegaView};
 type Scoring={kind:'scoring';key:string;start:number;end:number;view:MegaView;result:HoleResult};
-export type PresentationEvent=Replacement|Scoring|Draw|Opening;
+export type PresentationEvent=Replacement|Scoring|Draw|Opening|Interlude;
 export interface MegaPresentation {latest:MegaView|null;events:PresentationEvent[]}
 export const emptyPresentation=():MegaPresentation=>({latest:null,events:[]});
-export function receivePresentation(state:MegaPresentation,next:MegaView,at:number,silent=false,intent?:Intent):MegaPresentation{
+export function receivePresentation(state:MegaPresentation,next:MegaView,at:number,silent=false,intent?:Intent,announceStart=false):MegaPresentation{
  const previous=state.latest,accepted=acceptView(previous,next);
  if(accepted!==next)return state;
- if(silent||!previous||previous.id!==next.id||next.status==='abandoned')return {latest:next,events:[]};
+ if(silent||!previous||previous.id!==next.id||next.status==='abandoned')return {latest:next,events:!silent&&announceStart&&next.status==='active'?[{kind:'honors',key:next.id+'/honors/'+next.hole,start:at,end:at+MEGA_HONORS_MS,view:next}]:[]};
  let events=state.events.filter(e=>e.end>at),start=Math.max(at,events.at(-1)?.end??at);
  // Only the exact committed replacement response establishes the old hidden value.
  // A later/replayed snapshot must never be interpreted as a fresh reveal receipt.
@@ -43,20 +45,29 @@ export function receivePresentation(state:MegaPresentation,next:MegaView,at:numb
   events.push({kind:'opening',key:next.id+'/open/'+next.revision,start,end:start+350,view:next,index:intent.indices[0]});
  }
  for(const result of next.results.filter(r=>!previous.results.some(p=>p.hole===r.hole))){
-  const end=start+result.hidden.length*500+scoreSteps(result.cards).length*900+1400;
+  const end=start+result.hidden.length*500+scoreSteps(result.cards).length*900+MEGA_HOLE_RESULT_MS;
   const view:MegaView={...next,hole:result.hole,phase:'scoring',pending:null,cards:result.cards,exposed:Array(6).fill(true),
    score:result.total,results:next.results.filter(r=>r.hole<=result.hole)};
   events.push({kind:'scoring',key:next.id+'/hole/'+result.hole,start,end,view,result});start=end;
+ }
+ if(next.status==='completed'&&previous.status!=='completed'){
+  events.push({kind:'final',key:next.id+'/final',start,end:start+MEGA_FINAL_RESULT_MS,view:next});
+ }else if(next.status==='active'&&next.hole>previous.hole){
+  events.push({kind:'honors',key:next.id+'/honors/'+next.hole,start,end:start+MEGA_HONORS_MS,view:next});
  }
  return {latest:next,events};
 }
 export function presentationFrame(state:MegaPresentation,at:number,reduced=false){
  const event=state.events.find(e=>e.end>at),view=event?.view??state.latest;
  if(!view)return null;
+ if(event?.kind==='honors'||event?.kind==='final'){
+  const kind=event.kind==='honors'?'tee' as const:'final' as const;
+  return {view,locked:true,replacement:null,opening:null,stockRevealing:false,scoring:null,transition:{kind:event.kind,key:event.key},cue:{id:event.key,kind,fresh:at-event.start<200}};
+ }
  if(event?.kind==='replacement'){
   const age=Math.max(0,at-event.start),stage=!event.hidden?'arrive':age<1500?'reveal':age<1850?'dissolve':'arrive';
   const cards=[...event.view.cards];cards[event.index]=stage==='arrive'?event.newCard:event.oldCard;
-  return {view:{...view,cards},locked:true,replacement:{index:event.index,stage},opening:null,stockRevealing:false,scoring:null,cue:null};
+  return {view:{...view,cards},locked:true,replacement:{index:event.index,stage},opening:null,stockRevealing:false,scoring:null,transition:null,cue:null};
  }
  if(event?.kind==='opening')return {view,locked:true,replacement:null,opening:{index:event.index},stockRevealing:false,scoring:null,cue:null};
  if(event?.kind==='draw')return {view,locked:true,replacement:null,opening:null,stockRevealing:true,scoring:null,cue:null};
@@ -68,10 +79,10 @@ export function presentationFrame(state:MegaPresentation,at:number,reduced=false
   const tally=finished?event.result.score:step?Math.round(prior+(step.total-prior)*progress):0;
   const cards=view.cards.map((c,i)=>event.result.hidden.indexOf(i)>=Math.floor(age/500)&&age<revealEnd?null:c);
   const fresh=age-revealEnd-index*900<200;
-  const cue=index>=0?(finished?index===steps.length?{id:event.key+'/finish',kind:'hole' as const,fresh}:null:{id:event.key+'/step/'+index,kind:'cup' as const,fresh}):null;
-  return {view:{...view,cards},locked:true,replacement:null,opening:null,stockRevealing:false,scoring:{tally,finished,indices:finished?[]:step?.indices??[],points:step?.points??null,revealing:age<revealEnd},cue};
+  const cue=index>=0?(finished?{id:event.key+'/finish',kind:'hole' as const,fresh:age-revealEnd-steps.length*900<200}:{id:event.key+'/step/'+index,kind:'cup' as const,fresh}):null;
+  return {view:{...view,cards},locked:true,replacement:null,opening:null,stockRevealing:false,scoring:{tally,finished,indices:finished?[]:step?.indices??[],points:step?.points??null,revealing:age<revealEnd},transition:finished?{kind:'hole' as const,key:event.key}:null,cue};
  }
  const result=view.phase==='scoring'?view.results.find(r=>r.hole===view.hole):null;
- return {view,locked:false,replacement:null,opening:null,stockRevealing:false,scoring:result?{tally:result.score,finished:true,indices:[],points:null,revealing:false}:null,cue:null};
+ return {view,locked:false,replacement:null,opening:null,stockRevealing:false,scoring:result?{tally:result.score,finished:true,indices:[],points:null,revealing:false}:null,transition:null,cue:null};
 }
 export type MegaFrame=NonNullable<ReturnType<typeof presentationFrame>>;

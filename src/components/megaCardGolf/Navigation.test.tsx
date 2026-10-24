@@ -9,7 +9,7 @@ import {INITIAL_COURSES} from '@/lib/megaCardGolf/config';
 import {createRun,projectRun} from '@/lib/megaCardGolf/engine';
 import type {AudioManager} from '@/lib/audio/audioManager';
 vi.mock('./MegaCardGolfGame',()=>({MegaCardGolfGame:()=> <div>Active game</div>}));
-const audio={} as AudioManager;
+const audio={request:vi.fn(()=>vi.fn())} as unknown as AudioManager;
 const catalog={courses:INITIAL_COURSES,boards:[],archives:[],active:null,admission:true,isAdmin:true};
 const row=(score:number,name='Birdie')=>({runId:name,name,score,rank:1});
 afterEach(()=>{cleanup();vi.restoreAllMocks();history.replaceState(null,'','/');});

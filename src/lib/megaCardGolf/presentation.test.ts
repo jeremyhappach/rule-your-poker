@@ -48,7 +48,7 @@ describe('presentation never owns gameplay',()=>{
   expect(presentationFrame(state,100)!.view.hole).toBe(1);
   expect(presentationFrame(state,100)!.view.results).toHaveLength(1);
   expect(presentationFrame(state,end)!.view.hole).toBe(2);
-  expect(receivePresentation(state,projectRun(next,next.deadline-1),200).events).toHaveLength(1);
+  expect(receivePresentation(state,projectRun(next,next.deadline-1),200).events).toHaveLength(2);
   const cue=presentationFrame(state,done.results[0].hidden.length*500)!.cue;
   expect(cue?.id).toBe('r/hole/1/step/0');expect(cue?.fresh).toBe(true);
   expect(presentationFrame(state,done.results[0].hidden.length*500+300)!.cue?.fresh).toBe(false);
@@ -69,11 +69,42 @@ describe('presentation never owns gameplay',()=>{
   let state=receivePresentation(emptyPresentation(),projectRun(run,1),0);
   state=receivePresentation(state,projectRun(done,done.deadline),0);
   expect(state.latest!.status).toBe('completed');expect(presentationFrame(state,0)!.locked).toBe(true);
-  expect(presentationFrame(state,state.events[0].end)!.locked).toBe(false);
+  expect(presentationFrame(state,state.events.at(-1)!.end)!.locked).toBe(false);
   state=receivePresentation(state,projectRun(done,done.deadline),100,true);
   expect(presentationFrame(state,100)!.cue).toBeNull();expect(presentationFrame(state,100)!.scoring!.tally).toBe(done.score);
  });
  it('renders signed values without changing numbers or conflating missing with even',()=>{
   expect([null,undefined,-2,0,3].map(formatGolfScore)).toEqual(['—','—','-2','E','+3']);
  });
+});
+
+it('queues readable result, next-hole honors and final scorecard; snapshots never shorten presentation',()=>{
+ const initial=make(),done=recoverRun(initial,initial.deadline),next=recoverRun(done,done.deadline);
+ let timeline=receivePresentation(emptyPresentation(),projectRun(initial,1),0);
+ timeline=receivePresentation(timeline,projectRun(done,done.deadline-1),100);
+ const scoring=timeline.events[0],holdStart=scoring.end-4200;
+ timeline=receivePresentation(timeline,projectRun(next,next.deadline-1),200);
+ expect(presentationFrame(timeline,holdStart)!.transition?.kind).toBe('hole');
+ expect(presentationFrame(timeline,scoring.end-1)!.view.hole).toBe(1);
+ expect(presentationFrame(timeline,scoring.end)!.transition?.kind).toBe('honors');
+ expect(presentationFrame(timeline,scoring.end)!.cue?.kind).toBe('tee');
+ expect(presentationFrame(timeline,scoring.end+300)!.cue?.fresh).toBe(false);
+ expect(presentationFrame(timeline,scoring.end+1800)!.locked).toBe(false);
+ const config={...INITIAL_COURSES[0],holes:1};const run=createRun('last','u',config,[Array.from({length:52},(_,i)=>i)],0),final=recoverRun(run,run.deadline);
+ let end=receivePresentation(receivePresentation(emptyPresentation(),projectRun(run,1),0),projectRun(final,final.deadline),100);
+ const last=end.events.at(-1)!;
+ expect(last.kind).toBe('final');expect(last.end-last.start).toBe(6500);
+ for(const reduced of [false,true]){expect(presentationFrame(end,last.start,reduced)!.transition?.kind).toBe('final');expect(presentationFrame(end,last.end-1,reduced)!.locked).toBe(true);}
+ end=receivePresentation(end,projectRun(final,final.deadline+1),200);
+ expect(end.events).toHaveLength(2);expect(presentationFrame(end,last.end)!.locked).toBe(false);
+ expect(final.status).toBe('completed');expect(final.score).toBe(end.latest!.score);
+});
+it('announces only explicit fresh starts or new holes; reconnect and duplicate snapshots do not replay tee cues',()=>{
+ const run=make(),view=projectRun(run,1);
+ const start=receivePresentation(emptyPresentation(),view,10,false,undefined,true);
+ expect(presentationFrame(start,10)!.transition?.kind).toBe('honors');
+ expect(receivePresentation(start,view,20).events).toHaveLength(1);
+ expect(receivePresentation(start,view,20,true).events).toHaveLength(0);
+ expect(receivePresentation(emptyPresentation(),view,20,true,undefined,true).events).toHaveLength(0);
+ expect(receivePresentation(emptyPresentation(),view,20).events).toHaveLength(0);
 });

@@ -96,3 +96,25 @@
 .mega-turn-text{flex-shrink:0}
 @container fullscreen-board (min-aspect-ratio:3/2){.mega-score-strip{position:absolute;inset:0 0 auto;height:15%}.mega-play-area{justify-content:space-between}.mega-hand-area{width:60%;gap:.35rem}.mega-tableau{height:calc(100% - 2rem)}}
 @media(prefers-reduced-motion:reduce){.mega-flip-back{display:none}}
+
+/* Arcade adaptation of Golf's paper scorecard and normalized pencil strokes. */
+.mega-game-plane:has(.mega-transition)>:not(.mega-transition){visibility:hidden}
+.mega-transition{position:absolute;inset:0;display:grid;place-items:center;overflow:auto;pointer-events:auto;background:#123e34ed;border-radius:1rem;padding:2cqh 3cqw;text-align:center}
+.mega-transition-content{width:100%;max-width:48rem;margin:auto;color:#fff4d6}
+.mega-transition h2{font:700 clamp(20px,5cqh,38px) Georgia,serif;line-height:1.15;margin:.3em 0 .6em;color:#ffe49e}
+.mega-transition p{margin:.5em 0;font-size:clamp(11px,2.6cqh,16px)}
+.mega-result-eyebrow{letter-spacing:.16em;font-weight:700;color:#d0dfbb}
+.mega-tee-mark{font-size:clamp(40px,18cqh,96px);color:#ffe49e}
+.mega-result-scorecard{background:#eaf0e9;color:#163b31;border-radius:.6rem;box-shadow:0 .4rem 1.2rem #0004;padding:1cqh 1cqw}
+.mega-result-scorecard h3{font:bold clamp(14px,3cqh,22px) Georgia,serif;padding:.4em}
+.mega-result-scorecard table{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums;margin-bottom:1cqh;font-size:clamp(10px,2.2cqh,15px)}
+.mega-result-scorecard th,.mega-result-scorecard td{border:1px solid #879c92;text-align:center;padding:.35em .1em;height:5cqh}
+.mega-result-scorecard thead{background:#168b70;color:#072f25}.mega-result-scorecard th:first-child{width:13%}
+.mega-pencil-value>span{display:flex;align-items:center;justify-content:center}
+.mega-result-scorecard .golf-pencil-score{display:block;min-width:0;width:auto;height:clamp(21px,4.8cqh,33px);max-width:100%}
+.mega-pencil-plus{width:clamp(8px,1.5cqw,14px);height:clamp(21px,4.8cqh,33px);flex-shrink:0;fill:none;stroke:#555957;stroke-width:1.4;stroke-linecap:round}
+.mega-result-total{display:flex;align-items:center;justify-content:center;gap:1rem;font-weight:700}
+.mega-result-total .golf-pencil-score{height:clamp(27px,6cqh,44px)}
+[data-mega-write] path{stroke-dasharray:1;stroke-dashoffset:1;animation:mega-write-score 3000ms linear forwards}
+@keyframes mega-write-score{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){[data-mega-write] path{animation:none;stroke-dashoffset:0}}

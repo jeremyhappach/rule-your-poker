@@ -1,3 +1,29 @@
+# Mega score and course-sequence polish — approved release — 2026-10-23
+
+Jeremy approved reviewed candidate 54ec03c9b82473f0fa70b609685661ab4d025164.
+This release is based on 24fbf4d68be9f772ae2dce62e77830cc303f7b9f and preserves
+its multiplayer Golf card/seat fixes and all unrelated work.
+
+Mega score surfaces consistently use + for positive scores and E for zero.
+The existing presentation queue adds a 1.8-second hole introduction with tee-off
+sound, a distinct 4.2-second hole-result/scorecard writing sequence after counting,
+and a 6.5-second final scorecard with melodic cue before leaderboard navigation.
+Reduced motion, sound preference, cue dedupe and silent reconnect are preserved.
+The shared Golf pencil strokes are reused unchanged; only Mega supplies +/E text.
+Rules, server timers, scores, historical /1 runs and receipts, course configuration,
+boards, recovery worker, migrations, admission and financial state are unchanged.
+No timer bonuses, leaderboard reset or multiplayer formatting change is included.
+
+Candidate qualification passed 101 focused tests and 17 local browser/audio checks.
+Integrated release checks PASS: application TypeScript, all 2,861 source tests
+(412 files, two workers), 241 harness tests and production Vite build. Existing
+Browserslist/chunk warnings remain. All 19 reviewed source/preview files match
+the approved candidate; all six files changed by the live Golf release are
+preserved. Exact-SHA publication verification remains pending the approved push.
+Source checkpoint tag: mega-card-golf-presentation-release-20261023.
+See [presentation evidence](MEGA_CARD_GOLF_GAMEPLAY_POLISH.md).
+Production smoke remains pending Jeremy; local checks do not establish acceptance.
+
 # Six-Card Golf card backs / seat inspection — approved release, 2026-10-23
 
 Isolated candidate adds definite opponent felt card slots and moves public-tableau

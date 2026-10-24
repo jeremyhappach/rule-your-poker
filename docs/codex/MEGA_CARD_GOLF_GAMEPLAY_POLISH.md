@@ -1,3 +1,106 @@
+# Mega score and course-sequence polish — approved release — 2026-10-23
+
+Jeremy approved reviewed presentation candidate
+54ec03c9b82473f0fa70b609685661ab4d025164 for publication. The release integrates
+that presentation pass on 24fbf4d68be9f772ae2dce62e77830cc303f7b9f, preserving
+the live multiplayer Golf card and seat changes. No migration, admission change,
+timer bonus, multiplayer formatting or gameplay/financial change is included.
+
+Audit/fix: course records, both leaderboard periods, personal best/self rank,
+archived board details, completed-course summary, hole strip, cumulative totals,
+counting and result scorecards use the existing Mega formatGolfScore convention:
+positive +, zero E, negatives minus. Unplayed/future holes remain blank/dash; the
+initial cumulative total is a dash. Numeric results, ordering and storage do not change.
+
+The existing presentation queue now retains counting -> explicit Hole N: score
+with a paper scorecard/pencil write (4.2 seconds) -> next-hole honors (1.8 seconds).
+The final hole instead retains its result, then a complete course scorecard and
+final total for 6.5 seconds before the leaderboard. Accepted server snapshots can
+advance while these frames remain held. Server failsafe, completion, scoring and
+leaderboard ownership stay unchanged. No timer bonus or configuration change.
+
+MegaResultScorecard adapts Golf's paper scorecard layout and reuses the existing
+GolfPencilScore strokes unchanged. Mega supplies its own positive-sign stroke and
+formatter, supporting the frozen course length without a multiplayer snapshot.
+The original tee-off swing/impact and melodic finale use the application AudioManager
+for preference, autoplay admission, cancellation and dedupe. Cue expiry now includes
+the cue duration, so the longer melody is admissible; stale cues are not caught up.
+Reduced motion disables pencil motion but retains readable holds. Reconnect quietly
+restores current truth and skips interrupted historical cues/presentation.
+
+Validation: 101 focused tests pass (engine, sequential opening, queue ordering,
+controller, score surfaces, audio manager, defaults/navigation). TypeScript and Vite
+production build pass. Browser proof has 17 checks: three moments at four sizes,
+actual controller counting -> hole result -> final scorecard -> leaderboard, reduced
+motion, and three rendered WAV cues. No page errors or external requests. Screenshots
+were inspected. The existing local Vite server needed a restart because it had held
+stale transformed modules; final evidence uses the current compiled source.
+
+Review: http://127.0.0.1:5187/dev/mega-card-golf/polish/smoke-sequences.html
+Actual controller demos: index.html?sequence=hole-start, hole-end, game-end in the
+same directory. Sound on -> select course -> Start Game -> Finish current hole
+(local clock). Fixture clocks and memory never connect to production.
+WAVs/screenshots/report are in dev/mega-card-golf/polish/evidence.local/.
+Preview server is left running for reference. Publication was explicitly approved;
+production gameplay smoke remains Jeremy's acceptance step.
+
+# Mega Card Golf /2 ready for owner smoke — 2026-10-23 21:33 UTC
+
+This supersedes the release-signal block recorded below. Independently verified
+workflow 40022391516 attempt 2 / job 120666735160: both production-alias verification
+and signal publication succeeded. Public manifest and persisted release signal
+match 7219f8340579908c029037d302b518fc20026a53. Signal timestamp:
+2026-10-23T21:31:07.898Z; deploymentId 40022391516-2.
+
+Applied only the prepared activation migration: hosted 20261023213256
+mega_card_golf_sequential_activate (local source
+20261023204536_mega_card_golf_sequential_activate.sql). Registration remains
+20261023204725. Both /1 and /2 are enabled; installed start routing selects /2
+for new runs while retaining active /1 and original start receipts. Start/catalog
+function hashes match qualification; commit/scoring owner and service-only grants
+are unchanged. No course/config/board changes, resets or timer bonuses occurred.
+
+Installed rollback proof passed start selection, active/late legacy replay,
+owner/version guards, canonical completion, duplicate completion, continuation,
+grants and historical preservation. All fixture writes rolled back. Existing
+Mega result hash remains 7340953f5dcb32f29554a0b8ebefff62. All three course
+configurations and board IDs match the pre-release checkpoint.
+
+Recovery worker v14 is ACTIVE; downloaded source matches the qualified bundle,
+existing authentication is unchanged, heartbeat is fresh and failure is null.
+Actual dispatcher /1-/2 initialization and /2 zero-client completion were proved
+in the disposable local PostgreSQL release qualification; hosted installed
+contracts and worker health are verified. No synthetic live game was retained.
+
+Status: READY FOR JEREMY'S PRODUCTION SMOKE, not yet smoke-accepted.
+Normal release checks previously passed: TypeScript, 2,848 source tests, 241 harness
+tests and production build. No product changes or further deployment were needed
+for this activation. This follow-up records evidence locally and does not push
+another release.
+
+# Release publication blocked — 2026-10-23 21:03 UTC
+
+Production site SHA: 7219f8340579908c029037d302b518fc20026a53; Vercel
+dpl_8t8wR1j8mvbBAKhwMDjw9feHzSwa is READY and the public manifest/route match.
+Recovery worker v14 is ACTIVE with verified source. Registration migration
+20261023204725 is installed and rollback-qualified; /2 remains DISABLED.
+The activation migration has NOT been applied. Existing /1 admission/runs,
+course configurations, board IDs and historical results are preserved.
+
+GitHub release-signal run 40022391516, job 120649936281 failed: the runner's
+`curl --fail --silent --show-error --header 'Cache-Control: no-cache' https://holm357.com/build-manifest.json`
+received HTTP 403 throughout its configured wait. Publication was skipped. The
+persisted signal still names 067b7b9e2985718d5d4ee42186a90fe52f462a22.
+This is an HTTP access denial, not an approval prompt. No retry, access bypass,
+security-setting change or activation followed the denial.
+
+Status: NOT READY FOR /2 SMOKE. Resolve the release workflow's production-access
+failure within a separately established scope, publish and verify the exact-SHA
+signal, then apply the already-qualified activation and verify installed contracts.
+Normal local checks passed: TypeScript, 2,848 source tests, 241 harness tests, Vite
+build, rollback/receipt/concurrency/recovery proofs. This status update is local
+documentation only; it is not another production push.
+
 # Mega Card Golf /2 release package — 2026-10-23
 
 Approved reviewed candidate: f50bf3754c55b9983c706833cacea9f9ea56172d.

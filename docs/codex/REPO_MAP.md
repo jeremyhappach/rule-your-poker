@@ -1256,3 +1256,5 @@ the intermediary artwork/start screen; `MegaLeaderboard.tsx` owns period reads.
 All live under `src/components/megaCardGolf/`. Existing GameLobby Defaults and
 MegaDefaultsConnected retain settings authorization/save ownership. Local fixture
 previews live in `dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_POLISH.md`.
+
+Mega local smoke-polish presentation: `src/components/megaCardGolf/MegaResultScorecard.tsx` adapts Golf pencil strokes for Arcade; `src/lib/megaCardGolf/presentation.ts` owns the presentation-only hole/honors/final holds. `dev/mega-card-golf/polish/SequencePreview.tsx` and `smoke-sequences.html` provide local controller previews and sound samples. Multiplayer Golf owners are unchanged.

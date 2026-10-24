@@ -5,7 +5,7 @@ import {MegaArcade} from './MegaArcade';
 import {createRun,applyIntent,projectRun} from '@/lib/megaCardGolf/engine';
 import {INITIAL_COURSES} from '@/lib/megaCardGolf/config';
 import type {AudioManager} from '@/lib/audio/audioManager';
-vi.mock('./MegaCardGolfGame',()=>({MegaCardGolfGame:(p:any)=><div data-testid="game" data-locked={p.presentation.locked}><span>Presented hole {p.view.hole}</span><button onClick={()=>p.onIntent({type:'replace',index:4})}>Replace last</button><button onClick={p.onExit}>Confirm abandon</button></div>}));
+vi.mock('./MegaCardGolfGame',()=>({MegaCardGolfGame:(p:any)=><div data-testid="game" data-locked={p.presentation.locked} data-transition={p.presentation.transition?.kind??'counting'}><span>Presented hole {p.view.hole}</span><button onClick={()=>p.onIntent({type:'replace',index:4})}>Replace last</button><button onClick={p.onExit}>Confirm abandon</button></div>}));
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();history.replaceState(null,'','/');});
 async function advance(ms:number){for(let i=0;i<ms;i+=100)await act(async()=>{await vi.advanceTimersByTimeAsync(Math.min(100,ms-i));});}
 function setup(){
@@ -21,7 +21,7 @@ function setup(){
   if(body.op==='action')run=applyIntent(run,body.intent,Date.now());
   return projectRun(run,Date.now());
  });
- const cue=vi.fn((_event:{id:string})=>vi.fn());history.replaceState(null,'','/?run=r');
+ const cue=vi.fn((event:{id:string;expiresAt:number;cue:{durationMs:number}})=>{expect(event.expiresAt-performance.now()).toBeGreaterThanOrEqual(event.cue.durationMs);return vi.fn();});history.replaceState(null,'','/?run=r');
  render(<MegaArcade request={request as any} userId="u" audio={{request:cue} as unknown as AudioManager}/>);
  return {request,cue,getRun:()=>run};
 }
@@ -35,8 +35,12 @@ it('records completion immediately but holds game through replacement/counting; 
  await advance(4400);
  expect(screen.getByTestId('game')).toBeTruthy();
  await advance(6500);
+ expect(screen.getByTestId('game').getAttribute('data-transition')).toBe('hole');
+ await advance(1500);
+ expect(screen.getByTestId('game').getAttribute('data-transition')).toBe('final');
+ await advance(6500);
  expect(screen.queryByTestId('game')).toBeNull();expect(screen.getByRole('heading',{name:'Top Ten'})).toBeTruthy();
- const ids=fixture.cue.mock.calls.map(([cue])=>(cue as any).id);expect(new Set(ids).size).toBe(ids.length);expect(ids.some(id=>id.includes('/step/'))).toBe(true);
+ const ids=fixture.cue.mock.calls.map(([cue])=>(cue as any).id);expect(new Set(ids).size).toBe(ids.length);expect(ids.some(id=>id.includes('/step/'))).toBe(true);expect(ids.filter(id=>id.endsWith('/final'))).toHaveLength(1);
 });
 it('reuses the authoritative abandon action and exits only after its response',async()=>{
  const fixture=setup();await act(async()=>{await vi.advanceTimersByTimeAsync(50);});
