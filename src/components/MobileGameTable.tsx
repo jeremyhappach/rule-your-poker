@@ -252,6 +252,7 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { SccPotPosition } from "./SccPotPosition";
 import { DiceGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { DiceAnchoredSlot } from "./DiceAnchoredSlot";
 import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
@@ -13607,9 +13608,10 @@ export const MobileGameTable = ({
           // (e.g. "$4") before the locked pre-ante pot is applied. For initial ante, the pre-ante pot
           // is always 0. Keep pussy-tax behavior unchanged.
           const isInitialAntePending = !!(anteAnimationTriggerId && !anteAnimationTriggerId.startsWith('pussy-tax-'));
+          const PotPosition = gameType === 'ship-captain-crew' ? SccPotPosition : 'div';
 
           return (
-            <div 
+            <PotPosition
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
                 gameType === 'holm-game'
                   // P1 fix: Holm pot must remain stationary across showdown.
@@ -13681,7 +13683,7 @@ export const MobileGameTable = ({
                   </div>
                 );
               })()}
-            </div>
+            </PotPosition>
           );
         })()}
 

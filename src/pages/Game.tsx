@@ -84,6 +84,7 @@ import {
   getHolmPresentationHandKey,
   getHolmPresentationIdentityKey,
   isHolmPreHandRouteStatus,
+  hasPendingHolmPresentedResult,
   isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
   reconcileHolmPresentationBarrierFromEvidence,
@@ -7627,7 +7628,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.all_decisions_in_round_id, game?.awaiting_next_round, currentRound?.id, currentRound?.status]);
 
   useEffect(() => {
-    const currentAwaiting = game?.awaiting_next_round || false;
+    // A raw successor can clear awaiting_next_round while this client still
+    // owes the predecessor's result/ledger presentation. Admit from the same
+    // held snapshot that owns the result and exact presentation identity.
+    const currentAwaiting = game?.game_type === 'holm-game'
+      ? hasPendingHolmPresentedResult(holmView)
+      : game?.awaiting_next_round || false;
     const currentRoundNumber = game?.current_round || 0;
 
     // ── [ADMISSION-TRACE] effect_enter ─────────────────────────────
@@ -8401,7 +8407,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, holmPlayers, holmPresentationIdentity, holmView?.lastRoundResult, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity, is357GameType, threeFiveSevenDecisionRevealBlocksResult, threeFiveSevenDecisionRevealClock]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, holmPlayers, holmPresentationIdentity, holmView?.lastRoundResult, holmView?.roundStatus, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity, is357GameType, threeFiveSevenDecisionRevealBlocksResult, threeFiveSevenDecisionRevealClock]);
 
   const reconcileHolmPresentationBarrier = useCallback((): boolean => {
     const barrier = holmPresentationBarrierRef.current;
@@ -14859,7 +14865,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               potMaxValue={game.pot_max_value || 10}
               pendingSessionEnd={game.pending_session_end || false}
               awaitingNextRound={renderRoundContext ? (game.game_type === 'holm-game' && holmView
-                ? (holmView.roundStatus === 'completed' && !!holmView.lastRoundResult)
+                ? hasPendingHolmPresentedResult(holmView)
                 : (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false))) : false}
               gameType={game.game_type}
               isGameOver={isTerminalSlotPresentation}

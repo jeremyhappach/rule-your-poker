@@ -1,17 +1,21 @@
 # October 24 multiplayer smoke — local investigation checkpoint, not released
 
-One verified client defect is corrected locally: duplicate dealer-draw cards
-could remain in the gameplay hand pane after the canonical felt overlay cleared.
-The duplicate renderer is removed and the dealer spotlight follows draw receipt
-eligibility. Sixty-six focused tests pass. Ship geometry, mcru81's timeout/rejoin
-and HOLM presentation recovery remain unqualified; no production mutation or
-publication occurred. Exact session/hand evidence and pending questions are in
+Local candidates now cover dealer-draw retirement, current-authority HOLM
+participation identity, held-HOLM result admission, and SCC pot placement in
+the dice coordinate frame. Seventy-seven focused tests, application TypeScript
+and the production build pass. Fourteen synthetic SCC viewport/held-state
+checks pass; full-shell and production acceptance remain outstanding.
+No production mutation or publication occurred. Exact evidence is in
 [the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
 Follow-up evidence identifies mcru81's timeout as HOLM hand 2 at 4:15:48 PM
 and Hap as the frozen showdown viewer. Two subsequent rejoin responses are
-consistent with stale hand identity. The report's real-money timeout-pause
-description conflicts with the deployed, documented all-human auto-fold pause
-policy; clarification is pending before changing timeout behavior.
+consistent with stale hand identity. Jeremy clarified that real-money timeout
+policy depends on the game: strategic games pause on the first timeout;
+Horses and SCC use automatic play. The scoped HOLM/357 shared-guard candidate
+passes hosted rollback proofs for first timeout, reclaim, explicit resume,
+fake-money preservation, dice exclusion, and existing HOLM financial boundaries.
+It is not installed. CLI installation permission is pending before packaging
+the migration; no dependencies or tools have been installed.
 
 # Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
 

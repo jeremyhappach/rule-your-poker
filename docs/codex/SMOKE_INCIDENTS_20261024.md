@@ -1,6 +1,6 @@
 # October 24 multiplayer smoke — investigation checkpoint
 
-Status: incomplete; one local client correction, no publication or production
+Status: incomplete; local correction candidates, no publication or production
 mutation. Base: `48c26110e23b13727e208bfb8177c06c5699e492` (`origin/main`).
 Branch: `codex/oct24-smoke-incidents`. The original Six-Card Golf checkout and
 all its local changes are preserved. Jeremy's pasted report authorizes scoped
@@ -46,10 +46,23 @@ Ship dealer game `24847e05-cb34-4c87-9e6d-7a38858b6179` began at 4:08:40.
 The pot uses a percentage of the table (`top:28%`, translated by its height);
 opponent dice use a separate resolved gameplay rectangle (anchorY 0.42,
 widthPct 0.75). There is no shared exclusion bound between these placements.
-This is a source-backed collision risk, not yet a measured reproduction on the
-reported viewport. No geometry change made. Next: measure the actual small-
-phone dice and pot bounds, then position the pot through existing canonical
-geometry with explicit separation; preserve Horses, Yahtzee and other layouts.
+This is a source-backed collision risk, not a measured reproduction on the
+reported viewport. The local `SccPotPosition` candidate resolves the existing
+SCC dice descriptor and puts the same pot above its envelope, in the same
+canonical felt coordinate frame. It reserves that position between rolls and
+leaves Horses, Yahtzee and other pot layouts unchanged. It does not change
+the pot amount, chip authority or dice rules.
+
+The offline fixture `dev/oct24-smoke` renders the real pot, dice, fitter and
+geometry components. `.codex/scripts/oct24-smoke-geometry.mjs` passed 14 checks
+at 320x568, 375x667, 390x844, 430x932, 667x375, 768x1024 and 1280x800, with
+unheld and SCC-locked states. Ninety animation frames per state checked actual
+rendered die rectangles against the pot; no overlap or page error occurred.
+The fixture does **not** reproduce the original overlap with the legacy pot,
+and its landmarks are synthetic rather than the complete shell/seat ring.
+Full-shell announcement/seat clearance and original-viewport reproduction
+remain release gates. Screenshots and measurements are local evidence under
+`.codex/evidence/oct24-smoke`; do not claim production acceptance from them.
 
 ### 3. mcru81 timeout/rejoin
 
@@ -87,7 +100,7 @@ and response lengths support this failure path, but do not expose the client's
 submitted round. No timeout, pause, bot, authorization or participation policy
 was changed.
 
-**Policy discrepancy requiring Jeremy's decision:** the report describes a
+**Resolved policy discrepancy:** the report describes a
 pause on real-money timeouts, whereas deployed `holm_apply_deadline_decision`
 marks an individual timed-out human for automatic play and next-hand sit-out,
 then invokes `private.pause_all_humans_auto_fold`. That shared guard pauses
@@ -95,9 +108,40 @@ only when the nonempty eligible human cohort is entirely on automatic play,
 in either money mode. This agrees with the October 9 decision in
 `DECISION_LOG.md` and migration `20261009231202_restore_all_human_auto_fold_pause`.
 The HOLM and 357 defaults enable timeout auto-fold with a 30-second decision
-budget; this session inherits the defaults. A clarification is pending to
-retain that deployed policy or change real-money games to pause on the first
-timeout. The latter is a substantive shared-policy change, not a checkbox fix.
+budget; this session inherits the defaults. Jeremy clarified that real-money
+strategic games pause on the first timeout, while Horses and SCC retain bot
+play because their decisions are mechanical. This correction scopes the policy
+change to HOLM/357 and does not infer changes to other games.
+
+Candidate `supabase/policies/real_money_poker_timeout.sql` changes only the two
+qualification checks inside the existing private pause guard. A real-money
+HOLM/357 human on automatic play now qualifies immediately; fake money and
+other games retain the aggregate threshold. Deliberately enabling automatic
+play is covered by the same guard, so it cannot bypass the real-money pause.
+Existing producers still validate expiry/actor/identity and mark timeout intent
+before any decision. Existing pause authorization, locks, deadline renewal,
+recovery-context restoration and continuation guards are preserved. Reclaim
+clears automatic intent; only explicit authorized resume restarts the match.
+
+The complete candidate proof ran successfully on production under BEGIN/ROLLBACK,
+using only generated fixtures. It composes existing HOLM winner/tie/terminal,
+authorization, settlement and replay proofs, the fake-money aggregate timeout
+proof, plus first real-money HOLM/357 expiry, unchanged money/actions/rounds,
+duplicate and late delivery, unauthorized/stale reclaim, valid reclaim while
+paused, stale/valid host resume, and real-money Horses/SCC exclusion. No candidate
+definition or fixture persisted. Runner:
+`.codex/scripts/build-real-money-poker-timeout-proof.mjs`. The candidate remains
+unregistered/uninstalled; no CLI is installed and tool-install permission is
+pending under the repository's installation rule and Supabase skill workflow.
+
+Client candidate `sessionPlayerIntent.ts` now reads HOLM's published round and
+the participant's intent version in a single PostgREST embedded read, with
+actual deployed foreign-key names. It selects the exact dealer/hand/round,
+rejects a completed or missing published hand with a preparation explanation,
+and keeps the existing one-retry stop-only/CAS rule. It never retries an
+uncertain write, overwrites a competing participation version, or resumes a
+paused game. The new embedded read still needs authenticated HTTP qualification;
+unit mocks alone are not that evidence.
 
 ### 4. HOLM completed showdown
 
@@ -124,8 +168,14 @@ settlement. Exact local failure remains unproved. One concrete source concern:
 Game's continuation effect admits through live games.awaiting_next_round but
 reads result/identity from held holmView; the live flag can clear while a local
 predecessor remains held. Other gates include exact community reveal and ledger
-cursor receipts. Do not bypass any of these or introduce a repair timer without
-a focused reproduction. No HOLM patch made.
+cursor receipts. A local correction now makes result admission consume the
+same held snapshot as result/identity and felt props. A focused barrier test
+covers completed H1 held while H2 is betting with its awaiting flag cleared,
+then exact H1 completion releasing admission. No receipt, community reveal,
+ledger-stage or financial guard is bypassed, and no repair timer was added.
+This proves a concrete source-level stall path; historical logs do not prove
+it was the sole gate blocking Hap's browser. Multi-client runtime qualification
+remains required.
 
 ## Shared cause and validation
 
@@ -133,7 +183,7 @@ No common cause across all four incidents is established. The duplicate
 dealer-card renderer is distinct from the HOLM continuation barrier. Stale
 presented identity could link HOLM and rejoin, but that remains a hypothesis.
 
-The local high-card correction passed 66 tests across seven focused files:
+The earlier local high-card correction passed 66 tests across seven focused files:
 MobileGameTable dealer receipt, useSessionDealerDrawReceipt,
 useHighCardDealerSelection, sessionDealerDrawPresentation,
 sessionDealerDrawTieHarness, sessionPlayerIntent and holmPresentationBarrier.
@@ -144,11 +194,21 @@ The build retained existing Browserslist/chunk warnings. This is not viewport
 or production acceptance. No dependencies were installed; the isolated
 worktree reuses the existing node_modules through a junction.
 
+The subsequent candidate passed 77 tests in six files: sessionPlayerIntent,
+holmPresentationBarrier, holmTransferPresentationStage, MobileGameTable dealer
+receipt, horsesSccAuthority and holmDatabaseResolutionOwnership. Application
+TypeScript and Vite production build pass, with existing warnings. React review
+checked stable component identities, new effect dependency, gesture-only fresh
+reads and unchanged non-HOLM branches. The SCC component uses existing canonical
+geometry and portal ownership rather than window measurements or device patches.
+
 ## Remaining work
 
-The affected game and viewer are now identified. Resolve the timeout-policy
-discrepancy before changing that behavior; continue timeout/rejoin and HOLM
-from the exact identities above without repeating broad discovery.
+The affected game, viewer and intended timeout policy are now identified.
+Package/register the proven SQL candidate after the pending tool decision,
+then apply it once and rerun the complete proof. Qualify the new HOLM embedded
+read over authenticated HTTP, full-shell SCC clearance and live HOLM presentation
+progression. Continue from the exact identities above without broad discovery.
 Attach the original three screenshots to preserve viewport and client evidence.
 Reproduce exact rejected participation and held-HOLM progression, implement only
 the demonstrated defects, then qualify fake-money/real-money boundary policy,

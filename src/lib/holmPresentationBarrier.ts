@@ -1,5 +1,13 @@
 import type { ChipPresentationCursorState } from './canonicalShell/ChipPresentationLedger';
 
+/** The held hand owns result admission even after the server activates H+1. */
+export function hasPendingHolmPresentedResult(view: {
+  roundStatus: string | null;
+  lastRoundResult: string | null;
+} | null | undefined): boolean {
+  return view?.roundStatus === 'completed' && !!view.lastRoundResult;
+}
+
 export type HolmContinuationPresentationStage =
   | 'showdown-replacement-pot'
   | 'chucky-loss'

@@ -575,6 +575,19 @@ only: no frontend consumer, rendering, routing or game-rule change. New catalog
 entries inherit `table`; future fullscreen shell work must explicitly consume
 the field without adding another gameplay or settlement owner.
 
+## October 24 — real-money timeout policy is game-specific
+
+Jeremy clarified during the October 24 smoke investigation that real-money
+strategic games pause on the first human timeout; Horses and Ship Captain Crew
+retain automatic play because their choices are mechanical. The current
+correction applies this to HOLM and 3-5-7 through the existing private pause
+guard, preserving fake-money aggregate pause and the dice exception. A human
+automatic-play intent also qualifies in those two real-money games, preventing
+continuation from bypassing the pause. Reclaim and authorized resume remain
+separate actions. Other games retain their own approved policies.
+The scoped candidate passed hosted rollback proof but is not installed;
+see `SMOKE_INCIDENTS_20261024.md` for release gates.
+
 ## October 9 — aggregate auto-fold is a database pause boundary
 
 Restore the retired worker's enabled-auto-fold policy for a nonempty cohort of

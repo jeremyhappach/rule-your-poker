@@ -250,6 +250,9 @@ retains commands, shared controls and terminal effects. The offline responsive
 browser proof is `dev/run21/fullscreen.preview.mjs`.
 
 Aggregate auto-fold pause:
+October 24 HOLM/357 real-money first-timeout candidate:
+`supabase/policies/real_money_poker_timeout.sql`, with composed proof runner
+`.codex/scripts/build-real-money-poker-timeout-proof.mjs`; not installed.
 `supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql`
 adds the internal `private.pause_all_humans_auto_fold` policy/locking guard and
 hooks existing Holm, 3-5-7, automatic-intent, and canonical timer owners.
