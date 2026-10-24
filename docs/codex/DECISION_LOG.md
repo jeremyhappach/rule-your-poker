@@ -578,15 +578,18 @@ the field without adding another gameplay or settlement owner.
 ## October 24 — real-money timeout policy is game-specific
 
 Jeremy clarified during the October 24 smoke investigation that real-money
-strategic games pause on the first human timeout; Horses and Ship Captain Crew
-retain automatic play because their choices are mechanical. The current
-correction applies this to HOLM and 3-5-7 through the existing private pause
-guard, preserving fake-money aggregate pause and the dice exception. A human
-automatic-play intent also qualifies in those two real-money games, preventing
-continuation from bypassing the pause. Reclaim and authorized resume remain
-separate actions. Other games retain their own approved policies.
-The scoped candidate passed hosted rollback proof but is not installed;
-see `SMOKE_INCIDENTS_20261024.md` for release gates.
+HOLM and 3-5-7 timeouts enable auto-fold. A real-money game pauses when only
+one eligible human remains outside auto-fold (also at zero), not after every
+first timeout. With three humans, one timeout continues and the second pauses;
+with two humans, the first timeout leaves one and pauses. Manual folds still
+count as present. Horses and Ship Captain Crew retain automatic play.
+The existing private guard owns the threshold; fake-money aggregate policy,
+other games, locking, deadlines and financial boundaries remain unchanged.
+Reclaim and authorized resume remain separate actions.
+Migration `20261024221401_real_money_poker_last_present_human` supersedes the
+earlier first-timeout interpretation in `20261024221035`; both are recorded
+because both were installed. Candidate and installed rollback proofs pass.
+See `SMOKE_INCIDENTS_20261024.md` for client release and smoke gates.
 
 ## October 9 — aggregate auto-fold is a database pause boundary
 

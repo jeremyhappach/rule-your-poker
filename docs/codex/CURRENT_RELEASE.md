@@ -1,21 +1,27 @@
-# October 24 multiplayer smoke — local investigation checkpoint, not released
+# October 24 multiplayer smoke — release candidate, owner smoke pending
 
 Local candidates now cover dealer-draw retirement, current-authority HOLM
-participation identity, held-HOLM result admission, and SCC pot placement in
-the dice coordinate frame. Seventy-seven focused tests, application TypeScript
-and the production build pass. Fourteen synthetic SCC viewport/held-state
-checks pass; full-shell and production acceptance remain outstanding.
-No production mutation or publication occurred. Exact evidence is in
+participation identity, held-HOLM result admission, and SCC pot/dice separation
+within the canonical shell. Seventy-seven focused tests, application TypeScript
+and the production build pass. Forty-two actual-shell SCC checks cover seven
+viewports and zero through five held dice; twelve additional checks cover a
+full six-seat ring. Owner production acceptance remains
+outstanding. Source checkpoint: `oct24-multiplayer-smoke-corrections-20261024`.
+The scoped timeout function migration is installed; no historical session rows
+were changed. Publication must match the source checkpoint above. Exact evidence is in
 [the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
 Follow-up evidence identifies mcru81's timeout as HOLM hand 2 at 4:15:48 PM
 and Hap as the frozen showdown viewer. Two subsequent rejoin responses are
 consistent with stale hand identity. Jeremy clarified that real-money timeout
-policy depends on the game: strategic games pause on the first timeout;
-Horses and SCC use automatic play. The scoped HOLM/357 shared-guard candidate
-passes hosted rollback proofs for first timeout, reclaim, explicit resume,
-fake-money preservation, dice exclusion, and existing HOLM financial boundaries.
-It is not installed. CLI installation permission is pending before packaging
-the migration; no dependencies or tools have been installed.
+policy depends on the game. His subsequent correction is authoritative:
+HOLM/357 timeouts enable auto-fold; real-money play pauses when only one human
+remains outside auto-fold (also zero). Horses and SCC use automatic play.
+Migration `20261024221401` supersedes the installed first-timeout interpretation
+in `20261024221035`. Complete candidate and installed rollback proofs pass:
+three-human first-timeout continuation, last-present-human pause, two-human
+timeout, reclaim, explicit resume, fake-money preservation, dice exclusion and
+existing HOLM financial boundaries. Supabase CLI 2.122.0 was installed with
+Jeremy's permission. The authenticated HOLM embedded identity read passes.
 
 # Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
 

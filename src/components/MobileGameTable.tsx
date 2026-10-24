@@ -13654,8 +13654,9 @@ export const MobileGameTable = ({
                         ? (isTablet ? 'text-xl' : 'text-base')
                         : (isTablet ? 'text-4xl' : 'text-3xl');
                   return (
-                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
-                      <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
+                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}
+                      className={gameType === 'ship-captain-crew' ? 'px-2 py-0.5' : undefined}>
+                      <span className={cn('text-poker-gold font-bold', gameType === 'ship-captain-crew' ? 'text-base' : valueClass)}>{potValueText}</span>
                     </CanonicalPotZone>
                   );
                 }
@@ -14246,6 +14247,11 @@ export const MobileGameTable = ({
               innerStyle={{ pointerEvents: 'auto' }}
             >
               <AssignedRectFitter>
+                {/* SCC's absolute held/scatter dice extend beyond the 140x84
+                    intrinsic root. Include their paint bounds in the fitter:
+                    five held 48px dice across; held row above; scatter below.
+                    These are intrinsic renderer units, not viewport offsets. */}
+                <div style={gameType === 'ship-captain-crew' ? { padding: '24px 56px 96px' } : undefined}>
                 <DiceTableLayout
                   key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
@@ -14276,6 +14282,7 @@ export const MobileGameTable = ({
                   isQualified={(horsesController.feltDice as any)?.isQualified}
                   cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                 />
+                </div>
               </AssignedRectFitter>
             </DiceAnchoredSlot>
           );

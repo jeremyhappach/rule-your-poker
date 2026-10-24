@@ -1,5 +1,5 @@
 -- October 24: real-money HOLM/357 cannot play a human decision automatically.
--- Candidate only: qualify under ROLLBACK before registering a migration.
+-- Qualified under ROLLBACK before registration; modifies no session rows.
 -- Existing timeout producers mark intent before entering this shared guard.
 -- Keep the same guard on continuation/resume so clearing automatic intent and
 -- an authorized explicit resume are both required. Dice policy is unchanged.
