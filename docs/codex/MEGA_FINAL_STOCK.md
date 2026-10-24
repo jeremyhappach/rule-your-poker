@@ -57,3 +57,8 @@ Browser: dev/mega-card-golf/final-stock/browser.mjs against the local preview on
 Ignored evidence.local contains SQL rollback proofs, JSON, worker bundle and PNGs.
 Production smoke remains Jeremy's acceptance step. Refresh, start a new /3 course,
 reach the final stock with zero discards, and compare Stand Pat versus replacement.
+
+Final release checkpoint: mega-final-stock-release-20261024. The product source
+checkpoint is 64ce35430; the release follow-up records qualification and removes
+a blank-line whitespace warning in the proof fixture. Recovery is healthy after
+the v15 update. The /3 activation remains held until matching publication.

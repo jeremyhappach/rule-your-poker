@@ -44,7 +44,7 @@ try{
  pass('Actual service + SQL: zero/nonzero allowance, six concealed cards, canonical score, duplicate/reconnect and exact-once receipt/result');
  // The actual shared worker recognizes /3 and completes uninitialized, expired runs.
  let empty=await rpc('arcade_mega_start',{p_actor:actor,p_request:randomUUID(),p_course:'sunny-meadows'});
- 
+
  const token=randomUUID();await db.query("UPDATE private.arcade_recovery_state SET token=$1,claimed=false,expires_at=clock_timestamp()+interval '60 seconds'",[token]);
  await recoverArcade(rpc,token);
  const initialized=await rpc('arcade_load',{p_actor:actor,p_run:empty.id});assert.equal(initialized.state.ruleset,'mega-card-golf/3');
