@@ -53,6 +53,10 @@ it('actual Game and Golf retain counting and scorecard before winner, then retir
  const previous=s.game;s.game={...s.game,status:'session_ended',last_round_result:'Golf complete',session_ended_at:new Date().toISOString()};
  await act(async()=>{for(const {filter,fn}of s.listeners)if(filter.table==='games'&&filter.event!=='DELETE'&&filter.event!=='INSERT')fn({eventType:'UPDATE',new:s.game,old:previous});});
  expect(screen.queryByText('Lobby destination')).toBeNull();
+ // jsdom does not run CSS: deliver each real pencil completion explicitly.
+ for(const cell of document.querySelectorAll('[role="dialog"] [data-golf-write]')){
+  const event=new Event('webkitAnimationEnd',{bubbles:true});Object.defineProperty(event,'animationName',{value:'golf-write-score'});fireEvent(cell,event);
+ }
  await waitFor(()=>expect(document.querySelector('.golf-final-scorecard')).toBeTruthy(),{timeout:4000});
  await publish({...result,revision:4,serverAt:Date.now(),finished:true});
  await waitFor(()=>expect(document.querySelector('[data-session-ended-panel]')).toBeTruthy(),{timeout:6000});

@@ -5,6 +5,13 @@ import {useGolfScoringPresentation} from './useGolfScoringPresentation';
 import type {GolfSnapshot} from '@/lib/golf/model';
 const playing={id:'d',scope:'r',phase:'playing',rules:{presentation:{scoringDelayMs:1200}}} as GolfSnapshot;
 const result={...playing,phase:'complete',settled:true,presentation:{startedAt:1000,resultsAt:10000,endsAt:15000},terminal:{startedAt:15000,deadline:18000}} as GolfSnapshot;
+it('a successor cannot interrupt unfinished score writing even after the server window ends',()=>{
+ const h=renderHook(({v,now,written})=>useGolfScoringPresentation(v,0,now,false,written),{initialProps:{v:playing,now:900,written:null as string|null}});
+ h.rerender({v:{...result,phase:'hole_complete',settled:false},now:1000,written:null});
+ h.rerender({v:{...playing,scope:'next'},now:30000,written:null});expect(h.result.current.snapshot?.scope).toBe('r');
+ h.rerender({v:{...playing,scope:'next'},now:30000,written:'old'});expect(h.result.current.snapshot?.scope).toBe('r');
+ h.rerender({v:{...playing,scope:'next'},now:30000,written:'r'});expect(h.result.current.snapshot?.scope).toBe('next');
+});
 it('waits for last motion, full configured pause, counting and hold; equal and late snapshots cannot reset it',()=>{
  const h=renderHook(({v,now,busy,epoch})=>useGolfScoringPresentation(v,epoch,now,busy),{initialProps:{v:playing,now:900,busy:false,epoch:0}});
  h.rerender({v:result,now:1000,busy:true,epoch:0});expect(h.result.current.waiting).toBe(true);

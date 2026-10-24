@@ -6,16 +6,17 @@ import { join } from 'node:path';
 const source = readFileSync(join(__dirname, 'MobileGameTable.tsx'), 'utf8');
 
 describe('normal 3-5-7 Sweep the Legs presentation wiring', () => {
-  it('arms the overlay at the exact normal sweep-credit boundary', () => {
+  it('starts the overlay with leg flights and carries early completion into the credit gate', () => {
     const handler = source.slice(
       source.indexOf('const handleLegsToPlayerComplete'),
       source.indexOf('// A reconciled cursor is every bit as authoritative'),
     );
     expect(handler).toContain(
-      'completionGate: createTerminal357NormalSweepGate(descriptor.terminalGenerationId)',
+      'createTerminal357NormalSweepGate(descriptor.terminalGenerationId)',
     );
     expect(handler).toContain("setThreeFiveSevenWinPhase('sweep-credit')");
-    expect(handler).toContain('setShowSweepTheLegs357(true)');
+    expect(source).toContain("show={showSweepTheLegs357 || threeFiveSevenWinPhase === 'legs-to-player'}");
+    expect(handler).toContain('normalSweepOverlayCompletedRef.current === descriptor.terminalGenerationId');
   });
 
   it('routes normal overlay completion through the two-receipt release gate', () => {

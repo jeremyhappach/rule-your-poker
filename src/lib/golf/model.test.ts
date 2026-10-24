@@ -4,6 +4,12 @@ const fixture=()=>({identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},rules:
  players:[{id:'a',chips:100},{id:'b',chips:100}],tableaus:{a:{cards:[null,null,null,null,null,null],exposed:[false,false,false,false,false,false]},b:{cards:[0,null,null,null,null,null],exposed:[true,false,false,false,false,false]}},
  financial:{balances:{a:100,b:100}},pending:null,finalReason:null,finalQueue:[],consecutiveNoRevealTurns:0,scores:{a:-2,b:4}});
 describe('Golf public projection boundary',()=>{
+ it('accepts only explicitly public opponent draws while preserving concealed tableau validation',()=>{
+  const raw={...fixture(),publicDraw:true,pending:{actor:'b',card:4}};
+  expect(golfSnapshot(raw).pending).toEqual({actor:'b',card:4});
+  expect(()=>golfSnapshot({...raw,pending:{actor:'outsider',card:4}})).toThrow('projection');
+  expect(()=>golfSnapshot({...raw,pending:{actor:'b',card:52}})).toThrow('projection');
+ });
  it('rejects own and opponent concealed values and another actor pending draw',()=>{
   for(const id of ['a','b'] as const){const v=fixture();v.tableaus[id].cards[1]=4;expect(()=>golfSnapshot(v)).toThrow('projection');}
   expect(()=>golfSnapshot({...fixture(),pending:{actor:'b',card:4}})).toThrow('projection');

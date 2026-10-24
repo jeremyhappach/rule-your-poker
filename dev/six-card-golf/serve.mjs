@@ -3,7 +3,7 @@ import {readFileSync as read} from 'node:fs';import {resolve} from 'node:path';i
 import {connect} from './database.mjs';
 const nativeClient=process.argv.includes('--native-client');
 const port=Number(process.env.GOLF_LOCAL_PORT??(nativeClient?5201:5198));
-const {database}=JSON.parse(read('qualification.local/six-card-golf/ui-context.json','utf8')),streams=new Set(),actors=new Set(),admin=await connect(database);
+const {database}=JSON.parse(read(process.env.GOLF_LOCAL_CONTEXT??'qualification.local/six-card-golf/ui-context.json','utf8')),streams=new Set(),actors=new Set(),admin=await connect(database);
 const query=async(c,s,a=[])=>(await c.query(s,a)).rows[0]?.v;
 async function transaction(user,fn){const c=await connect(database);try{await c.query('BEGIN');if(user){if(!actors.has(user))throw Error('Unknown local actor');await c.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[user]);await c.query('SET LOCAL ROLE authenticated');}const v=await fn(c);await c.query('COMMIT');return v;}catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}}
 await admin.query("CREATE OR REPLACE FUNCTION public.golf_local_notify() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_notify('golf_local',jsonb_build_object('id',NEW.dealer_game_id,'table','golf_revisions','new',to_jsonb(NEW))::text);RETURN NEW;END $$;DROP TRIGGER IF EXISTS golf_local_notify ON public.golf_revisions;CREATE TRIGGER golf_local_notify AFTER INSERT OR UPDATE ON public.golf_revisions FOR EACH ROW EXECUTE FUNCTION public.golf_local_notify()");

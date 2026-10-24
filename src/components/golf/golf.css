@@ -144,3 +144,9 @@
  .golf-center-play[data-viewer-turn] {padding:0;inset:2rem 12% 3%}
  .golf-center-play[data-viewer-turn] .golf-piles {--golf-card-w:min(90px,30cqw,calc(100cqh/1.71))}
 }
+
+/* Retain transport geometry while retiring the committed hole's controls. */
+.golf-piles[data-golf-retired] {visibility:hidden;pointer-events:none}
+[data-golf-total-updated] {animation:golf-total-update .45s ease-out}
+@keyframes golf-total-update {from {background:#f6dc72} to {background:transparent}}
+@media(prefers-reduced-motion:reduce){[data-golf-total-updated] {animation:none}}

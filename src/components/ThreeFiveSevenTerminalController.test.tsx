@@ -17,6 +17,14 @@ const descriptor:Terminal357Descriptor={
 };
 afterEach(()=>{cleanup();signals.settled=false;signals.proof=null;signals.sweep=null;});
 describe('instant 357 terminal sequencing',()=>{
+ it.each(['overlay','legs'])('waits for both receipts when %s finishes first',first=>{
+  signals.settled=true;let legs:()=>void=()=>{};const handoff=vi.fn();
+  render(<ThreeFiveSevenTerminalController descriptor={descriptor} onOwnershipChange={()=>{}} onEnterCanonical={handoff} renderSweepFlights={done=>{legs=done;return null;}}/>);
+  act(()=>signals.proof.onComplete());expect(signals.sweep.show).toBe(true);expect(signals.sweep.holdUntilDismissed).toBe(true);
+  act(()=>first==='overlay'?signals.sweep.onComplete():legs());expect(handoff).not.toHaveBeenCalled();
+  act(()=>first==='overlay'?legs():signals.sweep.onComplete());expect(handoff).toHaveBeenCalledTimes(1);
+  act(()=>{legs();signals.sweep.onComplete();});expect(handoff).toHaveBeenCalledTimes(1);
+ });
  it.each([false,true])('waits for deal and proof, sweeps only funded legs=%s, hands off once',legs=>{
   const handoff=vi.fn(),ownership=vi.fn(),d={...descriptor,hadAuthoritativeLegs:legs};
   const view=render(<ThreeFiveSevenTerminalController descriptor={d} onOwnershipChange={ownership} onEnterCanonical={handoff}/>);

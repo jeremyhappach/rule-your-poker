@@ -1,3 +1,19 @@
+# Sweep + multiplayer Golf corrections — local candidate, 2026-10-24
+
+All five requested corrections are implemented on isolated branch
+`codex/golf-sweep-smoke`, based on main `761fbf332`. The candidate coordinates
+Sweep overlay/direct winner flights, simultaneous authoritative Golf opening,
+public stock draws, immediate hole-end pile retirement, and pencil-completion
+before cumulative totals. Local concurrency, full-match/financial/recovery proofs,
+phone/desktop browser checks and reduced-motion animation checks pass.
+Validation: 2,876 source tests (414 files), 241 harness tests (12 files),
+TypeScript and production build pass.
+
+The Golf RPC migration is prepared but requires Jeremy's explicit schema approval
+under the request's release boundary. Production is unchanged; no main push,
+historical mutation, chip-accounting change or 357 admission reopening occurred.
+See [scope, evidence and remaining smoke](GOLF_SWEEP_SMOKE_20261024.md).
+
 # 357 real-money incident — admission closed, 2026-10-24
 
 Approved correction covers funded instant-sweep settlement, public winning proof,

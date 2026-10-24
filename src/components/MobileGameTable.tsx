@@ -2920,6 +2920,7 @@ export const MobileGameTable = ({
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const normalSweepOverlayCompletedRef = useRef<string | null>(null);
   const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
   const potToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate pot-to-player completion
   // The financial projection owns the transition from the visible leg sweep
@@ -10342,7 +10343,7 @@ export const MobileGameTable = ({
       });
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
-      setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+      setLegsToPlayerTriggerId(`legs-to-player-${threeFiveSevenWinTriggerId}`);
     }, 1800); // Tighter timing - start legs-to-player just after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
@@ -10600,7 +10601,9 @@ export const MobileGameTable = ({
       terminalResultIdentity: descriptor.terminalResultIdentity,
       terminalGenerationId: descriptor.terminalGenerationId,
       winnerId: descriptor.winnerId,
-      completionGate: createTerminal357NormalSweepGate(descriptor.terminalGenerationId),
+      completionGate: normalSweepOverlayCompletedRef.current === descriptor.terminalGenerationId
+        ? advanceTerminal357NormalSweepGate(createTerminal357NormalSweepGate(descriptor.terminalGenerationId), descriptor.terminalGenerationId, 'overlay-complete')
+        : createTerminal357NormalSweepGate(descriptor.terminalGenerationId),
       transferCursor: null,
       creditSource: null,
       beginPotFlight: () => {
@@ -10652,7 +10655,7 @@ export const MobileGameTable = ({
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
-    setShowSweepTheLegs357(true);
+    setShowSweepTheLegs357(normalSweepOverlayCompletedRef.current !== descriptor.terminalGenerationId);
   }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope, normal357TerminalDescriptor]);
 
   // A reconciled cursor is every bit as authoritative as a locally animated
@@ -12765,6 +12768,17 @@ export const MobileGameTable = ({
         >
           <ThreeFiveSevenTerminalController
             descriptor={threeFiveSevenTerminalDescriptor}
+            renderSweepFlights={onComplete => <LegsToPlayerAnimation
+              triggerId={threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null}
+              legPositions={(threeFiveSevenTerminalDescriptor?.playersAtHandStart ?? []).map(p=>({playerId:p.playerId,position:p.position,legCount:p.legs}))}
+              winnerPosition={threeFiveSevenTerminalDescriptor?.winnerPosition ?? 1}
+              currentPlayerPosition={currentPlayer?.position ?? null}
+              getClockwiseDistance={getClockwiseDistance}
+              containerRef={tableContainerRef}
+              legsToWin={legsToWin}
+              legValue={legValue}
+              onAnimationComplete={onComplete}
+            />}
             onOwnershipChange={(genId) => {
               controllerInstant357OwnedGenIdRef.current = genId;
               setControllerInstant357OwnedGenId(genId);
@@ -12832,12 +12846,16 @@ export const MobileGameTable = ({
               }}
             />
             {/* Sweep-The-Legs overlay — instant sweeps arm it when opening
-                legs existed; normal final-leg wins arm it after the visible
+                legs existed; normal final-leg wins arm it alongside the visible
                 leg flight. The normal path requires both this completion and
                 its exact sweep-credit cursor before pot flight. */}
             <SweepTheLegsAnimation
-              show={showSweepTheLegs357}
+              key={normal357SweepDescriptor?.terminalGenerationId ?? 'legacy-sweep'}
+              show={showSweepTheLegs357 || threeFiveSevenWinPhase === 'legs-to-player'}
+              holdUntilDismissed={!!normal357SweepDescriptor}
               onComplete={() => {
+                if (normal357SweepDescriptor) normalSweepOverlayCompletedRef.current = normal357SweepDescriptor.terminalGenerationId;
+                if (threeFiveSevenWinPhaseRef.current === 'legs-to-player') return;
                 const completingNormalTerminalSweep =
                   threeFiveSevenWinPhaseRef.current === 'sweep-credit';
                 __capture357Checkpoint('sweep_the_legs_complete', {
@@ -13464,7 +13482,7 @@ export const MobileGameTable = ({
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
-                setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+                setLegsToPlayerTriggerId(`legs-to-player-${activeNormalTerminal.terminalGenerationId}`);
                 // E. Legs-phase decision — primary non-sweep path selects legs-to-player.
                 emit357RuntimeDiag('legs_phase_decision', {
                   gameId: gameId ?? null,

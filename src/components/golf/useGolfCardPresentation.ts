@@ -18,7 +18,7 @@ export function golfFlights(before:GolfSnapshot,after:GolfSnapshot,userId:string
   else if(next!==old)add(p.id,i,next,before.pending?.actor===p.id?{kind:'tableau',playerId:p.id,index:6}:before.phase==='opening'||after.phase!=='playing'?{kind:'tableau',playerId:p.id,index:i}:{kind:'discard'});
  }
  // The shell's diagnostic transport stream never receives a private rank/suit.
- if(after.pending&&after.pending.card!==before.pending?.card)add(after.pending.actor,6,null,{kind:'stock'});
+ if(after.pending&&after.pending.card!==before.pending?.card)add(after.pending.actor,6,after.publicDraw?after.pending.card:null,{kind:'stock'});
  return result;
 }
 export interface GolfMove {key:string;before:GolfSnapshot;after:GolfSnapshot;actor:string;index:number;stock:boolean;bundled:boolean;stage:'select'|'draw'|'drawn'|'incoming'|'landed'|'outgoing'|'reject'|'flip'|'arrived'|'rest'}
@@ -72,7 +72,7 @@ export function useGolfCardPresentation(v:GolfSnapshot|null,epoch:number,userId:
   const destination={kind:'tableau' as const,playerId:actor,index:stage==='draw'?6:index};
   const from=stage==='draw'?{kind:'stock' as const}:stage==='outgoing'?{kind:'tableau' as const,playerId:actor,index:7}:
    stock?{kind:'tableau' as const,playerId:actor,index:6}:{kind:'discard' as const};
-  const card=stage==='incoming'?golfCard(after.tableaus[actor].cards[index]):stage==='outgoing'?golfCard(before.tableaus[actor].cards[index]):stage==='reject'&&before.pending?golfCard(before.pending.card):undefined;
+  const card=stage==='draw'&&after.publicDraw?golfCard(after.pending?.card??null):stage==='incoming'?golfCard(after.tableaus[actor].cards[index]):stage==='outgoing'?golfCard(before.tableaus[actor].cards[index]):stage==='reject'&&before.pending?golfCard(before.pending.card):undefined;
   const id='golf-move:'+key+':'+stage;
   const settled=()=>finish(key,stage,stage==='draw'?'drawn':stage==='incoming'?'landed':(stage==='outgoing'&&before.tableaus[actor].cards[index]===null||stage==='reject'&&!before.pending)?'flip':'arrived');
   if(!dispatch({id,cardId:id,handContextId:after.scope,recipientPlayerId:actor,from,

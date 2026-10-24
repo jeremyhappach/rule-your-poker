@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { RefObject } from 'react';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./SweepTheLegsAnimation', () => ({
@@ -70,7 +70,7 @@ describe('LegsToPlayerAnimation', () => {
     expect(SweepTheLegsAnimation).not.toHaveBeenCalled();
   });
 
-  it('preserves the timed sweep when an opponent has a leg to transfer', () => {
+  it('requires the flight completion event when an opponent has a leg to transfer', () => {
     vi.useFakeTimers();
     const onAnimationComplete = vi.fn();
 
@@ -91,7 +91,9 @@ describe('LegsToPlayerAnimation', () => {
     expect(SweepTheLegsAnimation).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(3599));
     expect(onAnimationComplete).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(1));
+    act(() => vi.advanceTimersByTime(10000));
+    expect(onAnimationComplete).not.toHaveBeenCalled();
+    fireEvent(document.querySelector('[data-leg-sweep-flight] > div')!,new Event('webkitAnimationEnd',{bubbles:true}));
     expect(onAnimationComplete).toHaveBeenCalledTimes(1);
   });
 });

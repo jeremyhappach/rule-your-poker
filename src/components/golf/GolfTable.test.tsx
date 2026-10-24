@@ -58,8 +58,8 @@ it('explains paused autoplay and preserves the public-only board',()=>{
  fireEvent.click(screen.getByRole('button',{name:'Table information'}));expect(screen.getByRole('checkbox',{name:'Auto-play'})).not.toBeNull();expect(screen.getByText(/uncheck Auto-play to rejoin, then/)).not.toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'View Opponent · Total 0'}));expect(document.querySelectorAll('.golf-inspect [data-face="back"]')).toHaveLength(6);
 });
-it('clears an unfinished selection at a new authoritative revision',()=>{
- const ui=render(<GolfTable {...props}/>);fireEvent.click(card(0));state.game.snapshot={...state.game.snapshot,revision:2};ui.rerender(<GolfTable {...props}/>);expect(card(0).getAttribute('aria-pressed')).toBe('false');
+it('preserves an unfinished opening selection when a peer commits',()=>{
+ const ui=render(<GolfTable {...props}/>);fireEvent.click(card(0));state.game.snapshot={...state.game.snapshot,revision:2,turnIndex:1};ui.rerender(<GolfTable {...props}/>);expect(card(0).getAttribute('aria-pressed')).toBe('true');
 });
 
 it('opens the existing redacted tableau from the seat indicator, not the felt cards',()=>{

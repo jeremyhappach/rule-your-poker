@@ -11,6 +11,7 @@ export interface GolfSnapshot {
  playerControls?:Record<string,{autoPlay:boolean;sitOutNextHand:boolean;intentVersion:number}>;
  tableaus:Record<string,{cards:(number|null)[];exposed:boolean[]}>;
  scores:Record<string,number>;holes:{hole:number;roundId:string;scores:Record<string,number>}[];
+ openingMode?:'simultaneous';openingCommitted?:boolean;publicDraw?:boolean;
  pending:{actor:string;card:number}|null;hasPending:boolean;stockCount:number;discardTop:number|null;
  consecutiveNoRevealTurns:number;finalQueue:string[];finalReason:'six_exposed'|'prolonged_play'|'stock_threshold'|null;
  deadline:number;pausedAt:number|null;paused:boolean;canAct:boolean;finished:boolean;settled:boolean;
@@ -29,7 +30,7 @@ export function golfSnapshot(raw:unknown):GolfSnapshot {
   const board=v.tableaus?.[p.id];
   if(!board||board.cards.length!==6||board.exposed.length!==6||board.cards.some((c,i)=>!board.exposed[i]&&c!==null))throw Error('Golf projection rejected');
  }
- if(v.pending&&v.pending.actor!==v.viewerId)throw Error('Golf projection rejected');
+ if(v.pending&&(!golfCard(v.pending.card)||!v.players.some(p=>p.id===v.pending!.actor)||(v.pending.actor!==v.viewerId&&!v.publicDraw)))throw Error('Golf projection rejected');
  return {...v,discardTop:v.phase==='opening'?null:v.discardTop,id:v.identity.dealerGameId,scope:v.identity.roundId,settled:v.settlement!==null,
   players:v.players.map(p=>({...p,name:p.isBot?getBotAlias(v.players.map(x=>({user_id:x.userId,is_bot:x.isBot,profiles:{username:x.name}})),p.userId).replace(/^Bot /,'Bot'):p.name,chips:v.financial?.balances[p.id]??p.chips}))};
 }
