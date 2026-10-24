@@ -1,8 +1,11 @@
 # Sweep and multiplayer Golf smoke corrections — 2026-10-24
 
-Status: local candidate; production database migration requires Jeremy's approval.
-No main integration, production migration, publication, admission change, historical
-session edit or financial repair has occurred in this workstream.
+Status: Jeremy approved main/production release. Migration `20261024184236`
+is installed; 15 candidate and 15 installed hosted rollback units pass.
+Implementation commit: `1c01bc090d649d5c0937b06ccdeb04869768bef6`.
+Release checkpoint: `golf-sweep-smoke-20261024`. Publication is verified against
+that tag before reporting completion. Owner production smoke remains pending.
+No admission change, historical session edit or financial repair occurred.
 
 Base: `761fbf3329c25598e133ba5d292104756e427c70`; isolated branch
 `codex/golf-sweep-smoke`. The older source checkout and other task worktrees are
@@ -43,8 +46,8 @@ contract; the corrected behavior begins at the next deal.
 
 Client code accepts both contracts. Release coordination must ensure the matching
 client is published and clients refresh before using a corrected new hole; the
-old client deliberately rejects public opponent draws. Production migration and
-installed rollback qualification are still pending approval. This candidate does
+old client deliberately rejects public opponent draws. The approved migration and
+installed rollback qualification are complete. This release does
 not reopen real-money 357 admission or alter its financial correction.
 
 Captured deployed definitions used only for local reconstruction are in
@@ -52,6 +55,18 @@ Captured deployed definitions used only for local reconstruction are in
 The candidate adds no tables, indexes or financial functions. Private helper
 execution is revoked from public/client/service roles; public RPC signatures and
 their existing grants remain unchanged.
+
+The server-registered migration is mirrored at
+`supabase/migrations/20261024184236_six_card_golf_smoke_corrections.sql`.
+It includes a six-function baseline guard and the reviewed candidate body.
+Hosted evidence: `dev/six-card-golf/evidence/smoke-hosted-20261024.json`.
+The reused containment wrapper proves rollback and compares existing rows in
+the same snapshot. A four-seat candidate unit exceeded 15 seconds during ledger
+history hashing; its request rolled back, and it passed with a 30-second query
+limit. Lock acquisition remains capped at 100ms. Every installed unit passed.
+Security advisors retain the documented shared pending-transfer RLS finding and
+expected private-table/authenticated-definer notices; the new helper is not
+client-executable. No advisor remediation was included in this release.
 
 ## Qualification
 

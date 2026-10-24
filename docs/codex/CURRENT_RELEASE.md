@@ -1,4 +1,4 @@
-# Sweep + multiplayer Golf corrections — local candidate, 2026-10-24
+# Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
 
 All five requested corrections are implemented on isolated branch
 `codex/golf-sweep-smoke`, based on main `761fbf332`. The candidate coordinates
@@ -9,9 +9,14 @@ phone/desktop browser checks and reduced-motion animation checks pass.
 Validation: 2,876 source tests (414 files), 241 harness tests (12 files),
 TypeScript and production build pass.
 
-The Golf RPC migration is prepared but requires Jeremy's explicit schema approval
-under the request's release boundary. Production is unchanged; no main push,
-historical mutation, chip-accounting change or 357 admission reopening occurred.
+Jeremy approved main/production publication. Golf migration `20261024184236`
+is installed. All 15 hosted candidate and 15 installed rollback units pass,
+with exact function fingerprints, historical-row preservation and no synthetic
+residuals. Source checkpoint: `golf-sweep-smoke-20261024`; implementation commit
+`1c01bc090`. Publication is verified against the tagged release commit.
+No historical mutation, chip-accounting change or 357 admission reopening occurred.
+Owner smoke remains pending. Refresh all clients before a new Golf hole;
+already-dealt holes retain their original opening/draw contract.
 See [scope, evidence and remaining smoke](GOLF_SWEEP_SMOKE_20261024.md).
 
 # 357 real-money incident — admission closed, 2026-10-24
