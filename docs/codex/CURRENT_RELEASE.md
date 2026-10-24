@@ -1,6 +1,6 @@
-# October 24 multiplayer smoke — release candidate, owner smoke pending
+# October 24 multiplayer smoke — published, owner smoke pending
 
-Local candidates now cover dealer-draw retirement, current-authority HOLM
+Published corrections cover dealer-draw retirement, current-authority HOLM
 participation identity, held-HOLM result admission, and SCC pot/dice separation
 within the canonical shell. Seventy-seven focused tests, application TypeScript
 and the production build pass. Forty-two actual-shell SCC checks cover seven
@@ -8,7 +8,11 @@ viewports and zero through five held dice; twelve additional checks cover a
 full six-seat ring. Owner production acceptance remains
 outstanding. Source checkpoint: `oct24-multiplayer-smoke-corrections-20261024`.
 The scoped timeout function migration is installed; no historical session rows
-were changed. Publication must match the source checkpoint above. Exact evidence is in
+were changed. Vercel production and the public manifest verified application
+commit `4ab4f4cc9dcf62bf36b4329a19387291da6f6f12`. A two-client HOLM
+reveal/Run Back browser check passed on production, with fresh fake-money
+fixture cleanup verified. The setup harness's obsolete tab names were updated
+to the current Cards/Dice labels; all four helper tests pass. Exact evidence is in
 [the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
 Follow-up evidence identifies mcru81's timeout as HOLM hand 2 at 4:15:48 PM
 and Hap as the frozen showdown viewer. Two subsequent rejoin responses are

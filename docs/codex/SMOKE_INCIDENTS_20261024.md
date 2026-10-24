@@ -1,6 +1,6 @@
 # October 24 multiplayer smoke — investigation checkpoint
 
-Status: qualified release candidate; scoped database policy installed,
+Status: application published and scoped database policy installed,
 owner smoke pending. Base: `48c26110e23b13727e208bfb8177c06c5699e492`.
 Source checkpoint: `oct24-multiplayer-smoke-corrections-20261024`.
 Branch: `codex/oct24-smoke-incidents`. The original Six-Card Golf checkout and
@@ -227,6 +227,18 @@ geometry and portal ownership rather than window measurements or device patches.
 
 ## Remaining work
 
+Application publication is verified: Vercel deployment
+`dpl_5dL74fPETNGMbwBCAbUP22rcJfC4` is READY and `holm357.com/build-manifest.json`
+served `4ab4f4cc9dcf62bf36b4329a19387291da6f6f12`.
+The production two-client HOLM solo-exposure/Run Back test passed in 52 seconds.
+Its fresh fake-money fixture `1aef0880-678d-408a-a96e-f3d2daf09b8f` was cleaned
+up and cleanup verified. The preceding attempt stopped before gameplay
+because the harness expected obsolete Card Games/Dice Games tab labels;
+fixture `b5c32c29-8082-4375-91c0-af3e1a73c00c` was also cleaned up.
+The shared setup selector now matches Cards/Dice and all four helper tests pass.
+This establishes the tested reveal and Run Back flow, not the exact historical
+head-to-head freeze or a live timeout/rejoin acceptance result.
+
 Final local validation: 2,883 source tests exercised across 414 files. The
 only failure was a source-text assertion for the old inline HOLM predicate;
 it now asserts the shared predicate, and all five tests in that file pass on
@@ -236,8 +248,8 @@ whitespace checks. Existing Browserslist/chunk and React test act warnings
 remain. No unrelated files or credentials are included in the release.
 
 Database installation and complete installed rollback proof are finished.
-The authenticated HOLM read and local full-shell SCC clearance pass. Complete
-final validation and publication, then smoke the new build with refreshed
+The authenticated HOLM read and local full-shell SCC clearance pass. Smoke the
+published build with refreshed
 clients: dealer draw retirement into 357, SCC rolls/holds, HOLM timeout and
 rejoin across a hand boundary, real-money last-present-human pause, and HOLM
 winner/loser continuation without refresh. Verify reconnect and authorized
