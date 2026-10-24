@@ -60,20 +60,44 @@ flags do not establish whether a prior request failed. Other October 24
 sessions exist for this user, including real-money incident sessions already
 frozen by earlier work; do not conflate them.
 
-No matching checkbox attempt/timeout record was found in the inspected
-session events, participation debug log or player-specific timeout diagnostics.
-The named session has no private replay stream. A question is pending for
-Jeremy identifying the game in which this happened.
+The canonical timer registry identifies the timeout as **HOLM hand 2 at
+4:15:48.793967 PM**, round `d1690512-0dca-49a5-acca-b425052809d9` in dealer
+game `b6a226aa-f976-42d4-9318-be695d5edf9e`. Its `holm_decision` deadline was
+4:15:48.624311; the completed result records `deadline_applied=true`, this
+player's locked decision, and advancement to position 5. The earlier debug-log
+searches were insufficient; this is direct canonical scheduler evidence.
+
+Supabase HTTP logs show mcru81 calling `set_automatic_play` at 4:16:02.892 and
+4:16:05.402, after hand 3 was created at 4:16:02.537796. Both returned HTTP 200
+with response content length 29. That length matches the deployed function's
+`stale_identity` response, but the response body and request identity were not
+logged, so the exact rejection remains an inference. A third request appears at
+4:17:29.715. The current clear flags and intent_version=3 do not independently
+date an accepted request or prove how the checkbox appeared on that client.
 
 Checkbox path: MobileGameTable/HorsesMobileCardsTab -> Game.handleAutoFoldChange
 -> sessionPlayerIntent.setAutomaticPlay -> deployed public.set_automatic_play.
 It is a real RPC, not only a local toggle. The server validates session,
 dealer game, hand, round and participation CAS; rejects completed/stale rounds;
 and defers dice takeover release until the actor's turn boundary. The 357
-client already reads a fresh atomic frame; other games submit the rendered
-round plus a fresh intent version. A stale presented round is therefore a
-possible rejection cause, but is not established for this report. No timeout,
-pause, bot, authorization or participation policy was changed.
+client already reads a fresh atomic frame; HOLM and the other games submit the
+rendered round plus a fresh intent version. A held presentation can therefore
+send a completed predecessor while authority is on the successor. The timing
+and response lengths support this failure path, but do not expose the client's
+submitted round. No timeout, pause, bot, authorization or participation policy
+was changed.
+
+**Policy discrepancy requiring Jeremy's decision:** the report describes a
+pause on real-money timeouts, whereas deployed `holm_apply_deadline_decision`
+marks an individual timed-out human for automatic play and next-hand sit-out,
+then invokes `private.pause_all_humans_auto_fold`. That shared guard pauses
+only when the nonempty eligible human cohort is entirely on automatic play,
+in either money mode. This agrees with the October 9 decision in
+`DECISION_LOG.md` and migration `20261009231202_restore_all_human_auto_fold_pause`.
+The HOLM and 357 defaults enable timeout auto-fold with a 30-second decision
+budget; this session inherits the defaults. A clarification is pending to
+retain that deployed policy or change real-money games to pause on the first
+timeout. The latter is a substantive shared-policy change, not a checkbox fix.
 
 ### 4. HOLM completed showdown
 
@@ -90,9 +114,10 @@ was found in this hand. This is historical evidence, not a new financial proof.
 
 Successor `d1690512-0dca-49a5-acca-b425052809d9` was created in the same
 transaction. Hap acknowledged it at 4:15:17.339264; Lance and mcru81 did not.
-Later hands exist, so the server did continue. The report says the viewer lost,
-while the matching hand records Hap winning. Jeremy was asked to identify the
-frozen viewer before attributing it to winner/loser-specific behavior.
+Later hands exist, so the server did continue. Jeremy subsequently confirmed
+that **Hap was the frozen viewer**. The matching hand records Hap winning,
+despite the initial report saying he lost. Hap's acknowledgement establishes
+later client progress but does not establish whether refresh produced it.
 
 The failure boundary is client presentation/acknowledgement rather than missing
 settlement. Exact local failure remains unproved. One concrete source concern:
@@ -121,7 +146,9 @@ worktree reuses the existing node_modules through a junction.
 
 ## Remaining work
 
-Resume timeout/rejoin and HOLM first once the affected game/viewer is identified.
+The affected game and viewer are now identified. Resolve the timeout-policy
+discrepancy before changing that behavior; continue timeout/rejoin and HOLM
+from the exact identities above without repeating broad discovery.
 Attach the original three screenshots to preserve viewport and client evidence.
 Reproduce exact rejected participation and held-HOLM progression, implement only
 the demonstrated defects, then qualify fake-money/real-money boundary policy,

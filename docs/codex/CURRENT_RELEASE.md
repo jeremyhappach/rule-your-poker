@@ -7,6 +7,11 @@ eligibility. Sixty-six focused tests pass. Ship geometry, mcru81's timeout/rejoi
 and HOLM presentation recovery remain unqualified; no production mutation or
 publication occurred. Exact session/hand evidence and pending questions are in
 [the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
+Follow-up evidence identifies mcru81's timeout as HOLM hand 2 at 4:15:48 PM
+and Hap as the frozen showdown viewer. Two subsequent rejoin responses are
+consistent with stale hand identity. The report's real-money timeout-pause
+description conflicts with the deployed, documented all-human auto-fold pause
+policy; clarification is pending before changing timeout behavior.
 
 # Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
 
