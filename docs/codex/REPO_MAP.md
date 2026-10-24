@@ -1,5 +1,12 @@
 # Repository map
 
+357 incident: `ChipPresentationLedger.ts` owns dealer-game presentation retirement;
+`sessionPlayerIntent.ts` reads one current 357 frame before automatic-play CAS.
+`MobileGameTable.tsx` owns the normal Sweep the Legs overlay; the legs flight
+component no longer mounts its own. Closed real-money admission and funded
+settlement are installed by migrations `20261024164227` and `20261024165504`.
+See `357_INCIDENT_20261024.md` for direct database proofs and preservation evidence.
+
 Mega gameplay presentation: `src/lib/megaCardGolf/presentation.ts` derives queued
 replacement/scoring frames from accepted views and committed hole results.
 `MegaArcade.tsx` retains authority transport/recovery; `MegaCardGolfGame.tsx`

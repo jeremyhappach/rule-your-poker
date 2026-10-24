@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const realtime = vi.hoisted(() => ({
   batchInsert: null as ((payload: { new?: unknown }) => void) | null,
   playerUpdate: null as ((payload: { new?: unknown }) => void) | null,
+  gameUpdate: null as ((payload: { new?: unknown }) => void) | null,
   rows: {} as Record<string, unknown>,
 }));
 
@@ -33,6 +34,7 @@ vi.mock('@/integrations/supabase/client', () => {
         ) {
           if (config.table === 'gameplay_transfer_batches') realtime.batchInsert = callback;
           if (config.table === 'players') realtime.playerUpdate = callback;
+          if (config.table === 'games') realtime.gameUpdate = callback;
           return channel;
         },
         subscribe(callback: (status: string) => void) {
@@ -64,6 +66,7 @@ beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   realtime.batchInsert = null;
   realtime.playerUpdate = null;
+  realtime.gameUpdate = null;
   realtime.rows = {
     gameplay_transfer_batches: [],
     players: [{ id: 'player-1', chips: 10, position: 1, chip_transfer_cursor: 0 }],
@@ -81,6 +84,36 @@ afterEach(() => {
 });
 
 describe('ChipPresentationLedger lifecycle callbacks', () => {
+  it('releases a missed old payout before the new three-player ante, without replaying the payout', async () => {
+    realtime.rows.players = ['a','b','winner'].map((id,i)=>({id,position:i+1,chips:id==='winner'?-7:6,chip_transfer_cursor:97}));
+    realtime.rows.games = {pot:18,pot_transfer_cursor:97,current_game_uuid:'old',authority_revision:10};
+    const flights: import('./ChipPresentationLedger').LedgerDispatchOptions[]=[];
+    const transport={dispatch:vi.fn((_intent,options)=>{flights.push(options);return true;}),cancel:vi.fn()};
+    const settled=vi.fn();let ledger:ReturnType<typeof useChipPresentationLedger>;
+    function Harness(){ledger=useChipPresentationLedger('session',transport,b=>b.cursor!==98,0,settled,undefined,undefined,undefined,true);return null;}
+    await act(async()=>{root.render(<Harness/>);});
+    const payout:ChipPresentationBatch={id:'payout',game_id:'session',dealer_game_id:'old',cursor:98,reason:'ante',
+      opening_balances:{pot:18,'player:winner':-7},closing_balances:{pot:0,'player:winner':19},
+      transfers:[{id:'old-flight',amount:18,from:{kind:'pot'},to:{kind:'player',playerId:'winner'}}]};
+    const ante:ChipPresentationBatch={id:'ante',game_id:'session',dealer_game_id:'new',cursor:99,reason:'ante',
+      opening_balances:{pot:0,'player:a':6,'player:b':6,'player:winner':19},
+      closing_balances:{pot:9,'player:a':3,'player:b':3,'player:winner':16},
+      transfers:['a','b','winner'].map(id=>({id:'ante-'+id,amount:3,from:{kind:'player',playerId:id},to:{kind:'pot'}}))};
+    await act(async()=>{realtime.batchInsert?.({new:payout});realtime.batchInsert?.({new:ante});});
+    expect(transport.dispatch).not.toHaveBeenCalled();expect(ledger!.potBalance(-1)).toBe(18);
+    realtime.rows.games={pot:9,pot_transfer_cursor:99,current_game_uuid:'new',authority_revision:11};
+    realtime.rows.players=['a','b','winner'].map((id,i)=>({id,position:i+1,chips:id==='winner'?16:3,chip_transfer_cursor:99}));
+    await act(async()=>{realtime.gameUpdate?.({new:realtime.rows.games});});
+    expect(ledger!.cursorState(98)).toBe('reconciled');
+    expect(transport.dispatch).toHaveBeenCalledTimes(3);
+    expect(transport.dispatch.mock.calls.every(([intent])=>intent.from.kind==='seat')).toBe(true);
+    await act(async()=>{for(const flight of flights){flight.onDeparted?.();flight.onArrived?.();flight.onSettled?.();}});
+    expect(ledger!.potBalance(-1)).toBe(9);
+    expect(ledger!.cursorState(99)).toBe('settled');
+    expect(settled).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({id:'ante'}));
+    await act(async()=>{realtime.batchInsert?.({new:payout});realtime.gameUpdate?.({new:{pot:18,pot_transfer_cursor:97,current_game_uuid:'old',authority_revision:10}});});
+    expect(ledger!.potBalance(-1)).toBe(9);expect(transport.dispatch).toHaveBeenCalledTimes(3);
+  });
   it('never replays a committed Run21 dollar on duplicate delivery or a reconnect baseline', async () => {
     realtime.rows.players=[{id:'loser',chips:0,position:1,chip_transfer_cursor:0},{id:'winner',chips:0,position:2,chip_transfer_cursor:0}];
     let callbacks: import('./ChipPresentationLedger').LedgerDispatchOptions|undefined;

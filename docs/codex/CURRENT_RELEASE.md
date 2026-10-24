@@ -1,3 +1,18 @@
+# 357 real-money incident — admission closed, 2026-10-24
+
+Approved correction covers funded instant-sweep settlement, public winning proof,
+runback presentation retirement, fresh-identity Stop Automatic Play and one Sweep
+the Legs overlay. Database migrations `20261024164227` and `20261024165504` are
+installed; complete candidate and installed rollback proofs pass. Real-money
+admission remains CLOSED pending runtime acceptance. Set Your Soul Free remains
+paused at revision 374 with every historical incident row preserved. No balance
+repair or resume is authorized by this release. See [incident qualification](357_INCIDENT_20261024.md).
+Client validation passes: TypeScript, 2,868 source tests (413 files), 241 harness
+tests and production build. Two-client browser terminal/reconnect proof passes;
+the fresh fake-money fixture was cleaned up. Release checkpoint tag:
+`357-incident-contained-20261024`. Jeremy's smoke remains pending before reopening
+real-money admission; publication is verified against the resulting tagged SHA.
+
 # Mega score and course-sequence polish — approved release — 2026-10-23
 
 Jeremy approved reviewed candidate 54ec03c9b82473f0fa70b609685661ab4d025164.

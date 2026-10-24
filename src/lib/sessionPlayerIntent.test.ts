@@ -19,6 +19,27 @@ it("binds automatic play to the rendered round and current intent version", asyn
   });
 });
 
+const frame = (round='live',version=4)=>({data:{game:{status:'in_progress'},identity:{round_id:round,dealer_game_id:'runback'},viewer_player_id:'player',players:[{id:'player',intent_version:version}]},error:null});
+it('clears 357 automatic play using one fresh atomic frame despite a stranded rendered dealer game', async()=>{
+  db.rpc.mockResolvedValueOnce(frame());
+  await setAutomaticPlay('game','old-round','old-dealer','player',false,'3-5-7');
+  expect(db.single).not.toHaveBeenCalled();
+  expect(db.rpc).toHaveBeenLastCalledWith('set_automatic_play',expect.objectContaining({p_round_id:'live',p_dealer_game_id:'runback',p_expected_version:4,p_enabled:false}));
+});
+it('retries one rejected stop across a round change while preserving the participation CAS',async()=>{
+  db.rpc.mockResolvedValueOnce(frame()).mockResolvedValueOnce({data:{outcome:'stale_identity'},error:null}).mockResolvedValueOnce(frame('next'));
+  await setAutomaticPlay('game','old','old','player',false,'357');
+  expect(db.rpc).toHaveBeenLastCalledWith('set_automatic_play',expect.objectContaining({p_round_id:'next',p_expected_version:4}));
+});
+it('does not overwrite a competing participation change or retry a lost write response',async()=>{
+  db.rpc.mockResolvedValueOnce(frame()).mockResolvedValueOnce({data:{outcome:'stale_identity'},error:null}).mockResolvedValueOnce(frame('next',5));
+  await expect(setAutomaticPlay('game','old','old','player',false,'357')).rejects.toThrow('participation changed');
+  expect(db.rpc.mock.calls.filter(c=>c[0]==='set_automatic_play')).toHaveLength(1);
+  db.rpc.mockReset().mockResolvedValueOnce(frame()).mockRejectedValueOnce(new Error('lost'));
+  await expect(setAutomaticPlay('game','old','old','player',false,'357')).rejects.toThrow('lost');
+  expect(db.rpc).toHaveBeenCalledTimes(2);
+});
+
 it("rejects a stale automatic-play request without a browser fallback write", async () => {
   db.rpc.mockResolvedValueOnce({ data: { outcome: "stale_identity" }, error: null });
   await expect(setAutomaticPlay("game", "old-round", "dealer", "player", false)).rejects.toThrow("turn or participation changed");

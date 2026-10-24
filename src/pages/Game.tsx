@@ -12326,9 +12326,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
     if (!gameId || !currentRound?.id || !game?.current_game_uuid) return;
     try {
-      await setAutomaticPlay(gameId, currentRound.id, game.current_game_uuid, playerId, autoFold);
+      await setAutomaticPlay(gameId, currentRound.id, game.current_game_uuid, playerId, autoFold, game.game_type);
       await fetchGameData();
     } catch (error) {
+      await fetchGameData();
       toast({ title: 'Could not update participation', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
     }
   };

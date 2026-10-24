@@ -1,3 +1,13 @@
+# 2026-10-24 — 357 funded settlement and dealer-game presentation retirement
+
+Instant 357 returns purchased reserve only; it cannot create unpurchased winning
+legs. The existing ledger seals ante, reserve and pot stages atomically. A newer
+authoritative dealer-game identity retires the old committed presentation silently
+so its endpoint locks cannot block the successor ante/deal. The shared ledger owns
+that retirement; games do not invent a second transport or settlement owner.
+Real-money admission is separately closed until qualification is accepted.
+See [incident evidence and preserve contract](357_INCIDENT_20261024.md).
+
 # 2026-10-23 — Mega Card Golf production authority and low-score facts
 
 Production qualification and activation are complete; owner smoke remains pending.

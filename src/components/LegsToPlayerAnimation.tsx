@@ -4,7 +4,6 @@
 // (data-chip-center) — no internal slot math.
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleLTP } from '@/lib/threeFiveSeven/wartime';
@@ -43,7 +42,6 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   onAnimationComplete,
 }) => {
   const [animations, setAnimations] = useState<LegChipAnimation[]>([]);
-  const [showSweepOverlay, setShowSweepOverlay] = useState(false);
   const lastTriggerIdRef = useRef<string | null>(null);
   const completedRef = useRef(false); // Guard against double completion
   const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,7 +175,6 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     });
 
     setAnimations(newAnimations);
-    setShowSweepOverlay(true);
     __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'begin', {
       identity: { triggerId: triggerId ?? null },
       payload: { animationCount: newAnimations.length },
@@ -211,16 +208,12 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   // Format leg value for display
   const displayValue = legValue > 0 ? `$${legValue}` : 'L';
 
-  if (animations.length === 0 && !showSweepOverlay) return null;
+  if (animations.length === 0) return null;
   if (typeof document === 'undefined') return null;
 
   const node = (
     <>
-      {/* "Sweep the Legs" overlay - non-blocking, runs in parallel */}
-      <SweepTheLegsAnimation 
-        show={showSweepOverlay} 
-        onComplete={() => setShowSweepOverlay(false)} 
-      />
+      {/* The terminal phase owner presents Sweep the Legs after these flights. */}
       
       {animations.map((anim) => {
         const deltaX = anim.toX - anim.fromX;

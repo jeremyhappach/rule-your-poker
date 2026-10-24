@@ -1,7 +1,42 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export function setAutomaticPlay(gameId: string, roundId: string, dealerGameId: string, playerId: string, enabled: boolean): Promise<void> {
+export function setAutomaticPlay(gameId: string, roundId: string, dealerGameId: string, playerId: string, enabled: boolean, gameType?: string): Promise<void> {
   const request = (pending.get(playerId) ?? Promise.resolve()).catch(() => {}).then(async () => {
+    if (['3-5-7', '3-5-7-game', '357'].includes(gameType ?? '')) {
+      // A deliberate participation gesture targets the current owned session.
+      // Read round and CAS version together: the rendered round may be stranded
+      // behind an outgoing presentation even though authority has run back.
+      let attemptedVersion: number | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const frame = await supabase.rpc('three_five_seven_current_frame' as any, { p_game_id: gameId } as any);
+        if (frame.error) throw frame.error;
+        const current = frame.data as unknown as {
+          game: { status: string };
+          identity: { dealer_game_id: string; round_id: string };
+          viewer_player_id: string;
+          players: Array<{ id: string; intent_version: number }>;
+        };
+        const player = current?.players?.find(p => p.id === playerId);
+        if (current?.viewer_player_id !== playerId || current?.game?.status !== 'in_progress'
+          || !current.identity?.round_id || !current.identity.dealer_game_id || !player
+          || (attemptedVersion != null && attemptedVersion !== player.intent_version)) {
+          throw new Error("Your turn or participation changed. Please try again.");
+        }
+        attemptedVersion = player.intent_version;
+        const response = await supabase.rpc('set_automatic_play' as any, {
+          p_game_id: gameId, p_round_id: current.identity.round_id,
+          p_dealer_game_id: current.identity.dealer_game_id, p_player_id: playerId,
+          p_expected_version: player.intent_version, p_enabled: enabled,
+        } as any);
+        if (response.error) throw response.error;
+        const outcome = (response.data as unknown as { outcome?: string })?.outcome;
+        if (outcome === 'accepted') return;
+        // Retry only a rejected stop gesture across a round race, never an
+        // uncertain write or a competing participation version.
+        if (enabled || outcome !== 'stale_identity') break;
+      }
+      throw new Error("Your turn or participation changed. Please try again.");
+    }
     const { data, error } = await supabase.from("players").select("intent_version" as any).eq("id", playerId).single();
     if (error) throw error;
     const response = await supabase.rpc("set_automatic_play" as any, {

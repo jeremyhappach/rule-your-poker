@@ -1,5 +1,17 @@
 # Backlog
 
+## Pending smoke — 357 real-money incident qualification — October 24, 2026
+
+- Approved settlement/runback/Stop Automatic Play/duplicate Sweep correction is
+  documented in [357 incident qualification](357_INCIDENT_20261024.md).
+- Keep new real-money 357 admission closed until multiplayer acceptance. Keep
+  Set Your Soul Free paused and its historical balances unchanged; the preserved
+  $2 excess is not authorization for a reconciliation adjustment.
+- Acceptance: one normal sweep overlay, instant winner proof/funded payout,
+  one runback ante plus dealt actions on every client, paused Stop Automatic Play,
+  and connected/fresh terminal lifecycle. Provenance: Jeremy's direct incident
+  report and approval, October 24, 2026. No unrelated game work is included.
+
 ## Approved publication — Golf configurable scoring/reveal timing and smoke affordances — October 22, 2026
 
 - Jeremy requests Scoring Delay = 1200 ms per card or cancelled pair, also used for sequential flips of cards still face down after a player's final turn; reveal that hand fully before scoring it. Add this to Six-Card Golf defaults.

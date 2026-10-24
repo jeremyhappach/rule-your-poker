@@ -4849,6 +4849,10 @@ export const MobileGameTable = ({
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
       if (batch.reason === 'sweep' && batch.transfers.length === 0) {
+        if (threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+          && batch.dealer_game_id === threeFiveSevenTerminalDescriptor.dealerGameId) {
+          return threeFiveSevenWinPhase === 'pot-to-player';
+        }
         return threeFiveSevenWinPhase === 'sweep-credit'
           && isTerminal357SweepCreditBatch(
             normal357SweepCreditCheckpoint,
@@ -4887,6 +4891,7 @@ export const MobileGameTable = ({
     threeFiveSevenDelayedShowdownPresentationKey,
     normal357SweepCreditCheckpoint,
     normal357SweepDescriptor,
+    threeFiveSevenTerminalDescriptor,
     threeFiveSevenWinPhase,
     horsesWinPotTriggerId,
   ]);

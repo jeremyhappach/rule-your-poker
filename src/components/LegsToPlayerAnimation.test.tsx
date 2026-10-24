@@ -4,7 +4,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./SweepTheLegsAnimation', () => ({
-  SweepTheLegsAnimation: () => null,
+  SweepTheLegsAnimation: vi.fn(() => null),
 }));
 
 vi.mock('@/lib/canonicalShell/chipEndpoints', () => ({
@@ -19,6 +19,7 @@ vi.mock('@/lib/threeFiveSeven/wartime', () => ({
 }));
 
 import { LegsToPlayerAnimation } from './LegsToPlayerAnimation';
+import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 
 const makeContainerRef = (): RefObject<HTMLDivElement> => {
   const container = document.createElement('div');
@@ -66,6 +67,7 @@ describe('LegsToPlayerAnimation', () => {
     );
 
     expect(onAnimationComplete).toHaveBeenCalledTimes(1);
+    expect(SweepTheLegsAnimation).not.toHaveBeenCalled();
   });
 
   it('preserves the timed sweep when an opponent has a leg to transfer', () => {
@@ -86,6 +88,7 @@ describe('LegsToPlayerAnimation', () => {
     );
 
     expect(onAnimationComplete).not.toHaveBeenCalled();
+    expect(SweepTheLegsAnimation).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(3599));
     expect(onAnimationComplete).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(1));
