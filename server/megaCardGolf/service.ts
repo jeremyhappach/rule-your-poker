@@ -1,11 +1,11 @@
 import {randomInt} from 'node:crypto';
 import {createRun,recoverRun,applyIntent,projectRun,type MegaRun,type Intent} from '../../src/lib/megaCardGolf/engine.js';
-import {settings,COURSE_IDS,MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,type MegaRuleset,type CourseConfig} from '../../src/lib/megaCardGolf/config.js';
+import {settings,COURSE_IDS,MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,type MegaRuleset,type CourseConfig} from '../../src/lib/megaCardGolf/config.js';
 import {isUuid} from '../../src/lib/run21/model.js';
 type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 export interface MegaRecord {id:string;user_id:string;game:string;ruleset:string;config:CourseConfig;state:MegaRun|null;revision:number;server_at:number;created_at:string;status:string;receipt?:{run_id:string;fingerprint:string}|null}
 function decks(holes:number){return Array.from({length:holes},()=>{const a=Array.from({length:52},(_,i)=>i);for(let i=51;i>0;i--){const j=randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;});}
-function validRecord(row:MegaRecord){if(row.game!=='mega-card-golf'||![MEGA_RULESET,MEGA_SEQUENTIAL_RULESET].includes(row.ruleset as MegaRuleset))throw Error('arcade:wrong_game');if(row.state&&row.state.ruleset!==row.ruleset)throw Error('arcade:ruleset_mismatch');}
+function validRecord(row:MegaRecord){if(row.game!=='mega-card-golf'||![MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET].includes(row.ruleset as MegaRuleset))throw Error('arcade:wrong_game');if(row.state&&row.state.ruleset!==row.ruleset)throw Error('arcade:ruleset_mismatch');}
 const projection=(r:MegaRecord)=>({...projectRun(r.state!,Number(r.server_at)),revision:Number(r.revision)});
 export async function synchronizeMega(rpc:Rpc,input:MegaRecord,actor:string|null,token:string|null=null){
  let row=input;validRecord(row);
@@ -30,7 +30,7 @@ export async function megaOperation(rpc:Rpc,actor:string,body:Record<string,any>
  validRecord(row);const receipt=row.receipt;row=await synchronizeMega(rpc,row,actor);
  if(body.op==='action'){
   const intent=body.intent as Intent;
-  if(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||!Number.isInteger(body.hole)||!intent||!['open','draw','discard','replace','abandon'].includes(intent.type))throw Error('arcade:invalid_action');
+  if(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||!Number.isInteger(body.hole)||!intent||!['open','draw','discard','stand-pat','replace','abandon'].includes(intent.type))throw Error('arcade:invalid_action');
   const normalized:Intent=intent.type==='open'?{type:'open',indices:intent.indices}:intent.type==='replace'?{type:'replace',index:intent.index}:{type:intent.type};
   const fingerprint=JSON.stringify({runId:row.id,revision:body.revision,hole:body.hole,intent:normalized});
   if(receipt){if(receipt.run_id!==row.id||receipt.fingerprint!==fingerprint)throw Error('arcade:request_conflict');}

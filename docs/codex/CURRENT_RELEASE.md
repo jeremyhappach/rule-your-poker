@@ -1,3 +1,16 @@
+# Mega final-stock Stand Pat — qualified release, 2026-10-24
+
+New /3 runs may keep all six cards on the final stock draw, even with zero discards.
+Normal replacement remains available; expiry, scoring and reveal/result order are
+preserved. Active /1 and /2 runs keep their frozen rules and configuration. No
+leaderboard reset/archive, timer bonus, multiplayer or financial change is included.
+
+Registration is installed disabled; candidate and installed rollback proofs pass.
+Compatible recovery worker v15 is verified. TypeScript, 2,890 source tests,
+241 harness tests, focused/catalog checks, mobile browser checks and build pass.
+Activation follows exact-SHA site and release-signal verification. Smoke is pending.
+Checkpoint: mega-final-stock-20261024. See [qualification](MEGA_FINAL_STOCK.md).
+
 # October 24 multiplayer smoke — published, owner smoke pending
 
 Published corrections cover dealer-draw retirement, current-authority HOLM

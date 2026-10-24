@@ -1,6 +1,6 @@
 import {golfPublicValue} from '../golf/scoring';
 import {acceptView,type MegaView,type Intent,type HoleResult} from './engine';
-import {MEGA_SEQUENTIAL_RULESET} from './config';
+import {usesSequentialOpening} from './config';
 
 export const formatGolfScore=(score:number|null|undefined)=>score==null?'—':score===0?'E':score>0?'+'+score:String(score);
 export function scoreSteps(cards:number[]){
@@ -39,7 +39,7 @@ export function receivePresentation(state:MegaPresentation,next:MegaView,at:numb
   &&previous.pending===null&&next.pending!==null){
   events.push({kind:'draw',key:next.id+'/draw/'+next.revision,start,end:start+350,view:next});
  }
- if(intent?.type==='open'&&next.ruleset===MEGA_SEQUENTIAL_RULESET&&intent.indices.length===1
+ if(intent?.type==='open'&&usesSequentialOpening(next.ruleset)&&intent.indices.length===1
   &&next.revision===previous.revision+1&&next.hole===previous.hole
   &&previous.cards[intent.indices[0]]===null&&next.cards[intent.indices[0]]!==null){
   events.push({kind:'opening',key:next.id+'/open/'+next.revision,start,end:start+350,view:next,index:intent.indices[0]});

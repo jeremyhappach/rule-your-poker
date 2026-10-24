@@ -1,6 +1,6 @@
 import {golfVisibleSubtotal} from '../golf/scoring.js';
-import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,type MegaRuleset,type CourseConfig} from './config.js';
-export type Intent={type:'draw'|'discard'|'abandon'}|{type:'replace';index:number}|{type:'open';indices:number[]};
+import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,usesSequentialOpening,type MegaRuleset,type CourseConfig} from './config.js';
+export type Intent={type:'draw'|'discard'|'stand-pat'|'abandon'}|{type:'replace';index:number}|{type:'open';indices:number[]};
 export interface HoleResult {hole:number;cards:number[];score:number;total:number;reason:'exposed'|'stock'|'timeout';hidden:number[];startedAt:number;endsAt:number}
 export interface MegaRun {
  id:string;owner:string;ruleset:MegaRuleset;config:CourseConfig;revision:number;
@@ -14,7 +14,7 @@ function deal(s:MegaRun,at:number){
  s.draws=0;s.discards=0;s.pending=null;s.discardTop=null;s.phase=s.config.initialExposed?'opening':'playing';s.deadline=at+s.config.completionSeconds*1000;
 }
 export function createRun(id:string,owner:string,config:CourseConfig,decks:number[][],at:number,ruleset:MegaRuleset=MEGA_RULESET):MegaRun {
- if(ruleset!==MEGA_RULESET&&ruleset!==MEGA_SEQUENTIAL_RULESET)throw Error('Unsupported Mega ruleset');
+ if(ruleset!==MEGA_RULESET&&ruleset!==MEGA_SEQUENTIAL_RULESET&&ruleset!==MEGA_STAND_PAT_RULESET)throw Error('Unsupported Mega ruleset');
  if(decks.length!==config.holes||decks.some(d=>d.length!==52||new Set(d).size!==52||d.some(c=>!Number.isInteger(c)||c<0||c>51)))throw Error('Invalid private decks');
  const s:MegaRun={id,owner,ruleset,config:structuredClone(config),revision:0,status:'active',phase:'playing',hole:1,cards:[],exposed:[],decks:structuredClone(decks),draws:0,discards:0,pending:null,discardTop:null,deadline:0,results:[],score:0,completedAt:null};
  deal(s,at);return s;
@@ -40,13 +40,17 @@ export function recoverRun(input:MegaRun,at:number):MegaRun {
  }
  return s;
 }
+/** Shared eligibility; the existing server recovery/commit boundary still owns expiry. */
+export function canStandPat(s:Pick<MegaRun,'ruleset'|'status'|'phase'|'pending'|'draws'|'config'>){
+ return s.ruleset===MEGA_STAND_PAT_RULESET&&s.status==='active'&&s.phase==='playing'&&s.pending!==null&&s.draws===s.config.stockAllowance;
+}
 export function applyIntent(input:MegaRun,intent:Intent,at:number):MegaRun {
  const s=recoverRun(input,at);
  if(s.revision!==input.revision)throw Error('The hole changed. Reconnect to continue.');
  if(s.status!=='active')throw Error('This run has ended');
  if(intent.type==='abandon'){s.status='abandoned';s.pending=null;s.revision++;return s;}
  if(s.phase==='opening'){
-  const sequential=s.ruleset===MEGA_SEQUENTIAL_RULESET,required=sequential?1:s.config.initialExposed;
+  const sequential=usesSequentialOpening(s.ruleset),required=sequential?1:s.config.initialExposed;
   if(intent.type!=='open'||!Array.isArray(intent.indices)||intent.indices.length!==required||new Set(intent.indices).size!==intent.indices.length||intent.indices.some(i=>!Number.isInteger(i)||i<0||i>5||s.exposed[i]))throw Error('Choose the required opening cards');
   intent.indices.forEach(i=>{s.exposed[i]=true;});
   if(s.exposed.filter(Boolean).length===s.config.initialExposed)s.phase='playing';
@@ -57,6 +61,9 @@ export function applyIntent(input:MegaRun,intent:Intent,at:number):MegaRun {
   case 'draw':
    if(s.pending!==null||s.draws>=s.config.stockAllowance)throw Error('Finish the current draw');
    s.pending=s.decks[s.hole-1][6+s.draws];s.draws++;break;
+  case 'stand-pat':
+   if(!canStandPat(s))throw Error('Stand Pat requires the final pending stock card');
+   s.discardTop=s.pending;s.pending=null;break;
   case 'discard':
    if(s.pending===null||s.discards>=s.config.discardAllowance)throw Error('No immediate discard available');
    s.discardTop=s.pending;s.pending=null;s.discards++;break;

@@ -3,10 +3,20 @@ import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,cleanup} from '@testing-library/react';
 import {MegaCardGolfGame} from './MegaCardGolfGame';
 import {createRun,applyIntent,recoverRun,projectRun} from '@/lib/megaCardGolf/engine';
-import {INITIAL_COURSES,MEGA_SEQUENTIAL_RULESET} from '@/lib/megaCardGolf/config';
+import {INITIAL_COURSES,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET} from '@/lib/megaCardGolf/config';
 vi.mock('@/hooks/useVisualPreferences',()=>({useVisualPreferences:()=>({getCardBackColors:()=>({color:'#174b38',darkColor:'#123'}),getCardBackId:()=>'',getEffectiveDeckColorMode:()=> 'two_color'}),FOUR_COLOR_SUITS:{}}));
 vi.mock('@/hooks/useDeviceSize',()=>({useDeviceSize:()=>({isTablet:false})}));
 afterEach(cleanup);
+it.each([0,1])('offers Stand Pat on final stock with %i discards and preserves replacement',allowance=>{
+ const config={...INITIAL_COURSES[0],holes:1,initialExposed:0,stockAllowance:1,discardAllowance:allowance};
+ const run=applyIntent(createRun('r','u',config,[Array.from({length:52},(_,i)=>i)],0,MEGA_STAND_PAT_RULESET),{type:'draw'},1);
+ const onIntent=vi.fn(),props={view:projectRun(run,2),now:2,busy:false,onIntent,onExit:vi.fn()};
+ const {rerender}=render(<MegaCardGolfGame {...props}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Stand Pat'}));expect(onIntent).toHaveBeenLastCalledWith({type:'stand-pat'});
+ fireEvent.click(screen.getByRole('button',{name:/Card 1/}));expect(onIntent).toHaveBeenLastCalledWith({type:'replace',index:0});
+ rerender(<MegaCardGolfGame {...props} now={run.deadline}/>);expect(screen.getByRole('button',{name:'Stand Pat'}).hasAttribute('disabled')).toBe(true);
+ rerender(<MegaCardGolfGame {...props} view={{...props.view,ruleset:MEGA_SEQUENTIAL_RULESET}}/>);expect(screen.queryByRole('button',{name:'Stand Pat'})).toBeNull();
+});
 it('v2 opening taps submit one choice with no confirmation or speculative face',()=>{
  const run=createRun('r','u',INITIAL_COURSES[0],Array.from({length:9},()=>Array.from({length:52},(_,i)=>i)),0,MEGA_SEQUENTIAL_RULESET);
  const onIntent=vi.fn(),props={view:projectRun(run,1),now:1,busy:false,onIntent,onExit:vi.fn()};

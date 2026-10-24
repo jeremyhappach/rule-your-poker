@@ -2,7 +2,9 @@ import type {GameDescriptor} from '../gameCatalog/types';
 export const MEGA_RULESET = 'mega-card-golf/1' as const;
 // Sequential opening is opt-in for newly admitted v2 runs; v1 remains compatible.
 export const MEGA_SEQUENTIAL_RULESET = 'mega-card-golf/2' as const;
-export type MegaRuleset=typeof MEGA_RULESET|typeof MEGA_SEQUENTIAL_RULESET;
+export const MEGA_STAND_PAT_RULESET = 'mega-card-golf/3' as const;
+export type MegaRuleset=typeof MEGA_RULESET|typeof MEGA_SEQUENTIAL_RULESET|typeof MEGA_STAND_PAT_RULESET;
+export const usesSequentialOpening=(ruleset:MegaRuleset)=>ruleset===MEGA_SEQUENTIAL_RULESET||ruleset===MEGA_STAND_PAT_RULESET;
 export const COURSE_IDS = ['sunny-meadows','coastal-links','devils-canyon'] as const;
 export type CourseId = typeof COURSE_IDS[number];
 export interface CourseSettings {
