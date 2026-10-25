@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS quintzee_qualification.runs(
  theme text NOT NULL CHECK(theme IN('classic','modern')), paused_at bigint,
  config jsonb NOT NULL, dependency_hash text NOT NULL
 );
+ALTER TABLE quintzee_qualification.runs ADD COLUMN IF NOT EXISTS abandoned_at bigint;
+ALTER TABLE quintzee_qualification.runs ADD COLUMN IF NOT EXISTS player_names jsonb NOT NULL DEFAULT '{}';
 CREATE TABLE IF NOT EXISTS quintzee_qualification.receipts(
  run_id uuid NOT NULL REFERENCES quintzee_qualification.runs(id), request_id uuid NOT NULL,
  actor uuid NOT NULL, fingerprint text NOT NULL, PRIMARY KEY(run_id,request_id)
@@ -22,7 +24,8 @@ BEGIN
  THEN RAISE EXCEPTION 'quintzee:frozen_dependency_changed'; END IF;
  now_ms:=floor(extract(epoch FROM clock_timestamp())*1000);before_s:=r.state;
  IF action IS NOT NULL THEN
-  IF request_id IS NULL OR revision IS NULL OR scope IS NULL OR action NOT IN('roll','score') THEN RAISE EXCEPTION 'quintzee:command'; END IF;
+  IF request_id IS NULL OR revision IS NULL OR scope IS NULL OR action NOT IN('roll','score','abandon') THEN RAISE EXCEPTION 'quintzee:command'; END IF;
+  IF action='abandon' AND jsonb_array_length(r.state->'players')<>1 THEN RAISE EXCEPTION 'quintzee:solo_only'; END IF;
   fingerprint:=jsonb_build_array(actor,revision,scope,action,items)::text;
   SELECT * INTO receipt FROM quintzee_qualification.receipts t WHERE t.run_id=command.run_id AND t.request_id=command.request_id;
   IF FOUND THEN
@@ -30,17 +33,19 @@ BEGIN
    outcome:='duplicate';
   END IF;
  END IF;
- IF r.paused_at IS NULL THEN r.state:=private.quintzee_advance(r.state,now_ms); END IF;
+ IF r.paused_at IS NULL AND r.abandoned_at IS NULL THEN r.state:=private.quintzee_advance(r.state,now_ms); END IF;
  IF r.state IS DISTINCT FROM before_s THEN r.revision:=r.revision+1; END IF;
  current_scope:=run_id::text||':'||(r.state->>'round')||':'||(r.state->>'turnIndex');
  IF action IS NOT NULL AND outcome<>'duplicate' THEN
-  IF r.revision<>revision OR scope<>current_scope OR (r.state->>'finished')::boolean OR r.paused_at IS NOT NULL THEN outcome:='stale';
+  IF r.revision<>revision OR scope<>current_scope OR (r.state->>'finished')::boolean OR r.paused_at IS NOT NULL OR r.abandoned_at IS NOT NULL THEN outcome:='stale';
   ELSIF r.state->'players'->>((r.state->>'turnIndex')::integer)<>actor::text THEN RAISE EXCEPTION 'quintzee:not_your_turn';
+  ELSIF action='abandon' THEN r.abandoned_at:=now_ms;r.revision:=r.revision+1;outcome:='committed';
   ELSE r.state:=private.quintzee_reduce(r.state,action,items,now_ms);r.revision:=r.revision+1;outcome:='committed'; END IF;
   INSERT INTO quintzee_qualification.receipts VALUES(run_id,request_id,actor,fingerprint);
  END IF;
- UPDATE quintzee_qualification.runs t SET state=r.state,revision=r.revision WHERE t.id=run_id;
+ UPDATE quintzee_qualification.runs t SET state=r.state,revision=r.revision,abandoned_at=r.abandoned_at WHERE t.id=run_id;
  RETURN jsonb_build_object('id',run_id,'state',r.state,'revision',r.revision,'scope',run_id::text||':'||(r.state->>'round')||':'||(r.state->>'turnIndex'),
- 'serverAt',now_ms,'outcome',outcome,'theme',r.theme,'pausedAt',r.paused_at);
+ 'serverAt',now_ms,'outcome',outcome,'theme',r.theme,'pausedAt',r.paused_at,'playerNames',r.player_names,
+ 'status',CASE WHEN r.abandoned_at IS NOT NULL THEN 'abandoned' WHEN (r.state->>'finished')::boolean THEN 'completed' ELSE 'active' END);
 END $$;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA quintzee_qualification FROM PUBLIC,anon,authenticated,service_role;

@@ -30,6 +30,25 @@ try{
  const advanced=await call(c,[f3.id,f3.players[0],null,null,null,null,null]);assert.equal(advanced.state.round,2);
  const late=await call(c,[f3.id,f3.players[0],randomUUID(),f3.v.revision,f3.v.scope,'score',[11]]);assert.equal(late.outcome,'stale');assert.deepEqual(late.state,advanced.state);record('old scope cannot score into the next round');
  const f4=await fixture();const preserved=await q(c,'SELECT config v FROM quintzee_qualification.runs WHERE id=$1',[f4.id]);await q(c,'SELECT private.quintzee_rules(240000,70) v');assert.deepEqual(await q(c,'SELECT config v FROM quintzee_qualification.runs WHERE id=$1',[f4.id]),preserved);record('future configuration does not alter an existing snapshot');
+ const solo=await fixture(),abandonArgs=[solo.id,solo.players[0],randomUUID(),solo.v.revision,solo.v.scope,'abandon',[]];
+ const abandoned=await call(c,abandonArgs);assert.equal(abandoned.status,'abandoned');assert.equal(abandoned.state.finished,false);assert.deepEqual(abandoned.state.results,[]);
+ const abandonReplay=await call(other,abandonArgs);assert.equal(abandonReplay.outcome,'duplicate');assert.equal(abandonReplay.status,'abandoned');assert.deepEqual(abandonReplay.state,abandoned.state);
+ const afterAbandon=await call(c,[solo.id,solo.players[0],randomUUID(),abandoned.revision,abandoned.scope,'score',[11]]);assert.equal(afterAbandon.outcome,'stale');assert.deepEqual(afterAbandon.state,abandoned.state);
+ await c.query(`UPDATE quintzee_qualification.runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb($2::bigint)) WHERE id=$1`,[solo.id,Date.now()-1]);
+ const abandonedExpired=await call(c,[solo.id,solo.players[0],null,null,null,null,null]);assert.equal(abandonedExpired.status,'abandoned');assert.deepEqual(abandonedExpired.state.results,[]);assert.equal(abandonedExpired.state.finished,false);
+ await assert.rejects(call(c,[f.id,f.players[0],randomUUID(),live.revision,live.scope,'abandon',[]]),/solo_only/);
+ record('solo abandonment is replay-safe, blocks later scores/recovery completion and rejects multiplayer abandonment');
+ for(const theme of ['classic','modern']){
+  const turn=await fixture(2),names={[turn.players[0]]:'Alex',[turn.players[1]]:'Jordan'};
+  await c.query("UPDATE quintzee_qualification.runs SET theme=$2,player_names=$3,state=jsonb_set(state,'{board,deadline}',to_jsonb($4::bigint)) WHERE id=$1",[turn.id,theme,names,Date.now()-10000]);
+  const handoff=await call(c,[turn.id,turn.players[0],null,null,null,null,null]);assert.equal(handoff.state.turnIndex,1);assert.equal(handoff.state.results[0].reason,'timeout');assert.equal(handoff.theme,theme);assert.deepEqual(handoff.playerNames,names);
+  const reconnected=await call(other,[turn.id,turn.players[1],null,null,null,null,null]);assert.deepEqual(reconnected.state,handoff.state);assert.deepEqual(reconnected.playerNames,names);
+  await c.query("UPDATE quintzee_qualification.runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb($2::bigint)) WHERE id=$1",[turn.id,Date.now()-10]);
+  const next=await call(c,[turn.id,turn.players[1],null,null,null,null,null]);assert.equal(next.state.board.phase,'playing');
+  await assert.rejects(call(other,[turn.id,turn.players[0],randomUUID(),next.revision,next.scope,'roll',[]]),/not_your_turn/);
+  const rolled=await call(c,[turn.id,turn.players[1],randomUUID(),next.revision,next.scope,'roll',[]]);assert.equal(rolled.outcome,'committed');assert.equal(rolled.state.board.deadline,next.state.board.deadline);
+ }
+ record('both-theme server snapshots preserve names and clock across expiration, whole-round handoff and reconnect; only new active actor can reroll');
  assert.deepEqual(await counts(),before);record('canonical session, financial and Arcade-result row counts unchanged (not an update audit)');
  writeFileSync('dev/quintzee/evidence/protocol.json',JSON.stringify({passed:true,cases,canonicalSettlement:'MISSING — qualification adapter is not session integration'},null,2));
 }catch(e){await c.query('ROLLBACK');console.error(e);process.exitCode=1;}finally{

@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-25",
+  "baseCommit": "ba220d245da940b2cfd2635b8550ec05ea1d1204",
+  "provenance": "Transcribed from actual browser accessibility/DOM observations in this turn; synthetic local identities and server-generated dice.",
+  "capturesAreIntermediate": true,
+  "captureLimit": "Captured before final graphical-only timer, ALL FILLED label and inactive named-turn replacement. They are not final-source screenshots.",
+  "classic": {
+    "initialDice": [6,6,1,6,2],
+    "heldIndices": [0,1],
+    "firstReroll": [6,6,2,2,4],
+    "secondReroll": [6,6,5,1,5],
+    "thirdRollRerollDisabled": true,
+    "committedAny": 23,
+    "nextCategoryDice": [4,4,4,1,5],
+    "timerBeforeCommit": "2:38",
+    "timerAfterCommit": "2:38",
+    "earlyThreeAlikeBank": 18,
+    "inactiveBrowserObservedBothBanks": true,
+    "holdThenReleaseObserved": true
+  },
+  "modern": {
+    "initialDice": [4,6,4,5,2],
+    "heldIndices": [0,1],
+    "firstReroll": [4,6,3,2,1],
+    "secondReroll": [4,6,2,1,1],
+    "thirdRollRerollDisabled": true,
+    "committedAny": 14,
+    "nextCategoryDice": [1,6,6,6,4],
+    "timerBeforeCommit": "2:38",
+    "timerAfterCommit": "2:37",
+    "earlyThreeAlikeBank": 23,
+    "inactiveBrowserObservedBothBanks": true,
+    "holdThenReleaseObserved": true
+  },
+  "inactiveBeforeFinalEdit": "Both participants saw active timer/dice/card and received new banked scores. Dice, categories and reroll were disabled; Abandon absent. Final source hides reroll and substitutes name's turn, still awaiting browser verification.",
+  "abandon": {"confirmationObserved": true, "keepPlayingObserved": true, "confirmedUiCompletion": false, "postAttemptDatabaseAbandoned": false, "serverProtocolProof": "passed"},
+  "browserBlocker": ["Existing-tab reload timed out and reset browser-tool kernel", "Emulation.setFocusEmulationEnabled timed out for tab 14", "Fresh-tab Page.navigate timed out for tab 15"],
+  "unverified": ["final visual/text edits", "latest small/landscape layout", "complete UI abandonment", "two-browser whole-round handoff/reconnect/expiration"],
+  "automated": {"categoryComparisons":93312,"rulesProofGroups":13,"protocolProofGroups":10,"unitTests":26,"finalSourceTypeScript":"passed"},
+  "productionActions": false
+}

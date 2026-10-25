@@ -30,8 +30,9 @@ const plugin={name:'quintzee-local-authority',configureServer(server){server.mid
    const ids=Array.from({length:q.players},()=>randomUUID()),id=randomUUID();
    const rules=await read(db,'SELECT private.quintzee_rules($1,$2) v',[defaults.durationMs,defaults.clearBonus]);
    const state=await read(db,'SELECT private.quintzee_start($1,$2,$3) v',[ids,rules,Date.now()]);
-   await db.query("INSERT INTO quintzee_qualification.runs(id,state,theme,config,dependency_hash) VALUES($1,$2,$3,$4,md5(pg_get_functiondef('private.yahtzee_category_score(jsonb,jsonb,text)'::regprocedure)))",[id,state,q.theme,rules]);
-   result={id,players:ids.map((actor,i)=>{const token=randomUUID();tokens.set(token,{id,actor});return {actor,token,name:`Player ${i+1}`};})};writeFileSync(tokenPath,JSON.stringify([...tokens]));
+   const names=Object.fromEntries(ids.map((actor,i)=>[actor,['Alex','Jordan','Casey','Morgan'][i]]));
+   await db.query("INSERT INTO quintzee_qualification.runs(id,state,theme,config,dependency_hash,player_names) VALUES($1,$2,$3,$4,md5(pg_get_functiondef('private.yahtzee_category_score(jsonb,jsonb,text)'::regprocedure)),$5)",[id,state,q.theme,rules,names]);
+   result={id,players:ids.map(actor=>{const token=randomUUID();tokens.set(token,{id,actor});return {actor,token,name:names[actor]};})};writeFileSync(tokenPath,JSON.stringify([...tokens]));
   }else{
    const a=tokens.get(q.token);if(!a||a.id!==q.id)throw Error('Local participant token required');
    if(!['/state','/action'].includes(url.pathname))throw Error('Unknown operation');
@@ -44,7 +45,7 @@ const plugin={name:'quintzee-local-authority',configureServer(server){server.mid
 const server=await createServer({configFile:false,cacheDir:'qualification.local/quintzee/vite-cache',plugins:[react(),plugin],resolve:{alias:{'@':resolve('src')}},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false},server:{host:'127.0.0.1',port:5197,strictPort:true,fs:{allow:[resolve('.'),resolve('node_modules')]}}});
 let busy=false;
 async function recover(){if(busy)return;busy=true;try{
- const rows=(await db.query("SELECT id,state->'players'->>0 actor,revision FROM quintzee_qualification.runs WHERE NOT (state->>'finished')::boolean AND paused_at IS NULL AND (state#>>'{board,deadline}')::bigint<=$1",[Date.now()])).rows;
+ const rows=(await db.query("SELECT id,state->'players'->>0 actor,revision FROM quintzee_qualification.runs WHERE NOT (state->>'finished')::boolean AND paused_at IS NULL AND abandoned_at IS NULL AND (state#>>'{board,deadline}')::bigint<=$1",[Date.now()])).rows;
  for(const r of rows){const v=await command(r.id,r.actor);if(v.revision!==Number(r.revision))notify(r.id);}
 }catch(e){console.error('Local recovery',e.message);}finally{busy=false;}}
 const worker=setInterval(()=>void recover(),1000);

@@ -7,8 +7,8 @@ export interface QuintzeeRules {version:'quintzee/1';durationMs:number;clearBonu
 export interface QuintzeeResult {reason:'all_categories'|'timeout'|'no_matches';categorySubtotal:number;upperSubtotal:number;upperBonus:number;clearBonus:number;rawSubtotal:number;multiplier:number;remainingMs:number;stageScore:number;scoreBefore:number;score:number;completedAt:number;playerId?:string;round?:number}
 export interface QuintzeeBoard {rules:QuintzeeRules;phase:'intro'|'playing'|'stage_complete';deadline:number;startedAt?:number;dice:number[];held:number[];rollsRemaining:number;rollSerial:number;scores:Partial<Record<QuintzeeCategory,number>>;potentials:Partial<Record<QuintzeeCategory,number>>;scoreBefore:number;score:number;result:QuintzeeResult|null}
 export interface QuintzeeState {rules:QuintzeeRules;players:string[];scores:Record<string,number>;round:number;turnIndex:number;qualified:string[];results:QuintzeeResult[];finished:boolean;board:QuintzeeBoard}
-export interface QuintzeeSnapshot {id:string;revision:number;scope:string;serverAt:number;state:QuintzeeState;theme:QuintzeeTheme;pausedAt:number|null;outcome:string}
-export interface QuintzeeIntent {type:'roll'|'score';items:number[]}
+export interface QuintzeeSnapshot {id:string;revision:number;scope:string;serverAt:number;state:QuintzeeState;theme:QuintzeeTheme;pausedAt:number|null;outcome:string;status:'active'|'completed'|'abandoned';playerNames?:Record<string,string>}
+export interface QuintzeeIntent {type:'roll'|'score'|'abandon';items:number[]}
 /** Preview only. The database independently validates and computes every score. */
 export function quintzeeBasePreview(category:QuintzeeCategory,dice:readonly number[]):number {
  if(!QUINTZEE_CATEGORIES.includes(category)||dice.length!==5||dice.some(d=>!Number.isInteger(d)||d<1||d>6))throw Error('Invalid Quintzee dice/category');
@@ -22,6 +22,6 @@ export function quintzeeClock(board:QuintzeeBoard,serverNow:number){
 export function acceptQuintzeeSnapshot(current:QuintzeeSnapshot|null,next:QuintzeeSnapshot):boolean {
  if(!current)return true;
  if(current.id!==next.id||next.revision<current.revision)return false;
- if(next.revision===current.revision)return JSON.stringify(current.state)===JSON.stringify(next.state)&&current.theme===next.theme&&current.pausedAt===next.pausedAt&&current.scope===next.scope;
+ if(next.revision===current.revision)return JSON.stringify(current.state)===JSON.stringify(next.state)&&current.theme===next.theme&&current.pausedAt===next.pausedAt&&current.scope===next.scope&&current.status===next.status&&JSON.stringify(current.playerNames)===JSON.stringify(next.playerNames);
  return true;
 }

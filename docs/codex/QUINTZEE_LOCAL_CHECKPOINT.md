@@ -14,6 +14,80 @@ records its full SHA. No main integration or push is included.
 
 ## Approved specification
 
+### Owner preview follow-up (base ba220d245da940b2cfd2635b8550ec05ea1d1204)
+
+The current source incorporates all subsequent local UI feedback: a single
+QUINTZEE title in the canonical toolbar; no P-Town Originals label, category
+completion count, base-score readout, speed number or visible countdown text.
+The full-width graphical timer remains visible to every participant. Its numeric
+remaining time is available through progressbar accessibility attributes, with
+no timer live region. The round clock and SQL scoring rules are unchanged.
+The completion bonus is labeled exactly ALL FILLED; its +35 value is unchanged.
+The redundant scoring helper and opponent's-dice helper are removed.
+
+Dice now have larger bordered touch targets, explicit hold/release accessibility
+labels, pressed state, a checkmark and bright border for held dice. The prominent
+reroll control shows remaining rerolls and Roll 1/2/3 of 3. The first roll stays
+automatic after Get Ready; after the third roll, reroll is disabled and the
+control directs the active player to choose a category. Earlier category banking
+remains legal. Inactive participants see a noninteractive named-turn message in
+place of that button, plus the active player's timer, dice and scorecard. UUIDs
+still authorize actions; display names never identify actors. Names come from
+snapshot participant metadata with numbered fallback. New local fixtures use
+synthetic Alex/Jordan/Casey/Morgan names, not production account identities.
+
+Solo Abandon reuses the existing Arcade AlertDialog components and wording from
+`src/pages/Arcade.tsx`: Abandon game? / Its score will not enter the leaderboard. /
+Keep Playing / Abandon Game. The LOCAL adapter records abandonment separately
+from completion, preserves state, rejects later scoring, excludes abandoned runs
+from recovery, and rejects multiplayer abandonment. This is not the real Arcade
+abandon adapter, departure, financial cancellation or leaderboard integration.
+The local terminal surface links back to local setup; production must use the
+canonical game's leaderboard destination. No fixture score enters a leaderboard.
+
+Reproduction before changes: both themes had working hold buttons and rerolls,
+but small low-contrast HOLD labels. Get Ready covered controls and incorrectly
+displayed "3 rerolls left" before the automatic roll. Earlier preview links had
+expired to Match Complete with disabled controls. No missing-control bug was
+reproduced during an active round at 390x680; the 740-high earlier dev frame could
+clip in a 720-high browser capture. The current fixture preserves its frame on start.
+
+Browser evidence before the final text/timer/opponent-message edits: both themes
+held the first two dice across both rerolls, disabled a further reroll, committed
+Any (Classic 23 / Modern 14), reset to the next category's initial roll, and kept
+the round clock decreasing. Hold then release worked. Banking Three Alike early
+(Classic 18 / Modern 23) notified the inactive browser. Inactive dice/category/
+reroll controls were disabled and Abandon was absent. These observations do NOT
+verify the later change from disabled reroll to a named-turn message.
+
+The solo confirmation and Keep Playing path were observed. The attempted confirm
+was NOT verified: the browser stalled, and a read of that local fixture found
+`abandoned_at` still null. Server-side abandonment proofs pass, but the complete
+UI abandon path remains unqualified. Existing-tab reload timed out; reacquiring
+it timed out on `Emulation.setFocusEmulationEnabled`; one fresh tab timed out on
+`Page.navigate`. The HTTP preview returned 200. No approval was rejected and no
+browser tooling was installed. Further repeated attempts were stopped.
+
+Final graphical-only timer, ALL FILLED label, removed opponent helper, named-turn
+replacement, latest small/landscape layout, and both-browser complete-round
+handoff/reconnect/expiration checks therefore still need browser verification.
+Saved controls screenshots are INTERMEDIATE evidence and retain the numeric
+timer or earlier helper labels; they are not final screenshots. The earlier
+checkpoint's screenshots below are also historical. Use the current local route
+for the latest source, not those captures.
+
+Focused validation: the unchanged SQL core again passed 93,312 category comparisons
+and 13 proof groups. The expanded protocol proof passes 10 groups, including
+solo abandonment and both-theme server snapshots through expiration, whole-round
+handoff, reconnect, participant names and new-active-player authorization.
+These are server proofs, not the blocked browser handoff test. All 26 focused
+Quintzee/Yahtzee tests and final-source TypeScript check pass.
+No new production build is claimed for this unrouted preview pass.
+All six production integration/qualification gaps listed below remain open.
+See `dev/quintzee/evidence/controls/observations.json` for exact dice observations.
+
+### Frozen gameplay rules
+
 - Solo Arcade and networked 2–4-player session play; rotate after full scorecards.
 - Two regular rounds per player. Cumulative >=80,000 after round two earns at most
   one bonus round. Bonus points add to total; no recursive qualification.
@@ -180,5 +254,17 @@ Participant links open independent browser identities. `frame=phone`, `small` an
 - `dev/quintzee/evidence/modern-landscape.png`
 - `dev/quintzee/evidence/modern-observer.png`
 - `dev/quintzee/evidence/checkpoint.json`
+- `dev/quintzee/evidence/controls/observations.json`
+- `dev/quintzee/evidence/controls/classic-before.png`
+- `dev/quintzee/evidence/controls/modern-before.png`
+- `dev/quintzee/evidence/controls/classic-held.png`
+- `dev/quintzee/evidence/controls/modern-held.png`
+- `dev/quintzee/evidence/controls/classic-final-roll.png`
+- `dev/quintzee/evidence/controls/modern-final-roll.png`
+- `dev/quintzee/evidence/controls/classic-inactive.png`
+- `dev/quintzee/evidence/controls/modern-inactive.png`
+- `dev/quintzee/evidence/controls/classic-updated.png`
+- `dev/quintzee/evidence/controls/modern-updated.png`
+- `dev/quintzee/evidence/controls/solo-abandon-confirm.png`
 - `docs/codex/QUINTZEE_LOCAL_CHECKPOINT.md`
 - `docs/codex/CURRENT_RELEASE.md`

@@ -7,6 +7,13 @@ Canonical financial settlement, real Arcade/session adapters, Game Defaults,
 leaderboards and production admission remain **MISSING / CLOSED**. No publication
 is authorized. See [local checkpoint and exact scope](QUINTZEE_LOCAL_CHECKPOINT.md).
 
+Local owner-preview follow-up simplifies the header to one title and a graphical
+timer, clarifies hold/reroll controls, adds solo fixture abandonment with the
+canonical confirmation, and replaces inactive reroll controls with the active
+participant's name. Final browser capture, abandonment UI completion and the
+latest two-browser handoff/reconnect smoke are **UNVERIFIED** after browser-control
+timeouts. Local SQL/protocol proofs and unit checks pass; production gates remain closed.
+
 # Mega UI transitions — approved publication, 2026-10-25
 
 Two approved presentation fixes remove decorative new-hole hover carryover and

@@ -23,6 +23,8 @@ describe('Quintzee scoring projection',()=>{
   const a={id:'a',revision:2,scope:'a:1:0',theme:'classic',pausedAt:null,state:{round:1}} as QuintzeeSnapshot;
   expect(acceptQuintzeeSnapshot(a,{...a,revision:1})).toBe(false);
   expect(acceptQuintzeeSnapshot(a,{...a,theme:'modern'})).toBe(false);
+  expect(acceptQuintzeeSnapshot(a,{...a,status:'abandoned'})).toBe(false);
+  expect(acceptQuintzeeSnapshot(a,{...a,playerNames:{player:'Alex'}})).toBe(false);
   expect(acceptQuintzeeSnapshot(a,{...a,serverAt:55})).toBe(true);
   expect(acceptQuintzeeSnapshot(a,{...a,id:'b',revision:3})).toBe(false);
  });

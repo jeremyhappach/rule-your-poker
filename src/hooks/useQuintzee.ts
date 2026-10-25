@@ -43,7 +43,7 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
   frame=requestAnimationFrame(draw);return()=>cancelAnimationFrame(frame);
  },[]);
  useEffect(()=>{
-  if(!snapshot||snapshot.state.finished||snapshot.pausedAt!==null)return;
+  if(!snapshot||snapshot.status!=='active'||snapshot.state.finished||snapshot.pausedAt!==null)return;
   const due=snapshot.state.board.deadline-(anchor.current.server+performance.now()-anchor.current.local);
   const timer=setTimeout(()=>void reconnect(),Math.max(0,due)+25);return()=>clearTimeout(timer);
  },[snapshot,reconnect]);
