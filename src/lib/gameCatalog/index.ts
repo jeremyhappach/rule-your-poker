@@ -28,8 +28,6 @@ export function findGame(id: string | null | undefined) {
  return GAME_CATALOG.find(game=>game.id===normalized);
 }
 export const ARCADE_GAMES = GAME_CATALOG.filter(game=>game.modes.includes('arcade'));
-// Explicit roadmap presentation, never included in playable mode eligibility.
-export const ARCADE_PLACEHOLDERS = [{id:'yahtzee' as const,name:'Yahtzee'}];
 export type Availability = Partial<Record<Capability,boolean>>;
 export interface Roster {players:number;humans:number;realMoney?:boolean}
 export function isDiscovered(game:GameDescriptor, access:Availability) {
