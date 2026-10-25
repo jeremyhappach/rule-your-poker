@@ -1,11 +1,16 @@
-# Mega UI transitions — locally qualified, publication held, 2026-10-25
+# Mega UI transitions — approved publication, 2026-10-25
 
 Two approved presentation fixes remove decorative new-hole hover carryover and
 keep Stand Pat/Discard hidden through card presentation and automatic-draw
 handoff. Versioned eligibility, scoring, keyboard focus and recovery are
 preserved. 99 Mega tests, TypeScript, production build and 10 local browser
-checks pass. Exact orange-focus carryover remains unconfirmed. Local branch
-only: no main integration or publication. See [local evidence](MEGA_UI_TRANSITIONS_LOCAL.md).
+checks pass. Owner approved publication of candidate `2945df81a996fedccb286dfa0cbf1c13c80fc9b5`.
+It follows main `33b641bb6` directly and excludes the separate Battle31 smoke
+candidate. Final TypeScript, 2,923 source tests (one timeout passed unchanged on
+isolated rerun), 241 harness tests and production bundle are qualified.
+Exact-SHA publication verification follows integration.
+Exact accidental orange-focus carryover remains unconfirmed; physical iPhone
+smoke is pending. No runtime telemetry was added. See [qualification and release notes](MEGA_UI_TRANSITIONS_LOCAL.md).
 
 # Battle31 canonical-table redesign — qualified release, 2026-10-25
 

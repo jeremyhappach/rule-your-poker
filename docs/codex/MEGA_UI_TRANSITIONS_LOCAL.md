@@ -1,10 +1,31 @@
-# Mega UI transitions — local candidate, 2026-10-25
+# Mega UI transitions — approved publication, 2026-10-25
 
-Owner approved only local implementation and qualification of two presentation
-fixes. Base: `33b641bb6d9841764d7af59b27f0c935a2e42fd3` (main at inspection).
-Branch: `codex/mega-ui-transitions`. No integration, push, migration, deployment
-or activation is authorized by this checkpoint. Production smoke is pending
-separate publication approval.
+Owner first approved local implementation and qualification, then separately
+approved production release of exactly candidate
+`2945df81a996fedccb286dfa0cbf1c13c80fc9b5`. Base:
+`33b641bb6d9841764d7af59b27f0c935a2e42fd3`, verified on remote main and the READY
+production deployment at release preparation. Branch: `codex/mega-ui-transitions`.
+The separate `codex/battle31-smoke-local` work is excluded. No migration,
+admission, defaults or financial changes are included. No runtime telemetry
+was added: render observation and diagnostic state exist only in local fixtures.
+
+Release notes: Mega clears decorative hover feedback at a new hole and waits
+until card/stock presentation settles before showing Stand Pat and Discard.
+Discard disappears after consumption. Existing versioned eligibility, scoring,
+keyboard focus and recovery are preserved.
+
+Publication gate: pass aggregate validation on this main-based candidate,
+fast-forward main without disturbing its existing Cribbage snapshot/temp files,
+tag the release checkpoint, and use the approved push helper. Verify remote SHA,
+READY production deployment, public manifest and persisted release signal agree.
+The normal GitHub publisher owns the signal; no manual signal override is included.
+
+iPhone smoke: refresh Mega, complete opening choices, replace a concealed and an
+exposed card, discard a draw, and watch Stand Pat/Discard through each transition.
+Finish the hole and check for residual outlines on the next deal. Check Stand Pat
+confirmation/cancel and exhausted discard allowance. Report course, hole and
+portrait/landscape orientation if a symptom remains. Physical-device acceptance
+is still pending, including the exact accidental orange-focus symptom.
 
 ## Causes and correction
 
@@ -49,6 +70,18 @@ with local in-memory state and delayed responses; no production transport.
 Documentation: this file and `docs/codex/CURRENT_RELEASE.md`.
 
 ## Evidence
+
+Release qualification: application TypeScript passed. Aggregate source suite
+completed 422 files with 2,922 passes and one unrelated Run21 5-second timeout.
+That exact test (`retains the frozen 105 deck for both players through recovery
+and every normal round`) passed unchanged in 917 ms on its single isolated
+rerun, retaining the original timeout. All 2,923 source tests are accounted for.
+The 241 harness tests in 12 files and production Vite build passed afterward.
+Logs: `evidence.local/release-gates.log`, `release-harness.log`,
+`release-bundle.log`. The source run's line-ending-only Cribbage snapshot rewrite
+was restored in this originally clean candidate checkout; main's pre-existing
+snapshot modification remains untouched. No test timeout or other-game code was
+changed. Release checkpoint tag: `mega-ui-transitions-20261025`.
 
 - `vitest run src/components/megaCardGolf src/lib/megaCardGolf`: 99 tests,
   11 files passed. Includes every render across concealed/exposed replacement
