@@ -32,8 +32,6 @@ describe('cross-game card face contract', () => {
     expect([...owners].sort()).toEqual([
       'components/HolmLonePlayerFan.tsx',
       'components/PlayingCard.tsx',
-      // Reviewed meld-rank selector label; actual cards use PlayingCard.
-      'components/canasta/HandEditor.tsx',
       'components/hand-history/MiniPlayingCard.tsx',
       // Reviewed numeric leaderboard positions; neither surface renders card faces.
       'components/megaCardGolf/CourseClubhouse.tsx',

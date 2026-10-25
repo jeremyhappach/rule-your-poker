@@ -1,6 +1,9 @@
 import type {Plugin} from 'vite';
 import {canastaConfig} from '../../src/lib/canasta/config';
 import {createMatch,project,execute,startHand,expire,takeControl,resume,type Command} from '../../src/lib/canasta/engine';
+import {fixture,SCENES,type Scene} from './fixtures';
+import {fixtureDeck,standard} from '../../src/lib/canasta/rules';
+import {assertConservation} from '../../src/lib/canasta/engine';
 import {chooseBotAction} from '../../src/lib/canasta/bot';
 import {secureDeck} from '../../server/canasta/shuffle';
 import {randomUUID} from 'node:crypto';
@@ -12,6 +15,16 @@ export function canastaAuthorityFixture():Plugin{
  const fresh=()=>startHand(createMatch({id:id(1),sessionId:id(2),stake:10,realMoney:false,config:canastaConfig({canasta_mode:'beginner',decision_timer_seconds:120}),seats:[
   {id:id(3),userId:id(5),kind:'human',seat:1},{id:id(4),userId:id(6),kind:'human',seat:5},
  ]},Date.now()),id(7),secureDeck(),Date.now());
+ function review(scene:Scene){
+  const m=fresh(),f=fixture(scene),h=m.hand!,self=id(4),other=id(3);
+  const used=new Set([...f.hand,...f.pile,...f.melds.flatMap(g=>g.cards),...(f.reds??[]),...(f.opponentMelds??[]).flatMap(g=>g.cards)].map(c=>c.id));
+  let rest=fixtureDeck().filter(c=>!used.has(c.id));
+  const opponentMelds=f.opponentMelds??['K','J'].flatMap(rank=>{const cards=rest.filter(c=>standard(c)?.rank===rank).slice(0,3);if(cards.length<3)return [];rest=rest.filter(c=>!cards.includes(c));return [{rank:rank as 'K'|'J',cards}];});
+  h.players[self]={...h.players[self],cards:f.hand,melds:f.melds,reds:f.reds??[],opened:f.opened,openingScore:f.score};
+  h.players[other]={...h.players[other],cards:rest.slice(0,Math.min(15,rest.length)),melds:opponentMelds,reds:[],opened:opponentMelds.length>0};
+  h.stock=rest.slice(h.players[other].cards.length);h.pile=f.pile;h.active=self;h.phase=f.phase==='ended'?'complete':f.phase;h.source=f.drawSource??null;h.openedAtTurnStart=f.opened;
+  assertConservation(m);return m;
+ }
  let match=fresh();
  const clients=new Set<ServerResponse>();const notify=()=>clients.forEach(res=>res.write('data: revision\n\n'));
  return {name:'canasta-authority-fixture',configureServer(server){
@@ -26,7 +39,7 @@ export function canastaAuthorityFixture():Plugin{
     if(url.pathname==='/state')return send(200,snapshot());
     if(req.method!=='POST')return send(405,{error:'Fixture requires POST'});
     if(url.pathname==='/reset'){
-     offset=0;match=fresh();
+     offset=0;const scene=SCENES.find(s=>s.id===url.searchParams.get('scene'))?.id;match=scene?review(scene):fresh();
     }else if(url.pathname==='/expire'){
      offset=Math.max(offset,match.hand!.deadline-Date.now());match=expire(match,now(),match.seats.filter(s=>!match.automatic.includes(s.id)).map(s=>s.id));
     }else if(url.pathname==='/take-control'){

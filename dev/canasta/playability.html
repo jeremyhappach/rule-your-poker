@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Canasta local playability review</title>
+<style>body{margin:0;background:#eef2f6;color:#172033;font:14px system-ui}header{padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:white;border-bottom:1px solid #ccd3dc}h1{margin:0;font-size:18px}select,button{padding:10px;min-height:44px}p{margin:8px 16px}main{padding:12px;overflow:auto}iframe{display:block;border:1px solid #cbd5e1;border-radius:12px;margin:auto;background:white;box-shadow:0 4px 20px #17203315}</style></head>
+<body><header><h1>Canasta · local review</h1><label>Fixture <select id="scene"><option value="15">15 cards</option><option value="30">30 cards</option><option value="60">60 cards</option><option value="maximum">71-card maximum hand</option><option value="fresh">Fresh draw</option><option value="frozen">Frozen pile pickup</option><option value="reconnect">Add to own meld</option><option value="out">Go out with discard</option><option value="out-meld">Go out without discard</option></select></label><label>Viewport <select id="size"><option value="390,844">390 × 844</option><option value="430,932">430 × 932</option><option value="320,568">320 × 568</option><option value="812,375">812 × 375 landscape</option></select></label><button id="reset">Reset fixture</button></header>
+<p>Synthetic local fixtures using the actual table and shared Canasta reducer. No production connection. Changing a fixture resets this local match.</p>
+<p>Select cards directly in MY; use Melds to assign them, then mark a discard and choose Done or Go Out. Scroll MY continuously for larger hands or compact layouts.</p>
+<main><iframe id="table" title="Actual Canasta table with local fixture" width="390" height="844"></iframe></main>
+<script type="module">
+const frame=document.querySelector('#table'),scene=document.querySelector('#scene'),size=document.querySelector('#size');
+scene.add(new Option('Red threes, canastas and wilds','melds'));
+async function load(){if(scene.value==='fresh'){await fetch('/__canasta-fixture/reset',{method:'POST'});frame.src='/authority.html?viewer=2';}else frame.src='/?scene='+scene.value;}
+scene.onchange=load;document.querySelector('#reset').onclick=load;size.onchange=()=>{const [w,h]=size.value.split(',');frame.width=w;frame.height=h;};load();
+</script></body></html>

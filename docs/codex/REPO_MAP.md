@@ -1,5 +1,10 @@
 # Repository map
 
+Canasta summary/fan presentation: `src/components/canasta/geometry.ts`
+owns the bounded `canasta_presentation` Geometry Lab domain and felt packing;
+`CardFan.tsx` owns hand/detail fans. `src/components/admin/CanastaGeometryPanel.tsx`
+uses the existing Lab draft pipeline. See `CANASTA_UI_RELEASE.md`.
+
 357 incident: `ChipPresentationLedger.ts` owns dealer-game presentation retirement;
 `sessionPlayerIntent.ts` reads one current 357 frame before automatic-play CAS.
 `MobileGameTable.tsx` owns the normal Sweep the Legs overlay; the legs flight

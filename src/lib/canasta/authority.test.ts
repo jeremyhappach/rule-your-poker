@@ -16,6 +16,15 @@ function boundary(hand:ReturnType<typeof fixtureDeck>,pile:ReturnType<typeof fix
   assertConservation(m);return m;
 }
 describe('authority boundaries',()=>{
+  it('exposes a buried red three on frozen pickup without replacing it from stock',()=>{
+    const qs=cards('Q'),red=fixtureDeck().find(redThree)!,stock=cards('6').slice(0,3);
+    const m=boundary([qs[0],qs[1],cards('4')[0]],[red,qs[2]],stock,[{rank:'7',cards:cards('7').slice(0,3)}]);
+    const h=m.hand!,command:Command={matchId:m.id,handId:h.id,turn:h.turn,generation:h.generation,
+      revision:m.revision,requestId:id(99),playerId:h.active,action:{type:'pickup',qualifiers:[qs[0].id,qs[1].id],opening:[]}};
+    const next=execute(m,command,{kind:'human',userId:id(4)},1).state,p=next.hand!.players[id(2)];
+    expect(p.reds).toEqual([red]);expect(p.cards).toEqual([cards('4')[0]]);expect(next.hand!.stock).toEqual(stock);
+    expect(project(next,id(1)).hand!.players[id(2)].reds).toEqual([red]);assertConservation(next);
+  });
   it('secure shuffle uses independent opaque identities and a complete physical deck',()=>{
     const a=secureDeck(),b=secureDeck();expect(new Set(a.map(c=>c.id)).size).toBe(108);
     expect(a.some(c=>b.some(d=>d.id===c.id))).toBe(false);expect(a.every(c=>/^[0-9a-f-]{36}$/.test(c.id))).toBe(true);

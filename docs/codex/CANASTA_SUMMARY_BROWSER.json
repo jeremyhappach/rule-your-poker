@@ -1,0 +1,42 @@
+{
+  "fixture": true,
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "summaryRows": 5,
+      "canastas": 2,
+      "opponentCardsReadable": 25
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "summaryRows": 5,
+      "canastas": 2,
+      "opponentCardsReadable": 25
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "summaryRows": 5,
+      "canastas": 2,
+      "opponentCardsReadable": 25
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "summaryRows": 5,
+      "canastas": 2,
+      "opponentCardsReadable": 25
+    }
+  ],
+  "checks": [
+    "summary-only felt; complete/incomplete distinction; tap to inspect",
+    "rank/suit/Joker text unobscured in every fan",
+    "44px effective hand targets and duplicate physical selection",
+    "actual Geometry Lab controls preview; close restores; selection retained",
+    "an authoritative completed hand closes the public card inspector"
+  ],
+  "errors": []
+}

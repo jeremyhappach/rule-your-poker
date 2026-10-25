@@ -1,4 +1,5 @@
 import { FarkleGeometryPreview } from '@/components/farkle/FarkleGeometryPreview';
+import {CanastaGeometryPanel} from './CanastaGeometryPanel';
 /**
  * Wave 6 — Geometry Lab (single-source refactor).
  *
@@ -133,7 +134,7 @@ function stringifyOptional(v: number | undefined): string {
   return v == null ? "" : String(v);
 }
 
-type LabSelection = "__shell__" | GameKey;
+type LabSelection = "__shell__" | "canasta" | GameKey;
 
 const EMPTY_FORM: FormState = {
   anchorX: "",
@@ -216,11 +217,12 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   const [selection, setSelection] = useState<LabSelection>("__shell__");
   const isShell = selection === "__shell__";
-  const game: GameKey = (isShell ? GAME_KEYS[0] : selection) as GameKey;
+  const game: GameKey = isShell||selection==='canasta' ? GAME_KEYS[0] : selection as GameKey;
 
   // Enumerate anchored descriptors for the selected game directly from the
   // descriptor factories — no parallel defaults table.
   const artifacts: ArtifactDescriptor[] = useMemo(() => {
+    if(selection==='canasta')return [];
     const anchored = enumerateAnchoredArtifacts(game);
     const extras = LAB_EXTRA_ARTIFACT_IDS[game] ?? [];
     if (!extras.length) return anchored;
@@ -229,7 +231,7 @@ export function GeometryLab({ userId }: { userId: string }) {
       .enumerate()
       .filter((d) => extras.includes(d.id) && !anchoredIds.has(d.id));
     return [...anchored, ...extraDs];
-  }, [game]);
+  }, [game,selection]);
 
   // Sort by registry sortOrder (when present), then label, then id.
   const sortedArtifacts = useMemo(() => {
@@ -431,7 +433,7 @@ export function GeometryLab({ userId }: { userId: string }) {
   });
 
 
-  if (!descriptor) {
+  if (!descriptor && selection!=='canasta') {
     return (
       <div className="text-muted-foreground text-sm">
         No artifact selected.
@@ -483,6 +485,7 @@ export function GeometryLab({ userId }: { userId: string }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__shell__">Shell / Global</SelectItem>
+            <SelectItem value="canasta">Canasta</SelectItem>
             {GAME_KEYS.map((g) => (
               <SelectItem key={g} value={g}>
                 {GAME_LABELS[g]}
@@ -492,10 +495,10 @@ export function GeometryLab({ userId }: { userId: string }) {
         </Select>
       </div>
 
-      {!isShell && game === "farkle" && <FarkleGeometryPreview />}
+      {selection === "farkle" && <FarkleGeometryPreview />}
       {isShell ? (
         <ShellGlobalSections />
-      ) : (
+      ) : selection==='canasta' ? <CanastaGeometryPanel/> : (
         <GameSections
           game={game}
           artifactId={artifactId}
@@ -504,7 +507,7 @@ export function GeometryLab({ userId }: { userId: string }) {
           overrides={overrides}
           presentation={presentation}
           override={override}
-          descriptor={descriptor}
+          descriptor={descriptor!}
           form={form}
           setForm={setForm}
           derivedH={derivedH}

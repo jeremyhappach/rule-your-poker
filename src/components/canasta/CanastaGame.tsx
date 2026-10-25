@@ -4,7 +4,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {HandEditor,type EditorView} from './HandEditor';
 import {acceptSnapshot,commandFor,CommandRejected,type Transport,type Snapshot} from '@/lib/canasta/client';
 import type {Action,Command} from '@/lib/canasta/engine';
-import {compareCards,standard,wild,type Meld} from '@/lib/canasta/rules';
+import {standard,type Meld} from '@/lib/canasta/rules';
 import type {Rank} from '@/lib/cardUtils';
 import {ShellTimerRail,useShellTimer} from '@/lib/canonicalShell/ShellTimerRail';
 import {ShellHudGrid} from '@/lib/canonicalShell/ShellHudGrid';
@@ -12,11 +12,11 @@ import {useAnnouncements} from '@/lib/canonicalShell/announcements';
 import './canasta.css';
 
 /** Gameplay contents only; the route owns the canonical table, identity and terminal lifecycle. */
-export function CanastaGame({transport,identity,onSnapshot,panel,ended=false,helpers=true,onHelpersChange}:{transport:Transport;identity:React.ReactNode;onSnapshot:(snapshot:Snapshot)=>void;panel?:React.ReactNode;ended?:boolean;helpers?:boolean;onHelpersChange?:(value:boolean)=>void}){
+export function CanastaGame({transport,identity,onSnapshot,panel,ended=false,helpers=true,onHelpersChange,pileTarget}:{transport:Transport;identity:React.ReactNode;onSnapshot:(snapshot:Snapshot)=>void;panel?:React.ReactNode;ended?:boolean;helpers?:boolean;onHelpersChange?:(value:boolean)=>void;pileTarget?:HTMLElement|null}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),current=useRef<Snapshot|null>(null);
   const [error,setError]=useState(''),[pending,setPending]=useState(false),retry=useRef<Command|null>(null),busy=useRef(false);
   const [selected,setSelected]=useState<string[]>([]),[drafts,setDrafts]=useState<Meld[]>([]),[discard,setDiscard]=useState<string|null>(null);
-  const [rank,setRank]=useState<Rank>('A'),[filter,setFilter]=useState('all'),[sorted,setSorted]=useState(false),[now,setNow]=useState(Date.now());
+  const [rank,setRank]=useState<Rank>('A'),[now,setNow]=useState(Date.now());
   const serverOffset=useRef(0),observe=useRef(onSnapshot);observe.current=onSnapshot;
   const mounted=useRef(false);
   const clear=useCallback(()=>{setSelected([]);setDrafts([]);setDiscard(null);},[]);
@@ -47,21 +47,21 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false,hel
   }
   if(!s||!h||!p?.cards)return <ShellHudGrid timer={<ShellTimerRail/>} pane={panel??<button onClick={()=>void refresh()}>{error||(s?.viewer===null?'Watching Canasta':'Loading Canasta…')}</button>} identity={identity}/>;
   const ready=!pending&&!retry.current&&!s.pause&&!s.winner&&!s.automatic.includes(s.viewer!)&&h.active===s.viewer&&h.phase!=='complete'&&seconds>0;
-  const view:EditorView={hand:p.cards,pile:h.pile,melds:p.melds,score:p.openingScore,opened:p.opened,stockCount:h.stockCount,pileCount:h.pileCount,pileFrozen:h.pileFrozen,source:h.source,version:s.version,
+  const view:EditorView={hand:p.cards,pile:h.pile,melds:p.melds,reds:p.reds,opponentMelds:s.seats.filter(seat=>seat.id!==s.viewer).flatMap(seat=>h.players[seat.id].melds),score:p.openingScore,opened:p.opened,stockCount:h.stockCount,pileCount:h.pileCount,pileFrozen:h.pileFrozen,source:h.source,version:s.version,
     phase:h.phase==='complete'?'ended':h.phase,notice:s.pause?'Paused · your committed cards are preserved.':s.automatic.includes(s.viewer!)?'Auto-play is on. Uncheck it to take control.':h.active===s.viewer?'Your turn':'Opponent’s turn.'};
-  const hand=(sorted?[...p.cards].sort(compareCards):p.cards).filter(c=>filter==='all'||(filter==='wild'?wild(c):standard(c)?.rank===filter));
-  function assign(){
+  const hand=p.cards;
+  function assign(target:Rank=rank){
     const cards=p!.cards!.filter(c=>selected.includes(c.id)),next=drafts.map(g=>({...g,cards:g.cards.filter(c=>!selected.includes(c.id))})).filter(g=>g.cards.length);
-    if(!cards.length)return;const group=next.find(g=>g.rank===rank);if(group)group.cards.push(...cards);else next.push({rank,cards});setDrafts(next);setSelected([]);setDiscard(null);
+    if(!cards.length)return;const group=next.find(g=>g.rank===target);if(group)group.cards.push(...cards);else next.push({rank:target,cards});setDrafts(next);setSelected([]);setDiscard(null);
   }
   function pickup(){
     const top=h!.pile.at(-1);if(!top||!standard(top))return;
     const groups=pickupGroups({...view,version:s!.version},selected,drafts);
     void send({type:'pickup',qualifiers:selected,opening:p!.opened?[]:groups.map(g=>({rank:g.rank,ids:g.cards.map(c=>c.id)}))});
   }
-  const controls=<HandEditor helpers={helpers} onHelpersChange={onHelpersChange} viewerId={s.viewer!} view={view} hand={hand} selected={selected} setSelected={setSelected} drafts={drafts}
-    rank={rank} setRank={setRank} filter={filter} setFilter={setFilter} sort={()=>setSorted(v=>!v)} sorted={sorted} discard={discard}
-    message={error} ready={ready} clear={clear} assign={assign} setDiscard={()=>{setDiscard(selected[0]);setSelected([]);}}
+  const controls=<HandEditor key={turnKey+':'+(panel?'panel':h.phase==='complete'?'complete':'cards')} pileTarget={pileTarget} release={()=>{setDrafts(drafts.map(g=>({...g,cards:g.cards.filter(c=>!selected.includes(c.id))})).filter(g=>g.cards.length));if(discard&&selected.includes(discard))setDiscard(null);setSelected([]);}} helpers={helpers} onHelpersChange={onHelpersChange} viewerId={s.viewer!} view={view} hand={hand} selected={selected} setSelected={setSelected} drafts={drafts}
+    rank={rank} setRank={setRank} discard={discard}
+    message={error} ready={ready} clear={clear} assign={assign} setDiscard={()=>{const id=selected[0];setDrafts(drafts.map(g=>({...g,cards:g.cards.filter(c=>c.id!==id)})).filter(g=>g.cards.length));setDiscard(id);setSelected([]);}}
     pickup={pickup} draw={()=>void send({type:h.stockCount?'draw':'end-exhausted'})}
     finish={without=>void send({type:'finish',groups:drafts.map(g=>({rank:g.rank,ids:g.cards.map(c=>c.id)})),discard:without?null:discard})}
     reconnect={()=>void reconnect()} seconds={seconds} paused={!!s.pause}/>;
@@ -72,5 +72,5 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false,hel
     catch(e){setError(e instanceof Error?e.message:'Connection uncertain');}
     finally{busy.current=false;setPending(false);}
   }
-  return <ShellHudGrid timer={<ShellTimerRail/>} pane={panel??(ended?null:<>{automatic?<label className="flex min-h-11 items-center justify-center gap-2 text-xs text-amber-600"><input type="checkbox" aria-label="Auto-play" checked disabled={pending||!transport.takeControl} onChange={()=>void reclaim()}/>Auto-play (uncheck to rejoin)</label>:null}{controls}</>)} identity={identity}/>;
+  return <ShellHudGrid timer={<ShellTimerRail/>} pane={<>{panel}{!ended&&<div style={{height:'100%',display:panel?'none':'flex',flexDirection:'column'}}>{automatic?<label className="flex min-h-11 items-center justify-center gap-2 text-xs text-amber-600"><input type="checkbox" aria-label="Auto-play" checked disabled={pending||!transport.takeControl} onChange={()=>void reclaim()}/>Auto-play (uncheck to rejoin)</label>:null}{controls}</div>}</>} identity={identity}/>;
 }

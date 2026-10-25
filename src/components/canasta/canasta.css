@@ -1,46 +1,46 @@
-
-body{margin:0}
 .canasta-play{height:var(--shell-play-h);position:relative;flex-shrink:0}
 .canasta-seats{position:absolute;left:50%;top:var(--play-top-safe-area);width:var(--shell-felt-w);height:var(--shell-felt-h);transform:translateX(-50%)}
-.canasta-felt{position:absolute;pointer-events:auto;display:grid;place-items:center;overflow:hidden}
-.canasta-piles{display:flex;gap:1.25rem;align-items:center;color:white}
-.canasta-piles small{display:block;font-size:.65rem;margin-top:.2rem;text-align:center}
-.canasta-piles button{padding:0;background:transparent;border:0}
-.canasta-empty{display:grid;place-items:center;width:48px;height:68px;border:1px dashed #ddd8;border-radius:5px}
-.canasta-launcher{height:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;padding:.25rem}
-.canasta-launcher>span{font-size:.75rem}
-.canasta-launcher button,.canasta-editor button,.canasta-editor select{min-width:44px;min-height:44px;border:1px solid hsl(var(--border));border-radius:.4rem;background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));padding:.25rem .45rem;font-size:.8rem}
-.canasta-editor{width:calc(100% - 16px)!important;height:calc(100% - 16px);max-width:960px!important;max-height:900px;padding:8px!important;gap:4px!important;grid-template-rows:44px 44px auto minmax(0,1fr) 44px;overflow:hidden}
-.canasta-editor-heading{padding-right:48px;display:flex;flex-direction:column;justify-content:center}
-.canasta-editor-heading h2{font-size:1rem}
-.canasta-editor-heading p{font-size:.7rem;line-height:14px}
-.canasta-editor>button:last-child{top:8px;right:8px;display:grid;place-items:center}
-.canasta-editor-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-.canasta-editor-body{min-height:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
-.canasta-filter{display:flex;gap:4px;align-items:center;min-height:44px;font-size:.75rem}
-.canasta-filter select{min-width:0;max-width:50%}
-.canasta-editor fieldset{min-width:0;border:0;padding:0;margin:0}
-.canasta-card-page{min-width:0}
-.canasta-hand-grid{display:flex;gap:4px;min-height:84px;justify-content:center;align-items:center;width:100%}
-.canasta-editor .canasta-card{width:56px;min-width:56px;height:84px;padding:2px!important;background:transparent;border:0;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.canasta-card span{font-size:.65rem;white-space:nowrap}
-.canasta-editor [aria-pressed=true]{outline:2px solid hsl(var(--ring));outline-offset:-2px}
-.canasta-pagination{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:44px;font-size:.7rem}
-.canasta-pagination span{text-align:center}
-.canasta-compose{display:flex;gap:4px;min-width:0}
-.canasta-compose>*{flex:1;min-width:0!important;font-size:.7rem!important;padding:.2rem!important}
-.canasta-compose select{flex:0 0 44px}
-.canasta-finish{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;font-size:.7rem}
-.canasta-finish p{grid-column:1/-1;margin:0}
-.canasta-validation{font-size:.75rem;margin:0}
-.canasta-editor button:disabled{opacity:.5}
-.canasta-editor :focus-visible{outline:2px solid hsl(var(--ring));outline-offset:-2px}
-
-.canasta-guidance{flex:1 0 100%;display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-left:3px solid hsl(var(--primary));background:hsl(var(--secondary));color:hsl(var(--foreground));font-size:.75rem;line-height:1.25;min-width:0;text-align:left}
-.canasta-guidance span{font-size:.7rem}.canasta-helper-toggle{display:flex;align-items:center;gap:6px;min-height:44px;font-size:.75rem}.canasta-helper-toggle input{width:20px;height:20px}.canasta-launcher{overflow:auto;align-content:start}.canasta-editor-body{justify-content:flex-start;overflow:auto}.canasta-editor-body>.canasta-guidance{flex:0 0 auto}
-
-.canasta-pile-stack{position:relative}.canasta-pile-stack>[data-physical-id]{box-shadow:2px 2px #ccc,4px 4px #777}.canasta-freeze-marker{position:absolute;left:-9px;top:28px;width:66px;height:20px;background:#d9ab49;color:#161616;border:1px solid white;transform:rotate(-90deg);font-size:10px;text-align:center;pointer-events:none}
-
-.canasta-selection-feedback{margin:0;padding:4px 8px;font-size:.75rem;background:#fff2cf;color:#542e00}.canasta-selection-feedback[data-valid=true]{background:#dcfce7;color:#14532d}
-
-.canasta-pagination select{width:70px;min-width:44px!important;max-width:85px}.canasta-pagination>span{flex:1;min-width:0}.canasta-pagination button{padding:2px 4px}.canasta-guidance [data-selection-valid=true]{color:#15803d}
+.canasta-felt{position:absolute;pointer-events:auto;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.canasta-meld-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,90px),1fr));align-content:start;gap:3px;overflow:auto;pointer-events:auto;overscroll-behavior:contain}
+.canasta-meld-summary button{min-height:44px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:3px;color:white;background:#071926cc;border:1px solid #ffffff50;border-radius:5px;font-size:.85rem;touch-action:manipulation}
+.canasta-meld-summary button[data-complete=true]{border:2px solid #a6dfba;background:#123e36ed}
+.canasta-summary-badge{font-size:.6rem;line-height:1.3;padding:1px 3px;border:1px solid currentColor;border-radius:3px}
+.canasta-piles{display:flex;flex:0 0 auto;gap:7px;justify-content:center;align-items:end;color:white;padding:0;pointer-events:auto}
+.canasta-piles button{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;min-width:44px;min-height:44px;height:100%;padding:0;background:transparent;border:0;border-radius:6px;color:inherit}
+.canasta-piles small{font-size:.65rem;line-height:14px;text-align:center;white-space:nowrap}
+.canasta-piles button:disabled{opacity:.65}
+.canasta-piles button:focus-visible,.canasta-meld-summary button:focus-visible{outline:2px solid white;outline-offset:1px}
+.canasta-pile-stack{position:relative}
+.canasta-empty{display:grid;place-items:center;width:44px;height:62px;border:1px dashed #ddd8;border-radius:5px;font-size:.65rem}
+.canasta-hand-area{height:100%;min-height:0;display:flex;flex-direction:column;gap:3px;padding:2px 4px;overflow:auto;color:hsl(var(--foreground))}
+.canasta-hand-heading{display:flex;align-items:center;justify-content:space-between;gap:4px;flex:0 0 44px;font-size:.75rem}
+.canasta-hand-heading span{font-size:.65rem}
+.canasta-hand-area button,.canasta-dialog button,.canasta-dialog select{min-width:44px;min-height:44px;border:1px solid hsl(var(--border));border-radius:.4rem;background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));padding:3px 5px;font-size:.8rem;touch-action:manipulation}
+.canasta-hand-area button:disabled,.canasta-dialog button:disabled{opacity:.5}
+.canasta-hand-area :focus-visible,.canasta-dialog :focus-visible{outline:2px solid hsl(var(--ring));outline-offset:-2px}
+.canasta-hand-scroll{min-height:64px;flex:1 0 64px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.canasta-hand-grid{width:100%}
+.canasta-card-fan{display:grid;align-content:start;row-gap:6px;width:100%;padding:2px 0}
+.canasta-fan-slot{position:relative}
+.canasta-fan-slot [data-playing-card-root]{pointer-events:none}
+.canasta-hand-area .canasta-card{position:relative;width:var(--canasta-fan-step);height:var(--canasta-fan-height);padding:0;border:0;background:transparent;display:block;border-radius:4px}
+.canasta-hand-area .canasta-card[aria-pressed=true]{background:#fbbf2440;border:2px solid #a16207}
+.canasta-hand-area .canasta-card[aria-pressed=true] [data-playing-card-root]{outline:2px solid #a16207;outline-offset:-2px}
+.canasta-card-note{position:absolute;bottom:1px;left:0;right:0;background:#173b57;color:white;text-align:center;font-size:10px;line-height:14px;border-radius:2px;pointer-events:none}
+.canasta-turn-status{flex:0 0 auto;margin:0;font-size:.7rem;line-height:1.2;padding:3px 4px;background:hsl(var(--secondary));border-left:2px solid hsl(var(--primary))}
+.canasta-hand-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;flex:0 0 44px}
+.canasta-hand-actions button{min-width:0;font-size:.75rem}
+.canasta-dialog{width:calc(100% - 16px)!important;max-width:560px!important;max-height:calc(100% - 16px);overflow:auto;padding:16px!important;gap:10px!important;font-size:.8rem}
+.canasta-dialog h2{padding-right:30px}
+.canasta-dialog-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.canasta-dialog-actions>button{flex:1}
+.canasta-dialog-actions label{display:flex;align-items:center;gap:6px}
+.canasta-meld-list{display:flex;flex-direction:column;gap:8px}
+.canasta-meld-list section{padding:8px;border:1px solid hsl(var(--border));border-radius:6px}
+.canasta-meld-list p{font-size:.75rem;margin:4px 0}
+.canasta-detail-card{position:relative;display:block}
+.canasta-draft-mark{position:absolute;top:0;left:0;background:#173b57;color:white;padding:0 3px}
+.canasta-dialog-actions button[aria-pressed=true]{border-color:hsl(var(--primary));font-weight:700}
+.canasta-helper-toggle{display:flex;align-items:center;gap:6px;min-height:44px}
+.canasta-helper-toggle input{width:20px;height:20px}
+.canasta-inline-piles{color:hsl(var(--foreground))}

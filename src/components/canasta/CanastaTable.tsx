@@ -25,6 +25,7 @@ export function isCanastaTerminalBatch(batch:ChipPresentationBatch|null|undefine
 interface Props {dealerGameId:string;userId:string;players:CanastaPlayer[];activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(token:string)=>void;transport?:Transport;onFirstRound?:(id:string)=>void}
 export function CanastaTable(props:Props){
  const help=useCanastaHelpers(props.userId,!props.transport);
+ const [pileTarget,setPileTarget]=useState<HTMLDivElement|null>(null);
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[now,setNow]=useState(Date.now());
  const offset=useRef(0),sawLive=useRef(false),announced=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
  useEffect(()=>()=>callbacks.current.onTerminalActive(false),[]);
@@ -63,7 +64,7 @@ export function CanastaTable(props:Props){
   :props.activeTab!=='cards'?<div className="h-full overflow-auto text-sm">Classic two-player Canasta · Draw two, discard one. Two canastas to go out. Reach 5,000; tied qualifying totals continue. One accepted match stake. {state?turnBudget(state)/1000:120} seconds per turn · {state?.config?.mode??'expert'} pacing. No action resets. {help.error}</div>
   :props.sessionEnded?null:s?<div className="text-center text-sm">{`${props.players.find(p=>p.id===s.winner)?.profiles?.username??'Winner'} wins · ${s.scores[s.winner]} points`}</div>:undefined;
  return <>
-  <CanastaArtifacts snapshot={snapshot} players={props.players} ended={props.sessionEnded}/>
-  <CanastaGame helpers={help.helpers} onHelpersChange={value=>void help.setHelpers(value)} transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={!props.sessionEnded&&state?.hand?.active===viewer.id}/>:null}/>
+  <CanastaArtifacts onPileTarget={setPileTarget} snapshot={snapshot} players={props.players} ended={props.sessionEnded}/>
+  <CanastaGame pileTarget={pileTarget} helpers={help.helpers} onHelpersChange={value=>void help.setHelpers(value)} transport={transport} onSnapshot={observe} ended={props.sessionEnded} panel={panel} identity={viewer?<CanonicalPlayerIdentityRow playerId={viewer.id} name={viewer.profiles?.username??'You'} chips={viewer.chips} active={!props.sessionEnded&&state?.hand?.active===viewer.id}/>:null}/>
  </>;
 }

@@ -1,3 +1,18 @@
+# Canasta UI — approved release, 2026-10-24
+
+The reviewed three-commit UI stack ending c8059c2ff is reconciled onto verified
+main/production 7c2f360f0. Direct stock/pile actions, a visible sorted physical-card
+hand, own meld targets, compact opponent summaries, readable fans and existing
+Geometry Lab controls preserve canonical shell and authoritative actions. Newer
+Golf, Mega and HOLM/357 fixes remain intact. No schema, rules, financial or
+admission changes; play-money availability and the real-money gate are preserved.
+
+Twenty integrated rendered layout cases and a clean aggregate build pass:
+application TypeScript, 2,903 source tests, 241 harness tests and production bundle.
+The corrected card-face inventory and evidence are in [qualification](CANASTA_UI_RELEASE.md).
+Checkpoint: canasta-ui-release-20261024. Exact remote/deployment/manifest/release
+signal verification follows the push. Physical iPhone owner smoke remains pending.
+
 # Multiplayer Golf completion — approved release, 2026-10-24
 
 Reconciled candidate fad9e4118 onto verified main/production 312d39c07.
