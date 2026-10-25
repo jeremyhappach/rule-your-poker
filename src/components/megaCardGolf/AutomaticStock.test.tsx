@@ -2,29 +2,30 @@
 import {afterEach,it,expect,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {MegaArcade} from './MegaArcade';
-import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET} from '@/lib/megaCardGolf/config';
+import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_ANYTIME_STAND_PAT_RULESET} from '@/lib/megaCardGolf/config';
 import {MegaAuthority,freshStore} from '@/lib/megaCardGolf/authority';
 import type {AudioManager} from '@/lib/audio/audioManager';
-vi.mock('./MegaCardGolfGame',()=>({MegaCardGolfGame:(p:any)=><div data-testid="game" data-pending={p.view.pending??'back'} data-stage={p.presentation.replacement?.stage??(p.presentation.stockRevealing?'stock-reveal':'idle')}>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'open',indices:[0]})}>First opening</button>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'open',indices:[5]})}>Second opening</button>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'open',indices:[0,5]})}>Open</button>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'replace',index:1})}>Hidden replacement</button>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'replace',index:0})}>Face-up replacement</button>
- <button disabled={p.busy||p.presentation.locked} onClick={()=>p.onIntent({type:'discard'})}>Discard</button>
- <button disabled={p.busy||p.presentation.locked} onClick={p.onExit}>Abandon</button>
-</div>}));
+const frames=vi.hoisted(()=>[] as any[]);
+vi.mock('./MegaCardGolfGame',()=>({MegaCardGolfGame:(p:any)=>{frames.push({view:p.view,busy:p.busy,locked:p.presentation.locked,auto:p.autoDrawPending});return <div data-testid="game" data-pending={p.view.pending??'back'} data-stage={p.presentation.replacement?.stage??(p.presentation.stockRevealing?'stock-reveal':'idle')}>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'open',indices:[0]})}>First opening</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'open',indices:[5]})}>Second opening</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'open',indices:[0,5]})}>Open</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'replace',index:1})}>Hidden replacement</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'replace',index:0})}>Face-up replacement</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={()=>p.onIntent({type:'discard'})}>Discard</button>
+ <button disabled={p.busy||p.presentation.locked||p.autoDrawPending} onClick={p.onExit}>Abandon</button>
+</div>}}));
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();history.replaceState(null,'','/');});
 async function advance(ms:number){await act(async()=>{await vi.advanceTimersByTimeAsync(ms);});}
 async function click(name:string){await act(async()=>{fireEvent.click(screen.getByRole('button',{name}));});}
-async function setup({opening=false,pending=false,stock=16,holes=9,sequential=false}={}){
+async function setup({opening=false,pending=false,stock=16,holes=9,sequential=false,anytime=false}={}){
  vi.useFakeTimers({toFake:['Date','performance','setTimeout','clearTimeout','requestAnimationFrame','cancelAnimationFrame']});vi.setSystemTime(1000);
  vi.spyOn(document,'hidden','get').mockReturnValue(false);
  const store=freshStore();store.courses[0]={...store.courses[0],enabled:true,stockAllowance:stock,holes};
- const authority=new MegaAuthority(store,()=> 'r',()=>Array.from({length:52},(_,i)=>i),()=>{},sequential?MEGA_SEQUENTIAL_RULESET:MEGA_RULESET);
+ const authority=new MegaAuthority(store,()=> 'r',()=>Array.from({length:52},(_,i)=>i),()=>{},anytime?MEGA_ANYTIME_STAND_PAT_RULESET:sequential?MEGA_SEQUENTIAL_RULESET:MEGA_RULESET);
  authority.start('u',store.courses[0].id,'start',Date.now());
  const perform=(intent:any,id:string)=>{const r=authority.data.runs.r;return authority.action('u','r',id,r.revision,r.hole,intent,Date.now());};
- if(!opening)perform({type:'open',indices:[0,5]},'open');
+ if(!opening){if(sequential||anytime){perform({type:'open',indices:[0]},'open-1');perform({type:'open',indices:[5]},'open-2');}else perform({type:'open',indices:[0,5]},'open');}
  if(pending)perform({type:'draw'},'draw');
  const request=vi.fn(async(body:any)=>{
   if(body.op==='catalog')return {courses:authority.data.courses,boards:[],archives:[],active:authority.data.runs.r.status==='active'?'r':null};
@@ -113,4 +114,33 @@ it('sequential opening reveals one accepted card and auto-draws only after the s
  await click('Second opening');expect(f.run().exposed.filter(Boolean)).toHaveLength(1);
  await advance(400);await click('Second opening');expect(f.run().phase).toBe('playing');expect(f.run().draws).toBe(0);
  await advance(400);expect(f.run().draws).toBe(1);expect(f.actions().map(b=>b.intent.type)).toEqual(['open','open','draw']);
+});
+
+
+it.each(['Hidden replacement','Face-up replacement','Discard'])('reserves every handoff render and the delayed draw request after %s',async action=>{
+ const f=await setup({pending:true,anytime:true}),original=f.request.getMockImplementation()!;
+ let release!:()=>void;
+ const response=new Promise<void>(resolve=>{release=resolve;});
+ f.request.mockImplementation(async body=>{if(body.op==='action'&&body.intent.type==='draw')await response;return original(body);});
+ frames.length=0;await click(action);await advance(2400);
+ const waiting=frames.filter(f=>f.view.phase==='playing'&&f.view.pending===null);
+ expect(waiting.length).toBeGreaterThan(0);
+ expect(waiting.every(f=>f.busy||f.locked||f.auto)).toBe(true);
+ expect(waiting.some(f=>!f.busy&&!f.locked&&f.auto)).toBe(true);
+ expect(frames.at(-1)).toMatchObject({busy:true,auto:true,locked:false});
+ expect(f.actions().filter(b=>b.intent.type==='draw')).toHaveLength(1);
+ await act(async()=>{release();});await advance(400);
+ expect(frames.at(-1)).toMatchObject({busy:false,auto:false,locked:false});
+ expect(f.run().pending).not.toBeNull();
+});
+it('releases the v4 input reservation after draw failure and restores a lost accepted draw without duplication',async()=>{
+ const f=await setup({opening:true,anytime:true}),original=f.request.getMockImplementation()!;
+ let mode='reject';
+ f.request.mockImplementation(async body=>{if(body.op==='action'&&body.intent.type==='draw'){if(mode==='reject')throw Error('offline');await original(body);throw Error('response lost');}return original(body);});
+ await click('First opening');await advance(400);await click('Second opening');await advance(400);
+ expect(frames.at(-1)).toMatchObject({busy:false,auto:false,locked:false});expect(f.run().pending).toBeNull();
+ const attempts=f.actions().length;await advance(2000);expect(f.actions()).toHaveLength(attempts);
+ mode='lost';await click('Reconnect');await advance(400);
+ expect(frames.at(-1)).toMatchObject({busy:false,auto:false,locked:false});expect(f.run().pending).not.toBeNull();
+ const draws=f.run().draws;await click('Reconnect');expect(f.run().draws).toBe(draws);
 });

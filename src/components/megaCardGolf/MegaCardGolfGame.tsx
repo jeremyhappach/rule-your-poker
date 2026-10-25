@@ -29,14 +29,15 @@ export function MegaCard({card,label,onClick,disabled,selected=false,highlight=f
   {face&&(stage==='reveal'||stage==='stock-reveal')&&<span className="mega-flip-back" aria-hidden><CourseCardBack course={course}/></span>}
  </button>;
 }
-export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,canAbandon=true}:{view:MegaView;onIntent:(intent:Intent)=>void;onExit:()=>void;busy:boolean;now:number;presentation?:MegaFrame;canAbandon?:boolean}){
+export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,canAbandon=true,autoDrawPending=false}:{view:MegaView;onIntent:(intent:Intent)=>void;onExit:()=>void;busy:boolean;now:number;presentation?:MegaFrame;canAbandon?:boolean;autoDrawPending?:boolean}){
  const [tab,setTab]=useState<ShellTabId>('cards'),[opening,setOpening]=useState<number[]>([]),[tapIn,setTapIn]=useState<{index:number|null;revision:number}|null>(null),[abandon,setAbandon]=useState(false),[standPatConfirmation,setStandPatConfirmation]=useState(false);
  const result=view.phase==='scoring'?view.results.find(r=>r.hole===view.hole):null;
  const scoring=presentation?.scoring??(result?{tally:result.score,finished:true,indices:[],points:null,revealing:false}:null);
  const sequential=usesSequentialOpening(view.ruleset),standPat=canStandPat(view),anytimeStandPat=view.ruleset===MEGA_ANYTIME_STAND_PAT_RULESET;
  const openingLeft=view.config.initialExposed-view.exposed.filter(Boolean).length;
  const playable=view.status==='active'&&view.phase==='playing'&&now<view.deadline;
- const available=!busy&&!presentation?.locked;
+ const actionsSettled=!presentation?.locked&&!autoDrawPending;
+ const available=!busy&&actionsSettled;
  const canConfirm=!!tapIn&&available&&playable&&(tapIn.index===null?standPat:view.pending!==null)&&tapIn.revision===view.revision;
  const completedCount=view.results.length-(scoring&&!scoring.finished?1:0);
  const total=completedCount?scoring&&!scoring.finished?view.score-(result?.score??0):view.score:null;
@@ -65,8 +66,8 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
    <aside className="mega-draw-area" data-anytime-stand-pat={anytimeStandPat||undefined}><div className="mega-counters"><div><strong>{view.stockRemaining}</strong><span>stock draws left</span></div><div><strong>{view.discardsRemaining}</strong><span>discards left</span></div></div>
     <div className="mega-draw-card"><MegaCard course={view.config} card={view.pending} label={view.pending===null?'Next stock card':'Active stock card'} stage={presentation?.stockRevealing?'stock-reveal':undefined} disabled/></div>
     {view.phase==='opening'&&!sequential&&<button className="mega-start" disabled={!available||now>=view.deadline||opening.length!==view.config.initialExposed} onClick={()=>onIntent({type:'open',indices:opening})}>Reveal selected</button>}
-    {anytimeStandPat&&view.phase==='playing'&&<button className="mega-start" disabled={!available||!playable||!standPat} onClick={()=>{setStandPatConfirmation(true);setTapIn({index:null,revision:view.revision});}}>Stand Pat</button>}
-    {view.pending!==null&&<button className="mega-secondary" disabled={!available||!playable||((anytimeStandPat||!standPat)&&view.discardsRemaining===0)} onClick={()=>onIntent({type:!anytimeStandPat&&standPat?'stand-pat':'discard'})}>{!anytimeStandPat&&standPat?'Stand Pat':'Discard'}</button>}
+    {actionsSettled&&anytimeStandPat&&view.phase==='playing'&&<button className="mega-start" disabled={!available||!playable||!standPat} onClick={()=>{setStandPatConfirmation(true);setTapIn({index:null,revision:view.revision});}}>Stand Pat</button>}
+    {actionsSettled&&view.pending!==null&&<button className="mega-secondary" disabled={!available||!playable||((anytimeStandPat||!standPat)&&view.discardsRemaining===0)} onClick={()=>onIntent({type:!anytimeStandPat&&standPat?'stand-pat':'discard'})}>{!anytimeStandPat&&standPat?'Stand Pat':'Discard'}</button>}
    </aside></div>
    <div className="mega-scorecard" aria-label="Hole scorecard">{Array.from({length:view.config.holes},(_,i)=><div key={i} data-current={i+1===view.hole||undefined}><small>{i+1}</small><b>{formatGolfScore(view.results[i]&&(i+1<view.hole||scoring?.finished)?view.results[i].score:null)}</b></div>)}<div className="mega-course-total"><small>Total</small><b>{formatGolfScore(total)}</b></div></div>
    {presentation?.transition&&<section className="mega-transition" data-mega-transition={presentation.transition.kind} key={presentation.transition.key} aria-label={presentation.transition.kind==='honors'?'Hole start':presentation.transition.kind==='final'?'Final course result':'Hole result'}>

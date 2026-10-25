@@ -14,7 +14,7 @@ type Catalog={courses:CourseConfig[];boards:{id:CourseId;rows:ScoreRow[]}[];arch
 export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}:{request:<T>(body:object)=>Promise<T>;audio:AudioManager;userId:string;preview?:boolean;onBack?:()=>void;subscribe?:(runId:string,changed:()=>void)=>()=>void}){
  const [catalog,setCatalog]=useState<Catalog|null>(null),[screen,setScreen]=useState<'courses'|'game'|'board'>('courses'),[view,setView]=useState<MegaView|null>(null),[board,setBoard]=useState<CourseId>('sunny-meadows'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now()),[sound,setSound]=useState(preview&&localStorage.getItem('mega-preview-sounds')==='true');
  const [presentation,setPresentation]=useState(emptyPresentation);
- const autoDrawAttempt=useRef<string|null>(null);
+ const autoDrawAttempt=useRef<string|null>(null),autoDrawInFlight=useRef(false);
  const frame=presentationFrame(presentation,performance.now(),typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
  const clock=useRef({at:Date.now(),received:performance.now()}),lock=useRef(false),refreshQueued=useRef(false),refresh=useRef(()=>{}),alive=useRef(true),current=useRef(view);current.current=view;
  const loadCatalog=async()=>setCatalog(await request<Catalog>({op:'catalog'}));
@@ -39,17 +39,20 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
  const completedReady=view?.status==='completed'&&!frame?.locked&&now>=view.deadline;
  useEffect(()=>{if(screen!=='game'||!completedReady||!view||busy)return;void perform(async()=>{setBoard(view.config.id);setScreen('board');history.replaceState(null,'',location.pathname);await loadCatalog();});},[screen,completedReady,view?.id,busy]);
  const navigate=async(next:'courses')=>{setScreen(next);history.replaceState(null,'',location.pathname);await loadCatalog();};
- const act=(intent:Intent)=>{if(frame?.locked)return;void perform(async()=>{const previous=current.current;if(!previous)return;const body={op:'action',runId:previous.id,requestId:crypto.randomUUID(),revision:previous.revision,hole:previous.hole,intent};try{const next=await request<MegaView>(body);receive(next,false,intent);if(next.status==='abandoned'){setBoard(next.config.id);setScreen('board');history.replaceState(null,'',location.pathname);await loadCatalog();}}catch(e){await restore(previous.id);throw e;}});};
+ const drawKey=view?view.id+'/'+view.hole+'/'+view.revision:null;
+ // Reserve the next draw during render, before its effect sets request busy.
+ // A failed attempt releases this gate; only explicit recovery can retry it.
+ const canScheduleAutoDraw=()=>screen==='game'&&!!view&&!busy&&!lock.current&&!error&&!frame?.locked&&!document.hidden
+  &&view.status==='active'&&view.phase==='playing'&&view.pending===null&&view.stockRemaining>0
+  &&clock.current.at+performance.now()-clock.current.received<view.deadline&&autoDrawAttempt.current!==drawKey;
+ const autoDrawScheduled=canScheduleAutoDraw();
+ const act=(intent:Intent,automatic=false)=>{if(!current.current||lock.current||frame?.locked||(!automatic&&autoDrawScheduled))return;autoDrawInFlight.current=automatic;void perform(async()=>{const previous=current.current;if(!previous)return;const body={op:'action',runId:previous.id,requestId:crypto.randomUUID(),revision:previous.revision,hole:previous.hole,intent};try{const next=await request<MegaView>(body);receive(next,false,intent);if(next.status==='abandoned'){setBoard(next.config.id);setScreen('board');history.replaceState(null,'',location.pathname);await loadCatalog();}}catch(e){await restore(previous.id);throw e;}finally{autoDrawInFlight.current=false;}});};
  // Automatic input uses the same serialized, revision-checked server action as a tap.
  // Never retry a failed draw at the same revision without explicit recovery.
  useEffect(()=>{
-  if(screen!=='game'||!view||busy||lock.current||error||frame?.locked||document.hidden
-   ||view.status!=='active'||view.phase!=='playing'||view.pending!==null||view.stockRemaining<=0
-   ||clock.current.at+performance.now()-clock.current.received>=view.deadline)return;
-  const key=view.id+'/'+view.hole+'/'+view.revision;
-  if(autoDrawAttempt.current===key)return;
-  autoDrawAttempt.current=key;act({type:'draw'});
- },[screen,view?.id,view?.hole,view?.revision,view?.serverAt,busy,error,frame?.locked]);
+  if(!canScheduleAutoDraw())return;
+  autoDrawAttempt.current=drawKey;act({type:'draw'},true);
+ },[autoDrawScheduled,drawKey]);
  const startCourse=()=>void perform(async()=>{const next=await request<MegaView>({op:'start',courseId:board,requestId:crypto.randomUUID()});receive(next,false,undefined,true);setScreen('game');history.replaceState(null,'','?run='+next.id);await loadCatalog();});
  const selectedCourse=catalog?.courses.find(c=>c.id===board);
  return <div className="mega-app" data-screen={screen}><header className="mega-topbar"><div className="mega-brand"><span aria-hidden>⚑</span> MEGA CARD GOLF</div><nav aria-label="Mega Card Golf navigation">
@@ -63,7 +66,7 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
   <CourseSelection courses={catalog.courses} request={request} busy={busy} onSelect={id=>{setBoard(id);setScreen('board');}}/>
  </>}
   {screen==='board'&&catalog.active&&<div className="mega-resume">Your course is still in progress. <button disabled={busy} onClick={()=>void perform(async()=>{await restore(catalog.active!);setScreen('game');history.replaceState(null,'','?run='+catalog.active);})}>Resume course</button> · <button disabled={busy} onClick={()=>void perform(async()=>{const r=await request<MegaView>({op:'state',runId:catalog.active});await request({op:'action',runId:r.id,requestId:crypto.randomUUID(),revision:r.revision,hole:r.hole,intent:{type:'abandon'}});await loadCatalog();})}>Abandon unranked</button></div>}
- {screen==='game'&&view&&<MegaCardGolfGame view={frame?.view??view} presentation={frame??undefined} now={now} busy={busy} canAbandon={view.status==='active'} onIntent={act} onExit={()=>act({type:'abandon'})}/>}
+ {screen==='game'&&view&&<MegaCardGolfGame view={frame?.view??view} presentation={frame??undefined} now={now} busy={busy} autoDrawPending={autoDrawScheduled||autoDrawInFlight.current} canAbandon={view.status==='active'} onIntent={act} onExit={()=>act({type:'abandon'})}/>}
  {screen==='board'&&selectedCourse&&<CourseClubhouse course={selectedCourse} archives={catalog.archives.filter(a=>a.config.id===board)} request={request} busy={busy} canStart={selectedCourse.enabled&&catalog.admission!==false} completedScore={view?.status==='completed'&&view.config.id===board?view.score:undefined} onStart={startCourse} onReturn={()=>void perform(()=>navigate('courses'))}/>}
  </>}</div>;
 }

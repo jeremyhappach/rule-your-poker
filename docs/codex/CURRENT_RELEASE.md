@@ -1,3 +1,12 @@
+# Mega UI transitions — locally qualified, publication held, 2026-10-25
+
+Two approved presentation fixes remove decorative new-hole hover carryover and
+keep Stand Pat/Discard hidden through card presentation and automatic-draw
+handoff. Versioned eligibility, scoring, keyboard focus and recovery are
+preserved. 99 Mega tests, TypeScript, production build and 10 local browser
+checks pass. Exact orange-focus carryover remains unconfirmed. Local branch
+only: no main integration or publication. See [local evidence](MEGA_UI_TRANSITIONS_LOCAL.md).
+
 # Battle31 canonical-table redesign — qualified release, 2026-10-25
 
 Approved canonical table, exchange/deal animations and persisted round-result choreography are qualified. Hosted migration 20261025203139 and installed rollback proof pass. Final human/human, human/bot and terminal browser checks, TypeScript, focused test reruns, 241 harness tests and production build pass. Play-money access remains open without expiry; real money remains disabled. Exact-SHA publication verification follows integration. Physical owner smoke remains pending. See [release evidence](BATTLE31_CANONICAL_CHECKPOINT.md).

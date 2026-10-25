@@ -4,9 +4,28 @@ import {render,screen,fireEvent,cleanup} from '@testing-library/react';
 import {MegaCardGolfGame} from './MegaCardGolfGame';
 import {createRun,applyIntent,recoverRun,projectRun} from '@/lib/megaCardGolf/engine';
 import {INITIAL_COURSES,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,MEGA_ANYTIME_STAND_PAT_RULESET} from '@/lib/megaCardGolf/config';
+import {emptyPresentation,receivePresentation,presentationFrame} from '@/lib/megaCardGolf/presentation';
 vi.mock('@/hooks/useVisualPreferences',()=>({useVisualPreferences:()=>({getCardBackColors:()=>({color:'#174b38',darkColor:'#123'}),getCardBackId:()=>'',getEffectiveDeckColorMode:()=> 'two_color'}),FOUR_COLOR_SUITS:{}}));
 vi.mock('@/hooks/useDeviceSize',()=>({useDeviceSize:()=>({isTablet:false})}));
 afterEach(cleanup);
+it.each(['mega-card-golf/1',MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,MEGA_ANYTIME_STAND_PAT_RULESET] as const)('keeps %s actions absent through presentation and draw handoff, with versioned settled eligibility',ruleset=>{
+ const run=applyIntent(createRun('transition','u',{...INITIAL_COURSES[0],holes:1,initialExposed:0,stockAllowance:1,discardAllowance:0},[Array.from({length:52},(_,i)=>i)],0,ruleset),{type:'draw'},1);
+ const view=projectRun(run,1),onIntent=vi.fn(),props={view,now:1,busy:false,onIntent,onExit:vi.fn()};
+ const frame=presentationFrame(receivePresentation(emptyPresentation(),view,0),0)!;
+ const {rerender,container}=render(<MegaCardGolfGame {...props}/>);
+ for(const transient of [{presentation:{...frame,locked:true,stockRevealing:true}},{presentation:{...frame,locked:true,replacement:{index:0,stage:'reveal'}}},{autoDrawPending:true},{autoDrawPending:true,busy:true}]){
+  rerender(<MegaCardGolfGame {...props} {...transient}/>);
+  expect(screen.queryByRole('button',{name:'Discard'})).toBeNull();expect(screen.queryByRole('button',{name:'Stand Pat'})).toBeNull();
+  expect(container.querySelector('.mega-draw-area>.mega-start,.mega-draw-area>.mega-secondary')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:/Card 1/}));expect(onIntent).not.toHaveBeenCalled();
+ }
+ rerender(<MegaCardGolfGame {...props}/>);
+ if(ruleset===MEGA_STAND_PAT_RULESET||ruleset===MEGA_ANYTIME_STAND_PAT_RULESET)expect(screen.getByRole('button',{name:'Stand Pat'}).hasAttribute('disabled')).toBe(false);
+ if(ruleset!==MEGA_STAND_PAT_RULESET)expect(screen.getByRole('button',{name:'Discard'}).hasAttribute('disabled')).toBe(true);
+ rerender(<MegaCardGolfGame {...props} view={{...view,pending:null}}/>);
+ expect(screen.queryByRole('button',{name:'Discard'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Stand Pat'})!==null).toBe(ruleset===MEGA_ANYTIME_STAND_PAT_RULESET);
+});
 it.each([null,6])('v4 Stand Pat confirms/cancels without replacement with pending=%s',pending=>{
  const run=createRun('r','u',{...INITIAL_COURSES[0],holes:1,initialExposed:0,discardAllowance:0},[Array.from({length:52},(_,i)=>i)],0,MEGA_ANYTIME_STAND_PAT_RULESET);
  const onIntent=vi.fn(),props={view:projectRun({...run,pending},1),now:1,busy:false,onIntent,onExit:vi.fn()};
