@@ -1,3 +1,21 @@
+# Arcade menu placeholder removal — approved release, 2026-10-24
+
+Jeremy approved publication of tested candidate
+9f782666ad5a15e2166132c6c7fb9b526673945e. The menu removes only the cancelled
+Yahtzee Coming Soon tile. All eight existing Arcade entries remain unchanged.
+Multiplayer Yahtzee retains its catalog entry, implementation, rules and defaults.
+No database, admission, gameplay, financial or Quintzee changes are included.
+
+The release is based on main 05f2d196c2b735bdbdee80b76f02761f38a19f96,
+preserving the verified Mega /3 Stand Pat release and latest multiplayer fixes.
+Focused catalog/UI tests (26) and application TypeScript passed on the exact product
+candidate. Aggregate release checks PASS: 2,891 source tests (416 files), 241
+harness tests and production build. Existing build warnings remain. Exact-SHA
+publication verification follows the approved push.
+Source checkpoint tag: arcade-yahtzee-placeholder-removal-20261024.
+Owner smoke: refresh Arcade and confirm Yahtzee Coming Soon is absent while the
+eight existing games remain. No game needs to be started for this check.
+
 # Mega final-stock Stand Pat — qualified release, 2026-10-24
 
 New /3 runs may keep all six cards on the final stock draw, even with zero discards.
