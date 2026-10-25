@@ -3,3 +3,6 @@ supabase/migrations/20261021002901_eleven_up_bots.sql text eol=lf
 supabase/migrations/20261021202023_battle31_v1.sql text eol=lf
 
 supabase/migrations/20261021221318_eleven_up_smoke_controls.sql text eol=lf
+supabase/migrations/20261025192500_battle31_play_money_launch.sql text eol=lf
+dev/battle31/evidence/launch-pause-preimage.sql text eol=lf
+dev/battle31/launch-lifecycle.sql text eol=lf

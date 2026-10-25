@@ -1,3 +1,19 @@
+# Battle31 all-user play-money launch — approved release, 2026-10-25
+
+Jeremy approved unrestricted active-user access in play money with no expiry;
+real-money admission remains disabled. The superseded two-account smoke branch
+is preserved and its grant machinery is not installed. Release base is
+5566a9535ca687a7ebb37bd9feb36d5231cd6160, preserving all newer game releases.
+Only the play-money constraints and Battle31 active-match continuation guards
+change; rules, timers, scoring and canonical financial owners remain unchanged.
+Local candidate, hosted candidate/installed rollback proofs and local concurrency
+checks pass. Hosted migration 20261025191852 is installed; admission remains closed
+pending publication. TypeScript, 2,908 source tests, 241 harness tests and build
+pass. Installation evidence,
+publication gates and owner smoke are described in
+[the launch contract](BATTLE31_PLAY_MONEY_LAUNCH.md). Admission activation follows
+exact-SHA publication verification. Physical-device and owner smoke are pending.
+
 # Mega face spacing and anytime Stand Pat /4 — approved release, 2026-10-25
 
 Mega suited large ranks move upward without changing card geometry. New /4 Stand

@@ -1,0 +1,15 @@
+[
+  {
+    "real": false,
+    "duplicateRace": true,
+    "competingRace": true,
+    "timeoutRace": true,
+    "pause": true,
+    "realTimeoutPaused": false,
+    "realAutoplayExplicitConsent": false,
+    "zeroClientSteps": 69,
+    "zeroClientRound": 11,
+    "postgameRecovered": true,
+    "resignation": true
+  }
+]

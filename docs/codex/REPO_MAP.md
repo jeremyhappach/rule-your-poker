@@ -1,5 +1,12 @@
 # Repository map
 
+Battle31 all-user play-money launch: migration
+`20261025192500_battle31_play_money_launch.sql` owns the real-money constraints and
+guarded continuation extension. `dev/battle31/launch-proof.mjs` prepares contained
+hosted proofs; `launch-concurrency.mjs` reuses local race qualification. Core
+Battle31 authority and its initial release package remain unchanged. See
+`BATTLE31_PLAY_MONEY_LAUNCH.md`.
+
 Canasta summary/fan presentation: `src/components/canasta/geometry.ts`
 owns the bounded `canasta_presentation` Geometry Lab domain and felt packing;
 `CardFan.tsx` owns hand/detail fans. `src/components/admin/CanastaGeometryPanel.tsx`

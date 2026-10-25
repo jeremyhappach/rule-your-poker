@@ -1,3 +1,13 @@
+## 2026-10-25 — Battle31 all-user play-money access
+
+Jeremy authorized all active users, no access expiry, play money only. The old
+two-account smoke proposal is superseded. Database constraints keep real-money
+qualification and Battle31 real-money sessions closed. Active play-money matches
+continue automatically with everyone away; canonical reclaim and between-game
+eligibility remain. The guarded shared pause patch retains the installed Golf,
+Eleven Up and HOLM/357 behavior. No rules or gameplay clocks are redesigned.
+See [launch evidence](BATTLE31_PLAY_MONEY_LAUNCH.md).
+
 ## 2026-10-24 — Golf active-match continuation and shared pause reconciliation
 
 An admitted play-money Golf match continues via automatic play when humans are
