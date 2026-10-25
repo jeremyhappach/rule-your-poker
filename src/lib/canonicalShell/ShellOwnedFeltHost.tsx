@@ -155,6 +155,7 @@ const TRACE_GAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   'gin-rummy': 'GIN RUMMY',
   cribbage: 'CRIBBAGE',
   'six-card-golf': 'SIX-CARD GOLF',
+  'battle-31': 'BATTLE 31',
   run21: 'RUN 21',
   canasta: 'CANASTA',
 };
@@ -485,6 +486,7 @@ export function deriveFeltGameKind(
     case 'canasta':
     case 'run21':
     case 'six-card-golf':
+    case 'battle-31':
       return gameType;
     case '3-5-7':
     case '3-5-7-game':

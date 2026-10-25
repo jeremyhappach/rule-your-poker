@@ -1,3 +1,7 @@
+# Battle31 canonical-table redesign — qualified release, 2026-10-25
+
+Approved canonical table, exchange/deal animations and persisted round-result choreography are qualified. Hosted migration 20261025203139 and installed rollback proof pass. Final human/human, human/bot and terminal browser checks, TypeScript, focused test reruns, 241 harness tests and production build pass. Play-money access remains open without expiry; real money remains disabled. Exact-SHA publication verification follows integration. Physical owner smoke remains pending. See [release evidence](BATTLE31_CANONICAL_CHECKPOINT.md).
+
 # Battle31 all-user play-money launch — approved release, 2026-10-25
 
 Jeremy approved unrestricted active-user access in play money with no expiry;

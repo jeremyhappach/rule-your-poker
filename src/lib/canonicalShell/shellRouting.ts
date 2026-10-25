@@ -75,6 +75,7 @@ export function isCanonicalShellFamily(gameType: string | null | undefined): boo
  * See .lovable/canonical-shell-onboarding-checklist.md.
  */
 export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
+  'battle-31',
   'canasta',
   'run21',
   'gin-rummy',

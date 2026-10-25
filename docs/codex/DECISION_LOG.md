@@ -2866,3 +2866,8 @@ new-admission flags. Capability v3 and current-main client integration are local
 Hosted qualification requires actual successful scheduler health and rolls back
 fixtures; no production execution or activation occurred. See
 `BATTLE31_RELEASE_CORRECTIONS.md` for evidence and release limits.
+
+
+## 2026-10-25 — Battle31 canonical table and persisted presentation
+
+Owner approved replacing Megatouch fullscreen with the actual canonical table, moving the catalog to Card Games, and animating exchanges, results/lives, dealer rotation and deals. Gameplay remains battle-31/1; frozen configuration gains presentationVersion 2 for new matches and respects configured decision duration. Server result timestamps and public movement IDs drive presentation; canonical settlement remains immediate and exact-once, with its visual admission delayed until round-result completion. Existing play-money-only access and timeout/reclaim policies are preserved. See BATTLE31_CANONICAL_CHECKPOINT.md.

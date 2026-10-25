@@ -1,10 +1,13 @@
 import type {ChipPresentationBatch} from '../canonicalShell/ChipPresentationLedger';
 export type Battle31Intent={type:'swap';items:[number,number]}|{type:'take_pot'|'pass'|'resign'|'autoplay_on'|'autoplay_off'};
-export interface Battle31Result {round:number;hands:number[][];values:number[];loser:number|null;reason:string;losses:number[]}
+export interface Battle31Result {round:number;hands:number[][];values:number[];loser:number|null;reason:string;losses:number[];previousLosses?:number[];scoringCards?:number[][]}
+export interface Battle31Move {id:string;at:number;actor:number;action:'swap'|'take_pot';pairs:{handIndex:number;centerIndex:number;out:number;in:number}[]}
+export interface Battle31Timeline {version:2;startedAt:number;revealAt:number;announceAt:number;lifeAt:number;clearAt:number;finishAt:number}
 export interface Battle31Board {
  rules:{version:'battle-31/1';turnMs:number;introMs:number;holdMs:number};
  phase:'intro'|'playing'|'round_result'|'complete';deadline:number;dealId:string;turn:number;closing:boolean;
  hands:(number|null)[][];center:number[];values:(number|null)[];losses:number[];event:{label:string};result:Battle31Result|null;
+ dealerIndex?:number;dealStartedAt?:number;moves?:Battle31Move[];presentation?:Battle31Timeline|null;knock?:{id:string;at:number;actor:number;responder:number}|null;
 }
 export interface Battle31Snapshot {
  id:string;revision:number;serverAt:number;scope:string;round:number;stake:number;viewerId:string;board:Battle31Board;canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settled:boolean;
@@ -25,8 +28,8 @@ export function acceptBattle31Snapshot(old:Battle31Snapshot|null,next:Battle31Sn
 export function multiplayerSnapshot(v:any):Battle31Snapshot {
  const viewerIndex=v.players.findIndex((p:any)=>p.id===v.viewerId);
  if(!['round_result','complete'].includes(v.phase)&&v.hands.some((h:any[],i:number)=>i!==viewerIndex&&h.some(c=>c!==null)))throw Error('Battle 31 private projection rejected');
- const {rules,phase,deadline,dealId,turn,closing,hands,center,values,losses,event,result}=v;
+ const {rules,phase,deadline,dealId,turn,closing,hands,center,values,losses,event,result,dealerIndex,dealStartedAt,moves,presentation,knock}=v;
  return {id:v.identity.dealerGameId,identity:v.identity,revision:v.revision,serverAt:v.serverAt,scope:dealId,round:v.stage,stake:v.stake,viewerId:v.viewerId,
- board:{rules,phase,deadline,dealId,turn,closing,hands,center,values,losses,event,result},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,
+ board:{rules,phase,deadline,dealId,turn,closing,hands,center,values,losses,event,result,dealerIndex,dealStartedAt,moves,presentation,knock},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,
  players:v.players.map((p:any,i:number)=>({id:p.id,name:p.name,seat:p.seat,chips:v.financial?.balances[p.id]??p.chips,active:p.id===v.activePlayerId,isBot:p.isBot===true,autoPlay:p.autoPlay===true,sitOutNextHand:p.sitOutNextHand===true,losses:v.losses[i]})),results:v.results,settlement:v.settlement,terminal:v.terminal,financial:v.financial};
 }

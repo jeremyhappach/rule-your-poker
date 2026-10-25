@@ -1282,3 +1282,8 @@ MegaDefaultsConnected retain settings authorization/save ownership. Local fixtur
 previews live in `dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_POLISH.md`.
 
 Mega local smoke-polish presentation: `src/components/megaCardGolf/MegaResultScorecard.tsx` adapts Golf pencil strokes for Arcade; `src/lib/megaCardGolf/presentation.ts` owns the presentation-only hole/honors/final holds. `dev/mega-card-golf/polish/SequencePreview.tsx` and `smoke-sequences.html` provide local controller previews and sound samples. Multiplayer Golf owners are unchanged.
+
+
+### Battle31 canonical table presentation
+
+Battle31View/Table use actual shell slots; useBattle31Movement queues persisted public exchanges through canonical CardTransportProvider; lib/battle31/presentation.ts seeks persisted result timestamps. CanonicalLifeMarkers and CanonicalDealerTransition present committed life/dealer changes. supabase/battle31/canonical-table.sql is the guarded forward presentation/configuration migration. dev/battle31/canonical-* qualification runners and evidence/canonical-* retain financial, concurrency, actual-route rendering and terminal evidence.

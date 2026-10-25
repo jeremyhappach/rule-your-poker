@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `BATTLE31_CANONICAL_CHECKPOINT.md` | Canonical table/result animation release, qualification and smoke |
 | `BATTLE31_PLAY_MONEY_LAUNCH.md` | All-user play-money admission, continuation, forward migration and qualification |
 | `PROJECT_CONTEXT.md` | First session, product overview, stack, operating constraints |
 | `ARCHITECTURE.md` | State ownership, canonical shell, lifecycle, sync, geometry, terminal flow |

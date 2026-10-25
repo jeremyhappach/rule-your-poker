@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "botAction": "take_pot",
+  "visibleFlights": 6,
+  "hiddenArrivals": 3,
+  "physicalMovement": true,
+  "privateHandConcealed": true,
+  "errors": []
+}

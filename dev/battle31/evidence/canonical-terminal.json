@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "exactImmediateSettlement": [
+    91,
+    109
+  ],
+  "heldVisualBalances": true,
+  "fourthLoss": true,
+  "bothHighlights": true,
+  "sessionEnded": true,
+  "noArtifacts": true,
+  "freshEntryLobby": true,
+  "results": 1,
+  "errors": []
+}

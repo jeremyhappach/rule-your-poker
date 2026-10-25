@@ -85,6 +85,7 @@ function isSameManifestIdentity(
 }
 
 interface CardTransportContextValue {
+  cancelHand: (handContextId:string,reason:string)=>void;
   dispatch: (intent: CardTransportIntent, opts?: CardDispatchOptions) => boolean;
   dispatchMany: (intents: CardTransportIntent[], opts?: CardDispatchManyOptions) => number;
   /** Holm presentation manifests reconcile unseen, active, and settled IDs. */
@@ -613,6 +614,9 @@ export function CardTransportProvider({
   );
 
 
+  const cancelHand=useCallback((handContextId:string,reason:string)=>{
+    for(const intent of activeIntentsRef.current.filter(i=>i.handContextId===handContextId))markDropped(intent,reason);
+  },[markDropped]);
   const onCardSettled = useCallback((handler: (cardId: string) => void) => {
     subscribersRef.current.add(handler);
     return () => { subscribersRef.current.delete(handler); };
@@ -626,6 +630,7 @@ export function CardTransportProvider({
   const value = useMemo<CardTransportContextValue>(
     () => ({
       dispatch,
+      cancelHand,
       dispatchMany,
       reconcileMany,
       getIntentLifecycle,
@@ -641,7 +646,7 @@ export function CardTransportProvider({
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, reconcileMany, getIntentLifecycle, getHandIntentLifecycles, replaySettledIntents, onCardSettled, onCardSettledIntent, dropIntentsNotMatchingHand, activeIntents, lifecycleVersion, markSettled, markDropped, gameId, gameType],
+    [dispatch, cancelHand, dispatchMany, reconcileMany, getIntentLifecycle, getHandIntentLifecycles, replaySettledIntents, onCardSettled, onCardSettledIntent, dropIntentsNotMatchingHand, activeIntents, lifecycleVersion, markSettled, markDropped, gameId, gameType],
   );
 
   return (
@@ -653,12 +658,13 @@ export function CardTransportProvider({
 
 export function useCardTransport(): Pick<
   CardTransportContextValue,
-  'dispatch' | 'dispatchMany' | 'reconcileMany' | 'getIntentLifecycle' | 'getHandIntentLifecycles' | 'onCardSettled' | 'onCardSettledIntent'
+  'cancelHand' | 'dispatch' | 'dispatchMany' | 'reconcileMany' | 'getIntentLifecycle' | 'getHandIntentLifecycles' | 'onCardSettled' | 'onCardSettledIntent'
 > {
   const ctx = useContext(CardTransportContext);
   if (!ctx) {
     return {
       dispatch: () => false,
+      cancelHand: () => {},
       dispatchMany: () => 0,
       reconcileMany: (intents) => ({
         total: intents.length,
@@ -677,6 +683,7 @@ export function useCardTransport(): Pick<
   }
   return {
     dispatch: ctx.dispatch,
+    cancelHand: ctx.cancelHand,
     dispatchMany: ctx.dispatchMany,
     reconcileMany: ctx.reconcileMany,
     getIntentLifecycle: ctx.getIntentLifecycle,

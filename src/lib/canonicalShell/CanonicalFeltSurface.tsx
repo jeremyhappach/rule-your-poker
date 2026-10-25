@@ -23,6 +23,7 @@ export type CanonicalFeltGameKind =
   | "horses"
   | "ship-captain-crew"
   | "six-card-golf"
+  | "battle-31"
   | "farkle"
   | "yahtzee"
   | "gin-rummy"
@@ -81,6 +82,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
   "six-card-golf": "GOLF",
+  "battle-31": "BATTLE 31",
   "farkle": "FARKLE",
   "yahtzee": "YAHTZEE",
   "gin-rummy": "GIN RUMMY",
@@ -352,7 +354,7 @@ export function CanonicalFeltSurface({
                 {GAME_NAME_LABEL[gameKind]}
               </span>
               <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
-                {potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
+                {gameKind === "battle-31" ? `Match stake ${anteAmount} chips` : potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
               </span>
               {gameKind === "three-five-seven" && legsToWin !== undefined && (
                 <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">

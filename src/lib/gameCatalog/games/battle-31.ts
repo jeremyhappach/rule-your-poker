@@ -3,9 +3,9 @@ export default {
   "id": "battle-31",
   "defaultsKey": "battle-31",
   "name": "Battle 31",
-  "category": "other",
+  "category": "cards",
   "order": 16,
-  "family": "megatouch",
+  "family": "traditional",
   "modes": [
     "multiplayer"
   ],
