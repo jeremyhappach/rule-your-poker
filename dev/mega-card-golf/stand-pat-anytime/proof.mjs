@@ -6,7 +6,8 @@ import {readFileSync as read,writeFileSync as write} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 const dir='dev/mega-card-golf/stand-pat-anytime/evidence.local/';
-const baseline=JSON.parse(read(dir+'baseline.json'));
+const release=process.argv.includes('--release');
+const baseline=JSON.parse(read(dir+(release?'release-baseline.json':'baseline.json')));
 const registration=read('supabase/mega-card-golf/stand-pat-v4-register.sql','utf8');
 const activation=read('supabase/mega-card-golf/stand-pat-v4-activate.sql','utf8');
 const database='mega_golf_anytime_'+Date.now(),admin=await connect('template1');
@@ -21,8 +22,10 @@ try{
  for(const f of baseline.functions)await db.query(f.definition);
  for(const r of baseline.rulesets)await db.query('INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled',[r.id,r.game,r.config,r.enabled]);
  // Git's Windows checkout has CRLF; PostgreSQL fingerprints qualified LF bodies.
- await db.query(read('supabase/migrations/20261024234530_mega_final_stock_stand_pat.sql','utf8').replaceAll('\r\n','\n'));
- await db.query(read('supabase/migrations/20261024234531_mega_final_stock_activate.sql','utf8'));
+ if(!release){
+  await db.query(read('supabase/migrations/20261024234530_mega_final_stock_stand_pat.sql','utf8').replaceAll('\r\n','\n'));
+  await db.query(read('supabase/migrations/20261024234531_mega_final_stock_activate.sql','utf8'));
+ }
  const actor=(await db.query("SELECT id FROM public.profiles p WHERE private.arcade_allowed(id) AND EXISTS(SELECT 1 FROM auth.users u WHERE u.id=p.id) AND NOT EXISTS(SELECT 1 FROM private.arcade_runs r WHERE r.user_id=p.id AND status='active') LIMIT 1")).rows[0].id;
  const other=(await db.query('SELECT id FROM public.profiles WHERE id<>$1 LIMIT 1',[actor])).rows[0].id;
  const hash=async()=> (await db.query("SELECT md5(coalesce(string_agg(to_jsonb(t)::text,'|' ORDER BY run_id),'')) h FROM private.arcade_results t")).rows[0].h;
