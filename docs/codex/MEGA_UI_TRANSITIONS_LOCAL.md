@@ -1,4 +1,25 @@
-# Mega UI transitions — approved publication, 2026-10-25
+# Mega UI transitions — published, iPhone smoke pending, 2026-10-25
+
+## Publication verification
+
+- Live/remote main SHA: `5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4`.
+- Vercel project `ptown-poker`, production deployment
+  `dpl_AWuyk7HN4jetnU1gDEwGRRmNpBgg`: READY, `holm357.com` alias attached,
+  no alias error, Git SHA matches.
+- Public `/build-manifest.json`: HTTP 200, matching buildId,
+  bundle `assets/index-Bhzx22_-.js`. Mega route returns HTTP 200 with that bundle.
+- Persisted `system_settings.release_publication`: matching buildSha,
+  publishedAt `2026-10-25T21:32:38.003Z`, deploymentId `40235906451-1`.
+  This identifier is the GitHub publisher run/attempt, distinct from Vercel's ID.
+- GitHub publisher run `40235906451`, attempt 1: signal verified without rerun,
+  credential fallback, manual signal override or security changes.
+- Main's existing Cribbage snapshot retained SHA256
+  `91EABE3E91B93DE30CE8B3ECC25EC8C291E983F0D7F672D1E9263C0FB200F27A`;
+  its temp files and all other worktrees were preserved. Separate Battle31 smoke
+  changes were excluded. No runtime telemetry or database migration was added.
+
+This post-publication evidence is recorded locally after the release; it does
+not initiate another deployment. Physical iPhone acceptance remains pending.
 
 Owner first approved local implementation and qualification, then separately
 approved production release of exactly candidate

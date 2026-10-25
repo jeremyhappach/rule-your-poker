@@ -1,4 +1,4 @@
-# Mega UI transitions — approved publication, 2026-10-25
+# Mega UI transitions — published, iPhone smoke pending, 2026-10-25
 
 Two approved presentation fixes remove decorative new-hole hover carryover and
 keep Stand Pat/Discard hidden through card presentation and automatic-draw
@@ -8,7 +8,9 @@ checks pass. Owner approved publication of candidate `2945df81a996fedccb286dfa0c
 It follows main `33b641bb6` directly and excludes the separate Battle31 smoke
 candidate. Final TypeScript, 2,923 source tests (one timeout passed unchanged on
 isolated rerun), 241 harness tests and production bundle are qualified.
-Exact-SHA publication verification follows integration.
+Published SHA `5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4` is verified on remote main,
+the READY production deployment, public manifest and persisted release signal.
+Publisher run `40235906451`, attempt 1, recorded the signal at 21:32:38 UTC.
 Exact accidental orange-focus carryover remains unconfirmed; physical iPhone
 smoke is pending. No runtime telemetry was added. See [qualification and release notes](MEGA_UI_TRANSITIONS_LOCAL.md).
 
