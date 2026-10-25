@@ -1,3 +1,12 @@
+# Quintzee /1 — local prototype checkpoint, 2026-10-25
+
+Local-only branch `codex/quintzee-v1` starts from verified main `5af9e86ff`.
+Shared SQL scoring/timing/round core, reused Yahtzee category scoring, two visual
+themes, local command/reconnect authority and focused proofs are implemented.
+Canonical financial settlement, real Arcade/session adapters, Game Defaults,
+leaderboards and production admission remain **MISSING / CLOSED**. No publication
+is authorized. See [local checkpoint and exact scope](QUINTZEE_LOCAL_CHECKPOINT.md).
+
 # Mega UI transitions — approved publication, 2026-10-25
 
 Two approved presentation fixes remove decorative new-hole hover carryover and

@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "cases": [
+    "independent-connection same-request race commits one score and one roll",
+    "different requests at same revision cannot both reroll",
+    "request UUID payload tampering rejected",
+    "inactive network participant cannot control the active card",
+    "deadline race under row-lock contention rejects late score",
+    "old scope cannot score into the next round",
+    "future configuration does not alter an existing snapshot",
+    "canonical session, financial and Arcade-result row counts unchanged (not an update audit)"
+  ],
+  "canonicalSettlement": "MISSING — qualification adapter is not session integration"
+}

@@ -1,0 +1,12 @@
+html,body,#root { width:100%;height:100%;margin:0; }
+.q-preview { position:fixed;inset:0;background:#081d19;display:flex;flex-direction:column; }
+.q-preview-links { display:flex;gap:1em;align-items:center;padding:.25em .8em;font-size:11px;background:#132c25;color:#ddd; }
+.q-preview-links a { text-decoration:underline; }
+.q-preview-stage { flex:1;min-height:0;position:relative; }
+.q-preview-stage>.fullscreen-game { height:100%; }
+/* Fixed test containers exercise canonical container geometry, not product breakpoints. */
+.q-preview[data-frame=phone] { width:390px;height:680px;right:auto;left:calc(50% - 195px);top:20px; }
+.q-preview[data-frame=small] { width:320px;height:568px;right:auto;left:calc(50% - 160px);top:20px; }
+.q-preview[data-frame=landscape] { width:740px;height:390px;right:auto;left:calc(50% - 370px);top:20px; }
+.q-preview-setup { max-width:560px;margin:0 auto;padding:3rem 1rem;color:#fff4ce;display:flex;flex-direction:column;gap:1.2rem; }
+body { background:#073a2c; }.q-preview-setup h1 { font:italic bold 3rem Georgia; }.q-preview-setup label { display:flex;justify-content:space-between;gap:1rem; }.q-preview-setup select { background:#174e3d;padding:.5rem; }.q-preview-setup button { background:#ecd16f;color:#12392c;border-radius:10px;padding:1rem;font-weight:bold; }
