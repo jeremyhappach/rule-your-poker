@@ -65,7 +65,7 @@
 .golf-inspect {display:grid;grid-template-columns:repeat(3,72px);gap:8px;justify-content:center}
 
 .golf-pane {display:grid;grid-template-rows:auto minmax(0,1fr)}
-.golf-helper {min-height:40px;padding:1px 48px 2px 4px;text-align:center;font-size:12px;line-height:15px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.golf-helper {min-height:40px;padding:1px 4px 2px;text-align:center;font-size:12px;line-height:15px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .golf-helper strong {font-weight:800}
 .golf-public-grid button {pointer-events:auto}
 .golf-piles button:disabled {opacity:.38}
@@ -150,3 +150,7 @@
 [data-golf-total-updated] {animation:golf-total-update .45s ease-out}
 @keyframes golf-total-update {from {background:#f6dc72} to {background:transparent}}
 @media(prefers-reduced-motion:reduce){[data-golf-total-updated] {animation:none}}
+
+.golf-pane:has(.golf-autoplay) {grid-template-rows:auto minmax(0,1fr) auto}
+.golf-autoplay {display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;font-size:12px;pointer-events:auto}
+.golf-autoplay input {width:18px;height:18px}

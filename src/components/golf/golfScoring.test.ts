@@ -10,7 +10,7 @@ it('scores only visible values, cancels ranks not equal point values, preserves 
 const v={phase:'hole_complete',scope:'r',viewerId:'a',players:[{id:'a',name:'A'},{id:'b',name:'B'}],tableaus:{a:{cards:[1,10,12,14,9,0]},b:{cards:[0,2,4,6,8,10]}},holes:[{roundId:'r',scores:{a:21,b:35}}],rules:{holeResultSeconds:16},deadline:16000} as unknown as GolfSnapshot;
 it('counts opponents then self, holds each authoritative total for two seconds, and clears between',()=>{
  const beats=golfScoreBeats(v);expect(beats[0].playerId).toBe('b');expect(beats.filter(b=>b.kind==='total').map(b=>[b.text,b.duration])).toEqual([['B Final Score: +35',2000],['A Final Score: +21',2000]]);
- expect(beats.filter(b=>b.kind==='exit')).toHaveLength(2);expect(beats.find(b=>b.text==='Pair: +0')?.indices).toEqual([0,3]);
+ expect(beats.filter(b=>b.kind==='exit')).toHaveLength(2);expect(beats.find(b=>b.text==='Pair: E')?.indices).toEqual([0,3]);
 });
 it('refuses concealed or unfinished scoring, and reconnect seeks results',()=>{
  expect(golfScoreBeats({...v,phase:'playing'})).toEqual([]);
@@ -23,7 +23,7 @@ it('refuses concealed or unfinished scoring, and reconnect seeks results',()=>{
 it('accumulates this hole only, cancels a pair in one zero beat, and resets for each player',()=>{
  const sample={...v,scores:{a:999,b:888},tableaus:{...v.tableaus,b:{...v.tableaus.b,cards:[3,8,10,5,21,12]}},holes:[{hole:1,roundId:'r',scores:{a:21,b:20}}]};
  const beats=golfScoreBeats(sample);
- expect(beats.filter(x=>x.playerId==='b'&&x.kind==='card').map(x=>[x.text,x.subtotal])).toEqual([['4: +4',4],['6: +6',10],['Pair: +0',10],['J: +10',20],['K: +0',20]]);
+ expect(beats.filter(x=>x.playerId==='b'&&x.kind==='card').map(x=>[x.text,x.subtotal])).toEqual([['4: +4',4],['6: +6',10],['Pair: E',10],['J: +10',20],['K: E',20]]);
  expect(beats.filter(x=>x.kind==='intro').map(x=>x.subtotal)).toEqual([0,0]);
  expect(beats.filter(x=>x.kind==='total').map(x=>x.subtotal)).toEqual([20,21]);
  const negative=golfScoreBeats({...v,tableaus:{...v.tableaus,b:{...v.tableaus.b,cards:[1,12,25,38,51,14]}}});

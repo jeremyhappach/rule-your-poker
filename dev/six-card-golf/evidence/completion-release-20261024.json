@@ -1,0 +1,429 @@
+{
+  "date": "2026-10-24",
+  "base": "312d39c07dce3921b474addb056e97535fd90e1c",
+  "candidate": [
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-1",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-2",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-2",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-3",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-3",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-1",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-2",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-2",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-3",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-3",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "financial-0",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "financial-0",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "financial-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "financial-1",
+        "rollback_verified": true
+      }
+    }
+  ],
+  "installed": [
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-1",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-2",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-2",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-0-3",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-0-3",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-1",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-2",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-2",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "completion-1-3",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "completion-1-3",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "financial-0",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "financial-0",
+        "rollback_verified": true
+      }
+    },
+    {
+      "candidate_evidence": {
+        "unit": "financial-1",
+        "passed": true,
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        }
+      },
+      "rollback_evidence": {
+        "unit": "financial-1",
+        "rollback_verified": true
+      }
+    }
+  ],
+  "sharedRegression": [
+    {
+      "result": "PASS",
+      "coverage": "HOLM settlement/replay/terminal, fake-money aggregate policy, real-money HOLM/357 last-present-human threshold, authorized reclaim/resume and dice policy"
+    }
+  ],
+  "authority": [
+    {
+      "evidence": {
+        "admission": {
+          "enabled": true,
+          "singleton": true,
+          "admission_enabled": true
+        },
+        "functions": {
+          "private.golf_recover()": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "c9cb1b6e82fda6d5210891a744c2191b"
+          },
+          "admin_blast_fake_money_game(uuid)": {
+            "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+            "hash": "d4308a8cd54aa35905055f974b8c0b5c"
+          },
+          "private.pause_all_humans_auto_fold(uuid)": {
+            "acl": "{postgres=X/postgres}",
+            "hash": "347ab39eadb7ae710292d01be7985161"
+          }
+        },
+        "migrations": [
+          {
+            "name": "golf_active_match_completion",
+            "version": "20261025002739"
+          }
+        ]
+      }
+    }
+  ]
+}

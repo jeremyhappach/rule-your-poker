@@ -11,7 +11,7 @@ const strokes:Record<string,string>={
  '7':'M1 4L13 3Q8 12 6 23',
  '8':'M7 12Q-1 5 6 3Q16 1 11 9L4 15Q-1 22 8 22Q17 21 7 12Z',
  '9':'M11 11Q4 16 2 9Q1 2 8 3Q15 3 10 22',
- '-':'M2 13L11 12','—':'M1 13L13 12','E':'M12 3L4 3 2 22 12 22M3 12L10 12',
+ '+':'M2 13L12 13M7 7L7 19','-':'M2 13L11 12','—':'M1 13L13 12','E':'M12 3L4 3 2 22 12 22M3 12L10 12',
 };
 export function GolfPencilScore({value}:{value:number|string}){
  const text=String(value);

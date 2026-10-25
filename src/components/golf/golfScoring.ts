@@ -1,7 +1,8 @@
 import {golfCard,type GolfSnapshot} from '@/lib/golf/model';
 import {golfPublicValue} from '@/lib/golf/scoring';
 export {golfPublicValue,golfVisibleSubtotal} from '@/lib/golf/scoring';
-export const signedGolf=(n:number)=>n>=0?'+'+n:String(n);
+import {golfScoreLabel} from '@/lib/golf/scoreLabel';
+export const signedGolf=golfScoreLabel;
 export interface GolfScoreBeat {playerId:string;indices:number[];scored:number[];hidden:number[];text:string;subtotal:number;duration:number;kind:'intro'|'reveal'|'card'|'total'|'exit'}
 export function golfScoreBeats(v:GolfSnapshot):GolfScoreBeat[]{
  if(!['hole_complete','complete'].includes(v.phase)||!v.holes.some(h=>h.roundId===v.scope)||v.players.some(p=>v.tableaus[p.id].cards.some(c=>c===null)))return [];
@@ -10,7 +11,7 @@ export function golfScoreBeats(v:GolfSnapshot):GolfScoreBeat[]{
  const delay=v.rules.presentation?.scoringDelayMs??650;
  return order.flatMap(p=>{let subtotal=0;const hidden=[...(v.presentation?.hidden[p.id]??[])];const cards=v.tableaus[p.id].cards as number[],scored:number[]=[],beats:GolfScoreBeat[]=[{playerId:p.id,indices:[],scored:[],hidden:[...hidden],text:'Scoring '+p.name+"'s Hand",subtotal:0,duration:700,kind:'intro'}];
  for(const index of [...hidden]){beats.push({playerId:p.id,indices:[index],scored:[],hidden:[...hidden],text:'Revealing '+p.name+"'s Hand",subtotal:0,duration:delay,kind:'reveal'});hidden.splice(hidden.indexOf(index),1);}
- for(let i=0;i<3;i++){const pair=cards[i]%13===cards[i+3]%13;for(const indices of pair?[[i,i+3]]:[[i],[i+3]]){const value=pair?0:golfPublicValue(cards[indices[0]]);subtotal+=value;beats.push({playerId:p.id,indices,scored:[...scored],hidden:[],subtotal,text:pair?'Pair: +0':golfCard(cards[indices[0]])!.rank+': '+signedGolf(value),duration:delay,kind:'card'});scored.push(...indices);}}
+ for(let i=0;i<3;i++){const pair=cards[i]%13===cards[i+3]%13;for(const indices of pair?[[i,i+3]]:[[i],[i+3]]){const value=pair?0:golfPublicValue(cards[indices[0]]);subtotal+=value;beats.push({playerId:p.id,indices,scored:[...scored],hidden:[],subtotal,text:pair?'Pair: E':golfCard(cards[indices[0]])!.rank+': '+signedGolf(value),duration:delay,kind:'card'});scored.push(...indices);}}
  beats.push({playerId:p.id,indices:[],scored:[0,1,2,3,4,5],hidden:[],text:p.name+' Final Score: '+signedGolf(result.scores[p.id]),subtotal:result.scores[p.id],duration:2000,kind:'total'},{playerId:p.id,indices:[],scored:[],hidden:[],text:'',subtotal:result.scores[p.id],duration:180,kind:'exit'});return beats;});
 }
 export function golfScoreFrame(v:GolfSnapshot,now:number,seek:boolean){

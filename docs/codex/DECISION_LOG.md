@@ -1,3 +1,14 @@
+## 2026-10-24 — Golf active-match continuation and shared pause reconciliation
+
+An admitted play-money Golf match continues via automatic play when humans are
+away; eligibility remains between dealer games. Real-money and deliberate pauses
+are preserved. Canonical admin Blast may atomically retire only its targeted
+play-money Golf liabilities before the normal cascade. No new permission or refund
+policy. Shared pause fingerprint after reconciliation is
+347ab39eadb7ae710292d01be7985161; later Eleven Up work must retain the Golf guards
+and the installed HOLM/357 last-present-human policy. See
+[release contract](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
 # 2026-10-24 — 357 funded settlement and dealer-game presentation retirement
 
 Instant 357 returns purchased reserve only; it cannot create unpurchased winning

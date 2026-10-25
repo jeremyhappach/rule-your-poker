@@ -1,3 +1,12 @@
+## 2026-10-24 — Multiplayer Golf completion: qualified release, owner smoke pending
+
+Score formatting, direct checked-only rejoin, active play-money continuation,
+pre-scoring turn suppression and canonical play-money Blast cleanup are qualified.
+This supersedes earlier local-only pending entries for those five corrections.
+Installed rollback and aggregate checks pass; exact-SHA publication verification
+follows the approved push. Physical iPhone and deferred landscape/four-player smoke
+remain separate. [Release evidence](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
 # Backlog
 
 ## Pending smoke — 357 real-money incident qualification — October 24, 2026

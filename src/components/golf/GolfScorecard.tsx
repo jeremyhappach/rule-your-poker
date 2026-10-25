@@ -1,3 +1,4 @@
+import {golfScoreLabel} from '@/lib/golf/scoreLabel';
 import type {GolfSnapshot} from '@/lib/golf/model';
 import {GolfPencilScore} from './GolfPencilScore';
 import type {CSSProperties} from 'react';
@@ -11,7 +12,7 @@ export function golfPresentedScores(v:GolfSnapshot,released:boolean|readonly str
  return {...v,holes,scores:Object.fromEntries(v.players.map(p=>[p.id,holes.reduce((n,h)=>n+(h.scores[p.id]??0),0)]))};
 }
 
-export const golfTotalLabel=(total:number,completed:number)=>completed===0?'—':total===0?'E':String(total);
+export const golfTotalLabel=(total:number,completed:number)=>golfScoreLabel(completed===0?0:total);
 /** Results only. Never derive standings from tableau cards or pending draws. */
 export function golfStandings(v:GolfSnapshot){
  return v.players.map(player=>{
@@ -41,6 +42,6 @@ export function GolfScorecard({snapshot,writeHole,onRowWritten}:{snapshot:GolfSn
  return <div className="golf-scorecard" style={{'--golf-writing-duration':writingMs+'ms'} as CSSProperties} tabIndex={0} role="region" aria-label="Nine-hole scorecard"><table><caption>Golf · {snapshot.phase==='complete'&&snapshot.holes.length===9?'Final scores':'Completed holes'}</caption><thead><tr><th scope="col">Player</th>{Array.from({length:9},(_,i)=><th scope="col" key={i}>{i+1}</th>)}<th scope="col">Total</th></tr></thead><tbody>{golfStandings(snapshot).map(({player,holes,total,thru})=>{
   const done=written.identity===identity&&written.ids.includes(player.id);
   const withheld=writeHole!==undefined&&holes[writeHole-1]!==undefined&&!done;
-  return <tr key={player.id}><th scope="row" title={player.name}>{player.name}</th>{holes.map((score,i)=><td key={identity+':'+i} data-golf-write={writeHole===i+1||undefined} onAnimationEnd={e=>{if(writeHole===i+1&&e.animationName==='golf-write-score')finish(player.id);}}>{score===undefined?'':<GolfPencilScore value={score}/>}</td>)}<td data-golf-total={player.id} data-golf-total-updated={done||undefined}><GolfPencilScore value={golfTotalLabel(total-(withheld?holes[writeHole!-1]!:0),thru-(withheld?1:0))}/></td></tr>;
+  return <tr key={player.id}><th scope="row" title={player.name}>{player.name}</th>{holes.map((score,i)=><td key={identity+':'+i} data-golf-write={writeHole===i+1||undefined} onAnimationEnd={e=>{if(writeHole===i+1&&e.animationName==='golf-write-score')finish(player.id);}}>{score===undefined?'':<GolfPencilScore value={golfScoreLabel(score)}/>}</td>)}<td data-golf-total={player.id} data-golf-total-updated={done||undefined}><GolfPencilScore value={golfTotalLabel(total-(withheld?holes[writeHole!-1]!:0),thru-(withheld?1:0))}/></td></tr>;
  })}</tbody></table></div>;
 }

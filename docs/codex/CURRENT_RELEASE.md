@@ -1,3 +1,19 @@
+# Multiplayer Golf completion — approved release, 2026-10-24
+
+Reconciled candidate fad9e4118 onto verified main/production 312d39c07.
+Consistent +N/E/-N scores retain pencil styling and blank unplayed holes; checked-only
+rejoin is directly in the active pane. Active play-money matches continue with all
+humans away; real-money and deliberate-pause boundaries remain. Canonical admin-only
+play-money Blast cleanup is atomic. Newer Golf opening, draws, hole-end retirement,
+pencil totals and every unrelated release are preserved.
+
+Hosted migration 20261025002739 (source 20261025002701) is installed. Eight candidate
+and eight installed contained units and HOLM/357 cross-game proofs pass. Application
+TypeScript, 2,895 source tests, 241 harness tests, phone-layout browser checks and
+production build pass. Exact-SHA publication verification follows the approved push.
+Checkpoint: golf-completion-release-20261024. Physical iPhone owner smoke is pending.
+See [release and shared-function integration contract](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
 # Arcade menu placeholder removal — approved release, 2026-10-24
 
 Jeremy approved publication of tested candidate
