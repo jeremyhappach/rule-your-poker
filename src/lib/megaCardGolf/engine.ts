@@ -1,7 +1,7 @@
 import {golfVisibleSubtotal} from '../golf/scoring.js';
-import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,usesSequentialOpening,type MegaRuleset,type CourseConfig} from './config.js';
+import {MEGA_RULESET,MEGA_SEQUENTIAL_RULESET,MEGA_STAND_PAT_RULESET,MEGA_ANYTIME_STAND_PAT_RULESET,usesSequentialOpening,type MegaRuleset,type CourseConfig} from './config.js';
 export type Intent={type:'draw'|'discard'|'stand-pat'|'abandon'}|{type:'replace';index:number}|{type:'open';indices:number[]};
-export interface HoleResult {hole:number;cards:number[];score:number;total:number;reason:'exposed'|'stock'|'timeout';hidden:number[];startedAt:number;endsAt:number}
+export interface HoleResult {hole:number;cards:number[];score:number;total:number;reason:'exposed'|'stock'|'timeout'|'stand-pat';hidden:number[];startedAt:number;endsAt:number}
 export interface MegaRun {
  id:string;owner:string;ruleset:MegaRuleset;config:CourseConfig;revision:number;
  status:'active'|'completed'|'abandoned';phase:'opening'|'playing'|'scoring';hole:number;cards:number[];exposed:boolean[];
@@ -14,7 +14,7 @@ function deal(s:MegaRun,at:number){
  s.draws=0;s.discards=0;s.pending=null;s.discardTop=null;s.phase=s.config.initialExposed?'opening':'playing';s.deadline=at+s.config.completionSeconds*1000;
 }
 export function createRun(id:string,owner:string,config:CourseConfig,decks:number[][],at:number,ruleset:MegaRuleset=MEGA_RULESET):MegaRun {
- if(ruleset!==MEGA_RULESET&&ruleset!==MEGA_SEQUENTIAL_RULESET&&ruleset!==MEGA_STAND_PAT_RULESET)throw Error('Unsupported Mega ruleset');
+ if(ruleset!==MEGA_RULESET&&ruleset!==MEGA_SEQUENTIAL_RULESET&&ruleset!==MEGA_STAND_PAT_RULESET&&ruleset!==MEGA_ANYTIME_STAND_PAT_RULESET)throw Error('Unsupported Mega ruleset');
  if(decks.length!==config.holes||decks.some(d=>d.length!==52||new Set(d).size!==52||d.some(c=>!Number.isInteger(c)||c<0||c>51)))throw Error('Invalid private decks');
  const s:MegaRun={id,owner,ruleset,config:structuredClone(config),revision:0,status:'active',phase:'playing',hole:1,cards:[],exposed:[],decks:structuredClone(decks),draws:0,discards:0,pending:null,discardTop:null,deadline:0,results:[],score:0,completedAt:null};
  deal(s,at);return s;
@@ -42,7 +42,7 @@ export function recoverRun(input:MegaRun,at:number):MegaRun {
 }
 /** Shared eligibility; the existing server recovery/commit boundary still owns expiry. */
 export function canStandPat(s:Pick<MegaRun,'ruleset'|'status'|'phase'|'pending'|'draws'|'config'>){
- return s.ruleset===MEGA_STAND_PAT_RULESET&&s.status==='active'&&s.phase==='playing'&&s.pending!==null&&s.draws===s.config.stockAllowance;
+ return s.status==='active'&&s.phase==='playing'&&(s.ruleset===MEGA_ANYTIME_STAND_PAT_RULESET||(s.ruleset===MEGA_STAND_PAT_RULESET&&s.pending!==null&&s.draws===s.config.stockAllowance));
 }
 export function applyIntent(input:MegaRun,intent:Intent,at:number):MegaRun {
  const s=recoverRun(input,at);
@@ -63,6 +63,7 @@ export function applyIntent(input:MegaRun,intent:Intent,at:number):MegaRun {
    s.pending=s.decks[s.hole-1][6+s.draws];s.draws++;break;
   case 'stand-pat':
    if(!canStandPat(s))throw Error('Stand Pat requires the final pending stock card');
+   if(s.ruleset===MEGA_ANYTIME_STAND_PAT_RULESET){closeHole(s,at,'stand-pat');s.revision++;return s;}
    s.discardTop=s.pending;s.pending=null;break;
   case 'discard':
    if(s.pending===null||s.discards>=s.config.discardAllowance)throw Error('No immediate discard available');

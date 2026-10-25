@@ -87,6 +87,13 @@
 .mega-tableau>.mega-card{place-self:center;min-width:44px;width:min(calc((100cqw - .7rem) / 3),calc((100cqh - .35rem) / 2 * var(--mega-card-ratio)))}
 .mega-draw-card{container:mega-stock/size;display:grid;place-items:center}
 .mega-draw-card>.mega-card{width:min(100cqw,calc(100cqh * var(--mega-card-ratio)))}
+.mega-draw-area[data-anytime-stand-pat]>.mega-start{grid-row:1}
+.mega-draw-area[data-anytime-stand-pat]>.mega-secondary{grid-row:2}
+
+/* Mega's suited large faces use a hanging baseline at SVG y=8 (91 - 83).
+   These are 100x140 viewBox units, not screen pixels: the smaller 10 rises too,
+   while card geometry and the centered rank-only four-color face stay intact. */
+.mega-canonical-face [data-megatouch-face=large]:has([data-megatouch-suit]) [data-megatouch-rank]{dominant-baseline:hanging;transform:translateY(-83px)}
 
 /* Card flips preserve the shared face geometry; transport follows felt anchors. */
 .mega-card[data-replacement-stage=reveal] .mega-card-inner,.mega-card[data-replacement-stage=stock-reveal] .mega-card-inner{backface-visibility:hidden;animation:mega-face-up .35s ease-out both}

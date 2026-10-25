@@ -1,3 +1,13 @@
+# Mega face spacing and anytime Stand Pat /4 — LOCAL ONLY, 2026-10-24
+
+Mega suited large ranks move upward without changing card geometry. New /4 Stand
+Pat confirms Tap In?, preserves the six board cards, then reveals and scores the
+hole regardless of stock/discard allowance. Required opening reveals and /1–/3
+behavior remain intact. TypeScript, 124 focused tests, build, local database races
+and phone browser checks pass. Forward registration/activation SQL is prepared
+locally only. No main integration, push, production migration or deployment.
+See [local qualification and review](MEGA_LOCAL_FACES_AND_STAND_PAT.md).
+
 # Canasta UI — approved release, 2026-10-24
 
 The reviewed three-commit UI stack ending c8059c2ff is reconciled onto verified
