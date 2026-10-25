@@ -28,10 +28,11 @@ completion. It records reason `stand-pat`; it never grants a free discard or
 continues the same hole. Cancel submits no action. Stand Pat and Discard occupy
 separate existing control rows with 44px minimum targets.
 
-Opening selection is intentionally preserved: Stand Pat becomes available after
-the required reveals. The owner was asked whether opening selection should also
-permit it; no answer was received before this checkpoint, so the approved
-“playable hole” boundary is retained. Busy/animation/terminal gates remain; a
+Jeremy confirmed on 2026-10-24: require the two opening reveals first, then allow
+Stand Pat anytime during the playable hole with Tap In? confirmation. This
+matches the implemented and tested opening guard in product commit
+`9faaf67f81e1f9e9b0aa3de2cbc4a36a185bede4`; no product change or repeated checks
+were needed to record the decision. Busy/animation/terminal gates remain; a
 revision change or expiry invalidates confirmation. The authoritative locked
 commit deadline still wins an expiry race. /1–/3 behavior and frozen snapshots
 are unchanged. New /4 starts require separate future activation.
