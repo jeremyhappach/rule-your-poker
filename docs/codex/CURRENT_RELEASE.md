@@ -1,4 +1,15 @@
-# Mega UI transitions — published, iPhone smoke pending, 2026-10-25
+# Mega action flicker follow-up — local correction, publication held, 2026-10-25
+
+Owner accepted the published highlight fix but still observed enabled → disabled
+→ enabled action flicker. The same sequence is reproduced locally: delayed
+realtime echoes reacquire the input lock after an already-accepted draw settles.
+The local correction filters covered revision notices, including queued echoes,
+while retaining newer-revision and reconnect refreshes. 105 focused tests and
+TypeScript, ten existing browser checks and production build pass; new browser
+frame traces show no late pulse. No production changes
+are authorized for this follow-up. See [cause and evidence](MEGA_REALTIME_ECHO_LOCAL.md).
+
+# Mega UI transitions — published, action smoke incomplete, 2026-10-25
 
 Two approved presentation fixes remove decorative new-hole hover carryover and
 keep Stand Pat/Discard hidden through card presentation and automatic-draw

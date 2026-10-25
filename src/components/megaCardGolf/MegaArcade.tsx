@@ -11,19 +11,33 @@ import {emptyPresentation,receivePresentation,presentationFrame} from '@/lib/meg
 import '@/components/megaCardGolf/megaCardGolf.css';
 
 type Catalog={courses:CourseConfig[];boards:{id:CourseId;rows:ScoreRow[]}[];archives:{config:CourseConfig;rows:ScoreRow[]}[];active:string|null;admission?:boolean;isAdmin?:boolean};
-export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}:{request:<T>(body:object)=>Promise<T>;audio:AudioManager;userId:string;preview?:boolean;onBack?:()=>void;subscribe?:(runId:string,changed:()=>void)=>()=>void}){
+export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}:{request:<T>(body:object)=>Promise<T>;audio:AudioManager;userId:string;preview?:boolean;onBack?:()=>void;subscribe?:(runId:string,changed:(revision?:number)=>void)=>()=>void}){
  const [catalog,setCatalog]=useState<Catalog|null>(null),[screen,setScreen]=useState<'courses'|'game'|'board'>('courses'),[view,setView]=useState<MegaView|null>(null),[board,setBoard]=useState<CourseId>('sunny-meadows'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now()),[sound,setSound]=useState(preview&&localStorage.getItem('mega-preview-sounds')==='true');
  const [presentation,setPresentation]=useState(emptyPresentation);
  const autoDrawAttempt=useRef<string|null>(null),autoDrawInFlight=useRef(false);
  const frame=presentationFrame(presentation,performance.now(),typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
- const clock=useRef({at:Date.now(),received:performance.now()}),lock=useRef(false),refreshQueued=useRef(false),refresh=useRef(()=>{}),alive=useRef(true),current=useRef(view);current.current=view;
+ const clock=useRef({at:Date.now(),received:performance.now()}),lock=useRef(false),refreshQueued=useRef<{revision?:number}|null>(null),refresh=useRef<(revision?:number)=>void>(()=>{}),alive=useRef(true),current=useRef(view);current.current=view;
  const loadCatalog=async()=>setCatalog(await request<Catalog>({op:'catalog'}));
  const receive=(next:MegaView,silent=false,intent?:Intent,announceStart=false)=>{const accepted=acceptView(current.current,next);if(accepted!==next)return;current.current=next;clock.current={at:next.serverAt,received:performance.now()};setNow(next.serverAt);setView(next);setPresentation(old=>receivePresentation(old,next,performance.now(),silent,intent,announceStart));};
  const restore=async(id:string,silent=true)=>{receive(await request<MegaView>({op:'state',runId:id}),silent);};
- const perform=async(fn:()=>Promise<void>,clearError=true)=>{if(lock.current)return;lock.current=true;setBusy(true);if(clearError)setError('');try{await fn();}catch(e){if(alive.current)setError(e instanceof Error?e.message:'Request failed');}finally{lock.current=false;if(alive.current){setBusy(false);if(refreshQueued.current){refreshQueued.current=false;refresh.current();}}}};
- refresh.current=()=>{if(!alive.current||document.hidden)return;if(lock.current){refreshQueued.current=true;return;}void perform(async()=>{if(current.current&&screen==='game')await restore(current.current.id,false);else await loadCatalog();},false);};
- useEffect(()=>{alive.current=true;return()=>{alive.current=false;refreshQueued.current=false;};},[]);
- useEffect(()=>view&&subscribe?subscribe(view.id,()=>refresh.current()):undefined,[view?.id,subscribe]);
+ const perform=async(fn:()=>Promise<void>,clearError=true)=>{if(lock.current)return;lock.current=true;setBusy(true);if(clearError)setError('');try{await fn();}catch(e){if(alive.current)setError(e instanceof Error?e.message:'Request failed');}finally{lock.current=false;if(alive.current){setBusy(false);const queued=refreshQueued.current;if(queued){refreshQueued.current=null;refresh.current(queued.revision);}}}};
+ refresh.current=(revision?:number)=>{
+  if(!alive.current||document.hidden)return;
+  // Realtime announces commits already delivered by command responses too.
+  // Recheck queued notices against the accepted response before taking the input lock.
+  if(revision!==undefined&&current.current&&revision<=current.current.revision)return;
+  if(lock.current){
+   const queued=refreshQueued.current;
+   refreshQueued.current={revision:revision===undefined||queued&&queued.revision===undefined?undefined:Math.max(revision,queued?.revision??revision)};
+   return;
+  }
+  void perform(async()=>{if(current.current&&screen==='game')await restore(current.current.id,false);else await loadCatalog();},false);
+ };
+ useEffect(()=>{alive.current=true;return()=>{alive.current=false;refreshQueued.current=null;};},[]);
+ useEffect(()=>{
+  const id=view?.id;if(!id||!subscribe)return;
+  return subscribe(id,revision=>{if(current.current?.id===id)refresh.current(revision);});
+ },[view?.id,subscribe]);
  useEffect(()=>{const uninstall=preview?audio.install():undefined;if(preview)audio.setUser(userId);void perform(async()=>{await loadCatalog();const id=new URLSearchParams(location.search).get('run');if(id){await restore(id);setScreen('game');}});return uninstall;},[]);
  useEffect(()=>{const refresh=()=>{if(!document.hidden)void perform(async()=>{if(current.current&&screen==='game'){await restore(current.current.id);autoDrawAttempt.current=null;}else await loadCatalog();});};window.addEventListener('focus',refresh);window.addEventListener('online',refresh);document.addEventListener('visibilitychange',refresh);return()=>{window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',refresh);};},[screen]);
  useEffect(()=>{
