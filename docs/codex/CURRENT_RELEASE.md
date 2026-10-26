@@ -1,4 +1,4 @@
-# Mega action flicker follow-up — local correction, publication held, 2026-10-25
+# Mega action flicker follow-up — approved release, 2026-10-25
 
 Owner accepted the published highlight fix but still observed enabled → disabled
 → enabled action flicker. The same sequence is reproduced locally: delayed
@@ -6,8 +6,12 @@ realtime echoes reacquire the input lock after an already-accepted draw settles.
 The local correction filters covered revision notices, including queued echoes,
 while retaining newer-revision and reconnect refreshes. 105 focused tests and
 TypeScript, ten existing browser checks and production build pass; new browser
-frame traces show no late pulse. No production changes
-are authorized for this follow-up. See [cause and evidence](MEGA_REALTIME_ECHO_LOCAL.md).
+frame traces show no late pulse. Jeremy approved publication of qualified
+candidate `87bb797d1b3fba856ff225dcb9311782f6982790`. Final TypeScript, all 2,929
+source tests, 241 harness tests and production build pass in one run.
+Exact-SHA production verification follows. The held Battle31 smoke and Quintzee
+candidates are excluded. Physical iPhone smoke remains pending.
+See [cause and evidence](MEGA_REALTIME_ECHO_LOCAL.md).
 
 # Mega UI transitions — published, action smoke incomplete, 2026-10-25
 

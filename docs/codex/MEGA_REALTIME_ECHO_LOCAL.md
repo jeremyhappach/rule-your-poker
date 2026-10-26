@@ -91,6 +91,25 @@ Changed product files: `src/components/megaCardGolf/MegaArcade.tsx` and
 Local fixtures: `dev/mega-card-golf/ui-transitions/main.tsx`, `echo-trace.mjs`.
 Documentation: this file and `CURRENT_RELEASE.md`.
 
-Physical iPhone verification of this follow-up remains pending a separate
-publication approval. Frame logs stay in ignored local evidence; no Library
+Jeremy approved publication of qualified candidate
+`87bb797d1b3fba856ff225dcb9311782f6982790`. Physical iPhone verification remains
+pending production smoke. Frame logs stay in ignored local evidence; no Library
 upload or production diagnostic instrumentation was added.
+
+## Release scope
+
+The candidate follows published `5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4`
+without divergence. Its intermediate commit `def0cb8fe` records the previous
+publication only. The held Battle31 smoke candidate and Quintzee candidate are
+not integrated. Existing unrelated work in the main checkout is preserved.
+This release contains no database migrations, admission changes, leaderboard
+resets, timer bonuses or gameplay-rule changes.
+
+Final `npm.cmd run build` passes in one invocation: application TypeScript,
+2,929 source tests across 423 files, 241 harness tests across 12 files, and the
+production Vite bundle. Existing browser-data/chunk-size and test-environment
+warnings remain. No test required a retry. Log:
+`dev/mega-card-golf/ui-transitions/evidence.local/flicker-release-build.log`.
+The source suite rewrote only line endings in its Cribbage snapshot; that
+generated rewrite was restored in this initially clean candidate checkout.
+The pre-existing snapshot modification in the main checkout is preserved.
