@@ -6,6 +6,7 @@ export interface QuintzeeTransport {load:()=>Promise<QuintzeeSnapshot>;send:(com
 export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
  const [snapshot,setSnapshot]=useState<QuintzeeSnapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(0);
  const current=useRef<QuintzeeSnapshot|null>(null),anchor=useRef({server:0,local:0}),flight=useRef<string|null>(null),alive=useRef(true);
+ const queued=useRef<string|null>(null);
  const key=`quintzee:${id}:${actor}:pending`;
  const identity=useRef(key);identity.current=key;
  const accept=useCallback((v:QuintzeeSnapshot)=>{
@@ -13,17 +14,25 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
   current.current=v;anchor.current={server:v.serverAt,local:performance.now()};setNow(v.serverAt);setSnapshot(v);setError('');
  },[id,key]);
  const reconnect=useCallback(async()=>{
-  if(flight.current===key)return;
+  if(flight.current===key){queued.current=key;return;}
   flight.current=key;
   try{
-   const saved=sessionStorage.getItem(key);
-   if(saved){setPending(true);accept(await transport.send(JSON.parse(saved)));sessionStorage.removeItem(key);}
-   accept(await transport.load());
-  }catch(e){
-   // Only a definite server rejection retires the intent; transport loss keeps it.
-   if((e as {definitive?:boolean}).definitive)sessionStorage.removeItem(key);
-   if(alive.current&&identity.current===key)setError((e as Error).message);
-  }
+   do{
+    if(queued.current===key)queued.current=null;
+    let rejected='';
+    const saved=sessionStorage.getItem(key);
+    if(saved){
+     setPending(true);
+     try{accept(await transport.send(JSON.parse(saved)));sessionStorage.removeItem(key);}
+     catch(e){
+      if(!(e as {definitive?:boolean}).definitive)throw e;
+      sessionStorage.removeItem(key);rejected=(e as Error).message;
+     }
+    }
+    accept(await transport.load());
+    if(rejected&&alive.current&&identity.current===key)setError(rejected);
+   }while(queued.current===key&&alive.current&&identity.current===key);
+  }catch(e){if(alive.current&&identity.current===key)setError((e as Error).message);}
   finally{if(flight.current===key)flight.current=null;if(alive.current&&identity.current===key)setPending(!!sessionStorage.getItem(key));}
  },[accept,key,transport]);
  const act=useCallback(async(intent:QuintzeeIntent)=>{

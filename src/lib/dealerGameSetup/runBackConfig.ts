@@ -13,6 +13,7 @@ export function resolveExactRunBackConfig(gameType: string, value: unknown, deal
     if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
     return { ante_amount: config.ante_amount, runBackDealerGameId: id };
   }
+  if (gameType === 'quintzee') return config.theme === 'classic' || config.theme === 'modern' ? { ante_amount: config.ante_amount, theme: config.theme } : null;
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
   if (['horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'six-card-golf','race-poker','battle-31','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {

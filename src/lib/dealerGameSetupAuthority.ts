@@ -11,7 +11,7 @@ export type DealerGameType =
   | 'run21'
   | 'tri-towers'
   | 'eleven-up'
-  | 'royal-flash' | 'take-two' | 'canasta' | 'six-card-golf' | 'race-poker' | 'battle-31' | 'boxdrop' | 'trip-flip';
+  | 'royal-flash' | 'take-two' | 'canasta' | 'six-card-golf' | 'race-poker' | 'battle-31' | 'quintzee' | 'boxdrop' | 'trip-flip';
 
 export interface DealerGameSetupCommitResult {
   outcome: 'configured' | 'already_configured';
@@ -112,7 +112,7 @@ export async function configureDealerGame(
     await assertRun21CreationAccess(params.gameId);
   }
 
-  const { data, error } = await supabase.rpc((params.gameType === 'canasta' ? 'canasta_configure' : params.gameType === 'six-card-golf' ? 'golf_configure' : params.gameType === 'race-poker' ? 'race_poker_configure' : params.gameType === 'battle-31' ? 'battle31_configure' : params.gameType === 'boxdrop' ? 'boxdrop_configure' : params.gameType === 'trip-flip' ? 'trip_flip_configure' : params.gameType === 'take-two' ? 'take_two_configure' : params.gameType === 'royal-flash' ? 'royal_flash_configure' : params.gameType === 'eleven-up' ? 'eleven_up_configure' : params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
+  const { data, error } = await supabase.rpc((params.gameType === 'canasta' ? 'canasta_configure' : params.gameType === 'six-card-golf' ? 'golf_configure' : params.gameType === 'race-poker' ? 'race_poker_configure' : params.gameType === 'battle-31' ? 'battle31_configure' : params.gameType === 'quintzee' ? 'quintzee_configure' : params.gameType === 'boxdrop' ? 'boxdrop_configure' : params.gameType === 'trip-flip' ? 'trip_flip_configure' : params.gameType === 'take-two' ? 'take_two_configure' : params.gameType === 'royal-flash' ? 'royal_flash_configure' : params.gameType === 'eleven-up' ? 'eleven_up_configure' : params.gameType === 'tri-towers' ? 'tri_towers_configure' : params.gameType === 'run21' ? 'run21_configure' : 'configure_dealer_game') as never, {
     p_game_id: params.gameId,
     p_dealer_player_id: params.dealerPlayerId,
     p_expected_dealer_position: params.expectedDealerPosition,

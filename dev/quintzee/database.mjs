@@ -16,3 +16,5 @@ export async function context(){
  try{await c.query(`CREATE DATABASE "${database}" TEMPLATE "${template}"`);}finally{await c.end();}
  mkdirSync(dirname(path),{recursive:true});const value={database,template,host:'127.0.0.1',port:55439};writeFileSync(path,JSON.stringify(value,null,2));return value;
 }
+
+export function preserveTimestamps(){pg.types.setTypeParser(1184,v=>v);}

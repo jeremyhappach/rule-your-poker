@@ -1,5 +1,7 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-10-26 local Quintzee release qualification: full Game route confirms live reconnect, connected Session Ended without artifacts and fresh ended-session lobby routing. Combined 2941 source / 241 harness tests and build pass. Hosted installed rollback qualification passes. Production owner-device smoke remains pending.
+
 ## 357 settlement, recovery and Sweep smoke — October 24, 2026
 
 - Jeremy reported “357 smoke is clean” and explicitly authorized real-money reopening.

@@ -1,0 +1,11 @@
+{
+  "project": "xvhmbuppghwmwpwrkzao",
+  "passed": true,
+  "at": "2026-10-26T01:39:30.689Z",
+  "candidateRolledBack": true,
+  "installed": false,
+  "proof": "qualification.local/quintzee/release/candidate-proof.sql",
+  "hashes": "qualification.local/quintzee/release/candidate-hashes.json",
+  "workerBaselineMatches": true,
+  "scope": "Hosted rollback proof passed all production/extended SQL assertions; independent connections qualified locally."
+}

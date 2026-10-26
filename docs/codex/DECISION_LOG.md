@@ -1,5 +1,7 @@
 ## 2026-10-25 — Battle31 all-user play-money access
 
+2026-10-26 Quintzee /1: freeze one SQL rule namespace for both modes. Admit only solo nonfinancial Arcade and canonical fake-money multiplayer; reject real money in server authority. Presentation theme freezes at admission; both themes share the 1500 ms rumble with stationary held dice. Installed financial/authorization proof and exact-SHA publication precede separate activation.
+
 Jeremy authorized all active users, no access expiry, play money only. The old
 two-account smoke proposal is superseded. Database constraints keep real-money
 qualification and Battle31 real-money sessions closed. Active play-money matches

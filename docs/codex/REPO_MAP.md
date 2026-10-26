@@ -1,5 +1,7 @@
 # Repository map
 
+Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
+
 Battle31 all-user play-money launch: migration
 `20261025192500_battle31_play_money_launch.sql` owns the real-money constraints and
 guarded continuation extension. `dev/battle31/launch-proof.mjs` prepares contained

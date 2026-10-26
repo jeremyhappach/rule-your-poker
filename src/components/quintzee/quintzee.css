@@ -53,4 +53,4 @@
  .q-scorecard { grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:1cqh; }
  .q-scorecard section { display:contents; }
 }
-@media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-die { animation:q-roll .18s ease-out; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { from{transform:rotate(-12deg) scale(.9)}to{transform:none} }}
+@media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-dice [data-rolling=true] .q-die { animation:q-roll .15s linear 10; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { 0%,100%{transform:none}25%{transform:translate(-3%,4%) rotate(-14deg)}50%{transform:translate(4%,-4%) rotate(12deg)}75%{transform:translate(-2%,3%) rotate(-8deg)} }}

@@ -23,6 +23,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 interface GameDefaults {
+  quintzee_theme?: 'classic'|'modern';
   canasta_mode?:CanastaMode;
   golf_scoring_delay_ms?: number;
   golf_results_duration_ms?: number;
@@ -337,6 +338,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           .update({
             ...(defaultConfig.game_type==='six-card-golf'?{golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
+            ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic'}:{}),
             ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
@@ -1031,6 +1033,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   };
 
   const renderSettingsForGameType = () => {
+      if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label htmlFor="quintzee-theme">Theme</Label><select id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select><p className="text-xs">Applies to new Arcade runs and multiplayer matches. Both themes use the same frozen rules: 180 seconds, ×100–×300 scoring, and an 80,000-point bonus-round threshold.</p></div>:null;}
+
     const inner = (() => {
       const entry=findGame(selectedGameType);
       if(selectedGameType==='canasta') {const d=getDefaultByType('canasta');return d?<div className="space-y-2">

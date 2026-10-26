@@ -1,3 +1,4 @@
+vi.mock('@/hooks/useQuintzeeAccess',()=>({useQuintzeeAccess:()=>true}));
 vi.mock('@/hooks/useBattle31Access',()=>({useBattle31Access:()=>true}));
 vi.mock('@/hooks/useCanastaAccess',()=>({useCanastaAccess:()=>false}));
 // @vitest-environment jsdom

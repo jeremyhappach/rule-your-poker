@@ -1,7 +1,7 @@
 import type {ComponentType} from 'react';
 export interface RuleRendererProps {config?:unknown;version?:string;solo?:boolean}
 export type Category = 'cards' | 'dice' | 'other';
-export type Capability = 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'boxdrop' | 'canasta' | 'six-card-golf' | 'race-poker' | 'mega-card-golf';
+export type Capability = 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'quintzee' | 'boxdrop' | 'canasta' | 'six-card-golf' | 'race-poker' | 'mega-card-golf';
 export type GameDescriptor = {
  id: string; defaultsKey: string; name: string; category: Category; order: number;
  family: 'traditional' | 'megatouch'; modes: readonly ('multiplayer' | 'arcade')[];

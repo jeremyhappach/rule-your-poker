@@ -6,10 +6,15 @@ import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>!['canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
- expect(ARCADE_GAMES.filter(g=>g.id!=='mega-card-golf').map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
+ expect(GAME_CATALOG.filter(g=>!['quintzee','canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
+ expect(ARCADE_GAMES.filter(g=>!['mega-card-golf','quintzee'].includes(g.id)).map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);
+ });
+ it('gates Quintzee to approved fake-money rosters and separate Arcade admission',()=>{
+ const game=findGame('quintzee')!;expect(game.modes).toEqual(['multiplayer','arcade']);expect(isDiscovered(game,{})).toBe(false);
+ for(const players of [2,3,4]){expect(eligibility(game,{players,humans:1,realMoney:false},{quintzee:true})).toBeNull();expect(eligibility(game,{players,humans:players,realMoney:true},{quintzee:true})).toBe('Fake money only');}
+ expect(eligibility(game,{players:5,humans:1,realMoney:false},{quintzee:true})).toBe('2–4 players');
  });
  it('keeps Battle 31 local, capability gated and multiplayer only',()=>{const game=findGame('battle-31')!;expect(game.modes).toEqual(['multiplayer']);expect(game.players).toMatchObject({min:2,max:2});expect(isDiscovered(game,{})).toBe(false);});
  it('matches the deployed exact-two and range guards, not presentation-family guesses',()=>{

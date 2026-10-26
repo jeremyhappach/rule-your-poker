@@ -338,7 +338,7 @@ export function ChipTransportProvider({
     || gameType === 'canasta'
     || gameType === 'run21'
     || gameType === 'tri-towers'
-    || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
+    || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'quintzee' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
   const presentationLedger = useChipPresentationLedger(
     gameId,
     ledgerTransport,

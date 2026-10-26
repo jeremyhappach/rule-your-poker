@@ -7,6 +7,12 @@ export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 // ownership/access, frozen revision/round and immutable receipt under its lock.
 export function triShortcut(body:Record<string,any>){return body.game==='tri-towers'&&body.presentationVersion===4&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['remove','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='remove'||Number.isInteger(body.intent.index)));}
 // The stored game and all authorization/receipt checks remain in the locked RPC.
+const validQuintzeeCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['roll','score','abandon'].includes(body.intent.type)&&Array.isArray(body.intent.items)&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=0&&Number(i)<(body.intent.type==='score'?12:5))&&(body.intent.type==='score'?body.intent.items.length===1:body.intent.type==='abandon'?body.intent.items.length===0:body.intent.items.length<=5&&new Set(body.intent.items).size===body.intent.items.length);
+export function quintzeeShortcut(body:Record<string,any>){return body.game==='quintzee'&&body.presentationVersion===1&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&validQuintzeeCommand(body));}
+async function quintzeeStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
+ const result=await rpc('arcade_quintzee_step',{p_actor:userId,p_run:id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.items}:{})});
+ if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
+}
 const validBoxdropCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['place','recycle','take_score','abandon'].includes(body.intent.type)&&(!['place','recycle'].includes(body.intent.type)||Array.isArray(body.intent.items)&&body.intent.items.length===(body.intent.type==='place'?2:1)&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=0&&Number(i)<=2147483647));
 export function boxdropShortcut(body:Record<string,any>){return body.game==='boxdrop'&&body.presentationVersion===1&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&validBoxdropCommand(body));}
 async function boxdropStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
@@ -27,6 +33,7 @@ async function takeTwoStep(rpc:Rpc,userId:string,id:string,body:Record<string,an
 }
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
  if(input.game==='mega-card-golf')return await synchronizeMega(rpc,input as unknown as MegaRecord,actor,token) as unknown as RunRecord;
+ if(input.game==='quintzee')return (await rpc('arcade_quintzee_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='boxdrop')return (await rpc('arcade_boxdrop_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='trip-flip')return (await rpc('arcade_trip_flip_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='take-two')return (await rpc('arcade_take_two_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -51,6 +58,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
+ if(quintzeeShortcut(body))return quintzeeStep(rpc,userId,body.runId,body);
  if(boxdropShortcut(body))return boxdropStep(rpc,userId,body.runId,body);
  if(tripFlipShortcut(body))return tripFlipStep(rpc,userId,body.runId,body);
  if(takeTwoShortcut(body))return takeTwoStep(rpc,userId,body.runId,body);
@@ -61,6 +69,11 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
   await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
+ if(row.game==='quintzee'){
+  if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
+  if(body.op==='action'&&!validQuintzeeCommand(body))throw Error('arcade:invalid_command');
+  return quintzeeStep(rpc,userId,row.id,body);
+ }
  if(row.game==='boxdrop'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
   if(body.op==='action'&&!validBoxdropCommand(body))throw Error('arcade:invalid_command');

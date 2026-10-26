@@ -1,3 +1,7 @@
+# Quintzee /1 - installed and qualified; publication pending - 2026-10-26
+
+Approved scope is solo Arcade and fake-money multiplayer only. Hosted migration `20261026015637` and installed rollback proof pass, including actual authenticated/anonymous/service-role boundaries and server rejection of real-money setup. Source-verified recovery worker v17 is active with unchanged dispatch authentication. Combined TypeScript, all 2,941 source tests, 241 harness tests and production build pass with zero failed/skipped tests. Full Game-route live reconnect, Session Ended artifact cleanup and fresh ended-session lobby routing pass. Admission remains closed until exact-SHA publication verification. Battle31 remains held. Owner device smoke is pending. See [release evidence](QUINTZEE_PRODUCTION_PROGRESS.md).
+
 # Quintzee /1 — local prototype checkpoint, 2026-10-25
 
 Local-only branch `codex/quintzee-v1` starts from verified main `5af9e86ff`.

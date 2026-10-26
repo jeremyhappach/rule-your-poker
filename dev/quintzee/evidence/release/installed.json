@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-26T14:05:04.254Z",
+  "project": "xvhmbuppghwmwpwrkzao",
+  "migration": "20261026015637",
+  "installedRollbackProof": true,
+  "actualAuthenticatedAnonymousServiceRoles": true,
+  "realMoneyConfigureRejected": true,
+  "authorityHash": "51ae3e0b769de1a1ce5f8a4b9d4e8db2",
+  "workerVersion": 17,
+  "workerSourceVerified": true,
+  "admission": "closed pending publication",
+  "sourceTests": {
+    "passed": 2941,
+    "failed": 0,
+    "skipped": 0
+  },
+  "harnessTests": {
+    "passed": 241,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeScript": true,
+  "productionBuild": true
+}
