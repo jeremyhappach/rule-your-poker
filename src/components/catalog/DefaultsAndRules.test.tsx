@@ -12,6 +12,12 @@ import {reset,writes} from '../../../dev/lobby-catalog/mockSupabase';
 beforeEach(()=>{reset();vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});});afterEach(cleanup);
 function category(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});}
 describe('defaults persistence and rules versions',()=>{
+ it('saves Battle31 turn duration through canonical defaults without match writes',async()=>{
+ reset([{...defaultsFixture.defaults[0],game_type:'battle-31',decision_timer_seconds:15} as typeof defaultsFixture.defaults[number]]);
+ const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Cards');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'battle-31'}});
+ fireEvent.change(await screen.findByLabelText('Turn duration (seconds)'),{target:{value:'30'}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
+ expect(writes).toContainEqual(expect.objectContaining({key:'battle-31',patch:expect.objectContaining({decision_timer_seconds:30})}));writes.forEach(w=>expect(w).toMatchObject({table:'game_defaults'}));
+ });
  it('saves Canasta mode and Expert timer through the existing defaults owner',async()=>{
  reset([{...defaultsFixture.defaults[0],game_type:'canasta',decision_timer_seconds:120,canasta_mode:'beginner'} as typeof defaultsFixture.defaults[number]]);
  const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Cards');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'canasta'}});

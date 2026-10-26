@@ -1,5 +1,7 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-10-26 Battle31 owner accepted local preview `306a177311d17fd65fdf8ea2cb55fd19ce929244` and approved release. Includes automatic exchange, timer/default controls, life choreography, canonical nameplate and lower card rows. Other-game audit findings remain read-only. Production smoke is separate; see BATTLE31_RELEASE_20261026.md.
+
 2026-10-26 local Quintzee release qualification: full Game route confirms live reconnect, connected Session Ended without artifacts and fresh ended-session lobby routing. Combined 2941 source / 241 harness tests and build pass. Hosted installed rollback qualification passes. Production owner-device smoke remains pending.
 
 ## 357 settlement, recovery and Sweep smoke — October 24, 2026

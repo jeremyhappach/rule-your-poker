@@ -8,6 +8,9 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `BATTLE31_RELEASE_20261026.md` | Approved owner-smoke release, preservation checks and publication gates |
+| `BATTLE31_SMOKE_LOCAL.md` | Battle31 approved smoke corrections and detailed local evidence |
+| `CANONICAL_SEAT_AUDIT_20261026.md` | Read-only cross-game nameplate/seat findings; no other-game fixes authorized |
 | `BATTLE31_CANONICAL_CHECKPOINT.md` | Canonical table/result animation release, qualification and smoke |
 | `BATTLE31_PLAY_MONEY_LAUNCH.md` | All-user play-money admission, continuation, forward migration and qualification |
 | `PROJECT_CONTEXT.md` | First session, product overview, stack, operating constraints |

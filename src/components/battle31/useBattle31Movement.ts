@@ -15,6 +15,7 @@ export function battleFlights(job:Job,userId:string,context:string):CardTranspor
 }
 export function useBattle31Movement(v:Battle31Snapshot|null,epoch:number,userId:string,liveEntry:boolean){
  const {dispatch,cancelHand}=useCardTransport(),prior=useRef<{v:Battle31Snapshot;epoch:number}|null>(null),[queue,setQueue]=useState<Job[]>([]);
+ const [landed,setLanded]=useState<{key:string;ids:Set<string>}>({key:'',ids:new Set()});
  const context=v?'battle31:'+v.id+':'+epoch+':'+v.scope:'battle31:none';
  const contextRef=useRef(context);contextRef.current=context;
  useEffect(()=>()=>cancelHand(context,'battle31 identity retired'),[context,cancelHand]);
@@ -26,10 +27,16 @@ export function useBattle31Movement(v:Battle31Snapshot|null,epoch:number,userId:
  },[v,epoch,context,liveEntry,cancelHand]);
  useEffect(()=>{const seek=()=>{if(document.hidden){cancelHand(context,'battle31 background seek');setQueue([]);}};document.addEventListener('visibilitychange',seek);return()=>document.removeEventListener('visibilitychange',seek);},[context,cancelHand]);
  const active=queue[0]?.v.scope===v?.scope&&queue[0]?.key.startsWith(context+':')?queue[0]:undefined;
- useEffect(()=>{if(!active)return;let remaining=0;const intents=battleFlights(active,userId,context);remaining=intents.length;const done=()=>{if(--remaining<=0&&contextRef.current===context)setQueue(q=>q[0]?.key===active.key?q.slice(1):q);};
-  for(const intent of intents)if(!dispatch(intent,{onSettled:done}))done();
+ useEffect(()=>{if(!active)return;const intents=battleFlights(active,userId,context),finished=new Set<string>();let remaining=intents.length;
+  const done=(intent:CardTransportIntent)=>{if(finished.has(intent.id)||contextRef.current!==context)return;finished.add(intent.id);
+   if(active.deal)setLanded(old=>({key:active.key,ids:new Set([...(old.key===active.key?old.ids:[]),intent.id])}));
+   if(--remaining<=0)setQueue(q=>q[0]?.key===active.key?q.slice(1):q);
+  };
+  for(const intent of intents)if(!dispatch(intent,{onSettled:()=>done(intent)}))done(intent);
  },[active?.key,dispatch,context,userId]);
  const hands=v?.board.hands.map(h=>[...h])??[],center=[...(v?.board.center??[])];
  for(const job of [...queue].reverse())if(job.v.scope===v?.scope&&job.move)for(const pair of job.move.pairs){center[pair.centerIndex]=pair.in;if(v.players[job.move.actor].id===v.viewerId)hands[job.move.actor][pair.handIndex]=pair.out;}
- return {hands,center,busy:!!active,hidden:(actor:number|null,index:number)=>!!active&&(active.deal||!!active.move?.pairs.some(p=>actor===null?p.centerIndex===index:v?.players[active.move!.actor].id===v?.players[actor].id&&p.handIndex===index))};
+ return {hands,center,busy:!!active,hidden:(actor:number|null,index:number)=>!!active&&(active.deal
+  ?!(landed.key===active.key&&landed.ids.has(context+':deal:'+(actor===null?'center':actor)+':'+index))
+  :!!active.move?.pairs.some(p=>actor===null?p.centerIndex===index:v?.players[active.move!.actor].id===v?.players[actor].id&&p.handIndex===index))};
 }

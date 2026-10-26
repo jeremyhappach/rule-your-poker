@@ -320,7 +320,7 @@ export function CanonicalFeltSurface({
           className="absolute top-3 inset-x-0 px-4 z-20 flex flex-col items-center pointer-events-none"
           style={{ containerType: 'inline-size' } as React.CSSProperties}
         >
-          {isDicePlate || gameKind === 'run21' || gameKind === 'six-card-golf' ? (
+          {isDicePlate || gameKind === 'run21' || gameKind === 'six-card-golf' || gameKind === 'battle-31' ? (
             <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
@@ -354,7 +354,7 @@ export function CanonicalFeltSurface({
                 {GAME_NAME_LABEL[gameKind]}
               </span>
               <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
-                {gameKind === "battle-31" ? `Match stake ${anteAmount} chips` : potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
+                {potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
               </span>
               {gameKind === "three-five-seven" && legsToWin !== undefined && (
                 <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">

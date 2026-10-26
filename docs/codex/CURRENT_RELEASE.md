@@ -1,3 +1,15 @@
+# Battle31 owner-smoke release — qualified, publication checkpoint — 2026-10-26
+
+Jeremy accepted the local Battle31 preview and approved release. Candidate
+integration preserves current main f651a34b6, including Mega and Quintzee.
+The approved 30-second default applies to new matches only; existing matches
+and play-money/real-money admission are preserved. Other-game placement findings
+remain read-only. TypeScript, 2,955 source tests, 241 harness tests, production
+build and 18 combined-source browser layouts pass. The guarded 30-second default
+is installed with match/configuration/admission preservation assertions. Exact-SHA
+publication follows the commit/tag and approved main push; physical production
+smoke remains Jeremy's acceptance step. See [release checkpoint](BATTLE31_RELEASE_20261026.md).
+
 # Quintzee /1 - installed and qualified; publication pending - 2026-10-26
 
 Approved scope is solo Arcade and fake-money multiplayer only. Hosted migration `20261026015637` and installed rollback proof pass, including actual authenticated/anonymous/service-role boundaries and server rejection of real-money setup. Source-verified recovery worker v17 is active with unchanged dispatch authentication. Combined TypeScript, all 2,941 source tests, 241 harness tests and production build pass with zero failed/skipped tests. Full Game-route live reconnect, Session Ended artifact cleanup and fresh ended-session lobby routing pass. Admission remains closed until exact-SHA publication verification. Battle31 remains held. Owner device smoke is pending. See [release evidence](QUINTZEE_PRODUCTION_PROGRESS.md).

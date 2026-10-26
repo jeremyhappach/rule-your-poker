@@ -24,6 +24,10 @@ it('opts into existing inward name and card-row attachments without moving seats
  render(<GameplayOpponentSeatLayer family="six-card-golf" participants={participants} presentation={{inwardSeatContent:true}}/>);
  expect(cluster.mock.calls.at(-1)?.[0]).toMatchObject({slot:1,position:2,keepNameInward:true,opponentShowdownPlacement:{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}});
 });
+it('keeps Battle31 nameplate canonical while preserving inward cards and projected seats',()=>{
+ render(<GameplayOpponentSeatLayer family="battle-31" participants={participants} presentation={{inwardCardContent:true}}/>);
+ expect(cluster.mock.calls.at(-1)?.[0]).toMatchObject({slot:1,position:2,keepNameInward:false,opponentShowdownPlacement:{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}});
+});
 it.each(['gin-rummy','cribbage','yahtzee','run21','farkle'] as const)('leaves %s default geometry untouched',family=>{
  render(<GameplayOpponentSeatLayer family={family} participants={participants}/>);
  expect(cluster.mock.calls.at(-1)?.[0]).toMatchObject({keepNameInward:false,opponentShowdownPlacement:undefined});

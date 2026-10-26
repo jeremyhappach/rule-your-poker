@@ -9,6 +9,27 @@ remain separate. [Release evidence](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
 
 # Backlog
 
+## Queued — Canonical nameplate and seat placement audit — October 26, 2026
+
+- Provenance: Jeremy approved Battle31's nameplate correction and explicitly
+  requested a read-only audit of other new games. All multiplayer games should
+  follow 357's shared nameplate and seat-cluster owners; chip circles must stay
+  in their canonical positions. Other-game corrections are not approved.
+- Golf retains the coupled inward name/card override. Canasta mounts canonical
+  clusters in a narrower felt-width frame. Race Poker, 11 Up, Trip Flip, Boxdrop,
+  Take 2, Royal Flash, TriTowers, Quintzee, Run21 fullscreen and the unreleased
+  Double Solitaire worktree use custom score/name/balance surfaces rather than
+  canonical gameplay clusters. Run21 table mode, Cribbage, Gin Rummy, Yahtzee and
+  Farkle have no placement override in the inspected paths. Mega is solo-only.
+- Shared edge fitting: the canonical centered nameplate clips Route 3e072b by
+  3.57px at 320px and 0.77px at 390px in the local owner preview. Recommend a
+  canonical width/truncation fix preserving chip and configured anchor, tested
+  with 357 and every perimeter seat. No game-specific offset or chip move.
+- Scope, exact owners and suggested sequence are recorded in
+  [the read-only source audit](CANONICAL_SEAT_AUDIT_20261026.md). Fresh production
+  reproduction is not claimed. Preserve existing gameplay, score displays,
+  transport endpoints and other in-flight releases when planning corrections.
+
 ## Pending smoke — 357 real-money incident qualification — October 24, 2026
 
 - Approved settlement/runback/Stop Automatic Play/duplicate Sweep correction is

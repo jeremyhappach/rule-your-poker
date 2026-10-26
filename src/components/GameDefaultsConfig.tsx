@@ -1037,6 +1037,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     const inner = (() => {
       const entry=findGame(selectedGameType);
+      if(selectedGameType==='battle-31') {const d=getDefaultByType('battle-31');return d?<details className="catalog-settings-group" open><summary>Timing</summary><div className="space-y-2">
+        <Label htmlFor="battle31-turn-timer">Turn duration (seconds)</Label><Input id="battle31-turn-timer" type="number" min={5} max={60} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('battle-31','decision_timer_seconds',e.target.value)}/>
+        <p className="text-xs text-muted-foreground">Default 30 seconds. New matches freeze this setting; active matches keep their timer.</p></div></details>:null;}
       if(selectedGameType==='canasta') {const d=getDefaultByType('canasta');return d?<div className="space-y-2">
         <Label htmlFor="canasta-mode">Match pacing</Label><select id="canasta-mode" value={d.canasta_mode??'beginner'} onChange={e=>updateDefault('canasta','canasta_mode',e.target.value)}><option value="beginner">Beginner · 180 seconds</option><option value="expert">Expert · configured timer</option></select>
         <Label htmlFor="canasta-expert-timer">Expert turn timer (seconds)</Label><Input id="canasta-expert-timer" type="number" min={30} max={300} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('canasta','decision_timer_seconds',e.target.value)}/>

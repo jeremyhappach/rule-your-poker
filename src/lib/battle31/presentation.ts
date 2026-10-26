@@ -11,12 +11,9 @@ export function battleFrame(v:Battle31Snapshot,now:number){
   winner:!!v.settled&&(!v.terminal||at>=v.terminal.startedAt),dealer:b.dealerIndex??(v.round%2),movingDealer:result&&!v.settled&&!!p&&at>=p.clearAt&&at<p.clearAt+650};
 }
 export function battleProgress(v:Battle31Snapshot){
- const b=v.board,actor=v.players.find(p=>p.active)?.name??'Player';
- if(b.phase==='intro')return 'Dealing round '+v.round;
- if(b.phase!=='playing')return 'Round '+v.round+' result';
- if(b.closing)return actor+' · final response to '+(b.knock?v.players[b.knock.actor].name+'’s knock':'the knock');
- if(b.turn>=7)return 'Final turns · '+actor+(b.turn===7?' then '+v.players.find(p=>!p.active)?.name:' has the last decision');
- return 'Decision '+b.turn+'/8 · automatic final turns after decision 6';
+ return 'Round '+Math.min(4,Math.max(1,Math.ceil(v.board.turn/2)))+'/4';
 }
+/** Includes the current uncompleted deal; a committed result consumes that deal. */
+export function battleRoundsRemaining(v:Battle31Snapshot){return v.settled||v.board.phase==='complete'?0:Math.max(0,12-v.round+(v.board.phase==='intro'||v.board.phase==='playing'?1:0));}
 export function battleResultText(v:Battle31Snapshot){const r=v.board.result;if(!r)return v.board.event.label;
  return r.loser===null?'Round tied '+r.values[0]+'–'+r.values[1]:v.players[1-r.loser].name+' wins '+r.values[1-r.loser]+'–'+r.values[r.loser];}

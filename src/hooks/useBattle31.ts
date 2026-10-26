@@ -43,10 +43,12 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
   const timer=setTimeout(()=>void resolve(),Math.max(0,deadline-at));
   return()=>clearTimeout(timer);
  },[snapshot?.scope,snapshot?.board.deadline,snapshot?.paused,snapshot?.finished,resolve]);
- const act=async(intent:Battle31Intent)=>{
+ const act=async(intent:Battle31Intent,expected?:{scope:string;revision:number})=>{
   const control=intent.type==='autoplay_on'||intent.type==='autoplay_off';
   const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;
   if(!v||!connected||flight.current||sessionStorage.getItem(key)||document.hidden||!navigator.onLine)return;
+  if(expected&&(v.scope!==expected.scope||v.revision!==expected.revision))return;
+  if(intent.type==='swap'&&(!v.board.hands[v.players.findIndex(p=>p.id===v.viewerId)]?.includes(intent.items[0])||!v.board.center.includes(intent.items[1])))return;
   // Reclaim remains available off turn and while paused; it never resumes play.
   if(!control&&(v.paused||intent.type!=='resign'&&(!v.canAct||!battle31PlayWindow(v.board,at).playable)))return;
   const command:Battle31Command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};

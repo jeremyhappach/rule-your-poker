@@ -1,3 +1,7 @@
+## 2026-10-26 — Battle31 smoke release approved
+
+Jeremy accepted the local Battle31 preview and approved publication of its smoke corrections. This supersedes the local production hold for Battle31 only. Other-game nameplate/seat audit findings remain read-only. Preserve current main releases, existing Battle31 matches, play-money admission and real-money exclusion. The approved default becomes 30 seconds for new matches.
+
 ## 2026-10-25 — Battle31 all-user play-money access
 
 2026-10-26 Quintzee /1: freeze one SQL rule namespace for both modes. Admit only solo nonfinancial Arcade and canonical fake-money multiplayer; reject real money in server authority. Presentation theme freezes at admission; both themes share the 1500 ms rumble with stationary held dice. Installed financial/authorization proof and exact-SHA publication precede separate activation.

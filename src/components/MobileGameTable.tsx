@@ -1,3 +1,4 @@
+import {viewerLegPlacement,seatLegPlacement} from '@/lib/canonicalShell/canonicalLegPlacement';
 import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { captureDecisionInput, type DecisionInput } from "@/lib/decisionProvenance";
@@ -11947,11 +11948,7 @@ export const MobileGameTable = ({
     const legIndicator = displayLegs > 0 ? (
       <div
         className="absolute z-30"
-        style={
-          isRightSideSlot
-            ? { left: '6px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
-            : { right: '6px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
-        }
+        style={seatLegPlacement(isRightSideSlot)}
       >
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
           {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
@@ -15261,8 +15258,7 @@ export const MobileGameTable = ({
             <div
               className="absolute z-20"
               style={{
-                bottom: '8px',
-                left: '55%',
+                ...viewerLegPlacement,
                 transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >

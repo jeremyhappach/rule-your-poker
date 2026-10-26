@@ -26,7 +26,7 @@
  *   - ring class for non-yellow status rings (passed via ringClass)
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import { useDeviceSize } from '@/hooks/useDeviceSize';
 import { CanonicalChipBalanceLabel } from './CanonicalChipBalanceLabel';
@@ -124,7 +124,7 @@ export const CanonicalChipDisc = ({
   }
 
   return (
-    <div className={cn('relative', discSize)} data-chip-center={positionAnchor}>
+    <div className={cn('relative', discSize)} data-chip-center={positionAnchor} style={{'--canonical-chip-radius':`${diameterPx/2}px`} as CSSProperties}>
       {showTurnRing && (
         <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
       )}

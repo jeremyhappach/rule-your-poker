@@ -27,7 +27,9 @@ vi.mock('./diagnostics', async (importOriginal) => {
 });
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
-import { SeatAnchorLayer } from './SeatAnchorLayer';
+import { SeatAnchorLayer, useSeatAnchorsOptional } from './SeatAnchorLayer';
+import { GameplayOpponentSeatLayer } from './GameplayOpponentSeatLayer';
+import { DEFAULT_SHELL_NAMEPLATE, previewShellNameplate } from './shellNameplateConfig';
 import { ChipTransportProvider, useChipTransport } from './ChipTransportProvider';
 
 let container: HTMLDivElement;
@@ -303,4 +305,28 @@ describe('CanonicalSeatCluster — new decorator vocabulary', () => {
     }
     expect(container.querySelector('[data-chip-center="2"]')).not.toBeNull();
   });
+});
+
+// 357 passes the shared nameplate defaults directly to the canonical cluster.
+function Reference357Seat() {
+  const anchors = useSeatAnchorsOptional();
+  return <CanonicalSeatCluster slot={anchors?.byPosition.get(2)?.slot} position={2}
+    name="Opponent" chipValue="$50" namePlacement="above-chip" />;
+}
+
+it.each(['center', 'inner'] as const)('Battle31 follows the same %s nameplate configuration as 357', attachment => {
+  try {
+    act(() => previewShellNameplate({...DEFAULT_SHELL_NAMEPLATE, attachment, xOffsetDia: .1, yOffsetDia: -.1}));
+    renderInLayer(<Reference357Seat/>);
+    const nameStyle = container.querySelector('[data-canonical-seat-nameplate-layer]')?.getAttribute('style');
+    const clusterClass = container.querySelector('[data-canonical-seat-cluster]')?.getAttribute('class');
+    expect(nameStyle).toBeTruthy();
+    renderInLayer(<GameplayOpponentSeatLayer family="battle-31"
+      participants={[{id:'opponent',position:2,name:'Opponent',chips:50}]}
+      presentation={{inwardCardContent:true}}/>);
+    expect(container.querySelector('[data-canonical-seat-nameplate-layer]')?.getAttribute('style')).toBe(nameStyle);
+    expect(container.querySelector('[data-canonical-seat-cluster]')?.getAttribute('class')).toBe(clusterClass);
+  } finally {
+    act(() => previewShellNameplate(null));
+  }
 });

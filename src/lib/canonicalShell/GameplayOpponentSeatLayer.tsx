@@ -1,5 +1,7 @@
+import {seatLegPlacement} from './canonicalLegPlacement';
 import './publicTableau.css';
 import {CanonicalLifeMarkers} from '@/components/canonicalShell/CanonicalLifeMarkers';
+import {CanonicalChipLives} from '@/components/canonicalShell/CanonicalChipLives';
 import {TableauCard} from '@/lib/canonicalShell/TableauCard';
 import type {Card} from '@/lib/cardUtils';
 /**
@@ -95,8 +97,10 @@ export interface CardBacksPresentation {
 
 export interface GameplayOpponentSeatPresentation {
   lives?: (p: GameplayOpponentSeatParticipant) => {losses:number;previous?:number;dissolve?:boolean;elapsed?:number};
-  /** Reuse canonical inward name/row attachments without moving chip anchors. */
+  /** Legacy coupled name/row placement. New callers keep the canonical nameplate. */
   inwardSeatContent?: boolean;
+  /** Move only card content inward; retain canonical nameplate and seat placement. */
+  inwardCardContent?: boolean;
   /** Opt-in inspection from the seat's public tableau or card-back indicator. */
   onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
   hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
@@ -344,7 +348,7 @@ export function GameplayOpponentSeatLayer({
           />
         ) : undefined;
         const lives=presentation?.lives?.(p);
-        const chipDiscChildren = <>{autoRoll&&<AutoRollIndicator isRightSide={slot !== null && slot >= 3}/>} {lives&&<span style={{position:'absolute',top:'50%',left:'100%',marginLeft:4,transform:'translateY(-50%)',color:'#facc15',textShadow:'0 1px 2px #000'}}><CanonicalLifeMarkers {...lives}/></span>}</>;
+        const chipDiscChildren = <>{autoRoll&&<AutoRollIndicator isRightSide={slot !== null && slot >= 3}/>} {lives&&(family==='battle-31'?<CanonicalChipLives {...lives}/>:<span data-canonical-leg-anchor="seat" style={{...seatLegPlacement(slot!==null&&slot>=3),color:'#facc15',textShadow:'0 1px 2px #000'}}><CanonicalLifeMarkers {...lives}/></span>)}</>;
         const renderCardBacks =
           !!cardBacks && cardBacks.visible && cardBacks.count > 0;
 
@@ -366,7 +370,7 @@ export function GameplayOpponentSeatLayer({
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
             keepNameInward={!!presentation?.publicTableau||!!presentation?.inwardSeatContent}
-            opponentShowdownPlacement={presentation?.inwardSeatContent?{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}:undefined}
+            opponentShowdownPlacement={presentation?.inwardCardContent||presentation?.inwardSeatContent?{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}:undefined}
             innerDecoration={presentation?.publicTableau ? <button type="button" className="canonical-public-tableau" data-public-seat-tableau={p.position} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}>{presentation.publicTableau(p).map((card,i)=><div key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:presentation.hiddenTableauCards?.(p).includes(i)?'hidden':'visible'}}><TableauCard card={card} isHidden={!card} tier="small" style={{width:'100%',height:'100%'}}/></div>)}</button> : undefined}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
