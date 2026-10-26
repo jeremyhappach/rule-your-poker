@@ -29,3 +29,8 @@ describe('Quintzee scoring projection',()=>{
   expect(acceptQuintzeeSnapshot(a,{...a,id:'b',revision:3})).toBe(false);
  });
 });
+
+it('freezes only the bounded upper-bonus interval, then resumes the same gameplay deadline',()=>{
+ const b={phase:'playing',deadline:102100,rules:{durationMs:180000},celebration:{startedAt:1000,countAt:2500,endsAt:3100}} as any;
+ expect(quintzeeClock(b,1000).remaining).toBe(99000);expect(quintzeeClock(b,3000).remaining).toBe(99000);expect(quintzeeClock(b,4100).remaining).toBe(98000);
+});

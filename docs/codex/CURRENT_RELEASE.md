@@ -1,3 +1,7 @@
+# Quintzee final polish - installed, release blocked - 2026-10-26
+
+Approved manual category rolls and bounded upper-bonus presentation are locally qualified. Migration 20261026220559 is installed and was not repeated. Installed hosted proof remains MISSING after the approval-loop incident; /3 is disabled and new multiplayer admission is closed. Main has advanced with Ptown Words; a documentation-only merge conflict remains unresolved. See [exact checkpoint and remaining gates](QUINTZEE_FINAL_POLISH_RELEASE.md).
+
 # Quintzee roll timing — LOCAL review, publication held — 2026-10-26
 
 Geometry Lab now stages a Quintzee roll duration (default 1500 ms). Both-theme Start/reroll measurements, persistence/reset and concealment checks passed locally. See [timing evidence and preview instructions](QUINTZEE_ROLL_TUNING_LOCAL.md). No publication or authority changes; Take Score semantics remain pending separately.

@@ -1,0 +1,47 @@
+import {context,connect} from './database.mjs';
+import {installPolish} from './install-polish.mjs';
+import {installCandidate} from './install-candidate.mjs';
+import {readFileSync as read,writeFileSync as write} from 'node:fs';
+import {randomUUID as uuid} from 'node:crypto';
+import assert from 'node:assert/strict';
+const ctx=await context(),db='quintzee_race_'+Date.now(),root=await connect('postgres');
+if(!/^[a-zA-Z0-9_]+$/.test(ctx.template)||!/^quintzee_race_[0-9]+$/.test(db))throw Error('Local database identity');
+let clients=[];
+const q=async(c,sql,args=[])=>(await c.query(sql,args)).rows[0]?.v;
+try{
+ await root.query('CREATE DATABASE "'+db+'" TEMPLATE "'+ctx.template+'"');
+ const admin=await connect(db),a=await connect(db),b=await connect(db);clients=[admin,a,b];
+ await admin.query('BEGIN');await installCandidate(admin);await installPolish(admin);
+ const base=read('supabase/quintzee/production-proof.sql','utf8');await admin.query(base.slice(0,base.indexOf('DO $$')));
+ const ext=read('supabase/quintzee/extended-proof.sql','utf8'),start=ext.indexOf('CREATE OR REPLACE FUNCTION pg_temp.quintzee_fixture');await admin.query(ext.slice(start,ext.indexOf('DO $$ DECLARE f',start)));
+ await admin.query("UPDATE private.quintzee_release SET enabled=true,admission_enabled=true;UPDATE private.arcade_rulesets SET enabled=(id='quintzee/3') WHERE game='quintzee';UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL");
+ const f=await q(admin,'SELECT pg_temp.quintzee_fixture(2) v'),d=f.dealer,g=f.game,p=f.players,u=f.users;
+ await admin.query("UPDATE private.quintzee_matches SET state=private.quintzee_match_reduce(state,'start',NULL,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) WHERE dealer_game_id=$1",[d]);
+ await admin.query('COMMIT');
+ for(const c of [a,b]){await q(c,"SELECT set_config('request.jwt.claim.sub',$1,false) v",[u[1]]);await c.query('SET ROLE authenticated');}
+ const snapshot=await q(a,'SELECT public.quintzee_snapshot($1) v',[d]),initial=snapshot.revision,request=uuid();
+ const move=(c,id,rev)=>q(c,"SELECT public.quintzee_action($1,$2,$3,'roll',ARRAY[0]) v",[d,id,rev]);
+ const dup=await Promise.all([a,b].map(c=>move(c,request,initial)));assert.ok(dup.every(v=>v.revision===initial+1));assert.deepEqual(dup[0].core,dup[1].core);
+ const race=await Promise.allSettled([a,b].map(c=>move(c,uuid(),initial+1)));assert.equal(race.filter(r=>r.status==='fulfilled').length,1);assert.match(race.find(r=>r.status==='rejected').reason.message,/stale_revision/);
+ await q(b,"SELECT set_config('request.jwt.claim.sub',$1,false) v",[u[0]]);await assert.rejects(move(b,uuid(),initial+2),/spectator/);
+ await admin.query('BEGIN');await admin.query("UPDATE private.quintzee_matches SET state=state||jsonb_build_object('phase','complete','scores',jsonb_build_object($2::text,100,$3::text,0)) WHERE dealer_game_id=$1",[d,p[0],p[1]]);
+ await admin.query("CREATE FUNCTION pg_temp.quintzee_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=NEW.game_id AND chips<>100) THEN RAISE EXCEPTION 'injection_before_chips';END IF;RAISE EXCEPTION 'injected_after_chips';END $$;CREATE TRIGGER quintzee_failure BEFORE INSERT ON public.session_player_snapshots FOR EACH ROW EXECUTE FUNCTION pg_temp.quintzee_fail();SAVEPOINT before_failure");
+ await assert.rejects(q(admin,'SELECT private.quintzee_settle($1) v',[d]),/injected_after_chips/);await admin.query('ROLLBACK TO SAVEPOINT before_failure');
+ assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY id',[g])).rows.map(r=>r.chips),[100,100]);
+ for(const table of ['game_results','gameplay_transfer_batches','session_player_snapshots'])assert.equal((await admin.query('SELECT count(*) n FROM public.'+table+' WHERE dealer_game_id=$1',[d])).rows[0].n,'0');
+ assert.equal((await admin.query('SELECT settlement FROM private.quintzee_matches WHERE dealer_game_id=$1',[d])).rows[0].settlement,null);
+ await admin.query('DROP TRIGGER quintzee_failure ON public.session_player_snapshots;COMMIT');
+ for(const c of [a,b])await c.query('RESET ROLE');
+ await Promise.all([a,b].map(c=>q(c,'SELECT private.quintzee_settle($1) v',[d])));
+ for(const table of ['game_results','gameplay_transfer_batches'])assert.equal((await admin.query('SELECT count(*) n FROM public.'+table+' WHERE dealer_game_id=$1',[d])).rows[0].n,'1');
+ assert.deepEqual((await admin.query('SELECT chips FROM public.players WHERE game_id=$1 ORDER BY chips',[g])).rows.map(r=>r.chips),[95,105]);
+ await admin.query('UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=NULL');
+ const run=await q(admin,"SELECT public.arcade_start($1,$2,'quintzee') v",[u[0],uuid()]);await q(admin,'SELECT public.arcade_quintzee_step($1,$2) v',[u[0],run.id]);
+ await admin.query("UPDATE private.arcade_runs SET state=jsonb_set(state,'{board}',private.quintzee_v3_board_reduce(state->'board','start',NULL,floor(extract(epoch FROM clock_timestamp())*1000)::bigint)) WHERE id=$1",[run.id]);
+ const v=(await q(admin,'SELECT public.arcade_quintzee_step($1,$2) v',[u[0],run.id])).projection,req=uuid();
+ const solo=await Promise.all([a,b].map(c=>q(c,"SELECT public.arcade_quintzee_step($1,$2,$3,$4,$5,'roll',ARRAY[0]) v",[u[0],run.id,v.revision,v.view.roundId,req])));assert.deepEqual(solo.map(r=>r.outcome).sort(),['committed','duplicate']);
+ await admin.query("UPDATE private.arcade_runs SET state=jsonb_set(state,'{board,deadline}',to_jsonb(floor(extract(epoch FROM clock_timestamp())*1000)::bigint-1000000)) WHERE id=$1",[run.id]);
+ const ended=await Promise.all([a,b].map(c=>q(c,'SELECT public.arcade_quintzee_step($1,$2) v',[u[0],run.id])));assert.ok(ended.every(r=>r.record.status==='expired'));
+ assert.equal((await admin.query('SELECT count(*) n FROM private.arcade_results WHERE run_id=$1',[run.id])).rows[0].n,'0');
+ write('dev/quintzee/evidence/final-polish/concurrency.json',JSON.stringify({passed:true,local:true,at:new Date().toISOString(),balances:[95,105],cases:['independent authenticated duplicate/race','inactive actor rejected','failure after chip writes rolls back all artifacts','independent settlement exactly once','Arcade duplicate and expired-unranked recovery race'],containment:'disposable local clone; dropped in finally'},null,2));console.log('PASS independent command/settlement/Arcade races and post-chip rollback');
+}finally{await Promise.all(clients.map(c=>c.end()));await root.query('DROP DATABASE IF EXISTS "'+db+'"');await root.end();}
