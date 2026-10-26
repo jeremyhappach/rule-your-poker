@@ -15,3 +15,5 @@
 @container words-host (min-aspect-ratio:1.5){.words-shell{display:grid;grid-template-columns:minmax(0,3fr) minmax(320px,2fr);grid-template-rows:auto auto auto minmax(0,1fr);column-gap:.6rem}.words-shell .fullscreen-game-toolbar,.words-shell .fullscreen-game-scores{grid-column:1/-1}.words-shell>[data-canonical-shell-announcement-rail]{grid-column:1/-1}.words-shell .fullscreen-game-board{grid-column:1;grid-row:4}.words-shell .fullscreen-game-actions{grid-column:2;grid-row:4;align-self:center}.words-player{display:flex}.words-scores small{display:block}}
 @container words-host (max-width:350px){.words-rack{gap:0}}
 .words-player:not(:has(.words-edit)) .words-turn-actions{grid-column:1/-1}
+.words-cell small{display:block;line-height:1;font-size:.36em;right:5%;bottom:5%}
+.words-rack small{display:block;line-height:1;right:3px;bottom:3px}

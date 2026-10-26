@@ -5,7 +5,14 @@ if(!/^[a-zA-Z0-9_]+$/.test(ctx.template))throw Error('Unsafe template');await ro
 write('qualification.local/ptown-words/release/route-context.json',JSON.stringify({database}));
 const admin=await connect(database),listener=await connect(database),tokens=new Map(),streams=new Set(),requests=[];
 async function tx(user,fn){const c=await connect(database);try{await c.query('BEGIN');if(user){await c.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[user,JSON.stringify({sub:user,role:'authenticated'})]);await c.query('SET LOCAL ROLE authenticated');}const v=await fn(c);await c.query('COMMIT');return v;}catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}}
-await admin.query('BEGIN');await installCandidate(admin);await admin.query('COMMIT');
+await admin.query('BEGIN');await installCandidate(admin);
+if(process.env.PTOWN_WORDS_BOTS==='1'){
+ await admin.query('CREATE TABLE IF NOT EXISTS private.battle31_matches (LIKE private.ptown_words_matches); CREATE TABLE IF NOT EXISTS private.golf_matches (LIKE private.ptown_words_matches)');
+ for(const f of JSON.parse(read('dev/ptown-words/bot-contract.json','utf8')).functions)await admin.query(f.definition);
+ for(const part of ['bot-registration','bots','bot-recovery'])await admin.query(read('supabase/ptown-words/'+part+'.sql','utf8'));
+ await admin.query('UPDATE private.ptown_words_release SET bots_enabled=true');
+}
+await admin.query('COMMIT');
 await admin.query("UPDATE private.ptown_words_release SET enabled=true,admission_enabled=true; INSERT INTO public.game_defaults(game_type,presentation_mode,ante_amount,real_money,debug_harness,timeout_action,timeout_enforcement_enabled,pot_max_enabled,pussy_tax_enabled,leg_value,legs_to_win) VALUES('ptown-words','fullscreen',5,false,'none','none',false,false,false,0,0) ON CONFLICT(game_type) DO UPDATE SET presentation_mode='fullscreen'");
 await admin.query(`CREATE OR REPLACE FUNCTION public.ptown_words_route_notify() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_notify('ptown_words_route',jsonb_build_object('table',TG_TABLE_NAME,'schema','public','eventType',TG_OP,'new',to_jsonb(NEW),'old',CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD) ELSE '{}'::jsonb END)::text);RETURN NEW;END $$;`);
 for(const table of ['games','players','rounds','dealer_games','game_results','ptown_words_revisions','gameplay_transfer_batches','profiles'])await admin.query(`DROP TRIGGER IF EXISTS ptown_words_route_notify ON public.${table};CREATE TRIGGER ptown_words_route_notify AFTER INSERT OR UPDATE ON public.${table} FOR EACH ROW EXECUTE FUNCTION public.ptown_words_route_notify()`);

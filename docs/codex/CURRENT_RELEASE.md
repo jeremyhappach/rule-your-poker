@@ -1,4 +1,15 @@
-# Ptown Words /1 — approved release candidate — 2026-10-26
+# Ptown Words /1 — fake-money bots qualified — 2026-10-26
+
+Jeremy approved bot support through deployment and moving tile points into the
+bottom-right corner. Human release `28d0a2181` is published and admitted. Bot
+migrations `20261026234550` / `20261026235142` are installed with the separate bot admission flag closed
+until exact-SHA publication. Hosted candidate and installed financial gates PASS;
+one-browser admission, bot word, reconnect, four viewport captures, concurrent
+recovery and a complete 40-turn policy game PASS. Human rules/timers and real-money
+human admission are unchanged. See [bot qualification](PTOWN_WORDS_BOTS.md).
+Physical production smoke remains Jeremy's acceptance step.
+
+# Ptown Words /1 — human release checkpoint — 2026-10-26
 
 Complete multiplayer gameplay, canonical admission/recovery/settlement and
 fullscreen presentation are implemented. Closed migration `20261026224857` and

@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "turns": 40,
+  "placements": 40,
+  "maxChooserMs": 291,
+  "financial": {
+    "results": "1",
+    "batches": "1",
+    "chips": "200"
+  },
+  "chips": [
+    {
+      "is_bot": false,
+      "chips": 95
+    },
+    {
+      "is_bot": true,
+      "chips": 105
+    }
+  ],
+  "checks": [
+    "concurrent ordinary recovery advances once",
+    "full game legal moves and terminal ending",
+    "concurrent terminal recovery settles once",
+    "late recovery replay"
+  ]
+}

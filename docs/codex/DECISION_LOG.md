@@ -1,3 +1,14 @@
+## 2026-10-26 — Ptown Words fake-money bots approved
+
+Jeremy approved one-device UI testing with bots, validation and deployment. Keep
+2–4 total players with at least one human; bots are fake-money only, with one
+bounded policy and no difficulty selector. The chooser receives public board and
+its own rack only. Existing /1 reducer, canonical ante consent, financial settlement
+and all-human pause safeguards remain authoritative. A 750ms eligibility delay is
+served by the existing five-second recovery job; human turn clocks stay three
+minutes. No opponent-rack or bag-order access, external AI, or dictionary changes.
+See `PTOWN_WORDS_BOTS.md`.
+
 ## 2026-10-26 — Ptown Words full multiplayer delivery approved
 
 Jeremy approved implementing and deploying complete Ptown Words once release gates
