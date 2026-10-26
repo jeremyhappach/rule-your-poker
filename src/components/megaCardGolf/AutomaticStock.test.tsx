@@ -33,10 +33,10 @@ async function setup({opening=false,pending=false,stock=16,holes=9,sequential=fa
   if(body.op==='action')return authority.action('u',body.runId,body.requestId,body.revision,body.hole,body.intent,Date.now());
   return authority.state('u','r',Date.now());
  });
- let changed=()=>{};const subscribe=(_id:string,cb:()=>void)=>{changed=cb;return()=>{};};
+ let changed:((revision?:number)=>void)=()=>{};const subscribe=(_id:string,cb:(revision?:number)=>void)=>{changed=cb;return()=>{};};
  const mount=()=>render(<MegaArcade request={request as any} userId="u" audio={{request:vi.fn(()=>vi.fn())} as unknown as AudioManager} subscribe={subscribe}/>);
  history.replaceState(null,'','/?run=r');const ui=mount();await advance(1);
- return {authority,request,ui,mount,changed:()=>changed(),run:()=>authority.data.runs.r,actions:()=>request.mock.calls.filter(([b])=>b.op==='action').map(([b])=>b)};
+ return {authority,request,ui,mount,changed:(revision?:number)=>changed(revision),run:()=>authority.data.runs.r,actions:()=>request.mock.calls.filter(([b])=>b.op==='action').map(([b])=>b)};
 }
 it('draws once after opening acceptance, preserves allowance, and restores pending cards without consuming another',async()=>{
  const f=await setup({opening:true});expect(f.actions()).toHaveLength(0);
@@ -143,4 +143,57 @@ it('releases the v4 input reservation after draw failure and restores a lost acc
  mode='lost';await click('Reconnect');await advance(400);
  expect(frames.at(-1)).toMatchObject({busy:false,auto:false,locked:false});expect(f.run().pending).not.toBeNull();
  const draws=f.run().draws;await click('Reconnect');expect(f.run().draws).toBe(draws);
+});
+
+it.each(['Hidden replacement','Face-up replacement'])('does not pulse enabled-disabled-enabled on a delayed realtime echo after %s',async action=>{
+ const f=await setup({pending:true,anytime:true}),original=f.request.getMockImplementation()!;
+ f.request.mockImplementation(async body=>{if(body.op==='state')await new Promise(resolve=>setTimeout(resolve,400));return original(body);});
+ await click(action);await advance(2800);await advance(400);
+ expect(frames.at(-1)).toMatchObject({busy:false,locked:false,auto:false});
+ const revision=f.run().revision,reads=f.request.mock.calls.filter(([b])=>b.op==='state').length;
+ frames.length=0;
+ await act(async()=>{f.changed(revision);});await advance(450);
+ await act(async()=>{f.changed(revision-1);f.changed(revision);});await advance(450);
+ // An already-rendered accepted revision must never reacquire the input lock.
+ expect(frames.every(f=>!f.busy&&!f.locked&&!f.auto)).toBe(true);
+ expect(f.request.mock.calls.filter(([b])=>b.op==='state')).toHaveLength(reads);
+});
+
+it('drops a queued echo covered by the command response, but refreshes an uncovered revision',async()=>{
+ const f=await setup({pending:true,anytime:true}),original=f.request.getMockImplementation()!;
+ let release!:()=>void;const response=new Promise<void>(resolve=>{release=resolve;});
+ f.request.mockImplementation(async body=>{const result=await original(body);if(body.op==='action'&&body.intent.type==='replace')await response;return result;});
+ await click('Hidden replacement');const revision=f.run().revision;
+ const reads=f.request.mock.calls.filter(([b])=>b.op==='state').length;
+ await act(async()=>{f.changed(revision);f.changed(revision-1);release();});
+ expect(f.request.mock.calls.filter(([b])=>b.op==='state')).toHaveLength(reads);
+ await advance(2800);await advance(400);
+ const before=f.run();f.authority.action('u','r','external-discard',before.revision,before.hole,{type:'discard'},Date.now());
+ await act(async()=>{f.changed(f.run().revision);});
+ expect(f.request.mock.calls.filter(([b])=>b.op==='state')).toHaveLength(reads+1);
+ expect(f.run().discards).toBe(1);expect(f.run().pending).not.toBeNull();
+});
+
+it('keeps the newest uncovered notice while a command is in flight',async()=>{
+ const f=await setup({pending:true,anytime:true}),original=f.request.getMockImplementation()!;
+ let release!:()=>void;const response=new Promise<void>(resolve=>{release=resolve;});
+ f.request.mockImplementation(async body=>{const result=await original(body);if(body.op==='action'&&body.intent.type==='replace')await response;return result;});
+ await click('Hidden replacement');const accepted=f.run().revision;
+ let run=f.run();f.authority.action('u','r','external-draw',run.revision,run.hole,{type:'draw'},Date.now());
+ run=f.run();f.authority.action('u','r','external-discard',run.revision,run.hole,{type:'discard'},Date.now());
+ const newest=f.run().revision,reads=f.request.mock.calls.filter(([b])=>b.op==='state').length;
+ await act(async()=>{f.changed(newest);f.changed(accepted);release();});
+ expect(f.request.mock.calls.filter(([b])=>b.op==='state')).toHaveLength(reads+1);
+ await advance(2800);await advance(400);
+ expect(frames.at(-1).view.revision).toBeGreaterThanOrEqual(newest);
+ expect(f.run().discards).toBe(1);
+});
+
+it('retains an unversioned reconnect refresh queued alongside an already accepted echo',async()=>{
+ const f=await setup({pending:true,anytime:true}),original=f.request.getMockImplementation()!;
+ let release!:()=>void;const response=new Promise<void>(resolve=>{release=resolve;});
+ f.request.mockImplementation(async body=>{const result=await original(body);if(body.op==='action'&&body.intent.type==='replace')await response;return result;});
+ await click('Hidden replacement');const reads=f.request.mock.calls.filter(([b])=>b.op==='state').length;
+ await act(async()=>{f.changed();f.changed(f.run().revision);release();});
+ expect(f.request.mock.calls.filter(([b])=>b.op==='state')).toHaveLength(reads+1);
 });

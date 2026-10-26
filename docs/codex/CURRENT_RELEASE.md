@@ -16,6 +16,23 @@ timeouts. Local SQL/protocol proofs and unit checks pass; production gates remai
 
 # Mega UI transitions — approved publication, 2026-10-25
 
+# Mega action flicker follow-up — approved release, 2026-10-25
+
+Owner accepted the published highlight fix but still observed enabled → disabled
+→ enabled action flicker. The same sequence is reproduced locally: delayed
+realtime echoes reacquire the input lock after an already-accepted draw settles.
+The local correction filters covered revision notices, including queued echoes,
+while retaining newer-revision and reconnect refreshes. 105 focused tests and
+TypeScript, ten existing browser checks and production build pass; new browser
+frame traces show no late pulse. Jeremy approved publication of qualified
+candidate `87bb797d1b3fba856ff225dcb9311782f6982790`. Final TypeScript, all 2,929
+source tests, 241 harness tests and production build pass in one run.
+Exact-SHA production verification follows. The held Battle31 smoke and Quintzee
+candidates are excluded. Physical iPhone smoke remains pending.
+See [cause and evidence](MEGA_REALTIME_ECHO_LOCAL.md).
+
+# Mega UI transitions — published, action smoke incomplete, 2026-10-25
+
 Two approved presentation fixes remove decorative new-hole hover carryover and
 keep Stand Pat/Discard hidden through card presentation and automatic-draw
 handoff. Versioned eligibility, scoring, keyboard focus and recovery are
@@ -24,7 +41,9 @@ checks pass. Owner approved publication of candidate `2945df81a996fedccb286dfa0c
 It follows main `33b641bb6` directly and excludes the separate Battle31 smoke
 candidate. Final TypeScript, 2,923 source tests (one timeout passed unchanged on
 isolated rerun), 241 harness tests and production bundle are qualified.
-Exact-SHA publication verification follows integration.
+Published SHA `5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4` is verified on remote main,
+the READY production deployment, public manifest and persisted release signal.
+Publisher run `40235906451`, attempt 1, recorded the signal at 21:32:38 UTC.
 Exact accidental orange-focus carryover remains unconfirmed; physical iPhone
 smoke is pending. No runtime telemetry was added. See [qualification and release notes](MEGA_UI_TRANSITIONS_LOCAL.md).
 
