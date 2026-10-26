@@ -26,7 +26,7 @@ server.middlewares.use((req,res,next)=>{if(req.url.startsWith('/arcade/')&&req.h
 server.middlewares.use('/api/arcade',async(req,res)=>{try{
  const actor=req.headers.authorization?.replace('Bearer ','');if(!actors.has(actor))throw Error('Local authentication required');
  let body='';for await(const chunk of req){body+=chunk;if(body.length>10000)throw Error('Request too large');}
- const v=await service.arcadeOperation(rpc,actor,'Qualification',JSON.parse(body));res.setHeader('Content-Type','application/json');res.end(JSON.stringify(v));
+ const authorityStart=performance.now();const v=await service.arcadeOperation(rpc,actor,'Qualification',JSON.parse(body));res.setHeader('Server-Timing','authority;dur='+(performance.now()-authorityStart).toFixed(2));res.setHeader('Content-Type','application/json');res.end(JSON.stringify(v));
 }catch(e){res.statusCode=400;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:e.message}));}});
 server.middlewares.use('/__quintzee',async(req,res)=>{
  if(req.url.startsWith('/events')){res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});res.write(': connected\n\n');const stream={id:new URL(req.url,'http://localhost').searchParams.get('id'),res};streams.add(stream);req.on('close',()=>streams.delete(stream));return;}

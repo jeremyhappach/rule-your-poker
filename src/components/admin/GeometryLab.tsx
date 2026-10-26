@@ -62,6 +62,7 @@ import {
 } from "./GeometryLabCrashBoundary";
 import { useGeometryLabDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
+import {QuintzeeRollTimingPanel} from "./QuintzeeRollTimingPanel";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 // NoTimersAdminSection lives in Admin Settings; not mounted here.
@@ -559,6 +560,9 @@ function ShellGlobalSections() {
       </CollapsibleSection>
       <CollapsibleSection title="Deal Timing">
         <DealTimingAdminSection />
+      </CollapsibleSection>
+      <CollapsibleSection title="Quintzee Roll Timing">
+        <QuintzeeRollTimingPanel />
       </CollapsibleSection>
       <CollapsibleSection title="Table Demo">
         <TableDemoAdminSection />

@@ -1,0 +1,33 @@
+import {chromium} from '@playwright/test';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const base='http://127.0.0.1:15298',dir='dev/quintzee/evidence/roll-tuning';mkdirSync(dir,{recursive:true});
+const post=async(op,body)=>{const r=await fetch(base+'/__quintzee/'+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});assert.ok(r.ok,await r.clone().text());return r.json();};
+const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'}),cases=[],errors=[];
+async function lab(p){await p.getByRole('button',{name:'Geometry Lab',exact:true}).click();await p.getByRole('dialog').waitFor();}
+async function setDuration(p,n){await lab(p);await p.getByLabel('Roll duration (milliseconds)',{exact:true}).fill(String(n));const apply=p.getByRole('button',{name:/Apply Changes/});if(await apply.isEnabled()){await apply.click();await p.waitForFunction(()=>document.querySelector('[role=dialog]')?.textContent.includes('(draft)')===false);}await p.getByRole('button',{name:'Close',exact:true}).click();}
+try{for(const theme of ['modern','classic'])for(const durationMs of [1500,750]){
+ const f=await post('new',{solo:true,pregame:true,theme}),p=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});p.setDefaultTimeout(15000);p.on('pageerror',e=>errors.push(e.message));
+ await p.addInitScript(()=>{
+  window.__trace=null;const original=window.fetch;
+  window.fetch=async(...args)=>{let body;try{body=JSON.parse(args[1]?.body);}catch{}const t=window.__trace,isAction=body?.op==='action';if(t&&isAction){t.request=performance.now();t.intent=body.intent;}
+   const r=await original(...args);if(t&&isAction){t.responseHeaders=performance.now();t.authorityMs=Number(r.headers.get('server-timing')?.match(/dur=([\d.]+)/)?.[1]);void r.clone().text().then(()=>t.responseBody=performance.now());}return r;
+  };
+  document.addEventListener('click',e=>{if(e.target.closest?.('.q-roll'))window.__trace={click:performance.now()};},true);
+  new MutationObserver(()=>{const t=window.__trace;if(!t)return;const rolling=document.querySelector('[data-rolling=true]');if(rolling){t.rolling??=performance.now();t.concealed=[...document.querySelectorAll('[data-rolling=true]')].every(d=>d.getAttribute('aria-label').includes('rolling'));t.categoriesLocked=[...document.querySelectorAll('[data-category]')].every(d=>d.disabled);}else if(t.rolling)t.landed??=performance.now();if(t.landed&&document.querySelector('[data-category]:not([disabled])'))t.unlocked??=performance.now();}).observe(document,{attributes:true,subtree:true,childList:true});
+ });
+ await p.goto(base+'/dev/quintzee/production.html?'+new URLSearchParams(f));await p.getByRole('switch',{name:'Classic Mode'}).waitFor();if(theme==='classic')await p.getByRole('switch',{name:'Classic Mode'}).click();await setDuration(p,durationMs);await p.reload();await p.getByRole('switch',{name:'Classic Mode'}).waitFor();await lab(p);assert.equal(await p.getByLabel('Roll duration (milliseconds)',{exact:true}).inputValue(),String(durationMs));await p.screenshot({path:dir+'/lab-'+theme+'-'+durationMs+'.png',animations:'disabled'});await p.getByRole('button',{name:'Close',exact:true}).click();
+ await p.getByRole('button',{name:'Play',exact:true}).click();await p.locator('.q-roll:not([disabled])').waitFor();assert.equal(await p.getByRole('progressbar').count(),0);assert.equal(await p.getByRole('timer').count(),1);await p.screenshot({path:dir+'/ready-'+theme+'-'+durationMs+'.png'});
+ for(const action of ['Start','Reroll']){
+  let held;if(action==='Reroll'){const d=p.locator('.q-dice button').first();await d.click();held=await d.getAttribute('aria-label');}
+  await p.locator('.q-roll').click();await p.locator('[data-rolling=true]').first().waitFor();if(held){assert.equal(await p.locator('.q-dice button').first().getAttribute('data-rolling'),'false');assert.equal(await p.locator('.q-dice button').first().locator('.q-die').evaluate(e=>getComputedStyle(e).animationName),'none');assert.equal(await p.locator('.q-dice button').first().getAttribute('aria-label'),held);}
+  assert.equal(await p.getByRole('progressbar').count(),1);assert.equal(await p.getByRole('timer').count(),0);
+  await p.waitForFunction(()=>window.__trace?.unlocked);const t=await p.evaluate(()=>window.__trace);assert.ok(t.concealed&&t.categoriesLocked);assert.ok(t.landed-t.rolling>=durationMs-20&&t.landed-t.rolling<durationMs+150);assert.ok(t.unlocked-t.landed<100);
+  const timing={requestToBodyMs:t.responseBody-t.request,bodyToRumbleMs:t.rolling-t.responseBody,theme,durationMs,action,clickToRequestMs:t.request-t.click,requestToHeadersMs:t.responseHeaders-t.request,authorityMs:t.authorityMs,responseToRumbleMs:t.rolling-t.responseHeaders,visibleRumbleMs:t.landed-t.rolling,landingToUnlockMs:t.unlocked-t.landed,clickToUsableMs:t.unlocked-t.click,raw:t};cases.push(timing);console.log(JSON.stringify(timing));
+ }
+ // Same actual draft/footer behavior: Cancel discards; Reset is only persisted by Apply.
+ await lab(p);await p.getByLabel('Roll duration (milliseconds)',{exact:true}).fill('900');p.once('dialog',d=>d.accept());await p.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await p.getByLabel('Roll duration (milliseconds)',{exact:true}).inputValue(),String(durationMs));await p.getByRole('button',{name:'Reset section (draft only)',exact:true}).click();assert.equal(await p.getByLabel('Roll duration (milliseconds)',{exact:true}).inputValue(),'1500');assert.equal(JSON.parse(await p.evaluate(()=>localStorage.getItem('quintzee-roll-timing-v1')))?.durationMs??1500,durationMs);const apply=p.getByRole('button',{name:/Apply Changes/});if(await apply.isEnabled())await apply.click();await p.getByRole('button',{name:'Close',exact:true}).click();await p.reload();await p.locator('.q-roll:not([disabled])').waitFor();assert.equal(await p.locator('[data-rolling=true]').count(),0);await lab(p);assert.equal(await p.getByLabel('Roll duration (milliseconds)',{exact:true}).inputValue(),'1500');await p.close();
+ }
+ assert.deepEqual(errors,[]);writeFileSync(dir+'/timing.json',JSON.stringify({passed:true,at:new Date().toISOString(),local:true,scope:'Actual Arcade service and SQL authority over loopback; timings are not production network latency',cases,errors},null,2));
+ const f=await post('new',{solo:true,pregame:true});console.log('PREVIEW '+base+'/dev/quintzee/production.html?'+new URLSearchParams(f));writeFileSync(dir+'/preview.json',JSON.stringify(f));
+}finally{await browser.close();}

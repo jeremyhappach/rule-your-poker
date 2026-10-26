@@ -1,3 +1,7 @@
+# Quintzee roll timing — LOCAL review, publication held — 2026-10-26
+
+Geometry Lab now stages a Quintzee roll duration (default 1500 ms). Both-theme Start/reroll measurements, persistence/reset and concealment checks passed locally. See [timing evidence and preview instructions](QUINTZEE_ROLL_TUNING_LOCAL.md). No publication or authority changes; Take Score semantics remain pending separately.
+
 # Quintzee second polish — LOCAL review, publication held — 2026-10-26
 
 Moderated rolls, corrected switch/timer visibility, queued first actions, authoritative base-score celebrations and canonical finish count-up are locally qualified. New Take Score rules await owner clarification. See [second local checkpoint](QUINTZEE_POLISH_2_LOCAL.md).
