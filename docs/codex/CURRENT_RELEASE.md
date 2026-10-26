@@ -1,4 +1,13 @@
-# Ptown Words — local foundation only, publication held — 2026-10-26
+# Ptown Words /1 — approved release candidate — 2026-10-26
+
+Complete multiplayer gameplay, canonical admission/recovery/settlement and
+fullscreen presentation are implemented. Closed migration `20261026224857` and
+hosted installed rollback proof pass. Full Game-route admission, reconnect,
+concurrent terminal settlement and ended-session cleanup pass. Publication and
+activation require exact-SHA verification; physical owner smoke remains pending.
+See [release contract and evidence](PTOWN_WORDS_RELEASE.md).
+
+# Ptown Words — superseded foundation checkpoint — 2026-10-26
 
 Approved name and full ENABLE2K dictionary acquired and pinned locally. Versioned
 lookup, all-formed-word lexical checks and isolated visual mock pass focused tests.

@@ -1,3 +1,10 @@
+## 2026-10-26 — Ptown Words full multiplayer delivery approved
+
+Jeremy approved implementing and deploying complete Ptown Words once release gates
+pass, superseding the foundation hold. Version 1 supports 2–4 humans, full ENABLE2K,
+one server-owned rules engine, canonical stake consent/settlement/recovery and original
+fullscreen presentation. No solo or bot mode is activated. See `PTOWN_WORDS_RELEASE.md`.
+
 ## 2026-10-26 — Ptown Words identity and ENABLE2K approved
 
 Jeremy named the multiplayer word-tile game Ptown Words and approved the full

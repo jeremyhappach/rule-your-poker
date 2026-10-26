@@ -1,9 +1,11 @@
 # Repository map
 
-Ptown Words local foundation: `server/ptownWords` owns pinned ENABLE2K artifacts,
-lookup integrity and lexical extraction only; `dev/ptown-words` owns acquisition
-and synthetic visual fixtures. No game runtime or production admission exists.
-See `PTOWN_WORDS_FOUNDATION.md`.
+Ptown Words: `supabase/ptown-words` owns shared SQL rules, private dictionary/state,
+canonical multiplayer admission, settlement, recovery and proofs. `src/lib/ptownWords`,
+`src/hooks/usePtownWords*` and `src/components/ptownWords` own projected state and
+fullscreen interaction. `server/ptownWords` preserves pinned ENABLE2K artifacts and
+acquisition checks; `dev/ptown-words` owns isolated qualification harnesses.
+See `PTOWN_WORDS_RELEASE.md`.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 

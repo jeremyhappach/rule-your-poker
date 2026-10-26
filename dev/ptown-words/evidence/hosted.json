@@ -1,0 +1,11 @@
+{
+  "project": "xvhmbuppghwmwpwrkzao",
+  "migration": "20261026224857_ptown_words_v1",
+  "candidateRollback": "passed; no persisted candidate",
+  "installedRollback": "passed; closed=true, no_synthetic_matches=true",
+  "dictionaryEntries": 173528,
+  "dictionarySha256": "d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925",
+  "recoveryCron": "5 seconds; installed run succeeded",
+  "activation": "closed pending exact-SHA publication",
+  "at": "2026-10-26T22:54:00Z"
+}
