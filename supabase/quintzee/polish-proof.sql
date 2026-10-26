@@ -83,3 +83,11 @@ DO $$ DECLARE source text;f jsonb;d uuid;actor uuid;v jsonb;rev bigint;req uuid:
  PERFORM set_config('request.jwt.claim.sub',actor::text,true);PERFORM public.quintzee_action(d,req,rev,'roll','{}');SELECT state INTO saved FROM private.quintzee_matches WHERE dealer_game_id=d;
  PERFORM public.quintzee_action(d,req,rev,'roll','{}');PERFORM pg_temp.quintzee_assert((SELECT state=saved AND state#>>'{rules,version}'='quintzee/1' FROM private.quintzee_matches WHERE dealer_game_id=d),'historical /1 action replay retains frozen behavior');
 END $$;
+DO $$ DECLARE b jsonb;v jsonb;BEGIN
+ b:=private.quintzee_v2_board_start(private.quintzee_v2_rules(),1000)||'{"phase":"playing","scores":{"ones":3,"twos":6,"threes":9,"fours":12,"fives":15,"sixes":18}}'::jsonb;
+ v:=private.quintzee_present_board(b);PERFORM pg_temp.quintzee_assert(v->>'baseScore'='98' AND v->>'upperBonusAwarded'='35' AND (v-'baseScore'-'upperBonusAwarded')=b,'projection uses frozen scoring and changes no authoritative board fields');
+ b:=jsonb_set(b,'{scores,yahtzee}','50');v:=private.quintzee_present_board(b);PERFORM pg_temp.quintzee_assert(v->>'baseScore'='148' AND v->>'upperBonusAwarded'='35','Quintzee is the recorded 50, not another bonus award');
+ b:=private.quintzee_v1_board_start(private.quintzee_v1_rules(),1000)||'{"phase":"playing","scores":{"ones":3,"twos":6,"threes":9,"fours":12,"fives":15,"sixes":18}}'::jsonb;
+ PERFORM pg_temp.quintzee_assert(private.quintzee_present_board(b)->>'baseScore'='98','historical version uses its own frozen scorer');
+ PERFORM pg_temp.quintzee_assert(NOT has_function_privilege('authenticated','private.quintzee_present_board(jsonb)','execute'),'private scorer projection is not a public RPC');
+END $$;

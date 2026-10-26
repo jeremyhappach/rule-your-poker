@@ -1,0 +1,50 @@
+[
+  {
+    "solo": true,
+    "stage": "startup",
+    "status": "expired",
+    "phase": "ready",
+    "text": "Arcade Mode\nQuintzee\nPlay Again\nClassic Mode\nGame Over · Unranked\n0\n\nNot ranked\n\nPersonal best · All Time\n—\nYour rank · Last 30 Days\n—\nLast 30 Days\nAll Time\nTop 10 verified scores\n\nNo qualifying games yet. Set the first score."
+  },
+  {
+    "continued": {
+      "phase": "ready",
+      "round": 2
+    },
+    "solo": true,
+    "stage": "gameplay",
+    "timing": {
+      "click": 1333.5,
+      "rolling": 1463,
+      "landed": 2977.600000023842,
+      "unlocked": true
+    },
+    "status": "active",
+    "phase": "stage_complete",
+    "text": "QUINTZEE\nRound 2 of 2\nRules\nAbandon\nTOTAL SCORE\n0\n\nStart within 29s\n\nOnes\n—\nTwos\n—\nThrees\n—\nFours\n—\nFives\n—\nSixes\n—\nThree alike\n—\nFour alike\n—\nFive alike\n—\nFull house\n—\nStraight\n—\nAny\n—\nUPPER\n0/63\n+35\nALL FILLED\n+35\nReady to start\nStart"
+  },
+  {
+    "solo": false,
+    "stage": "startup",
+    "phase": "playing",
+    "autoplay": true,
+    "text": "P-Town Poker\nQUINTZEE\nRound 1 of 2\nSession\nChat\nHistory\nPlayer 2 72e3\n0\n100 chips\nPlayer 1 0a8e\n0\n100 chips\nBASE SCORE\n2\nOnes\n—\nTwos\n—\nThrees\n—\nFours\n—\nFives\n—\nSixes\n—\nThree alike\n—\nFour alike\n—\nFive alike\n—\nFull house\n—\nStraight\n—\nAny\n17\nUPPER\n0/63\n+35\nALL FILLED\n+35\nAuto-play\nRoll 1 of 3\nHOLD\nHOLD\nHOLD\nHOLD\nHOLD\nROLLING…\n2 rerolls left"
+  },
+  {
+    "continued": {
+      "phase": "ready",
+      "round": 1
+    },
+    "solo": false,
+    "stage": "gameplay",
+    "timing": {
+      "click": 1425.7000000476837,
+      "rolling": 1546.2000000476837,
+      "landed": 3052.3000000715256,
+      "unlocked": true
+    },
+    "phase": "stage_complete",
+    "autoplay": false,
+    "text": "P-Town Poker\nQUINTZEE\nRound 1 of 2\nSession\nChat\nHistory\nPlayer 2 35a8\n0\n100 chips\nPlayer 1 19cb\n0\n100 chips\n\nStart within 29s\n\nOnes\n—\nTwos\n—\nThrees\n—\nFours\n—\nFives\n—\nSixes\n—\nThree alike\n—\nFour alike\n—\nFive alike\n—\nFull house\n—\nStraight\n—\nAny\n—\nUPPER\n0/63\n+35\nALL FILLED\n+35\nReady to start\nPlayer 1 19cb’s turn"
+  }
+]

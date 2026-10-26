@@ -36,9 +36,9 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
   finally{if(flight.current===key)flight.current=null;if(alive.current&&identity.current===key)setPending(!!sessionStorage.getItem(key));}
  },[accept,key,transport]);
  const act=useCallback(async(intent:QuintzeeIntent)=>{
-  const v=current.current;if(!v||v.id!==id||flight.current===key||sessionStorage.getItem(key))return;
+  const v=current.current;if(!v||v.id!==id||sessionStorage.getItem(key))return;
   const command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
-  sessionStorage.setItem(key,JSON.stringify(command));await reconnect();
+  sessionStorage.setItem(key,JSON.stringify(command));setPending(true);await reconnect();
  },[id,key,reconnect]);
  useEffect(()=>{
   alive.current=true;current.current=null;setSnapshot(null);void reconnect();

@@ -71,7 +71,7 @@ export function GameBoard({game,userId}:{userId:string;game:'run21'|'tri-towers'
  {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/'+game+'/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
  <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
  </header>
- {game==='quintzee'&&<label className="quintzee-theme-choice"><Switch checked={classic} onCheckedChange={setClassic} disabled={pending||!!board?.activeRun} aria-label="Classic Mode"/>Classic Mode</label>}
+ {game==='quintzee'&&<label className="quintzee-theme-choice">Classic Mode<Switch className="quintzee-theme-switch" checked={classic} onCheckedChange={setClassic} disabled={pending||!!board?.activeRun} aria-label="Classic Mode"/></label>}
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Game Over':'Game Over · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
  <p>{board.latestResult.status==='completed'&&board.latestResult.ruleset&&board.latestResult.ruleset!==board.ruleset&&!board.compatibleRulesets?.includes(board.latestResult.ruleset)?'Recorded under different rules. See info.':board.latestResult.status!=='completed'?'Not ranked':board.latestResult.rank!=null?'This game · #'+board.latestResult.rank.toLocaleString():'Score recorded'}</p></div>}
  <div className="arcade-summary"><div><span>Personal best · All Time</span><strong>{board?.personalBest?.toLocaleString()??'—'}</strong></div>
