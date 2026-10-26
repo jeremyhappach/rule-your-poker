@@ -1,3 +1,11 @@
+# Ptown Words — local foundation only, publication held — 2026-10-26
+
+Approved name and full ENABLE2K dictionary acquired and pinned locally. Versioned
+lookup, all-formed-word lexical checks and isolated visual mock pass focused tests.
+There is no word-game runtime/admission/settlement to preserve or publish; the
+full-game scope question is pending. No activation, migration or deployment.
+See [foundation checkpoint](PTOWN_WORDS_FOUNDATION.md).
+
 # Battle31 owner-smoke release — qualified, publication checkpoint — 2026-10-26
 
 Jeremy accepted the local Battle31 preview and approved release. Candidate

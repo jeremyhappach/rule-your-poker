@@ -1,5 +1,10 @@
 # Repository map
 
+Ptown Words local foundation: `server/ptownWords` owns pinned ENABLE2K artifacts,
+lookup integrity and lexical extraction only; `dev/ptown-words` owns acquisition
+and synthetic visual fixtures. No game runtime or production admission exists.
+See `PTOWN_WORDS_FOUNDATION.md`.
+
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 
 Battle31 all-user play-money launch: migration

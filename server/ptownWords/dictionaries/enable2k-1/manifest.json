@@ -1,0 +1,16 @@
+{
+  "id": "enable2k/1",
+  "edition": "ENABLE2K master vocabulary",
+  "sourceRepository": "https://github.com/BartMassey/wordlists",
+  "sourceCommit": "af52415c13af809bd8757a40f17f46e79d09583c",
+  "sourceUrl": "https://raw.githubusercontent.com/BartMassey/wordlists/af52415c13af809bd8757a40f17f46e79d09583c/enable2k.txt.gz",
+  "noticeUrl": "https://raw.githubusercontent.com/BartMassey/wordlists/af52415c13af809bd8757a40f17f46e79d09583c/README-enable2k.txt",
+  "wordCount": 173528,
+  "normalization": "ASCII uppercase; ascending code-unit order; UTF-8; LF; trailing LF; no vocabulary filtering or supplementation",
+  "archiveSha256": "2c1093669cd16439bdb0a693a0058626c9c9f82e59244c9b0bde89515d44d3ad",
+  "sourceSha256": "2262de288ddc2b2ccfb2e46119fb25f02311af5ba1e1a77802817b76268dff99",
+  "sha256": "d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925",
+  "noticeSha256": "ce998d561ba84df4aea9840a8e729218fa61cf5de5d8480e3efc9965a9a22751",
+  "minLength": 2,
+  "maxLength": 28
+}

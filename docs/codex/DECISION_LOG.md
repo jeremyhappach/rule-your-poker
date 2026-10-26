@@ -1,3 +1,13 @@
+## 2026-10-26 — Ptown Words identity and ENABLE2K approved
+
+Jeremy named the multiplayer word-tile game Ptown Words and approved the full
+public-domain ENABLE2K vocabulary, accepting differences from tournament lists.
+Preserve the original distribution notice, pin ID/hash per future match, and never
+supplement the list. Original navy/ivory visuals and teal/cyan/amber/violet premiums
+replace prior working branding. This is a local foundation: no existing word-game
+runtime was found, and full-game scope clarification precedes implementation of
+admission, gameplay and settlement. See `PTOWN_WORDS_FOUNDATION.md`.
+
 ## 2026-10-26 — Battle31 smoke release approved
 
 Jeremy accepted the local Battle31 preview and approved publication of its smoke corrections. This supersedes the local production hold for Battle31 only. Other-game nameplate/seat audit findings remain read-only. Preserve current main releases, existing Battle31 matches, play-money admission and real-money exclusion. The approved default becomes 30 seconds for new matches.
