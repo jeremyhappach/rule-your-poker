@@ -7,7 +7,7 @@ export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 // ownership/access, frozen revision/round and immutable receipt under its lock.
 export function triShortcut(body:Record<string,any>){return body.game==='tri-towers'&&body.presentationVersion===4&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['remove','draw','take_score','abandon'].includes(body.intent.type)&&(body.intent.type!=='remove'||Number.isInteger(body.intent.index)));}
 // The stored game and all authorization/receipt checks remain in the locked RPC.
-const validQuintzeeCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['roll','score','abandon'].includes(body.intent.type)&&Array.isArray(body.intent.items)&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=0&&Number(i)<(body.intent.type==='score'?12:5))&&(body.intent.type==='score'?body.intent.items.length===1:body.intent.type==='abandon'?body.intent.items.length===0:body.intent.items.length<=5&&new Set(body.intent.items).size===body.intent.items.length);
+const validQuintzeeCommand=(body:Record<string,any>)=>isUuid(body.requestId)&&Number.isSafeInteger(body.revision)&&typeof body.roundId==='string'&&body.intent&&['start','roll','score','score_zero','abandon'].includes(body.intent.type)&&Array.isArray(body.intent.items)&&body.intent.items.every((i:unknown)=>Number.isInteger(i)&&Number(i)>=0&&Number(i)<(['score','score_zero'].includes(body.intent.type)?12:5))&&(['score','score_zero'].includes(body.intent.type)?body.intent.items.length===1:['start','abandon'].includes(body.intent.type)?body.intent.items.length===0:body.intent.items.length<=5&&new Set(body.intent.items).size===body.intent.items.length);
 export function quintzeeShortcut(body:Record<string,any>){return body.game==='quintzee'&&body.presentationVersion===1&&isUuid(body.runId)&&(body.op==='state'||body.op==='action'&&validQuintzeeCommand(body));}
 async function quintzeeStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
  const result=await rpc('arcade_quintzee_step',{p_actor:userId,p_run:id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.items}:{})});
@@ -67,7 +67,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
  }
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
-  await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
+  body.game==='quintzee'?await rpc('arcade_quintzee_start',{p_actor:userId,p_request:body.requestId,p_theme:body.theme??'modern'}):await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
  if(row.game==='quintzee'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');

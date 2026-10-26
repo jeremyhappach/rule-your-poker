@@ -12,7 +12,7 @@
 .q-players span { display:block; font-size:clamp(8px,1.4cqh,12px); opacity:.8; }
 .q-players strong { font-size:clamp(18px,3.5cqh,30px); font-variant-numeric:tabular-nums; }
 [data-theme=modern] .q-players>div { background:#10172d; border-radius:1em; }
-.q-timing { display:flex; align-items:center; padding:0 1%; }
+.q-timing { position:relative;display:flex; align-items:center; padding:0 1%; }
 .q-time { width:100%;text-align:center; }
 .q-time [role=progressbar] { height:4cqh; min-height:14px; border-radius:8px; background:#001e15; overflow:hidden; }
 .q-time i { display:block; height:100%; background:repeating-linear-gradient(to right,#c8ee67 0,#c8ee67 5%,transparent 5%,transparent 6%); }
@@ -21,13 +21,10 @@
 .q-scorecard section { display:grid; grid-template-rows:repeat(6,minmax(0,1fr)); gap:.6cqh; min-width:0; }
 .q-category { display:flex; align-items:center; justify-content:space-between; text-align:left; min-width:0; border:1px solid #658660; border-radius:.5cqh; padding:0 5%; background:#1c6338; color:#d1d9b5; font-size:clamp(12px,2.25cqh,20px); font-weight:700; touch-action:manipulation; }
 .q-category strong { min-width:1.5em; text-align:center; font-variant-numeric:tabular-nums; color:#b9c8ac; }
-.q-category[data-available=true] { background:#327a40; color:#fff8dc; }.q-category[data-available=true] strong { color:#ffed60; background:#123c21; border-radius:.3em; padding:.1em .2em; }
 .q-category[data-banked=true] { background:#153c2c; color:#a7c7a9; }.q-category[data-banked=true] strong { color:#e6efd8; }.q-category i { font-style:normal; font-size:.55em; margin-left:.15em; color:#98cc93; }
 .q-category:disabled { cursor:default; }.q-category:focus-visible,.q-dice button:focus-visible,.q-roll:focus-visible { outline:3px solid white; outline-offset:2px; }
 [data-theme=modern] .q-scorecard { background:#0c1429; border-color:#6571a4; box-shadow:0 0 20px #6355ac22; }
 [data-theme=modern] .q-category { background:#253956; border-color:#506284; color:#aebbd2; border-radius:1cqh; }
-[data-theme=modern] .q-category[data-available=true] { background:linear-gradient(130deg,#4e4676,#35466d); color:white; }
-[data-theme=modern] .q-category[data-available=true] strong { background:#1c2444; color:#ffdd8c; }
 [data-theme=modern] .q-category[data-banked=true] { background:#18273c; }
 .q-bonuses { display:flex; align-items:center; justify-content:space-between; gap:2%; font-size:clamp(9px,1.6cqh,14px); padding:0 1%; }
 .q-bonuses span { display:flex; flex:1; justify-content:space-between; gap:.2em; opacity:.7; }.q-bonuses b { font-variant-numeric:tabular-nums; }.q-bonuses em { font-style:normal; color:#ffe16a; }.q-bonuses [data-earned=true] { opacity:1; color:#e8ffaf; }
@@ -53,4 +50,8 @@
  .q-scorecard { grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:1cqh; }
  .q-scorecard section { display:contents; }
 }
-@media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-dice [data-rolling=true] .q-die { animation:q-roll .15s linear 10; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { 0%,100%{transform:none}25%{transform:translate(-3%,4%) rotate(-14deg)}50%{transform:translate(4%,-4%) rotate(12deg)}75%{transform:translate(-2%,3%) rotate(-8deg)} }}
+@media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-dice [data-rolling=true] .q-die { animation:q-roll .12s linear infinite; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { 0%{transform:translate(-18%,10%) rotate(-65deg) scale(.86)}25%{transform:translate(16%,-18%) rotate(70deg) scale(1.08)}50%{transform:translate(-12%,-8%) rotate(-85deg) scale(.9)}75%{transform:translate(12%,15%) rotate(55deg) scale(1.04)}100%{transform:translate(-18%,10%) rotate(-65deg) scale(.86)} }}
+
+.q-category[data-banked=true]{opacity:.48}.q-start-deadline{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;color:#073c2e;font-weight:bold;font-size:1.7cqh;pointer-events:none}.quintzee-theme-choice{display:flex;align-items:center;gap:.7rem;margin:1rem 0}
+
+.q-autoplay{position:absolute;right:0;top:.6cqh;display:flex;align-items:center;gap:.4em;font-size:1.7cqh;pointer-events:auto}

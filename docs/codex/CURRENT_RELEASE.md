@@ -1,3 +1,7 @@
+# Quintzee polish — LOCAL review only, 2026-10-26
+
+The five owner-smoke corrections are implemented locally on `codex/quintzee-polish-local`. Publication is explicitly held pending preview review. The prior Quintzee /1 production release is complete per owner smoke; the older entries below are historical checkpoints. See [local polish and evidence](QUINTZEE_POLISH_LOCAL.md).
+
 # Battle31 owner-smoke release — qualified, publication checkpoint — 2026-10-26
 
 Jeremy accepted the local Battle31 preview and approved release. Candidate

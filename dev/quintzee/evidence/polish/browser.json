@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-26T19:05:03.796Z",
+  "cases": [
+    "modern: actual pregame preference, empty Start, independent clocks, reconnect, 1500ms concealment, held die, no hints, zero cancellation/commit, dim completed",
+    "classic: actual pregame preference, empty Start, independent clocks, reconnect, 1500ms concealment, held die, no hints, zero cancellation/commit, dim completed",
+    "multiplayer actual shell: empty Start, refresh preserves deadline, first roll",
+    "solo first-action expiry returns to actual unranked leaderboard"
+  ],
+  "errors": [],
+  "limitation": "Loopback synthetic authentication with real adapters and isolated SQL authority; production unchanged."
+}

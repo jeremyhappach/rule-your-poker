@@ -1,4 +1,4 @@
-const localActor=new URLSearchParams(location.search).get('user');
+const localActor=new URLSearchParams(location.search).get('user')??sessionStorage.getItem('quintzee-local-actor');if(localActor)sessionStorage.setItem('quintzee-local-actor',localActor);
 // Optional canonical presentation reads in the isolated loopback preview.
 const channels=new Map<object,EventSource>();
 async function request(path:string,body:object){const user=localActor;const r=await fetch('/__quintzee/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user,...body})});return r.json();}

@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-26T19:10:42.478Z",
+  "local": true,
+  "tests": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed: tsc -p tsconfig.app.json --noEmit",
+  "build": "passed: vite build",
+  "authority": "passed, rollback contained",
+  "browser": "passed: both themes, multiplayer startup, solo expiry, paused reclaim",
+  "productionMutations": false,
+  "notRun": [
+    "broad unrelated source/harness suites",
+    "hosted /2 migration or deployed qualification"
+  ],
+  "hashes": {
+    "src/components/quintzee/QuintzeeView.tsx": "e00e636058313e26aabef0708d18560ea7e72df00698d5acdb30bbb994e3ad67",
+    "src/components/quintzee/QuintzeeDie.tsx": "bf7fb8fb90bb3cb25855367363cc8094fd38b8ffe7d0d96faa383b47d0ab1a4b",
+    "src/components/quintzee/quintzee.css": "100fe142831a1b3c635511a08dd02b683bcb6a08370eb936f48d518b1f6d71f9",
+    "src/hooks/useQuintzeeTheme.ts": "0136a127854c4b6227812b6503f2518546511d189f3df7323ce6970fe4eb10ce",
+    "src/lib/quintzee/model.ts": "e04e2a94c3a90bc97efeb0a60d8f4e50181be42bb5fb220a1dac14420d38eb01",
+    "src/lib/quintzee/client.ts": "5e1fbdfd0820df665dd8fbfe33651080929be8e5f3085be3ff1521dca227c562",
+    "src/pages/Arcade.tsx": "15dcda52378fec1123c77a845581ef2eac597fc319a743b961f986b72762eb3d",
+    "server/arcade/service.ts": "ba21ee268a99bffabc3ebb13505304fbfaebb1865256f1b54a97847c80379fb0",
+    "supabase/quintzee/version-two.sql": "f441b8d401d5c1344dab2c2c4692171b3caf12e29fdbf7cbdb065109a955a6c6",
+    "supabase/quintzee/polish-v2.sql": "fc7a2060667eb7990bbfc312e63065719fb889972bf9000bf78099c20231b259"
+  }
+}

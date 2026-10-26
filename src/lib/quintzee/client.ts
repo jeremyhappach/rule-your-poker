@@ -25,14 +25,14 @@ export function projectQuintzee(raw:any,userId:string,solo:boolean):QuintzeeProd
  const id=raw.identity.dealerGameId,state=raw.core as QuintzeeState;
  return {id,revision:raw.revision,scope:[id,raw.identity.roundId,state.round,state.turnIndex].join(':'),serverAt:raw.serverAt,state,
   theme:raw.theme==='modern'?'modern':'classic',pausedAt:raw.pausedAt??null,status:state.finished?'completed':'active',outcome:'current',
-  identity:raw.identity,financial:raw.financial,settlement:raw.settlement,terminal:raw.terminal,closed:raw.finished,viewerId:raw.viewerId,
+  autoplay:raw.autoplay??false,identity:raw.identity,financial:raw.financial,settlement:raw.settlement,terminal:raw.terminal,closed:raw.finished,viewerId:raw.viewerId,
   playerNames:Object.fromEntries(raw.players.map((p:any)=>[p.id,p.name])),participants:raw.players.map((p:any)=>({...p,score:state.scores[p.id]??0,active:p.id===state.players[state.turnIndex],chips:raw.financial?.balances[p.id]}))};
 }
 export function quintzeeTransport(id:string,userId:string,solo:boolean):QuintzeeTransport{
  const project=(v:any)=>projectQuintzee(v,userId,solo);
  return {
   load:async()=>project(solo?await arcadeRequest({op:'state',game:'quintzee',runId:id}):await quintzeeRpc('quintzee_snapshot',{p_dealer_game_id:id})),
-  send:async c=>project(solo?await arcadeRequest({op:'action',game:'quintzee',runId:id,requestId:c.requestId,revision:c.revision,roundId:c.scope,intent:c.intent}):await quintzeeRpc('quintzee_action',{p_dealer_game_id:id,p_request_id:c.requestId,p_revision:c.revision,p_action:c.intent.type,p_items:c.intent.items})),
+  send:async c=>project(solo?await arcadeRequest({op:'action',game:'quintzee',runId:id,requestId:c.requestId,revision:c.revision,roundId:c.scope,intent:c.intent}):c.intent.type==='reclaim'?await quintzeeRpc('quintzee_reclaim',{p_dealer_game_id:id,p_revision:c.revision}):await quintzeeRpc('quintzee_action',{p_dealer_game_id:id,p_request_id:c.requestId,p_revision:c.revision,p_action:c.intent.type,p_items:c.intent.items})),
   subscribe:refresh=>{
    const channel=supabase.channel(`quintzee:${id}:${crypto.randomUUID()}`).on('postgres_changes',{event:'*',schema:'public',table:solo?'arcade_revisions':'quintzee_revisions',filter:`${solo?'run_id':'dealer_game_id'}=eq.${id}`},refresh).subscribe(state=>{if(state==='SUBSCRIBED')refresh();});
    return()=>{void supabase.removeChannel(channel);};

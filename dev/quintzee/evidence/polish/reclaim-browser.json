@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-26T19:08:48.683Z",
+  "case": "Paused canonical reclaim clears automatic control without resuming, dice change, or clock renewal"
+}
