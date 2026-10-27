@@ -2,8 +2,9 @@
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
-vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions}:any)=><div>{children}{actions}</div>}));
+vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions,scores}:any)=><div>{scores}{children}{actions}</div>}));
 import {PtownWordsView} from './PtownWordsView';
+import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
 const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,serverAt:1000,rules:{version:'ptown-words/1',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:180000},players:[{id:'me',userId:'u1',name:'You',seat:1,isBot:false},{id:'other',userId:'u2',name:'Pat',seat:2,isBot:true}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1},{id:3,face:'?',value:0}],scores:{me:0,other:0},turn:1,deadline:181000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:3,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:100,other:100},resultId:null,batch:null},moves:[],event:{label:'Game started',points:0}} as WordsSnapshot;
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
@@ -13,7 +14,7 @@ it('double-tap zooms out without placing, returning a staged tile, or submitting
  tap(cell);act(()=>vi.advanceTimersByTime(120));tap(cell);act(()=>vi.advanceTimersByTime(400));expect(container.querySelectorAll('.is-staged')).toHaveLength(0);expect(screen.getByRole('button',{name:'C, 3 points'}).getAttribute('aria-pressed')).toBe('true');expect(screen.queryByRole('button',{name:'Zoom Out'})).toBeNull();
  fireEvent.click(cell);tap(cell);act(()=>vi.advanceTimersByTime(301));expect(container.querySelectorAll('.is-staged')).toHaveLength(1);
  tap(cell);act(()=>vi.advanceTimersByTime(120));tap(cell);act(()=>vi.advanceTimersByTime(400));expect(container.querySelectorAll('.is-staged')).toHaveLength(1);expect(intent).not.toHaveBeenCalled();
- expect([...container.querySelectorAll('.words-turn-actions button')].map(b=>b.textContent)).toEqual(['Undo','Recall','Exchange','Pass']);expect(screen.getByRole('button',{name:'Submit Word'}).parentElement?.className).toBe('words-player');
+ expect([...container.querySelectorAll('.words-turn-actions button')].map(b=>b.textContent)).toEqual(['Undo','Recall']);expect(screen.getByRole('button',{name:'Submit Word'}).parentElement?.className).toBe('words-player');
 });
 it('double-tapping with a blank selected never opens its letter picker',()=>{const {container}=render(<PtownWordsView {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Blank, 0 points'}));const cell=container.querySelector('[data-square="112"]')!;tap(cell);act(()=>vi.advanceTimersByTime(100));tap(cell);act(()=>vi.advanceTimersByTime(400));expect(screen.queryByRole('dialog')).toBeNull();expect(container.querySelectorAll('.is-staged')).toHaveLength(0);});
 it('a new turn cancels a pending tap before it can alter a draft',()=>{const {container,rerender}=render(<PtownWordsView {...props}/>);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));tap(container.querySelector('[data-square="112"]')!);rerender(<PtownWordsView {...props} view={{...view,turn:2,canAct:false,activePlayerId:'other'}}/>);act(()=>vi.advanceTimersByTime(400));expect(container.querySelectorAll('.is-staged')).toHaveLength(0);});
@@ -41,4 +42,34 @@ it('handles acceptance and opponent reveal arriving together without restoring t
  const {container,rerender}=render(<PtownWordsView {...props}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);
  rerender(<PtownWordsView {...props} view={opponent} now={1200}/>);expect(container.querySelector('.is-zoom')).not.toBeNull();
  rerender(<PtownWordsView {...props} view={opponent} now={4000}/>);expect(container.querySelector('.is-overview')).not.toBeNull();
+});
+it('shows each dictionary rejection for 1500ms without discarding draft/camera or resetting the clock',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props}/>);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC" errorVersion={1}/>);expect(screen.getByRole('alert').textContent).toBe('invalid word');
+ act(()=>vi.advanceTimersByTime(1499));expect(screen.getByRole('alert')).not.toBeNull();act(()=>vi.advanceTimersByTime(1));expect(screen.queryByRole('alert')).toBeNull();
+ rerender(<PtownWordsView {...props} now={3000} error="ptown_words:invalid_word:CC" errorVersion={2}/>);expect(screen.getByRole('alert')).not.toBeNull();expect(container.querySelector('time')?.textContent).toBe('2:58');
+ expect(container.querySelectorAll('.is-staged')).toHaveLength(1);expect(container.querySelector('.is-zoom')).not.toBeNull();
+ rerender(<PtownWordsView {...props} error="Connection uncertain. Reconnect to retry." errorVersion={3}/>);expect(screen.queryByRole('alert')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Connection uncertain');
+ for(const error of ['42501','ptown_words:disconnected','ptown_words:rate_limited','invalid_word:CAT'])expect(isInvalidWord(error)).toBe(false);
+});
+it('shuffles presentation IDs while preserving selection, staged placements, recall and authority',()=>{
+ const {container}=render(<PtownWordsView {...props}/>);const ids=()=>[...container.querySelectorAll('.words-rack button')].map(b=>b.getAttribute('data-tile-id'));
+ const before=ids();fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(screen.getByRole('button',{name:'Shuffle rack'}));expect(ids()).not.toEqual(before);expect(screen.getByRole('button',{name:'C, 3 points'}).getAttribute('aria-pressed')).toBe('true');
+ fireEvent.click(container.querySelector('[data-square="112"]')!);expect(screen.queryByRole('button',{name:'Exchange'})).toBeNull();expect(screen.queryByRole('button',{name:'Pass'})).toBeNull();
+ for(let i=0;i<8;i++)fireEvent.click(screen.getByRole('button',{name:'Shuffle rack'}));expect(container.querySelector('.is-staged')?.textContent).toBe('C3');expect(ids().sort()).toEqual(before.sort());expect(intent).not.toHaveBeenCalled();expect(container.querySelector('time')?.textContent).toBe('3:00');
+ fireEvent.click(screen.getByRole('button',{name:'Recall'}));expect(screen.getByRole('button',{name:'Pass'})).not.toBeNull();expect(screen.getByRole('button',{name:'Exchange'})).not.toBeNull();
+ expect(shuffleRack([1],()=>0)).toEqual([1]);expect(shuffleRack([1,2,3],()=>.999)).not.toEqual([1,2,3]);
+});
+it('restores actions after final undo with a short rack and preserves the bag exchange limit',()=>{
+ const {container}=render(<PtownWordsView {...props} view={{...view,bagCount:6}}/>);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'Undo'}));
+ expect((screen.getByRole('button',{name:'Exchange'}) as HTMLButtonElement).disabled).toBe(true);expect((screen.getByRole('button',{name:'Pass'}) as HTMLButtonElement).disabled).toBe(false);
+});
+it('highlights the presented actor and enables rack/pulse only at the authoritative handoff',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props} view={opponent} now={1200}/>);expect(container.querySelector('.words-rack')?.getAttribute('data-actionable')).toBe('false');expect(container.querySelector('[data-active="true"]')?.textContent).toContain('Pat');expect(container.querySelector('.words-your-turn')).toBeNull();
+ rerender(<PtownWordsView {...props} view={opponent} now={4000}/>);expect(container.querySelector('.words-rack')?.getAttribute('data-actionable')).toBe('true');expect(container.querySelector('[data-active="true"]')?.textContent).toContain('You');expect(container.querySelector('.words-your-turn')).not.toBeNull();
+});
+it('exchanges selected IDs only, and cancel does not send an action',async()=>{
+ render(<PtownWordsView {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Exchange'}));expect((screen.getByRole('button',{name:'Exchange 0 tiles'}) as HTMLButtonElement).disabled).toBe(true);
+ const dialog=screen.getByRole('dialog');fireEvent.click(dialog.querySelector('.words-exchange button')!);await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Exchange 1 tiles'})));expect(intent).toHaveBeenLastCalledWith({type:'exchange',items:[{tileId:1}]});
+ fireEvent.click(screen.getByRole('button',{name:'Exchange'}));fireEvent.click(screen.getByRole('button',{name:'Cancel'}));expect(intent).toHaveBeenCalledTimes(1);
 });

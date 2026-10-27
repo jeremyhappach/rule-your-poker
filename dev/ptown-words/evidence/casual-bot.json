@@ -1,0 +1,320 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "coreAnd12FinancialCases": true,
+  "privateVocabulary": {
+    "rls": true,
+    "primaryKey": 1,
+    "clientSelect": false
+  },
+  "comparisons": [
+    {
+      "letters": "QUIZERT",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "QUIZ"
+        ],
+        "score": 44
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "TIRE"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 24
+    },
+    {
+      "letters": "QUIZERT",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "RITZ",
+          "AR",
+          "TI"
+        ],
+        "score": 19
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "CATER"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 22
+    },
+    {
+      "letters": "RETAINS",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "STAINER"
+        ],
+        "score": 66
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "SEAT"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 15
+    },
+    {
+      "letters": "RETAINS",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "CISTERNA"
+        ],
+        "score": 83
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "CARES"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 18
+    },
+    {
+      "letters": "CATSER?",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "YAREST"
+        ],
+        "score": 12
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "WEST"
+        ],
+        "score": 6
+      },
+      "elapsedMs": 17
+    },
+    {
+      "letters": "CATSER?",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "CUSEC"
+        ],
+        "score": 11
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "COATS"
+        ],
+        "score": 7
+      },
+      "elapsedMs": 16
+    },
+    {
+      "letters": "XYLYLAA",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "LAXLY"
+        ],
+        "score": 38
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "ALL"
+        ],
+        "score": 6
+      },
+      "elapsedMs": 15
+    },
+    {
+      "letters": "XYLYLAA",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "ATAXY"
+        ],
+        "score": 31
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "ALLY"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 48
+    },
+    {
+      "letters": "HELLOST",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "SLOTH"
+        ],
+        "score": 24
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "SELL"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 15
+    },
+    {
+      "letters": "HELLOST",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "CLOTHES"
+        ],
+        "score": 16
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "TO",
+          "AT",
+          "TO"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 18
+    },
+    {
+      "letters": "AEIOUNR",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "ROUEN"
+        ],
+        "score": 12
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "RAIN"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 16
+    },
+    {
+      "letters": "AEIOUNR",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "COENURI"
+        ],
+        "score": 10
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "CATER"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 18
+    },
+    {
+      "letters": "BREADST",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "SABED"
+        ],
+        "score": 20
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "SAD"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 15
+    },
+    {
+      "letters": "BREADST",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "CABERS"
+        ],
+        "score": 11
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "CATER"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 18
+    },
+    {
+      "letters": "JUMPSAE",
+      "midgame": false,
+      "previous": {
+        "action": "place",
+        "words": [
+          "SPUME"
+        ],
+        "score": 20
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "UP"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 16
+    },
+    {
+      "letters": "JUMPSAE",
+      "midgame": true,
+      "previous": {
+        "action": "place",
+        "words": [
+          "STAMP"
+        ],
+        "score": 15
+      },
+      "casual": {
+        "action": "place",
+        "words": [
+          "CAPS"
+        ],
+        "score": 8
+      },
+      "elapsedMs": 17
+    }
+  ]
+}

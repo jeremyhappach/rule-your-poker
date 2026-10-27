@@ -11,6 +11,10 @@ guards fake-money admission. See `PTOWN_WORDS_RELEASE.md` and `PTOWN_WORDS_BOTS.
 Local-only polish: `presentation.sql` prototypes the frozen, bounded handoff;
 `src/lib/ptownWords/presentation.ts` derives public reveal/gesture presentation.
 `PTOWN_WORDS_POLISH_LOCAL.md` records the preview and publication hold.
+Combined local polish: `server/ptownWords/bots/scowl-20` pins the licensed familiar
+bot subset; `bot-vocabulary.sql` plus `bots.sql` own its bounded casual policy.
+`rackPresentation.ts` owns only display shuffle and dictionary-error classification.
+`casual-bot-proof.mjs` / `polish-pass-browser.mjs` qualify the local candidate.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 

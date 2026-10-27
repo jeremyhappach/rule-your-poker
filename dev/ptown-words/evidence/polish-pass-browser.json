@@ -1,0 +1,246 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    {
+      "label": "phone",
+      "width": 390,
+      "height": 760,
+      "touchDrag": {
+        "beforePan": {
+          "x": 179,
+          "y": 206
+        },
+        "afterPan": {
+          "x": 179,
+          "y": 304
+        },
+        "emulated": true
+      },
+      "invalidWindows": [
+        1504.3000000715256,
+        1511.3999999761581
+      ],
+      "noDeadlineExtension": true,
+      "shufflePreservedIds": true,
+      "scoreBoxes": [
+        {
+          "border": "1px",
+          "color": "rgb(32, 60, 65)",
+          "active": "false"
+        },
+        {
+          "border": "1px",
+          "color": "rgb(27, 40, 53)",
+          "active": "true"
+        }
+      ],
+      "modalColors": {
+        "dialog": {
+          "fg": "rgb(243, 242, 232)",
+          "bg": "rgb(28, 41, 57)"
+        },
+        "title": {
+          "fg": "rgb(243, 242, 232)",
+          "bg": "rgba(0, 0, 0, 0)"
+        },
+        "tiles": [
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          }
+        ],
+        "buttons": [
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(174, 186, 197)",
+            "bg": "rgb(36, 49, 64)"
+          },
+          {
+            "fg": "rgb(243, 242, 232)",
+            "bg": "rgb(41, 61, 80)"
+          },
+          {
+            "fg": "rgb(243, 242, 232)",
+            "bg": "rgb(41, 61, 80)"
+          }
+        ]
+      },
+      "exchangeConfirmCancelCloseFocus": true,
+      "reducedMotion": true,
+      "reconnect": true,
+      "errors": []
+    },
+    {
+      "label": "desktop",
+      "width": 1024,
+      "height": 760,
+      "touchDrag": {
+        "beforePan": {
+          "x": 0,
+          "y": 206
+        },
+        "afterPan": {
+          "x": 0,
+          "y": 304
+        },
+        "emulated": true
+      },
+      "invalidWindows": [
+        1508.2999999523163,
+        1507.7999999523163
+      ],
+      "noDeadlineExtension": true,
+      "shufflePreservedIds": true,
+      "scoreBoxes": [
+        {
+          "border": "1px",
+          "color": "rgb(32, 60, 65)",
+          "active": "false"
+        },
+        {
+          "border": "1px",
+          "color": "rgb(27, 40, 53)",
+          "active": "true"
+        }
+      ],
+      "modalColors": {
+        "dialog": {
+          "fg": "rgb(243, 242, 232)",
+          "bg": "rgb(28, 41, 57)"
+        },
+        "title": {
+          "fg": "rgb(243, 242, 232)",
+          "bg": "rgba(0, 0, 0, 0)"
+        },
+        "tiles": [
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          }
+        ],
+        "buttons": [
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(24, 43, 59)",
+            "bg": "rgb(242, 238, 224)"
+          },
+          {
+            "fg": "rgb(174, 186, 197)",
+            "bg": "rgb(36, 49, 64)"
+          },
+          {
+            "fg": "rgb(243, 242, 232)",
+            "bg": "rgb(41, 61, 80)"
+          },
+          {
+            "fg": "rgb(243, 242, 232)",
+            "bg": "rgb(41, 61, 80)"
+          }
+        ]
+      },
+      "exchangeConfirmCancelCloseFocus": true,
+      "reducedMotion": true,
+      "reconnect": true,
+      "errors": []
+    }
+  ]
+}

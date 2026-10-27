@@ -1,7 +1,14 @@
 # Ptown Words polish — LOCAL review, publication held — 2026-10-27
 
+The combined owner-smoke pass adds the requested zoom hints, a 1500ms dictionary
+rejection overlay, outlined scores, actionable rack brightness, local rack shuffle,
+gentle turn pulse, staged-only editing controls and readable Exchange modal.
+A pinned, licensed SCOWL common-word subset drives the easier bot policy while
+full ENABLE2K human validity and canonical rules/finances remain unchanged.
+All work remains local; owner review is required before publication.
+
 Double-tap zoom-out, compact secondary actions and bounded opponent-word reveals
-are implemented in the local preview. Fourteen focused tests, TypeScript, local SQL
+are implemented in the local preview. Twenty focused tests, TypeScript, local SQL
 financial/timing proofs and phone/desktop browser checks pass. Production remains
 unchanged. Owner review is required before any push, deployment or hosted SQL.
 The local refinement removes redundant board controls, labels the rules-only

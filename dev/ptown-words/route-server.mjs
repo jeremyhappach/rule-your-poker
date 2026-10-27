@@ -7,6 +7,7 @@ const admin=await connect(database),listener=await connect(database),tokens=new 
 async function tx(user,fn){const c=await connect(database);try{await c.query('BEGIN');if(user){await c.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[user,JSON.stringify({sub:user,role:'authenticated'})]);await c.query('SET LOCAL ROLE authenticated');}const v=await fn(c);await c.query('COMMIT');return v;}catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}}
 await admin.query('BEGIN');await installCandidate(admin);
 if(process.env.PTOWN_WORDS_BOTS==='1'){
+ await admin.query(read('supabase/ptown-words/bot-vocabulary.sql','utf8'));
  await admin.query('CREATE TABLE IF NOT EXISTS private.battle31_matches (LIKE private.ptown_words_matches); CREATE TABLE IF NOT EXISTS private.golf_matches (LIKE private.ptown_words_matches)');
  for(const f of JSON.parse(read('dev/ptown-words/bot-contract.json','utf8')).functions)await admin.query(f.definition);
  for(const part of ['bot-registration','bots','bot-recovery'])await admin.query(read('supabase/ptown-words/'+part+'.sql','utf8'));

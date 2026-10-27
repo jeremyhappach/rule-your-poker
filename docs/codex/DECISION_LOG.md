@@ -1,3 +1,12 @@
+## 2026-10-27 — Ptown Words combined polish is local-only
+
+Jeremy authorized all eight collected smoke refinements in one local pass, then
+owner review. The bot uses a pinned, licensed SCOWL common-word subset intersected
+with ENABLE2K and targets modest scores; human legality and core scoring remain
+unchanged. Shuffle is presentation-only, invalid feedback does not extend clocks,
+and the existing server reveal handoff remains authoritative. No push, hosted SQL,
+activation or publication is authorized. See `PTOWN_WORDS_POLISH_LOCAL.md`.
+
 ## 2026-10-27 - Quintzee final polish and isolated installed proof approved
 
 Jeremy approved manual first rolls for every category and the bounded, blocking Upper Bonus +35 melody/count-up sequence, followed by Arcade/fake-money-only publication. Following the approval-loop incident, he approved narrowing hosted qualification to isolated fixtures without production function replacement or unscoped recovery, and preserving both Ptown Words and Quintzee release history. Global recovery/concurrency/fault scenarios retain local full-authority evidence; fresh /3 admission is verified after guarded activation. Default roll duration remains 1500 ms and Take Score remains unspecified. See QUINTZEE_FINAL_POLISH_RELEASE.md.

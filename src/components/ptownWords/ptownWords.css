@@ -29,3 +29,13 @@
 @media(prefers-reduced-motion:reduce){.words-cell.is-revealing{animation-name:words-tile-appear}}
 @keyframes words-tile-appear{from{opacity:0}to{opacity:1}}
 .words-shell .fullscreen-game-toolbar nav>button:first-child{width:44px;min-width:44px;min-height:44px;padding:0;display:grid;place-items:center}
+
+/* Words smoke polish: scoped colors also apply after the dialog is portaled. */
+.words-scores{gap:.35rem;flex-wrap:wrap}.words-scores>div{flex:1 1 calc(25% - .35rem);border:1px solid #526275;border-radius:8px;padding:.35rem .5rem;background:#1b2634;color:#bac5cf;transition:background .2s,border-color .2s}.words-scores>div[data-active=true]{border-color:#7be1cc;background:#203e42;color:#f3fff9;box-shadow:inset 0 0 0 1px #7be1cc}.words-scores strong{color:inherit}
+.words-rack[data-actionable=false] button{opacity:.5;filter:saturate(.35)}.words-rack[data-actionable=true] button{opacity:1;filter:none}.words-rack button[data-used=true]{opacity:.2!important}.words-rack button[aria-pressed=true]{box-shadow:inset 0 0 0 2px #183b34,inset 0 -3px #539b8c}
+.words-shell .words-rumble{padding:0;width:44px;height:44px;min-width:44px;display:grid;place-items:center;color:#7be1cc}.words-status{gap:.3rem}.words-your-turn{animation:words-turn-breathe 2.4s ease-in-out infinite;border-radius:4px;padding:.15rem .2rem}
+@keyframes words-turn-breathe{0%,100%{background:transparent;box-shadow:0 0 0 transparent}50%{background:#244b47;box-shadow:0 0 8px #7be1cc35}}
+@media(prefers-reduced-motion:reduce){.words-your-turn{animation:none;background:#244b47}}
+.words-board-region{position:relative}.words-invalid{position:absolute;z-index:4;inset:0;display:grid;place-content:center;pointer-events:none;color:#fff4f0;font-size:clamp(24px,6cqw,40px);font-weight:700;text-shadow:0 2px 4px #000;background:#1c1115b8;border:2px solid #f2a18c;border-radius:8px}
+[role=dialog].words-dialog{font-family:Bahnschrift,Aptos,system-ui,sans-serif;background:#1c2939;color:#f3f2e8;border-color:#62768a;max-width:min(360px,calc(100% - 2rem))}
+.words-dialog h2{color:#f3f2e8;padding-right:2rem}.words-dialog p{color:#c6d2dd}.words-dialog button{background:#293d50;color:#f3f2e8;border-color:#788b9b}.words-dialog button:disabled{background:#243140;color:#aebac5;border-color:#617181;cursor:default}.words-dialog .words-exchange button{background:#f2eee0;color:#182b3b;min-width:44px}.words-dialog .words-exchange button[aria-pressed=true]{background:#7be1cc;color:#102831;border:2px solid #f4fff9;box-shadow:0 0 0 1px #7be1cc}.words-dialog>button:last-child{min-width:44px;display:grid;place-items:center;opacity:1}

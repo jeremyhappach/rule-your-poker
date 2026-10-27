@@ -7,6 +7,88 @@ from main `043541cff7f6d4beb90c4b28988b536529f3bf49`. Quintzee files/tasks are u
 
 ## Review
 
+### Combined owner-smoke pass — October 27
+
+Local-only approval: all eight owner requests are included; publication remains
+held. Overview says **tap an area to zoom in**; detail says **double tap for full
+board**. Dictionary-only rejection shows **invalid word** for 1500ms, once per
+failed attempt. Other errors retain their specific feedback. Draft, camera and
+authoritative deadline survive rejection. The feedback timer never changes play.
+
+Outlined score containers distinguish the presented/active player from waiting
+players. The rack dims until the existing authoritative reveal handoff permits
+action. Your turn has a gentle 2.4-second pulse (static with reduced motion), plus
+a 44px refresh-icon shuffle control immediately beside it. Shuffle changes only
+local tile-ID order; selected/staged IDs, recall, bag, score and clock are preserved.
+Any staged tile replaces Exchange/Pass with Undo/Recall; a short endgame rack with
+no staged tiles still shows Exchange/Pass, subject to the existing bag restriction.
+The portal dialog uses explicit dark-theme colors with legible text, cream tiles,
+mint selected tiles and distinguishable disabled actions. Cancel, X and Escape
+restore keyboard focus to the opening control.
+
+#### Casual bot policy (local candidate)
+
+The player dictionary remains the full pinned ENABLE2K, including its obscure
+legal words. Only the bot's search vocabulary changes: 2,599 SCOWL 2020.12.07 US
+words from English/American levels 10 and 20, ASCII letters, length 2–5, intersected
+with ENABLE2K. Every formed word, including cross-words, must be in that subset.
+[SCOWL's official source and release](https://wordlist.aspell.net/other/) and
+[source/license explanation](https://wordlist.aspell.net/scowl_v1-readme/) document
+the common-word levels and permissive redistribution conditions. This is a
+practical familiarity proxy, not a guarantee every player knows every word.
+
+The archive hash, source-file hashes, generated hash, exact modifications and full
+verbatim license notices are retained under `server/ptownWords/bots/scowl-20`.
+`prepare-casual-bot.mjs` verifies the pinned archive and generates the subset/SQL.
+Extract only `Copyright` and `final/{english,american}-words.{10,20}` from the
+official archive into `qualification.local/ptown-words/scowl-source/` to rebuild;
+no package installation is required. The private vocabulary table has a primary
+key, RLS and no client grants. `bot-vocabulary.sql` is an unnumbered local candidate.
+
+Search is capped at 3,000 nodes / 24 legal candidates (formerly 8,000 / 48).
+Minimize `abs(points - 8) * 100 + mainWordLength * 3`, with a deterministic public
+actor/turn/placement hash tie-break. It targets modest scores and shorter words;
+there are no difficulty controls. If no familiar play is found, the existing
+one-exchange-then-pass behavior remains. It may miss moves or pass more often on a
+crowded board. Core scoring, draws, human validity, bot privacy, scheduling,
+recovery and settlement owners remain unchanged.
+
+Sixteen opening/midgame comparisons passed the shared reducer and repeatability/
+hidden-information checks. Examples: QUIZ 44 → TIRE 8; STAINER 66 → SEAT 8;
+CISTERNA 83 → CARES 8; ATAXY 31 → ALLY 8. Measured searches took 15–48ms in
+this sample, not a load benchmark. The core and all twelve human financial cases
+passed before local installation. Installed bot checks passed private-input and
+real-money rejection, 2/3/4-player admission, pause, zero-client progression,
+winner/tie canonical chip transfers, immutable final snapshots and terminal close.
+Terminal fixture setup removes its previous reveal metadata to exercise scheduled
+settlement immediately; actual presentation timing is checked separately in the
+browser and retained prior timing proofs.
+
+#### Owner-image provenance
+
+Parent personally inspected PNGs `libfile_a181168f71bc8191a185ad40f3bc9aad`
+(`image(20261027-161737).png`, floating scores) and
+`libfile_b7aacfa827d481919a0945f4ee6d64f2`
+(`image(20261027-162102).png`, unreadable white Exchange modal). This executor
+has no direct Library download capability and used the parent's verified assessment
+and explicit requirements. It inspects new locally rendered screenshots itself.
+
+Evidence for this pass: `dev/ptown-words/evidence/casual-bot.json` and
+`polish-pass-browser.json`; screenshots `qualification.local/ptown-words/polish/pass-*.png`.
+The new browser harness covers real emulated touch start/move/end events and scroll
+displacement without placement, in addition to taps and double taps. It checks
+repeated invalid overlays with measured duration and unchanged database deadlines,
+shuffle ID preservation, staged-action visibility, outlined scores/rack handoff,
+reduced motion, accepted-word overview, bot reveal, modal flows/focus, and reconnect.
+This is Edge touch emulation, not physical iPhone/Safari acceptance.
+
+Twenty focused tests, TypeScript and the actual Game-route build pass. Browser
+coverage includes 320×568, 390×760, 844×390 and 1024×760 layouts. Measured invalid
+notices were 1501–1504ms in the first complete run, with zero deadline/revision
+extension and zero page errors. Human-opponent reveal, prior-camera restoration,
+terminal-word payout and Session Ended regression also pass. The preview URL
+responds HTTP 200 and Start a fresh preview opens an actionable bot game.
+
 Open <http://127.0.0.1:15307/dev/ptown-words/polish-preview.html> while the local
 server is running. Start a fresh synthetic fake-money game against a bot.
 The preview uses the actual Game route and local PostgreSQL authority, with
@@ -25,7 +107,8 @@ then restores the full board. No new SQL or timing change is part of this refine
   the second tap can cancel both; neither tap changes a draft or submits it.
   Movement/scroll and turn changes cancel pending taps. Keyboard placement stays
   immediate; Escape also zooms out. Selection and drafts survive zoom navigation.
-- With a draft, Undo, Recall, Exchange and Pass share one 44px-minimum row.
+- With a draft, Undo and Recall share one 44px-minimum row; Exchange and Pass
+  return only after every staged tile is removed.
   Submit Word remains a separate full-width primary action. The rack and HUD stay
   at the bottom inside canonical safe-area geometry. Inspect and pan are retained.
 - Opponent words automatically focus the public formed words on the board.
@@ -104,6 +187,10 @@ node dev/ptown-words/polish-proof.mjs
 node dev/ptown-words/polish-browser.mjs
 node dev/ptown-words/polish-human-browser.mjs
 node dev/ptown-words/refinement-browser.mjs
+# Combined October 27 pass:
+node dev/ptown-words/prepare-casual-bot.mjs
+node dev/ptown-words/casual-bot-proof.mjs
+node dev/ptown-words/polish-pass-browser.mjs
 ```
 
 ## Provenance / remaining review

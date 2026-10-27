@@ -1,0 +1,27 @@
+{
+  "id": "scowl-2020.12.07-us-20-enable2k-2to5/1",
+  "source": "https://downloads.sourceforge.net/wordlist/scowl-2020.12.07.tar.gz",
+  "sourceSha256": "5587667caa20c4891390c2d42dbb4d5c4c3f41bee77af1457ece3ba23fb859cc",
+  "files": [
+    {
+      "name": "american-words.10",
+      "sha256": "6ed66394d8b46ed12feac7aad989dfc4620c4f2051316ab774560aae71140994"
+    },
+    {
+      "name": "american-words.20",
+      "sha256": "a7ae730cd5f2ee11b584c163bf0750cc7659e336c3a04da1a8a2e9c44b604b9e"
+    },
+    {
+      "name": "english-words.10",
+      "sha256": "f19988ecdb0280ab63340e5c5e155a814ab3d0f225ae60f5cb9e000252283b0b"
+    },
+    {
+      "name": "english-words.20",
+      "sha256": "618998fff18fb9e143a5bab49e669ec48c023758f0db476d6b64ec06994ba71e"
+    }
+  ],
+  "modifications": "Combine English/American words levels 10/20; keep lowercase ASCII length 2–5; uppercase, deduplicate and intersect pinned ENABLE2K. Bot preference only; no change to player validity.",
+  "count": 2599,
+  "sha256": "4d90a2799257d4dce11057451d7ce4079a0969cd23b5b65df785f7c35b20d0a3",
+  "license": "SCOWL permissive license and source notices; retained verbatim in Copyright."
+}
