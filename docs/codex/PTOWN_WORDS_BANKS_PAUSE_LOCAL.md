@@ -97,7 +97,64 @@ banks-browser.mjs. The older Words preview on 15307 was stopped to release its
 local test resources; the new preview is on 15308. Other game worktrees and
 services are untouched.
 
-## Review boundary
+## Owner follow-up: flat board tiles and vertical spacing — local only
+
+Jeremy accepted the other Words smoke behavior, then reported intermittent
+board vibration in Chrome in this preview. It stopped before reproduction;
+Jeremy explicitly deferred investigation unless it recurs in the published app.
+No jitter root cause or fix is claimed. Idle/timer/pulse/zoom/pan/HUD measurements
+were stable in the local probes. The deferred observation is in BACKLOG.md.
+
+Played board tiles previously used an inset bottom shadow, cut corner, and
+perspective rotation during reveal. Those scoped styles are removed. Sequential
+contents still appear in the same slots with a flat opacity reveal. Rack styling,
+letters, corner values, premium squares, touch gestures and timing are unchanged.
+Overview letter sizing now uses the smaller container dimension as well: the
+landscape board was height-limited while its letters used the wider scroll area,
+crowding corner scores. The full-board and zoomed letter/value bounds are checked
+for separation. Zoomed 48px tiles and rack text sizes are unchanged.
+
+The vertical gap includes a fixed 24px canonical announcement slot. It stays
+reserved to prevent layout shifts when a word notice or pause request appears.
+The correction reduces vertical outer padding, inter-row spacing and score-pill
+padding/line-height. Score font size, score positions, horizontal column spacing,
+board rules and 44px action targets are preserved. No shared shell changes.
+
+Qualification uses `geometry-browser.mjs` through the actual Game route, genuine
+RPC/revision delivery and isolated synthetic fixtures. It records per-frame
+board/scroll/grid bounds and transforms, sequential tile contents, active pulse,
+timer updates, pan, HUD, bank spend and paused concealment. Full raw evidence and
+before/after phone/landscape/desktop screenshots remain under
+`qualification.local/ptown-words/jitter`. `layout-browser.mjs` measures the top
+rows and available side space. This pass changes no SQL or hosted authority.
+
+Final checks PASS: actual Game-route build, 27 focused tests, and three viewport
+browser cases with 21 stable resting phases, genuine sequential reveals, flat
+tile transforms, separated zoomed letter/value bounds and visible 44px controls.
+Compact evidence (including stylesheet hash):
+`dev/ptown-words/evidence/flat-spacing-geometry.json`.
+
+| Viewport | Full board before | Full board after |
+| --- | ---: | ---: |
+| Phone portrait 390 × 760 | 376.81px square | 376.81px square |
+| Phone landscape 844 × 390 | 174.83px square | 195.55px square |
+| Desktop 1280 × 800 | 584.83px square | 605.55px square |
+
+The board starts 19.13px higher in all three views. Score row height falls from
+57.59px to 46.06px while retaining its original font sizes; the notice row stays
+24px. Portrait remains width-limited. The measured right-hand control area is
+329.30px wide / 166.80px tall in landscape, against a 217.94px board region;
+desktop has 503.69px width / 144px controls against 627.94px. These are two-player
+measurements; they do not prove a four-player side-score layout fits.
+
+Score-pill relocation remains a proposal, not part of this candidate. Portrait
+phones are width-limited: moving scores beside the board would narrow the board,
+not enlarge it. Wide desktop can benefit from moving scores into existing right
+space, but short phone landscape already uses most of that height for the rack
+and controls. Recommend retaining top scores on phones; consider desktop-only
+side scores later if requested, with 2–4-player layouts checked separately.
+
+## Publication boundary
 
 Owner review should confirm reveal pacing, two circular +3m controls, the pause
 request notice and concealed state. A later release requires explicit approval,

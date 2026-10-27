@@ -1,5 +1,14 @@
 # Ptown Words banks and pause — LOCAL preview, publication held — 2026-10-27
 
+Owner follow-up is ready locally: played board tiles are flat (including their
+sequential opacity reveal), and vertical padding/row/score-pill spacing is tighter.
+The board starts 19.13px higher; square size is unchanged on portrait phones and
+gains 20.72px in the measured landscape/desktop views. Score positions and the
+fixed announcement slot remain intact. Actual Game-route build, 27 focused tests
+and three viewport browser checks pass. Jeremy deferred the intermittent Chrome
+vibration unless it recurs in publication; no jitter fix is claimed. This styling
+follow-up still awaits local owner review. See the qualification link below.
+
 Owner authorized local reveal/time-bank/pause work only. New /2 matches have two
 server-owned +3m slots per player; host pause uses canonical authority and guest
 requests use the canonical announcement rail. Paused board and rack contents are

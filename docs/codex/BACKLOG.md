@@ -9,6 +9,18 @@ remain separate. [Release evidence](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
 
 # Backlog
 
+## Deferred by owner — Words intermittent board vibration — October 27, 2026
+
+- Jeremy saw the board/table vibrate in Chrome in the local Words preview.
+  It stopped before reproduction. He explicitly deferred investigation unless
+  it recurs in the published app. Do not resume automatically or claim a fix.
+- Local Edge/Chrome measurements found stable idle, timer/pulse, zoom, pan and
+  HUD geometry. Preserve the local measurements under
+  `qualification.local/ptown-words/jitter`; they do not disprove the observation.
+- If it recurs: capture the published match, browser/zoom, full-board versus
+  zoomed state, and whether motion continues without input. Follow the normal
+  read-only diagnosis workflow. No hosted state was changed during this pass.
+
 ## Queued — Canonical nameplate and seat placement audit — October 26, 2026
 
 - Provenance: Jeremy approved Battle31's nameplate correction and explicitly
