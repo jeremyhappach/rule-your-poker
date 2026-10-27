@@ -154,6 +154,49 @@ space, but short phone landscape already uses most of that height for the rack
 and controls. Recommend retaining top scores on phones; consider desktop-only
 side scores later if requested, with 2–4-player layouts checked separately.
 
+## Owner follow-up: withdraw own pause request — local only
+
+All prior behavior is owner-accepted at
+`181030968996805762b2696a2dddc758c6c4108b`; jitter stays deferred. The only runtime
+change is a pending requester's existing pause button becoming a red 44px X with
+the accessible label **Cancel pause request**. Other players cannot cancel it.
+The normal icon returns only after an authoritative snapshot confirms removal.
+The existing canonical announcement cleanup then clears the notice on all clients.
+Drafts, turn state, clocks, bank slots and host authority are preserved.
+
+`pause-request-cancel-local.sql` extends the existing locked Words action RPC.
+The command includes the specific request UUID as well as the existing immutable
+command UUID/revision. A newer request cannot be withdrawn by an old command.
+Identical retries never mutate twice and return a current permitted snapshot.
+No pending request is an idempotent success, including when canonical host pause
+won the race and already cleared it. Cancellation never invokes pause/resume.
+If cancellation wins a lock race, the existing canonical host RPC can return
+`busy`; the host's subsequent Pause retry pauses normally. No new retry or timer
+owner is introduced.
+
+Qualification PASS: 24 focused component/hook tests; installed repository
+`tsc -p tsconfig.app.json --noEmit`; actual Game-route build; rollback-contained
+candidate proof and existing core/canonical financial regression; installed local
+proof; real independent-connection host-first, cancellation-first and duplicate
+UUID races. Server cases include three human participants, outsider/host/other
+player rejection, legacy /1 rejection, malformed/stale targets, stale revisions,
+request → cancel → request, late replay and unchanged non-request match state.
+The initial race harness expected a lock exception; the canonical RPC correctly
+returns `busy`. The proof asserts that existing response and its successful retry.
+
+The browser proof uses separate host/guest contexts through the real Game route,
+RPCs and public revision notifications. It verifies request → reconnect → cancel
+→ all-client notice removal → reconnect → request, the red X on phone and desktop,
+keyboard activation, and a delayed cancellation arriving after a real host Pause.
+Both clients remain paused, the X disappears, and the non-host cannot resume.
+Evidence: `dev/ptown-words/evidence/pause-cancel-{database,browser}.json`.
+Screenshots: `qualification.local/ptown-words/pause-cancel/`.
+
+The existing isolated preview database was updated in place only after candidate
+rollback passed, preserving owner matches and the 15308 process. New local preview
+starts load this delta after banks-pause-local.sql. No hosted SQL, financial policy,
+admission, release package or unrelated game source changed. No new dependencies.
+
 ## Publication boundary
 
 Owner review should confirm reveal pacing, two circular +3m controls, the pause

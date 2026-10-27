@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "installed": true,
+  "checks": [
+    "Candidate rollback: owner/other-player/host/outsider guards, target/version guards, replay, request again, pause-first and unchanged gameplay state",
+    "Existing core and canonical financial rollback proof",
+    "Installed local authority proof",
+    "Independent-connection host-first, cancel-first and duplicate-UUID races"
+  ]
+}

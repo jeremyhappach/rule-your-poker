@@ -26,6 +26,9 @@ command/snapshot adapters; canonical pause ownership remains unchanged.
 `useWordRevealTimeline.ts` owns the per-viewer presentation receipt, with fixed
 server handoff/deadline. `banks-proof.mjs` and `banks-browser.mjs` qualify this
 unpublished candidate. See `PTOWN_WORDS_BANKS_PAUSE_LOCAL.md`.
+`pause-request-cancel-local.sql` adds request-specific own withdrawal through the
+same Words command/revision owner; `pause-cancel-proof.mjs` and
+`pause-cancel-browser.mjs` qualify the local extension.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 

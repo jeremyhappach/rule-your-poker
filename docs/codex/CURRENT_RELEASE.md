@@ -1,5 +1,14 @@
 # Ptown Words banks and pause — LOCAL preview, publication held — 2026-10-27
 
+The sole new owner-requested follow-up is ready locally: a non-host's own pending
+pause request changes their existing control to a red, touchable X labeled
+"Cancel pause request". Withdrawal is authoritative, request-specific and
+idempotent; all clients retire the notice. Host pause/resume is unchanged.
+24 focused tests, the repository application typecheck, actual Game-route build,
+local rollback/financial regression, independent-connection races and two-client
+browser/reconnect checks pass. Preview remains on 15308. This cancellation
+follow-up awaits local owner review; no publication or hosted migration.
+
 Owner follow-up is ready locally: played board tiles are flat (including their
 sequential opacity reveal), and vertical padding/row/score-pill spacing is tighter.
 The board starts 19.13px higher; square size is unchanged on portrait phones and
@@ -7,7 +16,8 @@ gains 20.72px in the measured landscape/desktop views. Score positions and the
 fixed announcement slot remain intact. Actual Game-route build, 27 focused tests
 and three viewport browser checks pass. Jeremy deferred the intermittent Chrome
 vibration unless it recurs in publication; no jitter fix is claimed. This styling
-follow-up still awaits local owner review. See the qualification link below.
+follow-up was owner-accepted at `181030968996805762b2696a2dddc758c6c4108b`.
+See the qualification link below.
 
 Owner authorized local reveal/time-bank/pause work only. New /2 matches have two
 server-owned +3m slots per player; host pause uses canonical authority and guest

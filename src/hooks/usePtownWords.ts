@@ -20,6 +20,6 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport){
   const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),100);
   return()=>{generation.current++;off();clearInterval(timer);window.removeEventListener('online',recover);window.removeEventListener('offline',recover);window.removeEventListener('focus',recover);document.removeEventListener('visibilitychange',recover);};
  },[transport,accept,resolve]);
- const act=async(intent:Intent)=>{const v=latest.current;if(!v||(intent.type!=='request_pause'&&!v.canAct)||v.paused||!connected||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;sessionStorage.setItem(key,JSON.stringify({requestId:crypto.randomUUID(),revision:v.revision,intent}));return resolve();};
+ const act=async(intent:Intent)=>{const v=latest.current;if(!v||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!v.canAct)||v.paused||!connected||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;sessionStorage.setItem(key,JSON.stringify({requestId:crypto.randomUUID(),revision:v.revision,intent}));return resolve();};
  return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:resolve};
 }

@@ -17,6 +17,7 @@ if(process.env.PTOWN_WORDS_POLISH==='1')for(const part of ['presentation','fake-
 if(process.env.PTOWN_WORDS_BANKS==='1'){
  await admin.query(read('dev/ptown-words/canonical-pause-reference.sql','utf8'));
  await admin.query(read('supabase/ptown-words/banks-pause-local.sql','utf8'));
+ await admin.query(read('supabase/ptown-words/pause-request-cancel-local.sql','utf8'));
 }
 await admin.query('COMMIT');
 await admin.query("UPDATE private.ptown_words_release SET enabled=true,admission_enabled=true; INSERT INTO public.game_defaults(game_type,presentation_mode,ante_amount,real_money,debug_harness,timeout_action,timeout_enforcement_enabled,pot_max_enabled,pussy_tax_enabled,leg_value,legs_to_win) VALUES('ptown-words','fullscreen',5,false,'none','none',false,false,false,0,0) ON CONFLICT(game_type) DO UPDATE SET presentation_mode='fullscreen'");

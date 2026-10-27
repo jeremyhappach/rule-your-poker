@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    "request -> reconnect with red X -> revoke -> all-client notice removal -> reconnect without request",
+    "request again has new authoritative identity; red X is 44px and accessible in portrait and desktop",
+    "host pause wins delayed cancellation; all clients remain paused, no red X, guest cannot resume",
+    "host resume preserved; later request/revoke works with keyboard"
+  ],
+  "portrait": {
+    "color": "rgb(255, 138, 138)",
+    "width": 44,
+    "height": 44,
+    "x": true,
+    "disabled": false
+  },
+  "desktop": {
+    "color": "rgb(255, 138, 138)",
+    "width": 44,
+    "height": 44,
+    "x": true,
+    "disabled": false
+  },
+  "errors": []
+}
