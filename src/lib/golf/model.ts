@@ -1,3 +1,4 @@
+import {golfHoleCount,isGolfHoleCount,type GolfHoleCount} from './matchLength';
 import {getBotAlias} from '@/lib/botAlias';
 import type {Card,Rank,Suit} from '@/lib/cardUtils';
 import type {ChipPresentationBatch} from '@/lib/canonicalShell/ChipPresentationLedger';
@@ -5,7 +6,7 @@ export type GolfIntent={type:'open'|'replace'|'discard';items:number[]}|{type:'d
 export interface GolfSnapshot {
  id:string;scope:string;stake:number;revision:number;serverAt:number;viewerId:string;
  identity:{sessionId:string;dealerGameId:string;roundId:string};
- rules:{version:'six-card-golf/1'|'six-card-golf/2';turnSeconds:30;holes:9;holeResultSeconds?:number;presentation?:{version:1;scoringDelayMs:number;resultsDurationMs:number}};
+ rules:{version:'six-card-golf/1'|'six-card-golf/2';turnSeconds:30;holes:GolfHoleCount;holeResultSeconds?:number;presentation?:{version:1;scoringDelayMs:number;resultsDurationMs:number}};
  phase:'opening'|'playing'|'hole_complete'|'complete';hole:number;dealerIndex:number;turnIndex:number;openingRemaining:number;
  players:{id:string;userId:string;name:string;seat:number;isBot:boolean;chips:number}[];
  playerControls?:Record<string,{autoPlay:boolean;sitOutNextHand:boolean;intentVersion:number}>;
@@ -26,12 +27,13 @@ export function golfCard(value:number|null):Card|undefined {
 export function golfSnapshot(raw:unknown):GolfSnapshot {
  const v=raw as GolfSnapshot;
  if(!v?.identity?.dealerGameId||!['six-card-golf/1','six-card-golf/2'].includes(v.rules?.version)||!Array.isArray(v.players)||v.players.length<2||v.players.length>4)throw Error('Golf snapshot identity mismatch');
+ if(v.rules.holes!==undefined&&!isGolfHoleCount(v.rules.holes)||v.rules.version==='six-card-golf/1'&&golfHoleCount(v.rules.holes)!==9)throw Error('Golf match length rejected');
  for(const p of v.players) {
   const board=v.tableaus?.[p.id];
   if(!board||board.cards.length!==6||board.exposed.length!==6||board.cards.some((c,i)=>!board.exposed[i]&&c!==null))throw Error('Golf projection rejected');
  }
  if(v.pending&&(!golfCard(v.pending.card)||!v.players.some(p=>p.id===v.pending!.actor)||(v.pending.actor!==v.viewerId&&!v.publicDraw)))throw Error('Golf projection rejected');
- return {...v,discardTop:v.phase==='opening'?null:v.discardTop,id:v.identity.dealerGameId,scope:v.identity.roundId,settled:v.settlement!==null,
+ return {...v,rules:{...v.rules,holes:golfHoleCount(v.rules.holes)},discardTop:v.phase==='opening'?null:v.discardTop,id:v.identity.dealerGameId,scope:v.identity.roundId,settled:v.settlement!==null,
   players:v.players.map(p=>({...p,name:p.isBot?getBotAlias(v.players.map(x=>({user_id:x.userId,is_bot:x.isBot,profiles:{username:x.name}})),p.userId).replace(/^Bot /,'Bot'):p.name,chips:v.financial?.balances[p.id]??p.chips}))};
 }
 export function acceptGolfSnapshot(old:GolfSnapshot|null,next:GolfSnapshot,id:string) {

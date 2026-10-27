@@ -1,0 +1,17 @@
+{
+  "database": "golf_length_1793123393621",
+  "locks": [
+    {
+      "mode": "AccessExclusiveLock",
+      "granted": true
+    }
+  ],
+  "failure": {
+    "code": "55P03",
+    "message": "canceling statement due to lock timeout"
+  },
+  "scanSucceedsAfterRollback": true,
+  "postRollbackLocalAdaptation": "The old isolated template lacks recovery_session_deferred; only that predicate was omitted from the post-rollback scan. The blocked scan used the deployed SQL unchanged.",
+  "hostedEvidence": "canonical_timers SQLSTATE 55P03, 751–760ms lock timeouts during candidate rehearsal; no later timeouts from 19:32:02 through the 19:40:18 health observation.",
+  "cause": "The candidate rehearsal retains ALTER TABLE game_defaults AccessExclusiveLock while the canonical timer scan requires AccessShareLock. The long rollback fixture, rather than the Golf rule implementation, introduced this blocking boundary."
+}

@@ -94,7 +94,16 @@ it('cold result mount shows authoritative totals without replaying a hand',()=>{
  render(<GolfTable {...props}/>);
  expect(state.layer!.querySelector('[data-golf-stock]')).toBeNull();
  expect(state.layer!.querySelectorAll('.golf-scoring-hand [data-card-anchor]')).toHaveLength(0);
- expect(screen.getByRole('region',{name:'Nine-hole scorecard'})).not.toBeNull();expect(screen.queryByText('Results')).toBeNull();
+ expect(screen.getByRole('region',{name:'9-hole scorecard'})).not.toBeNull();expect(screen.queryByText('Results')).toBeNull();
+});
+it('uses one Final Scorecard title for final 18-hole results with a nonvisual description',()=>{
+ const v=state.game.snapshot;v.rules={...v.rules,holes:18};v.phase='complete';v.hole=18;v.canAct=false;
+ v.holes=Array.from({length:18},(_,i)=>({hole:i+1,roundId:i===17?'r':'old'+i,scores:{p:1,q:2}}));
+ render(<GolfTable {...props}/>);
+ expect(screen.getAllByRole('heading',{name:'Final Scorecard'})).toHaveLength(1);
+ expect(screen.queryByRole('heading',{name:'18-hole scorecard'})).toBeNull();
+ expect(screen.getByText('Hole 18 complete · cumulative totals.').classList.contains('sr-only')).toBe(true);
+ expect(screen.getByText('Front Nine')).toBeTruthy();expect(screen.getByText('Back Nine')).toBeTruthy();
 });
 it('places discard before stock and exposes the stock count through its accessible label',()=>{
  state.game.snapshot.stockCount=39;render(<GolfTable {...props}/>);
@@ -141,7 +150,7 @@ it('keeps FINAL TURN on the felt through pauses and removes it at completion',()
 it('replaces partial helpers with a completed-hole leaderboard and an accessible scorecard',()=>{
  render(<GolfTable {...props}/>);expect(document.querySelector('.golf-score-pill')).toBeNull();expect(screen.getByRole('img',{name:'Hole 1'})).not.toBeNull();
  const rows=document.querySelectorAll('.golf-leaderboard tbody tr');expect(rows).toHaveLength(2);expect(rows[0].textContent).toBe('YouE');
- fireEvent.click(screen.getByRole('button',{name:'Open nine-hole scorecard'}));expect(screen.getByRole('region',{name:'Nine-hole scorecard'})).not.toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Open 9-hole scorecard'}));expect(screen.getByRole('region',{name:'9-hole scorecard'})).not.toBeNull();
  expect(document.querySelectorAll('.golf-scorecard thead th')).toHaveLength(11);
 });
 

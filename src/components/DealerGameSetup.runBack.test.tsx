@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const golfSettings=vi.hoisted(()=>({allowed:false,holes:6 as number|undefined}));
+vi.mock('@/hooks/useGolfAccess',()=>({useGolfAccess:()=>golfSettings.allowed}));
 const triAccess = vi.hoisted(() => ({allowed:false}));
 const raceAccess = vi.hoisted(() => ({allowed:false}));
 const canastaAccess = vi.hoisted(() => ({allowed:false}));
@@ -22,7 +24,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
   },
   from: () => {
-    const response = { data: { ante_amount: 3, rollover_amount: 1, leg_value: 1, legs_to_win: 3,
+    const response = { data: { golf_holes:golfSettings.holes,ante_amount: 3, rollover_amount: 1, leg_value: 1, legs_to_win: 3,
       pussy_tax_enabled: true, pussy_tax_value: 1, pot_max_enabled: true, pot_max_value: 10, chucky_cards: 4,
       status: 'game_selection', config_complete: false }, error: null };
     const query: any = { select: () => query, eq: () => query, single: async () => response,
@@ -60,7 +62,7 @@ const deadline = new Date(Date.now() + 120_000).toISOString();
 const onComplete = vi.fn();
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  vi.useFakeTimers(); vi.clearAllMocks(); triAccess.allowed=false; raceAccess.allowed=false; canastaAccess.allowed=false;
+  vi.useFakeTimers(); vi.clearAllMocks(); golfSettings.allowed=false;golfSettings.holes=6; triAccess.allowed=false; raceAccess.allowed=false; canastaAccess.allowed=false;
   vi.mocked(configureDealerGame).mockResolvedValue({ dealer_game: { id: 'new-dealer-game' }, game: { status: 'ante_decision' }, deduped: false } as any);
   container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
 });
@@ -263,4 +265,34 @@ describe('saved configuration integrity', () => {
     expect(resolveExactRunBackConfig('cribbage', { ...crib, custom_points_to_win: 121 })).toBeNull();
     expect(resolveExactRunBackConfig('cribbage', { ...crib, game_mode: undefined })).toBeNull();
   });
+});
+
+describe('Golf match-length setup',()=>{
+ it.each([3,6,9,18])('loads saved %i holes and submits a match-only override',async saved=>{
+  golfSettings.allowed=true;golfSettings.holes=saved;await mount('six-card-golf',{ante_amount:5,holes:9});
+  const choice=document.querySelector('[data-dealer-game-option="six-card-golf"]') as HTMLButtonElement;expect(choice).toBeTruthy();
+  await act(async()=>choice.click());
+  const select=document.getElementById('golf-match-length') as HTMLSelectElement;
+  expect(select.value).toBe(String(saved));expect([...select.options].map(o=>Number(o.value))).toEqual([3,6,9,18]);
+  const override=saved===18?3:18;
+  await act(async()=>{select.value=String(override);select.dispatchEvent(new Event('change',{bubbles:true}));});
+  const start=[...document.querySelectorAll('button')].find(b=>b.textContent==='Start Six-Card Golf')!;
+  await act(async()=>start.click());
+  expect(configureDealerGame).toHaveBeenCalledWith(expect.objectContaining({gameType:'six-card-golf',config:{ante_amount:3,holes:override}}));
+  expect(golfSettings.holes).toBe(saved);
+ });
+ it('falls back to nine for a missing saved default',async()=>{
+  golfSettings.allowed=true;golfSettings.holes=undefined;await mount('six-card-golf',undefined);
+  await act(async()=>(document.querySelector('[data-dealer-game-option="six-card-golf"]') as HTMLButtonElement).click());
+  expect((document.getElementById('golf-match-length') as HTMLSelectElement).value).toBe('9');
+ });
+ it.each([3,6,9,18])('Run Back retains frozen %i holes',async holes=>{
+  golfSettings.allowed=true;const saved=resolveExactRunBackConfig('six-card-golf',{ante_amount:5,rules:{holes}})!;
+  await mount('six-card-golf',saved);await act(async()=>button().click());
+  expect(configureDealerGame).toHaveBeenCalledWith(expect.objectContaining({config:{ante_amount:5,holes}}));
+ });
+ it('retains legacy nine and rejects invalid Run Back lengths',()=>{
+  expect(resolveExactRunBackConfig('six-card-golf',{ante_amount:5})).toEqual({ante_amount:5,holes:9});
+  expect(resolveExactRunBackConfig('six-card-golf',{ante_amount:5,rules:{holes:4}})).toBeNull();
+ });
 });

@@ -1,3 +1,4 @@
+import {GOLF_HOLE_COUNTS,golfHoleCount,type GolfHoleCount} from '@/lib/golf/matchLength';
 import {usePtownWordsAccess} from '@/hooks/usePtownWordsAccess';
 import {useCanastaAccess} from '@/hooks/useCanastaAccess';
 import {useGolfAccess} from '@/hooks/useGolfAccess';
@@ -296,6 +297,7 @@ const DealerGameSetupInner = ({
   }, []);
   
   // Config state - use strings for free text input with validation on save
+  const [golfHoles,setGolfHoles] = useState<GolfHoleCount>(9);
   const [anteAmount, setAnteAmount] = useState("2");
   const [rolloverAmount, setRolloverAmount] = useState("1");
   const [legValue, setLegValue] = useState("1");
@@ -942,11 +944,12 @@ const DealerGameSetupInner = ({
       // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
-        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus')
+        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus, golf_holes')
         .eq('game_type', gameType)
         .single();
       if (generation !== selectionGeneration.current) return;
       
+      if (gameType === 'six-card-golf') setGolfHoles(golfHoleCount(gameDefaults?.golf_holes));
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
         
@@ -1019,6 +1022,7 @@ const DealerGameSetupInner = ({
 
     const gameType = gameTypeToSubmit as DealerGameType;
     const dealerGameConfig: Record<string, unknown> = { ante_amount: parsedAnte };
+    if (gameType === 'six-card-golf') dealerGameConfig.holes = golfHoles;
     if (gameType === 'cribbage') {
       const selectedMode = CRIBBAGE_GAME_MODES.find((mode) => mode.id === cribbageGameMode)
         ?? CRIBBAGE_GAME_MODES[0];
@@ -1246,7 +1250,7 @@ const DealerGameSetupInner = ({
       const isTriTowers = selectedGameType === TRI_TOWERS.id;
       
       const gameDisplayName = selectedGameType==='canasta'?'Canasta':selectedGameType==='six-card-golf'?'Six-Card Golf':selectedGameType==='race-poker'?'Race Poker':selectedGameType==='battle-31'?'Battle 31':selectedGameType==='quintzee'?'Quintzee':selectedGameType==='ptown-words'?'Ptown Words':selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
-      const gameRulesText = selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake':selectedGameType==='six-card-golf'?'Nine holes · Lowest total wins · One match stake · Final turns after five circuits without a reveal':selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='quintzee'?'Five dice · Two rounds and earned bonus · Fake money only':selectedGameType==='ptown-words'?'ENABLE2K · Three-minute turns · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
+      const gameRulesText = selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake':selectedGameType==='six-card-golf'?golfHoles+' holes · Lowest total wins · One match stake':selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='quintzee'?'Five dice · Two rounds and earned bonus · Fake money only':selectedGameType==='ptown-words'?'ENABLE2K · Three-minute turns · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
@@ -1304,6 +1308,7 @@ const DealerGameSetupInner = ({
                   />
                 </div>
                 
+                {selectedGameType==='six-card-golf'&&<div className="space-y-1"><Label htmlFor="golf-match-length" className="text-amber-100 text-sm">Match length</Label><select id="golf-match-length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))} className="flex h-10 w-full rounded-md border border-poker-gold/50 bg-amber-950 px-3 py-2 text-white">{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select></div>}
                 {/* Cribbage-specific settings - preset game modes */}
                 {isCribbage && (
                   <>

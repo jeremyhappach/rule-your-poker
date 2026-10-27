@@ -1,3 +1,33 @@
+# Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
+
+Jeremy approved reviewed candidate `928887f1a11d27e4c80003170d85b54841ad25bb`
+for production. This supersedes the local-only hold below for Golf only.
+The initial health rejection was traced to long candidate DDL rehearsals holding
+an exclusive game_defaults lock over the canonical timer scan. Temporary fixture
+defaults removed that interference without weakening any guard. All 17 candidate
+and 17 actual installed units pass, including every length, both money modes,
+shared ties, financial rollback, Run Back and late replay. Migration
+`20261027194322` is installed; default nine and existing admission/money eligibility
+are unchanged. See [release qualification](SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md).
+
+Multiplayer 3/6/9/18-hole selection is implemented locally: saved default nine,
+dealer-only override, frozen authoritative length, exact progression/settlement,
+under-flag text and complete pencil scorecards with two nine-hole sections for 18.
+Owner review correction: Front Nine ends with Out; Back Nine ends with In and a
+distinct bold match Total. The old second total was cumulative. Matching cells
+now share identical dimensions and alignment, with Front Nine one Total column
+shorter. Final 18-hole results have one visible Final Scorecard title. All 46
+focused scorecard/table tests and 15 rendered browser cases pass; measured
+matching-cell geometry differs by zero pixels at 320/390/1024px widths.
+Pencil typography, shorter layouts and server rules are unchanged.
+143 focused tests, TypeScript, production build, 24 full local matches and 72
+financial cases pass. Browser evidence and preview are documented in
+[local qualification](SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md).
+152 focused assertions, TypeScript and production build pass for the reviewed
+frontend. Exact-SHA READY/manifest/release-signal/publisher verification is the
+publication checkpoint; physical owner smoke follows.
+Words, Quintzee and Mega smoke are unchanged.
+
 # Ptown Words polish — hosted qualification PASS, publication pending — 2026-10-27
 
 Jeremy accepted the polish smoke and explicitly authorized production publication,
