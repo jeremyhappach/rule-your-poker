@@ -2,7 +2,7 @@
 .quintzee-shell .fullscreen-game-board { container-type:size;container-name:quintzee-space; }
 .quintzee-shell .fullscreen-game-actions:empty { min-height:0; }
 .quintzee-plane button { pointer-events:auto; }
-.quintzee-plane { position:absolute; inset:0; container-type:size; display:grid; grid-template-rows:8% 12% 43% 5% 28% 4%; gap:0; padding:1.5%; color:#fff8dc; background:radial-gradient(ellipse at top,#187a45,#06432b 70%); font-family:Arial,sans-serif; }
+.quintzee-plane { position:absolute; inset:0; container-type:size; display:grid; grid-template-rows:8% 12% minmax(0,1fr) max(28px,5%) 28% 4%; gap:0; padding:1.5%; color:#fff8dc; background:radial-gradient(ellipse at top,#187a45,#06432b 70%); font-family:Arial,sans-serif; }
 .quintzee-plane[data-theme=modern] { background:radial-gradient(ellipse at top,#263b64,#101b35 75%); color:#eff7ff; }
 .quintzee-shell .fullscreen-game-heading strong { font:bold italic 1.3em Georgia,serif;color:#ffe16a; }
 .quintzee-modern .fullscreen-game-heading strong { font-family:Arial,sans-serif;color:#ffcb60; }
@@ -27,7 +27,7 @@
 [data-theme=modern] .q-category { background:#253956; border-color:#506284; color:#aebbd2; border-radius:1cqh; }
 [data-theme=modern] .q-category[data-banked=true] { background:#18273c; }
 .q-bonuses { display:flex; align-items:center; justify-content:space-between; gap:2%; font-size:clamp(9px,1.6cqh,14px); padding:0 1%; }
-.q-bonuses span { display:flex; flex:1; justify-content:space-between; gap:.2em; opacity:.7; }.q-bonuses b { font-variant-numeric:tabular-nums; }.q-bonuses em { font-style:normal; color:#ffe16a; }.q-bonuses [data-earned=true] { opacity:1; color:#e8ffaf; }
+.q-bonuses span { display:flex; flex:1; justify-content:space-between; gap:.2em; opacity:1; }.q-bonuses b { font-variant-numeric:tabular-nums; }.q-bonuses em { font-style:normal; color:#ffe16a; }.q-bonuses [data-earned=true] { opacity:1; color:#e8ffaf; }
 .q-play-area { position:relative; display:grid;grid-template-rows:auto minmax(0,1fr) auto; align-items:center; gap:1cqh; min-height:0; padding:.6cqh 0; }
 .q-roll-guide { display:flex;justify-content:space-between;align-items:center;gap:.5em;font-size:clamp(11px,1.9cqh,17px); }
 .q-roll-guide strong { color:#ffe16a;white-space:nowrap; }.q-roll-guide span { text-align:right; }
@@ -43,7 +43,7 @@
 .q-result { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.5cqh; border:1px solid #e5cd7e; border-radius:1.3cqh; background:#092d22f5; color:#ffe16a; text-align:center; font-size:clamp(15px,3cqh,26px); }.q-result strong { font-size:1.2em; }.q-result small { font-size:.55em; color:white; }
 [data-theme=modern] .q-result { background:#1a2342f5; }
 @container quintzee-space (min-aspect-ratio: 3/2) {
- .quintzee-plane { grid-template-rows:14% 16% 33% 6% 26% 5%; }
+ .quintzee-plane { grid-template-rows:14% 16% minmax(0,1fr) max(24px,6%) 26% 5%; }
  .q-play-area { grid-template-columns:60% 38%;grid-template-rows:auto minmax(0,1fr);gap:1cqh 2%; }
  .q-roll-guide { grid-column:1/-1; }.q-roll,.q-opponent-turn { height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.2em;padding:.5cqh; }
  .q-dice button { display:flex;align-items:center;gap:.5em; }.q-dice small { padding:0; }
@@ -60,3 +60,10 @@
 .q-base{display:flex;align-items:center;justify-content:center;gap:.8em;font-size:1.8cqh}.q-base strong{font-size:2.8cqh;font-variant-numeric:tabular-nums;color:#ffe16a}
 .q-celebration{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:1.3cqh;background:#082b24f5;color:#ffe16a;font-size:4cqh;font-weight:900;text-align:center;pointer-events:none}
 .q-players>.tri-score-cell{position:relative;background:none;border:0;box-shadow:none;padding:0}.q-players .tri-score-home{position:relative}.q-players .tri-score-pill{position:relative;display:flex;flex-direction:column;align-items:center;background:#022f20;border:1px solid #78b08866;border-radius:1em;padding:.5cqh 2%;transition:transform 70ms linear;will-change:transform}.q-players .tri-score-cell[data-active=true] .tri-score-pill{border-color:#ffe16a;box-shadow:inset 0 0 0 1px #ffe16a}.q-players .tri-score-cell:has([data-centered=true]){z-index:40}[data-theme=modern] .q-players .tri-score-pill{background:#10172d}
+
+/* The felt plane owns both dimming and centering; never anchor to the dice/HUD row. */
+.q-bonuses [data-upper-progress]{font-size:clamp(18px,3cqh,25px);line-height:1.1;font-weight:900;color:#fff8dc;white-space:nowrap;text-shadow:0 1px 2px #000}
+[data-theme=modern] .q-bonuses [data-upper-progress]{color:#fff}
+.q-celebration-backdrop{position:absolute;inset:0;z-index:50;display:grid;place-items:center;padding:4%;background:rgb(0 0 0 / .68);pointer-events:auto}
+.q-celebration-backdrop .q-celebration{position:relative;inset:auto;width:fit-content;max-width:100%;padding:.75em 1em;border:2px solid #ffe16a;border-radius:1em;background:#082b24;color:#fff1a3;font-size:clamp(24px,5cqh,46px);line-height:1.15;text-wrap:balance;box-shadow:0 0 2em #ffe16a44,0 .4em 1em #0008}
+[data-theme=modern] .q-celebration-backdrop .q-celebration{background:#17213e}

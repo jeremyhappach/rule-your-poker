@@ -1,0 +1,10 @@
+import {writeFileSync,mkdirSync} from 'node:fs';import assert from 'node:assert/strict';import {connect,context} from './database.mjs';import {installCandidate} from './install-candidate.mjs';import {installPolish} from './install-polish.mjs';
+const c=await connect((await context()).database);const out=[];
+try{await c.query('BEGIN');await installCandidate(c);await installPolish(c);
+const base=(await c.query("SELECT private.quintzee_v3_board_start(private.quintzee_v3_rules(),0)||jsonb_build_object('phase','playing','deadline',100000,'dice','[1,2,3,4,5]'::jsonb,'rollsRemaining',0,'scores',(SELECT jsonb_object_agg(cat,0) FROM unnest(private.quintzee_v3_categories())cat WHERE cat<>'chance')) b")).rows[0].b;
+for(const [at,reason,count]of [[50000,'all_categories',12],[99999,'all_categories',12],[100000,'timeout',11],[100001,'timeout',11]]){const b=(await c.query("SELECT private.quintzee_v3_board_reduce($1,'score',ARRAY[11],$2) b",[base,at])).rows[0].b;assert.equal(b.result.reason,reason);assert.equal(Object.keys(b.scores).length,count);const projection=(await c.query('SELECT private.quintzee_present_board($1) b',[b])).rows[0].b;assert.deepEqual(projection.result,b.result);out.push({at,reason,filled:count,remaining:b.result.remainingMs});}
+const full=(await c.query("SELECT private.quintzee_v3_board_reduce($1,'score',ARRAY[11],99999) b",[base])).rows[0].b;
+const state=(await c.query("SELECT private.quintzee_v3_start(ARRAY[gen_random_uuid()],private.quintzee_v3_rules(),0)||jsonb_build_object('board',$1::jsonb) s",[full])).rows[0].s;
+const after=(await c.query("SELECT private.quintzee_v3_reduce($1,'tick',NULL,100000) s",[state])).rows[0].s;assert.equal(after.board.result.reason,'all_categories');
+await c.query('ROLLBACK');mkdirSync('dev/quintzee/evidence/smoke-polish',{recursive:true});writeFileSync('dev/quintzee/evidence/smoke-polish/authority.json',JSON.stringify({passed:true,local:true,unchangedAuthority:true,cases:out,completedBeforeExpiryRetainsReason:true},null,2));console.log(JSON.stringify(out));
+}finally{await c.query('ROLLBACK');await c.end();}

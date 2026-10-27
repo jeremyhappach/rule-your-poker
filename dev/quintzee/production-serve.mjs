@@ -73,7 +73,7 @@ server.middlewares.use('/__quintzee',async(req,res)=>{
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value??{}));
  }catch(e){res.statusCode=400;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:e.message}));console.error(req.url,e.message);}
  });}};
-const server=await createServer({configFile:false,plugins:[react(),plugin],resolve:{alias:[{find:'@/integrations/supabase/client',replacement:resolve('dev/quintzee/production-local-client.ts')},{find:'@',replacement:resolve('src')}]},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false},server:{host:'127.0.0.1',port:15298,strictPort:true}});
+const server=await createServer({configFile:false,plugins:[react(),plugin],resolve:{alias:[{find:'@/integrations/supabase/client',replacement:resolve('dev/quintzee/production-local-client.ts')},{find:'@',replacement:resolve('src')}]},define:{__DEV__:true,__RUN21_APP_TEST_LANE__:false},server:{host:'127.0.0.1',port:Number(process.env.QUINTZEE_PREVIEW_PORT??15298),strictPort:true}});
 service=await server.ssrLoadModule('/server/arcade/service.ts');
 let working=false;
 async function recover(){if(working)return;working=true;try{await transaction(null,async c=>{
@@ -82,5 +82,5 @@ async function recover(){if(working)return;working=true;try{await transaction(nu
  const rows=(await c.query("SELECT id FROM private.arcade_runs WHERE game='quintzee' AND status='active' AND due_at<=floor(extract(epoch FROM clock_timestamp())*1000) ORDER BY due_at LIMIT 20")).rows;
  for(const row of rows)await c.query('SELECT public.arcade_quintzee_step(NULL,$1,NULL,NULL,NULL,NULL,NULL,$2)',[row.id,token]);
  });}catch(e){console.error('Recovery',e.message);}finally{working=false;}}
-await recover();const worker=setInterval(()=>void recover(),1000);await server.listen();console.log('Quintzee local preview: http://127.0.0.1:15298/dev/quintzee/production.html');
+await recover();const worker=setInterval(()=>void recover(),1000);await server.listen();console.log('Quintzee local preview port '+(process.env.QUINTZEE_PREVIEW_PORT??15298));
 async function shutdown(){clearInterval(worker);for(const {res} of streams)res.end();await server.close();await admin.end();await root.query('DROP DATABASE "'+database+'"');await root.end();process.exit();}process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);

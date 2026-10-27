@@ -1,0 +1,367 @@
+{
+  "passed": true,
+  "local": true,
+  "cases": [
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 320,
+      "height": 568,
+      "upper": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 390,
+      "height": 844,
+      "upper": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 23.0925,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0.0078125,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 23.0925,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 844,
+      "height": 390,
+      "upper": {
+        "dx": 0.0078125,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 320,
+      "height": 568,
+      "upper": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 390,
+      "height": 844,
+      "upper": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 20.7886,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 20.7886,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 844,
+      "height": 390,
+      "upper": {
+        "dx": 0.0078125,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 320,
+      "height": 568,
+      "upper": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 390,
+      "height": 844,
+      "upper": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 23.0925,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0.0078125,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 23.0925,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 844,
+      "height": 390,
+      "upper": {
+        "dx": 0.0078125,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 320,
+      "height": 568,
+      "upper": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 390,
+      "height": 844,
+      "upper": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 20.7886,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 20.7886,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 844,
+      "height": 390,
+      "upper": {
+        "dx": 0.0078125,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Upper Bonus +35"
+      },
+      "quintzee": {
+        "dx": 0,
+        "dy": 0.0078125,
+        "covers": true,
+        "parent": true,
+        "dim": "rgba(0, 0, 0, 0.68)",
+        "font": 18,
+        "progressFits": true,
+        "cardFits": true,
+        "label": "Quintzee!"
+      },
+      "directZero": true,
+      "fullCardLabel": true
+    }
+  ],
+  "errors": []
+}
