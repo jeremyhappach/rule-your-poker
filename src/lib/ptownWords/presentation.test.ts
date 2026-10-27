@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {boardTapGate,playedWord,wordPresentation,wordSquares} from './presentation';
+import {boardTapGate,playedWord,wordPresentation,wordSquares,visibleBoardTile} from './presentation';
 import type {WordsSnapshot} from './model';
 afterEach(()=>vi.useRealTimers());
 describe('board tap disambiguation',()=>{
@@ -10,3 +10,10 @@ const view={identity:{dealerGameId:'match'},viewerId:'human',turn:2,finished:fal
 it('resumes the fixed interval without extending it on repeated snapshots or reconnect',()=>{expect(wordPresentation(view,2000)?.readyAt).toBe(4190);expect(wordPresentation({...view,revision:30},3500)?.at).toBe(3500);expect(wordPresentation(view,4190)).toBeNull();expect(wordPresentation({...view,turn:3},2000)).toBeNull();expect(wordPresentation({...view,finished:true},2000)).toBeNull();});
 it('uses the authoritative total including crosses and highlights only public formed words',()=>{expect(wordPresentation(view,2300)?.move.points).toBe(23);expect(playedWord(view)?.word).toBe('CATS');expect(wordSquares(view)).toEqual([112,113,114,115,98]);});
 it('freezes visual progress at the authoritative pause instant',()=>{expect(wordPresentation({...view,paused:true,pausedAt:2000},9000)?.at).toBe(2000);});
+it.each([[112,113,114],[97,112,127]])('gates actual board contents in reading order, including reconnect and repeated snapshots: %j',(...squares)=>{
+ const board=Array(225).fill(null);board[0]={id:99,face:'A',letter:'A',value:1};squares.forEach((square,i)=>board[square]={id:i,face:'C',letter:'C',value:3});
+ const v={...view,board,movePresentation:{...view.movePresentation!,squares:[...squares].reverse()}};
+ expect(squares.map(s=>visibleBoardTile(v,s,1100))).toEqual([null,null,null]);expect(visibleBoardTile(v,0,1100)).toBe(board[0]);
+ for(let i=0;i<3;i++){const at=1200+i*260;expect(squares.map(s=>!!visibleBoardTile(v,s,at))).toEqual(squares.map((_,j)=>j<=i));expect(squares.map(s=>visibleBoardTile({...v,revision:22},s,at))).toEqual(squares.map(s=>visibleBoardTile(v,s,at)));}
+ expect(squares.every(s=>visibleBoardTile(v,s,9000))).toBe(true);expect(visibleBoardTile({...v,paused:true},0,9000)).toBeNull();
+});

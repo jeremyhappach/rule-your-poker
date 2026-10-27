@@ -1,3 +1,17 @@
+# Ptown Words banks and pause — LOCAL preview, publication held — 2026-10-27
+
+Owner authorized local reveal/time-bank/pause work only. New /2 matches have two
+server-owned +3m slots per player; host pause uses canonical authority and guest
+requests use the canonical announcement rail. Paused board and rack contents are
+concealed from first render. Real event-path testing reproduced skipped reveal
+slots, corrected with a shared receipt-based presentation projection and explicit
+tile visibility. Server deadlines and settlement remain authoritative. Local
+server/race/financial proofs, 66 focused client tests, TypeScript and the actual
+Game-route browser suite pass (human horizontal/vertical and bot reveal,
+pause/request/reload, bank persistence and four viewport sizes); see
+[preview and qualification](PTOWN_WORDS_BANKS_PAUSE_LOCAL.md).
+No push, hosted migration, deployment or admission change is authorized.
+
 # Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
 
 Jeremy approved reviewed candidate `928887f1a11d27e4c80003170d85b54841ad25bb`

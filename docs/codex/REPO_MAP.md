@@ -21,6 +21,11 @@ Combined local polish: `server/ptownWords/bots/scowl-20` pins the licensed famil
 bot subset; `bot-vocabulary.sql` plus `bots.sql` own its bounded casual policy.
 `rackPresentation.ts` owns only display shuffle and dictionary-error classification.
 `casual-bot-proof.mjs` / `polish-pass-browser.mjs` qualify the local candidate.
+Local /2 banks/pause: `banks-pause-local.sql` extends the shared reducer and Words
+command/snapshot adapters; canonical pause ownership remains unchanged.
+`useWordRevealTimeline.ts` owns the per-viewer presentation receipt, with fixed
+server handoff/deadline. `banks-proof.mjs` and `banks-browser.mjs` qualify this
+unpublished candidate. See `PTOWN_WORDS_BANKS_PAUSE_LOCAL.md`.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 

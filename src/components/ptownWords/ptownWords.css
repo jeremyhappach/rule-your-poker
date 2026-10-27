@@ -17,6 +17,8 @@
 .words-player:not(:has(.words-edit)) .words-turn-actions{grid-column:1/-1}
 .words-cell small{display:block;line-height:1;font-size:.36em;right:5%;bottom:5%}
 .words-rack small{display:block;line-height:1;right:3px;bottom:3px}
+.words-status{flex-wrap:wrap}.words-clock{display:flex;align-items:center;gap:3px}.words-shell .words-bank{border-radius:50%;width:44px;height:44px;min-width:44px;padding:0;font-size:.7rem;color:#7be1cc;background:#203e42}.words-shell .words-pause{width:44px;height:44px;min-width:44px;display:grid;place-items:center;padding:0}
+.words-board-region[data-paused=true] .words-scroll,.words-rack[data-concealed=true]{filter:blur(8px);pointer-events:none;user-select:none}.words-paused-cover{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#141d2980;font-weight:700;font-size:1.2rem}.words-paused-cover small{font-weight:400;font-size:.8rem}
 .words-shell .words-player{display:flex;flex-direction:column;gap:.25rem}
 .words-turn-actions{display:flex;gap:.25rem}
 .words-shell .words-turn-actions button{min-height:44px;min-width:44px;padding:.25rem;font-size:.75rem}

@@ -9,6 +9,22 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function tap(cell:Element){fireEvent.click(cell,{detail:1,clientX:100,clientY:100});}
+const bankView={...view,rules:{...view.rules,version:'ptown-words/2',timeBankUses:2,timeBankMs:180000},hostUserId:'u1',pauseVersion:0,timeBankSpent:{}};
+it('keeps two match-scoped bank slots, preserves draft and displays added remaining time',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props} view={bankView}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ fireEvent.click(screen.getByRole('button',{name:'Use time bank 1: add 3 minutes'}));expect(intent).toHaveBeenLastCalledWith({type:'time_bank',items:[{slot:0}]});
+ rerender(<PtownWordsView {...props} view={{...bankView,revision:1,deadline:361000,timeBankSpent:{me:[0]}}}/>);expect(container.querySelector('.is-staged')).not.toBeNull();expect(screen.queryByRole('button',{name:'Use time bank 1: add 3 minutes'})).toBeNull();expect(container.querySelector('time')?.textContent).toBe('6:00');
+ rerender(<PtownWordsView {...props} view={{...bankView,turn:3,revision:3,timeBankSpent:{me:[0,1]}}}/>);expect(screen.queryByText('+3m')).toBeNull();
+});
+it('host pause uses the canonical callback and non-host pause only requests',()=>{
+ const pause=vi.fn(),{rerender}=render(<PtownWordsView {...props} view={bankView} onPause={pause}/>);fireEvent.click(screen.getByRole('button',{name:'Pause game'}));expect(pause).toHaveBeenCalledOnce();expect(intent).not.toHaveBeenCalled();
+ rerender(<PtownWordsView {...props} view={{...bankView,hostUserId:'u2',canAct:false}} onPause={pause}/>);fireEvent.click(screen.getByRole('button',{name:'Request pause'}));expect(intent).toHaveBeenLastCalledWith({type:'request_pause'});expect(pause).toHaveBeenCalledOnce();
+});
+it('conceals board/rack from first paused render, including accessible labels; only host can resume',()=>{
+ const board=[...view.board];board[112]={id:20,face:'Z',letter:'Z',value:10};const pause=vi.fn(),paused={...bankView,board,paused:true,pausedAt:2000};
+ const {container,rerender}=render(<PtownWordsView {...props} view={paused} now={9000} onPause={pause}/>);expect(container.querySelectorAll('.words-cell b,.words-rack small')).toHaveLength(0);expect(screen.queryByRole('button',{name:'C, 3 points'})).toBeNull();expect(screen.getAllByRole('button',{name:'Concealed tile'})).toHaveLength(3);expect(container.querySelector('time')?.textContent).toBe('2:59');
+ fireEvent.click(screen.getByRole('button',{name:'Resume game'}));expect(pause).toHaveBeenCalledOnce();rerender(<PtownWordsView {...props} view={{...paused,hostUserId:'u2'}} onPause={pause}/>);expect((screen.getByRole('button',{name:'Resume game'}) as HTMLButtonElement).disabled).toBe(true);
+});
 it.each(['mouse','touch'])('%s rack input selects without zoom; only direct board input zooms then places',pointerType=>{
  const {container}=render(<PtownWordsView {...props}/>),rack=screen.getByRole('button',{name:'C, 3 points'}),cell=container.querySelector('[data-square="112"]')!;
  fireEvent.pointerDown(rack,{pointerType});fireEvent.click(rack,{detail:1});expect(rack.getAttribute('aria-pressed')).toBe('true');expect(container.querySelector('.is-overview')).not.toBeNull();expect(container.querySelectorAll('.is-staged')).toHaveLength(0);

@@ -10,6 +10,16 @@ rehearsals to avoid retaining production DDL locks over the canonical timer scan
 installed proofs use actual default storage. Admission and money eligibility
 remain unchanged. See `SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md`.
 
+## 2026-10-27 — Words time banks and pause are local review only
+
+Owner authorized local /2 preparation: two 180-second slots per player/match,
+canonical host pause/resume, durable non-host pause request, concealed paused
+board/rack and corrected sequential opponent visibility. The existing reducer,
+request ledger and session pause owner remain authoritative. Receipt-based
+presentation catches up within the server's fixed handoff window without clock
+extensions; /1 rules and fake-only eligibility remain preserved. Publication and
+hosted changes require later explicit approval. See PTOWN_WORDS_BANKS_PAUSE_LOCAL.md.
+
 ## 2026-10-27 — Ptown Words polish approved for indefinite fake-money release
 
 Owner smoke accepted the polish except rack taps incorrectly zooming the board.

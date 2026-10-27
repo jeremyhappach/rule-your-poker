@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    "same UUID replay spends once",
+    "racing UUIDs spend once",
+    "exact additive 180000ms each",
+    "two slots per match, not per turn",
+    "private racks unchanged",
+    "wrong actor and expiry rejected",
+    "legacy /1 preserved",
+    "timeout pass preserved",
+    "non-host request only",
+    "repeat request idempotent",
+    "host pause authority",
+    "pause/resume preserves remaining and spent slots",
+    "host transfer revises snapshot and retires request",
+    "core and canonical financial rollback regression"
+  ]
+}

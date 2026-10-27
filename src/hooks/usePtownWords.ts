@@ -17,9 +17,9 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport){
   const off=transport.subscribe(()=>void refresh(),online=>{if(token!==generation.current)return;setConnected(online&&navigator.onLine);if(online)void resolve();});void resolve();
   const recover=()=>{if(!navigator.onLine)setConnected(false);if(navigator.onLine&&!document.hidden)void resolve();};
   window.addEventListener('online',recover);window.addEventListener('offline',recover);window.addEventListener('focus',recover);document.addEventListener('visibilitychange',recover);
-  const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),250);
+  const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),100);
   return()=>{generation.current++;off();clearInterval(timer);window.removeEventListener('online',recover);window.removeEventListener('offline',recover);window.removeEventListener('focus',recover);document.removeEventListener('visibilitychange',recover);};
  },[transport,accept,resolve]);
- const act=async(intent:Intent)=>{const v=latest.current;if(!v?.canAct||v.paused||!connected||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;sessionStorage.setItem(key,JSON.stringify({requestId:crypto.randomUUID(),revision:v.revision,intent}));return resolve();};
+ const act=async(intent:Intent)=>{const v=latest.current;if(!v||(intent.type!=='request_pause'&&!v.canAct)||v.paused||!connected||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;sessionStorage.setItem(key,JSON.stringify({requestId:crypto.randomUUID(),revision:v.revision,intent}));return resolve();};
  return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:resolve};
 }

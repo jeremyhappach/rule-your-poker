@@ -5,6 +5,13 @@ import {usePtownWords} from './usePtownWords';
 import {acceptWordsSnapshot,type WordsSnapshot} from '@/lib/ptownWords/model';
 import type {WordsTransport,Command} from '@/lib/ptownWords/client';
 const snapshot={identity:{sessionId:'session',dealerGameId:'match',roundId:'round'},revision:0,serverAt:1000,board:Array(225).fill(null),rack:[],canAct:true,paused:false} as WordsSnapshot;
+it('allows a seated waiting player to request pause without admitting gameplay or time-bank actions',async()=>{
+ Object.defineProperty(document,'hidden',{configurable:true,value:false});const send=vi.fn(async(_command:Command)=>({...snapshot,canAct:false,revision:1}));
+ const transport:WordsTransport={load:async()=>({...snapshot,canAct:false}),subscribe:(_refresh,status)=>{status(true);return()=>{};},send};
+ const {result}=renderHook(()=>usePtownWords('match','user',transport));await waitFor(()=>expect(result.current.connected&&!!result.current.snapshot).toBe(true));
+ await act(async()=>{expect(await result.current.act({type:'time_bank',items:[{slot:0}]})).toBe(false);expect(await result.current.act({type:'pass'})).toBe(false);expect(await result.current.act({type:'request_pause'})).toBe(true);});
+ expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0][0].intent).toEqual({type:'request_pause'});
+});
 afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 it('retries the identical durable command after a committed move loses its reply',async()=>{
  Object.defineProperty(document,'hidden',{configurable:true,value:false});
