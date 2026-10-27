@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {usePtownWords} from '@/hooks/usePtownWords';
 import {wordsTransport,wordsRpc} from '@/lib/ptownWords/client';
-import {PtownWordsView} from './PtownWordsView';
+import {PtownWordsView,PtownWordsRulesLabel} from './PtownWordsView';
 import PtownWordsRules from '@/components/rules/PtownWordsRules';
 import {useGameChatContext} from '@/hooks/GameChatContext';
 import {MobileChatPanel} from '@/components/MobileChatPanel';
@@ -49,7 +49,7 @@ export function PtownWordsTable(props:Props){
   if(v.finished){complete.current=true;callbacks.current.onTerminalComplete(`ptown-words|winseq|${v.identity.sessionId}|${v.identity.dealerGameId}|1|${v.financial.resultId}|${v.identity.roundId}`);callbacks.current.onTerminalActive(false);return;}
   if(closing.current)return;closing.current=true;void wordsRpc('ptown_words_close',{p_dealer_game_id:v.identity.dealerGameId}).then(()=>game.reconnect()).catch(e=>setError((e as Error).message));
  },[v,ready,props.sessionEnded,game.now]);
- if(!v)return <FullscreenGameShell title="Ptown Words" description="" activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={<PtownWordsRules/>} ready={false}><div role="status">{game.error||'Loading game…'}<button onClick={()=>void game.reconnect()}>Reconnect</button></div></FullscreenGameShell>;
+ if(!v)return <FullscreenGameShell className="words-shell" title="Ptown Words" description="" activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={props.activeTab==='lobby'?'Rules':undefined} panel={<PtownWordsRules/>} ready={false}><div role="status">{game.error||'Loading game…'}<button onClick={()=>void game.reconnect()}>Reconnect</button></div></FullscreenGameShell>;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v.moves.map(m=><p key={m.turn}>{v.players.find(p=>p.id===m.playerId)?.name} · {m.action==='place'?m.words.map(w=>w.word).join(', '):m.action==='exchange'?`Exchanged ${m.count}`:'Passed'} · {m.points}</p>)}</div>:<PtownWordsRules/>;
  return <PtownWordsView view={v} now={game.now} pending={game.pending} connected={game.connected} error={error||game.error} activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={panel} sessionEnded={props.sessionEnded} onIntent={game.act} onReconnect={()=>{closing.current=false;setError('');void game.reconnect();}} balance={id=>{const p=v.players.find(p=>p.id===id)!;return <Balance id={id} seat={p.seat} fallback={v.financial.balances[id]??0}/>;}}/>;
 }

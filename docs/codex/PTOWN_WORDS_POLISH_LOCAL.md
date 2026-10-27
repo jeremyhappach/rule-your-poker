@@ -12,6 +12,15 @@ server is running. Start a fresh synthetic fake-money game against a bot.
 The preview uses the actual Game route and local PostgreSQL authority, with
 canonical configure/ante/recovery/settlement; it does not call production.
 
+October 27 refinements: redundant board-size text and Zoom In button are removed;
+tap the overview to inspect a section. The rules-only Session button is now a
+question-mark icon with accessible Rules name and a 44px target. The shared shell
+retains panel focus restoration; other games keep its default Session label.
+An accepted own placement returns to the full board, driven by authoritative
+move history. A pending/rejected command preserves the draft and camera. If own
+acceptance and an opponent reveal arrive together, the reveal still plays and
+then restores the full board. No new SQL or timing change is part of this refinement.
+
 - In board detail, a double tap zooms out. A single pointer tap waits 300ms so
   the second tap can cancel both; neither tap changes a draft or submits it.
   Movement/scroll and turn changes cancel pending taps. Keyboard placement stays
@@ -59,6 +68,14 @@ produced an empty rail. Expired/queued Words notices are retired at handoff.
 - Ten focused tests: pointer double-tap disambiguation, blank picker protection,
   staged-tile preservation, scope cancellation, one-row actions, immutable/retried
   commands, authoritative totals and fixed/pause-aware presentation progress.
+- Four additional component tests cover tap-to-inspect, pending/rejected drafts,
+  accepted-word overview, and coalesced acceptance/opponent camera restoration.
+  `refinement-browser.mjs` checks the actual Rules panel/focus, rejected placement,
+  accepted CAT, bot response and overview restoration on phone and desktop.
+  All fourteen tests, the refreshed route bundle, TypeScript, and phone/desktop
+  browser checks pass. The four-size gesture/HUD/reconnect proof also passes.
+  Refinement evidence: `dev/ptown-words/evidence/refinement-browser.json`;
+  screenshots: `qualification.local/ptown-words/polish/refinement-*.png`.
 - Core SQL and twelve canonical financial cases pass in rollback containment.
   Additional local proof races the same placement from independent connections,
   rejects early input, checks full 180000ms after reveal, one-time pause shift,
@@ -86,6 +103,7 @@ node dev/ptown-words/route-server.mjs
 node dev/ptown-words/polish-proof.mjs
 node dev/ptown-words/polish-browser.mjs
 node dev/ptown-words/polish-human-browser.mjs
+node dev/ptown-words/refinement-browser.mjs
 ```
 
 ## Provenance / remaining review

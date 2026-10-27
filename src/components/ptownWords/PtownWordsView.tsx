@@ -2,10 +2,12 @@ import {useEffect,useLayoutEffect,useMemo,useRef,useState,type ReactNode,type CS
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {CircleHelp} from 'lucide-react';
 import {premiumAt,type Intent,type Placement,type WordsSnapshot} from '@/lib/ptownWords/model';
 import {boardTapGate,wordPresentation,wordSquares} from '@/lib/ptownWords/presentation';
 import './ptownWords.css';
 interface Props {view:WordsSnapshot;now:number;pending:boolean;connected:boolean;error:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;panel:ReactNode;sessionEnded:boolean;onIntent:(intent:Intent)=>Promise<boolean>;onReconnect:()=>unknown;balance?:(id:string)=>ReactNode}
+export function PtownWordsRulesLabel(){return <><CircleHelp size={19} aria-hidden="true"/><span className="sr-only">Rules</span></>;}
 export function PtownWordsView({view:v,now,pending,connected,error,activeTab,setActiveTab,panel,sessionEnded,onIntent,onReconnect,balance}:Props){
  const [zoom,setZoom]=useState(false),[center,setCenter]=useState(112),[selected,setSelected]=useState<number|null>(null),[draft,setDraft]=useState<Placement[]>([]),[dialog,setDialog]=useState<'blank'|'pass'|'exchange'|null>(null),[blankSquare,setBlankSquare]=useState(112),[exchanges,setExchanges]=useState<number[]>([]);
  const viewport=useRef<HTMLDivElement>(null),gesture=useRef({x:0,y:0,moved:false});
@@ -14,8 +16,17 @@ export function PtownWordsView({view:v,now,pending,connected,error,activeTab,set
  const taps=useMemo(()=>boardTapGate(square=>placeRef.current(square),()=>setZoom(false)),[]);
  const animation=useMemo(()=>({at:now}),[presentation?.id,presentation?.startedAt]);
  const highlighted=new Set(presentation?wordSquares(v):[]);
+ let lastOwnWord=0;for(let i=v.moves.length-1;i>=0;i--){const move=v.moves[i];if(move.playerId===v.viewerId&&move.action==='place'){lastOwnWord=move.turn;break;}}
+ const seenOwnWord=useRef(lastOwnWord);
  const scope=`${v.identity.dealerGameId}:${v.turn}`;
  useEffect(()=>{setDraft([]);setSelected(null);setDialog(null);setExchanges([]);},[scope]);
+ useLayoutEffect(()=>{
+  if(lastOwnWord<=seenOwnWord.current)return;seenOwnWord.current=lastOwnWord;taps.cancel();
+  // Acceptance can arrive by command reply or realtime/reconnect. If an opponent
+  // reveal has already caught up, change its restoration target, not its focus.
+  camera.current=presentation?.opponent?{zoom:false,center:112,x:0,y:0}:null;
+  if(!presentation?.opponent){setZoom(false);setFocusCell(null);setFocusTarget(null);}
+ },[lastOwnWord,taps,presentation?.opponent]);
  useLayoutEffect(()=>{if(zoom&&viewport.current){const box=viewport.current,stride=(focusCell??48)+1;box.scrollLeft=(focusTarget?.col??center%15)*stride-box.clientWidth/2+stride/2;box.scrollTop=(focusTarget?.row??Math.floor(center/15))*stride-box.clientHeight/2+stride/2;}},[zoom,center,focusCell,focusTarget]);
  useLayoutEffect(()=>{
   const box=viewport.current;if(!box)return;
@@ -47,8 +58,8 @@ export function PtownWordsView({view:v,now,pending,connected,error,activeTab,set
   <div className="words-turn-actions">{draft.length>0&&<><button disabled={!editable} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo</button><button disabled={!editable} onClick={()=>{setDraft([]);setSelected(null);}}>Recall</button></>}<button disabled={!editable||v.bagCount<7} title={v.bagCount<7?'Need 7 in bag':undefined} onClick={()=>{setExchanges([]);setDialog('exchange');}}>Exchange</button><button disabled={!editable} onClick={()=>setDialog('pass')}>Pass</button></div>
   {(error||!connected)&&<div className="words-error" role="status">{text||'Reconnecting…'}{!connected&&<button onClick={onReconnect}>Reconnect</button>}</div>}
  </div>;
- return <div className="words-host"><FullscreenGameShell className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
-  {!sessionEnded&&<div className="words-board-region"><div className="words-navigation" data-canonical-felt-interaction-layer=""><span>{zoom?'Board detail':'Full board · 15 × 15'}</span>{!zoom&&<button disabled={!!presentation} onClick={()=>{setCenter(112);setZoom(true);}}>Zoom In</button>}{zoom&&<button disabled={!!presentation} aria-pressed={selected===null} onClick={()=>setSelected(null)}>Inspect</button>}</div>
+ return <div className="words-host"><FullscreenGameShell className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
+  {!sessionEnded&&<div className="words-board-region"><div className="words-navigation" data-canonical-felt-interaction-layer=""><span>{zoom?'Board detail':'Full board'}</span>{zoom&&<button disabled={!!presentation} aria-pressed={selected===null} onClick={()=>setSelected(null)}>Inspect</button>}</div>
    <div className={`words-scroll ${zoom?'is-zoom':'is-overview'}`} ref={viewport} aria-busy={!!presentation} onDoubleClick={e=>e.preventDefault()} onKeyDown={e=>{if(e.key==='Escape'&&!presentation){taps.cancel();setZoom(false);}}} onPointerDown={e=>{gesture.current={x:e.clientX,y:e.clientY,moved:false};}} onPointerMove={e=>{if(Math.hypot(e.clientX-gesture.current.x,e.clientY-gesture.current.y)>8){gesture.current.moved=true;taps.cancel();}}} onScroll={()=>{gesture.current.moved=true;taps.cancel();}}>
     <div className="words-grid" role="grid" aria-label="Ptown Words board" data-canonical-felt-interaction-layer="" style={focusCell?{'--words-focus-cell':`${focusCell}px`} as CSSProperties:undefined}>{v.board.map((committed,square)=>{const stage=draft.find(p=>p.square===square),tile=stage?{...v.rack.find(t=>t.id===stage.tileId)!,letter:stage.letter}:committed,premium=premiumAt(square),flipIndex=presentation?.opponent?presentation.squares.indexOf(square):-1,flipping=flipIndex!==undefined&&flipIndex>=0;return <button role="gridcell" key={square} data-square={square} data-word-highlight={highlighted.has(square)||undefined} className={`words-cell ${tile?'has-tile':''} ${stage?'is-staged':''} ${flipping?'is-revealing':''}`} style={flipping?{animationDuration:`${presentation!.flipMs}ms`,animationDelay:`${presentation!.startedAt+presentation!.focusMs+flipIndex!*presentation!.flipMs-animation.at}ms`,animationPlayState:v.paused?'paused':'running'}:undefined} aria-label={`${String.fromCharCode(65+square%15)}${Math.floor(square/15)+1}${tile?` ${tile.letter}, ${tile.value} points`:premium?` ${premium}`:''}`} onClick={e=>{if(presentation||gesture.current.moved)return;if(!zoom||e.detail===0){taps.cancel();place(square);}else taps.tap(square,e.clientX,e.clientY);}}>{tile?<><b>{tile.letter}</b><small>{tile.value}</small></>:<span className={`words-premium ${premium}`} data-center={square===112}>{square===112?'PT':premium}</span>}</button>;})}</div>
    </div>

@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    {
+      "label": "phone",
+      "width": 390,
+      "height": 760,
+      "rulesTarget": {
+        "x": 212.15625,
+        "y": 49.59375,
+        "width": 44,
+        "height": 44
+      },
+      "checks": [
+        "no redundant zoom/board-size controls",
+        "Rules panel and focus restoration",
+        "tap-to-inspect without placement",
+        "rejected word retains draft and camera",
+        "accepted CAT returns overview",
+        "bot reveal restores overview"
+      ],
+      "errors": []
+    },
+    {
+      "label": "desktop",
+      "width": 1024,
+      "height": 760,
+      "rulesTarget": {
+        "x": 846.15625,
+        "y": 49.59375,
+        "width": 44,
+        "height": 44
+      },
+      "checks": [
+        "no redundant zoom/board-size controls",
+        "Rules panel and focus restoration",
+        "tap-to-inspect without placement",
+        "rejected word retains draft and camera",
+        "accepted CAT returns overview",
+        "bot reveal restores overview"
+      ],
+      "errors": []
+    }
+  ]
+}

@@ -1,9 +1,12 @@
-# Ptown Words polish — LOCAL review, publication held — 2026-10-26
+# Ptown Words polish — LOCAL review, publication held — 2026-10-27
 
 Double-tap zoom-out, compact secondary actions and bounded opponent-word reveals
-are implemented in the local preview. Ten focused tests, TypeScript, local SQL
+are implemented in the local preview. Fourteen focused tests, TypeScript, local SQL
 financial/timing proofs and phone/desktop browser checks pass. Production remains
 unchanged. Owner review is required before any push, deployment or hosted SQL.
+The local refinement removes redundant board controls, labels the rules-only
+panel with a question mark, and returns to overview after accepted own words.
+Rejected drafts retain their camera; opponent reveals restore the overview.
 See [local preview, evidence and source screenshot provenance](PTOWN_WORDS_POLISH_LOCAL.md).
 
 # Quintzee final polish - installed qualification PASS, publication pending - 2026-10-27
