@@ -81,6 +81,34 @@ Choose a length, inspect the flag and completed-hole scorecard, then show all
 final results. The review uses synthetic public snapshots and holds results for
 inspection; it does not play or settle a live match.
 
+### Equal cell geometry and final title correction
+
+The follow-up replaces independently sized native table columns with shared,
+container-relative grid tracks scoped to 18-hole scorecards. Front Nine omits
+only the overall Total track; both sections now have identical corresponding
+cell widths, heights, alignment and typography. Final 18-hole results show one
+visible **Final Scorecard** title, with Front Nine and Back Nine section labels.
+The existing dialog description remains available to assistive technology.
+Out, In, bold Total, original pencil strokes and 3/6/9-hole layouts are retained.
+
+Measured rendered hole cells (width × height, CSS pixels):
+
+| Viewport | Front Nine | Back Nine | Maximum corresponding-cell geometry difference |
+|---|---|---|---|
+| 320 × 720 | 16.734375 × 40 | 16.734375 × 40 | 0 |
+| 390 × 720 | 21.078125 × 40 | 21.078125 × 40 | 0 |
+| 1024 × 768 | 28.671875 × 40 | 28.671875 × 40 | 0 |
+
+All 15 browser cases pass, including shorter lengths and three/four-player
+mobile layouts. Checks compare every matching cell and verify that the table
+width difference equals the extra Total column within subpixel rounding
+(0.07px tolerance). All 46 focused scorecard/table tests, application TypeScript
+and the production build pass. Latest logs are `equal-tests.log`,
+`equal-typecheck.log`, `equal-browser.log` and `equal-build.log`; rendered
+measurements are in `browser/evidence.json` under the same qualification folder.
+The 320px two/four-player screenshots were visually inspected. Physical iPhone
+Chrome smoke remains pending. No rules, SQL, settlement or migration changed.
+
 Reproduce checks:
 
 - `node dev/six-card-golf/match-length-proof.mjs`

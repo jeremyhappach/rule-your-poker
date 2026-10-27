@@ -43,8 +43,8 @@ export function GolfScorecard({snapshot,writeHole,onRowWritten}:{snapshot:GolfSn
  const sections=Array.from({length:Math.ceil(count/9)},(_,i)=>({start:i*9,size:Math.min(9,count-i*9)}));
  const writingMs=Math.min(3000,Math.max(200,(snapshot.rules?.presentation?.resultsDurationMs??5000)-200));
  const standings=golfStandings(snapshot);
- return <div className="golf-scorecard" style={{'--golf-writing-duration':writingMs+'ms'} as CSSProperties} tabIndex={0} role="region" aria-label={golfScorecardLabel(count)}>
-  {sections.map(({start,size})=><table key={start} className={count===18&&start===9?'golf-back-nine':undefined}>
+ return <div className={'golf-scorecard'+(count===18?' golf-scorecard-eighteen':'')} style={{'--golf-writing-duration':writingMs+'ms'} as CSSProperties} tabIndex={0} role="region" aria-label={golfScorecardLabel(count)}>
+  {sections.map(({start,size})=><table key={start} className={count===18?(start===0?'golf-front-nine':'golf-back-nine'):undefined}>
    <caption>{count===18?(start===0?'Front Nine':'Back Nine'):<>Golf · {snapshot.phase==='complete'&&snapshot.holes.length===count?'Final scores':'Completed holes'}</>}</caption>
    <thead><tr><th scope="col">Player</th>{Array.from({length:size},(_,i)=><th scope="col" key={i} data-golf-hole={start+i+1}>{start+i+1}</th>)}
     <th scope="col" className={count===18?'golf-nine-subtotal':undefined}>{count===18?(start===0?'Out':'In'):'Total'}</th>

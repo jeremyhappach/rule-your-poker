@@ -157,8 +157,18 @@
 
 .golf-match-length {display:block;text-align:center;font-size:10px;line-height:14px;white-space:nowrap}
 .golf-scorecard table+table {margin-top:12px}
-.golf-scorecard .golf-back-nine th:first-child {width:18%}
-.golf-scorecard .golf-back-nine .golf-nine-subtotal {width:12%}
-.golf-scorecard .golf-back-nine .golf-match-total {width:14%;font-weight:900}
+/* Both nines use the same parent-relative tracks. Front Nine omits only Total. */
+.golf-scorecard-eighteen {container-type:inline-size;--golf-score-summary:calc((100cqw - 1px)*.13);--golf-nine-columns:calc((100cqw - 1px)*.18) repeat(9,calc((100cqw - 1px)*.56/9)) var(--golf-score-summary)}
+.golf-scorecard-eighteen table,.golf-scorecard-eighteen caption,.golf-scorecard-eighteen thead,.golf-scorecard-eighteen tbody {display:block}
+.golf-scorecard-eighteen .golf-front-nine {width:calc(100% - var(--golf-score-summary))}
+.golf-scorecard-eighteen tr {display:grid;grid-template-columns:var(--golf-nine-columns)}
+.golf-scorecard-eighteen .golf-back-nine tr {grid-template-columns:var(--golf-nine-columns) var(--golf-score-summary)}
+.golf-scorecard-eighteen th,.golf-scorecard-eighteen td {border-width:0 1px 1px 0}
+.golf-scorecard-eighteen tr>:first-child {border-left-width:1px}
+.golf-scorecard-eighteen thead th {border-top-width:1px}
+.golf-scorecard-eighteen tbody th {display:flex;align-items:center}
+.golf-scorecard-eighteen th:first-child,.golf-scorecard-eighteen th:last-child {width:auto}
+.golf-scorecard-eighteen .golf-match-total {font-weight:900}
+.golf-final-scorecard-title {text-align:center;font-size:1rem;font-weight:700;padding:6px}
 /* Heavier pencil strokes make the match total bold without replacing handwriting. */
 .golf-match-total .golf-pencil-score path:first-child {stroke-width:2.2;opacity:1}

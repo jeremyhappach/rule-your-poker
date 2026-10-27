@@ -96,6 +96,15 @@ it('cold result mount shows authoritative totals without replaying a hand',()=>{
  expect(state.layer!.querySelectorAll('.golf-scoring-hand [data-card-anchor]')).toHaveLength(0);
  expect(screen.getByRole('region',{name:'9-hole scorecard'})).not.toBeNull();expect(screen.queryByText('Results')).toBeNull();
 });
+it('uses one Final Scorecard title for final 18-hole results with a nonvisual description',()=>{
+ const v=state.game.snapshot;v.rules={...v.rules,holes:18};v.phase='complete';v.hole=18;v.canAct=false;
+ v.holes=Array.from({length:18},(_,i)=>({hole:i+1,roundId:i===17?'r':'old'+i,scores:{p:1,q:2}}));
+ render(<GolfTable {...props}/>);
+ expect(screen.getAllByRole('heading',{name:'Final Scorecard'})).toHaveLength(1);
+ expect(screen.queryByRole('heading',{name:'18-hole scorecard'})).toBeNull();
+ expect(screen.getByText('Hole 18 complete · cumulative totals.').classList.contains('sr-only')).toBe(true);
+ expect(screen.getByText('Front Nine')).toBeTruthy();expect(screen.getByText('Back Nine')).toBeTruthy();
+});
 it('places discard before stock and exposes the stock count through its accessible label',()=>{
  state.game.snapshot.stockCount=39;render(<GolfTable {...props}/>);
  const stock=screen.getByRole('button',{name:'Draw stock, 39 cards'});
