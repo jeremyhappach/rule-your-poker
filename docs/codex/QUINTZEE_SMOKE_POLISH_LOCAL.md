@@ -1,4 +1,37 @@
-# Quintzee owner-smoke polish — LOCAL preview only, 2026-10-27
+# Quintzee owner-smoke polish - approved publication, 2026-10-27
+
+## Superseding owner instruction and release candidate
+
+The owner explicitly approved publishing this polish without another preview gate,
+then added the two-column bonus arrangement before publication. The upper column
+shows UPPER BONUS, its configured award, and right-aligned x/63 progress; the other
+column shows ALL FILLED and its configured award aligned right. Both columns use
+the same enlarged type scale and reserve two lines at phone widths. The base
+readout remains visible in neutral, secondary type while the canonical score pill
+retains its primary highlight and unchanged motion/audio.
+
+The isolated branch merged current main `9d3bc508061678aa968d12b811f5ac405e3eb7a6`
+without conflicts, preserving the installed Golf release. The separate Words
+checkout is untouched and its publisher is idle pending its own test correction.
+No hosted migration, configuration, admission or customer-data write is needed.
+A read-only installed check confirms the previously qualified authority digest
+`6a90419c36d6e87058d1219b86ba7583`, /3 rules matching installed authority, /3 enabled,
+and /1 and /2 disabled for new admission. Existing fake-only admission remains on.
+
+The new browser proof is `dev/quintzee/score-hierarchy-browser.mjs`, with screenshots
+and measured geometry in `dev/quintzee/evidence/score-hierarchy/`. It checks both
+themes and modes at 320x568, 390x844 and 844x390, including the maximum legal upper
+subtotal, Start and actual final-score presentation. TypeScript, 48 focused tests (including all three corrected Golf expectations),
+241 harness tests and the production bundle pass. The full source run passed
+3,044 tests; its only three failures were those stale expectations, now covered
+by the successful focused rerun. No assertion was removed or weakened.
+Exact-SHA production verification must pass before this is called live.
+
+The owner attachment could not be imported through the Library helper because
+Windows Python lacks its required `os.setxattr` operation. Actual local browser
+screenshots were inspected instead; the failed import was not bypassed.
+
+## Earlier local review checkpoint (superseded)
 
 Owner authorized four corrections and a new local preview. Publication is held for
 owner review. This isolated branch starts at released `07a08ea8788ae94595ec35c495ee6c7cd9f424ec`;

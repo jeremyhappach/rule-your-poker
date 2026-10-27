@@ -1,3 +1,15 @@
+# Quintzee smoke polish - qualified, publication pending - 2026-10-27
+
+Owner approved publication without another preview gate. Includes centered/dimmed
+celebrations, canonical zero-confirmation and completion wording, the enlarged
+two-column bonus row, and secondary base-score typography. Both themes and modes
+pass 12 phone/landscape browser cases, including maximum upper-subtotal fit and
+actual Start/final-score interactions. Current Golf main is merged; Words work is
+preserved in its separate checkout. Three stale Golf test expectations are aligned
+with the already-published hole-count payload and scorecard label, without gameplay
+changes. Installed Quintzee authority and admission remain unchanged. See
+[scope, diagnosis and qualification](QUINTZEE_SMOKE_POLISH_LOCAL.md).
+
 # Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
 
 Jeremy approved reviewed candidate `928887f1a11d27e4c80003170d85b54841ad25bb`
