@@ -1,3 +1,11 @@
+# Ptown Words polish — LOCAL review, publication held — 2026-10-26
+
+Double-tap zoom-out, compact secondary actions and bounded opponent-word reveals
+are implemented in the local preview. Ten focused tests, TypeScript, local SQL
+financial/timing proofs and phone/desktop browser checks pass. Production remains
+unchanged. Owner review is required before any push, deployment or hosted SQL.
+See [local preview, evidence and source screenshot provenance](PTOWN_WORDS_POLISH_LOCAL.md).
+
 # Quintzee final polish - installed qualification PASS, publication pending - 2026-10-27
 
 Approved manual category rolls and bounded Upper Bonus +35 sequence are qualified for solo Arcade and fake-money multiplayer. The narrowed hosted proof passed with all triggers enabled, no production function replacement, no global configuration writes and no unscoped recovery; rollback removal is verified. Full recovery/concurrency/fault cases remain covered by the preserved local proofs. Integrated main 59758bc99 (Ptown Words bots) passes TypeScript, 2980 source tests, 241 harness tests and production build. Fresh /3 admission is checked after exact-SHA publication and guarded activation; real money remains server-rejected. Default dice rumble remains 1500 ms. See [qualification and release gates](QUINTZEE_FINAL_POLISH_RELEASE.md).

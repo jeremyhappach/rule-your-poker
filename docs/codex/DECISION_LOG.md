@@ -2,6 +2,16 @@
 
 Jeremy approved manual first rolls for every category and the bounded, blocking Upper Bonus +35 melody/count-up sequence, followed by Arcade/fake-money-only publication. Following the approval-loop incident, he approved narrowing hosted qualification to isolated fixtures without production function replacement or unscoped recovery, and preserving both Ptown Words and Quintzee release history. Global recovery/concurrency/fault scenarios retain local full-authority evidence; fresh /3 admission is verified after guarded activation. Default roll duration remains 1500 ms and Take Score remains unspecified. See QUINTZEE_FINAL_POLISH_RELEASE.md.
 
+## 2026-10-26 — Ptown Words polish requires local review before publication
+
+Jeremy requested safe double-tap zoom-out, one-row secondary controls and readable
+opponent word reveals. The local candidate freezes a separate presentation config
+at admission and reserves at most 3.97 seconds before the next full three-minute
+turn, using server timestamps rather than client acknowledgments. Core /1 rules,
+ENABLE2K and canonical settlement remain shared. Timings and visuals await owner
+preview review. No push, deployment or hosted SQL is authorized for this pass.
+See `PTOWN_WORDS_POLISH_LOCAL.md`.
+
 ## 2026-10-26 — Ptown Words fake-money bots approved
 
 Jeremy approved one-device UI testing with bots, validation and deployment. Keep

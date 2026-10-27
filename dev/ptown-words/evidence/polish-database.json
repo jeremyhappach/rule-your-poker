@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "coreAnd12FinancialCases": true,
+  "checks": [
+    "immutable concurrent command receipt",
+    "one word/revision",
+    "shared early-input rejection",
+    "full 180000ms after handoff",
+    "pause/resume shifts once",
+    "bot schedule after handoff",
+    "terminal payout atomic and replay safe",
+    "win hold follows word reveal"
+  ],
+  "presentation": {
+    "turn": 1,
+    "flipMs": 260,
+    "focusMs": 200,
+    "readyAt": 1793061249536,
+    "squares": [
+      112,
+      127,
+      142
+    ],
+    "version": 1,
+    "noticeMs": 1600,
+    "playerId": "0f37cbfa-879e-4cc8-9313-cd8e45948763",
+    "startedAt": 1793061246606,
+    "announceAt": 1793061247586
+  },
+  "pausedAt": "1793061247083"
+}

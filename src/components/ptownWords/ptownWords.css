@@ -17,3 +17,14 @@
 .words-player:not(:has(.words-edit)) .words-turn-actions{grid-column:1/-1}
 .words-cell small{display:block;line-height:1;font-size:.36em;right:5%;bottom:5%}
 .words-rack small{display:block;line-height:1;right:3px;bottom:3px}
+.words-shell .words-player{display:flex;flex-direction:column;gap:.25rem}
+.words-turn-actions{display:flex;gap:.25rem}
+.words-shell .words-turn-actions button{min-height:44px;min-width:44px;padding:.25rem;font-size:.75rem}
+.words-submit{min-height:44px}
+.is-zoom .words-grid{--words-focus-cell:48px;width:calc(var(--words-focus-cell)*15 + 16px);height:calc(var(--words-focus-cell)*15 + 16px);grid-template-columns:repeat(15,var(--words-focus-cell));grid-template-rows:repeat(15,var(--words-focus-cell))}
+.is-zoom .words-cell{font-size:clamp(10px,calc(var(--words-focus-cell)*.58),28px)}
+.words-cell[data-word-highlight]{outline:2px solid #ffd477;outline-offset:-2px}
+.words-cell.is-revealing{animation-name:words-tile-reveal;animation-timing-function:ease-out;animation-fill-mode:both;backface-visibility:hidden;transform-origin:center}
+@keyframes words-tile-reveal{from{transform:perspective(200px) rotateY(90deg)}to{transform:perspective(200px) rotateY(0)}}
+@media(prefers-reduced-motion:reduce){.words-cell.is-revealing{animation-name:words-tile-appear}}
+@keyframes words-tile-appear{from{opacity:0}to{opacity:1}}

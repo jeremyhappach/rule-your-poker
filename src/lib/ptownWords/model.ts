@@ -11,7 +11,8 @@ export interface WordsSnapshot {
  canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settlement:Record<string,number>|null;
  financial:{balances:Record<string,number>;resultId:string|null;batch:ChipPresentationBatch|null};
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
- moves:{turn:number;playerId:string;action:string;points:number;count:number;words:{word:string;points:number}[]}[];
+ moves:{turn:number;playerId:string;action:string;points:number;count:number;words:{word:string;points:number;square?:number;direction?:number}[]}[];
+ movePresentation?:{version:1;turn:number;playerId:string;squares:number[];startedAt:number;announceAt:number;readyAt:number;flipMs:number;focusMs:number;noticeMs:number};
  event:{label:string;points:number};rackDeductions?:Record<string,number>;
 }
 export function acceptWordsSnapshot(old:WordsSnapshot|null,next:WordsSnapshot,id:string){

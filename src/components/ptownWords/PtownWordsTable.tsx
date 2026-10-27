@@ -10,6 +10,7 @@ import {usePresentationPlayerChipBalance,useChipPresentationCursorState,useChipT
 import type {ChipPresentationBatch} from '@/lib/canonicalShell/ChipPresentationLedger';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
+import {playedWord,wordPresentation} from '@/lib/ptownWords/presentation';
 import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 interface Props {dealerGameId:string;userId:string;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;liveEntry?:boolean;sessionEnded:boolean;onTerminalActive:(active:boolean)=>void;onTerminalComplete:(id:string)=>void}
@@ -22,16 +23,28 @@ function Balance({id,fallback,seat}:{id:string;fallback:number;seat:number}){con
 export function PtownWordsTable(props:Props){
  const transport=useMemo(()=>wordsTransport(props.dealerGameId),[props.dealerGameId]),game=usePtownWords(props.dealerGameId,props.userId,transport),v=game.snapshot;
  const chat=useGameChatContext(),announcements=useAnnouncements(),[error,setError]=useState('');
- const closing=useRef(false),terminal=useRef(false),complete=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const closing=useRef(false),terminal=useRef(false),winAnnounced=useRef(false),complete=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const presentation=v?wordPresentation(v,game.now):null;
  if(v&&!v.settlement)sawLive.current=true;
  const narrated=useRef<number|null>(null);
- useEffect(()=>{if(!v||props.sessionEnded)return;if(narrated.current===null){narrated.current=v.turn;return;}if(narrated.current===v.turn)return;narrated.current=v.turn;const move=v.moves[v.moves.length-1];if(!move||v.phase==='complete')return;announcements.emit({id:`words:move:${v.identity.dealerGameId}:${move.turn}`,type:'gameplay_notice',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{text:`${v.players.find(p=>p.id===move.playerId)?.name} · ${v.event.label}${move.action==='place'?` · ${move.points}`:''}`},ttlMs:3500});},[v,announcements,props.sessionEnded]);
+ const retireNotice=announcements.retireTransientScope;
+ useEffect(()=>{const scope=`words:reveal:${props.dealerGameId}`;if(!presentation)retireNotice(scope);return()=>retireNotice(scope);},[presentation?.id,props.dealerGameId,retireNotice]);
+ useEffect(()=>{
+  if(!v||props.sessionEnded)return;
+  if(v.movePresentation){narrated.current=v.turn;if(!presentation?.opponent||v.paused||presentation.at<presentation.announceAt||presentation.at>=presentation.announceAt+presentation.noticeMs)return;
+   const key=`ptown:words:narrated:${v.identity.dealerGameId}:${v.viewerId}`;if(Number(sessionStorage.getItem(key))>=presentation.turn)return;
+   sessionStorage.setItem(key,String(presentation.turn));
+   announcements.emit({id:`words:move:${presentation.id}`,type:'gameplay_notice',transientScope:`words:reveal:${props.dealerGameId}`,scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{title:`${v.players.find(p=>p.id===presentation.playerId)?.name??'Player'} played ${playedWord(v)?.word??v.event.label} +${presentation.move.points}`},ttlMs:presentation.announceAt+presentation.noticeMs-presentation.at});return;
+  }
+  if(narrated.current===null){narrated.current=v.turn;return;}if(narrated.current===v.turn)return;narrated.current=v.turn;const move=v.moves[v.moves.length-1];if(!move||v.phase==='complete')return;announcements.emit({id:`words:move:${v.identity.dealerGameId}:${move.turn}`,type:'gameplay_notice',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{title:`${v.players.find(p=>p.id===move.playerId)?.name} · ${v.event.label}${move.action==='place'?` · ${move.points}`:''}`},ttlMs:3500});
+ },[v,announcements,props.sessionEnded,game.now]);
  const batch=v?.financial.batch,valid=!!batch&&!!v&&isWordsTerminalBatch(batch,v);
- const admit=useCallback((b:ChipPresentationBatch)=>b.dealer_game_id!==v?.identity.dealerGameId||!!v&&!props.sessionEnded&&isWordsTerminalBatch(b,v),[v,props.sessionEnded]);useChipTransferPresentationAdmission(admit);
+ const admit=useCallback((b:ChipPresentationBatch)=>b.dealer_game_id!==v?.identity.dealerGameId||!!v&&!presentation&&!props.sessionEnded&&isWordsTerminalBatch(b,v),[v,!!presentation,props.sessionEnded]);useChipTransferPresentationAdmission(admit);
  const cursor=useChipPresentationCursorState(valid?batch.cursor:null),ready=!!v?.settlement&&(v.players.every(p=>(v.settlement![p.id]??0)===0)||valid&&['settled','reconciled'].includes(cursor));
- useEffect(()=>{if(!v?.settlement||props.sessionEnded||terminal.current)return;terminal.current=true;callbacks.current.onTerminalActive(true);
+ useEffect(()=>{if(v?.settlement&&!props.sessionEnded&&!terminal.current){terminal.current=true;callbacks.current.onTerminalActive(true);}},[v?.settlement,props.sessionEnded]);
+ useEffect(()=>{if(!v?.settlement||presentation||props.sessionEnded||winAnnounced.current)return;winAnnounced.current=true;
   if(v.terminal&&game.now<v.terminal.deadline){const names=v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name);announcements.emit({id:`match_win:ptown-words:${v.terminal.resultId}`,type:'match_win',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{text:`${names.join(' & ')} ${names.length===1?'wins':'tie'} with ${v.terminal.score}`},ttlMs:Math.max(1,v.terminal.deadline-game.now)});celebrateCanonicalWinner(v.terminal.resultId,v.viewerId,v.terminal.winnerIds,sawLive.current&&(v.settlement[v.viewerId]??0)>0);}
- },[v,props.sessionEnded,announcements,game.now]);
+ },[v,!!presentation,props.sessionEnded,announcements,game.now]);
  useEffect(()=>{if(!v?.settlement||!ready||props.sessionEnded||complete.current||game.now<(v.terminal?.deadline??0))return;
   if(v.finished){complete.current=true;callbacks.current.onTerminalComplete(`ptown-words|winseq|${v.identity.sessionId}|${v.identity.dealerGameId}|1|${v.financial.resultId}|${v.identity.roundId}`);callbacks.current.onTerminalActive(false);return;}
   if(closing.current)return;closing.current=true;void wordsRpc('ptown_words_close',{p_dealer_game_id:v.identity.dealerGameId}).then(()=>game.reconnect()).catch(e=>setError((e as Error).message));

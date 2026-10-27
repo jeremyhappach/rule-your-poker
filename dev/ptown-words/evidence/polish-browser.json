@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    "touch double-tap consumes both taps, preserves selected rack tile and zooms out",
+    "320×568: single secondary row, 44px targets, separate Submit Word, no footer clipping",
+    "390×760: single secondary row, 44px targets, separate Submit Word, no footer clipping",
+    "844×390: single secondary row, 44px targets, separate Submit Word, no footer clipping",
+    "1024×760: single secondary row, 44px targets, separate Submit Word, no footer clipping",
+    "offscreen bot word focused, sequential flips, whole-word highlight, authoritative total announcement before turn input",
+    "reload during announcement preserves server ready/deadline and releases turn without replay or extra award"
+  ],
+  "errors": [],
+  "restoreOrigin": {
+    "x": 59,
+    "y": 384
+  },
+  "move": {
+    "word": [
+      {
+        "word": "QUIZ",
+        "points": 44,
+        "square": 112,
+        "direction": 1
+      }
+    ],
+    "points": 44
+  },
+  "timing": {
+    "turn": 2,
+    "flipMs": 260,
+    "focusMs": 200,
+    "readyAt": 1793061746800,
+    "squares": [
+      112,
+      127,
+      142,
+      157
+    ],
+    "version": 1,
+    "noticeMs": 1600,
+    "playerId": "a8239ba0-4f79-4370-8e55-9bfeb1d8e54a",
+    "startedAt": 1793061743610,
+    "announceAt": 1793061744850
+  }
+}

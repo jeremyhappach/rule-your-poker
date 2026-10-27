@@ -8,6 +8,9 @@ acquisition checks; `dev/ptown-words` owns isolated qualification harnesses.
 `bots.sql` owns the private-view-only move policy; `bot-recovery.sql` adapts the
 canonical Boxdrop scheduled-bot owner with scoped recovery. `bot-registration.sql`
 guards fake-money admission. See `PTOWN_WORDS_RELEASE.md` and `PTOWN_WORDS_BOTS.md`.
+Local-only polish: `presentation.sql` prototypes the frozen, bounded handoff;
+`src/lib/ptownWords/presentation.ts` derives public reveal/gesture presentation.
+`PTOWN_WORDS_POLISH_LOCAL.md` records the preview and publication hold.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 
