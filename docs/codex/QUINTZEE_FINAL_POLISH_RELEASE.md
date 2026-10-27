@@ -1,3 +1,17 @@
+# Superseding qualification checkpoint - 2026-10-27
+
+Owner approved fixture-scoped hosted qualification, preservation of both release histories, and continuation through publication. The earlier pending broad scripts below are historical evidence and MUST NOT be submitted to production.
+
+PASS: supabase/quintzee/scoped-installed-proof.sql (SHA-256 ee181286fa969f4d3fa0a38ed05ee01bc6125b837bbda84a439706e9df466508) passed locally, then on hosted project xvhmbuppghwmwpwrkzao in one attempt. Actual authenticated Start, manual-roll/bonus timing, 2/3/4-player winner/tie balances, conservation, balanced canonical transfer batches, final snapshots, duplicate settlement, role boundaries and real-money setup rejection pass. Authority digest: 32a28638b7edbf5a697bdbceff81741c. All 33 fixture users and their profiles/players/Arcade runs were absent in a separate rollback verification. Global rulesets/admission/recovery and function definitions were unchanged. See dev/quintzee/evidence/final-polish/scoped-installed-hosted.json.
+
+The proof seeds already-admitted synthetic fixtures. It does not claim positive fresh /3 admission while production gates are closed. That final check follows authorized activation. Global/zero-client recovery, independent concurrency and injected post-chip failure remain local full-authority evidence; the broad hosted proof was neither repeated nor claimed. No trigger, permission or RLS guard was disabled. PostgreSQL sequence allocation may advance despite rollback.
+
+The approved documentation conflict is resolved, preserving newest Quintzee, both Ptown Words entries, earlier Quintzee checkpoints, and common history exactly once. Integration actually includes main 59758bc99ff8e2e6243cb18e93ca8e37960799b0, which advanced during reconciliation. One integrated run passed TypeScript, 2980 source tests across 435 files, 241 harness tests across 12 files, and production build. Log: qualification.local/quintzee/integrated-final-build.log. Source/browser behavior is unchanged from the four passing final-polish browser paths. The build's error-boundary fixture intentionally logs boundary-sync-throw; the test suite exits successfully.
+
+Release checkpoint tag: quintzee-final-polish-20261027. Remaining: commit/push, exact remote SHA, CI, READY production deployment, public manifest and persisted publication signal; then guarded activate-polish.sql and scoped positive admission/real-money rejection. No Take Score early-end rule is included. Prior qualified game releases remain preserved.
+
+---
+
 # Quintzee final polish: local checkpoint, production blocked
 
 Owner authorized the final two corrections and publication for solo Arcade and fake-money multiplayer. Take Score early-end behavior remains unspecified and is excluded. This checkpoint supersedes prior local-review holds for this approved scope, but does not waive required release gates.

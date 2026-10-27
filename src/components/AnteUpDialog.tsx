@@ -56,7 +56,7 @@ export const AnteUpDialog = ({
   const isCribbageGame = gameType === 'cribbage';
   const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
   const isYahtzeeGame = gameType === 'yahtzee';
-  const isMegatouch = ['six-card-golf','race-poker','battle-31','quintzee','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up', 'tri-towers', 'run21'].includes(gameType ?? '');
+  const isMegatouch = ['six-card-golf','race-poker','battle-31','quintzee','ptown-words','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up', 'tri-towers', 'run21'].includes(gameType ?? '');
   const isFarkleGame = gameType === 'farkle';
   
   const getGameDisplayName = () => {
@@ -71,6 +71,7 @@ export const AnteUpDialog = ({
     if (gameType === 'race-poker') return 'Race Poker';
     if (gameType === 'battle-31') return 'Battle 31';
     if (gameType === 'quintzee') return 'Quintzee';
+    if (gameType === 'ptown-words') return 'Ptown Words';
     if (gameType === 'boxdrop') return 'Boxdrop';
     if (gameType === 'trip-flip') return 'Trip Flip';
     if (gameType === 'take-two') return 'Take 2';

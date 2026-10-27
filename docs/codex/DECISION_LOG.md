@@ -1,3 +1,35 @@
+## 2026-10-27 - Quintzee final polish and isolated installed proof approved
+
+Jeremy approved manual first rolls for every category and the bounded, blocking Upper Bonus +35 melody/count-up sequence, followed by Arcade/fake-money-only publication. Following the approval-loop incident, he approved narrowing hosted qualification to isolated fixtures without production function replacement or unscoped recovery, and preserving both Ptown Words and Quintzee release history. Global recovery/concurrency/fault scenarios retain local full-authority evidence; fresh /3 admission is verified after guarded activation. Default roll duration remains 1500 ms and Take Score remains unspecified. See QUINTZEE_FINAL_POLISH_RELEASE.md.
+
+## 2026-10-26 — Ptown Words fake-money bots approved
+
+Jeremy approved one-device UI testing with bots, validation and deployment. Keep
+2–4 total players with at least one human; bots are fake-money only, with one
+bounded policy and no difficulty selector. The chooser receives public board and
+its own rack only. Existing /1 reducer, canonical ante consent, financial settlement
+and all-human pause safeguards remain authoritative. A 750ms eligibility delay is
+served by the existing five-second recovery job; human turn clocks stay three
+minutes. No opponent-rack or bag-order access, external AI, or dictionary changes.
+See `PTOWN_WORDS_BOTS.md`.
+
+## 2026-10-26 — Ptown Words full multiplayer delivery approved
+
+Jeremy approved implementing and deploying complete Ptown Words once release gates
+pass, superseding the foundation hold. Version 1 supports 2–4 humans, full ENABLE2K,
+one server-owned rules engine, canonical stake consent/settlement/recovery and original
+fullscreen presentation. No solo or bot mode is activated. See `PTOWN_WORDS_RELEASE.md`.
+
+## 2026-10-26 — Ptown Words identity and ENABLE2K approved
+
+Jeremy named the multiplayer word-tile game Ptown Words and approved the full
+public-domain ENABLE2K vocabulary, accepting differences from tournament lists.
+Preserve the original distribution notice, pin ID/hash per future match, and never
+supplement the list. Original navy/ivory visuals and teal/cyan/amber/violet premiums
+replace prior working branding. This is a local foundation: no existing word-game
+runtime was found, and full-game scope clarification precedes implementation of
+admission, gameplay and settlement. See `PTOWN_WORDS_FOUNDATION.md`.
+
 ## 2026-10-26 — Battle31 smoke release approved
 
 Jeremy accepted the local Battle31 preview and approved publication of its smoke corrections. This supersedes the local production hold for Battle31 only. Other-game nameplate/seat audit findings remain read-only. Preserve current main releases, existing Battle31 matches, play-money admission and real-money exclusion. The approved default becomes 30 seconds for new matches.

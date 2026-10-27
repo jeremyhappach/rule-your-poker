@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "hosted": true,
+  "rolledBack": true,
+  "project": "xvhmbuppghwmwpwrkzao",
+  "proof": "supabase/quintzee/scoped-installed-proof.sql",
+  "sqlSha256": "ee181286fa969f4d3fa0a38ed05ee01bc6125b837bbda84a439706e9df466508",
+  "at": "2026-10-27T00:02:36.559Z",
+  "authorityHash": "32a28638b7edbf5a697bdbceff81741c",
+  "fixtureUserCount": 33,
+  "cleanup": {
+    "release": {
+      "enabled": true,
+      "singleton": true,
+      "admission_enabled": false
+    },
+    "rulesets": [
+      {
+        "id": "quintzee/1",
+        "enabled": true
+      },
+      {
+        "id": "quintzee/2",
+        "enabled": false
+      },
+      {
+        "id": "quintzee/3",
+        "enabled": false
+      }
+    ],
+    "authority_hash": "32a28638b7edbf5a697bdbceff81741c",
+    "fixture_players": 0,
+    "fixture_profiles": 0,
+    "fixture_auth_users": 0,
+    "fixture_arcade_runs": 0
+  },
+  "covers": [
+    "manual category rolls and bounded upper-bonus timing",
+    "authenticated Start and snapshot",
+    "2/3/4-player canonical winner/tie balances, conservation, transfer batch and final snapshots",
+    "duplicate settlement",
+    "actual caller-role boundaries and real-money rejection"
+  ],
+  "limits": [
+    "already-admitted synthetic fixtures; fresh production /3 admission is not claimed before activation",
+    "global recovery, independent concurrency and injected failures covered by preserved local proofs"
+  ]
+}

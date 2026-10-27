@@ -8,6 +8,8 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `PTOWN_WORDS_RELEASE.md` | Approved complete multiplayer rules, authority, admission, recovery, settlement and release qualification |
+| `PTOWN_WORDS_FOUNDATION.md` | Ptown Words approved identity, pinned ENABLE2K, local mock and missing-runtime release hold |
 | `BATTLE31_RELEASE_20261026.md` | Approved owner-smoke release, preservation checks and publication gates |
 | `BATTLE31_SMOKE_LOCAL.md` | Battle31 approved smoke corrections and detailed local evidence |
 | `CANONICAL_SEAT_AUDIT_20261026.md` | Read-only cross-game nameplate/seat findings; no other-game fixes authorized |

@@ -1,0 +1,75 @@
+CREATE FUNCTION pg_temp.words_accept(game uuid,dealer uuid) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE p record;actor text:=current_setting('request.jwt.claim.sub',true);
+BEGIN FOR p IN SELECT id,user_id FROM public.players WHERE game_id=game AND status='active' AND NOT sitting_out AND NOT is_bot AND ante_decision IS NULL LOOP PERFORM set_config('request.jwt.claim.sub',p.user_id::text,true);PERFORM public.submit_ante_decision(game,dealer,p.id,'ante_up');END LOOP;
+ PERFORM public.advance_ante_phase(game,dealer);PERFORM set_config('request.jwt.claim.sub',actor,true);
+END $$;
+CREATE FUNCTION pg_temp.words_fail_transfer() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF current_setting('ptown_words.proof_fail',true)='on' AND NEW.chips IS DISTINCT FROM OLD.chips THEN RAISE EXCEPTION 'words_proof:injected_transfer_failure';END IF;RETURN NEW;END $$;
+CREATE TRIGGER words_proof_fail_transfer BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION pg_temp.words_fail_transfer();
+DO $$
+DECLARE users uuid[]:=ARRAY[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];proof_players uuid[];game uuid;dealer uuid;deadline timestamptz;v jsonb;s jsonb;a jsonb;again jsonb;req uuid;actor uuid;i int;n int;mode int;tie_case int;totals jsonb;racks jsonb;
+BEGIN
+ UPDATE private.game_recovery_dispatch_state SET last_completed_at=clock_timestamp(),last_outcome='completed';
+ UPDATE private.ptown_words_release SET enabled=true,admission_enabled=true;
+ FOR i IN 1..4 LOOP INSERT INTO auth.users(id) VALUES(users[i]);INSERT INTO public.profiles(id,username,is_active) VALUES(users[i],'Words proof '||users[i],true) ON CONFLICT(id) DO UPDATE SET is_active=true;END LOOP;
+ FOR mode IN 0..1 LOOP FOR n IN 2..4 LOOP FOR tie_case IN 0..1 LOOP
+  game:=gen_random_uuid();proof_players:=ARRAY[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];deadline:=clock_timestamp()+interval '10 minutes';
+  INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES(game,'game_selection',mode=1,4,deadline,0,false,false);
+  INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot) SELECT proof_players[j],game,users[j],5-j,100,false FROM generate_series(1,n)j;
+  PERFORM set_config('request.jwt.claim.sub',users[1]::text,true);
+  BEGIN PERFORM public.ptown_words_configure(game,proof_players[1],4,'ptown-words','{"ante_amount":0}',deadline);RAISE EXCEPTION 'missing stake rejection';EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'ptown_words:config' THEN RAISE;END IF;END;
+  v:=public.ptown_words_configure(game,proof_players[1],4,'ptown-words','{"ante_amount":5}',deadline);dealer:=(v#>>'{dealer_game,id}')::uuid;
+  PERFORM pg_temp.words_assert((public.ptown_words_configure(game,proof_players[1],4,'ptown-words','{"ante_amount":5}',deadline)->>'deduped')::boolean,'configure replay');
+  PERFORM pg_temp.words_accept(game,dealer);SELECT state INTO s FROM private.ptown_words_matches WHERE dealer_game_id=dealer;
+  PERFORM pg_temp.words_assert(s->'rules'=private.ptown_words_rules(),'frozen dictionary and rule version');
+  actor:=(s->'players'->(s->>'turnIndex')::int->>'userId')::uuid;PERFORM set_config('request.jwt.claim.sub',actor::text,true);req:=gen_random_uuid();
+  a:=public.ptown_words_action(dealer,req,0,'pass');again:=public.ptown_words_action(dealer,req,0,'pass');PERFORM pg_temp.words_assert(a=again,'exact original command receipt');
+  BEGIN PERFORM public.ptown_words_action(dealer,req,0,'exchange','[]');RAISE EXCEPTION 'missing replay conflict';EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'ptown_words:replay_conflict' THEN RAISE;END IF;END;
+  BEGIN PERFORM public.ptown_words_action(dealer,gen_random_uuid(),0,'pass');RAISE EXCEPTION 'missing stale rejection';EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'ptown_words:stale_revision' THEN RAISE;END IF;END;
+  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+  BEGIN PERFORM public.ptown_words_snapshot(dealer);RAISE EXCEPTION 'missing membership rejection';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+  PERFORM set_config('request.jwt.claim.sub',actor::text,true);
+  PERFORM pg_temp.words_assert(NOT(a?'bag') AND NOT(a?'racks') AND jsonb_array_length(a->'rack')=7,'authenticated projection private rack only');
+  PERFORM pg_temp.words_assert(NOT EXISTS(SELECT 1 FROM jsonb_array_elements(public.ptown_words_history(dealer))x WHERE x->'frame'?'bag' OR x->'frame'?'racks' OR x#>'{frame,rack}'<>'[]'::jsonb),'history has no private tiles');
+  SELECT jsonb_object_agg(proof_players[j]::text,CASE WHEN j=1 OR tie_case=1 AND j=2 THEN 100 ELSE 0 END),jsonb_object_agg(proof_players[j]::text,'[]'::jsonb) INTO totals,racks FROM generate_series(1,n)j;
+  SELECT state INTO s FROM private.ptown_words_matches WHERE dealer_game_id=dealer;
+  s:=s||jsonb_build_object('scores',totals,'racks',racks,'passes',2*n-1);
+  s:=private.ptown_words_reduce(s,'pass',NULL,floor(extract(epoch FROM clock_timestamp())*1000)::bigint);
+  UPDATE private.ptown_words_matches SET state=s WHERE dealer_game_id=dealer;
+  IF tie_case=1 THEN UPDATE public.games SET pending_session_end=true WHERE id=game;END IF;
+  IF mode=0 AND n=2 AND tie_case=0 THEN
+   PERFORM set_config('ptown_words.proof_fail','on',true);
+   BEGIN PERFORM private.ptown_words_settle(dealer);RAISE EXCEPTION 'missing transfer failure';EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'words_proof:injected_transfer_failure' THEN RAISE;END IF;END;
+   PERFORM set_config('ptown_words.proof_fail','off',true);
+   PERFORM pg_temp.words_assert((SELECT count(*)=0 FROM public.game_results WHERE dealer_game_id=dealer) AND (SELECT sum(chips)=200 FROM public.players WHERE game_id=game) AND (SELECT settlement IS NULL FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'failed financial write rolls back result and settlement');
+  END IF;
+  PERFORM private.ptown_words_settle(dealer);PERFORM private.ptown_words_settle(dealer);SET CONSTRAINTS ALL IMMEDIATE;
+  PERFORM pg_temp.words_assert((SELECT count(*)=1 FROM public.game_results WHERE dealer_game_id=dealer),'exactly one result');
+  PERFORM pg_temp.words_assert((SELECT sum(chips)=100*n FROM public.players WHERE game_id=game),'balanced canonical chips');
+  IF tie_case=0 THEN PERFORM pg_temp.words_assert((SELECT chips=100+(n-1)*5 FROM public.players WHERE id=proof_players[1]),'actual winner chips');END IF;
+  IF n>2 OR tie_case=0 THEN PERFORM pg_temp.words_assert((SELECT count(*)=1 FROM public.gameplay_transfer_batches WHERE dealer_game_id=dealer AND unmatched_deltas='{}'::jsonb AND jsonb_array_length(transfers)>0),'balanced canonical transfer journal');END IF;
+  PERFORM pg_temp.words_assert((SELECT count(*)=n FROM public.session_player_snapshots ss JOIN public.players p ON p.id=ss.player_id AND p.chips=ss.chips WHERE ss.dealer_game_id=dealer),'final snapshots equal actual chips');
+  PERFORM pg_temp.words_assert(public.ptown_words_action(dealer,req,0,'pass')=a,'terminal late replay returns same receipt');
+  SET CONSTRAINTS ALL DEFERRED;
+  PERFORM public.ptown_words_close(dealer);PERFORM pg_temp.words_assert((SELECT NOT finished FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'postgame hold');
+  UPDATE private.ptown_words_matches SET state=jsonb_set(state,'{terminal,deadline}','0') WHERE dealer_game_id=dealer;PERFORM public.ptown_words_close(dealer);PERFORM public.ptown_words_close(dealer);
+  PERFORM pg_temp.words_assert((SELECT finished FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'postgame continuation idempotent');
+  PERFORM pg_temp.words_assert(public.ptown_words_action(dealer,req,0,'pass')=a,'late replay after continuation');
+  IF tie_case=1 THEN PERFORM pg_temp.words_assert((SELECT status='session_ended' FROM public.games WHERE id=game),'Session Ended');END IF;
+ END LOOP;END LOOP;END LOOP;
+ -- Durable recovery completes the final legal pass with no connected client.
+ game:=gen_random_uuid();proof_players:=ARRAY[gen_random_uuid(),gen_random_uuid()];deadline:=clock_timestamp()+interval '10 minutes';
+ INSERT INTO public.games(id,status,real_money,dealer_position,config_deadline,pot,is_paused,pending_session_end) VALUES(game,'game_selection',false,2,deadline,0,false,false);
+ INSERT INTO public.players(id,game_id,user_id,position,chips,is_bot) SELECT proof_players[j],game,users[j],3-j,100,false FROM generate_series(1,2)j;
+ PERFORM set_config('request.jwt.claim.sub',users[1]::text,true);v:=public.ptown_words_configure(game,proof_players[1],2,'ptown-words','{"ante_amount":5}',deadline);dealer:=(v#>>'{dealer_game,id}')::uuid;PERFORM pg_temp.words_accept(game,dealer);
+ SELECT state INTO s FROM private.ptown_words_matches WHERE dealer_game_id=dealer;
+ UPDATE public.games SET is_paused=true WHERE id=game;PERFORM pg_temp.words_assert((SELECT paused_at IS NOT NULL FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'canonical pause freezes clock');
+ UPDATE private.ptown_words_matches SET paused_at=paused_at-1000 WHERE dealer_game_id=dealer;UPDATE public.games SET is_paused=false WHERE id=game;
+ PERFORM pg_temp.words_assert((SELECT (state->>'deadline')::bigint>=(s->>'deadline')::bigint+1000 FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'resume restores remaining turn time');
+ UPDATE private.ptown_words_matches SET state=state||jsonb_build_object('passes',3,'deadline',floor(extract(epoch FROM clock_timestamp())*1000)-1000) WHERE dealer_game_id=dealer;
+ PERFORM set_config('request.jwt.claim.sub','',true);PERFORM private.ptown_words_recover();PERFORM private.ptown_words_recover();
+ PERFORM pg_temp.words_assert((SELECT settlement IS NOT NULL AND state->>'phase'='complete' FROM private.ptown_words_matches WHERE dealer_game_id=dealer),'zero-client terminal recovery');
+ PERFORM pg_temp.words_assert((SELECT count(*)=1 FROM public.game_results WHERE dealer_game_id=dealer),'recovery pays once');
+ PERFORM pg_temp.words_assert(NOT has_function_privilege('authenticated','private.ptown_words_reduce(jsonb,text,jsonb,bigint)','EXECUTE') AND NOT has_table_privilege('authenticated','private.ptown_words_matches','SELECT') AND NOT has_table_privilege('authenticated','private.ptown_words_lexicon','SELECT'),'no browser authority/private access');
+END $$;
+DROP TRIGGER words_proof_fail_transfer ON public.players;
+SELECT 'Ptown Words 2–4 player fake/real money settlement rollback proof passed' proof;

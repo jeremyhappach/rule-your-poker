@@ -6,7 +6,7 @@ import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>!['quintzee','canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
+ expect(GAME_CATALOG.filter(g=>!['ptown-words','quintzee','canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
  expect(ARCADE_GAMES.filter(g=>!['mega-card-golf','quintzee'].includes(g.id)).map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);
@@ -17,6 +17,7 @@ describe('integrated catalog parity',()=>{
  expect(eligibility(game,{players:5,humans:1,realMoney:false},{quintzee:true})).toBe('2–4 players');
  });
  it('keeps Battle 31 local, capability gated and multiplayer only',()=>{const game=findGame('battle-31')!;expect(game.modes).toEqual(['multiplayer']);expect(game.players).toMatchObject({min:2,max:2});expect(isDiscovered(game,{})).toBe(false);});
+ it('allows Ptown Words bots only with a human in fake money',()=>{const game=findGame('ptown-words')!;expect(game.family).toBe('megatouch');expect(game.modes).toEqual(['multiplayer']);expect(isDiscovered(game,{})).toBe(false);for(const players of [2,3,4]){expect(eligibility(game,{players,humans:players,realMoney:true},{'ptown-words':true})).toBeNull();expect(eligibility(game,{players,humans:1,realMoney:false},{'ptown-words':true})).toBeNull();expect(eligibility(game,{players,humans:1,realMoney:true},{'ptown-words':true})).toBe('Bots require fake money');}expect(eligibility(game,{players:2,humans:0,realMoney:false},{'ptown-words':true})).toBe('A human player is required');});
  it('matches the deployed exact-two and range guards, not presentation-family guesses',()=>{
  for(const [id,rpc] of [['boxdrop','boxdrop_configure'],['trip-flip','trip_flip_configure']] as const){expect(evidence.constraints[rpc].join(' ')).toContain('<>2');expect(findGame(id)?.players).toMatchObject({min:2,max:2});}
  for(const [id,rpc] of [['tri-towers','tri_towers_configure'],['eleven-up','eleven_up_configure'],['royal-flash','royal_flash_configure'],['take-two','take_two_configure']] as const){expect(evidence.constraints[rpc].join(' ')).toContain('BETWEEN 2 AND 7');expect(findGame(id)?.players).toMatchObject({min:2,max:7});}

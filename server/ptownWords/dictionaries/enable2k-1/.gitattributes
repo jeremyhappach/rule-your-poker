@@ -1,0 +1,4 @@
+words.txt text eol=lf
+manifest.json text eol=lf
+README-enable2k.txt -text
+enable2k.txt.gz binary

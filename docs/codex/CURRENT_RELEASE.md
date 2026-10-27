@@ -1,6 +1,34 @@
-# Quintzee final polish - installed, release blocked - 2026-10-26
+# Quintzee final polish - installed qualification PASS, publication pending - 2026-10-27
 
-Approved manual category rolls and bounded upper-bonus presentation are locally qualified. Migration 20261026220559 is installed and was not repeated. Installed hosted proof remains MISSING after the approval-loop incident; /3 is disabled and new multiplayer admission is closed. Main has advanced with Ptown Words; a documentation-only merge conflict remains unresolved. See [exact checkpoint and remaining gates](QUINTZEE_FINAL_POLISH_RELEASE.md).
+Approved manual category rolls and bounded Upper Bonus +35 sequence are qualified for solo Arcade and fake-money multiplayer. The narrowed hosted proof passed with all triggers enabled, no production function replacement, no global configuration writes and no unscoped recovery; rollback removal is verified. Full recovery/concurrency/fault cases remain covered by the preserved local proofs. Integrated main 59758bc99 (Ptown Words bots) passes TypeScript, 2980 source tests, 241 harness tests and production build. Fresh /3 admission is checked after exact-SHA publication and guarded activation; real money remains server-rejected. Default dice rumble remains 1500 ms. See [qualification and release gates](QUINTZEE_FINAL_POLISH_RELEASE.md).
+
+# Ptown Words /1 — fake-money bots qualified — 2026-10-26
+
+Jeremy approved bot support through deployment and moving tile points into the
+bottom-right corner. Human release `28d0a2181` is published and admitted. Bot
+migrations `20261026234550` / `20261026235142` are installed with the separate bot admission flag closed
+until exact-SHA publication. Hosted candidate and installed financial gates PASS;
+one-browser admission, bot word, reconnect, four viewport captures, concurrent
+recovery and a complete 40-turn policy game PASS. Human rules/timers and real-money
+human admission are unchanged. See [bot qualification](PTOWN_WORDS_BOTS.md).
+Physical production smoke remains Jeremy's acceptance step.
+
+# Ptown Words /1 — human release checkpoint — 2026-10-26
+
+Complete multiplayer gameplay, canonical admission/recovery/settlement and
+fullscreen presentation are implemented. Closed migration `20261026224857` and
+hosted installed rollback proof pass. Full Game-route admission, reconnect,
+concurrent terminal settlement and ended-session cleanup pass. Publication and
+activation require exact-SHA verification; physical owner smoke remains pending.
+See [release contract and evidence](PTOWN_WORDS_RELEASE.md).
+
+# Ptown Words — superseded foundation checkpoint — 2026-10-26
+
+Approved name and full ENABLE2K dictionary acquired and pinned locally. Versioned
+lookup, all-formed-word lexical checks and isolated visual mock pass focused tests.
+There is no word-game runtime/admission/settlement to preserve or publish; the
+full-game scope question is pending. No activation, migration or deployment.
+See [foundation checkpoint](PTOWN_WORDS_FOUNDATION.md).
 
 # Quintzee roll timing — LOCAL review, publication held — 2026-10-26
 

@@ -1,0 +1,7 @@
+import {useState} from 'react';import {createRoot} from 'react-dom/client';
+import {PersistentTableShell} from '@/lib/canonicalShell/PersistentTableShell';import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';import {VisualPreferencesProvider} from '@/hooks/useVisualPreferences';
+import {GameChatContextProvider,type GameChatContextValue} from '@/hooks/GameChatContext';import {PtownWordsTable} from '@/components/ptownWords/PtownWordsTable';import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
+import '@/index.css';import '@/lib/arcade/arcade.css';
+const f=Object.fromEntries(new URLSearchParams(location.search));
+function App(){const [tab,setTab]=useState<ShellTabId>('cards'),[ended,setEnded]=useState(false);return <PersistentTableShell gameId={f.session} gameType="ptown-words" presentationMode="fullscreen" header={<div>P-Town Poker</div>}><GameChatContextProvider value={{allMessages:[],sendMessage:async()=>{},isSending:false} as unknown as GameChatContextValue}><PtownWordsTable dealerGameId={f.id} userId={f.user} activeTab={tab} setActiveTab={setTab} sessionEnded={ended} onTerminalActive={()=>{}} onTerminalComplete={()=>{setEnded(true);(window as any).__wordsComplete=true;}}/></GameChatContextProvider></PersistentTableShell>;}
+createRoot(document.getElementById('root')!).render(<VisualPreferencesProvider><ResponsiveGeometryProvider><App/></ResponsiveGeometryProvider></VisualPreferencesProvider>);
