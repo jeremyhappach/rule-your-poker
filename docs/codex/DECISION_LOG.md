@@ -10,7 +10,11 @@ rehearsals to avoid retaining production DDL locks over the canonical timer scan
 installed proofs use actual default storage. Admission and money eligibility
 remain unchanged. See `SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md`.
 
-## 2026-10-27 — Words time banks and pause are local review only
+## 2026-10-27 — Words time banks and pause are versioned /2 rules
+
+Jeremy subsequently approved candidate `d39328f` for fake-money-only production.
+Hosted /2 qualification and publication are recorded in
+`PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`; this supersedes the original local hold.
 
 Owner authorized local /2 preparation: two 180-second slots per player/match,
 canonical host pause/resume, durable non-host pause request, concealed paused

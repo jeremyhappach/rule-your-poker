@@ -1,4 +1,18 @@
-# Ptown Words banks and pause — LOCAL preview, publication held — 2026-10-27
+# Ptown Words /2 — hosted PASS, reconciling approved release — 2026-10-27
+
+Jeremy approved reviewed candidate `d39328f2049557a95044390e09a8993adb0fd375`
+for production, fake-money only. This supersedes the historical local holds below.
+Hosted candidate and installed rollback gates PASS; migration `20261027214928`
+is installed. Existing /1 matches, shared pause, settlement and money eligibility
+are preserved. Admission/bots are temporarily closed pending exact-SHA frontend
+publication. The prior three stale Golf expectations are already fixed on main
+by `7b69fb733`, included in `30c50e01f`. Jeremy explicitly authorized reconciliation
+with current main and completion of publication/activation; no duplicate fix or
+migration is needed. Validate the reconciled source, then reopen admission/bots
+only after exact-SHA publication checks pass. See
+[release qualification](PTOWN_WORDS_BANKS_PAUSE_RELEASE.md).
+
+## Historical local review record (superseded by production approval)
 
 The sole new owner-requested follow-up is ready locally: a non-host's own pending
 pause request changes their existing control to a red, touchable X labeled

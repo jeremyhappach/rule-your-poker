@@ -1,5 +1,11 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-10-27 Jeremy accepted reviewed Words candidate
+`d39328f2049557a95044390e09a8993adb0fd375`, including own pause-request
+cancellation, and approved fake-money-only production publication. All prior
+local behavior remains accepted. Production-device smoke is separate; see
+`PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`. Chrome vibration stays deferred.
+
 2026-10-27 Words owner accepted local candidate
 `181030968996805762b2696a2dddc758c6c4108b`: all existing gameplay, banks, pause,
 flat tiles and spacing remain accepted. Intermittent Chrome vibration is explicitly
