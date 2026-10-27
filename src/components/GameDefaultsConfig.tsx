@@ -1,3 +1,4 @@
+import {GOLF_HOLE_COUNTS,isGolfHoleCount} from '@/lib/golf/matchLength';
 import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConnected';
 import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
@@ -25,6 +26,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 interface GameDefaults {
   quintzee_theme?: 'classic'|'modern';
   canasta_mode?:CanastaMode;
+  golf_holes?: number;
   golf_scoring_delay_ms?: number;
   golf_results_duration_ms?: number;
   id: string;
@@ -213,6 +215,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         validationErrors.push(`${gameType}: Bot delay must be 0.1-10 seconds`);
       }
 
+      if(gameType==='six-card-golf'&&!isGolfHoleCount(Number(defaultConfig.golf_holes??9)))validationErrors.push('Match length: choose 3, 6, 9 or 18 holes');
       if(gameType==='six-card-golf')for(const [label,value,min,max] of [['Scoring Delay',defaultConfig.golf_scoring_delay_ms??1200,200,5000],['Hole Results Duration',defaultConfig.golf_results_duration_ms??5000,1000,30000]] as const){if(!Number.isInteger(Number(value))||Number(value)<min||Number(value)>max)validationErrors.push(label+': enter whole milliseconds from '+min+' to '+max);}
       // Game-specific validations
       if (gameType === 'holm') {
@@ -336,7 +339,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         const { error } = await supabase
           .from('game_defaults')
           .update({
-            ...(defaultConfig.game_type==='six-card-golf'?{golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
+            ...(defaultConfig.game_type==='six-card-golf'?{golf_holes:Number(defaultConfig.golf_holes??9),golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
             ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic'}:{}),
             ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
@@ -1049,7 +1052,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       const editors:Record<string,()=>React.ReactNode>={'holm':renderHolmSettings,'3-5-7':render357Settings,'cribbage':renderCribbageSettings,'gin-rummy':renderGinRummySettings,'horses':renderHorsesSettings,'ship-captain-crew':renderSCCSettings,'yahtzee':renderYahtzeeSettings};
       if(editors[selectedGameType])return editors[selectedGameType]();
       switch(selectedGameType){
-        case 'six-card-golf': {const d=getDefaultByType('six-card-golf');return d?<details className="catalog-settings-group" open><summary>Timing</summary><div className="space-y-3">
+        case 'six-card-golf': {const d=getDefaultByType('six-card-golf');return d?<details className="catalog-settings-group" open><summary>Match and timing</summary><div className="space-y-3">
+          <Label htmlFor="golf-holes">Match length</Label><select id="golf-holes" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={d.golf_holes??9} onChange={e=>updateDefault('six-card-golf','golf_holes',Number(e.target.value))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>
           <Label htmlFor="golf-scoring-delay">Scoring Delay (ms)</Label><Input id="golf-scoring-delay" type="number" min={200} max={5000} step={100} value={d.golf_scoring_delay_ms??1200} onChange={e=>updateDefault('six-card-golf','golf_scoring_delay_ms',e.target.value)}/>
           <Label htmlFor="golf-results-duration">Hole Results Duration (ms)</Label><Input id="golf-results-duration" type="number" min={1000} max={30000} step={100} value={d.golf_results_duration_ms??5000} onChange={e=>updateDefault('six-card-golf','golf_results_duration_ms',e.target.value)}/>
           <p className="text-xs text-muted-foreground">Applies to new matches. Scoring Delay controls each card, cancelled pair and face-down reveal. Results appears after every hand is scored.</p></div></details>:null;}

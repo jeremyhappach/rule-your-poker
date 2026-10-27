@@ -14,3 +14,9 @@ it('saves both numeric Golf timing settings through the existing defaults owner'
  await waitFor(()=>expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({golf_scoring_delay_ms:1400,golf_results_duration_ms:6000})));expect(mocks.error).not.toHaveBeenCalled();
 });
 it('rejects invalid timing before sending a defaults update',async()=>{await open();fireEvent.change(screen.getByLabelText('Scoring Delay (ms)'),{target:{value:'0'}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));expect(mocks.error).toHaveBeenCalled();expect(mocks.update).not.toHaveBeenCalled();});
+it.each([3,6,9,18])('saves %i holes through Game Defaults with all four choices',async holes=>{
+ await open();const select=screen.getByLabelText('Match length') as HTMLSelectElement;
+ expect(select.value).toBe('9');expect([...select.options].map(o=>Number(o.value))).toEqual([3,6,9,18]);
+ fireEvent.change(select,{target:{value:String(holes)}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+ await waitFor(()=>expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({golf_holes:holes})));
+});

@@ -1485,6 +1485,7 @@ export type Database = {
       game_defaults: {
         Row: {
           canasta_mode: 'beginner' | 'expert'
+            golf_holes: number
             golf_scoring_delay_ms: number
             golf_results_duration_ms: number
           allow_bot_dealers: boolean
@@ -1530,6 +1531,7 @@ export type Database = {
         }
         Insert: {
           canasta_mode?: 'beginner' | 'expert'
+            golf_holes?: number
             golf_scoring_delay_ms?: number
             golf_results_duration_ms?: number
           allow_bot_dealers?: boolean
@@ -1575,6 +1577,7 @@ export type Database = {
         }
         Update: {
           canasta_mode?: 'beginner' | 'expert'
+            golf_holes?: number
             golf_scoring_delay_ms?: number
             golf_results_duration_ms?: number
           allow_bot_dealers?: boolean

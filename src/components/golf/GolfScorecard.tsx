@@ -1,3 +1,4 @@
+import {golfHoleCount,golfScorecardLabel} from '@/lib/golf/matchLength';
 import {golfScoreLabel} from '@/lib/golf/scoreLabel';
 import type {GolfSnapshot} from '@/lib/golf/model';
 import {GolfPencilScore} from './GolfPencilScore';
@@ -16,13 +17,13 @@ export const golfTotalLabel=(total:number,completed:number)=>golfScoreLabel(comp
 /** Results only. Never derive standings from tableau cards or pending draws. */
 export function golfStandings(v:GolfSnapshot){
  return v.players.map(player=>{
-  const holes=Array.from({length:9},(_,i)=>v.holes.find(h=>h.hole===i+1)?.scores[player.id]);
+  const holes=Array.from({length:golfHoleCount(v.rules?.holes)},(_,i)=>v.holes.find(h=>h.hole===i+1)?.scores[player.id]);
   const completed=holes.filter((n):n is number=>n!==undefined);
   return {player,holes,thru:completed.length,total:completed.reduce((sum,n)=>sum+n,0)};
  });
 }
 export function GolfLeaderboard({snapshot,onOpen}:{snapshot:GolfSnapshot;onOpen:()=>void}){
- return <button className="golf-leaderboard" onClick={onOpen} aria-label="Open nine-hole scorecard"><table><thead><tr><th>Player</th><th>Score</th></tr></thead><tbody>{golfStandings(snapshot).map(({player,total,thru})=><tr key={player.id}><th scope="row" title={player.name}>{player.name}</th><td>{golfTotalLabel(total,thru)}</td></tr>)}</tbody></table><span className="golf-scorecard-hint">tap for all</span></button>;
+ return <button className="golf-leaderboard" onClick={onOpen} aria-label={'Open '+golfScorecardLabel(snapshot.rules?.holes)}><table><thead><tr><th>Player</th><th>Score</th></tr></thead><tbody>{golfStandings(snapshot).map(({player,total,thru})=><tr key={player.id}><th scope="row" title={player.name}>{player.name}</th><td>{golfTotalLabel(total,thru)}</td></tr>)}</tbody></table><span className="golf-scorecard-hint">tap for all</span></button>;
 }
 export function GolfScorecard({snapshot,writeHole,onRowWritten}:{snapshot:GolfSnapshot;writeHole?:number;onRowWritten?:(playerId:string)=>void}){
  const identity=snapshot.id+':'+snapshot.scope+':'+writeHole;
@@ -38,10 +39,12 @@ export function GolfScorecard({snapshot,writeHole,onRowWritten}:{snapshot:GolfSn
   const complete=()=>{if(query?.matches&&writeHole)for(const p of snapshot.players)finish(p.id);};
   complete();query?.addEventListener('change',complete);return()=>query?.removeEventListener('change',complete);
  },[identity]);
+ const count=golfHoleCount(snapshot.rules?.holes);
+ const sections=Array.from({length:Math.ceil(count/9)},(_,i)=>({start:i*9,size:Math.min(9,count-i*9)}));
  const writingMs=Math.min(3000,Math.max(200,(snapshot.rules?.presentation?.resultsDurationMs??5000)-200));
- return <div className="golf-scorecard" style={{'--golf-writing-duration':writingMs+'ms'} as CSSProperties} tabIndex={0} role="region" aria-label="Nine-hole scorecard"><table><caption>Golf · {snapshot.phase==='complete'&&snapshot.holes.length===9?'Final scores':'Completed holes'}</caption><thead><tr><th scope="col">Player</th>{Array.from({length:9},(_,i)=><th scope="col" key={i}>{i+1}</th>)}<th scope="col">Total</th></tr></thead><tbody>{golfStandings(snapshot).map(({player,holes,total,thru})=>{
+ return <div className="golf-scorecard" style={{'--golf-writing-duration':writingMs+'ms'} as CSSProperties} tabIndex={0} role="region" aria-label={golfScorecardLabel(count)}>{sections.map(({start,size})=><table key={start}><caption>Golf · {snapshot.phase==='complete'&&snapshot.holes.length===count?'Final scores':'Completed holes'}{count===18?' · Holes '+(start+1)+'–'+(start+size):''}</caption><thead><tr><th scope="col">Player</th>{Array.from({length:size},(_,i)=><th scope="col" key={i}>{start+i+1}</th>)}<th scope="col">Total</th></tr></thead><tbody>{golfStandings(snapshot).map(({player,holes,total,thru})=>{
   const done=written.identity===identity&&written.ids.includes(player.id);
   const withheld=writeHole!==undefined&&holes[writeHole-1]!==undefined&&!done;
-  return <tr key={player.id}><th scope="row" title={player.name}>{player.name}</th>{holes.map((score,i)=><td key={identity+':'+i} data-golf-write={writeHole===i+1||undefined} onAnimationEnd={e=>{if(writeHole===i+1&&e.animationName==='golf-write-score')finish(player.id);}}>{score===undefined?'':<GolfPencilScore value={golfScoreLabel(score)}/>}</td>)}<td data-golf-total={player.id} data-golf-total-updated={done||undefined}><GolfPencilScore value={golfTotalLabel(total-(withheld?holes[writeHole!-1]!:0),thru-(withheld?1:0))}/></td></tr>;
- })}</tbody></table></div>;
+  return <tr key={player.id}><th scope="row" title={player.name}>{player.name}</th>{holes.slice(start,start+size).map((score,index)=>{const i=start+index;return <td key={identity+':'+i} data-golf-write={writeHole===i+1||undefined} onAnimationEnd={e=>{if(writeHole===i+1&&e.animationName==='golf-write-score')finish(player.id);}}>{score===undefined?'':<GolfPencilScore value={golfScoreLabel(score)}/>}</td>;})}<td data-golf-total={player.id} data-golf-total-updated={done||undefined}><GolfPencilScore value={golfTotalLabel(total-(withheld?holes[writeHole!-1]!:0),thru-(withheld?1:0))}/></td></tr>;
+ })}</tbody></table>)}</div>;
 }

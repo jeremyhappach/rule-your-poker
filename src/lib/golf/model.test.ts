@@ -4,6 +4,8 @@ const fixture=()=>({identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},rules:
  players:[{id:'a',chips:100},{id:'b',chips:100}],tableaus:{a:{cards:[null,null,null,null,null,null],exposed:[false,false,false,false,false,false]},b:{cards:[0,null,null,null,null,null],exposed:[true,false,false,false,false,false]}},
  financial:{balances:{a:100,b:100}},pending:null,finalReason:null,finalQueue:[],consecutiveNoRevealTurns:0,scores:{a:-2,b:4}});
 describe('Golf public projection boundary',()=>{
+ it.each([3,6,9,18])('retains %i holes across snapshot/reconnect',holes=>{const raw={...fixture(),rules:{version:'six-card-golf/2',holes}};const v=golfSnapshot(raw);expect(v.rules.holes).toBe(holes);expect(acceptGolfSnapshot(v,golfSnapshot(raw),'d').rules.holes).toBe(holes);});
+ it('defaults only missing legacy length to nine and rejects invalid lengths',()=>{expect(golfSnapshot(fixture()).rules.holes).toBe(9);for(const holes of [null,0,4,19,3.5,'3'])expect(()=>golfSnapshot({...fixture(),rules:{version:'six-card-golf/2',holes}})).toThrow('length');});
  it('accepts only explicitly public opponent draws while preserving concealed tableau validation',()=>{
   const raw={...fixture(),publicDraw:true,pending:{actor:'b',card:4}};
   expect(golfSnapshot(raw).pending).toEqual({actor:'b',card:4});

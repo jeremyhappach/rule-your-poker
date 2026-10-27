@@ -1,3 +1,14 @@
+# Six-Card Golf match lengths — local review only — 2026-10-27
+
+Multiplayer 3/6/9/18-hole selection is implemented locally: saved default nine,
+dealer-only override, frozen authoritative length, exact progression/settlement,
+under-flag text and complete pencil scorecards with two nine-hole sections for 18.
+143 focused tests, TypeScript, production build, 24 full local matches and 72
+financial cases pass. Browser evidence and preview are documented in
+[local qualification](SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md).
+No push, hosted migration, deployment, activation or publication is authorized.
+Words, Quintzee and Mega smoke are unchanged.
+
 # Ptown Words polish — hosted qualification PASS, publication pending — 2026-10-27
 
 Jeremy accepted the polish smoke and explicitly authorized production publication,

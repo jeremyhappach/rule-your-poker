@@ -4,6 +4,24 @@ import {afterEach,expect,it,vi} from 'vitest';
 import type {GolfSnapshot} from '@/lib/golf/model';
 import {GolfScorecard,golfStandings,golfTotalLabel,golfPresentedScores} from './GolfScorecard';
 afterEach(cleanup);
+it.each([3,6,9,18] as const)('shows every completed result for %i holes with nine-column sections',count=>{
+ const v={id:'d',scope:'last',phase:'complete',rules:{holes:count},players:[{id:'p',name:'You'},{id:'q',name:'Peer'}],holes:Array.from({length:count},(_,i)=>({hole:i+1,roundId:i===count-1?'last':'r'+i,scores:{p:i-2,q:3}}))} as unknown as GolfSnapshot;
+ render(<GolfScorecard snapshot={v}/>);
+ expect(golfStandings(v)[0].holes).toHaveLength(count);
+ const tables=[...document.querySelectorAll('.golf-scorecard table')];
+ expect(tables).toHaveLength(Math.ceil(count/9));
+ expect(tables.flatMap(t=>[...t.querySelectorAll('thead th')].slice(1,-1).map(e=>e.textContent))).toEqual(Array.from({length:count},(_,i)=>String(i+1)));
+ expect(tables.flatMap(t=>[...t.querySelectorAll('tbody tr:first-child td')].slice(0,-1).map(e=>e.textContent))).toEqual(Array.from({length:count},(_,i)=>i===2?'E':i>2?'+'+(i-2):String(i-2)));
+ expect(screen.getAllByText(/Final scores/)).toHaveLength(Math.ceil(count/9));
+});
+it('writes hole 18 once and holds totals in both sections until that row finishes',()=>{
+ const v={id:'d',scope:'r18',phase:'complete',rules:{holes:18},players:[{id:'p',name:'You'}],holes:Array.from({length:18},(_,i)=>({hole:i+1,scores:{p:1}}))} as unknown as GolfSnapshot;
+ const done=vi.fn();render(<GolfScorecard snapshot={v} writeHole={18} onRowWritten={done}/>);
+ expect([...document.querySelectorAll('[data-golf-total]')].map(e=>e.textContent)).toEqual(['+17','+17']);
+ const cells=document.querySelectorAll('[data-golf-write]');expect(cells).toHaveLength(1);
+ const e=new Event('webkitAnimationEnd',{bubbles:true});Object.defineProperty(e,'animationName',{value:'golf-write-score'});fireEvent(cells[0],e);fireEvent(cells[0],e);
+ expect(done).toHaveBeenCalledTimes(1);expect([...document.querySelectorAll('[data-golf-total]')].map(e=>e.textContent)).toEqual(['+18','+18']);
+});
 it.each([2,3,4])('renders %i players with nine holes and completed results only',n=>{
  const players=Array.from({length:n},(_,i)=>({id:String(i),name:'Player'+i}));
  const v={players,holes:[{hole:1,scores:Object.fromEntries(players.map(p=>[p.id,0]))},{hole:2,scores:{'0':-2}}],scores:{'0':999},phase:'playing',tableaus:{'0':{cards:[51,50,49,48,47,46]}}} as unknown as GolfSnapshot;
