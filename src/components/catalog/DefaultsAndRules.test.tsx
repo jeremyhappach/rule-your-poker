@@ -12,6 +12,19 @@ import {reset,writes} from '../../../dev/lobby-catalog/mockSupabase';
 beforeEach(()=>{reset();vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});});afterEach(cleanup);
 function category(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});}
 describe('defaults persistence and rules versions',()=>{
+ it.each(['classic','modern'])('saves Quintzee round duration independently of decision timing (%s)',async(theme)=>{
+ reset([{...defaultsFixture.defaults[0],game_type:'quintzee',quintzee_theme:theme,quintzee_round_seconds:240,decision_timer_seconds:10} as typeof defaultsFixture.defaults[number]]);
+ const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Dice');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'quintzee'}});
+ const field=await screen.findByLabelText('Round duration (seconds)');expect((field as HTMLInputElement).value).toBe('240');
+ fireEvent.change(field,{target:{value:'300'}});category('Cards');category('Dice');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'quintzee'}});expect((screen.getByLabelText('Round duration (seconds)') as HTMLInputElement).value).toBe('300');
+ fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
+ expect(writes).toContainEqual(expect.objectContaining({table:'game_defaults',key:'quintzee',patch:expect.objectContaining({quintzee_round_seconds:300,decision_timer_seconds:10,quintzee_theme:theme})}));
+ });
+ it.each(['59','601','240.5',''])('does not save invalid Quintzee duration %s',async(value)=>{
+ reset([{...defaultsFixture.defaults[0],game_type:'quintzee',quintzee_round_seconds:240} as typeof defaultsFixture.defaults[number]]);
+ render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);await screen.findByRole('combobox',{name:'Game'});category('Dice');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'quintzee'}});
+ fireEvent.change(await screen.findByLabelText('Round duration (seconds)'),{target:{value}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));expect(writes).toHaveLength(0);
+ });
  it('saves Battle31 turn duration through canonical defaults without match writes',async()=>{
  reset([{...defaultsFixture.defaults[0],game_type:'battle-31',decision_timer_seconds:15} as typeof defaultsFixture.defaults[number]]);
  const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Cards');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'battle-31'}});

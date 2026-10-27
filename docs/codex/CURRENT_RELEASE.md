@@ -1,3 +1,11 @@
+# Quintzee round duration — local candidate, publication held — 2026-10-27
+
+Owner requested an adjustable four-minute round in lobby Game Defaults. The
+isolated candidate saves 240 seconds through the admin defaults owner, freezes
+shared rules at new Arcade/multiplayer admission, and preserves active games and
+historical leaderboard boards. No hosted changes or new publication are authorized.
+See [local qualification and remaining release gates](QUINTZEE_ROUND_DURATION_LOCAL.md).
+
 # Quintzee smoke polish - qualified, publication pending - 2026-10-27
 
 Owner approved publication without another preview gate. Includes centered/dimmed

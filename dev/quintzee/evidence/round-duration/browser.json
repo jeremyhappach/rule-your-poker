@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "localMock": true,
+  "checks": [
+    {
+      "width": 320,
+      "height": 568,
+      "http": 200,
+      "geometry": {
+        "left": 21,
+        "right": 299,
+        "width": 320,
+        "overflow": false
+      },
+      "savedAndReloaded": 300
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "http": 200,
+      "geometry": {
+        "left": 21,
+        "right": 369,
+        "width": 390,
+        "overflow": false
+      },
+      "savedAndReloaded": 300
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "http": 200,
+      "geometry": {
+        "left": 193,
+        "right": 651,
+        "width": 844,
+        "overflow": false
+      },
+      "savedAndReloaded": 300
+    }
+  ]
+}

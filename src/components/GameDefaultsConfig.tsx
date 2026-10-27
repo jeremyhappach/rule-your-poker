@@ -1,4 +1,5 @@
 import {GOLF_HOLE_COUNTS,isGolfHoleCount} from '@/lib/golf/matchLength';
+import {isQuintzeeRoundSeconds,QUINTZEE_ROUND_SECONDS} from '@/lib/quintzee/defaults';
 import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConnected';
 import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
@@ -25,6 +26,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 interface GameDefaults {
   quintzee_theme?: 'classic'|'modern';
+  quintzee_round_seconds?: number;
   canasta_mode?:CanastaMode;
   golf_holes?: number;
   golf_scoring_delay_ms?: number;
@@ -178,6 +180,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     for (const defaultConfig of defaults) {
       const gameType = defaultConfig.game_type;
+      if(gameType==='quintzee'&&!isQuintzeeRoundSeconds(Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)))validationErrors.push('Quintzee: Round duration must be a whole number from 60-600 seconds');
 
       // Decision timer: 5-60 seconds
       const timer = Number(defaultConfig.decision_timer_seconds);
@@ -341,7 +344,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           .update({
             ...(defaultConfig.game_type==='six-card-golf'?{golf_holes:Number(defaultConfig.golf_holes??9),golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
-            ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic'}:{}),
+            ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic',quintzee_round_seconds:Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)}:{}),
             ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
@@ -1036,7 +1039,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   };
 
   const renderSettingsForGameType = () => {
-      if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label htmlFor="quintzee-theme">Theme</Label><select id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select><p className="text-xs">Applies to new Arcade runs and multiplayer matches. Both themes use the same frozen rules: 180 seconds, ×100–×300 scoring, and an 80,000-point bonus-round threshold.</p></div>:null;}
+      if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label className="block" htmlFor="quintzee-theme">Theme</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select>
+        <Label className="block" htmlFor="quintzee-duration">Round duration (seconds)</Label><Input id="quintzee-duration" type="number" inputMode="numeric" min={QUINTZEE_ROUND_SECONDS.min} max={QUINTZEE_ROUND_SECONDS.max} step={1} value={d.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial} onChange={e=>updateDefault('quintzee','quintzee_round_seconds',e.target.value)}/>
+        <p className="text-xs">60–600 seconds per round. Applies to new Arcade runs and multiplayer matches in both themes. Active games keep their original duration. Scoring remains ×100–×300 with an 80,000-point bonus-round threshold.</p>
+        <p className="text-xs">Arcade scores are compared at the same round duration. Previous leaderboard versions remain available.</p></div>:null;}
 
     const inner = (() => {
       const entry=findGame(selectedGameType);
