@@ -18,20 +18,20 @@
         "emulated": true
       },
       "invalidWindows": [
-        1504.3000000715256,
-        1511.3999999761581
+        1506.1000000238419,
+        1504.6999999284744
       ],
       "noDeadlineExtension": true,
       "shufflePreservedIds": true,
       "scoreBoxes": [
         {
           "border": "1px",
-          "color": "rgb(32, 60, 65)",
+          "color": "rgb(30, 52, 60)",
           "active": "false"
         },
         {
           "border": "1px",
-          "color": "rgb(27, 40, 53)",
+          "color": "rgb(29, 48, 58)",
           "active": "true"
         }
       ],
@@ -138,20 +138,20 @@
         "emulated": true
       },
       "invalidWindows": [
-        1508.2999999523163,
-        1507.7999999523163
+        1517.2999999523163,
+        1506.6999999284744
       ],
       "noDeadlineExtension": true,
       "shufflePreservedIds": true,
       "scoreBoxes": [
         {
           "border": "1px",
-          "color": "rgb(32, 60, 65)",
+          "color": "rgb(32, 62, 66)",
           "active": "false"
         },
         {
           "border": "1px",
-          "color": "rgb(27, 40, 53)",
+          "color": "rgb(27, 38, 52)",
           "active": "true"
         }
       ],

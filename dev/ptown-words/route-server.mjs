@@ -13,7 +13,7 @@ if(process.env.PTOWN_WORDS_BOTS==='1'){
  for(const part of ['bot-registration','bots','bot-recovery'])await admin.query(read('supabase/ptown-words/'+part+'.sql','utf8'));
  await admin.query('UPDATE private.ptown_words_release SET bots_enabled=true');
 }
-if(process.env.PTOWN_WORDS_POLISH==='1')await admin.query(read('supabase/ptown-words/presentation.sql','utf8'));
+if(process.env.PTOWN_WORDS_POLISH==='1')for(const part of ['presentation','fake-only'])await admin.query(read('supabase/ptown-words/'+part+'.sql','utf8'));
 await admin.query('COMMIT');
 await admin.query("UPDATE private.ptown_words_release SET enabled=true,admission_enabled=true; INSERT INTO public.game_defaults(game_type,presentation_mode,ante_amount,real_money,debug_harness,timeout_action,timeout_enforcement_enabled,pot_max_enabled,pussy_tax_enabled,leg_value,legs_to_win) VALUES('ptown-words','fullscreen',5,false,'none','none',false,false,false,0,0) ON CONFLICT(game_type) DO UPDATE SET presentation_mode='fullscreen'");
 await admin.query(`CREATE OR REPLACE FUNCTION public.ptown_words_route_notify() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_notify('ptown_words_route',jsonb_build_object('table',TG_TABLE_NAME,'schema','public','eventType',TG_OP,'new',to_jsonb(NEW),'old',CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD) ELSE '{}'::jsonb END)::text);RETURN NEW;END $$;`);

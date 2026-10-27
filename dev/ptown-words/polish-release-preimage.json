@@ -1,0 +1,149 @@
+{
+  "indexes": [
+    "CREATE UNIQUE INDEX ptown_words_history_pkey ON private.ptown_words_history USING btree (dealer_game_id, revision)",
+    "CREATE UNIQUE INDEX ptown_words_lexicon_pkey ON private.ptown_words_lexicon USING btree (version, word)",
+    "CREATE UNIQUE INDEX ptown_words_matches_pkey ON private.ptown_words_matches USING btree (dealer_game_id)",
+    "CREATE INDEX ptown_words_matches_session ON private.ptown_words_matches USING btree (game_id)",
+    "CREATE INDEX ptown_words_matches_pending ON private.ptown_words_matches USING btree ((((state ->> 'deadline'::text))::bigint)) WHERE ((NOT finished) AND (settlement IS NULL))",
+    "CREATE UNIQUE INDEX ptown_words_release_pkey ON private.ptown_words_release USING btree (singleton)",
+    "CREATE UNIQUE INDEX ptown_words_requests_pkey ON private.ptown_words_requests USING btree (dealer_game_id, request_id)"
+  ],
+  "release": {
+    "enabled": true,
+    "singleton": true,
+    "bots_enabled": true,
+    "admission_enabled": true
+  },
+  "triggers": [
+    "CREATE TRIGGER ptown_words_bot_schedule BEFORE INSERT OR UPDATE ON private.ptown_words_matches FOR EACH ROW EXECUTE FUNCTION private.ptown_words_schedule_bot()",
+    "CREATE TRIGGER ptown_words_publish AFTER INSERT OR UPDATE ON private.ptown_words_matches FOR EACH ROW EXECUTE FUNCTION private.ptown_words_publish()"
+  ],
+  "functions": [
+    {
+      "md5": "88b849d984899dbdc24d271fb0e0bc9a",
+      "signature": "private.ptown_words_bot_choice(jsonb,bigint)",
+      "definition": null
+    },
+    {
+      "md5": "8d098f51a7cef5916413cbba76a44ebf",
+      "signature": "private.ptown_words_premium(integer)",
+      "definition": null
+    },
+    {
+      "md5": "abc8b61b9001aa94636d9fd2f05ae710",
+      "signature": "private.ptown_words_actor_allowed(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "25faf32ae2c997f1596c08d1f02cff4f",
+      "signature": "private.ptown_words_deal(jsonb,bigint)",
+      "definition": null
+    },
+    {
+      "md5": "dd00d853b20277fc64deb72f3ed82a62",
+      "signature": "private.megatouch_begin(uuid,uuid)",
+      "definition": null
+    },
+    {
+      "md5": "07106a4eaa1fc49bcbd03b90cf8fe4d9",
+      "signature": "ptown_words_snapshot(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "60efc1dc9c773d57c84e66fc634c65fc",
+      "signature": "private.ptown_words_value(text)",
+      "definition": null
+    },
+    {
+      "md5": "e5377f78950f997616bf0326a171c630",
+      "signature": "private.ptown_words_visible(jsonb,text)",
+      "definition": null
+    },
+    {
+      "md5": "6fcf83ac4b4132d8111f28adc11f6786",
+      "signature": "ptown_words_capabilities(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.ptown_words_capabilities(p_session_id uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE actor uuid:=auth.uid(); allowed boolean:=private.ptown_words_actor_allowed(actor);\nBEGIN\n allowed:=allowed AND EXISTS(SELECT 1 FROM private.ptown_words_release WHERE singleton AND admission_enabled);\n IF p_session_id IS NOT NULL THEN\n  allowed:=allowed AND EXISTS(SELECT 1 FROM public.games WHERE id=p_session_id)\n   AND EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND user_id=actor AND status<>'left')\n   AND NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=p_session_id AND status<>'left' AND NOT is_bot AND NOT private.ptown_words_actor_allowed(user_id));\n END IF;\n RETURN jsonb_build_object('version',2,'enabled',allowed,'user_id',actor,'session_id',p_session_id,'fake_money_only',false);\nEND $function$\n"
+    },
+    {
+      "md5": "719687bc105eaaf416ee4c29e4ff3585",
+      "signature": "ptown_words_action(uuid,uuid,bigint,text,jsonb)",
+      "definition": null
+    },
+    {
+      "md5": "7c4d9dac32e5965a1b9a00eaede6bbde",
+      "signature": "ptown_words_close(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "6ebe4b7800af0f236471a215a7bf0627",
+      "signature": "ptown_words_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "definition": "CREATE OR REPLACE FUNCTION public.ptown_words_configure(p_game_id uuid, p_dealer_player_id uuid, p_expected_dealer_position integer, p_game_type text, p_config jsonb, p_expected_config_deadline timestamp with time zone)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE g public.games; d public.players; dg public.dealer_games; r uuid:=gen_random_uuid(); actor uuid:=auth.uid();\r\n claim private.dealer_game_setup_commits; hash text; stake_i integer; people jsonb; s jsonb; result jsonb; setup_players jsonb;\r\nBEGIN\r\n IF NOT private.ptown_words_actor_allowed(actor) OR p_game_type IS DISTINCT FROM 'ptown-words' THEN RAISE EXCEPTION 'ptown_words:release_closed' USING ERRCODE='42501';END IF;\r\n SELECT * INTO STRICT g FROM public.games WHERE id=p_game_id FOR UPDATE;\r\n SELECT * INTO STRICT d FROM public.players WHERE id=p_dealer_player_id AND game_id=g.id;\r\n IF d.user_id IS DISTINCT FROM actor OR d.is_bot THEN RAISE EXCEPTION 'ptown_words:dealer_required' USING ERRCODE='42501';END IF;\r\n\r\n IF coalesce(p_config->>'ante_amount','') !~ '^[1-9][0-9]{0,3}$' OR p_expected_config_deadline IS NULL THEN RAISE EXCEPTION 'ptown_words:config';END IF;stake_i:=(p_config->>'ante_amount')::integer;\r\n hash:=md5(jsonb_build_array(p_game_id,p_dealer_player_id,p_expected_dealer_position,p_config,p_expected_config_deadline)::text);\r\n SELECT * INTO claim FROM private.dealer_game_setup_commits WHERE game_id=g.id AND expected_config_deadline=p_expected_config_deadline AND expected_dealer_position=p_expected_dealer_position;\r\n IF FOUND THEN\r\n  IF claim.request_hash<>hash THEN RAISE EXCEPTION 'ptown_words:setup_replay_conflict';END IF;\r\n  IF g.current_game_uuid IS DISTINCT FROM claim.dealer_game_id THEN RAISE EXCEPTION 'ptown_words:setup_retired';END IF;\r\n  RETURN claim.result||'{\"outcome\":\"already_configured\",\"deduped\":true}'::jsonb;\r\n END IF;\r\n -- Admission controls creation only; existing setup retries and match authority remain live.\r\n IF NOT EXISTS(SELECT 1 FROM private.ptown_words_release WHERE singleton AND admission_enabled) THEN RAISE EXCEPTION 'ptown_words:admission_closed' USING ERRCODE='42501';END IF;\r\n IF d.user_id<>actor OR d.is_bot OR d.sitting_out OR d.status<>'active' OR d.position<>p_expected_dealer_position\r\n OR g.dealer_position IS DISTINCT FROM p_expected_dealer_position OR g.status NOT IN ('game_selection','configuring')\r\n OR g.config_deadline IS DISTINCT FROM p_expected_config_deadline OR clock_timestamp()>g.config_deadline OR g.is_paused OR g.pending_session_end THEN RAISE EXCEPTION 'ptown_words:setup_identity';END IF;\r\n PERFORM 1 FROM public.players WHERE game_id=g.id ORDER BY id FOR UPDATE;\r\n IF EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status<>'left' AND NOT is_bot AND NOT private.ptown_words_actor_allowed(user_id)) THEN RAISE EXCEPTION 'ptown_words:tester_required' USING ERRCODE='42501';END IF;\r\n IF NOT EXISTS(SELECT 1 FROM public.players WHERE game_id=g.id AND status='active' AND NOT sitting_out AND NOT waiting AND position IS NOT NULL AND NOT is_bot) THEN RAISE EXCEPTION 'ptown_words:human_required';END IF;\r\n SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.user_id,'name',coalesce(pr.username,'Player'),'seat',p.position,'isBot',p.is_bot)\r\n ORDER BY CASE WHEN p.position<g.dealer_position THEN 0 ELSE 1 END,p.position DESC,p.id) INTO people\r\n FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=g.id AND p.status='active' AND NOT p.sitting_out AND NOT p.waiting AND p.position IS NOT NULL;\r\n IF coalesce(jsonb_array_length(people),0) NOT BETWEEN 2 AND 4 THEN RAISE EXCEPTION 'ptown_words:player_count';END IF;\r\n IF EXISTS(SELECT 1 FROM jsonb_array_elements(people)p WHERE (p->>'isBot')::boolean) AND (g.real_money IS DISTINCT FROM false OR NOT EXISTS(SELECT 1 FROM private.ptown_words_release WHERE singleton AND bots_enabled)) THEN RAISE EXCEPTION 'ptown_words:bots_fake_money_only';END IF;\n IF coalesce(g.pot,0)<>0 THEN RAISE EXCEPTION 'ptown_words:unfinished_pot';END IF;\r\n -- Established setup-authority handoff flags, scoped to this validated RPC.\r\n PERFORM set_config('app.cribbage_authoritative_write','on',true);\r\n PERFORM set_config('app.gin_rummy_authoritative_write','on',true);\r\n PERFORM set_config('app.three_five_seven_authoritative_write','on',true);\r\n PERFORM set_config('app.yahtzee_authoritative_write','on',true);\r\n IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;\r\n INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'ptown-words',jsonb_build_object('ante_amount',stake_i,'rules',private.ptown_words_rules())) RETURNING * INTO dg;\r\n UPDATE public.players SET ante_decision=CASE WHEN id=p_dealer_player_id THEN 'ante_up' ELSE NULL END,current_decision=NULL,decision_locked=false,auto_fold=false WHERE game_id=g.id AND id IN(SELECT (p->>'id')::uuid FROM jsonb_array_elements(people) p);\r\n UPDATE public.games SET game_type='ptown-words',current_game_uuid=dg.id,config_complete=true,config_deadline=NULL,ante_decision_deadline=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.ante_decision_timer_seconds,30))),status='ante_decision',ante_amount=stake_i,current_round=NULL,total_hands=0,replay_contract_version=NULL,all_decisions_in=false,all_decisions_in_round_id=NULL WHERE id=g.id RETURNING * INTO g;\r\n SELECT jsonb_agg(to_jsonb(p) ORDER BY position) INTO setup_players FROM public.players p WHERE game_id=g.id;\r\n result:=jsonb_build_object('outcome','configured','deduped',false,'setup_identity',jsonb_build_object('game_id',g.id,'dealer_position',p_expected_dealer_position,'expected_config_deadline',p_expected_config_deadline),'game',to_jsonb(g),'dealer_game',to_jsonb(dg),'players',setup_players);\r\n INSERT INTO private.dealer_game_setup_commits(game_id,expected_config_deadline,expected_dealer_position,request_hash,dealer_game_id,result) VALUES(g.id,p_expected_config_deadline,p_expected_dealer_position,hash,dg.id,result);\r\n RETURN result;\r\nEND $function$\n"
+    },
+    {
+      "md5": "6b5beccf81270a067f5b4f616e0fbb38",
+      "signature": "private.ptown_words_finish_postgame(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "ee571893ec9c10a7c82d47280677b1d9",
+      "signature": "ptown_words_history(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "9d766e401de79aa118d12f324cf5b865",
+      "signature": "private.ptown_words_pause()",
+      "definition": null
+    },
+    {
+      "md5": "5785383f0020f21bd472ab6854efa94b",
+      "signature": "private.ptown_words_publish()",
+      "definition": null
+    },
+    {
+      "md5": "9aa8c7b1f568d8fce5dbf8b855176982",
+      "signature": "private.ptown_words_recover()",
+      "definition": null
+    },
+    {
+      "md5": "492d3ea2d5a5cd0a89a248480c1fc619",
+      "signature": "private.ptown_words_reduce(jsonb,text,jsonb,bigint)",
+      "definition": null
+    },
+    {
+      "md5": "a75efa45964fa944ca8b24f41229111b",
+      "signature": "private.ptown_words_rules()",
+      "definition": null
+    },
+    {
+      "md5": "d03d5e9c28c6ec37836996e7361d48ad",
+      "signature": "private.ptown_words_settle(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "829176b51b4c8753a53e413e547ca87c",
+      "signature": "private.ptown_words_shuffle(jsonb)",
+      "definition": null
+    },
+    {
+      "md5": "b5faefcf5215b56239662254a1573b25",
+      "signature": "private.ptown_words_recover(uuid)",
+      "definition": null
+    },
+    {
+      "md5": "6a6118bc1c64860fad0dbff87f6798a6",
+      "signature": "private.ptown_words_schedule_bot()",
+      "definition": null
+    }
+  ],
+  "migrations": [
+    "20261026224857",
+    "20261026234550",
+    "20261026235142"
+  ],
+  "activeModes": [
+    {
+      "count": 1,
+      "real_money": false
+    }
+  ]
+}

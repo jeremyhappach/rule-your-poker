@@ -1,4 +1,14 @@
-## 2026-10-27 — Ptown Words combined polish is local-only
+## 2026-10-27 — Ptown Words polish approved for indefinite fake-money release
+
+Owner smoke accepted the polish except rack taps incorrectly zooming the board.
+The rack handler now only selects; direct board gestures retain navigation.
+Explicit publication approval supersedes the local hold below. All active eligible
+users may play fake-money multiplayer without an allowlist or expiration. Catalog,
+capability version 3, configure and start all enforce fake-only admission. Existing
+matches retain their frozen rules. Hosted candidate and installed financial proofs
+pass; activation follows exact-SHA publication. See `PTOWN_WORDS_POLISH_RELEASE.md`.
+
+## 2026-10-27 — Ptown Words combined polish is local-only (superseded)
 
 Jeremy authorized all eight collected smoke refinements in one local pass, then
 owner review. The bot uses a pinned, licensed SCOWL common-word subset intersected

@@ -21,8 +21,11 @@ try{
   await db.query('UPDATE private.ptown_words_matches SET state=$2,revision=revision+1,last_request_at=0 WHERE dealer_game_id=$1',[m.dealer_game_id,s]);await page.reload();await page.locator('.words-grid').waitFor();
   await page.getByText('tap an area to zoom in',{exact:true}).waitFor();
   const rules=page.getByRole('button',{name:'Rules',exact:true});await rules.click();await page.getByRole('heading',{name:'Ptown Words · Rules'}).waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
-  await page.locator('[data-square="112"]').tap();await page.getByText('double tap for full board',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'C, 3 points',exact:true}).tap();
+  const rackC=page.getByRole('button',{name:'C, 3 points',exact:true});
+  for(const gesture of ['click','tap']){await rackC[gesture]();await page.locator('.is-overview').waitFor();assert.equal(await page.locator('.is-staged').count(),0);await rackC[gesture]();}
+  await rackC.tap();await page.locator('.is-overview').waitFor();
+  await page.locator('[data-square="112"]').tap();await page.getByText('double tap for full board',{exact:true}).waitFor();assert.equal(await page.locator('.is-staged').count(),0);
+  const rackCamera=await page.locator('.words-scroll').evaluate(e=>({x:e.scrollLeft,y:e.scrollTop}));await rackC.tap();await rackC.tap();assert.deepEqual(await page.locator('.words-scroll').evaluate(e=>({x:e.scrollLeft,y:e.scrollTop})),rackCamera);
   const cdp=await context.newCDPSession(page),box=await page.locator('.words-scroll').boundingBox(),beforePan=await page.locator('.words-scroll').evaluate(e=>({x:e.scrollLeft,y:e.scrollTop}));
   const x=box.x+box.width*.6,y=box.y+box.height*.65;
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});

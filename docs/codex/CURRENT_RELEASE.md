@@ -1,4 +1,19 @@
-# Ptown Words polish — LOCAL review, publication held — 2026-10-27
+# Ptown Words polish — hosted qualification PASS, publication pending — 2026-10-27
+
+Jeremy accepted the polish smoke and explicitly authorized production publication,
+with fake-money play for all eligible users indefinitely. Rack selection now only
+selects tiles; board taps own zoom. Migration `20261027170439` is installed after
+candidate and installed rollback financial proofs passed. Admission and bots are
+closed until exact-SHA frontend publication; real-money configuration and start
+are rejected server-side. The 180-second turn remains unchanged. See
+[release evidence](PTOWN_WORDS_POLISH_RELEASE.md).
+
+TypeScript, focused rerun of two unrelated lazy-help timeouts, all 241 harness
+tests and production bundle PASS. The full source run passed 3004 assertions;
+both timed-out files pass unchanged (9 tests). Phone/desktop browser and hosted
+candidate/installed financial proofs PASS. Exact-SHA publication/activation follows.
+
+## Superseded local-review checkpoint
 
 The combined owner-smoke pass adds the requested zoom hints, a 1500ms dictionary
 rejection overlay, outlined scores, actionable rack brightness, local rack shuffle,

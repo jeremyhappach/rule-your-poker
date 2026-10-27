@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `PTOWN_WORDS_POLISH_RELEASE.md` | Approved indefinite fake-money release, rack-only selection and hosted qualification |
 | `PTOWN_WORDS_POLISH_LOCAL.md` | Local-only owner-smoke gesture/HUD/reveal preview, bounded handoff proofs and explicit publication hold |
 | `PTOWN_WORDS_RELEASE.md` | Approved complete multiplayer rules, authority, admission, recovery, settlement and release qualification |
 | `PTOWN_WORDS_FOUNDATION.md` | Ptown Words approved identity, pinned ENABLE2K, local mock and missing-runtime release hold |

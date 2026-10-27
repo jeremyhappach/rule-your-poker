@@ -15,8 +15,8 @@ export function usePtownWordsAccess(sessionId: string | null = null): boolean {
         const { data, error } = await supabase.rpc('ptown_words_capabilities' as never, { p_session_id: sessionId } as never);
         if (disposed || generation !== requestGeneration) return;
         const capability = data as Record<string, unknown> | null;
-        setAccess({ sessionId, allowed: !error && capability?.version === 2 && capability.enabled === true &&
-          capability.user_id === userId && capability.session_id === sessionId && capability.fake_money_only === false });
+        setAccess({ sessionId, allowed: !error && capability?.version === 3 && capability.enabled === true &&
+          capability.user_id === userId && capability.session_id === sessionId && capability.fake_money_only === true });
       } catch {
         if (!disposed && generation === requestGeneration) setAccess(null);
       }

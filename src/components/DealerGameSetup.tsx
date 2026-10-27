@@ -998,7 +998,7 @@ const DealerGameSetupInner = ({
     if (gameTypeToSubmit === 'battle-31' && (!battle31Allowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Battle 31 requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'canasta' && (!canastaAllowed||activeHumanCount<1||activePlayerCount!==2)) { toast.error('Canasta requires exactly 2 players including a human'); return; }
     if (gameTypeToSubmit === 'quintzee' && (!quintzeeAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4)) { toast.error('Quintzee requires 2–4 players including a human, in fake money'); return; }
-    if (gameTypeToSubmit === 'ptown-words' && (!wordsAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4||(realMoney&&activeHumanCount!==activePlayerCount))) { toast.error('Ptown Words requires 2–4 players including a human; bots require fake money'); return; }
+    if (gameTypeToSubmit === 'ptown-words' && (!wordsAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4||realMoney)) { toast.error('Ptown Words requires 2–4 players including a human; fake money only'); return; }
     if (gameTypeToSubmit === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Boxdrop requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Trip Flip requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'take-two' && (!takeTwoAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Take 2 requires 2–7 players including a human'); return; }

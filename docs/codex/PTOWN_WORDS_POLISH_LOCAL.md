@@ -1,5 +1,9 @@
 # Ptown Words owner-smoke polish — LOCAL review only — 2026-10-26
 
+**Superseded October 27:** owner accepted the polish and explicitly approved
+publication after correcting rack taps. See `PTOWN_WORDS_POLISH_RELEASE.md` for
+the indefinite fake-money release and its qualification; below is historical.
+
 Jeremy requested this polish through the owner-smoke thread. The specific hold
 supersedes prior publication approval: no push, deployment, hosted migration or
 activation until owner review. Work is isolated on `codex/ptown-words-polish-local`
