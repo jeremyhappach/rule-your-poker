@@ -1,4 +1,66 @@
-# Golf match-length release attempt — 2026-10-27
+# Golf match-length release qualification — 2026-10-27
+
+## Completed release gates
+
+All **17 candidate and 17 installed-authority units pass**. Each matrix covers
+configuration and legacy behavior, four complete two-human matches, 72 canonical
+financial winner/tie cases across 2–4 seats and both money modes, and four
+Run Back/late-replay continuations. Actual installed proofs use the production
+default reader/table, with no temporary-default adapter. All synthetic records
+roll back, and preservation checks pass. The prior 24 local full matches and
+independent-connection settlement/replay evidence remain applicable; no locking
+or settlement-claim ownership changed. The 152 frontend assertions, 15 reviewed
+browser cases, application TypeScript and production build pass.
+
+The one needed migration was applied successfully as **20261027194322**. The
+connector assigned that version; the CLI-created 20261027192846 file was renamed
+to match hosted history, with identical SQL bytes (SHA-256
+`c6aeb56c685717442d625d6f5051fe477744c31a61dad9b8bb447311f4ee0083`). No Words,
+Quintzee or other migration was repeated. Default nine, 1200ms scoring delay,
+5000ms results hold, admission and money-mode eligibility are preserved.
+
+Evidence: `dev/six-card-golf/evidence/match-length-release-candidate.json` and
+`match-length-release-installed.json`. The approved release checkpoint tag is
+`golf-match-length-release-20261027`. Publication verifies the tag's exact commit
+against Vercel READY, holm357.com/build-manifest.json, the persisted
+release_publication value and a successful GitHub publisher run. Those observed
+deployment values are returned with the release result. Physical iPhone Chrome
+smoke remains the owner's final acceptance step.
+
+The following sections preserve the initial attempt and its diagnosis; their
+uninstalled/pending statements are historical and superseded by this checkpoint.
+
+## Diagnosed rehearsal interference — supersedes unresolved blocker below
+
+The shared scheduler's retained slow-task history identifies SQLSTATE 55P03
+(`lock_timeout`), lasting 751–760ms, for `canonical_timers` during the candidate
+rehearsals. The deployed canonical timer function's legacy scan always joins
+`public.game_defaults`; its task wrapper caps lock acquisition at 750ms.
+The rehearsal executes `ALTER TABLE public.game_defaults ADD COLUMN`, retaining
+AccessExclusiveLock throughout the long fixture and history-containment capture.
+That conflicts with the timer scan's AccessShareLock. A two-connection isolated
+local reproduction captures the exact lock and reproduces 55P03; the read succeeds
+after rollback. See `dev/six-card-golf/evidence/match-length-lock-repro.json`.
+No canonical timeout occurred after the original rehearsals stopped, through
+the recorded 19:40:18 UTC healthy observation. No competing writer or persistent
+production incident was found. This is qualification-induced lock contention.
+
+The long candidate fixture now clones defaults into a connection-local temporary
+table and redirects only its temporary candidate default-reader body there.
+All other candidate gameplay/financial bodies, actual canonical tables, triggers,
+RPC identity checks, health guards and containment assertions remain in force.
+The exact production DDL and default storage contract already passed the initial
+short configuration rollback proof; the actual migration remains unchanged.
+Installed proofs use the real installed default reader and table with no adapter.
+This avoids holding production DDL locks for full gameplay/financial rehearsals.
+No production timer, health record, timeout, trigger or customer game was changed
+to clear the rejection. Both original rejected requests remain in the evidence.
+
+The revised matrix adds four explicit continuation cases: the real terminal hold,
+duplicate finish, a new Run Back identity with fresh human consent, frozen length,
+an old real action receipt replayed after successor admission, and complete
+successor state/revision/round preservation. Both revised matrices passed before
+frontend publication.
 
 Jeremy explicitly approved production publication of candidate
 `928887f1a11d27e4c80003170d85b54841ad25bb`. Scope is multiplayer 3/6/9/18
@@ -63,7 +125,7 @@ The exact failing admission details and passing units are retained in
 transactions leave no synthetic records; failed connector requests abort their
 entire statement transaction. No health state or protection was altered.
 
-The unresolved boundary is the recurring shared `canonical_timers` health
+The initial unresolved boundary was the recurring shared `canonical_timers` health
 failure during qualification. Its cause is not established; neither a Golf
 runtime defect nor proof-induced lock contention has been proven. Isolate that
 cause before resuming, without broadening this release into shared scheduler

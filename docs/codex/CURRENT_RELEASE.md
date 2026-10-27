@@ -1,13 +1,14 @@
-# Six-Card Golf match lengths — production approved, qualification blocked — 2026-10-27
+# Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
 
 Jeremy approved reviewed candidate `928887f1a11d27e4c80003170d85b54841ad25bb`
 for production. This supersedes the local-only hold below for Golf only.
-Release attempt stopped before migration installation, integration or push:
-hosted real-money qualification twice encountered
-`real_money_liveness_unavailable:active_recovery_failure` for `canonical_timers`.
-Health subsequently cleared without intervention; recurrence remains unexplained
-and is not waived by a later healthy read. Admission and money eligibility remain
-unchanged. See [release attempt](SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md).
+The initial health rejection was traced to long candidate DDL rehearsals holding
+an exclusive game_defaults lock over the canonical timer scan. Temporary fixture
+defaults removed that interference without weakening any guard. All 17 candidate
+and 17 actual installed units pass, including every length, both money modes,
+shared ties, financial rollback, Run Back and late replay. Migration
+`20261027194322` is installed; default nine and existing admission/money eligibility
+are unchanged. See [release qualification](SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md).
 
 Multiplayer 3/6/9/18-hole selection is implemented locally: saved default nine,
 dealer-only override, frozen authoritative length, exact progression/settlement,
@@ -22,7 +23,9 @@ Pencil typography, shorter layouts and server rules are unchanged.
 143 focused tests, TypeScript, production build, 24 full local matches and 72
 financial cases pass. Browser evidence and preview are documented in
 [local qualification](SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md).
-Publication is authorized but held until the financial qualification gate passes.
+152 focused assertions, TypeScript and production build pass for the reviewed
+frontend. Exact-SHA READY/manifest/release-signal/publisher verification is the
+publication checkpoint; physical owner smoke follows.
 Words, Quintzee and Mega smoke are unchanged.
 
 # Ptown Words polish — hosted qualification PASS, publication pending — 2026-10-27

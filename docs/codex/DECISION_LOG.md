@@ -1,11 +1,14 @@
-## 2026-10-27 — Golf match length is frozen configuration (local only)
+## 2026-10-27 — Golf match length is frozen configuration (production approved)
 
 Approved local scope adds 3/6/9/18 holes, initially nine, through existing lobby
 defaults and a match-only dealer override. The admitted /2 rules JSON owns the
 length throughout progression and settlement; /1 and missing legacy values stay
 nine. Run Back retains the committed length. Eighteen-hole results use two
-nine-hole pencil sections. No hosted release is authorized. See
-`SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md`.
+nine-hole pencil sections. Jeremy subsequently approved the reviewed production
+release. Qualification uses temporary default storage for long candidate
+rehearsals to avoid retaining production DDL locks over the canonical timer scan;
+installed proofs use actual default storage. Admission and money eligibility
+remain unchanged. See `SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md`.
 
 ## 2026-10-27 — Ptown Words polish approved for indefinite fake-money release
 
