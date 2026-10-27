@@ -3,6 +3,9 @@
 Multiplayer 3/6/9/18-hole selection is implemented locally: saved default nine,
 dealer-only override, frozen authoritative length, exact progression/settlement,
 under-flag text and complete pencil scorecards with two nine-hole sections for 18.
+Owner review correction: Front Nine ends with Out; Back Nine ends with In and a
+distinct bold match Total. The old second total was cumulative. All 45 focused
+scorecard/table tests pass; shorter layouts and server rules are unchanged.
 143 focused tests, TypeScript, production build, 24 full local matches and 72
 financial cases pass. Browser evidence and preview are documented in
 [local qualification](SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md).

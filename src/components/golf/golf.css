@@ -157,3 +157,8 @@
 
 .golf-match-length {display:block;text-align:center;font-size:10px;line-height:14px;white-space:nowrap}
 .golf-scorecard table+table {margin-top:12px}
+.golf-scorecard .golf-back-nine th:first-child {width:18%}
+.golf-scorecard .golf-back-nine .golf-nine-subtotal {width:12%}
+.golf-scorecard .golf-back-nine .golf-match-total {width:14%;font-weight:900}
+/* Heavier pencil strokes make the match total bold without replacing handwriting. */
+.golf-match-total .golf-pencil-score path:first-child {stroke-width:2.2;opacity:1}

@@ -23,8 +23,9 @@ activation, publication, or changes to Words/Quintzee/Mega are included.
   validate that same count. Stakes, payouts, ties, receipt keys, financial triggers,
   pause/recovery ownership, bot choices, admission and money capabilities stay intact.
 - The flag has small “N holes” text directly below it. Scorecards include every
-  configured hole, with 18 split into 1–9 and 10–18. Each section shows the overall
-  completed-hole total. Pencil strokes, row-completion total release, blanks,
+  configured hole. For 18 holes, Front Nine shows 1–9 and Out; Back Nine shows
+  10–18 and In, followed by a distinct bold match Total (Out + In).
+  Pencil strokes, row-completion total release, blanks,
   +N/E/−N, concealed-card protections and all presentation timings are retained.
 
 ## Local evidence
@@ -38,7 +39,7 @@ activation, publication, or changes to Words/Quintzee/Mega are included.
 | Finance | 72 terminal cases: every length × both money modes × all winner counts in 2–4 seats. Actual canonical balances, balanced journals, shared results, final snapshots, all-player ties, duplicate settlement, and injected failure after chip movement |
 | UI regressions | 143 focused tests, including per-hole scoring/reveal/transport, privacy, row writing and terminal presentation |
 | Static validation | Application TypeScript and Vite production build pass; existing Browserslist/chunk warnings |
-| Browser | 14 actual canonical table/scorecard cases: all lengths at 320/390/1024px, plus 18 holes with four players at 320×568 and 390×680. Edge/Blink verifies all scores and pencil glyphs, full headers, below-flag text, horizontal/vertical fit and no console/external-network errors |
+| Browser | 15 actual canonical table/scorecard cases: all lengths at 320/390/1024px, plus 18 holes with four players at 320×568 and 390×680 and three players at 390×680. Edge/Blink verifies all scores and pencil glyphs, Out + In = Total, bold label/strokes, full headers, below-flag text, horizontal/vertical fit and no console/external-network errors |
 
 SQL evidence: `qualification.local/golf-match-length/sql-evidence.json`.
 All SQL fixture writes and candidate installation were rolled back. The runner
@@ -54,6 +55,25 @@ idempotent second application pass locally. The captured deployed reference is
 qualification input only, never a release migration.
 
 ## Review
+
+### Owner scorecard correction
+
+The earlier candidate `f54ff69044b9805863a3575871620eb3cb951a27` displayed the
+**same cumulative match total in both sections**. Its second total was not a
+back-nine subtotal. The corrected 18-hole layout separates Out, In, and Total.
+The section headings are exactly Front Nine and Back Nine. The overall Total
+uses a bold label and heavier original pencil strokes; 3/6/9-hole layouts remain
+unchanged. Only completed public hole scores contribute. An unplayed hole stays
+blank, and its section subtotal remains E until a completed score contributes.
+During writing, the current hole is withheld from its section subtotal and match
+total until that player's pencil animation completes; the other section is stable.
+
+Focused correction tests: 45 scorecard/table tests pass, including all player
+counts, partial cards, hole 9 and hole 18 writing, distinct subtotals, and shorter
+layouts. The local preview uses Out +9, In +18, Total +27 for its first player.
+No rules, SQL, settlement or migration files changed in this correction.
+Application TypeScript and production build also pass. Correction logs use the
+`scorecard-tests.log` and `nine-*.log` names in the existing qualification folder.
 
 Run `node dev/six-card-golf/match-length-review.mjs`, then open
 [local match-length review](http://127.0.0.1:5254/__length-review).
