@@ -1,15 +1,17 @@
-# Ptown Words /2 — hosted PASS, reconciling approved release — 2026-10-27
+# Ptown Words /2 — reconciled release qualification PASS — 2026-10-27
 
 Jeremy approved reviewed candidate `d39328f2049557a95044390e09a8993adb0fd375`
 for production, fake-money only. This supersedes the historical local holds below.
 Hosted candidate and installed rollback gates PASS; migration `20261027214928`
 is installed. Existing /1 matches, shared pause, settlement and money eligibility
-are preserved. Admission/bots are temporarily closed pending exact-SHA frontend
-publication. The prior three stale Golf expectations are already fixed on main
-by `7b69fb733`, included in `30c50e01f`. Jeremy explicitly authorized reconciliation
-with current main and completion of publication/activation; no duplicate fix or
-migration is needed. Validate the reconciled source, then reopen admission/bots
-only after exact-SHA publication checks pass. See
+are preserved. Reconciled with main `30c50e01f`, including Golf fixes `7b69fb733`
+and the published Quintzee changes; reviewed Words runtime is unchanged.
+Application typecheck, all 3059 source assertions (one lazy-load timeout passed
+on the focused seven-test rerun), 241 harness tests and production bundle PASS.
+Release checkpoint: `ptown-words-v2-fake-money-20261027`. Admission/bots reopen
+only after exact-SHA production READY/manifest/release-signal verification;
+live evidence is retained under `qualification.local/ptown-words/banks-publication`.
+The installed migration must not be repeated. See
 [release qualification](PTOWN_WORDS_BANKS_PAUSE_RELEASE.md).
 
 ## Historical local review record (superseded by production approval)
@@ -44,6 +46,18 @@ Game-route browser suite pass (human horizontal/vertical and bot reveal,
 pause/request/reload, bank persistence and four viewport sizes); see
 [preview and qualification](PTOWN_WORDS_BANKS_PAUSE_LOCAL.md).
 No push, hosted migration, deployment or admission change is authorized.
+
+# Quintzee smoke polish - qualified, publication pending - 2026-10-27
+
+Owner approved publication without another preview gate. Includes centered/dimmed
+celebrations, canonical zero-confirmation and completion wording, the enlarged
+two-column bonus row, and secondary base-score typography. Both themes and modes
+pass 12 phone/landscape browser cases, including maximum upper-subtotal fit and
+actual Start/final-score interactions. Current Golf main is merged; Words work is
+preserved in its separate checkout. Three stale Golf test expectations are aligned
+with the already-published hole-count payload and scorecard label, without gameplay
+changes. Installed Quintzee authority and admission remain unchanged. See
+[scope, diagnosis and qualification](QUINTZEE_SMOKE_POLISH_LOCAL.md).
 
 # Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
 

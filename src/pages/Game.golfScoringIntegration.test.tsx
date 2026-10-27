@@ -38,7 +38,7 @@ it('actual Game and Golf retain counting and scorecard before winner, then retir
  const publish=async(v:any)=>{s.golf=v;await act(async()=>{for(const {filter,fn}of s.listeners)if(filter.table==='golf_revisions')fn({new:{dealer_game_id:'d',revision:v.revision}});await new Promise(r=>setTimeout(r,40));});};
  await publish(result);
  expect(document.querySelector('.golf-final-scorecard')).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Open nine-hole scorecard'}));
+ fireEvent.click(screen.getByRole('button',{name:'Open 9-hole scorecard'}));
  expect(document.querySelector('[role="dialog"] .golf-scorecard tbody tr td:nth-last-child(2)')?.textContent).toBe('');
  expect(document.querySelectorAll('[role="dialog"] .golf-scorecard tbody tr:first-child td svg')).toHaveLength(9); // eight holes + total
  fireEvent.click(screen.getByRole('button',{name:'Close'}));

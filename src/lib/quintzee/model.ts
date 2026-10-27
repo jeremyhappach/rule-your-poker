@@ -14,6 +14,15 @@ export function quintzeeBasePreview(category:QuintzeeCategory,dice:readonly numb
  if(!QUINTZEE_CATEGORIES.includes(category)||dice.length!==5||dice.some(d=>!Number.isInteger(d)||d<1||d>6))throw Error('Invalid Quintzee dice/category');
  return calculateCategoryScore(category,[...dice]);
 }
+/** Private confirmation decision only; never used to decorate or rank category choices. */
+export function quintzeeNeedsZeroConfirmation(board:QuintzeeBoard,category:QuintzeeCategory):boolean {
+ if(board.phase!=='playing'||board.scores[category]!==undefined||board.dice.length!==5)return false;
+ return quintzeeBasePreview(category,board.dice)===0&&QUINTZEE_CATEGORIES.some(other=>
+  other!==category&&board.scores[other]===undefined&&quintzeeBasePreview(other,board.dice)>0);
+}
+export function quintzeeRoundLabel(reason:QuintzeeResult['reason']|undefined):string {
+ return reason==='timeout'?"Time's Up":reason==='all_categories'?'Round Complete':reason==='no_matches'?'No more matches':'';
+}
 /** Display interpolation, never submitted as score or elapsed time. */
 export function quintzeeClock(board:QuintzeeBoard,serverNow:number){
  const remaining=(board.phase==='intro'||board.phase==='ready')?board.rules.durationMs:board.result?.remainingMs??Math.max(0,Math.min(board.rules.durationMs,board.deadline-Math.max(serverNow,board.celebration?.endsAt??0)));

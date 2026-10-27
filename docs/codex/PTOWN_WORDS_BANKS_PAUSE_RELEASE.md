@@ -57,23 +57,29 @@ The advisor also reports an unrelated pre-existing policy/RLS warning on
 
 ## Frontend and publication
 
-Application typecheck PASS; 241 harness tests PASS; production bundle PASS.
-Full source suite: 437/439 files and 3048/3051 tests pass. Publication is held on
-three pre-existing stale Golf expectations in two files unchanged from published
-`origin/main` (`9d3bc5080`): `DealerGameSetup.stakeDefaults.test.tsx` expects only
-ante amounts in two places, omitting the now-frozen default `holes: 9`;
-`Game.golfScoringIntegration.test.tsx` expects “Open nine-hole scorecard” instead
-of the current “Open 9-hole scorecard”. Production code correctly implements the
-approved Golf match lengths. No Words test failed. Approval is pending for these
-three test-only corrections; no unrelated test or application file was edited.
-Logs: `qualification.local/ptown-words/banks-release-{build,harness,bundle}.log`.
-No frontend release commit/push has occurred; hosted admission and bots stay
-closed pending completion. Do not repeat the installed migration when resuming.
+Release resumed at Jeremy's explicit direction: the three stale Golf expectations
+that held the first source run were corrected by `7b69fb733` on main `30c50e01f`.
+Reconciliation preserves that main's published Quintzee work and the reviewed
+Words frontend without duplicate test edits. Only the release-note overlap
+required resolution; both game records were preserved. Runtime Words source and
+the two approved SQL deltas are byte-for-byte unchanged from reviewed `d39328f`.
 
-Release resumed at Jeremy's explicit direction: all three Golf expectations were
-corrected by `7b69fb733` on current main `30c50e01f`. Reconciliation preserves
-that main's Quintzee work and the reviewed Words frontend without duplicate test
-edits. Run source gates on the combined tree and retain the installed migration.
+Combined application typecheck PASS; 241 harness tests PASS; production bundle
+PASS. Full source run: 3058/3059 assertions, 439/440 files passed. The unchanged
+TriTowers rules-panel case timed out at one second while still showing its lazy
+loading state; all seven tests in that file pass on an isolated rerun. No code
+or timeout was changed to obtain that result. The original three Golf checks
+pass in the full run. All source assertions are thus covered by passing runs.
+Logs: `qualification.local/ptown-words/banks-release-reconciled-{build,harness,bundle}.log`
+and `banks-release-rules-rerun.log`. Installed function fingerprints were rechecked
+and still match the qualified authority. Migration count remains exactly one;
+no DDL was repeated during reconciliation.
+
+The release checkpoint is tagged `ptown-words-v2-fake-money-20261027` before
+publication. Final exact-SHA deployment, public phone/desktop load, release signal,
+activation and fake-only admission evidence is retained in
+`qualification.local/ptown-words/banks-publication/`. The `ptown-words-v2-live-20261027`
+tag, created only after successful verification, identifies the verified source.
 
 Previously reviewed browser evidence covers real Game
 route/RPC/realtime, reconnect, phone/landscape/desktop, touch targets, sequential

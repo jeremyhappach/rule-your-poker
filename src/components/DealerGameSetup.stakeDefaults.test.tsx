@@ -34,7 +34,7 @@ describe('dealer stake defaults cannot overwrite a financial offer',()=>{
   const previous={game_type:'six-card-golf',run_back_config:{ante_amount:17},ante_amount:17,rollover_amount:0,leg_value:0,legs_to_win:0,pussy_tax_enabled:false,pussy_tax_value:0,pot_max_enabled:false,pot_max_value:0,chucky_cards:0,rabbit_hunt:false,reveal_at_showdown:false};
   render(<DealerGameSetup gameId="session" dealerUsername="Caller" isBot={false} dealerPlayerId="caller" dealerPosition={2} configDeadline={new Date(Date.now()+600000).toISOString()} gameSetupTimerSeconds={600} anteDecisionTimerSeconds={30} activePlayerCount={2} activeHumanCount={2} previousGameType="six-card-golf" previousGameConfig={previous} isFirstHand={false} onConfigComplete={()=>{}} onSessionEnd={()=>{}}/>);
   const button=await screen.findByRole('button',{name:'Run Back Six-Card Golf'});fireEvent.click(button);fireEvent.click(button);
-  await waitFor(()=>expect(state.configure).toHaveBeenCalledTimes(1));expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:'six-card-golf',config:{ante_amount:17}}));
+  await waitFor(()=>expect(state.configure).toHaveBeenCalledTimes(1));expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:'six-card-golf',config:{ante_amount:17,holes:9}}));
  });
  it.each([['six-card-golf','Six-Card Golf'],['race-poker','Race Poker'],['tri-towers','TriTowers'],['eleven-up','11 Up'],['royal-flash','Royal Flash'],['take-two','Take 2'],['trip-flip','Trip Flip'],['boxdrop','Boxdrop']])('%s resolves defaults before admitting edits and ignores late initial defaults',async(game,label)=>{
   const initial=defer('holm'),selected=defer(game);
@@ -48,6 +48,6 @@ describe('dealer stake defaults cannot overwrite a financial offer',()=>{
   await act(async()=>initial({data:{ante_amount:59},error:null}));
   expect((input as HTMLInputElement).value).toBe('9');
   fireEvent.click(screen.getByRole('button',{name:'Start '+label}));
-  await waitFor(()=>expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:game,config:{ante_amount:9}})));
+  await waitFor(()=>expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:game,config:{ante_amount:9,...(game==='six-card-golf'?{holes:9}:{})}})));
  });
 });
