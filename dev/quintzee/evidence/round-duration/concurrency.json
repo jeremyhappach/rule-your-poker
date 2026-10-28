@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-28T00:30:57.168Z",
+  "balances": [
+    95,
+    105
+  ],
+  "cases": [
+    "independent authenticated duplicate/race",
+    "inactive actor rejected",
+    "failure after chip writes rolls back all artifacts",
+    "independent settlement exactly once",
+    "Arcade duplicate and expired-unranked recovery race",
+    "serialized defaults edits; admissions use one committed immutable duration; admitted runs remain frozen"
+  ],
+  "containment": "disposable local clone; dropped in finally"
+}

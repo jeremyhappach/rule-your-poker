@@ -1,10 +1,18 @@
-# Quintzee round duration — local candidate, publication held — 2026-10-27
+# Quintzee configurable round duration - approved release qualification - 2026-10-28
 
 Owner requested an adjustable four-minute round in lobby Game Defaults. The
 isolated candidate saves 240 seconds through the admin defaults owner, freezes
 shared rules at new Arcade/multiplayer admission, and preserves active games and
 historical leaderboard boards. Owner approved publication on 2026-10-28; release qualification is in progress.
-See [local qualification and remaining release gates](QUINTZEE_ROUND_DURATION_LOCAL.md).
+Local concurrency, canonical settlement/rollback, fresh authenticated admission,
+immutable Arcade completion/results and duration leaderboard separation pass.
+Migration `20261028003718` installed once. Scoped hosted post-install qualification
+passed with all 37 synthetic identities confirmed rolled back; no global recovery
+or function replacement in the proof. Default/new admissions are 240 seconds;
+old configurations and historical leaderboards remain intact. All 3065 source
+tests, 241 harness tests, typecheck and production bundle passed. Frontend release
+agreement remains to be verified after push.
+See [qualification and release evidence](QUINTZEE_ROUND_DURATION_LOCAL.md).
 
 # Ptown Words /2 — reconciled release qualification PASS — 2026-10-27
 

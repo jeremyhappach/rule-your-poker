@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "local": true,
+  "hosted": false,
+  "rolledBack": true,
+  "allTriggersEnabled": true,
+  "at": "2026-10-28T00:35:20.489Z",
+  "rows": [
+    {
+      "proof": "Quintzee actual role authorization and server real-money exclusion PASS"
+    },
+    {
+      "proof": "240s fresh Classic/Modern multiplayer and Arcade admission; full-card canonical result persistence PASS"
+    },
+    {
+      "quintzee_assert": ""
+    },
+    {
+      "quintzee_assert": ""
+    },
+    {
+      "proof": "Scoped installed Quintzee /3 qualification PASS",
+      "fixture_users": [
+        "c461ecc4-11ca-42b4-a1c9-95636c6c82eb",
+        "d8fef486-9668-4c4b-a6f6-4537b03cd1a4",
+        "562ca3a7-8e43-4741-b531-c3c9a2634d99",
+        "13e97105-bc5b-4f42-a7c8-778747bcca88",
+        "ada60712-3f67-43b3-881e-9b0a9bed7c98",
+        "47f9543d-7e03-44c1-b69a-fe02bbabf474",
+        "6aa20479-bda5-4125-b74a-17c41a9256e2",
+        "b6dba9bf-fda2-4ac0-8a7b-0b146fb6af35",
+        "cc655dfa-89e2-42d0-a944-8a2c786104eb",
+        "707eee15-3664-425e-a3b9-1881246fcbe8",
+        "6e9494cd-c529-42d2-9d0e-48f89bfb9f56",
+        "dab643e1-8ee2-4325-b743-8ca58cbb9341",
+        "5d229210-b434-47ac-840e-b1a27e7a8594",
+        "ebaf96bc-3e66-4152-8320-c874cd493e0e",
+        "a96e2689-3a29-4ee9-a876-65a00109a5a5",
+        "010202ec-a26a-4c67-8487-41a967b5b928",
+        "104cb594-2ad0-40a4-80f2-db93e5a9a5a0",
+        "efe760cb-c0c3-4382-9896-3af440e80739",
+        "9f2d66a6-2c6f-4599-acb2-f143574e6c45",
+        "e662e6e8-7464-4b94-ba90-4eeab29c3d9a",
+        "922c6b24-dfb8-483d-86a6-9587b0988002",
+        "aefeb1d2-c358-44f6-935d-9f82e32339d2",
+        "b33eb41b-e722-4eab-89aa-6e9f04f2bd83",
+        "3655d6e0-bf7a-4460-a8a5-2646a5085596",
+        "3727e300-ff68-4348-ac58-9070f619c447",
+        "dbb23337-56ec-4731-b837-f7e8192521c2",
+        "ee5bba1e-d6aa-431d-a2d6-3c9b4bc222a0",
+        "79164f03-4757-48f2-829a-e464dce78f45",
+        "b1ff7c0e-2374-43ed-b04c-953e10215df3",
+        "0683cc31-2350-407a-8812-c2f7fb049b36",
+        "1b72c929-8fce-4397-b645-21e25f43d90d",
+        "18b561a3-614b-4a24-bfd3-d9a88bbff8f4",
+        "081489be-7c25-4c99-87d1-62c029e295ae",
+        "1e013ebc-9cb1-4562-b240-6bd5b86ea99a",
+        "7cddc248-dc82-4c8d-9e68-f1bf3a67f81b",
+        "fd21a7d7-313b-4840-9fbb-5772fd06bad7",
+        "0f3d218f-33a2-4d86-8143-ff7da2396d53"
+      ],
+      "authority_hash": "398102385754b95a9bf732899fdcb93a"
+    }
+  ]
+}
