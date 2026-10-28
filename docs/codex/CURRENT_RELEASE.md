@@ -1,14 +1,17 @@
-# Live Words real money — isolated preparation, release held — 2026-10-28
+# Live Words real money — installed qualification PASS — 2026-10-28
 
-Live owner smoke passed and real-money opening is authorized. Local financial,
-rollback, independent-connection retry, zero-client recovery, bank/pause and
-admission guards pass; client capability/catalog changes remain unpublished.
-The proposed server flag installs closed. Fake availability, fake-only bots and
-fake-only async Words are preserved. Incident `99249d8bd` is published; 11 Up
-owns the production release slot. Words requires explicit coordinator clearance,
-current-main reconciliation and hosted qualification before publication or
-activation. No hosted mutation or push was performed for this preparation.
-See [preparation and remaining gates](PTOWN_WORDS_REAL_MONEY_PREPARATION.md).
+Coordinator explicitly cleared Words after incident and 11 Up. Reconciled with
+published main `8003f5fa3`, preserving both releases. Migration `20261028191408`
+is installed once, closed; candidate and installed hosted rollback proofs pass
+with all synthetic fixtures removed and actual scheduler health preserved.
+Twelve financial cases, real account conservation, rollback, admission guards,
+zero-client recovery, banks/pause, current-authority independent-connection local
+retry proof, 3124 source tests, 241 harness tests, typecheck and bundle pass.
+Activation requires exact-SHA READY/manifest/publisher/persisted-signal agreement.
+Only live human real money opens; fake availability, fake-only bots and fake-only
+async Words remain intact. Publication and live verification evidence is retained
+under `qualification.local/ptown-words/real-money` and the verified release tag.
+See [qualification and release sequence](PTOWN_WORDS_REAL_MONEY_PREPARATION.md).
 
 # 11 Up follow-up — installed qualification PASS — October 28, 2026
 

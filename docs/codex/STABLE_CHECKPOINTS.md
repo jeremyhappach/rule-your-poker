@@ -1,5 +1,11 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-10-28 Jeremy confirmed the published live Words smoke passed and authorized
+human real-money opening. Existing /2 play, banks and pause controls are stable;
+the real-money admission qualification does not alter those gameplay owners.
+Bots and async Words remain fake-only. See `PTOWN_WORDS_REAL_MONEY_PREPARATION.md`
+for the separate financial/admission and publication gates.
+
 2026-10-27 Jeremy accepted reviewed Words candidate
 `d39328f2049557a95044390e09a8993adb0fd375`, including own pause-request
 cancellation, and approved fake-money-only production publication. All prior

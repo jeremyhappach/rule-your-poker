@@ -1,0 +1,148 @@
+{
+  "health": {
+    "reason": "healthy",
+    "game_id": null,
+    "outcome": "healthy",
+    "checked_at": "2026-10-28T19:11:47.623083+00:00",
+    "overdue_timers": [],
+    "session_failures": [],
+    "admission_allowed": true,
+    "active_failure_tasks": [],
+    "scheduler_last_outcome": "completed",
+    "scheduler_last_duration_ms": 8,
+    "scheduler_last_completed_at": "2026-10-28T19:11:46.919844+00:00",
+    "scheduler_consecutive_partial_failures": 0
+  },
+  "indexes": [
+    "CREATE UNIQUE INDEX ptown_words_matches_pkey ON private.ptown_words_matches USING btree (dealer_game_id)",
+    "CREATE INDEX ptown_words_matches_session ON private.ptown_words_matches USING btree (game_id)",
+    "CREATE INDEX ptown_words_matches_pending ON private.ptown_words_matches USING btree ((((state ->> 'deadline'::text))::bigint)) WHERE ((NOT finished) AND (settlement IS NULL))",
+    "CREATE UNIQUE INDEX ptown_words_requests_pkey ON private.ptown_words_requests USING btree (dealer_game_id, request_id)"
+  ],
+  "release": {
+    "enabled": true,
+    "singleton": true,
+    "bots_enabled": true,
+    "admission_enabled": true
+  },
+  "functions": [
+    {
+      "signature": "ptown_words_capabilities(uuid)",
+      "md5": "702b0cbc1f3f8489bc0c1a82ef21ad21"
+    },
+    {
+      "signature": "set_game_paused(uuid,boolean,uuid,bigint)",
+      "md5": "1fa2220c33734d1cf14c11f3eaef432b"
+    },
+    {
+      "signature": "record_session_results()",
+      "md5": "eb408dcb7dca842776909bd603183a60"
+    },
+    {
+      "signature": "settle_gameplay_chip_transfers(uuid,jsonb,text)",
+      "md5": "de14ab5df0a703cfd8c1ed43aa5a819c"
+    },
+    {
+      "signature": "ptown_words_configure(uuid,uuid,integer,text,jsonb,timestamp with time zone)",
+      "md5": "715cd76863b0117b48137fe29f309eb8"
+    },
+    {
+      "signature": "finalize_gameplay_transfer_batch()",
+      "md5": "5d1c8703caee40ce7392d4eb6de1aaf9"
+    },
+    {
+      "signature": "private.megatouch_begin(uuid,uuid)",
+      "md5": "cb6c2e49ac9080560868fb0a9162d890"
+    },
+    {
+      "signature": "private.ptown_words_recover(uuid)",
+      "md5": "b5faefcf5215b56239662254a1573b25"
+    },
+    {
+      "signature": "private.ptown_words_value(text)",
+      "md5": "60efc1dc9c773d57c84e66fc634c65fc"
+    },
+    {
+      "signature": "private.ptown_words_visible(jsonb,text)",
+      "md5": "e5377f78950f997616bf0326a171c630"
+    },
+    {
+      "signature": "private.ptown_words_schedule_bot()",
+      "md5": "7c99314db6caf45ecc065a6711054f71"
+    },
+    {
+      "signature": "private.ptown_words_presentation_config()",
+      "md5": "ae454507ccf43d8cd937ddaa4d83d999"
+    },
+    {
+      "signature": "private.ptown_words_present_move()",
+      "md5": "6120140551b7766332abbd010eb10e65"
+    },
+    {
+      "signature": "private.ptown_words_finish_postgame(uuid)",
+      "md5": "6b5beccf81270a067f5b4f616e0fbb38"
+    },
+    {
+      "signature": "private.ptown_words_bot_choice(jsonb,bigint)",
+      "md5": "f31519f25cf6b338c8666b452a714f08"
+    },
+    {
+      "signature": "private.ptown_words_pause()",
+      "md5": "11885214747b2a8e9763e14def56c466"
+    },
+    {
+      "signature": "private.ptown_words_publish()",
+      "md5": "5785383f0020f21bd472ab6854efa94b"
+    },
+    {
+      "signature": "private.ptown_words_recover()",
+      "md5": "9aa8c7b1f568d8fce5dbf8b855176982"
+    },
+    {
+      "signature": "private.ptown_words_reduce(jsonb,text,jsonb,bigint)",
+      "md5": "3f9fcba7523dca5c2bd8a927e84438f5"
+    },
+    {
+      "signature": "private.ptown_words_rules_for(text)",
+      "md5": "ec1cab41bea767a53999265188edb293"
+    },
+    {
+      "signature": "private.ptown_words_host_changed()",
+      "md5": "c2513c7178e6cc0edbec207d75c09788"
+    },
+    {
+      "signature": "private.ptown_words_rules()",
+      "md5": "294aec382eb506a7909e088946630e7f"
+    },
+    {
+      "signature": "private.ptown_words_premium(integer)",
+      "md5": "8d098f51a7cef5916413cbba76a44ebf"
+    },
+    {
+      "signature": "private.ptown_words_actor_allowed(uuid)",
+      "md5": "abc8b61b9001aa94636d9fd2f05ae710"
+    },
+    {
+      "signature": "private.evaluate_real_money_liveness(uuid)",
+      "md5": "b332b750f1ae7b9cd65c31403f334277"
+    },
+    {
+      "signature": "private.ptown_words_deal(jsonb,bigint)",
+      "md5": "b05cdd580147f0b8235296d1717387fb"
+    },
+    {
+      "signature": "private.ptown_words_settle(uuid)",
+      "md5": "78c88259dc6febe62bf200cab836b956"
+    },
+    {
+      "signature": "private.ptown_words_shuffle(jsonb)",
+      "md5": "829176b51b4c8753a53e413e547ca87c"
+    }
+  ],
+  "migrations": [
+    "20261027214928",
+    "20261028012319",
+    "20261028184338",
+    "20261028190237"
+  ]
+}

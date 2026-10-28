@@ -1,4 +1,47 @@
-# Live Words real-money preparation — local qualification only — 2026-10-28
+# Live Words real-money release — installed qualification PASS — 2026-10-28
+
+Coordinator cleared the lane after verified 11 Up main
+`8003f5fa3d30db319ae98a68e5337936584e2ad0`. Words is reconciled with that main;
+the documentation-only merge overlap retained both records. All inspected Words,
+canonical settlement and pause/liveness fingerprints still matched preparation.
+
+Migration `20261028191408` (`ptown_words_live_real_money_admission`) is installed
+exactly once with `real_qualified=false`. Neither `20261027214928`,
+`20261028184338` nor `20261028190237` was repeated. Candidate and actual installed
+hosted rollback proofs pass: 12 financial cases, exact signed chip and account
+postings, failure after transfers, replay/continuation, actual authenticated
+admission, closed start, immutable stake, private authority, real-bot and async
+real rejection, real zero-client timeout, banks/pause/request/cancellation.
+All synthetic profiles and their dependent financial rows were rolled back;
+the actual dispatcher remained healthy without any heartbeat mutation.
+
+Independent-connection completion/retry proof runs in the isolated clone whose
+Words and canonical financial definitions match deployed authority. Hosted
+proofs exercise actual financial triggers, constraints, sequential retries and
+rollback. No persistent customer/test wagers are used on production. Security
+advisor Words notices remain the intentional private RLS/no-browser-policy and
+authenticated SECURITY DEFINER RPC boundaries; authorization checks pass.
+
+Application typecheck, 3124 source assertions, 241 harness assertions and the
+production bundle pass on reconciled source. Exact production publication must
+agree across Git remote SHA, Vercel READY, manifest, successful publisher and
+persisted signal before `prepare-real-money-activation.mjs` opens the private
+flag. It guards the installed migration, all inspected authority fingerprints,
+live recovery health and rules. Fake admission/bots are preserved throughout.
+`real-money-live-proof.sql` verifies ordinary active-human fake/real admission,
+frozen /2 stake, fake bots, real-bot/async-real rejection and no money movement,
+then rolls its synthetic fixtures back. Public fresh phone/desktop loads are a
+separate check; they do not claim authenticated gameplay acceptance.
+
+Committed evidence: `dev/ptown-words/evidence/real-money-hosted.json`.
+Publication/activation/live-browser evidence is retained under
+`qualification.local/ptown-words/real-money`. The tag
+`ptown-words-real-money-live-20261028` is created only after verified activation.
+Jeremy's existing live fake-money smoke remains accepted; real-money owner
+runtime acceptance follows publication without requiring actual wagers for
+automated verification.
+
+## Historical preparation record (release hold superseded)
 
 Jeremy confirmed live Words smoke passed and authorized opening live human Words
 for real money, as relayed by the Words routing task. The coordinator requires
