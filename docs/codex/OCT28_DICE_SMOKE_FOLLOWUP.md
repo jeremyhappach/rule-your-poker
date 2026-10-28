@@ -1,11 +1,12 @@
 # SCC/Horses postrelease smoke follow-up — local qualification PASS
 
-Owner approved production publication after the active WWF polish release on
-2026-10-28. Shared-main integration, push and deployment remain explicitly held
-until the coordinator confirms that writer has finished. No new approval is
-needed for the authorized release after that coordination hold is cleared.
+Owner approved production publication after WWF polish on 2026-10-28. The
+coordinator confirmed WWF READY/publisher/manifest/signal agreement at
+`77c7c715190e658a5393cdbbbfb79d0589d04778` and released the writer hold. The incident
+writer acquired the shared lock and reconciled without conflicts in isolation.
 
-Candidate branch: `codex/oct28-dice-smoke`, based on `39f585520`.
+Candidate branch: `codex/oct28-dice-smoke`, original candidate `b8610d065` based on
+`39f585520`, reconciled with WWF main in merge `3ba9804cb`.
 No migration, paused-session change, real wager or financial correction is part
 of this release. No transition-audit implementation or Words UI is included.
 
@@ -90,4 +91,12 @@ entry point is `e2e/incidents/verify-smoke.mjs` with the incident Vite config.
 5. Verify remote SHA, required CI/publisher, Vercel READY, public manifest and
    persisted release signal agree. Record publication evidence here.
 
-Publication status: **HELD FOR WWF WRITER; NOT PUSHED OR DEPLOYED.**
+Integrated qualification after WWF reconciliation passed: 3,149 source assertions
+in 455 files; 241 harness assertions in 12 files; application typecheck; production
+bundle (1m55s); both actual-shell browser contexts and games, including the 1ms
+deadline assertion. Source, dependencies, authority and workflow preservation were
+reviewed against WWF main. Only intended incident files differ. The generated
+Cribbage snapshot line-ending artifact was restored. No migration was run.
+
+Publication status: **APPROVED; INTEGRATED QUALIFICATION PASS.** Exact-SHA production
+agreement must be recorded in the local publication receipt before claiming live.

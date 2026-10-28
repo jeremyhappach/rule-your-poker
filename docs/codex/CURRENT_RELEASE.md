@@ -1,4 +1,18 @@
-# Words polish — approved publication — 2026-10-28
+# SCC/Horses follow-up - integrated qualification PASS - 2026-10-28
+
+Owner approved publication after WWF polish. The coordinator verified WWF main
+`77c7c715` and released its writer; candidate `b8610d065` is reconciled without
+conflicts in the isolated incident branch. The fixes replace legacy terminal
+timers with exact canonical flight receipts, retain the current award across peer
+advancement, gate own NQ badges after their overlay and animate fresh observer
+rolls independently of timestamp age. No migration or customer-state change.
+Integrated qualification passed: 3,149 source tests, 241 harness tests, typecheck,
+production build and both two-context browser cases with exact flight deadlines.
+Publication must verify exact-SHA CI/publisher/READY/public-manifest/persisted-signal
+agreement. Full hosted-route and physical-device gameplay remain unobserved.
+See [scope, receipt contract and qualification limits](OCT28_DICE_SMOKE_FOLLOWUP.md).
+
+# Words polish - approved publication - 2026-10-28
 
 Jeremy approved the shared Words polish and mobile match-details correction for
 publication. Migration `20261028224553` is installed; candidate/installed hosted
