@@ -13,6 +13,24 @@ const final=(s:HorsesStateFromDB):HorsesStateFromDB=>({...s,gamePhase:'complete'
 const args=(gameType:string,state:HorsesStateFromDB,round='r1',hand=1)=>{if(fixture.identity?.roundId!==round)fixture.identity={dealerGameId:'dealer',roundId:round,handNumber:hand};return ({enabled:true,dealerGameId:'dealer',gameId:'local',players,currentUserId:'u0',pot:4,anteAmount:2,dealerPosition:1,currentRoundId:round,currentHandNumber:hand,horsesState:state,gameType});};
 beforeEach(()=>{vi.useFakeTimers();fixture.identity=null;fixture.rpc.mockReset();fixture.rpc.mockImplementation(()=>({abortSignal:async()=>({data:{status:'already_advanced',transition:'tie_rollover'},error:null}),then:(resolve:any)=>Promise.resolve({data:null,error:null}).then(resolve)}));vi.spyOn(console,'log').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
+it('keeps own NQ badge hidden after landing until its exact overlay completes',async()=>{
+ const start=playing();const end=final(start);
+ const h=renderHook(({state})=>useHorsesMobileController(args('ship-captain-crew',state)),{initialProps:{state:start}});
+ await act(async()=>{});h.rerender({state:end});await act(async()=>{});
+ act(()=>h.result.current.onResultDiceLanded(h.result.current.resultPresentationKey));
+ expect(h.result.current.showNoQualifyAnimation).toBe(true);
+ expect(h.result.current.getPlayerHandResult('a')).toBeNull();
+ act(()=>h.result.current.handleNoQualifyAnimationComplete());
+ expect(h.result.current.getPlayerHandResult('a')?.description).toBe('NQ');
+});
+it.each([true,false])('animates an advancing live opponent roll despite old server time (first=%s)',async first=>{
+ const start=playing();start.playerStates.b={...start.playerStates.b,rollKey:first?undefined:1,rollsRemaining:first?3:2,rollStartedAt:new Date(Date.now()-20000).toISOString()};
+ const h=renderHook(({state})=>useHorsesMobileController(args('horses',state)),{initialProps:{state:start}});
+ await act(async()=>{});expect(!!h.result.current.feltDice?.isRolling).toBe(false);
+ const next={...start,actionSequence:4,playerStates:{...start.playerStates,b:{...start.playerStates.b,rollKey:2,rollsRemaining:1}}};
+ h.rerender({state:next});await act(async()=>{});
+ expect(h.result.current.feltDice?.isRolling).toBe(true);
+});
 it.each(['horses','ship-captain-crew'])('%s controller retains final actor, resets exact receipts on tie rollover, and skips remount history',async game=>{
  const start=playing(),end=final(start);
  const h=renderHook(({state,round,hand})=>useHorsesMobileController(args(game,state,round,hand)),{initialProps:{state:start,round:'r1',hand:1}});

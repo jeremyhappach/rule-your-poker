@@ -84,6 +84,25 @@ afterEach(() => {
 });
 
 describe('ChipPresentationLedger lifecycle callbacks', () => {
+  it('retains the exact dice award through peer next-game selection and ignores stale completion',async()=>{
+    realtime.rows.games={pot:4,pot_transfer_cursor:0,current_game_uuid:'dealer',authority_revision:1};
+    const flights: import('./ChipPresentationLedger').LedgerDispatchOptions[]=[];
+    const transport={dispatch:vi.fn((_intent,options)=>{flights.push(options);return true;}),cancel:vi.fn()};
+    const settled=vi.fn();let ledger:ReturnType<typeof useChipPresentationLedger>;let ready=false;
+    const {diceTransferReady}=await import('@/lib/dice/transferAdmission');
+    function Harness(){ledger=useChipPresentationLedger('game-1',transport,b=>diceTransferReady('horses|winseq|game-1|dealer|1|r1','dealer','r1',b.dealer_game_id,true,!ready,b.source_round_id),ready?1:0,settled,undefined,undefined,undefined,true,true);return null;}
+    await act(async()=>{root.render(<Harness/>);});
+    const award:ChipPresentationBatch={id:'award',game_id:'game-1',dealer_game_id:'dealer',source_round_id:'r1',cursor:1,reason:'win',opening_balances:{pot:4,'player:player-1':10},closing_balances:{pot:0,'player:player-1':14},transfers:[{id:'flight',amount:4,from:{kind:'pot'},to:{kind:'player',playerId:'player-1'}}]};
+    await act(async()=>{realtime.batchInsert?.({new:award});});expect(ledger!.cursorState(1)).toBe('queued');
+    realtime.rows.games={pot:0,pot_transfer_cursor:1,current_game_uuid:'next',authority_revision:2};
+    await act(async()=>{realtime.gameUpdate?.({new:realtime.rows.games});});
+    expect(ledger!.cursorState(1)).toBe('queued');expect(settled).not.toHaveBeenCalled();
+    ready=true;await act(async()=>{root.render(<Harness/>);});expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    await act(async()=>{realtime.gameUpdate?.({new:{pot:0,pot_transfer_cursor:1,current_game_uuid:'third',authority_revision:3}});});
+    expect(transport.cancel).not.toHaveBeenCalled();expect(ledger!.cursorState(1)).toBe('running');
+    await act(async()=>{flights[0].onSettled?.();});expect(settled).toHaveBeenCalledTimes(1);
+    await act(async()=>{flights[0].onSettled?.();});expect(settled).toHaveBeenCalledTimes(1);
+  });
   it('releases a missed old payout before the new three-player ante, without replaying the payout', async () => {
     realtime.rows.players = ['a','b','winner'].map((id,i)=>({id,position:i+1,chips:id==='winner'?-7:6,chip_transfer_cursor:97}));
     realtime.rows.games = {pot:18,pot_transfer_cursor:97,current_game_uuid:'old',authority_revision:10};

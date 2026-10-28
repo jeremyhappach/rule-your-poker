@@ -1,3 +1,4 @@
+import { useDiceTerminalTransfer } from '@/hooks/useDiceTerminalTransfer';
 import {useDiceRolloverBarrier} from '@/hooks/useDiceRolloverBarrier';
 import {diceTransferReady} from '@/lib/dice/transferAdmission';
 import { DICE_OBSERVER_PAINT } from '@/lib/dice/observerPaintBounds';
@@ -4991,6 +4992,13 @@ export const MobileGameTable = ({
     onChipTransferPresentationBatchStarted,
   );
 
+  useDiceTerminalTransfer({
+    gameId, dealerGameId: horsesDealerGameId, roundId: horsesController.currentRoundId,
+    trigger: (gameType === 'horses' || gameType === 'ship-captain-crew') ? horsesWinPotTriggerId : null,
+    amount: horsesWinPotAmount,
+    ready: horsesController.terminalResultObserved && !horsesController.resultPresentationPending && !horsesController.noQualifyPresentationPending,
+    onComplete: onHorsesWinPotAnimationComplete,
+  });
   const holmWinAwardCursorState = useChipPresentationCursorState(
     gameType === 'holm-game'
       && holmWinPotTriggerIdGated
@@ -13253,39 +13261,6 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner. */}
-        {horsesWinPotTriggerId && (() => {
-          const _horsesWinnerPlayer = players.find(p => p.position === horsesWinWinnerPosition);
-          const _owner = gameType === 'ship-captain-crew' ? 'scc' : 'horses';
-          // One outcome = one winAttemptId. Keyed on stable outcome
-          // identity (game + winner + hand), NOT the ephemeral trigger
-          // id, so replays / remounts attach to the same attempt.
-          const _horsesWinKey =
-            `${_owner}:win:${gameId ?? 'no-game'}:${_horsesWinnerPlayer?.id ?? 'no-winner'}:${handContextId ?? 'no-hand'}`;
-          // Win-presentation instrumentation was removed.
-          return (
-          <PotToPlayerAnimation
-            triggerId={horsesWinPotTriggerId}
-            amount={horsesWinPotAmount}
-            winnerPosition={horsesWinWinnerPosition}
-            currentPlayerPosition={currentPlayer?.position ?? null}
-            getClockwiseDistance={getClockwiseDistance}
-            containerRef={tableContainerRef}
-            gameType={gameType}
-            presentationOwned
-            onAnimationStart={() => {
-              setPotOutAnimationActive(true);
-              setDisplayedPot(0);
-            }}
-            onAnimationEnd={() => {
-              setHolmWinPotHiddenUntilReset(true);
-              setPotOutAnimationActive(false);
-              onHorsesWinPotAnimationComplete?.();
-            }}
-          />
-          );
-        })()}
-
         {(() => {
           recordBucksForensic('OVERLAY_RENDERED', {
             ownerFile: 'src/components/MobileGameTable.tsx',

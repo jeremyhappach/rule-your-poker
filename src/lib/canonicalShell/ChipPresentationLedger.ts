@@ -276,6 +276,7 @@ export function useChipPresentationLedger(
   onBalanceDelta: ChipPresentationBalanceDeltaHandler = () => {},
   onBalanceDeltasAbandoned: ChipPresentationBalanceDeltaAbandonHandler = () => {},
   waitForEndpointReadiness = false,
+  retainCurrentPotAwardOnDealerAdvance = false,
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
   const [cursorStates, setCursorStates] = useState<Map<number, ChipPresentationCursorState>>(new Map());
@@ -297,6 +298,12 @@ export function useChipPresentationLedger(
   const disposedRef = useRef(false);
   const canStartBatchRef = useRef(canStartBatch);
   canStartBatchRef.current = canStartBatch;
+  const retainCurrentPotAwardRef = useRef(retainCurrentPotAwardOnDealerAdvance);
+  retainCurrentPotAwardRef.current = retainCurrentPotAwardOnDealerAdvance;
+  const retainsCurrentPotAward = useCallback((batch: ChipPresentationBatch) =>
+    retainCurrentPotAwardRef.current && !!batch.source_round_id &&
+    batch.transfers.some(transfer => transfer.from.kind === 'pot' && transfer.to.kind === 'player') &&
+    canStartBatchRef.current(batch) !== 'reconcile', []);
   const waitForEndpointReadinessRef = useRef(waitForEndpointReadiness);
   waitForEndpointReadinessRef.current = waitForEndpointReadiness;
   const onBatchSettledRef = useRef(onBatchSettled);
@@ -398,7 +405,12 @@ export function useChipPresentationLedger(
         retiredDealerGamesRef.current.add(previous.id);
         const obsolete = [...queuedRef.current, ...Array.from(runningRef.current.values(), x => x.batch)]
           .filter(batch => batch.dealer_game_id === previous.id).sort((a,b) => a.cursor-b.cursor);
-        for (const batch of obsolete) retireBatch(batch);
+        for (const batch of obsolete) {
+          // A peer can select the next game while this client's exact dice
+          // result/award is still presenting. Keep that local flight's owner;
+          // mismatched or historical batches still retire normally.
+          if (!retainsCurrentPotAward(batch)) retireBatch(batch);
+        }
       }
       dealerGameRef.current = { id, revision };
     }
@@ -415,7 +427,7 @@ export function useChipPresentationLedger(
       recoverCommittedCursorRef.current(cursor);
     }
     queueMicrotask(() => startQueuedRef.current());
-  }, [retireBatch, writeVisible]);
+  }, [retireBatch, writeVisible, retainsCurrentPotAward]);
 
   const refetchAuthoritative = useCallback(async () => {
     if (!gameId) return;
@@ -710,7 +722,7 @@ export function useChipPresentationLedger(
 
   const acceptBatch = useCallback((batch: ChipPresentationBatch) => {
     if (seenBatchIdsRef.current.has(batch.id)) return;
-    if (batch.dealer_game_id && retiredDealerGamesRef.current.has(batch.dealer_game_id)) {
+    if (batch.dealer_game_id && retiredDealerGamesRef.current.has(batch.dealer_game_id) && !retainsCurrentPotAward(batch)) {
       retireBatch(batch);
       startQueuedRef.current();
       return;
@@ -732,7 +744,7 @@ export function useChipPresentationLedger(
     queuedRef.current.push(batch);
     writeCursorState(batch.cursor, 'queued');
     startQueuedRef.current();
-  }, [retireBatch, writeCursorState]);
+  }, [retireBatch, writeCursorState, retainsCurrentPotAward]);
 
   const recoverCommittedCursor = useCallback((cursor: number) => {
     if (!shouldRecoverCommittedCursor({

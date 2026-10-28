@@ -24,6 +24,8 @@ interface DiceRollAnimationProps {
   runKey?: string | number;
   /** Whether to show wild highlight on 1s (default: !isSCC) */
   showWildHighlight?: boolean;
+  /** Horses/SCC reveal authority at landing, never during the tumble. */
+  revealOnLanding?: boolean;
 
 }
 
@@ -54,6 +56,7 @@ export function DiceRollAnimation({
   scatterYOffset = 50,
   runKey,
   showWildHighlight,
+  revealOnLanding = false,
   
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
@@ -198,7 +201,7 @@ export function DiceRollAnimation({
         
         // During flight, show pre-generated tumbling values.
         // Only switch to the final value once it's available (value > 0) and we're close to landing.
-        const showFinalValue = flyProgress > 0.7 && die.value > 0;
+        const showFinalValue = (revealOnLanding ? phase === 'landing' : flyProgress > 0.7) && die.value > 0;
         // Use progress to pick from pre-generated sequence (prevents random switching)
         const sequenceIndex = Math.floor(flyProgress * (tumble.tumbleSequence.length - 1));
         const displayValue = showFinalValue ? die.value : tumble.tumbleSequence[sequenceIndex];
@@ -211,6 +214,7 @@ export function DiceRollAnimation({
             key={`flying-${dieIndex}`}
             data-die-idx={dieIndex}
             data-die-value={displayValue}
+            data-die-final-value={showFinalValue}
             data-die-held={false}
             data-die-held-layout={false}
             data-die-row="animating"

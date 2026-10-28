@@ -1,0 +1,28 @@
+import {GameChatContextProvider} from '@/hooks/GameChatContext';
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {MobileGameTable} from '@/components/MobileGameTable';
+import {PersistentTableShell} from '@/lib/canonicalShell/PersistentTableShell';
+import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import {DealerGamePicker} from '@/components/catalog/DealerGamePicker';
+import {smokeDb} from './localClient';
+import '@/index.css';
+const params=new URLSearchParams(location.search),game=params.get('game')==='horses'?'horses':'ship-captain-crew';
+const viewer=params.get('viewer')==='b'?'b':'a';
+const players=['a','b'].map((id,i)=>({id,user_id:`u${i}`,position:i+1,chips:10,chip_transfer_cursor:0,game_id:'session',is_bot:false,sitting_out:false,status:'active',decision:null,legs:0,profiles:{username:id==='a'?'Hap':'Lance'}}));
+const dice=[1,1,6,6,6].map((value,i)=>({value,isHeld:i!==1}));
+const initial={gamePhase:'playing',currentTurnPlayerId:'b',turnOrder:['a','b'],actionSequence:3,playerStates:{a:{dice,rollsRemaining:0,isComplete:true,rollKey:0,result:{rank:1,description:'1 1',isQualified:true,cargoSum:1}},b:{dice,rollsRemaining:1,isComplete:false,rollKey:1}}};
+smokeDb.rows={players,games:[{id:'session',pot:4,pot_transfer_cursor:0,current_game_uuid:'dealer-1',authority_revision:1}],gameplay_transfer_batches:[]};
+const events:any[]=[];
+function App(){const [state,setState]=useState<any>(initial),[round,setRound]=useState(1),[mount,setMount]=useState(0),[terminal,setTerminal]=useState(false),[route,setRoute]=useState('table');
+ const complete=(age=0)=>{events.push({type:'snapshot',at:Date.now(),round});setState({...initial,gamePhase:'complete',currentTurnPlayerId:null,actionSequence:4,playerStates:{...initial.playerStates,b:{...initial.playerStates.b,dice:dice.map((d,i)=>({...d,value:i===1?6:d.value,isHeld:true})),rollsRemaining:0,isComplete:true,rollKey:round*10+2,rollStartedAt:new Date(Date.now()-age).toISOString(),heldMaskBeforeComplete:dice.map(d=>d.isHeld),result:game==='horses'?{rank:56,description:'5 6s'}:{rank:0,description:'NQ',isQualified:false,cargoSum:0}}}});setTerminal(true);};
+ const transfer=()=>{const batch={id:`award-${round}`,game_id:'session',dealer_game_id:`dealer-${round}`,source_round_id:`r${round}`,cursor:round,reason:'win',transfers:[{id:`flight-${round}`,amount:4,from:{kind:'pot'},to:{kind:'player',playerId:'a'}}],opening_balances:{pot:4,'player:a':10},closing_balances:{pot:0,'player:a':14}};smokeDb.rows.gameplay_transfer_batches.push(batch);smokeDb.rows.games[0]={...smokeDb.rows.games[0],pot:0,pot_transfer_cursor:round};smokeDb.rows.players[0]={...players[0],chips:14,chip_transfer_cursor:round};smokeDb.emit('gameplay_transfer_batches','INSERT',batch);events.push({type:'batch',at:Date.now(),round});};
+ const again=()=>{smokeDb.rows.games[0]={...smokeDb.rows.games[0],pot:4,current_game_uuid:`dealer-${round+1}`,authority_revision:round+3};smokeDb.emit('games','UPDATE',smokeDb.rows.games[0]);setRound(r=>r+1);setState(initial);setTerminal(false);setRoute('table');};
+ const peerAdvance=()=>{smokeDb.rows.games[0]={...smokeDb.rows.games[0],current_game_uuid:`dealer-${round+1}`,authority_revision:round+2};smokeDb.emit('games','UPDATE',smokeDb.rows.games[0]);events.push({type:'peer-advance',at:Date.now(),round});};
+ (window as any).__smoke={complete,transfer,peerAdvance,remount:()=>setMount(n=>n+1),again,events,route,round};
+ const props:any={players,currentUserId:viewer==='b'?'u1':'u0',gameId:'session',pot:terminal?0:4,currentRound:round,allDecisionsIn:false,playerCards:[],timeLeft:30,lastRoundResult:null,dealerPosition:1,legValue:1,legsToWin:3,potMaxEnabled:false,potMaxValue:0,pendingSessionEnd:false,awaitingNextRound:false,gameType:game,anteAmount:2,gameStatus:terminal?'game_over':'in_progress',horsesRoundId:`r${round}`,horsesDealerGameId:`dealer-${round}`,horsesHandNumber:round,horsesState:state,horsesWinPotTriggerId:terminal?`${game}|winseq|session|dealer-${round}|${round}|r${round}`:null,horsesWinPotAmount:4,horsesWinWinnerPosition:1,onHorsesWinPotAnimationComplete:()=>{events.push({type:'navigate',at:Date.now(),round,flights:document.querySelectorAll('[data-chip-transport-intent]').length});setTerminal(false);setRoute('selection');},onStay:()=>{},onFold:()=>{},isDealer:true};
+ return <GameChatContextProvider value={{chatBubbles:[],allMessages:[],sendMessage:async()=>{},isSending:false,getPositionForUserId:()=>undefined,latestRealtimeMessage:null,isChatHydrated:true,hydrationBaselineIds:new Set(),chatConversationKey:null} as any}><ResponsiveGeometryProvider><PersistentTableShell gameId="session" projectionMode="active-canonical" seats={players} gameType={game} anteAmount={2} viewerPosition={viewer==='b'?2:1} viewerUserId={viewer==='b'?'u1':'u0'}>{route==='table'?<MobileGameTable key={mount} {...props}/>:<section data-smoke-selection><button onClick={again}>Run It Back</button><DealerGamePicker roster={{players:2,humans:2}} access={{horses:true,'ship-captain-crew':true}} previousGame={game} onSelect={again}/></section>}</PersistentTableShell></ResponsiveGeometryProvider></GameChatContextProvider>;
+}
+createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={new QueryClient()}><App/></QueryClientProvider></MemoryRouter>);

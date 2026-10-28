@@ -332,6 +332,8 @@ export function ChipTransportProvider({
   // one exact committed transfer cursor. Keep cursor state durable and retain
   // live INSERTs observed during ledger hydration for both game families.
   const requiresDurablePresentationCursor = gameType === 'holm-game'
+    || gameType === 'horses'
+    || gameType === 'ship-captain-crew'
     || gameType === '3-5-7'
     || gameType === '3-5-7-game'
     || gameType === '357'
@@ -349,6 +351,7 @@ export function ChipTransportProvider({
     publishPresentationBalanceDelta,
     abandonPresentationBalanceDeltas,
     requiresDurablePresentationCursor,
+    (gameType === 'horses' || gameType === 'ship-captain-crew') && presentationAdmissionRef.current !== null,
   );
 
   const value = useMemo<ChipTransportContextValue>(

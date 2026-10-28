@@ -2313,6 +2313,14 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     const authState = incomingHorsesStateRef.current;
+    // Baseline every unrolled participant, including the next actor. Their
+    // first advancing key is live even when no rollKey existed at admission.
+    for (const [id, playerState] of Object.entries(authState?.playerStates ?? {})) {
+      if (playerState.rollsRemaining === 3 && !playerState.isComplete && lastObservedRollKeyRef.current[id] === undefined) {
+        lastObservedRollKeyRef.current[id] = playerState.rollKey ?? 0;
+        lastObservedRollsRemainingRef.current[id] = 3;
+      }
+    }
     const currentTurnPlayerId = authState?.currentTurnPlayerId ?? null;
     if (!currentTurnPlayerId) return;
     if (currentTurnPlayerId === myPlayer?.id) return; // I'm rolling, not observing
@@ -2453,7 +2461,11 @@ export function useHorsesMobileController({
       let durationMs: number = localDurationFull;
       let isLiveRoll = true;
 
-      if (rollStartedAt) {
+      if (prevRollKey !== undefined && newRollKey > prevRollKey) {
+        // An observed key advancing within this round is live. Server age is
+        // not a hydration signal: delayed delivery and clock skew are normal.
+        durationMs = localDurationFull;
+      } else if (rollStartedAt) {
         const elapsed = Date.now() - new Date(rollStartedAt).getTime();
         if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
           isLiveRoll = false;
@@ -2685,13 +2697,14 @@ export function useHorsesMobileController({
   // Get a player's completed hand result
   const getPlayerHandResult = useCallback(
     (playerId: string): HorsesHandResult | SCCHandResult | null => {
+      if (playerId === myPlayer?.id && noQualify.pending) return null;
       if (!resultPresentation.resultReady(playerId)) return null;
       if (playerId === currentTurnPlayerId && !completionPresentationReady) return null;
       const state = horsesState?.playerStates?.[playerId];
       if (state?.isComplete && state.result) return state.result;
       return null;
     },
-    [horsesState?.playerStates, currentTurnPlayerId, completionPresentationReady, resultPresentation],
+    [horsesState?.playerStates, currentTurnPlayerId, completionPresentationReady, resultPresentation, myPlayer?.id, noQualify.pending],
   );
 
   // Get the current winning player's dice (for displaying "Beat:" badge)
