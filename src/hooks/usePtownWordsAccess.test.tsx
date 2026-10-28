@@ -11,3 +11,15 @@ it.each([{}, {version:2},{enabled:false},{user_id:'other'},{session_id:'other'},
  const {result}=renderHook(()=>usePtownWordsAccess('session'));await waitFor(()=>expect(mocks.rpc).toHaveBeenCalled());
  if(Object.keys(patch).length===0)await waitFor(()=>expect(result.current).toBe(true));else expect(result.current).toBe(false);
 });
+it.each([
+ [{version:4,fake_money_only:false},true],
+ [{version:4,fake_money_only:false,enabled:false},false],
+ [{version:4,fake_money_only:true},false],
+ [{version:4,fake_money_only:false,user_id:'other'},false],
+ [{version:4,fake_money_only:false,session_id:'other'},false],
+] as const)('respects versioned live-money authority %j',async(patch,allowed)=>{
+ mocks.getSession.mockResolvedValue({data:{session:{user:{id:'user'}}}});
+ mocks.rpc.mockResolvedValue({data:{enabled:true,user_id:'user',session_id:'session',...patch},error:null});
+ const {result}=renderHook(()=>usePtownWordsAccess('session'));await waitFor(()=>expect(mocks.rpc).toHaveBeenCalled());
+ if(allowed)await waitFor(()=>expect(result.current).toBe(true));else expect(result.current).toBe(false);
+});

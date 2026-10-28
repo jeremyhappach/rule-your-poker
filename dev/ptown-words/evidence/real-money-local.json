@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-28",
+  "localOnly": true,
+  "hostedMutation": false,
+  "productionActivation": false,
+  "releaseHold": "Await explicit coordinator clearance after 11 Up",
+  "financial": [
+    "Inspected canonical financial, pause and liveness authorities match the isolated clone",
+    "Candidate installs closed; fake admission and bot flags preserved",
+    "12 fake/real 2/3/4-player winner/tie proofs, signed chip deltas, canonical ledger and real account postings",
+    "Post-transfer failure rollback; duplicate/conflicting/stale/late commands; continuation and terminal state",
+    "Real /2 bank, pause/request/cancel, ownership, reload snapshot, legacy preservation and timeout proof"
+  ],
+  "guards": [
+    "Closed real configure/start with fake admission preserved; active members only; real bots and async real offers rejected; immutable stakes; stale scheduler recognized",
+    "Real zero-client timeout completes and posts exactly once; fixture and account rows rolled back",
+    "Genuine independent-connection final-command lock race: identical retry receipt, one result, balanced batch, two snapshots and two net-zero account postings; late settlement/recovery no-op"
+  ],
+  "client": {
+    "focusedTests": 40,
+    "typecheck": "pass",
+    "productionBundle": "pass"
+  },
+  "remaining": [
+    "Current main and hosted authority reconciliation after 11 Up",
+    "Hosted candidate and installed financial/recovery/concurrency proofs",
+    "Full release validation on reconciled source",
+    "Production publication agreement and live admission verification"
+  ]
+}

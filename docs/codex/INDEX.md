@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `PTOWN_WORDS_REAL_MONEY_PREPARATION.md` | Isolated live human real-money qualification and explicit hold behind 11 Up; no production activation |
 | `OCT27_GAMEPLAY_RELEASE.md` | SCC/Horses presentation, exact-round chip sequencing and Tri-Towers startup incident release |
 | `ASYNC_WORDS_RELEASE.md` | Approved single-child fake-money asynchronous Words, installed financial proof and publication/activation gates |
 | `PTOWN_WORDS_BANKS_PAUSE_RELEASE.md` | Approved /2 fake-money release, hosted proofs and publication |

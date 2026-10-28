@@ -1,3 +1,15 @@
+# Live Words real money — isolated preparation, release held — 2026-10-28
+
+Live owner smoke passed and real-money opening is authorized. Local financial,
+rollback, independent-connection retry, zero-client recovery, bank/pause and
+admission guards pass; client capability/catalog changes remain unpublished.
+The proposed server flag installs closed. Fake availability, fake-only bots and
+fake-only async Words are preserved. Incident `99249d8bd` is published; 11 Up
+owns the production release slot. Words requires explicit coordinator clearance,
+current-main reconciliation and hosted qualification before publication or
+activation. No hosted mutation or push was performed for this preparation.
+See [preparation and remaining gates](PTOWN_WORDS_REAL_MONEY_PREPARATION.md).
+
 # Oct27 SCC/Horses/Tri-Towers - installed qualification PASS - 2026-10-28
 
 Owner approved production after passing tests. Migration `20261028184338` is
