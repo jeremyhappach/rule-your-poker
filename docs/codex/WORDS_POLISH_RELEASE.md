@@ -67,5 +67,12 @@ and persisted release signal to agree on the exact commit. Record that agreement
 in the local publication receipt and release tag. Physical-device sound, score
 presentation and match-details smoke remain Jeremy's acceptance step.
 
+Publication verified: `77c7c715190e658a5393cdbbbfb79d0589d04778` is on origin/main;
+Vercel deployment `dpl_H8THf9B2Y5gWE19ZJp165J9jS3SP` is READY, the public manifest
+matches, and publisher run `40783024370` succeeded. The persisted release signal
+records the same SHA at `2026-10-28T22:53:08.550Z`. Local publication receipt:
+`qualification.local/async-words/polish-publication.json`. Physical owner smoke
+remains due; it has not been claimed from viewport rendering.
+
 After publication, multi-game work proceeds as design/reconciliation in this chat.
 The preserved Run21/TriTowers prototype is evidence, not permission to activate it.

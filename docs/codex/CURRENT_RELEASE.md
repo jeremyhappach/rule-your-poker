@@ -5,8 +5,11 @@ publication. Migration `20261028224553` is installed; candidate/installed hosted
 rollback proofs and hosted acceptance/move races passed. Accounting, live human
 real-money Words, fake-only async and 36h/24h policy remain intact. Async banks and
 multi-game activation are excluded. All 3,136 source tests, 241 harness tests,
-application typecheck and production bundle passed. Exact-SHA publication agreement
-must be recorded before claiming live. See [release evidence](WORDS_POLISH_RELEASE.md).
+application typecheck and production bundle passed. Publication verified at
+`77c7c7151`: production READY, public manifest, successful publisher and persisted
+release signal agree. Physical-device owner smoke remains due. Multi-game async
+is a review proposal only in [MULTI_GAME_ASYNC_REVIEW.md](MULTI_GAME_ASYNC_REVIEW.md).
+See [release evidence](WORDS_POLISH_RELEASE.md).
 
 # Live Words real money — installed qualification PASS — 2026-10-28
 
