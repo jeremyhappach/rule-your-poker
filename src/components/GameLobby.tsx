@@ -572,10 +572,10 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
           <DialogHeader>
             <DialogTitle>Create New Game</DialogTitle>
             <DialogDescription>
-              Start a new game of Peoria Poker League
+              Start a live session or an asynchronous Words match
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4"><Button variant="outline" onClick={()=>navigate('/delayed/new')}>Set Up Asynchronous Match</Button><Button variant="ghost" onClick={()=>navigate('/delayed')}>My Async Words matches</Button>
             <p className="text-sm text-muted-foreground">
               Start a dealer call-it home game session. Players begin at $0 and can go into debt. The dealer will select the game type and configure rules once the game starts.
             </p>

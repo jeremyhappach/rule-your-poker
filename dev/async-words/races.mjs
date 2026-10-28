@@ -1,0 +1,25 @@
+import {connect} from './local.mjs';import {readFileSync as read,writeFileSync as write} from 'node:fs';import {randomUUID} from 'node:crypto';import assert from 'node:assert/strict';
+const {database}=JSON.parse(read('qualification.local/async-words/context.json','utf8')),a=await connect(database),b=await connect(database),u=[randomUUID(),randomUUID()];
+const one=async(db,sql,args=[])=>(await db.query(sql,args)).rows[0];
+async function as(db,user,name,args){await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[user]);await db.query('SET ROLE authenticated');try{return(await one(db,'SELECT public.'+name+'('+args.map((_,i)=>'$'+(i+1)).join(',')+') v',args)).v;}finally{await db.query('RESET ROLE');}}
+try{
+ for(const id of u){await a.query('INSERT INTO auth.users(id) VALUES($1)',[id]);await a.query('INSERT INTO public.profiles(id,username,is_active) VALUES($1,$2,true) ON CONFLICT(id) DO UPDATE SET is_active=true',[id,'Race '+id.slice(0,10)]);}
+ const create=()=>as(a,u[0],'delayed_create',[randomUUID(),u[1],false,'[{"game":"ptown-words","stake":7}]']);
+ const source=await create(),offer=await one(a,'SELECT * FROM private.delayed_matches WHERE id=$1',[source]);
+ for(const late of [false,true]){
+  const id=randomUUID();await a.query("WITH t AS(SELECT clock_timestamp()+$3*interval '1 millisecond' due_at) INSERT INTO private.delayed_matches(id,organizer,opponent,real_money,offer,offer_hash,created_at,expires_at) SELECT $1,organizer,opponent,false,offer,offer_hash,t.due_at-interval '72 hours',t.due_at FROM private.delayed_matches,t WHERE id=$2",[id,source,late?-1:500]);
+  await a.query('INSERT INTO private.delayed_children(match_id,ordinal,game_type,stake,config) SELECT $1,ordinal,game_type,stake,config FROM private.delayed_children WHERE match_id=$2',[id,source]);
+  const responses=await Promise.allSettled([as(a,u[1],'delayed_respond',[id,randomUUID(),offer.offer_hash,'accept']),b.query('SELECT private.delayed_words_recover()')]);assert.equal(responses[1].status,'fulfilled');if(responses[0].status==='rejected'){assert(late);assert.match(responses[0].reason.message,/offer_changed/);}
+  const m=await one(a,'SELECT status FROM private.delayed_matches WHERE id=$1',[id]);assert.equal(m.status,late?'expired':'active');
+ }
+ const id=await create(),o=await one(a,'SELECT offer_hash FROM private.delayed_matches WHERE id=$1',[id]);await as(a,u[1],'delayed_respond',[id,randomUUID(),o.offer_hash,'accept']);
+ const get=()=>one(a,'SELECT *,expires_at::text exact_expiry FROM private.delayed_children WHERE match_id=$1',[id]);let c=await get();
+ await a.query("WITH t AS(SELECT clock_timestamp()-interval '25 hours' start_at) UPDATE private.delayed_children SET available_at=t.start_at,last_call_at=t.start_at+interval '24 hours',expires_at=t.start_at+interval '36 hours',state=jsonb_set(state,'{deadline}',to_jsonb(floor(extract(epoch FROM t.start_at+interval '36 hours')*1000)::bigint)) FROM t WHERE id=$1",[c.id]);
+ await a.query('SELECT private.delayed_words_recover()');const notice=await one(a,"SELECT * FROM public.platform_notifications WHERE match_id=$1 AND kind='turn' AND actionable",[id]);assert.equal(notice.payload.lastCall,true);await as(a,c.actor,'delayed_notification_read',[notice.id,notice.revision]);assert((await one(a,'SELECT actionable FROM public.platform_notifications WHERE id=$1',[notice.id])).actionable);
+ c=await get();const previous=c;await as(a,c.actor,'delayed_words_action',[c.id,randomUUID(),c.revision,'pass',null]);assert.equal((await one(b,'SELECT private.delayed_expire($1,$2,$3) expired',[previous.id,previous.segment,previous.exact_expiry])).expired,false);
+ for(let i=0;i<2;i++){c=await get();await as(a,c.actor,'delayed_words_action',[c.id,randomUUID(),c.revision,'pass',null]);}
+ await a.query("WITH t AS(SELECT clock_timestamp()+interval '30 milliseconds' due_at) UPDATE private.delayed_children SET available_at=t.due_at-interval '36 hours',last_call_at=t.due_at-interval '12 hours',expires_at=t.due_at,state=jsonb_set(state,'{deadline}',to_jsonb(floor(extract(epoch FROM t.due_at)*1000)::bigint)) FROM t WHERE id=$1",[c.id]);c=await get();
+ await Promise.all([as(a,c.actor,'delayed_words_action',[c.id,randomUUID(),c.revision,'pass',null]),b.query('SELECT pg_sleep(0.04)').then(()=>b.query('SELECT private.delayed_expire($1,$2,$3)',[c.id,c.segment,c.exact_expiry]))]);
+ assert.equal((await one(a,'SELECT count(*)::int n FROM private.delayed_outcomes WHERE match_id=$1',[id])).n,1);assert.equal((await one(a,'SELECT count(*)::int n FROM private.delayed_settlements WHERE match_id=$1',[id])).n,1);
+ write('qualification.local/async-words/races.json',JSON.stringify({passed:true,database,checks:['acceptance vs invitation expiry','last call updates same obligation and read cannot dismiss','old deadline job cannot forfeit next turn','final move vs expiry has one outcome/settlement']}));console.log('PASS independent-connection invitation/action/expiry races, Last Call and stale jobs');
+}finally{await a.end();await b.end();}

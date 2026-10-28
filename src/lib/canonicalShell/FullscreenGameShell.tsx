@@ -4,6 +4,7 @@ import { ShellAnnouncementRail } from './ShellHudChrome';
 import type { ShellTabId } from './ShellTabBar';
 import './fullscreenGameShell.css';
 import {usePresentationSurfaceReady} from './CinematicPresentation';
+import {NotificationBell} from '@/components/delayed/NotificationBell';
 
 interface Props {
   className?:string;
@@ -32,6 +33,7 @@ export function FullscreenGameShell({className="", ready = true, title, descript
   return <section className={`fullscreen-game ${className}`} data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
     <header className="fullscreen-game-toolbar">
       <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
+      <NotificationBell />
       {navigation ?? <nav aria-label="Game information">
         <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>{sessionLabel}</button>
         <button onClick={() => setActiveTab('chat')}>Chat</button>

@@ -1322,3 +1322,11 @@ Mega local smoke-polish presentation: `src/components/megaCardGolf/MegaResultSco
 ### Battle31 canonical table presentation
 
 Battle31View/Table use actual shell slots; useBattle31Movement queues persisted public exchanges through canonical CardTransportProvider; lib/battle31/presentation.ts seeks persisted result timestamps. CanonicalLifeMarkers and CanonicalDealerTransition present committed life/dealer changes. supabase/battle31/canonical-table.sql is the guarded forward presentation/configuration migration. dev/battle31/canonical-* qualification runners and evidence/canonical-* retain financial, concurrency, actual-route rendering and terminal evidence.
+# Async Words ownership
+
+`supabase/delayed/` owns parent invitation, immutable child outcomes, canonical
+parent settlement, projections, notifications, incident holds and Words recovery.
+`src/pages/Delayed.tsx` and `src/components/delayed/` own the async routes and
+transport into shared Words presentation. `src/lib/delayed/drafts.ts` owns private
+device drafts. `dev/async-words/` contains qualification runners and preimages.
+Installed migration and release evidence: [ASYNC_WORDS_RELEASE.md](ASYNC_WORDS_RELEASE.md).

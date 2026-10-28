@@ -2964,3 +2964,12 @@ fixtures; no production execution or activation occurred. See
 ## 2026-10-25 — Battle31 canonical table and persisted presentation
 
 Owner approved replacing Megatouch fullscreen with the actual canonical table, moving the catalog to Card Games, and animating exchanges, results/lives, dealer rotation and deals. Gameplay remains battle-31/1; frozen configuration gains presentationVersion 2 for new matches and respects configured decision duration. Server result timestamps and public movement IDs drive presentation; canonical settlement remains immediate and exact-once, with its visual admission delayed until round-result completion. Existing play-money-only access and timeout/reclaim policies are preserved. See BATTLE31_CANONICAL_CHECKPOINT.md.
+# 2026-10-27 — Async Words uses one canonical parent settlement
+
+Approved first release is exactly two humans, one Words child, fake money only.
+Acceptance moves no funds. Immutable signed child outcomes feed one locked,
+atomic parent settlement through unchanged canonical financial functions; net
+zero closes with a receipt only. No funded wallet, reservations, balance gate or
+child payouts. Shared Words /3 freezes 36h turns and 24h Last Call while live /1
+and /2 remain intact. Future real-money/multi-child releases need separate proof.
+See [release and authority evidence](ASYNC_WORDS_RELEASE.md).

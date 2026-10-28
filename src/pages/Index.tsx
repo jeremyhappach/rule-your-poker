@@ -1,3 +1,4 @@
+import {NotificationBell} from '@/components/delayed/NotificationBell';
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -492,7 +493,7 @@ const Index = () => {
             </span>
           </Button>
           
-          {/* Right side buttons - Profile, History, Logout */}
+          <NotificationBell />{/* Right side buttons - Profile, History, Logout */}
           <div className="flex gap-1.5 flex-shrink-0">
             <Button 
               variant="outline" 

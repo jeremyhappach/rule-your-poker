@@ -1,0 +1,13 @@
+import {readFileSync as read,writeFileSync as write} from 'node:fs';
+const evidence=JSON.parse(read('dev/async-words/preimage.json','utf8'));
+const replace=(s,a,b)=>{if(!s.includes(a))throw Error('Missing preimage: '+a);return s.replace(a,b);};
+let rules=evidence.functions.find(f=>f.name==='ptown_words_rules_for').definition;
+rules=replace(rules,"END\n FROM",`WHEN 'ptown-words/3' THEN base||'{"version":"ptown-words/3","turnMs":129600000,"expiryDisposition":"forfeit"}'::jsonb END\n FROM`);
+let deal=evidence.functions.find(f=>f.name==='ptown_words_deal').definition;
+deal=replace(deal,"s->'rules' IS DISTINCT FROM private.ptown_words_rules()","s->'rules' IS DISTINCT FROM private.ptown_words_rules() AND s->'rules' IS DISTINCT FROM private.ptown_words_rules_for('ptown-words/3')");
+deal=replace(deal,"'deadline',at_ms+180000","'deadline',at_ms+(s#>>'{rules,turnMs}')::bigint");
+let reduce=evidence.functions.find(f=>f.name==='ptown_words_reduce').definition;
+reduce=replace(reduce,"IF action='tick' THEN IF", "IF action='tick' AND s#>>'{rules,version}'='ptown-words/3' THEN RAISE EXCEPTION 'ptown_words:async_expiry_owner';END IF;\n IF action='tick' THEN IF");
+reduce=replace(reduce,"'deadline',at_ms+180000","'deadline',at_ms+(s#>>'{rules,turnMs}')::bigint");
+const guard=evidence.functions.filter(f=>['ptown_words_rules_for','ptown_words_deal','ptown_words_reduce'].includes(f.name)).map(f=>`IF md5(pg_get_functiondef('private.${f.name}(${f.name==='ptown_words_rules_for'?'text':f.name==='ptown_words_deal'?'jsonb,bigint':'jsonb,text,jsonb,bigint'})'::regprocedure))<>'${f.hash}' THEN RAISE EXCEPTION 'Words preimage changed: ${f.name}';END IF;`).join('\n');
+write('supabase/delayed/words-rules.sql',`-- Shared Words engine: /1 and /2 unchanged; /3 freezes 36-hour turns.\nDO $$ BEGIN ${guard} END $$;\n${rules};\n${deal};\n${reduce};\n`);

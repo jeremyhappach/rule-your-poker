@@ -1,3 +1,14 @@
+# Async Words — installed qualification PASS — 2026-10-27
+
+Owner approved production for two humans, one Words child and fake money only.
+Migration `20261028012319` is installed with admission/recovery closed; candidate
+and installed hosted financial proofs pass. Local rule, rollback, concurrent
+completion, browser, source, harness, typecheck and build evidence is recorded in
+[Async Words release](ASYNC_WORDS_RELEASE.md). Publication requires exact-SHA
+READY/manifest/publisher/signal agreement before admission and minute recovery
+activation. Physical-device owner smoke remains due. Existing live Words /1,/2,
+Golf, Quintzee and canonical accounting functions are preserved.
+
 # Quintzee configurable round duration - approved release qualification - 2026-10-28
 
 Owner requested an adjustable four-minute round in lobby Game Defaults. The

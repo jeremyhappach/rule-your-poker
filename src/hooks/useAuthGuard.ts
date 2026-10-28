@@ -46,7 +46,7 @@ function isProtectedTableRoute(path: string): boolean {
   return (
     path.startsWith("/game") ||
     path.startsWith("/waiting") ||
-    path.startsWith("/table")
+    path.startsWith("/table") || path.startsWith("/delayed/")
     || /^\/arcade\/[^/]+\/run\/[^/]+/.test(path)
   );
 }

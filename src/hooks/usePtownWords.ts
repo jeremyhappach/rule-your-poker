@@ -2,10 +2,10 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {acceptWordsSnapshot,type WordsSnapshot,type Intent} from '@/lib/ptownWords/model';
 import type {Command,WordsTransport} from '@/lib/ptownWords/client';
 /** Pending UUID/payload survives uncertain replies. No client advances a turn. */
-export function usePtownWords(id:string,userId:string,transport:WordsTransport){
+export function usePtownWords(id:string,userId:string,transport:WordsTransport,storageScope='ptown:words:1'){
  const [snapshot,setSnapshot]=useState<WordsSnapshot|null>(null),[error,setError]=useState(''),[errorVersion,setErrorVersion]=useState(0),[pending,setPending]=useState(false),[connected,setConnected]=useState(false),[now,setNow]=useState(0);
  const latest=useRef<WordsSnapshot|null>(null),generation=useRef(0),flight=useRef(false),clock=useRef({server:0,local:0});
- const key=`ptown:words:1:${userId}:${id}`;
+ const key=`${storageScope}:${userId}:${id}`;
  const accept=useCallback((v:WordsSnapshot,token:number)=>{if(token!==generation.current||latest.current&&v.revision<latest.current.revision)return;const next=acceptWordsSnapshot(latest.current,v,id),local=performance.now(),server=latest.current?Math.max(next.serverAt,clock.current.server+local-clock.current.local):next.serverAt;latest.current=next;setSnapshot(next);clock.current={server,local};setNow(server);},[id]);
  const resolve=useCallback(async()=>{if(flight.current)return false;const token=generation.current;flight.current=true;let ok=false;
   try{const saved=sessionStorage.getItem(key);setPending(!!saved);if(saved){try{accept(await transport.send(JSON.parse(saved) as Command),token);sessionStorage.removeItem(key);setError('');ok=true;}catch(e){if(/ptown_words:|42501/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}throw e;}}

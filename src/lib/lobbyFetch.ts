@@ -125,6 +125,7 @@ export async function fetchLobbyGames({
   let gamesQuery: any = client
     .from('games')
     .select(LOBBY_GAME_COLUMNS)
+    .or('game_type.is.null,game_type.neq.delayed-head-to-head')
     .order('created_at', { ascending: false })
     .limit(LOBBY_GAMES_HARD_LIMIT);
   if (signal && typeof gamesQuery.abortSignal === 'function') {

@@ -1,3 +1,4 @@
+import {NotificationBell} from '@/components/delayed/NotificationBell';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeft,Gamepad2} from 'lucide-react';
@@ -17,7 +18,7 @@ export function ArcadeSwitchboard({userId}:{userId:string}){
  useEffect(()=>{refresh();window.addEventListener('focus',refresh);return()=>{generation.current++;window.removeEventListener('focus',refresh);};},[refresh]);
  const updated=(row:Artwork)=>{generation.current++;setArtwork(rows=>rows.map(old=>old.game===row.game?row:old));};
  return <main className="arcade-page"><Link className="arcade-back" to="/"><ArrowLeft size={18}/>Main Lobby</Link>
-  <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><p>Pick a game. Chase your personal best.</p></div></header>
+  <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><NotificationBell/><p>Pick a game. Chase your personal best.</p></div></header>
   <div className="arcade-tiles">{games.map(g=>{
    const row=artwork.find(item=>item.game===g.id);
    return <article key={g.id} className="arcade-tile">
