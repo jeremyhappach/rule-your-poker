@@ -18,8 +18,8 @@ export function BoxdropLoading({solo=false,error,onReconnect,activeTab,setActive
  const shell=<FullscreenGameShell className="box-scene" ready={false} title="Boxdrop" description="" activeTab={activeTab??tab} setActiveTab={setActiveTab??setTab} panel={<BoxdropRules/>} announcement={solo?false:undefined}><div role="status">{error||'Loading Boxdrop…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;
  return solo?<div className="arcade-run" data-shell-presentation-mode="fullscreen">{shell}</div>:shell;
 }
-interface Props {connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:BoxdropSnapshot['players'][number])=>ReactNode;view:BoxdropSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:BoxdropIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
-export function BoxdropView({view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
+interface Props {navigation?:ReactNode;connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:BoxdropSnapshot['players'][number])=>ReactNode;view:BoxdropSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:BoxdropIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
+export function BoxdropView({view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,navigation}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,window=boxdropPlayWindow(b,at,!v.solo);
  const result=boxdropRoundPresentation(b,v.scope,at),timelineResult=result?{...result,reason:result.reason==='full_clear'?'cleared':result.reason}:null;
@@ -37,7 +37,7 @@ export function BoxdropView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  const active=v.players.find(p=>p.active),displayScore=result?(presentation?.displayScore??result.score):b.score;
  const seconds=Math.ceil(window.remaining/1000),clearing=result?.reason==='full_clear'&&result.elapsed<3000;
  return <FullscreenGameShell className="box-scene" title="Boxdrop" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={v.solo?<nav aria-label="Boxdrop controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+ navigation={navigation??(v.solo?<nav aria-label="Boxdrop controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined)}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<BoxdropRules/>}>
  <div ref={root}>{layer&&createPortal(<div className="box-plane" ref={viewportRef} data-boxdrop="">
  <header className="box-scoreband"><span className="box-round">{v.round===3?'Bonus round':`Round ${v.round}/2`}</span><div className="box-scores" data-multiplayer={!v.solo} aria-label="Player scores">{v.players.map(p=><BoxdropScorePill key={p.id} root={viewportRef} name={v.solo?'SCORE':p.name} value={p.active?displayScore:p.score} active={p.active} fraction={p.active&&!sessionEnded?(presentation?.fraction??0):0} balance={!v.solo?balance?.(p):undefined}/>)}</div>{!sessionEnded&&<button className="box-bank" disabled={!canAct} onClick={()=>send({type:'take_score'},-2)}>Take Score</button>}</header>

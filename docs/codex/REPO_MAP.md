@@ -1,3 +1,13 @@
+## Combined async local candidate
+
+- `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup and review.
+- `src/components/delayed/DelayedTurn.tsx`: shared game presentation adapters.
+- `api/delayed.ts`, `server/delayed`: authenticated action boundary and shared-rule orchestration.
+- `supabase/delayed/combined-*.sql`: admission, deletion, commit, projections and coordinated recovery.
+- `supabase/functions/delayed-recovery`: single-use dispatch worker.
+- `dev/async-combined`: disposable local fixture/proofs and worker bundler.
+- `docs/codex/ASYNC_COMBINED_LOCAL.md`: approved scope, evidence and remaining release gates.
+
 ## 11 Up secondary smoke qualification
 
 - supabase/eleven-up/secondary-ready.sql: unregistered forward Ready/postgame correction.

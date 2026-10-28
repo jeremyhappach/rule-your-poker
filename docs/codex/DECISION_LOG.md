@@ -1,3 +1,16 @@
+## October 28, 2026 — Approved combined async contract
+
+The five-game async release combines Words, Run21, TriTowers, Quintzee and Box
+Drop with styled invitations and active-human admission. Eligibility is a
+canonical active profile/Auth UUID relationship, never an alias heuristic.
+Creator Delete is permitted at every fake-money parent status for both players:
+retain immutable evidence and prior settlement, cancel unfinished play, hide via
+tombstone, and create no new financial settlement. The parent lock serializes
+deletion against final completion. Real-money removal is denied. Interim child
+results remain provisional; existing debt accounting settles once per parent.
+No wallet, reservation, balance gate or synchronous accounting change is added.
+Implementation is local; see `ASYNC_COMBINED_LOCAL.md` for release boundaries.
+
 ## October 28, 2026 — Words polish local presentation boundary
 
 Shared live/async Words score animation consumes committed move records and never

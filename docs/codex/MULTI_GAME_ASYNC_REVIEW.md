@@ -1,5 +1,13 @@
 # Multi-game asynchronous matches — architecture for review
 
+**Superseding implementation checkpoint:** the approved combined release now
+includes Quintzee and Box Drop alongside Words, Run21 and TriTowers; creator-only
+fake-money deletion for both players without new settlement; and active-human
+admission. The financial contract below is unchanged. The earlier three-game
+review and phases below are historical design context, not current activation
+status. See [ASYNC_COMBINED_LOCAL.md](ASYNC_COMBINED_LOCAL.md) for implementation,
+local proof and the remaining hosted/publication gates. Nothing combined is live.
+
 October 28, 2026. Extend the released parent-match model to a mixed lineup of
 Words, Run21 and TriTowers, with repeated instances and an individual agreed
 stake for every child. Keep the initial expansion fake-money only. This document

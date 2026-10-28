@@ -1,3 +1,15 @@
+# Combined five-game async — local qualification checkpoint — 2026-10-28
+
+Approved combined scope is implemented locally: styled invitations, five games,
+active-human admission and creator-only fake-money deletion for both players.
+Parent-only canonical settlement and existing negative balances are preserved.
+Local financial/lifecycle/race/browser proofs, 3,136 source tests, 241 harness
+tests, typecheck and bundle pass. Migration is prepared closed, not installed;
+no combined code has been published. Current main `a79c40497` still needs
+reconciliation, followed by hosted candidate/installed qualification and the
+combined publication/activation gates. Coordination hold is cleared.
+See [ASYNC_COMBINED_LOCAL.md](ASYNC_COMBINED_LOCAL.md).
+
 # Words polish — approved publication — 2026-10-28
 
 Jeremy approved the shared Words polish and mobile match-details correction for
