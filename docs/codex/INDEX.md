@@ -8,6 +8,8 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `PTOWN_WORDS_BANKS_PAUSE_RELEASE.md` | Approved /2 fake-money release, hosted proofs and publication |
+| `PTOWN_WORDS_BANKS_PAUSE_LOCAL.md` | Local-only sequential reveal, two time banks, host pause and guest request preview |
 | `PTOWN_WORDS_POLISH_RELEASE.md` | Approved indefinite fake-money release, rack-only selection and hosted qualification |
 | `PTOWN_WORDS_POLISH_LOCAL.md` | Local-only owner-smoke gesture/HUD/reveal preview, bounded handoff proofs and explicit publication hold |
 | `PTOWN_WORDS_RELEASE.md` | Approved complete multiplayer rules, authority, admission, recovery, settlement and release qualification |

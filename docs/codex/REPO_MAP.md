@@ -11,6 +11,9 @@ canonical multiplayer admission, settlement, recovery and proofs. `src/lib/ptown
 `src/hooks/usePtownWords*` and `src/components/ptownWords` own projected state and
 fullscreen interaction. `server/ptownWords` preserves pinned ENABLE2K artifacts and
 acquisition checks; `dev/ptown-words` owns isolated qualification harnesses.
+Approved /2 release packaging/proofs: `dev/ptown-words/prepare-banks-release.mjs`,
+`supabase/ptown-words/banks-release-proof.sql`, migration `20261027214928` and
+`docs/codex/PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`.
 `bots.sql` owns the private-view-only move policy; `bot-recovery.sql` adapts the
 canonical Boxdrop scheduled-bot owner with scoped recovery. `bot-registration.sql`
 guards fake-money admission. See `PTOWN_WORDS_RELEASE.md` and `PTOWN_WORDS_BOTS.md`.
@@ -21,6 +24,14 @@ Combined local polish: `server/ptownWords/bots/scowl-20` pins the licensed famil
 bot subset; `bot-vocabulary.sql` plus `bots.sql` own its bounded casual policy.
 `rackPresentation.ts` owns only display shuffle and dictionary-error classification.
 `casual-bot-proof.mjs` / `polish-pass-browser.mjs` qualify the local candidate.
+Local /2 banks/pause: `banks-pause-local.sql` extends the shared reducer and Words
+command/snapshot adapters; canonical pause ownership remains unchanged.
+`useWordRevealTimeline.ts` owns the per-viewer presentation receipt, with fixed
+server handoff/deadline. `banks-proof.mjs` and `banks-browser.mjs` qualify this
+unpublished candidate. See `PTOWN_WORDS_BANKS_PAUSE_LOCAL.md`.
+`pause-request-cancel-local.sql` adds request-specific own withdrawal through the
+same Words command/revision owner; `pause-cancel-proof.mjs` and
+`pause-cancel-browser.mjs` qualify the local extension.
 
 Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
 

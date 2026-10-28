@@ -9,6 +9,35 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function tap(cell:Element){fireEvent.click(cell,{detail:1,clientX:100,clientY:100});}
+const bankView={...view,rules:{...view.rules,version:'ptown-words/2',timeBankUses:2,timeBankMs:180000},hostUserId:'u1',pauseVersion:0,timeBankSpent:{}};
+it('keeps two match-scoped bank slots, preserves draft and displays added remaining time',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props} view={bankView}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ fireEvent.click(screen.getByRole('button',{name:'Use time bank 1: add 3 minutes'}));expect(intent).toHaveBeenLastCalledWith({type:'time_bank',items:[{slot:0}]});
+ rerender(<PtownWordsView {...props} view={{...bankView,revision:1,deadline:361000,timeBankSpent:{me:[0]}}}/>);expect(container.querySelector('.is-staged')).not.toBeNull();expect(screen.queryByRole('button',{name:'Use time bank 1: add 3 minutes'})).toBeNull();expect(container.querySelector('time')?.textContent).toBe('6:00');
+ rerender(<PtownWordsView {...props} view={{...bankView,turn:3,revision:3,timeBankSpent:{me:[0,1]}}}/>);expect(screen.queryByText('+3m')).toBeNull();
+});
+it('host pause uses the canonical callback and non-host pause only requests',()=>{
+ const pause=vi.fn(),{rerender}=render(<PtownWordsView {...props} view={bankView} onPause={pause}/>);fireEvent.click(screen.getByRole('button',{name:'Pause game'}));expect(pause).toHaveBeenCalledOnce();expect(intent).not.toHaveBeenCalled();
+ rerender(<PtownWordsView {...props} view={{...bankView,hostUserId:'u2',canAct:false}} onPause={pause}/>);fireEvent.click(screen.getByRole('button',{name:'Request pause'}));expect(intent).toHaveBeenLastCalledWith({type:'request_pause'});expect(pause).toHaveBeenCalledOnce();
+});
+it('lets only the requester cancel the specific pending request, then restores request without discarding a draft',()=>{
+ const request={id:'request-one',playerId:'me',hostUserId:'u2',pauseVersion:0},guest={...bankView,hostUserId:'u2'};
+ const {container,rerender}=render(<PtownWordsView {...props} view={guest}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ rerender(<PtownWordsView {...props} view={{...guest,revision:1,pauseRequest:request,canAct:false}}/>);
+ const cancel=screen.getByRole('button',{name:'Cancel pause request'});expect(cancel.getAttribute('data-cancel-request')).toBe('true');expect((cancel as HTMLButtonElement).disabled).toBe(false);fireEvent.click(cancel);expect(intent).toHaveBeenLastCalledWith({type:'cancel_pause_request',items:[{requestId:'request-one'}]});expect(container.querySelector('.is-staged')).not.toBeNull();
+ rerender(<PtownWordsView {...props} pending view={{...guest,revision:1,pauseRequest:request}}/>);expect((screen.getByRole('button',{name:'Cancel pause request'}) as HTMLButtonElement).disabled).toBe(true);
+ rerender(<PtownWordsView {...props} view={{...guest,revision:2}}/>);expect(screen.queryByRole('button',{name:'Cancel pause request'})).toBeNull();expect((screen.getByRole('button',{name:'Request pause'}) as HTMLButtonElement).disabled).toBe(false);expect(container.querySelector('.is-staged')).not.toBeNull();
+ rerender(<PtownWordsView {...props} view={{...guest,revision:3,pauseRequest:{...request,playerId:'other'}}}/>);expect(screen.queryByRole('button',{name:'Cancel pause request'})).toBeNull();expect((screen.getByRole('button',{name:'Request pause'}) as HTMLButtonElement).disabled).toBe(true);
+});
+it('a paused snapshot retires the cancel affordance and cannot let a non-host resume',()=>{
+ const pause=vi.fn();render(<PtownWordsView {...props} onPause={pause} view={{...bankView,hostUserId:'u2',paused:true,pauseRequest:{id:'old',playerId:'me',hostUserId:'u2',pauseVersion:0}}}/>);
+ expect(screen.queryByRole('button',{name:'Cancel pause request'})).toBeNull();const resume=screen.getByRole('button',{name:'Resume game'});expect((resume as HTMLButtonElement).disabled).toBe(true);fireEvent.click(resume);expect(pause).not.toHaveBeenCalled();expect(intent).not.toHaveBeenCalled();
+});
+it('conceals board/rack from first paused render, including accessible labels; only host can resume',()=>{
+ const board=[...view.board];board[112]={id:20,face:'Z',letter:'Z',value:10};const pause=vi.fn(),paused={...bankView,board,paused:true,pausedAt:2000};
+ const {container,rerender}=render(<PtownWordsView {...props} view={paused} now={9000} onPause={pause}/>);expect(container.querySelectorAll('.words-cell b,.words-rack small')).toHaveLength(0);expect(screen.queryByRole('button',{name:'C, 3 points'})).toBeNull();expect(screen.getAllByRole('button',{name:'Concealed tile'})).toHaveLength(3);expect(container.querySelector('time')?.textContent).toBe('2:59');
+ fireEvent.click(screen.getByRole('button',{name:'Resume game'}));expect(pause).toHaveBeenCalledOnce();rerender(<PtownWordsView {...props} view={{...paused,hostUserId:'u2'}} onPause={pause}/>);expect((screen.getByRole('button',{name:'Resume game'}) as HTMLButtonElement).disabled).toBe(true);
+});
 it.each(['mouse','touch'])('%s rack input selects without zoom; only direct board input zooms then places',pointerType=>{
  const {container}=render(<PtownWordsView {...props}/>),rack=screen.getByRole('button',{name:'C, 3 points'}),cell=container.querySelector('[data-square="112"]')!;
  fireEvent.pointerDown(rack,{pointerType});fireEvent.click(rack,{detail:1});expect(rack.getAttribute('aria-pressed')).toBe('true');expect(container.querySelector('.is-overview')).not.toBeNull();expect(container.querySelectorAll('.is-staged')).toHaveLength(0);

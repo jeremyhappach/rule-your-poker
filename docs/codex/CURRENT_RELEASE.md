@@ -3,8 +3,57 @@
 Owner requested an adjustable four-minute round in lobby Game Defaults. The
 isolated candidate saves 240 seconds through the admin defaults owner, freezes
 shared rules at new Arcade/multiplayer admission, and preserves active games and
-historical leaderboard boards. No hosted changes or new publication are authorized.
+historical leaderboard boards. Owner approved publication on 2026-10-28; release qualification is in progress.
 See [local qualification and remaining release gates](QUINTZEE_ROUND_DURATION_LOCAL.md).
+
+# Ptown Words /2 — reconciled release qualification PASS — 2026-10-27
+
+Jeremy approved reviewed candidate `d39328f2049557a95044390e09a8993adb0fd375`
+for production, fake-money only. This supersedes the historical local holds below.
+Hosted candidate and installed rollback gates PASS; migration `20261027214928`
+is installed. Existing /1 matches, shared pause, settlement and money eligibility
+are preserved. Reconciled with main `30c50e01f`, including Golf fixes `7b69fb733`
+and the published Quintzee changes; reviewed Words runtime is unchanged.
+Application typecheck, all 3059 source assertions (one lazy-load timeout passed
+on the focused seven-test rerun), 241 harness tests and production bundle PASS.
+Release checkpoint: `ptown-words-v2-fake-money-20261027`. Admission/bots reopen
+only after exact-SHA production READY/manifest/release-signal verification;
+live evidence is retained under `qualification.local/ptown-words/banks-publication`.
+The installed migration must not be repeated. See
+[release qualification](PTOWN_WORDS_BANKS_PAUSE_RELEASE.md).
+
+## Historical local review record (superseded by production approval)
+
+The sole new owner-requested follow-up is ready locally: a non-host's own pending
+pause request changes their existing control to a red, touchable X labeled
+"Cancel pause request". Withdrawal is authoritative, request-specific and
+idempotent; all clients retire the notice. Host pause/resume is unchanged.
+24 focused tests, the repository application typecheck, actual Game-route build,
+local rollback/financial regression, independent-connection races and two-client
+browser/reconnect checks pass. Preview remains on 15308. This cancellation
+follow-up awaits local owner review; no publication or hosted migration.
+
+Owner follow-up is ready locally: played board tiles are flat (including their
+sequential opacity reveal), and vertical padding/row/score-pill spacing is tighter.
+The board starts 19.13px higher; square size is unchanged on portrait phones and
+gains 20.72px in the measured landscape/desktop views. Score positions and the
+fixed announcement slot remain intact. Actual Game-route build, 27 focused tests
+and three viewport browser checks pass. Jeremy deferred the intermittent Chrome
+vibration unless it recurs in publication; no jitter fix is claimed. This styling
+follow-up was owner-accepted at `181030968996805762b2696a2dddc758c6c4108b`.
+See the qualification link below.
+
+Owner authorized local reveal/time-bank/pause work only. New /2 matches have two
+server-owned +3m slots per player; host pause uses canonical authority and guest
+requests use the canonical announcement rail. Paused board and rack contents are
+concealed from first render. Real event-path testing reproduced skipped reveal
+slots, corrected with a shared receipt-based presentation projection and explicit
+tile visibility. Server deadlines and settlement remain authoritative. Local
+server/race/financial proofs, 66 focused client tests, TypeScript and the actual
+Game-route browser suite pass (human horizontal/vertical and bot reveal,
+pause/request/reload, bank persistence and four viewport sizes); see
+[preview and qualification](PTOWN_WORDS_BANKS_PAUSE_LOCAL.md).
+No push, hosted migration, deployment or admission change is authorized.
 
 # Quintzee smoke polish - qualified, publication pending - 2026-10-27
 

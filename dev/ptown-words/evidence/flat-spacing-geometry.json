@@ -1,0 +1,392 @@
+{
+  "localOnly": true,
+  "passed": true,
+  "jitter": "Owner deferred pending recurrence; no root cause or fix claimed",
+  "cssSha256": "fe3535a2af1d9d9dc3317112d4325d66977bf8468a1ef7bb3d83027284a1c40f",
+  "focusedTests": 27,
+  "checks": [
+    {
+      "viewport": [
+        390,
+        760
+      ],
+      "restingPhases": [
+        {
+          "phase": "phone waiting",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone active pulse and timer",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone zoom",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone after pan",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone after HUD",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone after bank",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "phone paused",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        }
+      ],
+      "firstTileGapsMs": [
+        299.89999997615814,
+        300
+      ],
+      "flatStyles": [
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        }
+      ],
+      "overviewReadability": [
+        true,
+        true,
+        true
+      ],
+      "zoomReadability": [
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "restingPhases": [
+        {
+          "phase": "landscape waiting",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape active pulse and timer",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape zoom",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape after pan",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape after HUD",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape after bank",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "landscape paused",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        }
+      ],
+      "firstTileGapsMs": [
+        300,
+        299.3000000715256
+      ],
+      "flatStyles": [
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        }
+      ],
+      "overviewReadability": [
+        true,
+        true,
+        true
+      ],
+      "zoomReadability": [
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "restingPhases": [
+        {
+          "phase": "desktop waiting",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop active pulse and timer",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop zoom",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop after pan",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop after HUD",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop after bank",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        },
+        {
+          "phase": "desktop paused",
+          "uniqueGeometry": {
+            ".fullscreen-game-board": 1,
+            ".words-scroll": 1,
+            ".words-grid": 1
+          }
+        }
+      ],
+      "firstTileGapsMs": [
+        298.89999997615814,
+        282.90000009536743
+      ],
+      "flatStyles": [
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        },
+        {
+          "shadow": "none",
+          "clip": "none",
+          "transform": "none"
+        }
+      ],
+      "overviewReadability": [
+        true,
+        true,
+        true
+      ],
+      "zoomReadability": [
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        },
+        {
+          "letter": true,
+          "score": true,
+          "separated": true,
+          "inside": true
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "layout": [
+    {
+      "viewport": [
+        390,
+        760
+      ],
+      "boardBefore": 376.8125,
+      "boardAfter": 376.8125,
+      "boardTopBefore": 208.578125,
+      "boardTopAfter": 189.453125,
+      "scoreRowBefore": 57.59375,
+      "scoreRowAfter": 46.0625,
+      "sideWidth": 378.8125,
+      "boardRegionHeight": 441.9375,
+      "actionsHeight": 144,
+      "controls44px": true
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "boardBefore": 174.828125,
+      "boardAfter": 195.546875,
+      "boardTopBefore": 208.578125,
+      "boardTopAfter": 189.453125,
+      "scoreRowBefore": 57.59375,
+      "scoreRowAfter": 46.0625,
+      "sideWidth": 329.296875,
+      "boardRegionHeight": 217.9375,
+      "actionsHeight": 166.796875,
+      "controls44px": true
+    },
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "boardBefore": 584.828125,
+      "boardAfter": 605.546875,
+      "boardTopBefore": 208.578125,
+      "boardTopAfter": 189.453125,
+      "scoreRowBefore": 57.59375,
+      "scoreRowAfter": 46.0625,
+      "sideWidth": 503.6875,
+      "boardRegionHeight": 627.9375,
+      "actionsHeight": 144,
+      "controls44px": true
+    }
+  ]
+}

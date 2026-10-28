@@ -1,4 +1,11 @@
 import type {WordsSnapshot} from './model';
+/** Only committed tiles whose server reveal slot has started enter the DOM. */
+export function visibleBoard(v:WordsSnapshot,now:number){
+ if(v.paused)return v.board.map(()=>null);
+ const p=wordPresentation(v,now),hidden=new Set(p?.opponent?[...p.squares].sort((a,b)=>a-b).filter((_,i)=>p.at<p.startedAt+p.focusMs+i*p.flipMs):[]);
+ return v.board.map((tile,square)=>hidden.has(square)?null:tile);
+}
+export const visibleBoardTile=(v:WordsSnapshot,square:number,now:number)=>visibleBoard(v,now)[square];
 export function wordPresentation(v:WordsSnapshot,now:number){
  const p=v.movePresentation,at=v.paused?v.pausedAt??now:now;
  if(!p||p.version!==1||p.turn!==v.turn-1||at>=p.readyAt||v.finished)return null;
