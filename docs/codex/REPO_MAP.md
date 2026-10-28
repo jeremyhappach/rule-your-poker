@@ -1,3 +1,10 @@
+## 11 Up secondary smoke qualification
+
+- supabase/eleven-up/secondary-ready.sql: unregistered forward Ready/postgame correction.
+- dev/eleven-up/secondary-ready-proof.mjs and secondary-ready-races.mjs: local lifecycle/financial and independent-connection proofs.
+- dev/eleven-up/secondary-ready-preview.mjs and secondary-resume-browser.mjs: local canonical Resume browser qualification.
+- docs/codex/ELEVEN_UP_SECONDARY_SMOKE.md: scope, evidence and release limits.
+
 # Repository map
 
 Golf match-length local candidate: `src/lib/golf/matchLength.ts` owns client option

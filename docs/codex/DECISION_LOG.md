@@ -1,3 +1,11 @@
+## October 21, 2026 — Active play-money completion and next-game eligibility
+
+Owner clarification: all-human inactivity must not strand an active play-money
+competition. Eligible-human checks belong between dealer games. The local 11 Up
+candidate applies this narrowly, retaining canonical postgame waiting, real-money
+pauses, unchanged scoring expiry and explicit resume after reclaim. Other games
+remain separately queued for review. See ELEVEN_UP_SECONDARY_SMOKE.md.
+
 ## 2026-10-27 — Golf match length is frozen configuration (production approved)
 
 Approved local scope adds 3/6/9/18 holes, initially nine, through existing lobby

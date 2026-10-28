@@ -10,6 +10,18 @@ current-main reconciliation and hosted qualification before publication or
 activation. No hosted mutation or push was performed for this preparation.
 See [preparation and remaining gates](PTOWN_WORDS_REAL_MONEY_PREPARATION.md).
 
+# 11 Up follow-up — installed qualification PASS — October 28, 2026
+
+Reconciled preserved candidate de1d21640 with incident main 99249d8bd70dea766d21bc33c626e11354a2f0b4.
+Owner-authorized scope: audio at displayed eleven, active all-away play-money
+completion and explicit canonical host Resume. Migration 20261028190237 is installed
+once; hosted baseline and installed rollback proofs pass with six financial cases
+and both Ready money modes. Other public/private function and ACL hash is unchanged.
+3119 source tests, 241 harness tests, typecheck and build pass. Local SQL lifecycle,
+races, audio and three phone Resume layouts pass. Publication must verify exact-SHA
+READY, manifest, publisher and persisted signal. All unrelated releases preserved.
+See [release evidence](ELEVEN_UP_SECONDARY_SMOKE.md).
+
 # Oct27 SCC/Horses/Tri-Towers - installed qualification PASS - 2026-10-28
 
 Owner approved production after passing tests. Migration `20261028184338` is

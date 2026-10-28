@@ -1,0 +1,31 @@
+{
+  "base": "99249d8bd70dea766d21bc33c626e11354a2f0b4",
+  "preserved": "de1d21640c260c70251c24256a7bfcb4b543a39b",
+  "migration": {
+    "version": "20261028190237",
+    "name": "eleven_up_active_completion_resume",
+    "sha256": "9887c4fc29729b9bd058814868c756552ef1a523d4e6a37efd8150a132bba7f1",
+    "count": 1
+  },
+  "hosted": {
+    "baseline": true,
+    "installed": true,
+    "financialCases": 6,
+    "readyModes": 2,
+    "rollbackOnly": true,
+    "globalRecovery": false,
+    "otherFunctionsAndAclMd5": "f40a918846a82cafa92ea48bfbde8e93"
+  },
+  "local": {
+    "sourceTests": 3119,
+    "harnessTests": 241,
+    "typecheck": true,
+    "build": true,
+    "financialCases": 36,
+    "races": true,
+    "audio": true,
+    "phoneLayouts": 3
+  },
+  "publication": "pending exact-SHA verification",
+  "ownerSmoke": "pending"
+}

@@ -14,6 +14,7 @@ const snapshot=():ElevenSnapshot=>({id:'run',revision:1,serverAt:1000,scope:'run
 const props=(v=snapshot(),onIntent=vi.fn())=>({view:v,userId:'user',now:1000,pending:false,error:'',epoch:0,onIntent,onReconnect:vi.fn()});
 
 it('shows each confirmed automatic ball with human selection styling 750ms apart, then clears',()=>{
+ const sound=vi.spyOn(platformAudio,'request').mockReturnValue(()=>{});
  const before=snapshot();before.solo=false;before.canAct=false;before.players[0].isBot=true;
  const intent=vi.fn(),p=props(before,intent),ui=render(<ElevenUpView {...p}/>);
  // 2 (rack) + 9 (draw) is a confirmed legal group.
@@ -21,15 +22,42 @@ it('shows each confirmed automatic ball with human selection styling 750ms apart
  ui.rerender(<ElevenUpView {...p} view={after}/>);
  expect(ui.getByRole('button',{name:/Ball 2, exposed/}).getAttribute('aria-pressed')).toBe('true');
  expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('false');
+ expect(sound).not.toHaveBeenCalled();
  ui.rerender(<ElevenUpView {...p} view={after} now={1749}/>);
  expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('false');
  ui.rerender(<ElevenUpView {...p} view={after} now={1750}/>);
  expect(ui.getByRole('button',{name:'Draw ball 9'}).getAttribute('aria-pressed')).toBe('true');
  expect(ui.getByLabelText('Selected total 11')).toBeTruthy();
+ expect(sound).toHaveBeenCalledTimes(1);
  ui.rerender(<ElevenUpView {...p} view={after} now={2500}/>);
  expect(ui.queryByRole('button',{name:/Ball 2, exposed/})).toBeNull();
  expect(ui.getByRole('button',{name:'Draw ball 1'}).getAttribute('aria-pressed')).toBe('false');
  expect(intent).not.toHaveBeenCalled();
+});
+
+it.each(['bot','autoplay'] as const)('dings a %s combination only when the last highlighted ball reaches eleven',kind=>{
+ const sound=vi.spyOn(platformAudio,'request').mockReturnValue(()=>{}),before=snapshot();
+ before.solo=false;before.canAct=false;before.players[0][kind==='bot'?'isBot':'autoplay']=true;
+ const p=props(before),ui=render(<StrictMode><ElevenUpView {...p}/></StrictMode>);
+ // 2 + 3 + 6: the third visible selection completes the combination.
+ const after={...before,revision:2,board:{...before.board,slots:[null,null,null,48],groups:1}};
+ const show=(now:number,view=after)=>ui.rerender(<StrictMode><ElevenUpView {...p} view={view} now={now}/></StrictMode>);
+ show(1000);expect(ui.getByLabelText('Selected total 2')).toBeTruthy();expect(sound).not.toHaveBeenCalled();
+ show(1750);expect(ui.getByLabelText('Selected total 5')).toBeTruthy();expect(sound).not.toHaveBeenCalled();
+ show(2499);expect(sound).not.toHaveBeenCalled();
+ show(2500);expect(ui.getByLabelText('Selected total 11')).toBeTruthy();expect(sound).toHaveBeenCalledTimes(1);
+ show(2600,{...after});show(3250);expect(sound).toHaveBeenCalledTimes(1);
+ ui.unmount();render(<ElevenUpView {...p} view={after} now={3250}/>);expect(sound).toHaveBeenCalledTimes(1);
+});
+
+it.each(['expiry','reclaim','reconnect','tab','pause','scope'] as const)('never dings an automatic presentation cancelled by %s',reason=>{
+ const sound=vi.spyOn(platformAudio,'request').mockReturnValue(()=>{}),before=snapshot();
+ before.solo=false;before.canAct=false;before.players[0].autoplay=true;before.board.deadline=reason==='expiry'?1700:5000;
+ const after={...before,revision:2,board:{...before.board,slots:[null,20,32,48],current:4,groups:1}};
+ const p=props(before),ui=render(<ElevenUpView {...p}/>);ui.rerender(<ElevenUpView {...p} view={after}/>);
+ const change=reason==='expiry'?{}:reason==='reclaim'?{view:{...after,players:[{...before.players[0],autoplay:false}]}}:reason==='reconnect'?{epoch:1}:reason==='tab'?{activeTab:'chat' as const}:reason==='pause'?{view:{...after,paused:true}}:{view:{...after,scope:'next'}};
+ ui.rerender(<ElevenUpView {...p} view={after} now={1750} {...change}/>);
+ expect(sound).not.toHaveBeenCalled();
 });
 
 it('cancels automatic highlights at expiry, reclaim, reconnect, hidden tab and new scope; never replays on mount',()=>{
@@ -64,6 +92,20 @@ it('keeps reclaim available while paused or between rounds and identifies oppone
  expect(ui.getByRole('checkbox',{name:'Auto-play'})).toBeTruthy();
  ui.rerender(<ElevenUpView {...p} pending/>);expect((ui.getByRole('checkbox',{name:'Auto-play'}) as HTMLInputElement).disabled).toBe(true);
  ui.rerender(<ElevenUpView {...p} sessionEnded/>);expect(ui.queryByRole('checkbox')).toBeNull();expect(ui.queryByRole('img',{name:/Auto-play/})).toBeNull();
+});
+
+it('offers explicit Resume after paused reclaim without resuming from the checkbox or snapshot',()=>{
+ const v=snapshot();v.solo=false;v.viewerId='user';v.paused=true;v.canAct=false;v.players[0].autoplay=true;
+ const onResume=vi.fn().mockResolvedValue(undefined),onIntent=vi.fn(),p=props(v,onIntent),ui=render(<ElevenUpView {...p} onResume={onResume}/>);
+ expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ fireEvent.click(ui.getByRole('checkbox',{name:'Auto-play'}));expect(onIntent).toHaveBeenCalledExactlyOnceWith({type:'reclaim'});expect(onResume).not.toHaveBeenCalled();
+ const reclaimed={...v,revision:2,players:[{...v.players[0],autoplay:false,sitOutNextHand:false}]};
+ ui.rerender(<ElevenUpView {...p} view={reclaimed} onResume={onResume}/>);
+ expect(ui.queryByRole('checkbox')).toBeNull();expect(onResume).not.toHaveBeenCalled();
+ fireEvent.click(ui.getByRole('button',{name:'Resume game'}));expect(onResume).toHaveBeenCalledTimes(1);
+ ui.rerender(<ElevenUpView {...p} view={reclaimed}/>);expect(ui.getByText('Paused · ask host to resume')).toBeTruthy();expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ ui.rerender(<ElevenUpView {...p} view={{...reclaimed,paused:false}} onResume={onResume}/>);expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
+ ui.rerender(<ElevenUpView {...p} view={reclaimed} onResume={onResume} sessionEnded/>);expect(ui.queryByRole('button',{name:'Resume game'})).toBeNull();
 });
 
 it('shows named multiplayer achievements and winner pulse without changing Arcade results',()=>{

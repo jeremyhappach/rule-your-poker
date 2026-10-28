@@ -1,3 +1,18 @@
+## Releasing — 11 Up secondary smoke — October 28, 2026
+
+Locally implemented and qualified: audio at displayed 11, active play-money
+completion, next-game eligible-human guard and explicit canonical Resume after
+reclaim. Incident-first hold explicitly cleared; migration and hosted qualification pass.
+Publication verification and owner smoke remain. See [candidate](ELEVEN_UP_SECONDARY_SMOKE.md).
+
+## Queued — Cross-game active competition inactivity policy review — October 21, 2026
+
+Jeremy clarified that only-remaining-human eligibility belongs BETWEEN dealer
+games; active play-money competitions must have a path to completion. 11 Up is
+locally corrected. Review other games separately against that policy, preserving
+real-money pauses, scoring clocks and canonical settlement. This is not a release
+prerequisite for currently queued games; no other game changed in this task.
+
 ## 2026-10-24 — Multiplayer Golf completion: qualified release, owner smoke pending
 
 Score formatting, direct checked-only rejoin, active play-money continuation,

@@ -14,10 +14,9 @@ import {useElevenBotSelection} from '@/hooks/useElevenBotSelection';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
-interface Props {terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
-export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,terminalPresenting=false}:Props){
+interface Props {onResume?:()=>Promise<void>;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:ElevenSnapshot['players'][number])=>ReactNode;view:ElevenSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:ElevenIntent)=>void;onReconnect:()=>void;onFinish?:()=>void}
+export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=false,onIntent,onReconnect,onFinish,onResume,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance,terminalPresenting=false}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
- useElevenGroupAudio(v,userId,epoch,tab==='cards'&&!error&&!v.paused&&!sessionEnded&&!document.hidden);
  const scoreGroup=useRef<HTMLDivElement>(null),activePlayerId=v.players.find(p=>p.active)?.id;
  const scorePlayers=v.players.length>2?[...v.players.filter(p=>p.active),...v.players.filter(p=>!p.active)]:v.players;
  useLayoutEffect(()=>{if(v.players.length>2&&scoreGroup.current)scoreGroup.current.scrollLeft=0;},[activePlayerId,v.players.length]);
@@ -28,10 +27,10 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
   activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
   announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription={`P-Town scoring · ${b.rules.version}`} panel={panel??<ElevenUpRules stageMs={b.rules.stageMs}/>}>
-  <ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,motion,result,sessionEnded,scores}} active={tab==='cards'}/>
+  <ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,onResume,motion,result,sessionEnded,scores}} active={tab==='cards'}/>
  </FullscreenGameShell>;
 }
-function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,active,motion,result,sessionEnded,scores}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;scores:ReactNode;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){
+function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFinish,onResume,active,motion,result,sessionEnded,scores}:Omit<Props,'view'>&{v:ElevenSnapshot;active:boolean;scores:ReactNode;motion:ReturnType<typeof useTriRoundPresentation>;result:(NonNullable<ElevenSnapshot['board']['result']>&{id:string;elapsed:number})|null}){
  const root=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),[selection,setSelection]=useState<number[]>([]);
  const selected=useRef<number[]>([]),submitted=useRef(false);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
@@ -41,6 +40,7 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
  const canAct=v.canAct&&!v.paused&&!pending&&!error&&remaining>0&&['ready','playing'].includes(b.phase)&&active&&!sessionEnded;
  const shownSelection=botSelection?.selection??selection;
  const sum=shownSelection.reduce((n,id)=>n+ballValue(id),0);
+ useElevenGroupAudio(v,userId,epoch,active&&!error&&!v.paused&&!sessionEnded&&!document.hidden,botSelection&&sum===11?botSelection.group:null);
  const toggle=(id:number)=>{
   if(!canAct||submitted.current)return;
   const next=selected.current.includes(id)?selected.current.filter(x=>x!==id):[...selected.current,id];
@@ -60,6 +60,8 @@ function ElevenBoard({v,now,pending,error,epoch,onIntent,onReconnect,onFinish,ac
     {!terminal&&!sessionEnded&&b.phase!=='stage_complete'&&<button className="eleven-take-score" disabled={!canAct||b.phase!=='playing'} onClick={()=>onIntent({type:'take_score'})}>Take Score</button>}
    </div>
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.players.some(p=>p.id===v.viewerId&&p.autoplay)&&<label className="eleven-autoplay"><input type="checkbox" checked disabled={pending||!!error} onChange={()=>onIntent({type:'reclaim'})}/>Auto-play</label>}
+   {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<button className="eleven-autoplay" disabled={pending||!!error} onClick={()=>void onResume()}>Resume game</button>}
+   {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&!onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<span className="eleven-autoplay" role="status">Paused · ask host to resume</span>}
    {!sessionEnded&&<div className="eleven-playfield">
    {!terminal&&<>
    <div className="eleven-rack" aria-label="Pool balls on felt">

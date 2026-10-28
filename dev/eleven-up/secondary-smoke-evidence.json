@@ -1,0 +1,289 @@
+{
+  "base": "55a896b1f84fcd31d32a1a135622af99fca1a3c9",
+  "localOnly": true,
+  "releaseQueue": "Behind all currently queued game deployments; no release slot or cross-game hold",
+  "audio": {
+    "tests": 47,
+    "testFiles": 5,
+    "typecheck": true,
+    "viteBuild": true,
+    "browser": {
+      "selectionSpacingMs": 770,
+      "cues": [
+        {
+          "id": "eleven-group:6e4c9038-6549-4dde-9fda-2ea1ae161b82:8defeed6-7577-4f13-986e-500eeeb21e42:4ac03ed4-5780-494a-a682-8c193ca19f71:1:1",
+          "total": "11"
+        }
+      ],
+      "errors": [],
+      "deadlineUnchanged": true
+    }
+  },
+  "readyReproduction": [
+    {
+      "real": false,
+      "opponent": "bot",
+      "phaseAfterTimeout": "ready",
+      "paused": true,
+      "autoplayAfterTimeout": true,
+      "reclaimClearsFlagsWithoutResume": true
+    },
+    {
+      "real": false,
+      "opponent": "human",
+      "phaseAfterTimeout": "playing",
+      "paused": false,
+      "autoplayAfterTimeout": true,
+      "reclaimClearsFlagsWithoutResume": true
+    },
+    {
+      "real": true,
+      "opponent": "human",
+      "phaseAfterTimeout": "ready",
+      "paused": true,
+      "autoplayAfterTimeout": false,
+      "reclaimClearsFlagsWithoutResume": true
+    }
+  ],
+  "readyFix": "Implemented locally: active fake-money completion, canonical next-game eligibility, explicit host Resume",
+  "productionAccess": "None",
+  "sqlChanged": true,
+  "forwardSql": {
+    "path": "supabase/eleven-up/secondary-ready.sql",
+    "registered": false,
+    "sha256": "39c3868ff1f19ff99e9dd96824cec21ed7eb7ad44e491fb5f162f9ff5f22f5d1"
+  },
+  "validation": {
+    "focusedTests": 48,
+    "canonicalTests": 15,
+    "typecheck": true,
+    "viteBuild": true,
+    "ready": [
+      {
+        "bots": 0,
+        "allHumansAway": true,
+        "readyTakeover": true,
+        "reload": true,
+        "reclaimWithoutClockReset": true,
+        "staleRejected": true
+      },
+      {
+        "opponents": 1,
+        "moves": 14,
+        "settledOnce": true,
+        "canonicalBalancesAndSnapshots": true,
+        "nextGameWaitsForHuman": true
+      },
+      {
+        "bots": 1,
+        "allHumansAway": true,
+        "readyTakeover": true,
+        "reload": true,
+        "reclaimWithoutClockReset": true,
+        "staleRejected": true
+      },
+      {
+        "opponents": 1,
+        "moves": 10,
+        "settledOnce": true,
+        "canonicalBalancesAndSnapshots": true,
+        "nextGameWaitsForHuman": true
+      },
+      {
+        "bots": 2,
+        "allHumansAway": true,
+        "readyTakeover": true,
+        "reload": true,
+        "reclaimWithoutClockReset": true,
+        "staleRejected": true
+      },
+      {
+        "opponents": 2,
+        "moves": 14,
+        "settledOnce": true,
+        "canonicalBalancesAndSnapshots": true,
+        "nextGameWaitsForHuman": true
+      },
+      "real-money Ready still pauses; reclaim never implicitly resumes",
+      "36 financial cases and every other function/ACL unchanged"
+    ],
+    "races": [
+      "independent-connection bot/reclaim races: bot-first stale reclaim rejected; retry succeeds; reclaim-first blocks/skips bot without duplicate action"
+    ],
+    "resumeBrowser": {
+      "reclaimDoesNotResume": true,
+      "explicitCanonicalResume": true,
+      "reload": true,
+      "layouts": [
+        {
+          "width": 320,
+          "height": 568
+        },
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 667,
+          "height": 375
+        }
+      ],
+      "errors": []
+    },
+    "crossGame": {
+      "race": "core, both-money finance, injected rollback and v2 controls passed",
+      "battle": {
+        "passed": true,
+        "residual": {
+          "games": 0,
+          "batches": 0,
+          "players": 0,
+          "results": 0,
+          "profiles": 0,
+          "snapshots": 0
+        },
+        "cases": [
+          {
+            "money": false,
+            "outcome": "winner",
+            "chips": [
+              {
+                "id": "239ba6c7-91f6-4531-96a6-b22d65a64e08",
+                "chips": 95
+              },
+              {
+                "id": "b4413013-04ab-4ee6-a840-cdcfd93cd722",
+                "chips": 105
+              }
+            ],
+            "batches": [
+              {
+                "transfers": [
+                  {
+                    "id": "b3ddf3e3-f3f4-494d-8985-77eeb6740b9e:1:1",
+                    "to": {
+                      "kind": "player",
+                      "playerId": "b4413013-04ab-4ee6-a840-cdcfd93cd722"
+                    },
+                    "from": {
+                      "kind": "player",
+                      "playerId": "239ba6c7-91f6-4531-96a6-b22d65a64e08"
+                    },
+                    "amount": 5
+                  }
+                ],
+                "unmatched_deltas": {}
+              }
+            ],
+            "passed": true
+          },
+          {
+            "money": false,
+            "outcome": "tie",
+            "chips": [
+              {
+                "id": "9127d821-1389-4ff7-9042-38d1ede51603",
+                "chips": 100
+              },
+              {
+                "id": "e651cc76-e730-45cc-a137-5305798cacd9",
+                "chips": 100
+              }
+            ],
+            "batches": [],
+            "passed": true
+          },
+          {
+            "money": false,
+            "outcome": "abort",
+            "chips": [
+              {
+                "id": "0e922d9c-9b22-49f4-b674-c46594fa2645",
+                "chips": 100
+              },
+              {
+                "id": "dd8af25c-daca-4f31-b197-a305d6129d88",
+                "chips": 100
+              }
+            ],
+            "batches": [],
+            "passed": true
+          },
+          {
+            "money": true,
+            "outcome": "winner",
+            "chips": [
+              {
+                "id": "86e1f382-4149-4527-b820-a6ab7a5adf17",
+                "chips": 95
+              },
+              {
+                "id": "ac70afcf-dc85-4e02-983f-387d19fa3392",
+                "chips": 105
+              }
+            ],
+            "batches": [
+              {
+                "transfers": [
+                  {
+                    "id": "0e586e98-ef8a-4f4b-b1e8-a9f09ef89714:1:1",
+                    "to": {
+                      "kind": "player",
+                      "playerId": "ac70afcf-dc85-4e02-983f-387d19fa3392"
+                    },
+                    "from": {
+                      "kind": "player",
+                      "playerId": "86e1f382-4149-4527-b820-a6ab7a5adf17"
+                    },
+                    "amount": 5
+                  }
+                ],
+                "unmatched_deltas": {}
+              }
+            ],
+            "passed": true
+          },
+          {
+            "money": true,
+            "outcome": "tie",
+            "chips": [
+              {
+                "id": "600448f4-767c-4a77-88ba-da06e77673fa",
+                "chips": 100
+              },
+              {
+                "id": "d4cef1f8-cc46-412b-ad02-52d7fcd2bcc3",
+                "chips": 100
+              }
+            ],
+            "batches": [],
+            "passed": true
+          },
+          {
+            "money": true,
+            "outcome": "abort",
+            "chips": [
+              {
+                "id": "59153feb-78ca-4bfd-9803-3e8f23c9dbfb",
+                "chips": 100
+              },
+              {
+                "id": "b455e43d-ad23-42b5-989b-6ee58cf49849",
+                "chips": 100
+              }
+            ],
+            "batches": [],
+            "passed": true
+          }
+        ],
+        "moneyModeAdmission": true,
+        "bootstrapGate": true,
+        "acceptedOfferStartsAfterNewAdmissionCloses": true,
+        "admittedMatchesContinueWhenAdmissionCloses": true,
+        "existingBalancesPreserved": true,
+        "releaseGatesPreserved": true,
+        "fixtureUsersRemoved": true
+      }
+    }
+  }
+}

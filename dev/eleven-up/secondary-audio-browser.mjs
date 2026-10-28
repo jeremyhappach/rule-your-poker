@@ -1,0 +1,31 @@
+import {chromium} from '@playwright/test';
+import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {connect,context} from './human-ready-local.mjs';
+const c=await connect(context().database),out='qualification.local/eleven-up-timeout/secondary-browser';mkdirSync(out,{recursive:true});
+const executablePath=['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe'].find(existsSync);
+const browser=await chromium.launch({headless:true,executablePath}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+const start=async()=>{await page.goto('http://127.0.0.1:5198/dev/eleven-up/live.html');await page.getByRole('button',{name:'Start two-player table'}).click();await page.waitForURL(/id=/);await page.locator('[data-phase="ready"]').waitFor();return new URL(page.url());};
+const state=async id=>(await c.query('select * from private.eleven_up_matches where dealer_game_id=$1',[id])).rows[0];
+try{
+ let url=await start(),id=url.searchParams.get('id');let m=await state(id);const player=m.state.players[m.state.turnIndex].id;
+ const slots=Array(22).fill(null);slots[0]=16;slots[9]=20;
+ await c.query('begin');
+ await c.query('update public.players set auto_fold=true,sit_out_next_hand=true where id=$1',[player]);
+ await c.query("update private.eleven_up_matches set state=state||jsonb_build_object('phase','playing','startedAt',$2::bigint,'deadline',$3::bigint,'slots',$4::jsonb,'current',44),revision=revision+1,bot_due_at=$3 where dealer_game_id=$1",[id,Date.now(),Date.now()+20000,JSON.stringify(slots)]);
+ await c.query('update private.eleven_up_matches set bot_due_at=$2 where dealer_game_id=$1',[id,Date.now()+10000]);await c.query('commit');
+ await page.getByRole('button',{name:/Ball 2, exposed/}).waitFor();await page.getByRole('checkbox',{name:'Auto-play',exact:true}).waitFor();
+ await page.evaluate(async()=>{const {platformAudio}=await import('/src/lib/audio/platformAudio.ts');window.__secondaryCues=[];platformAudio.request=(cue)=>{window.__secondaryCues.push({id:cue.id,total:document.querySelector('.eleven-selection')?.textContent});return ()=>{};};});
+ await page.waitForTimeout(250);m=await state(id);const originalDeadline=m.state.deadline;
+ await c.query("update private.eleven_up_matches set state=private.eleven_up_reduce(state,'group',ARRAY[16,44],$2),revision=revision+1 where dealer_game_id=$1",[id,Date.now()]);
+ await page.waitForFunction(()=>document.querySelectorAll('.eleven-ball[aria-pressed=true],.eleven-draw[aria-pressed=true]').length===1);const first=Date.now();assert.deepEqual(await page.evaluate(()=>window.__secondaryCues),[]);
+ await page.waitForFunction(()=>document.querySelectorAll('.eleven-ball[aria-pressed=true],.eleven-draw[aria-pressed=true]').length===2);const spacing=Date.now()-first;
+ assert(spacing>=450&&spacing<=1100,`selection spacing ${spacing}ms`);await page.screenshot({path:out+'/selected-combination.png'});
+ await page.getByRole('button',{name:/Ball 2, exposed/}).waitFor({state:'detached'});assert.equal((await state(id)).state.deadline,originalDeadline);
+ await page.waitForFunction(()=>window.__secondaryCues.length===1);
+ const cues=await page.evaluate(()=>window.__secondaryCues);assert.equal(cues[0].total,'11');
+ await page.waitForTimeout(1000);assert.equal((await page.evaluate(()=>window.__secondaryCues)).length,1);
+ assert.deepEqual(errors,[]);writeFileSync(out+'/results.json',JSON.stringify({selectionSpacingMs:spacing,cues,errors,deadlineUnchanged:true},null,2));
+ console.log('PASS local SQL/browser: no first-selection ding, exactly one ding at displayed eleven, unchanged deadline');
+}finally{await browser.close();await c.end();}
