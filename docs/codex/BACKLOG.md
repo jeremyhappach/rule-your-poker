@@ -1,10 +1,9 @@
-## Queued — 11 Up secondary smoke release — October 21, 2026
+## Releasing — 11 Up secondary smoke — October 28, 2026
 
 Locally implemented and qualified: audio at displayed 11, active play-money
 completion, next-game eligible-human guard and explicit canonical Resume after
-reclaim. Release VERY LAST after all currently queued games; no holds on Golf,
-Canasta, Battle31 or others. Forward migration/hosted parity/publication and owner
-smoke remain. See [candidate](ELEVEN_UP_SECONDARY_SMOKE.md).
+reclaim. Incident-first hold explicitly cleared; migration and hosted qualification pass.
+Publication verification and owner smoke remain. See [candidate](ELEVEN_UP_SECONDARY_SMOKE.md).
 
 ## Queued — Cross-game active competition inactivity policy review — October 21, 2026
 
@@ -14,7 +13,72 @@ locally corrected. Review other games separately against that policy, preserving
 real-money pauses, scoring clocks and canonical settlement. This is not a release
 prerequisite for currently queued games; no other game changed in this task.
 
+## 2026-10-24 — Multiplayer Golf completion: qualified release, owner smoke pending
+
+Score formatting, direct checked-only rejoin, active play-money continuation,
+pre-scoring turn suppression and canonical play-money Blast cleanup are qualified.
+This supersedes earlier local-only pending entries for those five corrections.
+Installed rollback and aggregate checks pass; exact-SHA publication verification
+follows the approved push. Physical iPhone and deferred landscape/four-player smoke
+remain separate. [Release evidence](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
 # Backlog
+
+## Deferred by owner — Words intermittent board vibration — October 27, 2026
+
+- Jeremy saw the board/table vibrate in Chrome in the local Words preview.
+  It stopped before reproduction. He explicitly deferred investigation unless
+  it recurs in the published app. Do not resume automatically or claim a fix.
+- Local Edge/Chrome measurements found stable idle, timer/pulse, zoom, pan and
+  HUD geometry. Preserve the local measurements under
+  `qualification.local/ptown-words/jitter`; they do not disprove the observation.
+- If it recurs: capture the published match, browser/zoom, full-board versus
+  zoomed state, and whether motion continues without input. Follow the normal
+  read-only diagnosis workflow. No hosted state was changed during this pass.
+
+## Queued — Canonical nameplate and seat placement audit — October 26, 2026
+
+- Provenance: Jeremy approved Battle31's nameplate correction and explicitly
+  requested a read-only audit of other new games. All multiplayer games should
+  follow 357's shared nameplate and seat-cluster owners; chip circles must stay
+  in their canonical positions. Other-game corrections are not approved.
+- Golf retains the coupled inward name/card override. Canasta mounts canonical
+  clusters in a narrower felt-width frame. Race Poker, 11 Up, Trip Flip, Boxdrop,
+  Take 2, Royal Flash, TriTowers, Quintzee, Run21 fullscreen and the unreleased
+  Double Solitaire worktree use custom score/name/balance surfaces rather than
+  canonical gameplay clusters. Run21 table mode, Cribbage, Gin Rummy, Yahtzee and
+  Farkle have no placement override in the inspected paths. Mega is solo-only.
+- Shared edge fitting: the canonical centered nameplate clips Route 3e072b by
+  3.57px at 320px and 0.77px at 390px in the local owner preview. Recommend a
+  canonical width/truncation fix preserving chip and configured anchor, tested
+  with 357 and every perimeter seat. No game-specific offset or chip move.
+- Scope, exact owners and suggested sequence are recorded in
+  [the read-only source audit](CANONICAL_SEAT_AUDIT_20261026.md). Fresh production
+  reproduction is not claimed. Preserve existing gameplay, score displays,
+  transport endpoints and other in-flight releases when planning corrections.
+
+## Pending smoke — 357 real-money incident qualification — October 24, 2026
+
+- Approved settlement/runback/Stop Automatic Play/duplicate Sweep correction is
+  documented in [357 incident qualification](357_INCIDENT_20261024.md).
+- Keep new real-money 357 admission closed until multiplayer acceptance. Keep
+  Set Your Soul Free paused and its historical balances unchanged; the preserved
+  $2 excess is not authorization for a reconciliation adjustment.
+- Acceptance: one normal sweep overlay, instant winner proof/funded payout,
+  one runback ante plus dealt actions on every client, paused Stop Automatic Play,
+  and connected/fresh terminal lifecycle. Provenance: Jeremy's direct incident
+  report and approval, October 24, 2026. No unrelated game work is included.
+
+## Approved publication — Golf configurable scoring/reveal timing and smoke affordances — October 22, 2026
+
+- Jeremy requests Scoring Delay = 1200 ms per card or cancelled pair, also used for sequential flips of cards still face down after a player's final turn; reveal that hand fully before scoring it. Add this to Six-Card Golf defaults.
+- Add Hole Results Duration = 5000 ms to defaults. Results has no X and remains through its server-owned display interval. Preserve running current-hole subtotal, two-second player-final-score holds, and public-only scoring.
+- Show stable Bot1/Bot2-style aliases without unique storage suffixes throughout Golf. Add persistent FINAL TURN above the felt cards for the authoritative final-turn queue, visible to every viewer.
+- Read-only diagnosis: deployed reducer uses a hardcoded 6000 ms hole deadline and overwrites all exposed flags before recording results; settlement starts a 3000 ms terminal hold immediately. Golf has no scoring/results default fields. Candidate client uses 650 ms beats compressed to fit the deadline. Shared DialogContent always supplies X. Golf bypasses getBotAlias; deployed Golf bot-name aggregate found five suffix-bearing entries out of five.
+- Proposed correction: freeze validated presentation settings at admission; persist pre-final-reveal masks and authoritative presentation boundaries, schedule reveal/count/results before next hole or terminal presentation, and retain immediate atomic settlement. Retain legacy admitted timing, pause/recovery behavior and UUID identity. Reuse canonical aliases and felt ownership.
+- Status: Jeremy approved the preview and publication, including selected-card enlargement, destination-card offset, and preservation of the outgoing face/back state. The forward migration is installed; all 17 candidate and 17 installed hosted rollback units pass. Publication qualification is documented in SIX_CARD_GOLF_TIMING_RELEASE.md. Existing admission and paused matches are preserved; owner production smoke remains pending.
+- Provenance: direct owner feedback on review-20261022-subtotal/smoke-review.html, October 22, 2026. Detailed design below is recorded in SIX_CARD_GOLF_SMOKE_FLOW.md.
+
 
 ## Queued — Run21 late-round-3 lag and intermittent Royal Flash reconnect evidence — October 19, 2026
 

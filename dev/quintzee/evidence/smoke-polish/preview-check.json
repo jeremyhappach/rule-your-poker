@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "url": "http://127.0.0.1:15318/dev/quintzee/smoke-preview.html",
+  "freshStartAndLegalScore": true,
+  "actualExpiryLabel": true,
+  "local": true
+}

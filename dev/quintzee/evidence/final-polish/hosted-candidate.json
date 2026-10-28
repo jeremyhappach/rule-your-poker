@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "rolledBack": true,
+  "project": "xvhmbuppghwmwpwrkzao",
+  "baselineDigest": "9e67887a47b055f4e511f5d77d2cdd16",
+  "cases": [
+    "frozen /1 and /2",
+    "manual-roll and upper-bonus timing",
+    "role authorization",
+    "real-money server exclusion",
+    "2/3/4-player winner/tie chip settlement",
+    "replay and recovery"
+  ]
+}

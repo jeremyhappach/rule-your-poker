@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-22T00:29:48.655Z",
+  "passed": true,
+  "errors": [],
+  "authenticatedUsers": [
+    "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+    "fb835d1f-db2f-4de4-84e2-ce0074512e46"
+  ],
+  "actions": [
+    {
+      "user": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "action": "open",
+      "status": 200
+    },
+    {
+      "user": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+      "action": "open",
+      "status": 200
+    },
+    {
+      "user": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "action": "draw",
+      "status": 200
+    },
+    {
+      "user": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+      "action": "replace",
+      "status": 200
+    },
+    {
+      "user": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+      "action": "discard",
+      "status": 200
+    }
+  ],
+  "authority": "Isolated local PostgreSQL authenticated role, real Auth-validated JWTs; no production gameplay writes"
+}

@@ -1,0 +1,25 @@
+import {readFileSync as read,writeFileSync as write,mkdirSync,copyFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const shape=process.argv.includes('--card-shape'),refinement=shape||process.argv.includes('--pile-refinement');
+const input='qualification.local/six-card-golf/',output='dev/six-card-golf/evidence/'+(shape?'rectangular-cards':refinement?'right-handed-layout':'centered-layout')+'/';
+const sha=file=>createHash('sha256').update(read(file)).digest('hex');
+const layout=JSON.parse(read(input+'layout.json','utf8'));
+assert.equal(layout.cases.length,63);assert.deepEqual(layout.errors,[]);
+const owner=JSON.parse(read(input+'owner-candidate.json','utf8'));
+assert(owner.passed);assert.deepEqual(owner.errors,[]);assert(owner.rpc.every(x=>x.name==='golf_snapshot'&&x.status===200));
+const interaction=JSON.parse(read(input+'interaction-after.json','utf8'));assert(interaction.passed);
+mkdirSync(output,{recursive:true});
+if(shape){
+ const before=JSON.parse(read(input+'shape-before.json','utf8'));assert(before.shapes.some(s=>s.cards.some(c=>c.face&&c.w<20&&c.radius==='8px')));
+ assert(owner.shapes.every((s,i)=>s.cards.every(c=>c.radius==='10%'&&c.clipPath==='none')&&s.cards[0].w>before.shapes[i].cards[0].w&&s.badge.radius==='50%'));
+ write(output+'shape-before.json',JSON.stringify(before,null,2));copyFileSync(input+'shape-before-landscape.png',output+'shape-before-landscape.png');
+}
+const images=[['owner-candidate-390.png','portrait.png'],['owner-candidate-844.png','landscape.png'],['layout-4-0-390x844.png','four-player-portrait.png'],['layout-4-0-844x390.png','four-player-landscape.png'],['layout-4-0-568x320.png','four-player-short-landscape.png']];
+for(const [from,to] of images)copyFileSync(input+from,output+to);
+write(output+'owner.json',JSON.stringify(owner,null,2));
+write(output+'interaction.json',JSON.stringify(interaction,null,2));
+write(output+'layouts.json',JSON.stringify({passed:true,cases:layout.cases.map(({n,viewer,width,height,grid,pane,piles,felt,opponents,title,stock,discard,opponentCard})=>({players:n,viewer,width,height,myCenterError:Math.abs(grid.x+grid.w/2-pane.x-pane.w/2),pilesCenterError:Math.abs(piles.x+piles.w/2-felt.x-felt.w/2),minimumTitleClearance:Math.min(...opponents.map(r=>r.y-title.y-title.h)),minimumPileClearance:Math.min(...opponents.map(r=>piles.y-r.y-r.h)),...refinement?{opponentToPileRatio:opponentCard.w/stock.w,pileFaceGap:stock.x-discard.x-discard.w,discardLeft:discard.x<stock.x}:{}})),minimumLocalTarget:Math.min(...layout.cases.flatMap(x=>x.local.flatMap(r=>[r.w,r.h]))),minimumPileTarget:Math.min(...layout.cases.flatMap(x=>x.pileCards.flatMap(r=>[r.w,r.h]))),errors:layout.errors},null,2));
+write(output+'provenance.json',JSON.stringify({baseCommit:shape?'e77b771794dacb24771593b19da6a77c18effafc':refinement?'185ee06493ebc4aa32ed456f266075a4ed6595c0':'5edc96f904dabf71c4192ccf094930131dda1da5',branch:'codex/golf-interaction-polish',capturedAt:owner.at,sourceHashes:Object.fromEntries(['src/components/golf/GolfTable.tsx','src/components/golf/golf.css',...refinement?['src/components/canonicalShell/CanonicalCardCountBadge.tsx','src/components/canonicalShell/canonicalCardCountBadge.css']:[]].map(p=>[p,sha(p)])),images:Object.fromEntries(images.map(([,p])=>[p,sha(output+p)])),ownerCapture:'Local production build; authenticated read-only view of the existing paused owner session. No gameplay action submitted.',fourPlayerCapture:'Isolated local authoritative fixture in the canonical shell.',libraryIds:null,libraryDelivery:'Direct library.create_library_file is unavailable in this session; local PNGs supplied instead.'},null,2));
+if(shape)write(output+'card-shapes.json',JSON.stringify({passed:true,cases:layout.cases.map(c=>({players:c.n,viewer:c.viewer,width:c.width,height:c.height,cards:c.shapes.length,maximumCardRadiusFraction:Math.max(...c.shapes.map(s=>s.radiusFraction)),clipPaths:[...new Set(c.shapes.map(s=>s.clipPath))],badgeRadius:c.badgeRadius}))},null,2));
+console.log('Recorded final centered-layout evidence and source/image hashes.');

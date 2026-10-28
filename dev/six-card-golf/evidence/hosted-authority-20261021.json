@@ -1,0 +1,191 @@
+{
+  "migration": [
+    {
+      "installed": {
+        "job": {
+          "jobid": 110,
+          "active": true,
+          "command": "SET statement_timeout='3s'; SELECT private.golf_recover()",
+          "schedule": "1 second"
+        },
+        "grants": 0,
+        "matches": 0,
+        "release": {
+          "enabled": false,
+          "singleton": true,
+          "admission_enabled": false
+        },
+        "migrations": [
+          {
+            "name": "six_card_golf_v1",
+            "version": "20261021230433"
+          }
+        ],
+        "publication": true
+      }
+    }
+  ],
+  "candidate": {
+    "passed": 22,
+    "botFinishes": 4
+  },
+  "installed": {
+    "passed": 22,
+    "botFinishes": 4
+  },
+  "zeroClientSetup": [
+    {
+      "game_id": "c119cc62-5263-4550-88d4-381548466310",
+      "dealer_game_id": "c46f6295-8f62-4413-9285-b06ce494aa3f",
+      "round_id": "1cc8b274-9bfd-4c5a-a5ee-4e048f05b730",
+      "revision": 186,
+      "bot_player_id": "843f3e2a-317c-496f-94f2-86c11e43abd2",
+      "committed_after": "2026-10-21 23:13:30.870361+00"
+    }
+  ],
+  "actualFinancialAndCron": [
+    {
+      "evidence": {
+        "cron": [
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:30.214834+00:00",
+            "start_time": "2026-10-21T23:13:30.203477+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:31.229029+00:00",
+            "start_time": "2026-10-21T23:13:31.218312+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:32.366051+00:00",
+            "start_time": "2026-10-21T23:13:32.234129+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:33.278089+00:00",
+            "start_time": "2026-10-21T23:13:33.255977+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:34.288724+00:00",
+            "start_time": "2026-10-21T23:13:34.270541+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:35.303319+00:00",
+            "start_time": "2026-10-21T23:13:35.285923+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:36.3246+00:00",
+            "start_time": "2026-10-21T23:13:36.302334+00:00"
+          },
+          {
+            "status": "succeeded",
+            "end_time": "2026-10-21T23:13:37.328684+00:00",
+            "start_time": "2026-10-21T23:13:37.319332+00:00"
+          }
+        ],
+        "race": {
+          "batches": [
+            {
+              "id": "3b814888-6de1-4f76-b805-bb980860ae7b",
+              "transfers": [
+                {
+                  "id": "f3b006a6-ee17-4495-ab50-e16a0df8a42e:1:1",
+                  "to": {
+                    "kind": "player",
+                    "playerId": "cb2b4c13-d218-4edf-b5e2-16d401c1fd53"
+                  },
+                  "from": {
+                    "kind": "player",
+                    "playerId": "425d3e70-7f60-47e2-91ed-7a7b34101680"
+                  },
+                  "amount": 5
+                }
+              ],
+              "unmatched": {}
+            }
+          ],
+          "results": 1,
+          "finished": true,
+          "settlement": {
+            "425d3e70-7f60-47e2-91ed-7a7b34101680": -5,
+            "cb2b4c13-d218-4edf-b5e2-16d401c1fd53": 5
+          }
+        },
+        "zero": {
+          "holes": 9,
+          "status": "session_ended",
+          "batches": [
+            {
+              "id": "29c923b8-5c65-4ccd-b4ce-353e9e9377c6",
+              "transfers": [
+                {
+                  "id": "c119cc62-5263-4550-88d4-381548466310:1:1",
+                  "to": {
+                    "kind": "player",
+                    "playerId": "843f3e2a-317c-496f-94f2-86c11e43abd2"
+                  },
+                  "from": {
+                    "kind": "player",
+                    "playerId": "13a4043b-bbb1-4db7-9f7b-a2c3550a21a2"
+                  },
+                  "amount": 5
+                }
+              ],
+              "unmatched": {}
+            }
+          ],
+          "results": 1,
+          "balances": {
+            "13a4043b-bbb1-4db7-9f7b-a2c3550a21a2": 95,
+            "843f3e2a-317c-496f-94f2-86c11e43abd2": 5
+          },
+          "finished": true,
+          "snapshots": 2,
+          "settlement": {
+            "13a4043b-bbb1-4db7-9f7b-a2c3550a21a2": -5,
+            "843f3e2a-317c-496f-94f2-86c11e43abd2": 5
+          }
+        },
+        "grants": 0
+      }
+    }
+  ],
+  "independentConnectionObservation": [
+    {
+      "observation": {
+        "waiters": [
+          {
+            "pid": 2420965,
+            "wait": "transactionid",
+            "blockers": [
+              2425739
+            ],
+            "query_prefix": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_dealer_game_id\", \"p_rou"
+          },
+          {
+            "pid": 2420964,
+            "wait": "tuple",
+            "blockers": [
+              2420965
+            ],
+            "query_prefix": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_dealer_game_id\", \"p_rou"
+          }
+        ],
+        "holder_pid": 2425739,
+        "started_at": "2026-10-21T23:17:44.846584+00:00",
+        "observed_at": "2026-10-21T23:17:50.855863+00:00",
+        "released_at": "2026-10-21T23:17:53.859622+00:00"
+      }
+    }
+  ],
+  "earlierCoordination": {
+    "fullMatchFinalRaceNotSent": true,
+    "firstHeldReplayFailed": true
+  },
+  "qualificationGrantsRevoked": true
+}

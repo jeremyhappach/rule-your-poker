@@ -1,7 +1,12 @@
+import {GOLF_HOLE_COUNTS,golfHoleCount,type GolfHoleCount} from '@/lib/golf/matchLength';
+import {usePtownWordsAccess} from '@/hooks/usePtownWordsAccess';
+import {useCanastaAccess} from '@/hooks/useCanastaAccess';
+import {useGolfAccess} from '@/hooks/useGolfAccess';
 import {useRacePokerAccess} from '@/hooks/useRacePokerAccess';
 import {useBattle31Access} from '@/hooks/useBattle31Access';
 import {DealerGamePicker} from '@/components/catalog/DealerGamePicker';
 import {GAME_CATALOG,findGame,eligibility,isDiscovered} from '@/lib/gameCatalog';
+import {useQuintzeeAccess} from '@/hooks/useQuintzeeAccess';
 import {useBoxdropAccess} from '@/hooks/useBoxdropAccess';
 import {useTripFlipAccess} from '@/hooks/useTripFlipAccess';
 import {useTakeTwoAccess} from '@/hooks/useTakeTwoAccess';
@@ -203,13 +208,17 @@ const DealerGameSetupInner = ({
   const run21Allowed = useRun21Access(gameId);
   const triTowersAllowed = useTriTowersTestAccess(gameId);
   const elevenAllowed = useElevenUpAccess(gameId);
+  const canastaAllowed = useCanastaAccess(gameId);
+  const golfAllowed = useGolfAccess(gameId);
   const racePokerAllowed = useRacePokerAccess(gameId);
   const battle31Allowed = useBattle31Access(gameId);
+  const quintzeeAllowed = useQuintzeeAccess(gameId);
+  const wordsAllowed = usePtownWordsAccess(gameId);
   const boxdropAllowed = useBoxdropAccess(gameId);
   const tripFlipAllowed = useTripFlipAccess(gameId);
   const takeTwoAllowed = useTakeTwoAccess(gameId);
   const royalAllowed = useRoyalFlashAccess(gameId);
-  const catalogAccess = {'race-poker':racePokerAllowed,'battle-31':battle31Allowed,'run21':run21Allowed,'tri-towers':triTowersAllowed,'eleven-up':elevenAllowed,'boxdrop':boxdropAllowed,'trip-flip':tripFlipAllowed,'take-two':takeTwoAllowed,'royal-flash':royalAllowed};
+  const catalogAccess = {'canasta':canastaAllowed,'six-card-golf':golfAllowed,'race-poker':racePokerAllowed,'battle-31':battle31Allowed,'run21':run21Allowed,'tri-towers':triTowersAllowed,'eleven-up':elevenAllowed,'quintzee':quintzeeAllowed,'ptown-words':wordsAllowed,'boxdrop':boxdropAllowed,'trip-flip':tripFlipAllowed,'take-two':takeTwoAllowed,'royal-flash':royalAllowed};
   const catalogRoster = {players:activePlayerCount,humans:activeHumanCount,realMoney};
   const selectionReason = (id:string) => { const game=findGame(id); return game?eligibility(game,catalogRoster,catalogAccess):'Game unavailable'; };
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
@@ -288,6 +297,7 @@ const DealerGameSetupInner = ({
   }, []);
   
   // Config state - use strings for free text input with validation on save
+  const [golfHoles,setGolfHoles] = useState<GolfHoleCount>(9);
   const [anteAmount, setAnteAmount] = useState("2");
   const [rolloverAmount, setRolloverAmount] = useState("1");
   const [legValue, setLegValue] = useState("1");
@@ -857,7 +867,7 @@ const DealerGameSetupInner = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
+    return gameType === 'canasta' || isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'quintzee' || gameType === 'ptown-words' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -877,7 +887,9 @@ const DealerGameSetupInner = ({
       setSelectedGameType(gameType); setSelectionStep('config'); return;
     }
     if (gameType === 'run21' && !run21Allowed) return;
+    if (gameType === 'canasta' && (!canastaAllowed||activeHumanCount<1)) return;
     if (gameType === 'battle-31' && (!battle31Allowed||activeHumanCount<1)) return;
+    if (gameType === 'ptown-words' && !wordsAllowed) return;
     if (gameType === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1)) return;
     if (gameType === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1)) return;
     if (gameType === 'take-two' && (!takeTwoAllowed||activeHumanCount<1)) return;
@@ -932,11 +944,12 @@ const DealerGameSetupInner = ({
       // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
-        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus')
+        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus, golf_holes')
         .eq('game_type', gameType)
         .single();
       if (generation !== selectionGeneration.current) return;
       
+      if (gameType === 'six-card-golf') setGolfHoles(golfHoleCount(gameDefaults?.golf_holes));
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
         
@@ -986,6 +999,9 @@ const DealerGameSetupInner = ({
     const gameTypeToSubmit = overrideGameType || selectedGameType;
     if (selectionReason(gameTypeToSubmit)) return;
     if (gameTypeToSubmit === 'battle-31' && (!battle31Allowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Battle 31 requires 2 players including a human'); return; }
+    if (gameTypeToSubmit === 'canasta' && (!canastaAllowed||activeHumanCount<1||activePlayerCount!==2)) { toast.error('Canasta requires exactly 2 players including a human'); return; }
+    if (gameTypeToSubmit === 'quintzee' && (!quintzeeAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4)) { toast.error('Quintzee requires 2–4 players including a human, in fake money'); return; }
+    if (gameTypeToSubmit === 'ptown-words' && (!wordsAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4||realMoney)) { toast.error('Ptown Words requires 2–4 players including a human; fake money only'); return; }
     if (gameTypeToSubmit === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Boxdrop requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Trip Flip requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'take-two' && (!takeTwoAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>7)) { toast.error('Take 2 requires 2–7 players including a human'); return; }
@@ -997,7 +1013,7 @@ const DealerGameSetupInner = ({
       return;
     }
     const simpleTypes = new Set<DealerGameType>([
-      'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'battle-31', 'boxdrop', 'race-poker',
+      'canasta', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'battle-31', 'quintzee', 'ptown-words', 'boxdrop', 'six-card-golf','race-poker',
     ]);
     if (!simpleTypes.has(gameTypeToSubmit as DealerGameType)) {
       toast.error('Select a supported game');
@@ -1006,6 +1022,7 @@ const DealerGameSetupInner = ({
 
     const gameType = gameTypeToSubmit as DealerGameType;
     const dealerGameConfig: Record<string, unknown> = { ante_amount: parsedAnte };
+    if (gameType === 'six-card-golf') dealerGameConfig.holes = golfHoles;
     if (gameType === 'cribbage') {
       const selectedMode = CRIBBAGE_GAME_MODES.find((mode) => mode.id === cribbageGameMode)
         ?? CRIBBAGE_GAME_MODES[0];
@@ -1232,8 +1249,8 @@ const DealerGameSetupInner = ({
       const isRun21 = selectedGameType === 'run21';
       const isTriTowers = selectedGameType === TRI_TOWERS.id;
       
-      const gameDisplayName = selectedGameType==='race-poker'?'Race Poker':selectedGameType==='battle-31'?'Battle 31':selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
-      const gameRulesText = selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
+      const gameDisplayName = selectedGameType==='canasta'?'Canasta':selectedGameType==='six-card-golf'?'Six-Card Golf':selectedGameType==='race-poker'?'Race Poker':selectedGameType==='battle-31'?'Battle 31':selectedGameType==='quintzee'?'Quintzee':selectedGameType==='ptown-words'?'Ptown Words':selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
+      const gameRulesText = selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake':selectedGameType==='six-card-golf'?golfHoles+' holes · Lowest total wins · One match stake':selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='quintzee'?'Five dice · Two rounds and earned bonus · Fake money only':selectedGameType==='ptown-words'?'ENABLE2K · Three-minute turns · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
@@ -1258,7 +1275,7 @@ const DealerGameSetupInner = ({
               <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='canasta' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
                   {activeHarnessMap[selectedGameType]?.active && (
                     <p className="mt-1 text-sm font-bold text-red-500">
                       Harness: {activeHarnessMap[selectedGameType].label}
@@ -1280,7 +1297,7 @@ const DealerGameSetupInner = ({
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
 
                 <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='canasta' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
                   <Input
                     id="ante-simple"
                     type="text"
@@ -1291,6 +1308,7 @@ const DealerGameSetupInner = ({
                   />
                 </div>
                 
+                {selectedGameType==='six-card-golf'&&<div className="space-y-1"><Label htmlFor="golf-match-length" className="text-amber-100 text-sm">Match length</Label><select id="golf-match-length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))} className="flex h-10 w-full rounded-md border border-poker-gold/50 bg-amber-950 px-3 py-2 text-white">{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select></div>}
                 {/* Cribbage-specific settings - preset game modes */}
                 {isCribbage && (
                   <>

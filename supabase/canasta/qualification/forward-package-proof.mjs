@@ -1,0 +1,12 @@
+import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {baseline} from './bootstrap.mjs';
+const docker=process.env.LOCALAPPDATA+'/Programs/DockerDesktop/resources/bin/docker.exe',container='canasta-integration-proof-20261021';
+assert.equal(execFileSync(docker,['inspect',container,'--format','{{.HostConfig.NetworkMode}}'],{encoding:'utf8',timeout:15000}).trim(),'none');
+const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8');
+const setup=['authority.candidate.sql','admission.candidate.sql','lifecycle.candidate.sql','registration.candidate.sql','recovery.candidate.sql'].map(read).join('\n');
+const forward=read('followup-release/forward.sql').replace(/^BEGIN;\r?$/m,'').replace(/^COMMIT;\r?$/m,'');
+const proof=['proof.sql','consent.proof.sql','admission.proof.sql','concurrency.fixture.sql','terminal-control.proof.sql','beginner.proof.sql','qualification/pacing-admission.proof.sql'].map(read).join('\n');
+const sql='BEGIN; GRANT INSERT,UPDATE ON cron.job TO postgres; GRANT USAGE ON SEQUENCE cron.jobid_seq TO postgres; SET LOCAL ROLE postgres;\n'+baseline+'\n'+setup+'\n'+forward+'\n'+proof+'\nROLLBACK;';
+process.stdout.write(execFileSync(docker,['exec','-i',container,'psql','-X','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1','-q'],{input:sql,encoding:'utf8',maxBuffer:1024*1024}));

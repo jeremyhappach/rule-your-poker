@@ -1,0 +1,92 @@
+{
+  "migration": "20261027194322",
+  "cases": [
+    {
+      "name": "configuration",
+      "passed": true
+    },
+    {
+      "name": "human-3",
+      "passed": true
+    },
+    {
+      "name": "financial-3-0",
+      "passed": true
+    },
+    {
+      "name": "continuation-3",
+      "passed": true
+    },
+    {
+      "name": "financial-3-1",
+      "passed": true
+    },
+    {
+      "name": "human-6",
+      "passed": true
+    },
+    {
+      "name": "financial-6-0",
+      "passed": true
+    },
+    {
+      "name": "continuation-6",
+      "passed": true
+    },
+    {
+      "name": "financial-6-1",
+      "passed": true
+    },
+    {
+      "name": "human-9",
+      "passed": true
+    },
+    {
+      "name": "financial-9-0",
+      "passed": true
+    },
+    {
+      "name": "continuation-9",
+      "passed": true
+    },
+    {
+      "name": "financial-9-1",
+      "passed": true
+    },
+    {
+      "name": "human-18",
+      "passed": true
+    },
+    {
+      "name": "financial-18-0",
+      "passed": true
+    },
+    {
+      "name": "continuation-18",
+      "passed": true
+    },
+    {
+      "name": "financial-18-1",
+      "passed": true
+    }
+  ],
+  "actualInstalledAuthority": true,
+  "temporaryDefaultsAdapter": false,
+  "canonicalFinancialCases": 72,
+  "fullTwoHumanMatches": 4,
+  "continuationAndLateReplayCases": 4,
+  "configurationAllLengthsAndLegacy": true,
+  "fixturesRolledBack": true,
+  "originalCandidate": "928887f1a11d27e4c80003170d85b54841ad25bb",
+  "unchangedFrontendValidation": {
+    "focusedAssertions": 152,
+    "browserCases": 15,
+    "typecheck": true,
+    "productionBuild": true
+  },
+  "retainedQualification": {
+    "localFullMatches": 24,
+    "localFinancialCases": 72,
+    "independentConnectionEvidence": "dev/six-card-golf/evidence/hosted-independent-connections.json"
+  }
+}

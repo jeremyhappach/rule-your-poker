@@ -1,0 +1,20 @@
+{
+  "baseCommit": "5edc96f904dabf71c4192ccf094930131dda1da5",
+  "branch": "codex/golf-interaction-polish",
+  "capturedAt": "2026-10-22T01:02:26.132Z",
+  "sourceHashes": {
+    "src/components/golf/GolfTable.tsx": "37846b68dc10e5e9df01422fc5981e9b6b12341a9664de06a69956af9a698ddf",
+    "src/components/golf/golf.css": "6787931ca1984fa8c8225869c45833d02585eacb44eb5890e1cfb825bf1714ed"
+  },
+  "images": {
+    "portrait.png": "65ed380233b0bf0133bfea86d21dfa39dc9e664830f95b210871af9f4b52f8b3",
+    "landscape.png": "b7ab143f3cf19b8018e1e93aa89b669f89097c36b7c68cd3c5f50ef99822cd41",
+    "four-player-portrait.png": "987d733c0e394bc2e188152b462480ff6927e3dc5a5364667e080d34e8342758",
+    "four-player-landscape.png": "aa1fe3e374b6f3c250730e4b596d90d6e72b5681b656e17995226da01ba5ae88",
+    "four-player-short-landscape.png": "26a70f5fd32bf49289012bbc04205082136111f218f3268d58c1118ff7bc8129"
+  },
+  "ownerCapture": "Local production build; authenticated read-only view of the existing paused owner session. No gameplay action submitted.",
+  "fourPlayerCapture": "Isolated local authoritative fixture in the canonical shell.",
+  "libraryIds": null,
+  "libraryDelivery": "Direct library.create_library_file is unavailable in this session; local PNGs supplied instead."
+}

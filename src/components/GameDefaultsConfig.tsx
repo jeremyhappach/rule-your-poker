@@ -1,3 +1,7 @@
+import {GOLF_HOLE_COUNTS,isGolfHoleCount} from '@/lib/golf/matchLength';
+import {isQuintzeeRoundSeconds,QUINTZEE_ROUND_SECONDS} from '@/lib/quintzee/defaults';
+import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConnected';
+import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
 import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
 import {CategoryNavigation} from '@/components/catalog/CategoryNavigation';
@@ -21,6 +25,12 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 interface GameDefaults {
+  quintzee_theme?: 'classic'|'modern';
+  quintzee_round_seconds?: number;
+  canasta_mode?:CanastaMode;
+  golf_holes?: number;
+  golf_scoring_delay_ms?: number;
+  golf_results_duration_ms?: number;
   id: string;
   game_type: string;
   decision_timer_seconds: number;
@@ -170,10 +180,13 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     for (const defaultConfig of defaults) {
       const gameType = defaultConfig.game_type;
+      if(gameType==='quintzee'&&!isQuintzeeRoundSeconds(Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)))validationErrors.push('Quintzee: Round duration must be a whole number from 60-600 seconds');
 
       // Decision timer: 5-60 seconds
       const timer = Number(defaultConfig.decision_timer_seconds);
-      if (isNaN(timer) || timer < 5 || timer > 60) {
+      if (gameType === 'canasta') {
+        try { canastaConfig({canasta_mode:defaultConfig.canasta_mode??'beginner',decision_timer_seconds:timer}); } catch { validationErrors.push('Canasta: choose Beginner/Expert and a whole-number Expert timer from 30–300 seconds'); }
+      } else if (isNaN(timer) || timer < 5 || timer > 60) {
         validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
       }
 
@@ -205,6 +218,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         validationErrors.push(`${gameType}: Bot delay must be 0.1-10 seconds`);
       }
 
+      if(gameType==='six-card-golf'&&!isGolfHoleCount(Number(defaultConfig.golf_holes??9)))validationErrors.push('Match length: choose 3, 6, 9 or 18 holes');
+      if(gameType==='six-card-golf')for(const [label,value,min,max] of [['Scoring Delay',defaultConfig.golf_scoring_delay_ms??1200,200,5000],['Hole Results Duration',defaultConfig.golf_results_duration_ms??5000,1000,30000]] as const){if(!Number.isInteger(Number(value))||Number(value)<min||Number(value)>max)validationErrors.push(label+': enter whole milliseconds from '+min+' to '+max);}
       // Game-specific validations
       if (gameType === 'holm') {
         const chucky2nd = Number(defaultConfig.chucky_second_to_last_delay_seconds);
@@ -327,7 +342,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         const { error } = await supabase
           .from('game_defaults')
           .update({
+            ...(defaultConfig.game_type==='six-card-golf'?{golf_holes:Number(defaultConfig.golf_holes??9),golf_scoring_delay_ms:Number(defaultConfig.golf_scoring_delay_ms??1200),golf_results_duration_ms:Number(defaultConfig.golf_results_duration_ms??5000)}:{}),
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
+            ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic',quintzee_round_seconds:Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)}:{}),
+            ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
             holm_after_tabled_delay_ms: defaultConfig.holm_after_tabled_delay_ms,
@@ -1021,12 +1039,30 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   };
 
   const renderSettingsForGameType = () => {
+      if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label className="block" htmlFor="quintzee-theme">Theme</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select>
+        <Label className="block" htmlFor="quintzee-duration">Round duration (seconds)</Label><Input id="quintzee-duration" type="number" inputMode="numeric" min={QUINTZEE_ROUND_SECONDS.min} max={QUINTZEE_ROUND_SECONDS.max} step={1} value={d.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial} onChange={e=>updateDefault('quintzee','quintzee_round_seconds',e.target.value)}/>
+        <p className="text-xs">60–600 seconds per round. Applies to new Arcade runs and multiplayer matches in both themes. Active games keep their original duration. Scoring remains ×100–×300 with an 80,000-point bonus-round threshold.</p>
+        <p className="text-xs">Arcade scores are compared at the same round duration. Previous leaderboard versions remain available.</p></div>:null;}
+
     const inner = (() => {
       const entry=findGame(selectedGameType);
+      if(selectedGameType==='battle-31') {const d=getDefaultByType('battle-31');return d?<details className="catalog-settings-group" open><summary>Timing</summary><div className="space-y-2">
+        <Label htmlFor="battle31-turn-timer">Turn duration (seconds)</Label><Input id="battle31-turn-timer" type="number" min={5} max={60} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('battle-31','decision_timer_seconds',e.target.value)}/>
+        <p className="text-xs text-muted-foreground">Default 30 seconds. New matches freeze this setting; active matches keep their timer.</p></div></details>:null;}
+      if(selectedGameType==='canasta') {const d=getDefaultByType('canasta');return d?<div className="space-y-2">
+        <Label htmlFor="canasta-mode">Match pacing</Label><select id="canasta-mode" value={d.canasta_mode??'beginner'} onChange={e=>updateDefault('canasta','canasta_mode',e.target.value)}><option value="beginner">Beginner · 180 seconds</option><option value="expert">Expert · configured timer</option></select>
+        <Label htmlFor="canasta-expert-timer">Expert turn timer (seconds)</Label><Input id="canasta-expert-timer" type="number" min={30} max={300} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('canasta','decision_timer_seconds',e.target.value)}/>
+        <p className="text-xs">Frozen for each new match. Each player can independently toggle Beginner help at the table. Rules and stake are identical.</p></div>:null;}
+
       if(entry?.defaultsEditor!=='legacy')return null;
       const editors:Record<string,()=>React.ReactNode>={'holm':renderHolmSettings,'3-5-7':render357Settings,'cribbage':renderCribbageSettings,'gin-rummy':renderGinRummySettings,'horses':renderHorsesSettings,'ship-captain-crew':renderSCCSettings,'yahtzee':renderYahtzeeSettings};
       if(editors[selectedGameType])return editors[selectedGameType]();
       switch(selectedGameType){
+        case 'six-card-golf': {const d=getDefaultByType('six-card-golf');return d?<details className="catalog-settings-group" open><summary>Match and timing</summary><div className="space-y-3">
+          <Label htmlFor="golf-holes">Match length</Label><select id="golf-holes" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={d.golf_holes??9} onChange={e=>updateDefault('six-card-golf','golf_holes',Number(e.target.value))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>
+          <Label htmlFor="golf-scoring-delay">Scoring Delay (ms)</Label><Input id="golf-scoring-delay" type="number" min={200} max={5000} step={100} value={d.golf_scoring_delay_ms??1200} onChange={e=>updateDefault('six-card-golf','golf_scoring_delay_ms',e.target.value)}/>
+          <Label htmlFor="golf-results-duration">Hole Results Duration (ms)</Label><Input id="golf-results-duration" type="number" min={1000} max={30000} step={100} value={d.golf_results_duration_ms??5000} onChange={e=>updateDefault('six-card-golf','golf_results_duration_ms',e.target.value)}/>
+          <p className="text-xs text-muted-foreground">Applies to new matches. Scoring Delay controls each card, cancelled pair and face-down reveal. Results appears after every hand is scored.</p></div></details>:null;}
         case 'run21': {
           const run21Defaults = defaults.find(d => d.game_type === 'run21');
           return run21Defaults ? <details className="catalog-settings-group"><summary>Timing</summary><div className="space-y-2">
@@ -1072,10 +1108,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <label className="grid gap-1 text-sm font-medium">Game<select className="catalog-select" value={selectedGameType} onChange={e=>setSelectedGameType(e.target.value)}>{GAME_CATALOG.map(game=>game.category===selectedGameInfo.category&&<option key={game.id} value={game.defaultsKey}>{game.name}</option>)}</select></label>
             {/* Settings for selected game */}
             <div className="catalog-scroll space-y-3">
-              {selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
-              {renderSettingsForGameType()}
+              {selectedGameInfo.modes.includes('multiplayer') && selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
+              {selectedGameType==='mega-card-golf'?<MegaDefaultsConnected/>:renderSettingsForGameType()}
               {open&&(farkleVisited||selectedGameType==='farkle')&&<div hidden={selectedGameType!=='farkle'}><Suspense fallback={<p role="status">Loading Farkle defaults…</p>}><FarkleDefaultsEditor onSaved={value=>setDefaults(rows=>rows.map(row=>row.game_type==='farkle'?{...row,...value}:row))}/></Suspense></div>}
-              <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">
+              {selectedGameInfo.modes.includes('multiplayer') && <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <FlaskConical className="h-4 w-4" />
                 Session Dealer Draw Smoke Fixture
@@ -1117,7 +1153,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               )}
             </div>
 
-</details>
+</details>}
             </div>
           </div>
         )}
@@ -1126,7 +1162,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {selectedGameType !== 'farkle' && <Button onClick={validateAndSave} disabled={saving || loading}>
+          {!['farkle','mega-card-golf'].includes(selectedGameType) && <Button onClick={validateAndSave} disabled={saving || loading}>
             {saving ? 'Saving...' : 'Save Defaults'}
           </Button>}
         </div>

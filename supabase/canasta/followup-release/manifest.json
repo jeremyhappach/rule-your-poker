@@ -1,0 +1,8 @@
+{
+  "rules": "canasta-classic-two/1",
+  "baseCanasta": "20261021235336",
+  "preservedGolf": "20261022171731",
+  "migrationSha256": "2501971a4d360e0647dee37d457168a1db4f5e9d6bf7f74e674fedd5bba74a55",
+  "workerSha256": "099f496dd08dbf4f3d360139088bff1149fa3e1c67e568b8ac5b034cc047275f",
+  "admission": "closed until hosted qualification; eventual play money only"
+}

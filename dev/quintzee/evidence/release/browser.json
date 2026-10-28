@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-26T01:36:24.209Z",
+  "cases": [
+    "classic: real solo adapter, theme, 1500ms rumble, held die stationary, reconnect, cancel/confirm abandonment, leaderboard route",
+    "modern: real solo adapter, theme, 1500ms rumble, held die stationary, reconnect, cancel/confirm abandonment, leaderboard route",
+    "multiplayer pause/resume, zero-client timeout recovery, terminal callback and ended-phase artifact clearance in local host",
+    "real multiplayer adapter: canonical shell, authorized score, inactive controls disabled, realtime delivery, reload continuity",
+    "final no-match roll retains rumble; solo expiry creates actual completion and reads leaderboard"
+  ],
+  "errors": [],
+  "limitations": [
+    "synthetic local authentication bridge",
+    "full main-route reload of ended session and deployed authentication remain unverified"
+  ]
+}

@@ -22,10 +22,13 @@ export type CanonicalFeltGameKind =
   | "three-five-seven"
   | "horses"
   | "ship-captain-crew"
+  | "six-card-golf"
+  | "battle-31"
   | "farkle"
   | "yahtzee"
   | "gin-rummy"
   | "run21"
+  | "canasta"
   | "cribbage";
 
 export interface CanonicalFeltSurfaceProps {
@@ -78,11 +81,14 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "three-five-seven": "3-5-7",
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
+  "six-card-golf": "GOLF",
+  "battle-31": "BATTLE 31",
   "farkle": "FARKLE",
   "yahtzee": "YAHTZEE",
   "gin-rummy": "GIN RUMMY",
   "cribbage": "CRIBBAGE",
   "run21": "RUN 21",
+  "canasta": "CANASTA",
 };
 
 // Dice-family games use a compact single-line plate (legacy parity).
@@ -314,7 +320,7 @@ export function CanonicalFeltSurface({
           className="absolute top-3 inset-x-0 px-4 z-20 flex flex-col items-center pointer-events-none"
           style={{ containerType: 'inline-size' } as React.CSSProperties}
         >
-          {isDicePlate || gameKind === 'run21' ? (
+          {isDicePlate || gameKind === 'run21' || gameKind === 'six-card-golf' || gameKind === 'battle-31' ? (
             <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
@@ -331,7 +337,7 @@ export function CanonicalFeltSurface({
                 ` • <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
               </span>
             </>
-          ) : gameKind === "gin-rummy" ? (
+          ) : gameKind === "gin-rummy" || gameKind === "canasta" ? (
             <>
               <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
                 ${anteAmount} {GAME_NAME_LABEL[gameKind]}

@@ -1,3 +1,8 @@
+import {useDiceRolloverBarrier} from '@/hooks/useDiceRolloverBarrier';
+import {diceTransferReady} from '@/lib/dice/transferAdmission';
+import { DICE_OBSERVER_PAINT } from '@/lib/dice/observerPaintBounds';
+import { useAbsentDicePresenter } from '@/hooks/useAbsentDicePresenter';
+import {viewerLegPlacement,seatLegPlacement} from '@/lib/canonicalShell/canonicalLegPlacement';
 import { withH1r3H2r1Diagnostics } from "@/lib/threeFiveSeven/wartime/optionalSeamDiagnostics";
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { captureDecisionInput, type DecisionInput } from "@/lib/decisionProvenance";
@@ -252,6 +257,7 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { SccPotPosition } from "./SccPotPosition";
 import { DiceGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { DiceAnchoredSlot } from "./DiceAnchoredSlot";
 import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
@@ -2920,6 +2926,7 @@ export const MobileGameTable = ({
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const normalSweepOverlayCompletedRef = useRef<string | null>(null);
   const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
   const potToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate pot-to-player completion
   // The financial projection owns the transition from the visible leg sweep
@@ -4778,7 +4785,18 @@ export const MobileGameTable = ({
 
   // Capture the exact stage/hand at admission: the ledger settles later, after
   // realtime may already have replaced the mutable result props.
+  const diceRollover = useDiceRolloverBarrier({
+    owner: horsesController.myPlayer?.id, dealer: horsesDealerGameId, round: horsesController.currentRoundId,
+    key: horsesController.noQualifyPresentationKey,
+    pending: horsesController.noQualifyPresentationPending,
+    show: horsesController.showNoQualifyAnimation,
+    complete: horsesController.handleNoQualifyAnimationComplete,
+    resultObserved: !!horsesController.myState?.isComplete,
+  });
   const canAdmitChipTransferPresentation = useCallback((batch: ChipPresentationBatch) => {
+    if ((gameType === 'horses' || gameType === 'ship-captain-crew') && batch.reason === 'ante') {
+      return diceRollover.admit(batch);
+    }
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
     );
@@ -4849,6 +4867,10 @@ export const MobileGameTable = ({
       // immutable, zero-flight `sweep` batch. It must settle only after the
       // visible leg chips have reached the winner and before pot flight.
       if (batch.reason === 'sweep' && batch.transfers.length === 0) {
+        if (threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+          && batch.dealer_game_id === threeFiveSevenTerminalDescriptor.dealerGameId) {
+          return threeFiveSevenWinPhase === 'pot-to-player';
+        }
         return threeFiveSevenWinPhase === 'sweep-credit'
           && isTerminal357SweepCreditBatch(
             normal357SweepCreditCheckpoint,
@@ -4866,7 +4888,7 @@ export const MobileGameTable = ({
       (gameType === 'horses' || gameType === 'ship-captain-crew') &&
       movesPotToPlayer
     ) {
-      return horsesWinPotTriggerId !== null;
+      return diceTransferReady(horsesWinPotTriggerId,horsesDealerGameId,horsesController.currentRoundId,batch.dealer_game_id,horsesController.terminalResultObserved,horsesController.noQualifyPresentationPending || horsesController.resultPresentationPending,batch.source_round_id);
     }
 
     return true;
@@ -4887,8 +4909,15 @@ export const MobileGameTable = ({
     threeFiveSevenDelayedShowdownPresentationKey,
     normal357SweepCreditCheckpoint,
     normal357SweepDescriptor,
+    threeFiveSevenTerminalDescriptor,
     threeFiveSevenWinPhase,
     horsesWinPotTriggerId,
+    horsesDealerGameId,
+    horsesController.noQualifyPresentationPending,
+    horsesController.resultPresentationPending,
+    horsesController.currentRoundId,
+    horsesController.terminalResultObserved,
+    diceRollover.admit,
   ]);
   const onChipTransferPresentationBatchStarted = useCallback((batch: ChipPresentationBatch) => {
     onThreeFiveSevenFinancialBatchStarted(batch);
@@ -10337,7 +10366,7 @@ export const MobileGameTable = ({
       });
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
-      setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+      setLegsToPlayerTriggerId(`legs-to-player-${threeFiveSevenWinTriggerId}`);
     }, 1800); // Tighter timing - start legs-to-player just after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
@@ -10595,7 +10624,9 @@ export const MobileGameTable = ({
       terminalResultIdentity: descriptor.terminalResultIdentity,
       terminalGenerationId: descriptor.terminalGenerationId,
       winnerId: descriptor.winnerId,
-      completionGate: createTerminal357NormalSweepGate(descriptor.terminalGenerationId),
+      completionGate: normalSweepOverlayCompletedRef.current === descriptor.terminalGenerationId
+        ? advanceTerminal357NormalSweepGate(createTerminal357NormalSweepGate(descriptor.terminalGenerationId), descriptor.terminalGenerationId, 'overlay-complete')
+        : createTerminal357NormalSweepGate(descriptor.terminalGenerationId),
       transferCursor: null,
       creditSource: null,
       beginPotFlight: () => {
@@ -10647,7 +10678,7 @@ export const MobileGameTable = ({
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
-    setShowSweepTheLegs357(true);
+    setShowSweepTheLegs357(normalSweepOverlayCompletedRef.current !== descriptor.terminalGenerationId);
   }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation, retireThreeFiveSevenLegStack, threeFiveSevenDealerGameScope, normal357TerminalDescriptor]);
 
   // A reconciled cursor is every bit as authoritative as a locally animated
@@ -11187,8 +11218,15 @@ export const MobileGameTable = ({
   // Sourced from the same canonical anchor table the seat cluster reads
   // from, so observer vs active projection cannot drift between the
   // chip stack and the dice origin.
+  useAbsentDicePresenter(
+    horsesController.completedTurnHold?.playerId === horsesController.myPlayer?.id ? horsesController.resultPresentationKey : null,
+    !isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && !!currentPlayer && !isDealerConfigPhase && diceGameplayUiActive,
+    horsesController.isRolling,
+    horsesController.onResultDiceLanded,
+  );
+
   const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
-    const turnPlayerId = horsesController.currentTurnPlayerId;
+    const turnPlayerId = horsesController.completedTurnHold?.playerId ?? horsesController.currentTurnPlayerId;
     if (!turnPlayerId) return undefined;
 
     const turnPlayer = players.find(p => p.id === turnPlayerId);
@@ -11210,7 +11248,7 @@ export const MobileGameTable = ({
       5: { x: 80, y: 60 },
     };
     return slotPositions[slot] ?? { x: 0, y: 60 };
-  }, [horsesController.currentTurnPlayerId, players, shellAnchors]);
+  }, [horsesController.currentTurnPlayerId, horsesController.completedTurnHold?.playerId, players, shellAnchors]);
 
   /**
    * Dice-only legacy seat renderer (Horses / Ship-Captain-Crew).
@@ -11938,11 +11976,7 @@ export const MobileGameTable = ({
     const legIndicator = displayLegs > 0 ? (
       <div
         className="absolute z-30"
-        style={
-          isRightSideSlot
-            ? { left: '6px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
-            : { right: '6px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
-        }
+        style={seatLegPlacement(isRightSideSlot)}
       >
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
           {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
@@ -12212,13 +12246,10 @@ export const MobileGameTable = ({
     // byte-identical to pre-migration; the visible copy is portaled
     // into ShellOverlay:transient via OverSeatBadgePortal anchored to
     // [data-chip-center]. No bespoke offsets, no z-hacks.
-    // During live play the center-felt Beat artifact is the sole score owner
-    // and is visible only to the active roller. Over-seat result badges are
-    // terminal comparison artifacts; admitting them while another player is
-    // rolling exposes the prior player's hand on every observing client.
+    // Completed hands remain public while the next player rolls. The controller
+    // withholds the current player's result until its roll presentation is ready.
     const horsesResultBadge =
       diceGameplayUiActive &&
-      horsesController.gamePhase === 'complete' &&
       horsesPlayerResult?.description ? (
         <HorsesHandResultDisplay
           description={horsesPlayerResult.description}
@@ -12376,7 +12407,6 @@ export const MobileGameTable = ({
     let sccResultBadge: ReactNode = null;
     if (
       diceGameplayUiActive &&
-      horsesController.gamePhase === 'complete' &&
       horsesPlayerResult
     ) {
       const hasSccShape = typeof (horsesPlayerResult as any).isQualified === 'boolean';
@@ -12730,7 +12760,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Turn Spotlight - Dealer Selection Winner */}
-        {!sessionEndedPhase && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
+        {!sessionEndedPhase && (gameStatus === 'dealer_selection' || dealerSelectionPresentationActive) && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
           <TurnSpotlight
             currentTurnPosition={dealerSelectionWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -12760,6 +12790,17 @@ export const MobileGameTable = ({
         >
           <ThreeFiveSevenTerminalController
             descriptor={threeFiveSevenTerminalDescriptor}
+            renderSweepFlights={onComplete => <LegsToPlayerAnimation
+              triggerId={threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null}
+              legPositions={(threeFiveSevenTerminalDescriptor?.playersAtHandStart ?? []).map(p=>({playerId:p.playerId,position:p.position,legCount:p.legs}))}
+              winnerPosition={threeFiveSevenTerminalDescriptor?.winnerPosition ?? 1}
+              currentPlayerPosition={currentPlayer?.position ?? null}
+              getClockwiseDistance={getClockwiseDistance}
+              containerRef={tableContainerRef}
+              legsToWin={legsToWin}
+              legValue={legValue}
+              onAnimationComplete={onComplete}
+            />}
             onOwnershipChange={(genId) => {
               controllerInstant357OwnedGenIdRef.current = genId;
               setControllerInstant357OwnedGenId(genId);
@@ -12827,12 +12868,16 @@ export const MobileGameTable = ({
               }}
             />
             {/* Sweep-The-Legs overlay — instant sweeps arm it when opening
-                legs existed; normal final-leg wins arm it after the visible
+                legs existed; normal final-leg wins arm it alongside the visible
                 leg flight. The normal path requires both this completion and
                 its exact sweep-credit cursor before pot flight. */}
             <SweepTheLegsAnimation
-              show={showSweepTheLegs357}
+              key={normal357SweepDescriptor?.terminalGenerationId ?? 'legacy-sweep'}
+              show={showSweepTheLegs357 || threeFiveSevenWinPhase === 'legs-to-player'}
+              holdUntilDismissed={!!normal357SweepDescriptor}
               onComplete={() => {
+                if (normal357SweepDescriptor) normalSweepOverlayCompletedRef.current = normal357SweepDescriptor.terminalGenerationId;
+                if (threeFiveSevenWinPhaseRef.current === 'legs-to-player') return;
                 const completingNormalTerminalSweep =
                   threeFiveSevenWinPhaseRef.current === 'sweep-credit';
                 __capture357Checkpoint('sweep_the_legs_complete', {
@@ -13285,10 +13330,10 @@ export const MobileGameTable = ({
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
         {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
-          <NoQualifyAnimation 
-            show={horsesController.showNoQualifyAnimation} 
+          <NoQualifyAnimation key={diceRollover.key}
+            show={diceRollover.show}
             playerName={horsesController.noQualifyPlayerName ?? undefined}
-            onComplete={horsesController.handleNoQualifyAnimationComplete}
+            onComplete={diceRollover.complete}
           />
         )}
         
@@ -13459,7 +13504,7 @@ export const MobileGameTable = ({
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
-                setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+                setLegsToPlayerTriggerId(`legs-to-player-${activeNormalTerminal.terminalGenerationId}`);
                 // E. Legs-phase decision — primary non-sweep path selects legs-to-player.
                 emit357RuntimeDiag('legs_phase_decision', {
                   gameId: gameId ?? null,
@@ -13584,9 +13629,11 @@ export const MobileGameTable = ({
           // (e.g. "$4") before the locked pre-ante pot is applied. For initial ante, the pre-ante pot
           // is always 0. Keep pussy-tax behavior unchanged.
           const isInitialAntePending = !!(anteAnimationTriggerId && !anteAnimationTriggerId.startsWith('pussy-tax-'));
+          const PotPosition = gameType === 'ship-captain-crew' ? SccPotPosition : 'div';
 
           return (
-            <div 
+            <PotPosition
+              data-dice-pot-reserve={isDiceGame ? gameType : undefined}
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
                 gameType === 'holm-game'
                   // P1 fix: Holm pot must remain stationary across showdown.
@@ -13629,8 +13676,9 @@ export const MobileGameTable = ({
                         ? (isTablet ? 'text-xl' : 'text-base')
                         : (isTablet ? 'text-4xl' : 'text-3xl');
                   return (
-                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
-                      <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
+                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}
+                      className={gameType === 'ship-captain-crew' ? 'px-2 py-0.5' : undefined}>
+                      <span className={cn('text-poker-gold font-bold', gameType === 'ship-captain-crew' ? 'text-base' : valueClass)}>{potValueText}</span>
                     </CanonicalPotZone>
                   );
                 }
@@ -13658,7 +13706,7 @@ export const MobileGameTable = ({
                   </div>
                 );
               })()}
-            </div>
+            </PotPosition>
           );
         })()}
 
@@ -13854,6 +13902,7 @@ export const MobileGameTable = ({
         {diceGameplayUiActive && horsesController.enabled && (() => {
           // Wave 5D — compute anchored stage visibility from controller state.
           const _isInHoldPeriod = !!(horsesController.feltDice as any)?.isCompletedHold;
+          const _showingMyTurn = horsesController.isMyTurn && !_isInHoldPeriod;
           const _isCompleteOrWaiting =
             (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') &&
             !_isInHoldPeriod;
@@ -13861,9 +13910,9 @@ export const MobileGameTable = ({
           const _hasRolled = _diceArray?.some((d) => d?.value > 0) ?? false;
           const _showResult = !horsesController.feltDice && !!horsesController.currentTurnPlayerId
             && !!horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId);
-          const _opponentDiceVisible = !horsesController.isMyTurn && !_showResult && !_isCompleteOrWaiting
+          const _opponentDiceVisible = !_showingMyTurn && !_showResult && !_isCompleteOrWaiting
             && (_hasRolled || !!horsesController.feltDice);
-          const _beatBadgeVisible = horsesController.isMyTurn && !_showResult && !_isCompleteOrWaiting;
+          const _beatBadgeVisible = _showingMyTurn && !_showResult && !_isCompleteOrWaiting;
           return (
             <DiceGameplayGeometryProvider
               gameType={gameType as DiceGameType}
@@ -13924,17 +13973,17 @@ export const MobileGameTable = ({
             const cached = getCachedFeltNode();
             feltBranch = cached ? "gamePhase:cached" : "gamePhase:placeholder";
             feltBranchDetail = { gamePhase: horsesController.gamePhase, isInHoldPeriod, hasCached: !!cached };
-          } else if (horsesController.isMyTurn && !hasRolled) {
+          } else if (_showingMyTurn && !hasRolled) {
             feltBranch = "myTurn:preRoll";
             feltBranchDetail = { isMyTurn: true, hasRolled: false };
-          } else if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+          } else if (!_showingMyTurn && !hasRolled && !showResult) {
             const cached = getCachedFeltNode();
             feltBranch = cached ? "observer:noRoll:cached" : "observer:noRoll:placeholder";
             feltBranchDetail = { isMyTurn: false, hasRolled, showResult, hasCached: !!cached };
           } else if (showResult) {
             feltBranch = "result";
             feltBranchDetail = { showResult: true, feltDice: !!horsesController.feltDice };
-          } else if (horsesController.isMyTurn) {
+          } else if (_showingMyTurn) {
             feltBranch = "myTurn:rolling";
             feltBranchDetail = { isMyTurn: true, hasRolled: true };
           } else {
@@ -13993,7 +14042,7 @@ export const MobileGameTable = ({
           
           
           // If it's my turn and I haven't rolled yet, show "You are rolling" message + Beat badge
-          if (horsesController.isMyTurn && !hasRolled) {
+          if (_showingMyTurn && !hasRolled) {
             // Track mount for debug overlay
             if (!feltBlockMounted) {
               setTimeout(() => setFeltBlockMounted(true), 0);
@@ -14065,7 +14114,7 @@ export const MobileGameTable = ({
                           />
                         ))}
                       </div>
-                    ) : gameType === 'horses' ? (
+                    ) : (gameType === 'horses' || ('isQualified' in winningResultToBeat && winningResultToBeat.isQualified === false)) ? (
                       <HorsesHandResultDisplay
                         description={winningResultToBeat.description}
                         isWinning={true}
@@ -14093,7 +14142,7 @@ export const MobileGameTable = ({
           // A cached node can only have been produced by this client's prior
           // active-roller view, so it must never be replayed into an observer
           // stage. Otherwise a stale Beat badge masks the roller's dice.
-          if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+          if (!_showingMyTurn && !hasRolled && !showResult) {
             cachedFeltBlockNodeRef.current = null;
 
             return (
@@ -14144,7 +14193,7 @@ export const MobileGameTable = ({
             );
           }
 
-          if (horsesController.isMyTurn) {
+          if (_showingMyTurn) {
             // My turn — Beat badge stage (Wave 5D anchored).
             const winResult = cachedWinningResultRef.current
               ? { description: cachedWinningResultRef.current.description }
@@ -14221,6 +14270,11 @@ export const MobileGameTable = ({
               innerStyle={{ pointerEvents: 'auto' }}
             >
               <AssignedRectFitter>
+                {/* Both games' absolute held/scatter dice extend beyond the 140x84
+                    intrinsic root. Include their paint bounds in the fitter:
+                    five held 48px dice plus gaps; held row above; scatter below.
+                    These are intrinsic renderer units, not viewport offsets. */}
+                <div style={{ padding: DICE_OBSERVER_PAINT.padding }}>
                 <DiceTableLayout
                   key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
@@ -14232,7 +14286,7 @@ export const MobileGameTable = ({
                     };
                   }) as (HorsesDieType | SCCDieType)[]}
                   isRolling={
-                    showDice && horsesController.isMyTurn
+                    showDice && _showingMyTurn
                       ? horsesController.isRolling
                       : false
                   }
@@ -14243,6 +14297,9 @@ export const MobileGameTable = ({
                   useSCCDisplayOrder={gameType === 'ship-captain-crew'}
                   sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
                   isObserver={true}
+                  observerRollLive={!!(horsesController.feltDice as any)?.isRolling}
+                  presentationKey={horsesController.resultPresentationKey}
+                  onPresentationLanded={horsesController.onResultDiceLanded}
                   hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
                   heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
                   previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
@@ -14251,6 +14308,7 @@ export const MobileGameTable = ({
                   isQualified={(horsesController.feltDice as any)?.isQualified}
                   cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                 />
+                </div>
               </AssignedRectFitter>
             </DiceAnchoredSlot>
           );
@@ -15229,8 +15287,7 @@ export const MobileGameTable = ({
             <div
               className="absolute z-20"
               style={{
-                bottom: '8px',
-                left: '55%',
+                ...viewerLegPlacement,
                 transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
@@ -15550,11 +15607,6 @@ export const MobileGameTable = ({
 
 
 
-                    const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
-                      ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
-                      : [];
-                    const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
-
                     return (
                       <div className={cn(
                         // `flex-1 min-h-0` lets this column occupy the full
@@ -15569,36 +15621,9 @@ export const MobileGameTable = ({
 
 
 
-                        {showDealerSelectionCards ? (
-                          <div className="flex flex-col items-center gap-2 py-4">
-                            <div className="flex gap-2">
-                              {currentPlayerDealerCards.map((cardData, idx) => (
-                                <div
-                                  key={`dealer-card-${cardData.roundNumber}-${idx}`}
-                                  className="transition-all duration-500"
-                                  style={{
-                                    opacity: cardData.isRevealed ? 1 : 0.9,
-                                    transform: cardData.isRevealed
-                                      ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
-                                      : 'scale(1)',
-                                  }}
-                                >
-                                  <PlayingCard
-                                    card={cardData.card as CardType}
-                                    isHidden={!cardData.isRevealed}
-                                    size="xl"
-                                    isHighlighted={false}
-                                    isDimmed={cardData.isDimmed && cardData.isRevealed}
-                                    className={cn(
-                                      "shadow-2xl transition-all duration-500",
-                                      cardData.isDimmed && cardData.isRevealed && "opacity-50"
-                                    )}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
+                        {/* The canonical felt overlay owns every dealer-draw
+                            card, including self. Cached draw props must never
+                            create a second card surface in the gameplay HUD. */}
 
                         {/* EXPLICIT-OPT-IN CONTRACT: The Show Cards button
                             for a 3-5-7 winner is rendered in the STAYED-badge

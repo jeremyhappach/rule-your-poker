@@ -1,0 +1,15 @@
+import {readFileSync as read,writeFileSync as write} from 'node:fs';import {createHash} from 'node:crypto';
+const files=['rules','authority','commands','registration'];
+const words=read('server/ptownWords/dictionaries/enable2k-1/words.txt','utf8');
+if(createHash('sha256').update(words).digest('hex')!=='d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925')throw Error('Dictionary hash mismatch');
+let previous='',encoded='';for(const word of words.trimEnd().split('\n')){let prefix=0;while(prefix<previous.length&&prefix<word.length&&previous[prefix]===word[prefix])prefix++;encoded+=prefix.toString(36)+word.slice(prefix)+'\n';previous=word;}
+// Lossless prefix encoding keeps the migration below the API request limit.
+// It is transfer packaging only. Runtime uses the indexed full vocabulary.
+const lexicon=`DO $decode$ DECLARE entry text; prior text:=''; word_i text; prefix_i int; BEGIN FOR entry IN SELECT value FROM string_to_table($words$${encoded.trimEnd()}$words$,E'\\n') value LOOP prefix_i:=strpos('0123456789abcdefghijklmnopqrstuvwxyz',left(entry,1))-1;IF prefix_i<0 OR prefix_i>length(prior) THEN RAISE EXCEPTION 'ptown_words:dictionary_encoding';END IF;word_i:=left(prior,prefix_i)||substr(entry,2);INSERT INTO private.ptown_words_lexicon VALUES('enable2k/1',word_i);prior:=word_i;END LOOP;IF (SELECT count(*) FROM private.ptown_words_lexicon)<>173528 OR (SELECT encode(extensions.digest(string_agg(word,E'\\n' ORDER BY word COLLATE "C")||E'\\n','sha256'),'hex') FROM private.ptown_words_lexicon WHERE version='enable2k/1')<>'d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925' THEN RAISE EXCEPTION 'ptown_words:dictionary_integrity';END IF;END $decode$;`;
+const sql=files.map(n=>read('supabase/ptown-words/'+n+'.sql','utf8')).join('\n')+'\n'+lexicon;
+const proof=['core-proof','proof'].map(n=>read('supabase/ptown-words/'+n+'.sql','utf8')).join('\n');
+write('qualification.local/ptown-words/hosted-candidate.sql','BEGIN;\nSET LOCAL lock_timeout=\'100ms\';\n'+sql+"\nSET LOCAL statement_timeout='30s';\n"+proof+"\nROLLBACK;\nSELECT to_regclass('private.ptown_words_matches') IS NULL AS no_persisted_candidate;\n");
+write('qualification.local/ptown-words/migration.sql',sql+"\nALTER PUBLICATION supabase_realtime ADD TABLE public.ptown_words_revisions;\nSELECT cron.schedule('ptown-words-recovery','5 seconds',$job$SET statement_timeout='3s'; SELECT private.ptown_words_recover()$job$);\n");
+write('qualification.local/ptown-words/installed-proof.sql',"BEGIN;SET LOCAL lock_timeout='100ms';SET LOCAL statement_timeout='30s';\n"+proof+"\nROLLBACK;SELECT (SELECT NOT enabled AND NOT admission_enabled FROM private.ptown_words_release WHERE singleton) closed,NOT EXISTS(SELECT 1 FROM private.ptown_words_matches) no_synthetic_matches;\n");
+write('qualification.local/ptown-words/source-hashes.json',JSON.stringify(Object.fromEntries(files.map(n=>[n,createHash('sha256').update(read('supabase/ptown-words/'+n+'.sql')).digest('hex')])),null,2));
+console.log('Prepared closed migration and transaction-contained hosted proof');

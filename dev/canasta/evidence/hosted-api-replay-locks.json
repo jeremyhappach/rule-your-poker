@@ -1,0 +1,1 @@
+{"deployment":"dpl_F2CrJwrnmvj5HgyyqPEK2V3Bnv2q","sha":"5188ba145a7b3f28267bfdf2da69805514ade316","holderPid":3096944,"observed":[{"pid":3096972,"blockers":[3096443],"wait_type":"Lock","wait_event":"tuple"},{"pid":3096443,"blockers":[3096944],"wait_type":"Lock","wait_event":"transactionid"}],"distinctRequests":2,"holderTransactionRolledBack":true}

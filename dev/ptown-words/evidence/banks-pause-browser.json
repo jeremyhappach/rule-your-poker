@@ -1,0 +1,227 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    {
+      "kind": "human-horizontal",
+      "first": [
+        1793132136105,
+        1793132136423,
+        1793132136718
+      ],
+      "squares": [
+        112,
+        113,
+        114
+      ],
+      "frames": [
+        {
+          "at": 1793132134555,
+          "value": "[]",
+          "tiles": []
+        },
+        {
+          "at": 1793132136105,
+          "value": "[{\"square\":112,\"letter\":\"C\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "C"
+            }
+          ]
+        },
+        {
+          "at": 1793132136423,
+          "value": "[{\"square\":112,\"letter\":\"C\"},{\"square\":113,\"letter\":\"A\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "C"
+            },
+            {
+              "square": 113,
+              "letter": "A"
+            }
+          ]
+        },
+        {
+          "at": 1793132136718,
+          "value": "[{\"square\":112,\"letter\":\"C\"},{\"square\":113,\"letter\":\"A\"},{\"square\":114,\"letter\":\"T\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "C"
+            },
+            {
+              "square": 113,
+              "letter": "A"
+            },
+            {
+              "square": 114,
+              "letter": "T"
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "realRpcAndRevisionEvent": true
+    },
+    {
+      "kind": "human-vertical",
+      "first": [
+        1793132175007,
+        1793132175307
+      ],
+      "squares": [
+        83,
+        98
+      ],
+      "frames": [
+        {
+          "at": 1793132173704,
+          "value": "[{\"square\":112,\"letter\":\"A\"},{\"square\":113,\"letter\":\"T\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "A"
+            },
+            {
+              "square": 113,
+              "letter": "T"
+            }
+          ]
+        },
+        {
+          "at": 1793132175007,
+          "value": "[{\"square\":83,\"letter\":\"C\"},{\"square\":112,\"letter\":\"A\"},{\"square\":113,\"letter\":\"T\"}]",
+          "tiles": [
+            {
+              "square": 83,
+              "letter": "C"
+            },
+            {
+              "square": 112,
+              "letter": "A"
+            },
+            {
+              "square": 113,
+              "letter": "T"
+            }
+          ]
+        },
+        {
+          "at": 1793132175307,
+          "value": "[{\"square\":83,\"letter\":\"C\"},{\"square\":98,\"letter\":\"A\"},{\"square\":112,\"letter\":\"A\"},{\"square\":113,\"letter\":\"T\"}]",
+          "tiles": [
+            {
+              "square": 83,
+              "letter": "C"
+            },
+            {
+              "square": 98,
+              "letter": "A"
+            },
+            {
+              "square": 112,
+              "letter": "A"
+            },
+            {
+              "square": 113,
+              "letter": "T"
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "realRpcAndRevisionEvent": true
+    },
+    {
+      "kind": "bot",
+      "first": [
+        1793132215479,
+        1793132215762,
+        1793132216079,
+        1793132216378
+      ],
+      "squares": [
+        112,
+        127,
+        142,
+        157
+      ],
+      "frames": [
+        {
+          "at": 1793132213542,
+          "value": "[]",
+          "tiles": []
+        },
+        {
+          "at": 1793132215479,
+          "value": "[{\"square\":112,\"letter\":\"N\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "N"
+            }
+          ]
+        },
+        {
+          "at": 1793132215762,
+          "value": "[{\"square\":112,\"letter\":\"N\"},{\"square\":127,\"letter\":\"E\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "N"
+            },
+            {
+              "square": 127,
+              "letter": "E"
+            }
+          ]
+        },
+        {
+          "at": 1793132216079,
+          "value": "[{\"square\":112,\"letter\":\"N\"},{\"square\":127,\"letter\":\"E\"},{\"square\":142,\"letter\":\"T\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "N"
+            },
+            {
+              "square": 127,
+              "letter": "E"
+            },
+            {
+              "square": 142,
+              "letter": "T"
+            }
+          ]
+        },
+        {
+          "at": 1793132216378,
+          "value": "[{\"square\":112,\"letter\":\"N\"},{\"square\":127,\"letter\":\"E\"},{\"square\":142,\"letter\":\"T\"},{\"square\":157,\"letter\":\"S\"}]",
+          "tiles": [
+            {
+              "square": 112,
+              "letter": "N"
+            },
+            {
+              "square": 127,
+              "letter": "E"
+            },
+            {
+              "square": 142,
+              "letter": "T"
+            },
+            {
+              "square": 157,
+              "letter": "S"
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "realRpcAndRevisionEvent": true
+    }
+  ]
+}

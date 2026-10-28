@@ -1,45 +1,77 @@
-import {useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
+import {viewerLegPlacement} from '@/lib/canonicalShell/canonicalLegPlacement';
+import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
-import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
-import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
-import {Bot} from 'lucide-react';
-import {PlayingCard} from '@/components/PlayingCard';
-import type {Card} from '@/lib/cardUtils';
+import {TableauCard} from '@/lib/canonicalShell/TableauCard';
+import {ShellHudGrid} from '@/lib/canonicalShell/ShellHudGrid';
+import {usePublishShellFelt} from '@/lib/canonicalShell/ShellOwnedFeltHost';
+import {useCanonicalFeltInteractionLayerElement} from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
+import {GameplayOpponentSeatLayer} from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
+import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
+import {ShellTimerRail,useShellTimer} from '@/lib/canonicalShell/ShellTimerRail';
+import {useShellTabBar,type ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
+import {CanonicalLifeMarkers,LIFE_LOSS_PRESENTATION_MS} from '@/components/canonicalShell/CanonicalLifeMarkers';
+import {CanonicalDealerTransition} from '@/components/canonicalShell/CanonicalDealerTransition';
+import {DealerIndicator} from '@/components/canonicalShell/DealerIndicator';
 import {Battle31Rules} from '@/components/rules/Battle31Rules';
+import {battleCard,battleFrame,battleProgress,battleRoundsRemaining} from '@/lib/battle31/presentation';
 import type {Battle31Intent,Battle31Snapshot} from '@/lib/battle31/model';
-import {platformAudio} from '@/lib/audio/platformAudio';
-import {battle31Cue} from '@/lib/battle31/audio';
+import {useBattle31Movement} from './useBattle31Movement';
+import {useBattle31Selection,type Battle31ActionRevision} from './useBattle31Selection';
 import {AlertDialog,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogAction,AlertDialogCancel,AlertDialogFooter} from '@/components/ui/alert-dialog';
 import './battle31.css';
 export {Battle31Rules};
-function cardFace(id:number|null):Card|undefined {if(id===null)return undefined;return {rank:['7','8','9','10','J','Q','K','A'][id%8],suit:['clubs','diamonds','hearts','spades'][Math.floor(id/8)]} as Card;}
-export function Battle31Loading({error,onReconnect,activeTab='cards',setActiveTab=()=>{}}:{error:string;onReconnect:()=>void;activeTab?:ShellTabId;setActiveTab?:(t:ShellTabId)=>void}){return <FullscreenGameShell className="battle-scene" ready={false} title="Battle 31" description="" activeTab={activeTab} setActiveTab={setActiveTab} panel={<Battle31Rules/>}><div role="status">{error||'Loading Battle 31…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;}
-interface Props {view:Battle31Snapshot;userId:string;now:number;pending:boolean;connected?:boolean;error:string;epoch:number;activeTab:ShellTabId;setActiveTab:(t:ShellTabId)=>void;sessionEnded:boolean;panel:ReactNode;balance:(p:Battle31Snapshot['players'][number])=>ReactNode;onIntent:(i:Battle31Intent)=>void|Promise<void>;onReconnect:()=>void;liveEntry?:boolean;terminalPresenting?:boolean}
-export function Battle31View({view:v,userId,now,pending,connected=true,error,epoch,activeTab,setActiveTab,sessionEnded,panel,balance,onIntent,onReconnect}:Props){
- const b=v.board,root=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),[selection,setSelection]=useState<{revision:number;own:number|null;center:number|null}|null>(null),[resign,setResign]=useState(false);
- useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
- const selected=selection?.revision===v.revision?selection:null;
- const me=v.players.findIndex(p=>p.id===v.viewerId),bottom=me<0?0:me,top=1-bottom,at=v.paused?(v.pausedAt??v.serverAt):now;
- const active=v.canAct&&connected&&!pending&&!v.paused&&!error&&b.phase==='playing'&&at<b.deadline&&activeTab==='cards'&&!sessionEnded;
- const prior=useRef({scope:v.scope,revision:v.revision,epoch});
- useEffect(()=>{const p=prior.current;prior.current={scope:v.scope,revision:v.revision,epoch};if(p.scope!==v.scope||p.epoch!==epoch||p.revision>=v.revision||!connected||v.paused||activeTab!=='cards'||document.hidden)return;return platformAudio.request({userId,id:`battle31:${v.scope}:${v.revision}`,expiresAt:performance.now()+400,cue:battle31Cue(b.event.label)});},[v.scope,v.revision,epoch,connected,v.paused,activeTab,userId,b.event.label]);
- const send=(intent:Battle31Intent)=>{setSelection(null);void onIntent(intent);};
- const card=(id:number|null,index:number,zone:'own'|'center'|'other')=><button key={`${v.scope}:${zone}:${id??index}`} className="battle-card" data-selected={selected?.[zone==='center'?'center':'own']===id&&id!==null&&zone!=='other'} disabled={!active||zone==='other'||id===null} aria-label={id===null?'Hidden card':`${zone==='center'?'Center':'Hand'} ${cardFace(id)?.rank} of ${cardFace(id)?.suit}`} onClick={()=>{if(!active||id===null)return;setSelection(s=>({revision:v.revision,own:s?.revision===v.revision?s.own:null,center:s?.revision===v.revision?s.center:null,[zone]:id}));}}><PlayingCard card={cardFace(id)} isHidden={id===null} size="lg" frontStyle="canonical" className="battle-card-face"/></button>;
- const seat=(i:number,zone:'own'|'other')=><section className={`battle-seat battle-${zone}`} data-seat-position={v.players[i].seat} data-player-id={v.players[i].id}><header><strong>{v.players[i].name}{v.players[i].active&&b.phase==='playing'?' · Turn':''}</strong><span aria-label={`${v.players[i].losses} losses`}>{v.players[i].losses>=4?'Eliminated':v.players[i].losses===3?'Last chance':'●'.repeat(3-v.players[i].losses)}</span>{balance(v.players[i])}</header><div className="battle-hand">{b.hands[i].map((id,j)=>card(id,j,zone))}</div><div className="battle-score"><output>{b.values[i]===null?'Hidden hand':`Hand ${b.values[i]}`}</output>{(v.players[i].isBot||v.players[i].autoPlay)&&<span role="img" aria-label={`${v.players[i].name} robot-controlled`}><Bot size={18} aria-hidden="true"/></span>}</div></section>;
- const title=v.terminal?.outcome==='aborted'?'Match aborted':v.terminal?.winnerIds.length===1?`${v.players.find(p=>p.id===v.terminal?.winnerIds[0])?.name} wins`:'Match drawn';
- return <FullscreenGameShell className="battle-scene" title="Battle 31" description={`Round ${v.round}/12 · Match stake ${v.stake}`} activeTab={activeTab} setActiveTab={setActiveTab} sessionEnded={sessionEnded} panel={panel}>
- <div ref={root}>{layer&&createPortal(<div className="battle-plane" data-battle31="">
- {sessionEnded?null:<>
- {seat(top,'other')}
- <section className="battle-center"><p>{b.phase==='intro'?'Dealing':b.phase==='round_result'?'Round complete':b.phase==='complete'?title:b.closing?'Final response':b.turn>=7?'Last turn each':`Decision ${b.turn}/8`}</p><div className="battle-hand">{b.center.map((id,i)=>card(id,i,'center'))}</div></section>
- {seat(bottom,'own')}
- <footer className="battle-controls"><div className="battle-clock" role="timer">{v.paused?'Paused':b.phase==='playing'?`${Math.max(0,Math.ceil((b.deadline-at)/1000))}s`:b.phase==='intro'?'Ready':b.event.label}</div>
- <div className="battle-buttons"><button disabled={!active||selected?.own==null||selected.center==null} onClick={()=>{if(selected?.own!=null&&selected.center!=null)send({type:'swap',items:[selected.own,selected.center]});}}>Swap selected</button><button disabled={!active} onClick={()=>send({type:'take_pot'})}>TAKE POT<small>Swap all three</small></button><button disabled={!active} onClick={()=>send({type:'pass'})}>{b.closing||b.turn>=7?'STAND':'PASS'}<small>{b.closing||b.turn>=7?'Keep this hand':'Opponent’s last turn'}</small></button></div>
- <p role="status">{error?<>{error} <button onClick={onReconnect}>Reconnect</button></>:pending?'Confirming…':!connected?'Reconnecting…':b.event.label}</p>
- {!v.settled&&me>=0&&!v.players[me].isBot&&<label className="battle-autoplay"><input type="checkbox" checked={v.players[me].autoPlay===true} disabled={!connected||pending} onChange={e=>send({type:e.target.checked?'autoplay_on':'autoplay_off'})}/>Auto-play</label>}
- {!v.settled&&<button className="battle-resign" disabled={!connected||pending||v.paused} onClick={()=>setResign(true)}>Resign match</button>}
- </footer></>}
- </div>,layer)}</div>
+const spacer=(top:boolean)=><div aria-hidden style={{flex:`0 0 var(--play-${top?'top':'bottom'}-safe-area, 0px)`,pointerEvents:'none'}}/>;
+export function Battle31Loading({error,onReconnect,activeTab='cards',setActiveTab=()=>{}}:{error:string;onReconnect:()=>void;activeTab?:ShellTabId;setActiveTab?:(t:ShellTabId)=>void}){
+ usePublishShellFelt({gameKind:'battle-31',anteAmount:0,publisherLabel:'Battle31Table'});useShellTabBar({cardsIcon:'spade',activeTab,setActiveTab});
+ return <>{spacer(true)}<div style={{flex:'0 0 var(--shell-felt-h)'}}/>{spacer(false)}<ShellHudGrid pane={<div role="status">{error||'Connecting to Battle 31…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div>}/></>;
+}
+interface Props {view:Battle31Snapshot;userId:string;now:number;pending:boolean;connected?:boolean;error:string;epoch:number;activeTab:ShellTabId;setActiveTab:(t:ShellTabId)=>void;sessionEnded:boolean;panel:ReactNode;balance:(p:Battle31Snapshot['players'][number])=>ReactNode;onIntent:(i:Battle31Intent,expected?:Battle31ActionRevision)=>void|Promise<void>;onReconnect:()=>void;liveEntry?:boolean;terminalPresenting?:boolean;onRevealReady?:(scope:string|null)=>void}
+export function Battle31View({view:v,userId,now,pending,connected=true,error,epoch,activeTab,setActiveTab,sessionEnded,panel,onIntent,onReconnect,liveEntry=false,onRevealReady}:Props){
+ const b=v.board,frame=battleFrame(v,now),layer=useCanonicalFeltInteractionLayerElement(!sessionEnded),movement=useBattle31Movement(sessionEnded?null:v,epoch,userId,liveEntry);
+ const [resign,setResign]=useState(false);
+ const observed=useRef({scope:v.scope,epoch,live:!frame.result});if(observed.current.scope!==v.scope||observed.current.epoch!==epoch)observed.current={scope:v.scope,epoch,live:!frame.result};
+ const animate=observed.current.live&&!document.hidden&&!v.paused;
+ const me=v.players.findIndex(p=>p.id===v.viewerId),self=v.players[me],actor=v.players.find(p=>p.active),opponent=1-Math.max(0,me);
+ const active=v.canAct&&connected&&!pending&&!v.paused&&!error&&b.phase==='playing'&&frame.at<b.deadline&&activeTab==='cards'&&!sessionEnded&&!movement.busy;
+ const selection=useBattle31Selection(v,epoch,active,onIntent),selected=selection.selected;
+ const reveal=frame.reveal&&!movement.busy,clear=frame.clear&&!movement.busy;
+ useEffect(()=>onRevealReady?.(reveal?v.scope:null),[reveal,v.scope,onRevealReady]);
+ const dealer=clear?1-frame.dealer:frame.dealer;
+ const lives=(i:number)=>({losses:frame.result&&!frame.life?(b.result?.previousLosses?.[i]??b.losses[i]):b.losses[i],previous:b.result?.previousLosses?.[i],dissolve:observed.current.live&&!document.hidden&&frame.life&&b.result?.loser===i&&!!b.presentation&&frame.at-b.presentation.lifeAt<LIFE_LOSS_PRESENTATION_MS,elapsed:b.presentation?frame.at-b.presentation.lifeAt:0});
+ usePublishShellFelt({gameKind:'battle-31',anteAmount:v.stake,publisherLabel:'Battle31Table'});
+ useShellTabBar({cardsIcon:'spade',activeTab,setActiveTab,cardsFlashing:active?'green':null,isPaused:v.paused});
+ const seconds=Math.max(0,Math.ceil((b.deadline-frame.at)/1000));
+ useShellTimer(!sessionEnded&&b.phase==='playing'?{secondsRemaining:seconds,totalSeconds:b.rules.turnMs/1000,paused:v.paused,actorLabel:actor?.name,activePlayerId:actor?.id,identityKey:v.scope+':'+b.turn+':'+b.deadline}:null);
+ const send=(intent:Battle31Intent)=>{selection.clear();void onIntent(intent);};
+ const card=(id:number|null,index:number,zone:'own'|'center'|'result')=>{
+  const seat=zone==='own'?me:opponent,highlight=reveal&&zone!=='center'&&id!==null&&b.result?.scoringCards?.[seat]?.includes(id);
+  const hidden=zone==='result'?false:movement.hidden(zone==='center'?null:me,index);
+  return <button key={index} data-battle-card={zone} data-card-anchor={zone==='center'?'community-'+index:'tableau-'+v.players[seat]?.id+'-'+index} aria-label={id===null?'Hidden card':`${zone==='center'?'Center':'Hand'} ${battleCard(id)?.rank} ${battleCard(id)?.suit}`} disabled={!active||zone==='result'||id===null||hidden} aria-pressed={zone==='own'?selected?.own===id:zone==='center'?selected?.center===id:undefined} onClick={()=>{if(zone!=='result'&&id!==null)selection.pick(zone,id);}}>
+   <span style={{visibility:hidden?'hidden':'visible'}}><TableauCard card={battleCard(id)} isHidden={id===null} highlight={highlight?'gold':null} style={{width:'100%',height:'100%'}}/></span>
+  </button>;
+ };
+ const status=v.paused?'Paused':!connected?'Reconnecting…':pending?'Confirming…':active?'Select one card from each row':'';
+ return <>
+ {spacer(true)}<div style={{height:'var(--shell-felt-h)',flex:'0 0 var(--shell-felt-h)',pointerEvents:'none'}}>
+ {!sessionEnded&&<GameplayOpponentSeatLayer family="battle-31" participants={v.players.filter(p=>p.id!==v.viewerId).map(p=>({...p,position:p.seat}))} presentation={{inwardCardContent:true,cardBacks:()=>({count:3,visible:!reveal&&!clear&&!(b.phase==='intro'&&movement.busy),variant:'cribbage'}),dealerPip:p=>p.id===v.players[dealer]?.id&&!frame.movingDealer,scoreAutoPlay:p=>!!v.players.find(x=>x.id===p.id)?.autoPlay,lives:p=>lives(v.players.findIndex(x=>x.id===p.id)),activeTimer:p=>b.phase==='playing'&&p.id===actor?.id&&!v.paused?{timeLeft:seconds,maxTime:b.rules.turnMs/1000,activePlayerId:p.id}:null}}/>}
+ </div>
+ {layer&&!sessionEnded&&createPortal(<div className="battle-felt" data-battle-phase={b.phase} data-battle-result={reveal||undefined}>
+  {self&&<div data-canonical-leg-anchor="viewer" style={{...viewerLegPlacement,zIndex:20}}><CanonicalLifeMarkers {...lives(me)}/></div>}
+  <div className="battle-chrome"><strong className="battle-progress-pill">Max rounds remaining {battleRoundsRemaining(v)}</strong><span className="battle-progress-pill" aria-label={b.closing?battleProgress(v)+' · final response':battleProgress(v)}>{battleProgress(v)}</span></div>
+  {!clear&&<div className="battle-middle"><div className="battle-tabled">{reveal&&<><div className="battle-cards">{b.hands[opponent].map((id,i)=>card(id,i,'result'))}</div></>}</div><div className="battle-exchange"><div className="battle-cards">{movement.center.map((id,i)=>card(id,i,'center'))}</div></div></div>}
+  {frame.movingDealer&&animate&&<CanonicalDealerTransition from={v.players[frame.dealer].seat} to={v.players[1-frame.dealer].seat} elapsed={frame.at-b.presentation!.clearAt}/>}
+
+ </div>,layer)}
+ {spacer(false)}
+ <ShellHudGrid timer={<ShellTimerRail/>} pane={activeTab!=='cards'?<div className="battle-panel">{panel}</div>:sessionEnded?<span/>:<div className="battle-pane" data-battle-pane>
+  <div className="battle-local-lives">{!frame.movingDealer&&self&&dealer===me&&<DealerIndicator size="sm"/>}<span role="status">{status}</span></div>
+  <div className="battle-own-cards">{!clear&&self&&<div className="battle-cards">{(movement.hands[me]??b.hands[me]).map((id,i)=>card(id,i,'own'))}</div>}</div>
+  <div className="battle-actions">{active&&<><button onClick={()=>send({type:'take_pot'})}>Swap all three</button><button onClick={()=>send({type:'pass'})}>{b.closing||b.turn>=7?'Stand':'Knock'}</button></>}
+   {self?.autoPlay&&!v.settled&&<label><input type="checkbox" checked disabled={!connected||pending} onChange={()=>send({type:'autoplay_off'})}/>Auto-play · uncheck to rejoin</label>}
+   {error&&<button onClick={onReconnect}>{error} · Reconnect</button>}
+   {!v.settled&&self&&!active&&!self.autoPlay&&<button className="battle-resign" disabled={!connected||pending||v.paused} onClick={()=>setResign(true)}>Resign match</button>}
+  </div>
+ </div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={active}/>:<span>Observer</span>}/>
  <AlertDialog open={resign} onOpenChange={setResign}><AlertDialogContent><AlertDialogTitle>Resign this match?</AlertDialogTitle><AlertDialogDescription>You will lose the match and its {v.stake}-chip stake. The game clock continues.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep playing</AlertDialogCancel><AlertDialogAction disabled={pending||v.settled} onClick={()=>send({type:'resign'})}>Resign match</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
- </FullscreenGameShell>;
+ </>;
 }

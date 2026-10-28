@@ -1,0 +1,140 @@
+{
+  "at": "2026-10-22T00:29:58.993Z",
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 4,
+          "y": 564.953125,
+          "w": 54.625,
+          "h": 76.46875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 62.625,
+          "y": 564.953125,
+          "w": 54.625,
+          "h": 76.46875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 121.25,
+          "y": 564.953125,
+          "w": 54.625,
+          "h": 76.46875,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 4,
+          "y": 645.421875,
+          "w": 54.625,
+          "h": 76.484375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 62.625,
+          "y": 645.421875,
+          "w": 54.625,
+          "h": 76.484375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 121.25,
+          "y": 645.421875,
+          "w": 54.625,
+          "h": 76.484375,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        }
+      ]
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "cards": [
+        {
+          "disabled": true,
+          "x": 122.09375,
+          "y": 243.859375,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 170.09375,
+          "y": 243.859375,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 218.09375,
+          "y": 243.859375,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 122.09375,
+          "y": 299.625,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 170.09375,
+          "y": 299.625,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        },
+        {
+          "disabled": true,
+          "x": 218.09375,
+          "y": 299.625,
+          "w": 44,
+          "h": 51.765625,
+          "hit": "<div data-playing-card-root=\"\" data-canonical-card-back=\"raised\" data-cb-pref-id=\"bears\" data-cb-accent=\"logo\" class=\"relative overflow-hidden\" style=\"width: 100%; height: 100%; border-radius: 4px; bo",
+          "pane": true
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "rpc": [
+    {
+      "name": "golf_snapshot",
+      "status": 200
+    }
+  ],
+  "websocket": [
+    {
+      "topic": "realtime:golf:100b31e9-e196-494a-b94c-d6c7c9a95ae7:a2678327-9c2c-4b67-be2a-9268e198803b",
+      "status": "ok"
+    }
+  ],
+  "text": "Hole 1 / 9 · Completed totals\nBot 1-3eaff4: 0\nYou: 0\n\nPaused · uncheck Auto-play to rejoin, then the host can resume\n\nRules\nAuto-play · uncheck to rejoin"
+}

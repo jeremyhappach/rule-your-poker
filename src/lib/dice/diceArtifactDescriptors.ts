@@ -50,10 +50,12 @@ function opponentDiceStage(gameType: DiceGameType): ArtifactDescriptor {
     priority: 90,
     collapsePriority: "never",
     anchorX: 0.5,
-    anchorY: 0.42,
+    anchorY: gameType === 'ship-captain-crew' ? 0.675 : 0.42,
     anchorOrigin: "center",
     widthPct: 0.75,
-    aspectRatio: 0.75 / 0.22,
+    ...(gameType === 'ship-captain-crew'
+      ? { heightPct: 0.45 }
+      : { aspectRatio: 0.75 / 0.22 }),
   };
 }
 

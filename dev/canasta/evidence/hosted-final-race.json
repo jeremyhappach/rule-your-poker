@@ -1,0 +1,13 @@
+{
+  "game": "07f06622-4b34-40e6-98ae-f95792fc9046",
+  "match": "c2c92d95-ea94-41ea-bf86-c96e07998bc2",
+  "passed": true,
+  "elapsedMs": 5650,
+  "resultId": "ce2b47d7-5dd2-4a1d-82c3-3414db9cff46",
+  "batchId": "b5b95630-1e87-4ed3-83f8-df2d39130e05",
+  "accepted": 1,
+  "conflicted": 1,
+  "replayPreservedSettlement": true,
+  "canonicalContinuation": true,
+  "errors": []
+}

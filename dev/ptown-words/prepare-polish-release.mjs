@@ -1,0 +1,15 @@
+import {readFileSync as read,writeFileSync as write} from 'node:fs';
+const pre=JSON.parse(read('dev/ptown-words/polish-release-preimage.json','utf8'));
+const owners=['ptown_words_configure','ptown_words_reduce','ptown_words_schedule_bot','ptown_words_settle','ptown_words_bot_choice','ptown_words_capabilities','megatouch_begin'];
+const guard=pre.functions.filter(f=>owners.some(n=>f.signature.startsWith(n+'(')||f.signature.startsWith('private.'+n+'('))).map(f=>`IF md5(pg_get_functiondef('${f.signature}'::regprocedure)) IS DISTINCT FROM '${f.md5}' THEN RAISE EXCEPTION 'Words release preimage changed: ${f.signature}';END IF;`).join('\n');
+if(guard.split('\n').length!==7)throw Error('Incomplete preimages');
+const migration=`SET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='60s';\nDO $guard$ BEGIN ${guard} END $guard$;\nUPDATE private.ptown_words_release SET admission_enabled=false,bots_enabled=false WHERE singleton;\n`+['presentation','bot-vocabulary','bots','fake-only'].map(n=>read(`supabase/ptown-words/${n}.sql`,'utf8')).join('\n');
+write('qualification.local/ptown-words/polish-release-migration.sql',migration);
+let human=read('supabase/ptown-words/proof.sql','utf8').replace('FOR mode IN 0..1 LOOP','FOR mode IN 0..0 LOOP').replaceAll('PERFORM private.ptown_words_recover()','PERFORM private.ptown_words_recover(dealer)').replace(/ UPDATE private.game_recovery_dispatch_state[^;]+;\r?\n/g,'');
+let bot=read('supabase/ptown-words/bot-proof.sql','utf8').replace(/ UPDATE private.game_recovery_dispatch_state[^;]+;\r?\n/g,'').replaceAll("s:=jsonb_set(s,'{turnIndex}',to_jsonb(i));","s:=jsonb_set(s-'movePresentation','{turnIndex}',to_jsonb(i));").replace("IF SQLERRM<>'ptown_words:bots_fake_money_only'", "IF SQLERRM NOT IN('ptown_words:bots_fake_money_only','ptown_words:fake_money_only')");
+bot=bot.replaceAll('EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT IN','EXCEPTION WHEN raise_exception OR insufficient_privilege THEN IF SQLERRM NOT IN');
+const proof=read('supabase/ptown-words/core-proof.sql','utf8')+'\n'+human+'\n'+bot+'\n'+read('supabase/ptown-words/fake-only-proof.sql','utf8');
+write('qualification.local/ptown-words/polish-release-proof.sql',proof);
+write('qualification.local/ptown-words/polish-release-hosted-candidate.sql',`BEGIN;\n${migration}\n${proof}\nROLLBACK;\nSELECT to_regclass('private.ptown_words_bot_vocabulary') IS NULL AS candidate_rolled_back,(SELECT to_jsonb(r) FROM private.ptown_words_release r) release_flags;`);
+write('qualification.local/ptown-words/polish-release-hosted-installed.sql',`BEGIN;SET LOCAL lock_timeout='5s';SET LOCAL statement_timeout='60s';\n${proof}\nROLLBACK;SELECT (SELECT to_jsonb(r) FROM private.ptown_words_release r) release_flags,NOT EXISTS(SELECT 1 FROM public.profiles WHERE username LIKE 'Words release proof %' OR username LIKE 'Words proof %' OR username LIKE 'Words bot proof %') fixtures_removed;`);
+console.log('Prepared guarded, closed Words polish migration and fake-only candidate/installed rollback proofs');

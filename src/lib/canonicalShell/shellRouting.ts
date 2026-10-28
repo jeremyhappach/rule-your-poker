@@ -34,15 +34,17 @@ export function isPokerVariantFamily(gameType: string | null | undefined): boole
  * decisions (mount, identity tracking, neutral interstitial, seat anchors).
  */
 export const CANONICAL_SHELL_FAMILY = new Set<string>([
+  'canasta',
   ...POKER_VARIANT_FAMILY,
   'tri-towers',
   'eleven-up',
-  'race-poker','battle-31','boxdrop','trip-flip','take-two', 'royal-flash',
+  'race-poker','battle-31','quintzee','ptown-words','boxdrop','trip-flip','take-two', 'royal-flash',
   'run21',
   'gin-rummy',
   'cribbage',
   'yahtzee',
   'farkle',
+  'six-card-golf',
 ]);
 
 export function isCanonicalShellFamily(gameType: string | null | undefined): boolean {
@@ -73,11 +75,14 @@ export function isCanonicalShellFamily(gameType: string | null | undefined): boo
  * See .lovable/canonical-shell-onboarding-checklist.md.
  */
 export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
+  'battle-31',
+  'canasta',
   'run21',
   'gin-rummy',
   'cribbage',
   'yahtzee',
   'farkle',
+  'six-card-golf',
   // PR-B: poker-variant family collapsed to canonical seat rendering.
   // MobileGameTable now reads every seat slot from useRequiredSeatAnchors
   // and renders through CanonicalSeatCluster — no bespoke if-tree, no

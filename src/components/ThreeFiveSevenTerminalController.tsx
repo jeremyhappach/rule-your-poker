@@ -65,6 +65,7 @@ export interface ThreeFiveSevenTerminalControllerProps {
    *  optional Sweep-the-Legs step completes (or is skipped). The parent
    *  wraps its `enterCanonical357TerminalPresentation` helper. */
   onEnterCanonical: (input: CanonicalTerminal357EntryInput) => void;
+  renderSweepFlights?: (onComplete: () => void) => React.ReactNode;
 }
 
 type ControllerPhase =
@@ -79,7 +80,9 @@ export const ThreeFiveSevenTerminalController = ({
   descriptor,
   onOwnershipChange,
   onEnterCanonical,
+  renderSweepFlights,
 }: ThreeFiveSevenTerminalControllerProps) => {
+  const sweepReceipts=useRef({generation:'',legs:false,overlay:false});
   const deal = useDealRuntime();
   const dealSettled = !!deal?.dealSettled;
 
@@ -357,15 +360,22 @@ export const ThreeFiveSevenTerminalController = ({
         }}
       />
 
+      {showSweep&&renderSweepFlights?.(()=>{
+        const r=sweepReceipts.current.generation===descriptor.terminalGenerationId?sweepReceipts.current:(sweepReceipts.current={generation:descriptor.terminalGenerationId,legs:false,overlay:false});
+        r.legs=true;if(r.overlay&&phase==='sweep_legs')enterCanonicalNow('sweep_legs_complete');
+      })}
       <SweepTheLegsAnimation
+        key={descriptor.terminalGenerationId}
         show={showSweep}
+        holdUntilDismissed={!!renderSweepFlights}
         onComplete={() => {
           if (phase !== "sweep_legs") return;
           emit357RuntimeDiag("controller_sweep_legs_complete", {
             gameId: descriptor.gameId,
             terminalResultIdentity: descriptor.terminalResultIdentity,
           }, { terminalGenerationId: descriptor.terminalGenerationId });
-          enterCanonicalNow("sweep_legs_complete");
+          const r=sweepReceipts.current.generation===descriptor.terminalGenerationId?sweepReceipts.current:(sweepReceipts.current={generation:descriptor.terminalGenerationId,legs:false,overlay:false});
+          r.overlay=true;if(!renderSweepFlights||r.legs)enterCanonicalNow("sweep_legs_complete");
         }}
       />
     </>

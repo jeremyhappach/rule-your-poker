@@ -1,0 +1,761 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 320,
+      "height": 568,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 390,
+      "height": 844,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 430,
+      "height": 932,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 568,
+      "height": 320,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 844,
+      "height": 390,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 932,
+      "height": 430,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 0,
+      "width": 390,
+      "height": 664,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 320,
+      "height": 568,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 390,
+      "height": 844,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 430,
+      "height": 932,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 568,
+      "height": 320,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 844,
+      "height": 390,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 932,
+      "height": 430,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 2,
+      "viewer": 1,
+      "width": 390,
+      "height": 664,
+      "cards": 8,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 320,
+      "height": 568,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 390,
+      "height": 844,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 430,
+      "height": 932,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 568,
+      "height": 320,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 844,
+      "height": 390,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 932,
+      "height": 430,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 0,
+      "width": 390,
+      "height": 664,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 320,
+      "height": 568,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 390,
+      "height": 844,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 430,
+      "height": 932,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 568,
+      "height": 320,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 844,
+      "height": 390,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 932,
+      "height": 430,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 1,
+      "width": 390,
+      "height": 664,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 320,
+      "height": 568,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 390,
+      "height": 844,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 430,
+      "height": 932,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 568,
+      "height": 320,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 844,
+      "height": 390,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 932,
+      "height": 430,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 3,
+      "viewer": 2,
+      "width": 390,
+      "height": 664,
+      "cards": 14,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 320,
+      "height": 568,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 390,
+      "height": 844,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 430,
+      "height": 932,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 568,
+      "height": 320,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 844,
+      "height": 390,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 932,
+      "height": 430,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 0,
+      "width": 390,
+      "height": 664,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 320,
+      "height": 568,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 390,
+      "height": 844,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 430,
+      "height": 932,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 568,
+      "height": 320,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 844,
+      "height": 390,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 932,
+      "height": 430,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 1,
+      "width": 390,
+      "height": 664,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 320,
+      "height": 568,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 390,
+      "height": 844,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 430,
+      "height": 932,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 568,
+      "height": 320,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 844,
+      "height": 390,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 932,
+      "height": 430,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 2,
+      "width": 390,
+      "height": 664,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 320,
+      "height": 568,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 390,
+      "height": 844,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 430,
+      "height": 932,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 568,
+      "height": 320,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 844,
+      "height": 390,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 932,
+      "height": 430,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    },
+    {
+      "players": 4,
+      "viewer": 3,
+      "width": 390,
+      "height": 664,
+      "cards": 20,
+      "maximumCardRadiusFraction": 0.1,
+      "clipPaths": [
+        "none"
+      ],
+      "badgeRadius": "50%"
+    }
+  ]
+}

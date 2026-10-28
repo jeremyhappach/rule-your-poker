@@ -4,7 +4,6 @@
 // (data-chip-center) — no internal slot math.
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleLTP } from '@/lib/threeFiveSeven/wartime';
@@ -43,10 +42,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   onAnimationComplete,
 }) => {
   const [animations, setAnimations] = useState<LegChipAnimation[]>([]);
-  const [showSweepOverlay, setShowSweepOverlay] = useState(false);
   const lastTriggerIdRef = useRef<string | null>(null);
   const completedRef = useRef(false); // Guard against double completion
-  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const arrivedRef = useRef(new Set<string>());
   const endpointCacheRef = useRef<EndpointCache>({});
 
   // IMPORTANT: Store callback in ref to prevent effect re-runs when parent re-renders
@@ -90,12 +88,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
       return;
     }
 
-    // Clear any existing timeout from previous animation
-    if (completionTimeoutRef.current) {
-      clearTimeout(completionTimeoutRef.current);
-      completionTimeoutRef.current = null;
-    }
-
+    arrivedRef.current.clear();
     lastTriggerIdRef.current = triggerId;
     completedRef.current = false; // Reset for new animation
 
@@ -132,7 +125,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     const endpointCache: EndpointCache = endpointCacheRef.current;
     // Viewport-absolute coords so we can portal to document.body and escape
     // any transformed felt ancestor stacking context.
-    const getChipCoords = (position: number): { x: number; y: number } => {
+    const getChipCoords = (position: number): { x: number; y: number } | null => {
       const resolved = resolveChipEndpoint({
         ref: { kind: 'seat', position },
         container,
@@ -140,13 +133,13 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         debugLabel: '357-legs-to-player',
       });
       if (resolved) return { x: rect.left + resolved.x, y: rect.top + resolved.y };
-      // Last-resort fallback (should be rare — anchors are mounted by
-      // SeatAnchorLayer for every seated player + observer projection).
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      // A missing seat cannot be substituted with the pot/felt center.
+      return null;
     };
 
-    const getLegCoords = (position: number): { x: number; y: number } => {
+    const getLegCoords = (position: number): { x: number; y: number } | null => {
       const chipCoords = getChipCoords(position);
+      if (!chipCoords) return null;
       // Side derived from canonical chip x — legs render inboard of chip.
       const isRightSide = chipCoords.x > rect.left + rect.width / 2;
       const offsetX = isRightSide ? -30 : 30;
@@ -154,6 +147,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     };
 
     const winnerCoords = getChipCoords(winner);
+    if (!winnerCoords) {completedRef.current=true;onCompleteRef.current?.();return;}
 
     // Create animations for each leg from each player (excluding winner - their legs stay in place)
     const newAnimations: LegChipAnimation[] = [];
@@ -161,6 +155,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
     transferablePositions.forEach((playerLeg) => {
       const legCoords = getLegCoords(playerLeg.position);
+      if (!legCoords) return;
       const legCount = playerLeg.legCount;
       
       for (let i = 0; i < legCount; i++) {
@@ -176,51 +171,35 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
       }
     });
 
+    if (!newAnimations.length) {completedRef.current=true;onCompleteRef.current?.();return;}
     setAnimations(newAnimations);
-    setShowSweepOverlay(true);
     __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'begin', {
       identity: { triggerId: triggerId ?? null },
       payload: { animationCount: newAnimations.length },
     });
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
-    // Animation duration: 3.5s + stagger delays + buffer
-    const totalDuration = 3500 + (newAnimations.length * 100);
-    
-    completionTimeoutRef.current = setTimeout(() => {
-      setAnimations([]);
-      __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'complete', {
-        identity: { triggerId: triggerId ?? null },
-      });
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onCompleteRef.current?.();
-      }
-    }, totalDuration);
-  }, [triggerId]); // ONLY triggerId - other values accessed via refs
+  }, [triggerId]);
 
-  // Cleanup on unmount only
-  useEffect(() => {
-    return () => {
-      if (completionTimeoutRef.current) {
-        clearTimeout(completionTimeoutRef.current);
-      }
-    };
-  }, []);
+  const arrived = (id: string, generation: string | null) => {
+    if (generation !== lastTriggerIdRef.current || completedRef.current) return;
+    arrivedRef.current.add(id);
+    if (arrivedRef.current.size !== animations.length) return;
+    completedRef.current = true;
+    setAnimations([]);
+    __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'complete', {identity: {triggerId}});
+    onCompleteRef.current?.();
+  };
 
   // Format leg value for display
   const displayValue = legValue > 0 ? `$${legValue}` : 'L';
 
-  if (animations.length === 0 && !showSweepOverlay) return null;
+  if (animations.length === 0) return null;
   if (typeof document === 'undefined') return null;
 
   const node = (
     <>
-      {/* "Sweep the Legs" overlay - non-blocking, runs in parallel */}
-      <SweepTheLegsAnimation 
-        show={showSweepOverlay} 
-        onComplete={() => setShowSweepOverlay(false)} 
-      />
+      {/* The terminal phase owner presents Sweep the Legs alongside these flights. */}
       
       {animations.map((anim) => {
         const deltaX = anim.toX - anim.fromX;
@@ -229,7 +208,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         
         return (
           <div
-            key={anim.id}
+            key={triggerId+':'+anim.id}
             data-leg-sweep={triggerId ?? undefined}
             data-leg-sweep-flight={anim.id}
             data-leg-sweep-flight-duration-ms={3200}
@@ -246,8 +225,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
                 legValue > 0 ? 'w-8 h-8' : 'w-6 h-6'
               }`}
               style={{
-                animation: `${uniqueKeyframeName} 3.2s ease-in-out ${anim.delay}ms forwards`,
+                animation: `${uniqueKeyframeName} ${window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? '1ms' : '3.2s'} ease-in-out ${window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : anim.delay}ms forwards`,
               }}
+              onAnimationEnd={event => {if (event.target === event.currentTarget) arrived(anim.id, triggerId);}}
             >
               <span className={`text-slate-800 font-bold ${legValue > 0 ? 'text-[8px]' : 'text-[10px]'}`}>
                 {displayValue}

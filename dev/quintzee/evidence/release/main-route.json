@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "at": "2026-10-26T01:51:49.519Z",
+  "actualGameRoute": true,
+  "authenticatedLocalRoles": true,
+  "liveReconnect": true,
+  "connectedSessionEnded": true,
+  "noArtifacts": true,
+  "freshEndedReconnectLobby": true,
+  "errors": []
+}

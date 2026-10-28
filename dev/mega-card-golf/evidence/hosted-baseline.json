@@ -1,0 +1,240 @@
+[
+  {
+    "arcade_rules": [
+      {
+        "id": "boxdrop/1",
+        "game": "boxdrop",
+        "enabled": true
+      },
+      {
+        "id": "eleven-up/1",
+        "game": "eleven-up",
+        "enabled": false
+      },
+      {
+        "id": "eleven-up/2",
+        "game": "eleven-up",
+        "enabled": false
+      },
+      {
+        "id": "eleven-up/3",
+        "game": "eleven-up",
+        "enabled": true
+      },
+      {
+        "id": "royal-flash/1",
+        "game": "royal-flash",
+        "enabled": true
+      },
+      {
+        "id": "royal-flash/2",
+        "game": "royal-flash",
+        "enabled": true
+      },
+      {
+        "id": "royal-flash/3",
+        "game": "royal-flash",
+        "enabled": true
+      },
+      {
+        "id": "run21/2",
+        "game": "run21",
+        "enabled": false
+      },
+      {
+        "id": "run21/3",
+        "game": "run21",
+        "enabled": true
+      },
+      {
+        "id": "run21/arcade-1",
+        "game": "run21",
+        "enabled": false
+      },
+      {
+        "id": "run21/arcade-2",
+        "game": "run21",
+        "enabled": false
+      },
+      {
+        "id": "take-two/1",
+        "game": "take-two",
+        "enabled": false
+      },
+      {
+        "id": "take-two/2",
+        "game": "take-two",
+        "enabled": true
+      },
+      {
+        "id": "tri-towers/2",
+        "game": "tri-towers",
+        "enabled": false
+      },
+      {
+        "id": "tri-towers/3",
+        "game": "tri-towers",
+        "enabled": false
+      },
+      {
+        "id": "tri-towers/4",
+        "game": "tri-towers",
+        "enabled": false
+      },
+      {
+        "id": "tri-towers/5",
+        "game": "tri-towers",
+        "enabled": true
+      },
+      {
+        "id": "trip-flip/1",
+        "game": "trip-flip",
+        "enabled": true
+      }
+    ],
+    "recovery": {
+      "claimed": false,
+      "failure": null,
+      "singleton": true,
+      "expires_at": "2026-10-23T13:49:31.403081+00:00",
+      "last_completed_at": "2026-10-23T13:49:06.725547+00:00"
+    },
+    "definitions": [
+      {
+        "name": "private.arcade_allowed(uuid)",
+        "definition": "CREATE OR REPLACE FUNCTION private.arcade_allowed(actor uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n SELECT actor IS NOT NULL AND EXISTS(SELECT 1 FROM public.profiles WHERE id=actor AND is_active)\n$function$\n"
+      },
+      {
+        "name": "arcade_load(uuid,uuid,uuid)",
+        "definition": "CREATE OR REPLACE FUNCTION public.arcade_load(p_actor uuid, p_run uuid, p_request uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE run private.arcade_runs;receipt private.arcade_command_receipts;\nBEGIN\n IF NOT private.arcade_allowed(p_actor) THEN RAISE EXCEPTION 'arcade:forbidden' USING ERRCODE='42501';END IF;\n SELECT * INTO run FROM private.arcade_runs WHERE id=p_run AND user_id=p_actor;\n IF NOT FOUND THEN RAISE EXCEPTION 'arcade:not_found' USING ERRCODE='42501';END IF;\n SELECT * INTO receipt FROM private.arcade_command_receipts WHERE user_id=p_actor AND request_id=p_request;\n RETURN private.arcade_record(run)||jsonb_build_object('server_at',floor(extract(epoch FROM clock_timestamp())*1000),'receipt',CASE WHEN receipt.request_id IS NULL THEN NULL ELSE to_jsonb(receipt) END);\nEND $function$\n"
+      },
+      {
+        "name": "arcade_recovery_claim(uuid)",
+        "definition": "CREATE OR REPLACE FUNCTION public.arcade_recovery_claim(p_token uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n UPDATE private.arcade_recovery_state SET claimed=true WHERE singleton AND token=p_token AND NOT claimed AND expires_at>clock_timestamp();\n IF NOT FOUND THEN RAISE EXCEPTION 'arcade:recovery_denied' USING ERRCODE='42501';END IF;\n RETURN coalesce((SELECT jsonb_agg(to_jsonb(r)||jsonb_build_object('server_at',floor(extract(epoch FROM clock_timestamp())*1000))) FROM(\n  SELECT * FROM private.arcade_runs WHERE status='active' AND due_at<=extract(epoch FROM clock_timestamp())*1000 ORDER BY due_at,id LIMIT 20)r),'[]');\nEND $function$\n"
+      },
+      {
+        "name": "private.golf_score(jsonb)",
+        "definition": "CREATE OR REPLACE FUNCTION private.golf_score(cards jsonb)\n RETURNS integer\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO ''\nAS $function$\nDECLARE answer integer:=0; i integer; a integer; b integer;\nBEGIN\n IF jsonb_array_length(cards)<>6 THEN RAISE EXCEPTION 'golf:integrity';END IF;\n FOR i IN 0..2 LOOP\n  a:=(cards->>i)::integer;b:=(cards->>(i+3))::integer;\n  IF a%13<>b%13 THEN answer:=answer+private.golf_points(a)+private.golf_points(b);END IF;\n END LOOP;\n RETURN answer;\nEND $function$\n"
+      }
+    ],
+    "indexes": [
+      {
+        "indexdef": "CREATE UNIQUE INDEX arcade_revisions_pkey ON public.arcade_revisions USING btree (run_id)",
+        "indexname": "arcade_revisions_pkey",
+        "tablename": "arcade_revisions",
+        "schemaname": "public"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX arcade_command_receipts_pkey ON private.arcade_command_receipts USING btree (user_id, request_id)",
+        "indexname": "arcade_command_receipts_pkey",
+        "tablename": "arcade_command_receipts",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE INDEX arcade_receipts_run_revision ON private.arcade_command_receipts USING btree (run_id, revision)",
+        "indexname": "arcade_receipts_run_revision",
+        "tablename": "arcade_command_receipts",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX arcade_results_pkey ON private.arcade_results USING btree (run_id)",
+        "indexname": "arcade_results_pkey",
+        "tablename": "arcade_results",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE INDEX arcade_results_window ON private.arcade_results USING btree (game, ruleset, completed_at DESC, user_id, score DESC)",
+        "indexname": "arcade_results_window",
+        "tablename": "arcade_results",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE INDEX arcade_results_best ON private.arcade_results USING btree (game, ruleset, user_id, score DESC, completed_at)",
+        "indexname": "arcade_results_best",
+        "tablename": "arcade_results",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE INDEX arcade_results_scores ON private.arcade_results USING btree (game, ruleset, score DESC, completed_at, run_id)",
+        "indexname": "arcade_results_scores",
+        "tablename": "arcade_results",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX arcade_runs_pkey ON private.arcade_runs USING btree (id)",
+        "indexname": "arcade_runs_pkey",
+        "tablename": "arcade_runs",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX arcade_one_unfinished ON private.arcade_runs USING btree (user_id, game) WHERE (status = 'active'::text)",
+        "indexname": "arcade_one_unfinished",
+        "tablename": "arcade_runs",
+        "schemaname": "private"
+      },
+      {
+        "indexdef": "CREATE INDEX arcade_due ON private.arcade_runs USING btree (due_at, id) WHERE (status = 'active'::text)",
+        "indexname": "arcade_due",
+        "tablename": "arcade_runs",
+        "schemaname": "private"
+      }
+    ],
+    "constraints": [
+      {
+        "conname": "arcade_runs_pkey",
+        "relation": "private.arcade_runs",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "conname": "arcade_runs_revision_check",
+        "relation": "private.arcade_runs",
+        "definition": "CHECK ((revision >= 0))"
+      },
+      {
+        "conname": "arcade_runs_ruleset_fkey",
+        "relation": "private.arcade_runs",
+        "definition": "FOREIGN KEY (ruleset) REFERENCES private.arcade_rulesets(id)"
+      },
+      {
+        "conname": "arcade_runs_score_check",
+        "relation": "private.arcade_runs",
+        "definition": "CHECK ((score >= 0))"
+      },
+      {
+        "conname": "arcade_runs_status_check",
+        "relation": "private.arcade_runs",
+        "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'expired'::text, 'abandoned'::text])))"
+      },
+      {
+        "conname": "arcade_runs_user_id_fkey",
+        "relation": "private.arcade_runs",
+        "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)"
+      },
+      {
+        "conname": "arcade_command_receipts_pkey",
+        "relation": "private.arcade_command_receipts",
+        "definition": "PRIMARY KEY (user_id, request_id)"
+      },
+      {
+        "conname": "arcade_command_receipts_run_id_fkey",
+        "relation": "private.arcade_command_receipts",
+        "definition": "FOREIGN KEY (run_id) REFERENCES private.arcade_runs(id)"
+      },
+      {
+        "conname": "arcade_results_pkey",
+        "relation": "private.arcade_results",
+        "definition": "PRIMARY KEY (run_id)"
+      },
+      {
+        "conname": "arcade_results_run_id_fkey",
+        "relation": "private.arcade_results",
+        "definition": "FOREIGN KEY (run_id) REFERENCES private.arcade_runs(id)"
+      },
+      {
+        "conname": "arcade_results_score_check",
+        "relation": "private.arcade_results",
+        "definition": "CHECK ((score >= 0))"
+      }
+    ]
+  }
+]

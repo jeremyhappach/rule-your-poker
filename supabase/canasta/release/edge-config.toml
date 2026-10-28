@@ -1,0 +1,4 @@
+# Merge this exact Canasta-only section during the separately authorized release.
+# Database-issued x-canasta-dispatch lease is verified by service-only claim RPCs.
+[functions.canasta-recovery]
+verify_jwt = false

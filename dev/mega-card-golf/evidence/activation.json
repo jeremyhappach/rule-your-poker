@@ -1,0 +1,69 @@
+[
+  {
+    "evidence": {
+      "rule": {
+        "id": "mega-card-golf/1",
+        "game": "mega-card-golf",
+        "config": {
+          "score": "canonical-golf",
+          "engine": "mega-card-golf/1",
+          "opening": "player-selected",
+          "finalDraw": "resolve"
+        },
+        "enabled": true
+      },
+      "courses": [
+        {
+          "id": "sunny-meadows",
+          "name": "Sunny Meadows",
+          "holes": 9,
+          "boardId": "76bf83a5-1188-47fd-954f-929bd53f14c8",
+          "enabled": true,
+          "configId": "f9fd92d6-f2f8-4155-a90f-a0962f63e526",
+          "revision": 1,
+          "difficulty": "Easy",
+          "initialExposed": 2,
+          "stockAllowance": 16,
+          "discardAllowance": 5,
+          "completionSeconds": 300
+        },
+        {
+          "id": "coastal-links",
+          "name": "Coastal Links",
+          "holes": 9,
+          "boardId": "b09157ea-d454-4a67-b355-f71a59cd85dc",
+          "enabled": true,
+          "configId": "a1694de2-862d-41df-bff5-ee620a912cf2",
+          "revision": 1,
+          "difficulty": "Medium",
+          "initialExposed": 2,
+          "stockAllowance": 12,
+          "discardAllowance": 3,
+          "completionSeconds": 300
+        },
+        {
+          "id": "devils-canyon",
+          "name": "Devil's Canyon",
+          "holes": 9,
+          "boardId": "28021ecf-51fb-4447-b981-08aee6a32155",
+          "enabled": true,
+          "configId": "db220fa8-d3a9-405c-9f8e-d58c3a3b40eb",
+          "revision": 1,
+          "difficulty": "Hard",
+          "initialExposed": 2,
+          "stockAllowance": 8,
+          "discardAllowance": 1,
+          "completionSeconds": 300
+        }
+      ],
+      "release": {
+        "buildSha": "77ae80ad46793e7d80ae6eb89df6c776af85cf1c",
+        "publishedAt": "2026-10-23T14:31:31.722Z",
+        "deploymentId": "39970181746-1",
+        "schemaVersion": 1
+      },
+      "activated_at": "2026-10-23T15:16:03.381175+00:00",
+      "other_rule_flags_preserved": true
+    }
+  }
+]

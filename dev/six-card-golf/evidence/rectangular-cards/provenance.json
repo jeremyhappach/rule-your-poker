@@ -1,0 +1,22 @@
+{
+  "baseCommit": "e77b771794dacb24771593b19da6a77c18effafc",
+  "branch": "codex/golf-interaction-polish",
+  "capturedAt": "2026-10-22T01:43:54.013Z",
+  "sourceHashes": {
+    "src/components/golf/GolfTable.tsx": "85b86b6708f90afe21572df0c22db6da4bdc8460390bf97590ab0685115f5b97",
+    "src/components/golf/golf.css": "85783bb9ba5882b4909349110be3e86a6c8b62c20570336e3503a28fa950b17c",
+    "src/components/canonicalShell/CanonicalCardCountBadge.tsx": "d74375d1ee8e5124bdb8c7c473c6e8155e805b02577c85402c654ddbfbab3335",
+    "src/components/canonicalShell/canonicalCardCountBadge.css": "f1e0bd2e1fc924f0b4f2b2e604249115fcaecafd16c92d82c367b30bfa075a34"
+  },
+  "images": {
+    "portrait.png": "4185f850510ab5e1b51142f4dcfc02d3d3d3f5b6429dc811d60f0a6078b62b60",
+    "landscape.png": "6d80a865c26d256396f35c565e1896e4e4569e33ed1712924b91c12949933b6e",
+    "four-player-portrait.png": "f71ba57e0cc56d600035c5624694a620bd4389ccfa7abf5798add744af6eee7d",
+    "four-player-landscape.png": "b02675102992ae5aae53976276952ce89fae7d84dd83bde9aefdbf9e110feefc",
+    "four-player-short-landscape.png": "553bb130f4a2f792a32c740eeb2865af6b3e71391a48baa46b3f0e1e1ad3daa4"
+  },
+  "ownerCapture": "Local production build; authenticated read-only view of the existing paused owner session. No gameplay action submitted.",
+  "fourPlayerCapture": "Isolated local authoritative fixture in the canonical shell.",
+  "libraryIds": null,
+  "libraryDelivery": "Direct library.create_library_file is unavailable in this session; local PNGs supplied instead."
+}

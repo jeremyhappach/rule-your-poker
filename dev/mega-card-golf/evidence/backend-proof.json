@@ -1,0 +1,20 @@
+{
+  "database": "mega_golf_1792719651984",
+  "source": "local snapshot, not hosted verification",
+  "passed": [
+    "rollback: roles and closed admission",
+    "rollback: winner, immutable actual score, rollback, duplicate, replay, late replay, continuation and terminal",
+    "rollback: ties, course isolation, admin auth, archive, frozen active config and immutable history",
+    "rollback: incomplete and abandoned exclusion",
+    "entire candidate proof rolled back before installation",
+    "installed local: roles and closed admission",
+    "installed local: winner, immutable actual score, rollback, duplicate, replay, late replay, continuation and terminal",
+    "installed local: ties, course isolation, admin auth, archive, frozen active config and immutable history",
+    "installed local: incomplete and abandoned exclusion",
+    "independent PostgreSQL connections commit one revision",
+    "existing Arcade recovery dispatch finishes nine untouched holes with zero clients",
+    "zero writes guarded across 143 existing non-Arcade tables; local admission restored closed"
+  ],
+  "nonArcadeTablesGuarded": 143,
+  "productionWrites": 0
+}

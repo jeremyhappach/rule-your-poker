@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-25",
+  "scope": "local prototype only",
+  "baseSha": "5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4",
+  "branch": "codex/quintzee-v1",
+  "automated": [
+    {"command": "bun dev/quintzee/proof.ts", "exitCode": 0, "cases": 13, "categoryComparisons": 93312, "evidence": "rules.json", "reconciliationRerun": true},
+    {"command": "node dev/quintzee/protocol-proof.mjs", "exitCode": 0, "cases": 8, "evidence": "protocol.json", "reconciliationRerun": true},
+    {"command": "bunx --no-install vitest run src/lib/quintzee/model.test.ts src/lib/yahtzeeScoring.test.ts", "exitCode": 0, "tests": 26, "reconciliationRerun": true},
+    {"command": "bunx --no-install tsc -p tsconfig.app.json --noEmit", "exitCode": 0, "note": "Outstanding second TypeScript run completed successfully; completion collected during reconciliation."},
+    {"command": "bunx --no-install vite build", "exitCode": 0, "note": "Completed during implementation. Existing chunk-size, dynamic-import and Browserslist warnings. Quintzee is not routed into the production bundle; local Vite preview exercises its view."},
+    {"command": "bunx --no-install tsgo --noEmit", "status": "unavailable", "note": "tsgo binary absent. Used existing tsc; installed no dependencies."}
+  ],
+  "browser": {
+    "route": "http://127.0.0.1:5197/dev/quintzee/live.html",
+    "adapter": "Loopback-only qualification database, synthetic UUID/token identities; not production auth or session adapters.",
+    "refreshedCaptures": ["classic-phone.png", "modern-phone.png", "modern-observer.png"],
+    "phoneContainer": "390x680",
+    "retainedEarlierCaptures": {"classic-small.png": "320x568", "modern-landscape.png": "740x390"},
+    "reconciliationObservation": "Player 1 banked Full House for 25. A second participant browser received the same score and next dice via notification; its gameplay controls remained disabled.",
+    "earlierObservations": ["held dice and reroll", "reload retained banked points and deadline", "solo expiration banked 18 x 100 = 1800 and advanced to round two"],
+    "limits": ["same-machine browser clients", "no physical touchscreen smoke", "no production reconnect or full session lifecycle qualification"]
+  },
+  "notQualified": ["production Arcade/session adapters", "Game Defaults/catalog/leaderboards", "canonical pause and terminal lifecycle", "canonical financial settlement", "production recovery dispatch", "historical rules registry"],
+  "productionChanges": false
+}

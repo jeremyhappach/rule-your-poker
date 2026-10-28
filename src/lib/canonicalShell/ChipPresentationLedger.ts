@@ -32,6 +32,8 @@ export interface ChipPresentationBatch {
   game_id: string;
   /** Authoritative owner, retained for exact game-specific completion checks. */
   dealer_game_id?: string | null;
+  source_round_id?: string | null;
+  successor_round_id?: string | null;
   cursor: number;
   reason: ChipTransportIntent['reason'];
   transfers: ChipPresentationTransfer[];
@@ -46,7 +48,7 @@ export interface ChipPresentationBatch {
  * ownership of each touched endpoint at its authoritative opening balance
  * while admission is closed; this never delays or changes settlement.
  */
-export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean;
+export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean | 'reconcile';
 
 /**
  * Presentation-only launch boundary. Fires exactly once after an admitted
@@ -248,6 +250,8 @@ function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch |
     id: row.id,
     game_id: gameId,
     dealer_game_id: typeof row.dealer_game_id === 'string' ? row.dealer_game_id : null,
+    source_round_id: typeof row.source_round_id === 'string' ? row.source_round_id : null,
+    successor_round_id: typeof row.successor_round_id === 'string' ? row.successor_round_id : null,
     cursor,
     reason,
     transfers,
@@ -287,6 +291,8 @@ export function useChipPresentationLedger(
   const runningRef = useRef(new Map<string, RunningBatch>());
   const activeEndpointsRef = useRef(new Map<EndpointKey, string>());
   const bootEventsRef = useRef<ChipPresentationBatch[]>([]);
+  const dealerGameRef = useRef<{ id: string | null; revision: number } | null>(null);
+  const retiredDealerGamesRef = useRef(new Set<string>());
   const hydratedRef = useRef(false);
   const disposedRef = useRef(false);
   const canStartBatchRef = useRef(canStartBatch);
@@ -333,6 +339,26 @@ export function useChipPresentationLedger(
     });
   }, []);
 
+  const retireBatch = useCallback((batch: ChipPresentationBatch) => {
+    seenBatchIdsRef.current.add(batch.id);
+    knownBatchCursorsRef.current.add(batch.cursor);
+    const running = runningRef.current.get(batch.id);
+    if (running) {
+      running.cancelled = true;
+      runningRef.current.delete(batch.id);
+      for (const transfer of batch.transfers) transport.cancel(transfer.id);
+    }
+    queuedRef.current = queuedRef.current.filter(item => item.id !== batch.id);
+    onBalanceDeltasAbandonedRef.current(batch.id);
+    for (const [key, closing] of Object.entries(batch.closing_balances) as Array<[EndpointKey, number]>) {
+      if (activeEndpointsRef.current.get(key) === batch.id) activeEndpointsRef.current.delete(key);
+      if ((releasedCursorsRef.current.get(key) ?? 0) >= batch.cursor) continue;
+      releasedCursorsRef.current.set(key, batch.cursor);
+      if (!activeEndpointsRef.current.has(key)) writeVisible([[key, closing]]);
+    }
+    writeCursorState(batch.cursor, 'reconciled');
+  }, [transport, writeCursorState, writeVisible]);
+
   const setRawPlayer = useCallback((row: Record<string, unknown>) => {
     const id = typeof row.id === 'string' ? row.id : null;
     const chips = asNumber(row.chips);
@@ -340,6 +366,7 @@ export function useChipPresentationLedger(
     if (!id || chips == null || position == null) return;
     const key = `player:${id}` as EndpointKey;
     const cursor = asNumber(row.chip_transfer_cursor);
+    if (cursor != null && cursor < (rawCursorsRef.current.get(key) ?? 0)) return;
     playersRef.current.set(id, { chips, position, cursor });
     rawBalancesRef.current.set(key, chips);
     if (cursor != null) rawCursorsRef.current.set(key, cursor);
@@ -359,9 +386,26 @@ export function useChipPresentationLedger(
   }, [writeVisible]);
 
   const setRawPot = useCallback((row: Record<string, unknown>) => {
+    // A superseded dealer game cannot keep a new game's ante/deal hostage.
+    // Retire its committed presentation silently; never replay a payout or
+    // abandon a future game's batch that arrived before its session row.
+    if (Object.prototype.hasOwnProperty.call(row, 'current_game_uuid')) {
+      const id = typeof row.current_game_uuid === 'string' ? row.current_game_uuid : null;
+      const revision = asNumber(row.authority_revision) ?? 0;
+      const previous = dealerGameRef.current;
+      if (previous && revision < previous.revision) return;
+      if (previous?.id && previous.id !== id) {
+        retiredDealerGamesRef.current.add(previous.id);
+        const obsolete = [...queuedRef.current, ...Array.from(runningRef.current.values(), x => x.batch)]
+          .filter(batch => batch.dealer_game_id === previous.id).sort((a,b) => a.cursor-b.cursor);
+        for (const batch of obsolete) retireBatch(batch);
+      }
+      dealerGameRef.current = { id, revision };
+    }
     const pot = asNumber(row.pot);
     if (pot == null) return;
     const cursor = asNumber(row.pot_transfer_cursor);
+    if (cursor != null && cursor < (rawCursorsRef.current.get('pot') ?? 0)) return;
     rawBalancesRef.current.set('pot', pot);
     if (cursor != null) rawCursorsRef.current.set('pot', cursor);
     const released = releasedCursorsRef.current.get('pot') ?? 0;
@@ -371,14 +415,14 @@ export function useChipPresentationLedger(
       recoverCommittedCursorRef.current(cursor);
     }
     queueMicrotask(() => startQueuedRef.current());
-  }, [writeVisible]);
+  }, [retireBatch, writeVisible]);
 
   const refetchAuthoritative = useCallback(async () => {
     if (!gameId) return;
     const client = supabase as any;
     const [{ data: playerRows }, { data: gameRow }] = await Promise.all([
       client.from('players').select('id, chips, position, chip_transfer_cursor').eq('game_id', gameId),
-      client.from('games').select('pot, pot_transfer_cursor').eq('id', gameId).maybeSingle(),
+      client.from('games').select('pot, pot_transfer_cursor, current_game_uuid, authority_revision').eq('id', gameId).maybeSingle(),
     ]);
     for (const row of playerRows ?? []) setRawPlayer(row as Record<string, unknown>);
     if (gameRow) setRawPot(gameRow as Record<string, unknown>);
@@ -456,8 +500,14 @@ export function useChipPresentationLedger(
         // A delayed visual sequence (for example, Holm community/Chucky
         // reveal) may defer the flight. The raw authoritative rows remain
         // ledger-owned at their opening values until this gate opens.
-        if (!canStartBatchRef.current(batch)) continue;
+        const admission = canStartBatchRef.current(batch);
+        if (!admission) continue;
         if (endpoints.some((key) => activeEndpointsRef.current.has(key))) continue;
+        if (admission === 'reconcile') {
+          retireBatch(batch);
+          progressed = true;
+          continue;
+        }
         // Player hydration and the immutable batch may arrive in either
         // order. Keep ownership queued until every logical endpoint can be
         // mapped; a later authoritative player row re-runs this function.
@@ -604,7 +654,7 @@ export function useChipPresentationLedger(
         break;
       }
     }
-  }, [emitBalanceDelta, finishBatch, transport, writeCursorState, writeVisible]);
+  }, [emitBalanceDelta, finishBatch, retireBatch, transport, writeCursorState, writeVisible]);
   startQueuedRef.current = startQueued;
 
   // Admission may open after the immutable batch is already queued. Recheck
@@ -660,6 +710,11 @@ export function useChipPresentationLedger(
 
   const acceptBatch = useCallback((batch: ChipPresentationBatch) => {
     if (seenBatchIdsRef.current.has(batch.id)) return;
+    if (batch.dealer_game_id && retiredDealerGamesRef.current.has(batch.dealer_game_id)) {
+      retireBatch(batch);
+      startQueuedRef.current();
+      return;
+    }
     knownBatchCursorsRef.current.add(batch.cursor);
     const endpoints = Object.keys(batch.opening_balances) as EndpointKey[];
     // A reconnect may deliver an INSERT that was already fully settled while
@@ -677,7 +732,7 @@ export function useChipPresentationLedger(
     queuedRef.current.push(batch);
     writeCursorState(batch.cursor, 'queued');
     startQueuedRef.current();
-  }, [writeCursorState]);
+  }, [retireBatch, writeCursorState]);
 
   const recoverCommittedCursor = useCallback((cursor: number) => {
     if (!shouldRecoverCommittedCursor({
@@ -727,6 +782,8 @@ export function useChipPresentationLedger(
     if (!gameId) return;
     disposedRef.current = false;
     hydratedRef.current = false;
+    dealerGameRef.current = null;
+    retiredDealerGamesRef.current.clear();
     if (waitForEndpointReadinessRef.current) setCursorStates(new Map());
     emittedBalanceDeltaIdsRef.current.clear();
     knownBatchCursorsRef.current.clear();
@@ -802,7 +859,7 @@ export function useChipPresentationLedger(
       const [{ data: batchRows }, { data: playerRows }, { data: gameRow }] = await Promise.all([
         client.from('gameplay_transfer_batches').select('*').eq('game_id', gameId),
         client.from('players').select('id, chips, position, chip_transfer_cursor').eq('game_id', gameId),
-        client.from('games').select('pot, pot_transfer_cursor').eq('id', gameId).maybeSingle(),
+        client.from('games').select('pot, pot_transfer_cursor, current_game_uuid, authority_revision').eq('id', gameId).maybeSingle(),
       ]);
       if (disposedRef.current) return;
 

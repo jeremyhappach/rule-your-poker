@@ -1,10 +1,13 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { resolveCardFace } from '@/lib/cardGames/resolvedCardFace';
+import { isResolvedJoker, type JokerFace } from '@/lib/cardGames/physicalCard';
+import { JokerCardFace } from '@/components/canonicalShell/JokerCardFace';
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
 import { CartoonCardFace } from './CartoonCardFace';
+import { MegatouchCardFace } from './canonicalShell/MegatouchCardFace';
 import {
   useCardFrontDesign,
   resolveCardFrontStyle,
@@ -26,9 +29,11 @@ const TEAM_LOGOS: Record<string, string> = {
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
-  frontStyle?: 'canonical' | 'cartoon';
+  frontStyle?: 'canonical' | 'cartoon' | 'megatouch';
   cartoonLayout?: 'standard' | 'tableau' | 'royal';
   card?: CardType;
+  jokerFace?: JokerFace;
+  physicalId?: string;
   isHidden?: boolean;
   size?: CardSize;
   showFront?: boolean;
@@ -155,6 +160,8 @@ export const PlayingCard = ({
   frontStyle = 'canonical',
   cartoonLayout = 'standard',
   card,
+  jokerFace,
+  physicalId,
   isHidden = false,
   size = 'lg',
   showFront = true,
@@ -252,7 +259,7 @@ export const PlayingCard = ({
   const cardFaceStyle = getCardFaceStyle();
 
   // If hidden or no card, show CANONICAL card back.
-  if (isHidden || !resolvedFace || !card) {
+  if (isHidden || (!!jokerFace && !!card) || ((!resolvedFace || !card) && !isResolvedJoker(jokerFace))) {
     return (
       <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-hidden="1">
         <CanonicalCardBack
@@ -267,13 +274,22 @@ export const PlayingCard = ({
     );
   }
 
+  if (isResolvedJoker(jokerFace)) {
+    return <Card data-playing-card-root="" data-card-id={physicalId} data-playing-card-face={showFront ? '' : undefined}
+      className={`${sizeClasses.container} relative overflow-hidden ${ACTIVE_HAND_SHELL_BASE_CLASS} ${className}`}
+      style={{ ...style, fontSize: effectiveCardWidthPx * .4 }}>
+      {showFront ? <JokerCardFace /> : <CanonicalCardBack widthPx={40} heightPx={60} style={{width:'100%',height:'100%'}} />}
+      {showFront && highlightOverlay}
+    </Card>;
+  }
+
   // For flip animation support
   if (isFlipping !== undefined && !showFront) {
     return (
       <div
         data-playing-card-root=""
         data-playing-card-flip=""
-        data-card-id={card ? `${card.rank}-${card.suit}` : undefined}
+        data-card-id={physicalId ?? (card ? `${card.rank}-${card.suit}` : undefined)}
         className={`${sizeClasses.container} relative ${className}`}
         style={{
           transformStyle: 'preserve-3d',
@@ -309,7 +325,7 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+          {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
             className={isFourColor ? cardFaceStyle.textColor : ''}
             style={face.rankStyle}
           >
@@ -353,12 +369,12 @@ export const PlayingCard = ({
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-front-style={frontStyle}
-      data-card-id={`${card.rank}-${card.suit}`}
+      data-card-id={physicalId ?? `${card.rank}-${card.suit}`}
       className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? `${ACTIVE_HAND_SHELL_BASE_CLASS} ${isFourColor && fourColorConfig ? ACTIVE_HAND_SHELL_FOUR_COLOR_CLASS : ACTIVE_HAND_SHELL_TWO_COLOR_CLASS}` : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
-      {frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+      {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
       >

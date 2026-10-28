@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T23:51:15.978Z",
+  "database": "canasta_reconciled_20261021_2155",
+  "passed": true,
+  "existingFunctionsCompared": 336,
+  "onlyChangedOwner": "private.advance_ante_phase_exact(p_game_id uuid, p_expected_dealer_game_id uuid, p_expected_deadline timestamp with time zone, p_now timestamp with time zone)",
+  "checks": [
+    "exact candidate rollback and closed install",
+    "Canasta financial/consent/fake-only/control/RLS",
+    "Race rules/financial/replay/rollback/timeout",
+    "11 Up Ready/reclaim/all-human controls"
+  ],
+  "limitations": [
+    "Native local snapshot; no hosted network delivery",
+    "Snapshot uses local scheduler fixture; Docker package separately exercises pg_cron"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "checks": [
+    {
+      "view": "selection-desktop",
+      "overflow": false,
+      "courses": 3
+    },
+    {
+      "view": "selection-portrait",
+      "overflow": false,
+      "courses": 3
+    },
+    {
+      "view": "selection-landscape",
+      "overflow": false,
+      "courses": 3
+    },
+    {
+      "view": "game-desktop",
+      "overflow": false,
+      "cards": 6,
+      "buttons": {
+        "x": 954.03125,
+        "y": 219.34375,
+        "width": 450.546875,
+        "height": 712.546875
+      }
+    },
+    {
+      "view": "game-portrait",
+      "overflow": false,
+      "cards": 6,
+      "buttons": {
+        "x": 24.953125,
+        "y": 633.078125,
+        "width": 340.09375,
+        "height": 144.78125
+      }
+    },
+    {
+      "view": "game-landscape",
+      "overflow": false,
+      "cards": 6,
+      "buttons": {
+        "x": 554.578125,
+        "y": 145.25,
+        "width": 259.828125,
+        "height": 182.734375
+      }
+    },
+    {
+      "view": "reconnect",
+      "run": "c573bc0a-4734-488c-9b8b-5a1d44d7bae1",
+      "concealed": 3,
+      "stock": "15\nstock draws left\n5\ndiscards left"
+    },
+    {
+      "view": "reduced-motion",
+      "animation": "none"
+    }
+  ],
+  "errors": [],
+  "external": []
+}

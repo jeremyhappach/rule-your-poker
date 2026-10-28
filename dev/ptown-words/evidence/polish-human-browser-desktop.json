@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "checks": [
+    "human word uses identical reveal and authoritative point total; previous zoom/pan restored after bounded handoff",
+    "terminal human word reveal precedes canonical winner/transfer presentation and Session Ended; one settled result"
+  ],
+  "errors": [],
+  "original": {
+    "x": 0,
+    "y": 336
+  },
+  "restored": {
+    "x": 0,
+    "y": 336
+  }
+}

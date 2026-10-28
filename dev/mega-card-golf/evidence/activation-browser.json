@@ -1,0 +1,21 @@
+{
+  "verifiedAt": "2026-10-23T15:16:44.033Z",
+  "admission": true,
+  "courses": [
+    {
+      "id": "sunny-meadows",
+      "enabled": true
+    },
+    {
+      "id": "coastal-links",
+      "enabled": true
+    },
+    {
+      "id": "devils-canyon",
+      "enabled": true
+    }
+  ],
+  "enabledStartButtons": 3,
+  "errors": [],
+  "createdRuns": 0
+}

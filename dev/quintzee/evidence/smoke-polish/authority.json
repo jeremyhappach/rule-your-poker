@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "local": true,
+  "unchangedAuthority": true,
+  "cases": [
+    {
+      "at": 50000,
+      "reason": "all_categories",
+      "filled": 12,
+      "remaining": 50000
+    },
+    {
+      "at": 99999,
+      "reason": "all_categories",
+      "filled": 12,
+      "remaining": 1
+    },
+    {
+      "at": 100000,
+      "reason": "timeout",
+      "filled": 11,
+      "remaining": 0
+    },
+    {
+      "at": 100001,
+      "reason": "timeout",
+      "filled": 11,
+      "remaining": 0
+    }
+  ],
+  "completedBeforeExpiryRetainsReason": true
+}

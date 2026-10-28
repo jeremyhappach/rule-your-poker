@@ -1,0 +1,21 @@
+{
+  "functions": [
+    {
+      "name": "public.horses_settle_game",
+      "normalized_md5": "11ca0cf06ec629bee5fd68b302bf7fac"
+    },
+    {
+      "name": "private.horses_scc_rollover_abandoned_round",
+      "normalized_md5": "abc3b7b9815adf721548667bdf77404b"
+    },
+    {
+      "name": "private.start_horses_scc_initial_round",
+      "normalized_md5": "65d94a5ba0bccb73c0465a6717e15426"
+    },
+    {
+      "name": "private.keep_transfer_round_immutable",
+      "normalized_md5": "fa76be96c2a6eecade2882028388acce"
+    }
+  ],
+  "remainingFixtures": 0
+}

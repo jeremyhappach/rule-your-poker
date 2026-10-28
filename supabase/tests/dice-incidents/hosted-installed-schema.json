@@ -1,0 +1,91 @@
+{
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "gameplay_transfer_batches",
+      "column": "source_round_id",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "gameplay_transfer_batches",
+      "column": "successor_round_id",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "gameplay_transfer_pending_changes",
+      "column": "source_round_id",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "gameplay_transfer_pending_changes",
+      "column": "successor_round_id",
+      "nullable": "YES"
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "md5": "592fe96e0a2e4009861ca9c729bb66bc",
+      "name": "finalize_gameplay_transfer_batch",
+      "config": [
+        "search_path=public"
+      ],
+      "schema": "public"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "md5": "3c5a4cce644e61af1c69d38de4917743",
+      "name": "horses_settle_game",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "public"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "096aaf91cc889ee9af43d6909d8b1c5a",
+      "name": "horses_scc_rollover_abandoned_round",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "private"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "e46e355a5d1fe23a8dba280d0277354f",
+      "name": "start_horses_scc_initial_round",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "private"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "b05a3c5643888553b8d09771245233c4",
+      "name": "capture_transfer_source_round",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "private"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "md5": "f360a3b5b1561acc96e92fa933e63663",
+      "name": "annotate_transfer_batch_round",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "private"
+    }
+  ],
+  "migration": [
+    {
+      "name": "dice_transfer_round_identity",
+      "version": "20261028184338"
+    }
+  ],
+  "remainingFixtures": 0
+}

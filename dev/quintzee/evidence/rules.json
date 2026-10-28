@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "cases": [
+    "93,312 category cases: SQL equals reused Yahtzee base scorer; no jokers",
+    "server CSPRNG roll, two rerolls, held dice preserved; third reroll rejected",
+    "category banks once, automatic next hand, clock unchanged",
+    "owner example exactly 63, +35 upper, no completion bonus, 44,800 halfway",
+    "separate +35 all-twelve award enters raw subtotal",
+    "deadline beats crossing action, banked points survive, no late scoring",
+    "exhausted rerolls with no available match ends round without scratch",
+    "speed scales to configured duration",
+    "four-player whole-round rotation, 80,000 inclusive / 79,998 excluded, one bonus only",
+    "zero-client catch-up completes two expired rounds without invented points",
+    "atomic local command receipt prevents duplicate scoring and dice draws",
+    "unrelated actor rejected by local authority",
+    "all synthetic state rolled back"
+  ],
+  "canonicalFinancialProof": "MISSING",
+  "productionAdmission": false
+}

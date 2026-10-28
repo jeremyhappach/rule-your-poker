@@ -1,0 +1,17 @@
+[
+  {
+    "value": {
+      "passed": true,
+      "installed": false,
+      "winner_ties": true,
+      "authorization": true,
+      "negative_score": true,
+      "atomic_rollback": true,
+      "arcade_rows_restored": true,
+      "continuation_terminal": true,
+      "archive_config_history": true,
+      "existing_financial_writes": 0,
+      "duplicate_replay_late_replay": true
+    }
+  }
+]

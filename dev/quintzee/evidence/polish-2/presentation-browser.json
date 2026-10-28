@@ -1,0 +1,96 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-26T20:11:04.289Z",
+  "cases": [
+    {
+      "theme": "modern",
+      "timing": {
+        "click": 984.3000000715256,
+        "rolling": 1104.7000000476837,
+        "landed": 2610.9000000953674,
+        "unlocked": 2610.9000000953674
+      },
+      "requestMs": 120.39999997615814,
+      "animationMs": 1506.2000000476837,
+      "unlockAfterLandingMs": 0,
+      "off": {
+        "track": "rgb(107, 114, 128)",
+        "thumb": "matrix(1, 0, 0, 1, 0, 0)",
+        "textFirst": "Classic Mode"
+      },
+      "on": {
+        "track": "rgb(214, 165, 48)",
+        "thumb": "matrix(1, 0, 0, 1, 20, 0)"
+      },
+      "playedAudio": [
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-bonus:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:5:0",
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:7",
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-count:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:result",
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-bonus:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:7:0",
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:9",
+        "ptown-audio:6795da1e-cc68-4214-b2be-eabc6810784d:quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:5"
+      ],
+      "initialBase": 248,
+      "finalBase": 298,
+      "finalScore": 84930,
+      "audioUpper": [
+        "quintzee-bonus:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:5:0",
+        "quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:5"
+      ],
+      "audioQuintzee": [
+        "quintzee-bonus:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:7:0",
+        "quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:7"
+      ],
+      "audioFinal": [
+        "quintzee-base:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:9",
+        "quintzee-count:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:c9d0b5c6-a81e-427a-aa9b-95617d56b93f:1:result"
+      ]
+    },
+    {
+      "theme": "classic",
+      "timing": {
+        "click": 1614.3000000715256,
+        "rolling": 1740.3999999761581,
+        "landed": 3253,
+        "unlocked": 3253.100000023842
+      },
+      "requestMs": 126.09999990463257,
+      "animationMs": 1512.6000000238419,
+      "unlockAfterLandingMs": 0.10000002384185791,
+      "off": {
+        "track": "rgb(107, 114, 128)",
+        "thumb": "matrix(1, 0, 0, 1, 0, 0)",
+        "textFirst": "Classic Mode"
+      },
+      "on": {
+        "track": "rgb(214, 165, 48)",
+        "thumb": "matrix(1, 0, 0, 1, 20, 0)"
+      },
+      "playedAudio": [
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-bonus:3aca677f-6287-4d91-81a3-245c06002dc3:1:7:0",
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:7",
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-bonus:3aca677f-6287-4d91-81a3-245c06002dc3:1:5:0",
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:5",
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:9",
+        "ptown-audio:b8f1f589-080b-4e3b-8be6-ffbe758b0bc9:quintzee-count:3aca677f-6287-4d91-81a3-245c06002dc3:1:3aca677f-6287-4d91-81a3-245c06002dc3:1:result"
+      ],
+      "initialBase": 248,
+      "finalBase": 298,
+      "finalScore": 84930,
+      "audioUpper": [
+        "quintzee-bonus:3aca677f-6287-4d91-81a3-245c06002dc3:1:5:0",
+        "quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:5"
+      ],
+      "audioQuintzee": [
+        "quintzee-bonus:3aca677f-6287-4d91-81a3-245c06002dc3:1:7:0",
+        "quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:7"
+      ],
+      "audioFinal": [
+        "quintzee-base:3aca677f-6287-4d91-81a3-245c06002dc3:1:9",
+        "quintzee-count:3aca677f-6287-4d91-81a3-245c06002dc3:1:3aca677f-6287-4d91-81a3-245c06002dc3:1:result"
+      ]
+    }
+  ],
+  "errors": []
+}

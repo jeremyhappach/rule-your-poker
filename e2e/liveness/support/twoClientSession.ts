@@ -22,8 +22,8 @@ const DICE_DEALER_GAMES = new Set<DealerGameType>([
   'yahtzee',
 ]);
 
-export function dealerGameSetupTab(gameType: DealerGameType): 'Card Games' | 'Dice Games' {
-  return DICE_DEALER_GAMES.has(gameType) ? 'Dice Games' : 'Card Games';
+export function dealerGameSetupTab(gameType: DealerGameType): 'Cards' | 'Dice' {
+  return DICE_DEALER_GAMES.has(gameType) ? 'Dice' : 'Cards';
 }
 
 type Credentials = PlayerCredentials;

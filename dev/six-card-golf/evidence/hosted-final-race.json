@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-21T23:14:30.260Z",
+  "game": "f3b006a6-ee17-4495-ab50-e16a0df8a42e",
+  "dealer": "43d91821-6cf1-4405-a31b-3177a2a607e1",
+  "passed": true,
+  "finalRace": {
+    "accepted": 1,
+    "rejected": 1,
+    "elapsedMs": 386
+  },
+  "resultId": "04279a19-c37a-4c6a-85f6-30c61f049d5b",
+  "balances": {
+    "425d3e70-7f60-47e2-91ed-7a7b34101680": 95,
+    "cb2b4c13-d218-4edf-b5e2-16d401c1fd53": 105
+  },
+  "batchId": null,
+  "actualSchedulerContinuation": true,
+  "runBack": {
+    "dealer": "a2d3fdda-2aa1-4bb7-87a2-664661e8bf0c",
+    "freshConsent": true,
+    "newMatchUnchangedByOldReceipt": true,
+    "retainedDeliberatelyPaused": true
+  },
+  "authenticatedOutsiderDenied": true,
+  "clientsClosedAt": "2026-10-21T23:15:10.330Z"
+}

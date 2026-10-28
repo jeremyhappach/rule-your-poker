@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-26T20:15:23.448Z",
+  "tests": {
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed: tsc -p tsconfig.app.json --noEmit",
+  "build": "passed: vite build",
+  "authority": "complete rollback proof passed; frozen scoring and settlement preserved",
+  "browser": "both themes, timing, switch, score/bonus/audio ordering and replay; four expiry paths and continuation passed; multiplayer base/bonus/audio identity passed",
+  "productionMutations": false,
+  "pending": "Owner clarification: whether to add new early-end Take Score rules",
+  "notRun": [
+    "hosted/deployed qualification",
+    "broad unrelated suites"
+  ],
+  "hashes": {
+    "src/components/quintzee/QuintzeeView.tsx": "2a56f92cdde6bab4d70b4d582f09631a962064fb8769b249e0a42b7f048056ba",
+    "src/components/quintzee/quintzee.css": "e561510ad4cedc87b9c0e4914627ac96559a6dab7eb286dc71c6146ff29836d3",
+    "src/components/quintzee/useQuintzeeScorePresentation.ts": "1fdd007f8accf2f5027301b7c16e0654514d561b7ee5fdbd5b2773bd6ddbb74e",
+    "src/components/quintzee/QuintzeeTable.tsx": "91c8ec51a6dd46514c384f966056566d8f250801a57b403415e33343d1f5d72b",
+    "src/hooks/useQuintzee.ts": "147043f74a5682f6bcdb777b72f9c691b00b639c43b10eea2c4068c88b718661",
+    "src/pages/Arcade.tsx": "1e3ddc46f4b79f618bf8e72b4f1d04bedf316722c8725ff37ac9532cca5021c0",
+    "src/lib/quintzee/model.ts": "705ee576687389851c00e4dac3e620573a4d4e3ef87013e930895d8959f7be25",
+    "supabase/quintzee/polish-presentation.sql": "2dce44e43dbd0395c16b8227ca03062bf807df4fde0f7b0d368743661cb570b9"
+  }
+}

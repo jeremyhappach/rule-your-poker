@@ -1,0 +1,9 @@
+{
+  "game": "f3b006a6-ee17-4495-ab50-e16a0df8a42e",
+  "passed": true,
+  "dealer": "a2d3fdda-2aa1-4bb7-87a2-664661e8bf0c",
+  "expiredActionRejected": true,
+  "actualSchedulerOneOpening": true,
+  "reclaimed": true,
+  "retainedPaused": true
+}

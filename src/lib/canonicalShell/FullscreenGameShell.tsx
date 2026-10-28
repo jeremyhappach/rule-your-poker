@@ -4,6 +4,7 @@ import { ShellAnnouncementRail } from './ShellHudChrome';
 import type { ShellTabId } from './ShellTabBar';
 import './fullscreenGameShell.css';
 import {usePresentationSurfaceReady} from './CinematicPresentation';
+import {NotificationBell} from '@/components/delayed/NotificationBell';
 
 interface Props {
   className?:string;
@@ -22,17 +23,19 @@ interface Props {
   announcement?: ReactNode;
   panelTitle?: string;
   panelDescription?: string;
+  sessionLabel?: ReactNode;
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({className="", ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, panelDescription = 'Game clocks continue while this panel is open.'}: Props) {
+export function FullscreenGameShell({className="", ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, sessionLabel = 'Session', panelDescription = 'Game clocks continue while this panel is open.'}: Props) {
   usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
   return <section className={`fullscreen-game ${className}`} data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
     <header className="fullscreen-game-toolbar">
       <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
+      <NotificationBell />
       {navigation ?? <nav aria-label="Game information">
-        <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>Session</button>
+        <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>{sessionLabel}</button>
         <button onClick={() => setActiveTab('chat')}>Chat</button>
         <button onClick={() => setActiveTab('history')}>History</button>
       </nav>}

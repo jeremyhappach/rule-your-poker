@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "local": true,
+  "hosted": false,
+  "rolledBack": true,
+  "allTriggersEnabled": true,
+  "at": "2026-10-26T23:59:08.881Z",
+  "rows": [
+    {
+      "proof": "Quintzee actual role authorization and server real-money exclusion PASS"
+    },
+    {
+      "quintzee_assert": ""
+    },
+    {
+      "quintzee_assert": ""
+    },
+    {
+      "proof": "Scoped installed Quintzee /3 qualification PASS",
+      "fixture_users": [
+        "9ca373e6-5044-4c58-9362-1becb846cfad",
+        "52841df8-9037-46ee-b505-075f6857540f",
+        "006330a1-1faf-4027-8dde-8b310d3eb16b",
+        "759b4132-9fae-44ae-83dd-389bda6933a7",
+        "282654dd-26aa-4dd8-ab99-1049e23f3e9e",
+        "94ba9c86-17cc-46a1-8e3a-8e1d5063c4dc",
+        "01eec72e-908a-4160-8171-d1cc03d7ffee",
+        "caddbce5-a442-40e0-9f29-4c46e627a273",
+        "ed3c1554-b0f0-40d8-9d8f-abd8ea7d88f6",
+        "92bc2ae5-f3c1-4e9a-bc99-8bf3b84a66c2",
+        "a3dd2181-0fda-42ca-ab1e-65e9396db276",
+        "18e6ac35-695c-49f9-888d-a3f7b7f7e7dc",
+        "91c6d886-8c7a-4daf-b395-c8ca1b2a067a",
+        "9b959e65-8c2d-4bba-b567-0f6e32a3b567",
+        "ab593baa-c1a8-4dd0-bf63-97a380b39e4f",
+        "a7491c32-ad65-4a72-951e-0771abedfb02",
+        "2e85349d-8376-462a-894b-4e3830133ae9",
+        "e27c3eb2-7a3d-4018-919f-c8335e6563be",
+        "bed55150-7819-472f-a91e-f1fce099d4cc",
+        "b88ac9b2-f906-418d-8f2f-24953ccb075a",
+        "4e37f7c0-8844-4549-a820-e15628fc98b7",
+        "213348fa-2fab-46f5-93d1-70c66be0c90c",
+        "83fc1ef5-3b3e-4989-816d-737dd6f71188",
+        "f3822a72-bf3f-47ab-b841-020839790e2f",
+        "86d06b15-e22c-433c-b830-400b4d572880",
+        "920a98ea-66f5-4ea8-b7aa-8afc9fd053f8",
+        "a2a61799-699c-4b57-93e5-03fe1eaa3997",
+        "1aa248f7-9669-43e7-968b-505fa8a7262a",
+        "a1004bd9-454d-443b-98c3-92562f411198",
+        "cb3cf092-fdd2-475f-8d8f-155c216c14dc",
+        "8d6b311f-481d-4d14-84f7-127f0fb72338",
+        "f47455b6-b303-4270-8721-0a53887158a6",
+        "4a038129-c08f-4875-a9e3-1fac9fcab847"
+      ],
+      "authority_hash": "f23a4684ef2e4d17e08c9aa99c12d860"
+    }
+  ]
+}

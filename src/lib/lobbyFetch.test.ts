@@ -16,6 +16,7 @@ type Recorded = {
   select: string;
   op: string;
   limit?: number;
+  or?: string;
   order?: { column: string; ascending?: boolean };
   inColumn?: string;
   inValues?: any[];
@@ -57,6 +58,7 @@ function makeClient(opts: {
         rec.order = { column, ascending: o?.ascending };
         return chain;
       },
+      or: (filter: string) => { rec.or = filter; return chain; },
       limit: (n: number) => {
         rec.limit = n;
         return chain;
@@ -112,6 +114,7 @@ describe('fetchLobbyGames — bounded query shape', () => {
     expect(gamesReq!.select).not.toMatch(/profiles\s*\(/);
     // Hard bound.
     expect(gamesReq!.limit).toBe(LOBBY_GAMES_HARD_LIMIT);
+    expect(gamesReq!.or).toBe('game_type.is.null,game_type.neq.delayed-head-to-head');
     expect(gamesReq!.order?.column).toBe('created_at');
   });
 

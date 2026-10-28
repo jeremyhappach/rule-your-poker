@@ -11,9 +11,10 @@ import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSTL } fr
 interface SweepTheLegsAnimationProps {
   show: boolean;
   onComplete?: () => void;
+  holdUntilDismissed?: boolean;
 }
 
-export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimationProps) => {
+export const SweepTheLegsAnimation = ({ show, onComplete, holdUntilDismissed = false }: SweepTheLegsAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
@@ -28,22 +29,19 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
   }, []);
 
   useEffect(() => {
-    if (show && !hasShownRef.current) {
-      hasShownRef.current = true;
-      setVisible(true);
-      __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'begin', {});
-      const timer = setTimeout(() => {
-        setVisible(false);
-        __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'complete', {});
-        onCompleteRef.current?.();
-      }, 4000); // 4 seconds display
-      return () => clearTimeout(timer);
-    } else if (!show) {
-      hasShownRef.current = false;
-    }
+    if (!show) {hasShownRef.current=false;setVisible(false);return;}
+    setVisible(true);
+    __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'begin', {});
   }, [show]);
+  const finish = () => {
+    if (hasShownRef.current) return;
+    hasShownRef.current=true;
+    if (!holdUntilDismissed) setVisible(false);
+    __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'complete', {});
+    onCompleteRef.current?.();
+  };
 
-  if (!visible) return null;
+  if (!show || !visible) return null;
   if (typeof document === 'undefined') return null;
 
   // The tab rail is itself portaled to document.body. Mount this celebration
@@ -53,8 +51,10 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
     <div
       data-sweep-the-legs-overlay
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
-      style={{ zIndex: SHELL_Z.CELEBRATION }}
+      style={{ zIndex: SHELL_Z.CELEBRATION, animation: 'sweepSequence 4s linear' }}
+      onAnimationEnd={event => {if(event.target===event.currentTarget&&event.animationName==='sweepSequence')finish();}}
     >
+      <style>{'@keyframes sweepSequence {from {opacity:1} to {opacity:1}} @media(prefers-reduced-motion:reduce){[data-sweep-the-legs-overlay]{animation-duration:1ms!important}}'}</style>
       {/* Cover and disable HUD row 2 throughout the terminal celebration. */}
       <div
         data-sweep-the-legs-backdrop

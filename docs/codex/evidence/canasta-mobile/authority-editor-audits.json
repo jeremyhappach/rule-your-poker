@@ -1,0 +1,45 @@
+[
+  {
+    "viewport": "320,568",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Hand",
+    "uniqueCards": 71,
+    "pages": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      3
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  },
+  {
+    "viewport": "812,375",
+    "safeAreaEnvelope": true,
+    "scenario": "maximum",
+    "pane": "Finish",
+    "uniqueCards": 0,
+    "pages": [
+      0
+    ],
+    "failures": [],
+    "editorOverflow": false,
+    "nestedScrollers": 0
+  }
+]

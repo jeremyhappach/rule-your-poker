@@ -1,5 +1,37 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-10-27 Jeremy accepted reviewed Words candidate
+`d39328f2049557a95044390e09a8993adb0fd375`, including own pause-request
+cancellation, and approved fake-money-only production publication. All prior
+local behavior remains accepted. Production-device smoke is separate; see
+`PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`. Chrome vibration stays deferred.
+
+2026-10-27 Words owner accepted local candidate
+`181030968996805762b2696a2dddc758c6c4108b`: all existing gameplay, banks, pause,
+flat tiles and spacing remain accepted. Intermittent Chrome vibration is explicitly
+deferred unless it recurs after publication. The only requested follow-up is own
+pause-request cancellation; that follow-up needs its own owner review. This is
+local smoke acceptance, not production release approval.
+
+2026-10-26 Battle31 owner accepted local preview `306a177311d17fd65fdf8ea2cb55fd19ce929244` and approved release. Includes automatic exchange, timer/default controls, life choreography, canonical nameplate and lower card rows. Other-game audit findings remain read-only. Production smoke is separate; see BATTLE31_RELEASE_20261026.md.
+
+2026-10-26 local Quintzee release qualification: full Game route confirms live reconnect, connected Session Ended without artifacts and fresh ended-session lobby routing. Combined 2941 source / 241 harness tests and build pass. Hosted installed rollback qualification passes. Production owner-device smoke remains pending.
+
+## 357 settlement, recovery and Sweep smoke — October 24, 2026
+
+- Jeremy reported “357 smoke is clean” and explicitly authorized real-money reopening.
+- Accepted production commit: `75df6c845502d502be27e960a852214aa01b753e`,
+  release tag `golf-sweep-smoke-20261024`; smoke tag `357-smoke-accepted-20261024`.
+- Installed financial corrections `20261024164227` and `20261024165504` retain
+  their passing financial/authority proofs. Sweep uses one overlay alongside
+  direct winner flights and waits for completion before the remaining pot.
+- The live real-money admission flag was already true when inspected, despite
+  prior CLOSED notes. Both admission triggers are active; no activation write
+  was necessary. This records observed state, not an inferred activation actor.
+- The frozen Set Your Soul Free incident remains paused. Acceptance does not
+  authorize historical repair or resume. Golf smoke acceptance remains pending.
+- See [incident qualification](357_INCIDENT_20261024.md).
+
 ## TriTowers multiplayer v2 — October 16, 2026
 
 - Jeremy explicitly reported the production smoke CLEAN and accepted multiplayer v2.

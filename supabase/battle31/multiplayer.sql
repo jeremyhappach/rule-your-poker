@@ -148,7 +148,7 @@ BEGIN
  INSERT INTO public.session_player_snapshots(game_id,dealer_game_id,player_id,user_id,username,chips,is_bot,hand_number)
  SELECT p.game_id,m.dealer_game_id,p.id,p.user_id,coalesce(pr.username,'Player'),p.chips,p.is_bot,1 FROM public.players p LEFT JOIN public.profiles pr ON pr.id=p.user_id WHERE p.game_id=m.game_id
  ON CONFLICT(game_id,dealer_game_id,hand_number,player_id) DO UPDATE SET chips=EXCLUDED.chips,created_at=clock_timestamp();
- UPDATE private.battle31_matches SET settlement=changes,revision=revision+1,state=state||jsonb_build_object('terminal',jsonb_build_object('resultId',result_id,'winnerIds',to_jsonb(winners),'startedAt',floor(extract(epoch FROM clock_timestamp())*1000)::bigint,'deadline',floor(extract(epoch FROM clock_timestamp())*1000)::bigint+3000,'outcome',m.state->>'outcome')) WHERE dealer_game_id=m.dealer_game_id;
+ UPDATE private.battle31_matches SET settlement=changes,revision=revision+1,state=state||jsonb_build_object('terminal',jsonb_build_object('resultId',result_id,'winnerIds',to_jsonb(winners),'startedAt',greatest(floor(extract(epoch FROM clock_timestamp())*1000)::bigint,coalesce((m.state#>>'{presentation,finishAt}')::bigint,0)),'deadline',greatest(floor(extract(epoch FROM clock_timestamp())*1000)::bigint,coalesce((m.state#>>'{presentation,finishAt}')::bigint,0))+3000,'outcome',m.state->>'outcome')) WHERE dealer_game_id=m.dealer_game_id;
  UPDATE public.games SET status=CASE WHEN pending_session_end THEN 'session_ended' ELSE 'game_over' END,
   session_ended_at=CASE WHEN pending_session_end THEN clock_timestamp() ELSE session_ended_at END,pending_session_end=false,
   game_over_at=clock_timestamp(),last_round_result='Battle 31 complete',awaiting_next_round=false WHERE id=m.game_id;
@@ -195,7 +195,7 @@ BEGIN
  PERFORM set_config('app.three_five_seven_authoritative_write','on',true);
  PERFORM set_config('app.yahtzee_authoritative_write','on',true);
  IF g.game_type='farkle' THEN PERFORM private.farkle_claim_v1(g.id,g.current_game_uuid,NULL,'configure');END IF;
- INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'battle-31',jsonb_build_object('ante_amount',stake_i,'rules',private.battle31_rules())) RETURNING * INTO dg;
+ INSERT INTO public.dealer_games(session_id,dealer_user_id,game_type,config) VALUES(g.id,actor,'battle-31',jsonb_build_object('ante_amount',stake_i,'rules',private.battle31_rules()||jsonb_build_object('turnMs',1000*greatest(1,coalesce((SELECT decision_timer_seconds FROM public.game_defaults WHERE game_type='battle-31'),15))))) RETURNING * INTO dg;
  UPDATE public.players SET ante_decision=CASE WHEN id=p_dealer_player_id THEN 'ante_up' ELSE NULL END,current_decision=NULL,decision_locked=false,auto_fold=false WHERE game_id=g.id AND id IN(SELECT (p->>'id')::uuid FROM jsonb_array_elements(people) p);
  UPDATE public.games SET game_type='battle-31',current_game_uuid=dg.id,config_complete=true,config_deadline=NULL,ante_decision_deadline=clock_timestamp()+make_interval(secs=>greatest(1,coalesce(g.ante_decision_timer_seconds,30))),status='ante_decision',ante_amount=stake_i,current_round=NULL,total_hands=0,replay_contract_version=NULL,all_decisions_in=false,all_decisions_in_round_id=NULL WHERE id=g.id RETURNING * INTO g;
  SELECT jsonb_agg(to_jsonb(p) ORDER BY position) INTO setup_players FROM public.players p WHERE game_id=g.id;
@@ -273,7 +273,7 @@ DECLARE at_ms bigint:=floor(extract(epoch FROM clock_timestamp())*1000);
 BEGIN
  IF NEW.game_type IS DISTINCT FROM 'battle-31' OR NEW.is_paused IS NOT DISTINCT FROM OLD.is_paused THEN RETURN NEW;END IF;
  IF NEW.is_paused THEN UPDATE private.battle31_matches SET paused_at=at_ms,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND settlement IS NULL;
- ELSE UPDATE private.battle31_matches SET state=state||jsonb_build_object('deadline',(state->>'deadline')::bigint+at_ms-paused_at)||CASE WHEN state ? 'startedAt' THEN jsonb_build_object('startedAt',(state->>'startedAt')::bigint+at_ms-paused_at) ELSE '{}'::jsonb END,paused_at=NULL,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND paused_at IS NOT NULL AND settlement IS NULL;END IF;
+ ELSE UPDATE private.battle31_matches SET state=state||CASE WHEN state->'presentation' IS NOT NULL AND state->'presentation'<>'null'::jsonb THEN jsonb_build_object('presentation',(SELECT jsonb_object_agg(key,CASE WHEN key='version' THEN value ELSE to_jsonb(value::bigint+at_ms-paused_at) END) FROM jsonb_each(state->'presentation'))) ELSE '{}'::jsonb END||CASE WHEN state?'dealStartedAt' THEN jsonb_build_object('dealStartedAt',(state->>'dealStartedAt')::bigint+at_ms-paused_at) ELSE '{}'::jsonb END||jsonb_build_object('deadline',(state->>'deadline')::bigint+at_ms-paused_at)||CASE WHEN state ? 'startedAt' THEN jsonb_build_object('startedAt',(state->>'startedAt')::bigint+at_ms-paused_at) ELSE '{}'::jsonb END,paused_at=NULL,revision=revision+1 WHERE dealer_game_id=NEW.current_game_uuid AND paused_at IS NOT NULL AND settlement IS NULL;END IF;
  RETURN NEW;
 END $function$
 ;

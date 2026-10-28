@@ -1,12 +1,926 @@
-# 11 Up secondary smoke — locally qualified, back of release queue
+# 11 Up follow-up — installed qualification PASS — October 28, 2026
 
-Audio waits for displayed total 11. Active play-money competitions can finish
-through autoplay, with eligible-human checks at the next-game boundary. Real-money
-pauses remain; reclaim never resumes implicitly, and the host now has explicit
-canonical Resume. Local SQL, financial/race, browser, typecheck and build checks
-pass. Forward SQL remains unregistered and unreleased. This candidate blocks no
-other game. See [scope and evidence](ELEVEN_UP_SECONDARY_SMOKE.md).
+Reconciled preserved candidate de1d21640 with incident main 99249d8bd70dea766d21bc33c626e11354a2f0b4.
+Owner-authorized scope: audio at displayed eleven, active all-away play-money
+completion and explicit canonical host Resume. Migration 20261028190237 is installed
+once; hosted baseline and installed rollback proofs pass with six financial cases
+and both Ready money modes. Other public/private function and ACL hash is unchanged.
+3119 source tests, 241 harness tests, typecheck and build pass. Local SQL lifecycle,
+races, audio and three phone Resume layouts pass. Publication must verify exact-SHA
+READY, manifest, publisher and persisted signal. All unrelated releases preserved.
+See [release evidence](ELEVEN_UP_SECONDARY_SMOKE.md).
 
+# Oct27 SCC/Horses/Tri-Towers - installed qualification PASS - 2026-10-28
+
+Owner approved production after passing tests. Migration `20261028184338` is
+installed once; hosted baseline/installed rollback proofs pass with all synthetic
+sessions absent. Initial ante animation, exact-round NQ/transfer sequencing,
+dice geometry, final-roll presentation and Tri startup recovery are qualified.
+3110 source tests,241 harness tests and typecheck pass. Publication must verify
+exact-SHA READY/manifest/publisher/persisted-signal agreement. Existing releases
+are preserved. See [incident release](OCT27_GAMEPLAY_RELEASE.md).
+
+# Async Words — installed qualification PASS — 2026-10-27
+
+Owner approved production for two humans, one Words child and fake money only.
+Migration `20261028012319` is installed with admission/recovery closed; candidate
+and installed hosted financial proofs pass. Local rule, rollback, concurrent
+completion, browser, source, harness, typecheck and build evidence is recorded in
+[Async Words release](ASYNC_WORDS_RELEASE.md). Publication requires exact-SHA
+READY/manifest/publisher/signal agreement before admission and minute recovery
+activation. Physical-device owner smoke remains due. Existing live Words /1,/2,
+Golf, Quintzee and canonical accounting functions are preserved.
+
+# Quintzee configurable round duration - approved release qualification - 2026-10-28
+
+Owner requested an adjustable four-minute round in lobby Game Defaults. The
+isolated candidate saves 240 seconds through the admin defaults owner, freezes
+shared rules at new Arcade/multiplayer admission, and preserves active games and
+historical leaderboard boards. Owner approved publication on 2026-10-28; release qualification is in progress.
+Local concurrency, canonical settlement/rollback, fresh authenticated admission,
+immutable Arcade completion/results and duration leaderboard separation pass.
+Migration `20261028003718` installed once. Scoped hosted post-install qualification
+passed with all 37 synthetic identities confirmed rolled back; no global recovery
+or function replacement in the proof. Default/new admissions are 240 seconds;
+old configurations and historical leaderboards remain intact. All 3065 source
+tests, 241 harness tests, typecheck and production bundle passed. Frontend release
+agreement remains to be verified after push.
+See [qualification and release evidence](QUINTZEE_ROUND_DURATION_LOCAL.md).
+
+# Ptown Words /2 — reconciled release qualification PASS — 2026-10-27
+
+Jeremy approved reviewed candidate `d39328f2049557a95044390e09a8993adb0fd375`
+for production, fake-money only. This supersedes the historical local holds below.
+Hosted candidate and installed rollback gates PASS; migration `20261027214928`
+is installed. Existing /1 matches, shared pause, settlement and money eligibility
+are preserved. Reconciled with main `30c50e01f`, including Golf fixes `7b69fb733`
+and the published Quintzee changes; reviewed Words runtime is unchanged.
+Application typecheck, all 3059 source assertions (one lazy-load timeout passed
+on the focused seven-test rerun), 241 harness tests and production bundle PASS.
+Release checkpoint: `ptown-words-v2-fake-money-20261027`. Admission/bots reopen
+only after exact-SHA production READY/manifest/release-signal verification;
+live evidence is retained under `qualification.local/ptown-words/banks-publication`.
+The installed migration must not be repeated. See
+[release qualification](PTOWN_WORDS_BANKS_PAUSE_RELEASE.md).
+
+## Historical local review record (superseded by production approval)
+
+The sole new owner-requested follow-up is ready locally: a non-host's own pending
+pause request changes their existing control to a red, touchable X labeled
+"Cancel pause request". Withdrawal is authoritative, request-specific and
+idempotent; all clients retire the notice. Host pause/resume is unchanged.
+24 focused tests, the repository application typecheck, actual Game-route build,
+local rollback/financial regression, independent-connection races and two-client
+browser/reconnect checks pass. Preview remains on 15308. This cancellation
+follow-up awaits local owner review; no publication or hosted migration.
+
+Owner follow-up is ready locally: played board tiles are flat (including their
+sequential opacity reveal), and vertical padding/row/score-pill spacing is tighter.
+The board starts 19.13px higher; square size is unchanged on portrait phones and
+gains 20.72px in the measured landscape/desktop views. Score positions and the
+fixed announcement slot remain intact. Actual Game-route build, 27 focused tests
+and three viewport browser checks pass. Jeremy deferred the intermittent Chrome
+vibration unless it recurs in publication; no jitter fix is claimed. This styling
+follow-up was owner-accepted at `181030968996805762b2696a2dddc758c6c4108b`.
+See the qualification link below.
+
+Owner authorized local reveal/time-bank/pause work only. New /2 matches have two
+server-owned +3m slots per player; host pause uses canonical authority and guest
+requests use the canonical announcement rail. Paused board and rack contents are
+concealed from first render. Real event-path testing reproduced skipped reveal
+slots, corrected with a shared receipt-based presentation projection and explicit
+tile visibility. Server deadlines and settlement remain authoritative. Local
+server/race/financial proofs, 66 focused client tests, TypeScript and the actual
+Game-route browser suite pass (human horizontal/vertical and bot reveal,
+pause/request/reload, bank persistence and four viewport sizes); see
+[preview and qualification](PTOWN_WORDS_BANKS_PAUSE_LOCAL.md).
+No push, hosted migration, deployment or admission change is authorized.
+
+# Quintzee smoke polish - qualified, publication pending - 2026-10-27
+
+Owner approved publication without another preview gate. Includes centered/dimmed
+celebrations, canonical zero-confirmation and completion wording, the enlarged
+two-column bonus row, and secondary base-score typography. Both themes and modes
+pass 12 phone/landscape browser cases, including maximum upper-subtotal fit and
+actual Start/final-score interactions. Current Golf main is merged; Words work is
+preserved in its separate checkout. Three stale Golf test expectations are aligned
+with the already-published hole-count payload and scorecard label, without gameplay
+changes. Installed Quintzee authority and admission remain unchanged. See
+[scope, diagnosis and qualification](QUINTZEE_SMOKE_POLISH_LOCAL.md).
+
+# Six-Card Golf match lengths — installed qualification PASS — 2026-10-27
+
+Jeremy approved reviewed candidate `928887f1a11d27e4c80003170d85b54841ad25bb`
+for production. This supersedes the local-only hold below for Golf only.
+The initial health rejection was traced to long candidate DDL rehearsals holding
+an exclusive game_defaults lock over the canonical timer scan. Temporary fixture
+defaults removed that interference without weakening any guard. All 17 candidate
+and 17 actual installed units pass, including every length, both money modes,
+shared ties, financial rollback, Run Back and late replay. Migration
+`20261027194322` is installed; default nine and existing admission/money eligibility
+are unchanged. See [release qualification](SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md).
+
+Multiplayer 3/6/9/18-hole selection is implemented locally: saved default nine,
+dealer-only override, frozen authoritative length, exact progression/settlement,
+under-flag text and complete pencil scorecards with two nine-hole sections for 18.
+Owner review correction: Front Nine ends with Out; Back Nine ends with In and a
+distinct bold match Total. The old second total was cumulative. Matching cells
+now share identical dimensions and alignment, with Front Nine one Total column
+shorter. Final 18-hole results have one visible Final Scorecard title. All 46
+focused scorecard/table tests and 15 rendered browser cases pass; measured
+matching-cell geometry differs by zero pixels at 320/390/1024px widths.
+Pencil typography, shorter layouts and server rules are unchanged.
+143 focused tests, TypeScript, production build, 24 full local matches and 72
+financial cases pass. Browser evidence and preview are documented in
+[local qualification](SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md).
+152 focused assertions, TypeScript and production build pass for the reviewed
+frontend. Exact-SHA READY/manifest/release-signal/publisher verification is the
+publication checkpoint; physical owner smoke follows.
+Words, Quintzee and Mega smoke are unchanged.
+
+# Ptown Words polish — hosted qualification PASS, publication pending — 2026-10-27
+
+Jeremy accepted the polish smoke and explicitly authorized production publication,
+with fake-money play for all eligible users indefinitely. Rack selection now only
+selects tiles; board taps own zoom. Migration `20261027170439` is installed after
+candidate and installed rollback financial proofs passed. Admission and bots are
+closed until exact-SHA frontend publication; real-money configuration and start
+are rejected server-side. The 180-second turn remains unchanged. See
+[release evidence](PTOWN_WORDS_POLISH_RELEASE.md).
+
+TypeScript, focused rerun of two unrelated lazy-help timeouts, all 241 harness
+tests and production bundle PASS. The full source run passed 3004 assertions;
+both timed-out files pass unchanged (9 tests). Phone/desktop browser and hosted
+candidate/installed financial proofs PASS. Exact-SHA publication/activation follows.
+
+## Superseded local-review checkpoint
+
+The combined owner-smoke pass adds the requested zoom hints, a 1500ms dictionary
+rejection overlay, outlined scores, actionable rack brightness, local rack shuffle,
+gentle turn pulse, staged-only editing controls and readable Exchange modal.
+A pinned, licensed SCOWL common-word subset drives the easier bot policy while
+full ENABLE2K human validity and canonical rules/finances remain unchanged.
+All work remains local; owner review is required before publication.
+
+Double-tap zoom-out, compact secondary actions and bounded opponent-word reveals
+are implemented in the local preview. Twenty focused tests, TypeScript, local SQL
+financial/timing proofs and phone/desktop browser checks pass. Production remains
+unchanged. Owner review is required before any push, deployment or hosted SQL.
+The local refinement removes redundant board controls, labels the rules-only
+panel with a question mark, and returns to overview after accepted own words.
+Rejected drafts retain their camera; opponent reveals restore the overview.
+See [local preview, evidence and source screenshot provenance](PTOWN_WORDS_POLISH_LOCAL.md).
+
+# Quintzee final polish - installed qualification PASS, publication pending - 2026-10-27
+
+Approved manual category rolls and bounded Upper Bonus +35 sequence are qualified for solo Arcade and fake-money multiplayer. The narrowed hosted proof passed with all triggers enabled, no production function replacement, no global configuration writes and no unscoped recovery; rollback removal is verified. Full recovery/concurrency/fault cases remain covered by the preserved local proofs. Integrated main 59758bc99 (Ptown Words bots) passes TypeScript, 2980 source tests, 241 harness tests and production build. Fresh /3 admission is checked after exact-SHA publication and guarded activation; real money remains server-rejected. Default dice rumble remains 1500 ms. See [qualification and release gates](QUINTZEE_FINAL_POLISH_RELEASE.md).
+
+# Ptown Words /1 — fake-money bots qualified — 2026-10-26
+
+Jeremy approved bot support through deployment and moving tile points into the
+bottom-right corner. Human release `28d0a2181` is published and admitted. Bot
+migrations `20261026234550` / `20261026235142` are installed with the separate bot admission flag closed
+until exact-SHA publication. Hosted candidate and installed financial gates PASS;
+one-browser admission, bot word, reconnect, four viewport captures, concurrent
+recovery and a complete 40-turn policy game PASS. Human rules/timers and real-money
+human admission are unchanged. See [bot qualification](PTOWN_WORDS_BOTS.md).
+Physical production smoke remains Jeremy's acceptance step.
+
+# Ptown Words /1 — human release checkpoint — 2026-10-26
+
+Complete multiplayer gameplay, canonical admission/recovery/settlement and
+fullscreen presentation are implemented. Closed migration `20261026224857` and
+hosted installed rollback proof pass. Full Game-route admission, reconnect,
+concurrent terminal settlement and ended-session cleanup pass. Publication and
+activation require exact-SHA verification; physical owner smoke remains pending.
+See [release contract and evidence](PTOWN_WORDS_RELEASE.md).
+
+# Ptown Words — superseded foundation checkpoint — 2026-10-26
+
+Approved name and full ENABLE2K dictionary acquired and pinned locally. Versioned
+lookup, all-formed-word lexical checks and isolated visual mock pass focused tests.
+There is no word-game runtime/admission/settlement to preserve or publish; the
+full-game scope question is pending. No activation, migration or deployment.
+See [foundation checkpoint](PTOWN_WORDS_FOUNDATION.md).
+
+# Quintzee roll timing — LOCAL review, publication held — 2026-10-26
+
+Geometry Lab now stages a Quintzee roll duration (default 1500 ms). Both-theme Start/reroll measurements, persistence/reset and concealment checks passed locally. See [timing evidence and preview instructions](QUINTZEE_ROLL_TUNING_LOCAL.md). No publication or authority changes; Take Score semantics remain pending separately.
+
+# Quintzee second polish — LOCAL review, publication held — 2026-10-26
+
+Moderated rolls, corrected switch/timer visibility, queued first actions, authoritative base-score celebrations and canonical finish count-up are locally qualified. New Take Score rules await owner clarification. See [second local checkpoint](QUINTZEE_POLISH_2_LOCAL.md).
+
+# Quintzee polish — LOCAL review only, 2026-10-26
+
+The five owner-smoke corrections are implemented locally on `codex/quintzee-polish-local`. Publication is explicitly held pending preview review. The prior Quintzee /1 production release is complete per owner smoke; the older entries below are historical checkpoints. See [local polish and evidence](QUINTZEE_POLISH_LOCAL.md).
+
+# Battle31 owner-smoke release — qualified, publication checkpoint — 2026-10-26
+
+Jeremy accepted the local Battle31 preview and approved release. Candidate
+integration preserves current main f651a34b6, including Mega and Quintzee.
+The approved 30-second default applies to new matches only; existing matches
+and play-money/real-money admission are preserved. Other-game placement findings
+remain read-only. TypeScript, 2,955 source tests, 241 harness tests, production
+build and 18 combined-source browser layouts pass. The guarded 30-second default
+is installed with match/configuration/admission preservation assertions. Exact-SHA
+publication follows the commit/tag and approved main push; physical production
+smoke remains Jeremy's acceptance step. See [release checkpoint](BATTLE31_RELEASE_20261026.md).
+
+# Quintzee /1 - installed and qualified; publication pending - 2026-10-26
+
+Approved scope is solo Arcade and fake-money multiplayer only. Hosted migration `20261026015637` and installed rollback proof pass, including actual authenticated/anonymous/service-role boundaries and server rejection of real-money setup. Source-verified recovery worker v17 is active with unchanged dispatch authentication. Combined TypeScript, all 2,941 source tests, 241 harness tests and production build pass with zero failed/skipped tests. Full Game-route live reconnect, Session Ended artifact cleanup and fresh ended-session lobby routing pass. Admission remains closed until exact-SHA publication verification. Battle31 remains held. Owner device smoke is pending. See [release evidence](QUINTZEE_PRODUCTION_PROGRESS.md).
+
+# Quintzee /1 — local prototype checkpoint, 2026-10-25
+
+Local-only branch `codex/quintzee-v1` starts from verified main `5af9e86ff`.
+Shared SQL scoring/timing/round core, reused Yahtzee category scoring, two visual
+themes, local command/reconnect authority and focused proofs are implemented.
+Canonical financial settlement, real Arcade/session adapters, Game Defaults,
+leaderboards and production admission remain **MISSING / CLOSED**. No publication
+is authorized. See [local checkpoint and exact scope](QUINTZEE_LOCAL_CHECKPOINT.md).
+
+Local owner-preview follow-up simplifies the header to one title and a graphical
+timer, clarifies hold/reroll controls, adds solo fixture abandonment with the
+canonical confirmation, and replaces inactive reroll controls with the active
+participant's name. Final browser capture, abandonment UI completion and the
+latest two-browser handoff/reconnect smoke are **UNVERIFIED** after browser-control
+timeouts. Local SQL/protocol proofs and unit checks pass; production gates remain closed.
+
+# Mega UI transitions — approved publication, 2026-10-25
+
+# Mega action flicker follow-up — approved release, 2026-10-25
+
+Owner accepted the published highlight fix but still observed enabled → disabled
+→ enabled action flicker. The same sequence is reproduced locally: delayed
+realtime echoes reacquire the input lock after an already-accepted draw settles.
+The local correction filters covered revision notices, including queued echoes,
+while retaining newer-revision and reconnect refreshes. 105 focused tests and
+TypeScript, ten existing browser checks and production build pass; new browser
+frame traces show no late pulse. Jeremy approved publication of qualified
+candidate `87bb797d1b3fba856ff225dcb9311782f6982790`. Final TypeScript, all 2,929
+source tests, 241 harness tests and production build pass in one run.
+Exact-SHA production verification follows. The held Battle31 smoke and Quintzee
+candidates are excluded. Physical iPhone smoke remains pending.
+See [cause and evidence](MEGA_REALTIME_ECHO_LOCAL.md).
+
+# Mega UI transitions — published, action smoke incomplete, 2026-10-25
+
+Two approved presentation fixes remove decorative new-hole hover carryover and
+keep Stand Pat/Discard hidden through card presentation and automatic-draw
+handoff. Versioned eligibility, scoring, keyboard focus and recovery are
+preserved. 99 Mega tests, TypeScript, production build and 10 local browser
+checks pass. Owner approved publication of candidate `2945df81a996fedccb286dfa0cbf1c13c80fc9b5`.
+It follows main `33b641bb6` directly and excludes the separate Battle31 smoke
+candidate. Final TypeScript, 2,923 source tests (one timeout passed unchanged on
+isolated rerun), 241 harness tests and production bundle are qualified.
+Published SHA `5af9e86ff204e35d9deb573e0c6ab8c39a2abfa4` is verified on remote main,
+the READY production deployment, public manifest and persisted release signal.
+Publisher run `40235906451`, attempt 1, recorded the signal at 21:32:38 UTC.
+Exact accidental orange-focus carryover remains unconfirmed; physical iPhone
+smoke is pending. No runtime telemetry was added. See [qualification and release notes](MEGA_UI_TRANSITIONS_LOCAL.md).
+
+# Battle31 canonical-table redesign — qualified release, 2026-10-25
+
+Approved canonical table, exchange/deal animations and persisted round-result choreography are qualified. Hosted migration 20261025203139 and installed rollback proof pass. Final human/human, human/bot and terminal browser checks, TypeScript, focused test reruns, 241 harness tests and production build pass. Play-money access remains open without expiry; real money remains disabled. Exact-SHA publication verification follows integration. Physical owner smoke remains pending. See [release evidence](BATTLE31_CANONICAL_CHECKPOINT.md).
+
+# Battle31 all-user play-money launch — approved release, 2026-10-25
+
+Jeremy approved unrestricted active-user access in play money with no expiry;
+real-money admission remains disabled. The superseded two-account smoke branch
+is preserved and its grant machinery is not installed. Release base is
+5566a9535ca687a7ebb37bd9feb36d5231cd6160, preserving all newer game releases.
+Only the play-money constraints and Battle31 active-match continuation guards
+change; rules, timers, scoring and canonical financial owners remain unchanged.
+Local candidate, hosted candidate/installed rollback proofs and local concurrency
+checks pass. Hosted migration 20261025191852 is installed; admission remains closed
+pending publication. TypeScript, 2,908 source tests, 241 harness tests and build
+pass. Installation evidence,
+publication gates and owner smoke are described in
+[the launch contract](BATTLE31_PLAY_MONEY_LAUNCH.md). Admission activation follows
+exact-SHA publication verification. Physical-device and owner smoke are pending.
+
+# Mega face spacing and anytime Stand Pat /4 — approved release, 2026-10-25
+
+Mega suited large ranks move upward without changing card geometry. New /4 Stand
+Pat confirms Tap In?, preserves the six board cards, then reveals and scores the
+hole regardless of stock/discard allowance. Required opening reveals and /1–/3
+behavior remain intact. Registration is installed with /4 disabled; candidate and
+installed hosted rollback proofs pass. Compatible recovery worker v16 is active
+and source-verified. TypeScript, 2,908 source tests, 241 harness tests and production
+build pass. Exact-SHA publication and release-signal verification must precede
+separate /4 activation. Historical
+scores/boards, other games and financial records are preserved. Owner smoke is
+pending. See [release qualification](MEGA_ANYTIME_STAND_PAT_RELEASE.md) and
+[reviewed local evidence](MEGA_LOCAL_FACES_AND_STAND_PAT.md).
+
+# Canasta UI — approved release, 2026-10-24
+
+The reviewed three-commit UI stack ending c8059c2ff is reconciled onto verified
+main/production 7c2f360f0. Direct stock/pile actions, a visible sorted physical-card
+hand, own meld targets, compact opponent summaries, readable fans and existing
+Geometry Lab controls preserve canonical shell and authoritative actions. Newer
+Golf, Mega and HOLM/357 fixes remain intact. No schema, rules, financial or
+admission changes; play-money availability and the real-money gate are preserved.
+
+Twenty integrated rendered layout cases and a clean aggregate build pass:
+application TypeScript, 2,903 source tests, 241 harness tests and production bundle.
+The corrected card-face inventory and evidence are in [qualification](CANASTA_UI_RELEASE.md).
+Checkpoint: canasta-ui-release-20261024. Exact remote/deployment/manifest/release
+signal verification follows the push. Physical iPhone owner smoke remains pending.
+
+# Multiplayer Golf completion — approved release, 2026-10-24
+
+Reconciled candidate fad9e4118 onto verified main/production 312d39c07.
+Consistent +N/E/-N scores retain pencil styling and blank unplayed holes; checked-only
+rejoin is directly in the active pane. Active play-money matches continue with all
+humans away; real-money and deliberate-pause boundaries remain. Canonical admin-only
+play-money Blast cleanup is atomic. Newer Golf opening, draws, hole-end retirement,
+pencil totals and every unrelated release are preserved.
+
+Hosted migration 20261025002739 (source 20261025002701) is installed. Eight candidate
+and eight installed contained units and HOLM/357 cross-game proofs pass. Application
+TypeScript, 2,895 source tests, 241 harness tests, phone-layout browser checks and
+production build pass. Exact-SHA publication verification follows the approved push.
+Checkpoint: golf-completion-release-20261024. Physical iPhone owner smoke is pending.
+See [release and shared-function integration contract](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
+# Arcade menu placeholder removal — approved release, 2026-10-24
+
+Jeremy approved publication of tested candidate
+9f782666ad5a15e2166132c6c7fb9b526673945e. The menu removes only the cancelled
+Yahtzee Coming Soon tile. All eight existing Arcade entries remain unchanged.
+Multiplayer Yahtzee retains its catalog entry, implementation, rules and defaults.
+No database, admission, gameplay, financial or Quintzee changes are included.
+
+The release is based on main 05f2d196c2b735bdbdee80b76f02761f38a19f96,
+preserving the verified Mega /3 Stand Pat release and latest multiplayer fixes.
+Focused catalog/UI tests (26) and application TypeScript passed on the exact product
+candidate. Aggregate release checks PASS: 2,891 source tests (416 files), 241
+harness tests and production build. Existing build warnings remain. Exact-SHA
+publication verification follows the approved push.
+Source checkpoint tag: arcade-yahtzee-placeholder-removal-20261024.
+Owner smoke: refresh Arcade and confirm Yahtzee Coming Soon is absent while the
+eight existing games remain. No game needs to be started for this check.
+
+# Mega final-stock Stand Pat — qualified release, 2026-10-24
+
+New /3 runs may keep all six cards on the final stock draw, even with zero discards.
+Normal replacement remains available; expiry, scoring and reveal/result order are
+preserved. Active /1 and /2 runs keep their frozen rules and configuration. No
+leaderboard reset/archive, timer bonus, multiplayer or financial change is included.
+
+Registration is installed disabled; candidate and installed rollback proofs pass.
+Compatible recovery worker v15 is verified. TypeScript, 2,890 source tests,
+241 harness tests, focused/catalog checks, mobile browser checks and build pass.
+Activation follows exact-SHA site and release-signal verification. Smoke is pending.
+Checkpoint: mega-final-stock-20261024. See [qualification](MEGA_FINAL_STOCK.md).
+
+# October 24 multiplayer smoke — published, owner smoke pending
+
+Published corrections cover dealer-draw retirement, current-authority HOLM
+participation identity, held-HOLM result admission, and SCC pot/dice separation
+within the canonical shell. Seventy-seven focused tests, application TypeScript
+and the production build pass. Forty-two actual-shell SCC checks cover seven
+viewports and zero through five held dice; twelve additional checks cover a
+full six-seat ring. Owner production acceptance remains
+outstanding. Source checkpoint: `oct24-multiplayer-smoke-corrections-20261024`.
+The scoped timeout function migration is installed; no historical session rows
+were changed. Vercel production and the public manifest verified application
+commit `4ab4f4cc9dcf62bf36b4329a19387291da6f6f12`. A two-client HOLM
+reveal/Run Back browser check passed on production, with fresh fake-money
+fixture cleanup verified. The setup harness's obsolete tab names were updated
+to the current Cards/Dice labels; all four helper tests pass. Exact evidence is in
+[the incident checkpoint](SMOKE_INCIDENTS_20261024.md).
+Follow-up evidence identifies mcru81's timeout as HOLM hand 2 at 4:15:48 PM
+and Hap as the frozen showdown viewer. Two subsequent rejoin responses are
+consistent with stale hand identity. Jeremy clarified that real-money timeout
+policy depends on the game. His subsequent correction is authoritative:
+HOLM/357 timeouts enable auto-fold; real-money play pauses when only one human
+remains outside auto-fold (also zero). Horses and SCC use automatic play.
+Migration `20261024221401` supersedes the installed first-timeout interpretation
+in `20261024221035`. Complete candidate and installed rollback proofs pass:
+three-human first-timeout continuation, last-present-human pause, two-human
+timeout, reclaim, explicit resume, fake-money preservation, dice exclusion and
+existing HOLM financial boundaries. Supabase CLI 2.122.0 was installed with
+Jeremy's permission. The authenticated HOLM embedded identity read passes.
+
+# Sweep + multiplayer Golf corrections — approved production release, 2026-10-24
+
+All five requested corrections are implemented on isolated branch
+`codex/golf-sweep-smoke`, based on main `761fbf332`. The candidate coordinates
+Sweep overlay/direct winner flights, simultaneous authoritative Golf opening,
+public stock draws, immediate hole-end pile retirement, and pencil-completion
+before cumulative totals. Local concurrency, full-match/financial/recovery proofs,
+phone/desktop browser checks and reduced-motion animation checks pass.
+Validation: 2,876 source tests (414 files), 241 harness tests (12 files),
+TypeScript and production build pass.
+
+Jeremy approved main/production publication. Golf migration `20261024184236`
+is installed. All 15 hosted candidate and 15 installed rollback units pass,
+with exact function fingerprints, historical-row preservation and no synthetic
+residuals. Source checkpoint: `golf-sweep-smoke-20261024`; implementation commit
+`1c01bc090`. Publication is verified against the tagged release commit.
+No historical mutation, chip-accounting change or 357 admission reopening occurred.
+Jeremy reported 357 smoke clean and authorized real-money reopening. The live
+357 admission flag was verified already enabled; no database write was needed.
+Golf owner smoke remains pending. Refresh all clients before a new Golf hole;
+already-dealt holes retain their original opening/draw contract.
+See [scope, evidence and remaining smoke](GOLF_SWEEP_SMOKE_20261024.md).
+
+# 357 real-money incident — smoke accepted, admission enabled, 2026-10-24
+
+Approved correction covers funded instant-sweep settlement, public winning proof,
+runback presentation retirement, fresh-identity Stop Automatic Play and one Sweep
+the Legs overlay. Database migrations `20261024164227` and `20261024165504` are
+installed; complete candidate and installed rollback proofs pass. Jeremy reported
+357 production smoke clean and explicitly authorized reopening. The deployed
+`real_money_admission_enabled` flag was already true when inspected; this differs
+from the prior CLOSED notes, and no activation write was performed. The enabled
+admission triggers and installed corrections were verified. Set Your Soul Free remains
+paused at revision 374 with every historical incident row preserved. No balance
+repair or resume is authorized by this release. See [incident qualification](357_INCIDENT_20261024.md).
+Client validation passes: TypeScript, 2,868 source tests (413 files), 241 harness
+tests and production build. Two-client browser terminal/reconnect proof passes;
+the fresh fake-money fixture was cleaned up. Release checkpoint tag:
+`357-incident-contained-20261024`. Accepted production source is `75df6c845`
+(`golf-sweep-smoke-20261024`); smoke checkpoint `357-smoke-accepted-20261024`.
+
+# Mega score and course-sequence polish — approved release — 2026-10-23
+
+Jeremy approved reviewed candidate 54ec03c9b82473f0fa70b609685661ab4d025164.
+This release is based on 24fbf4d68be9f772ae2dce62e77830cc303f7b9f and preserves
+its multiplayer Golf card/seat fixes and all unrelated work.
+
+Mega score surfaces consistently use + for positive scores and E for zero.
+The existing presentation queue adds a 1.8-second hole introduction with tee-off
+sound, a distinct 4.2-second hole-result/scorecard writing sequence after counting,
+and a 6.5-second final scorecard with melodic cue before leaderboard navigation.
+Reduced motion, sound preference, cue dedupe and silent reconnect are preserved.
+The shared Golf pencil strokes are reused unchanged; only Mega supplies +/E text.
+Rules, server timers, scores, historical /1 runs and receipts, course configuration,
+boards, recovery worker, migrations, admission and financial state are unchanged.
+No timer bonuses, leaderboard reset or multiplayer formatting change is included.
+
+Candidate qualification passed 101 focused tests and 17 local browser/audio checks.
+Integrated release checks PASS: application TypeScript, all 2,861 source tests
+(412 files, two workers), 241 harness tests and production Vite build. Existing
+Browserslist/chunk warnings remain. All 19 reviewed source/preview files match
+the approved candidate; all six files changed by the live Golf release are
+preserved. Exact-SHA publication verification remains pending the approved push.
+Source checkpoint tag: mega-card-golf-presentation-release-20261023.
+See [presentation evidence](MEGA_CARD_GOLF_GAMEPLAY_POLISH.md).
+Production smoke remains pending Jeremy; local checks do not establish acceptance.
+
+# Six-Card Golf card backs / seat inspection — approved release, 2026-10-23
+
+Isolated candidate adds definite opponent felt card slots and moves public-tableau
+inspection from the felt to the opponent seat indicator. Jeremy approved publication
+of reviewed product candidate `21435e361ba6714ebdd836c17c1b3a09f30564fc`, including
+its parent `754bfd6f26a5d39f0e7c91f5cf15eb0f3abb7235`.
+The approved local follow-up uses canonical medium face typography for opponent and
+displaced cards, matching the viewer without resizing cards. Two-player portrait
+geometry, glyph clearance, privacy and inspection checks pass.
+Portrait/tablet interaction checks pass; short-landscape target obstruction and physical
+iPhone acceptance remain open. See [local checkpoint](SIX_CARD_GOLF_CARDBACK_LOCAL.md).
+Release base is `7219f8340579908c029037d302b518fc20026a53`; the separate new Mega
+presentation branch is excluded. Rules, financial logic, migrations, admission,
+score formatting, timeout/rejoin and pile-flash are outside this release. The
+pencil-written scorecard is unchanged. Publication verification and physical
+iPhone smoke are distinct; local qualification does not establish device acceptance.
+The existing Mega release below is unchanged.
+
+Release checks pass: application TypeScript, 2,857 source tests, 241 harness tests
+and production Vite build. The source suite passed with two workers after separate
+default-concurrency UI timeouts; no code or timeout thresholds were changed.
+Existing build warnings remain. Source checkpoint tag:
+`six-card-golf-cardback-seat-release-20261023`.
+
+# Mega Card Golf /2 release package — 2026-10-23
+
+Approved reviewed candidate: f50bf3754c55b9983c706833cacea9f9ea56172d.
+The release adds only disabled /2 registration, version-aware start/catalog selection,
+a separate activation migration, and qualification evidence. The compatible recovery
+bundle is built from the reviewed service/engine; all other game code is identical
+to the installed worker. Existing /1 runs and receipts retain /1. New starts prefer
+enabled /2. Course configurations, board IDs, historical scores, scoring formulas,
+timers, access policy and multiplayer/financial state are unchanged. No timer bonus
+or leaderboard reset is included. Existing boards retain /1 history alongside new
+/2 results, as authorized by the preservation requirement.
+
+Release source checkpoint tag: mega-card-golf-polish-v2-20261023.
+Normal release checks PASS: application TypeScript, 2,848 source tests, 241 harness
+tests and production Vite build. Existing Browserslist/chunk-size warnings remain.
+
+Local release proof: `dev/mega-card-golf/polish/release-proof.mjs`. It uses
+127.0.0.1:55439 and a unique disposable database, validates disabled fallback,
+active/late /1 receipts, paired /1 opening, actual /2 start/sequential opening,
+shared worker initialization and zero-client completion, replay/continuation,
+immutable history and full rollback. The separate sequential-opening proof passes
+real two-connection competing-choice and duplicate-request races.
+
+Hosted registration migration 20261023204725 (local source
+20261023204524_mega_card_golf_sequential_opening.sql) applied successfully; installed-contract rollback
+proof passed start, legacy replay, version/owner guards, canonical completion,
+duplicate completion, continuation, service-only grants and historical preservation.
+Recovery worker v14 is ACTIVE; downloaded source matches the qualified bundle.
+Its existing verify_jwt=false and token/claim authentication are preserved.
+Bundle SHA256: c4ecb696545f85fcbca64d0e99ce4ec7c3c66f856bc670182b735fcaa468f76b.
+Before publication, /2 remains disabled. Activation occurs only after the matching
+site deployment and persisted release signal are verified. Production smoke remains
+pending Jeremy; this document is qualification evidence, not smoke acceptance.
+
+Security advisor baseline includes an existing unrelated RLS-disabled finding on
+public.gameplay_transfer_pending_changes. This release does not touch that table,
+policies or grants. Remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0007_policy_exists_rls_disabled
+
+# Mega Card Golf gameplay polish — 2026-10-23 — local review only
+
+Local follow-up preserves the Sunny tree correction, fits stock/tableau/animation
+cards to the shared 5:7 shape, and implements item 17's automatic stock through
+existing authoritative draw actions. Hidden old-card reveal/dissolve precedes the
+played face-up arrival; next stock stays concealed until that arrival settles.
+Item 16's sequential authority change was subsequently approved: local v2 runs
+commit and reveal one opening choice at a time; existing v1 runs stay unchanged.
+Local PostgreSQL rollback/race proofs pass. Production v2 registration/start
+selection is still outside this checkpoint and remains inactive. Timer bonuses
+are deferred. Fresh 132-test, TypeScript, build and local browser evidence is recorded
+in the gameplay-polish document. No publication or production mutation is included.
+
+Jeremy approved the collected 15-item gameplay presentation pass through local
+implementation, tests, commits and actual previews only. The isolated worktree
+starts at published `067b7b9e2985718d5d4ee42186a90fe52f462a22`. The handoff reports
+successful release workflow attempt `40005517109-2` and matching persisted signal
+at `2026-10-23T18:56:44.755Z`; that release is not rerun or redeployed.
+
+This pass adds accepted replacement reveals, Tap In confirmation, counted hole
+presentation, course artwork/backs, canonical opt-in Large MegaTouch faces,
+streamlined controls and signed scores. See
+[`MEGA_CARD_GOLF_GAMEPLAY_POLISH.md`](MEGA_CARD_GOLF_GAMEPLAY_POLISH.md).
+No main integration, push, deployment, migration, admission change, leaderboard
+reset or production write is authorized. Owner local review remains pending.
+
+# Mega Card Golf course navigation — 2026-10-23 — publication approved
+
+Approved selection/intermediary/Defaults navigation polish is isolated on
+`codex/mega-card-golf-polish`, based on verified live `adc76249827204d15242f066be2c9c3e7dc726af`.
+Local owner follow-up adds + / E / minus course-record labels and content-sized
+leaderboard panels. The next owner follow-up fixes configured discard singular/plural
+and crops only the Coastal intermediary to expose rocks/water below the board;
+14 focused checks, TypeScript, build and refreshed four-size browser previews pass.
+Jeremy approved publishing reviewed candidate `687f46910768439c14626cce2f5390834d8810cb`.
+Release validation identified two numeric leaderboard-rank renderers requiring
+registration in the card-face source inventory; that test-only correction leaves
+the reviewed app code unchanged. Main integration, push and automatic publication
+are authorized; migrations, leaderboard resets and admission changes are excluded.
+Exact deployed SHA and release-signal evidence will be reported at delivery.
+Owner production smoke remains pending.
+See [local implementation, validation and fixture previews](MEGA_CARD_GOLF_POLISH.md).
+
+# Mega Card Golf — production enabled; owner smoke pending
+
+All three Arcade courses were enabled after installed authority, authenticated
+browser/Realtime/reconnect, nine-hole completion and actual worker-restart recovery
+passed. Activation used verified production `77ae80ad46793e7d80ae6eb89df6c776af85cf1c`;
+the final release checkpoint is tag `mega-card-golf-v1-live-20261023`.
+Hosted migrations are `20261023141036` (base), `20261023150632` (low-score facts),
+and `20261023151456` (three-fixture cleanup). Recovery worker v13 is healthy.
+The score-facts correction preserves all seven prior Arcade games; qualification
+rows were removed atomically with unrelated rows/configuration preserved.
+The live authenticated catalog exposes all three Start course buttons.
+See `MEGA_CARD_GOLF_RELEASE.md` for exact evidence. Jeremy's production smoke
+remains the acceptance gate; automated qualification does not claim that smoke.
+
+## Prior local checkpoint
+
+Approved local research/prototype lives on `codex/mega-card-golf-v1`, based on
+`df48d4b73892e6965aafadb9768011af0e1906a3`. One Arcade-only engine, three courses,
+course Defaults/archive flow and original art are implemented locally. Owner
+selected final-draw completion, a five-minute per-hole failsafe, and player-selected
+opening cards. The approved continuation adds persistent Arcade authority,
+authenticated API routing, course boards, admin Defaults and closed catalog
+integration. Candidate and installed-local rollback/atomicity/ownership proofs,
+independent-connection contention and a full nine-hole browser run pass. This is
+local qualification only: no push, hosted SQL, deployment or production admission
+change occurred. See [backend evidence and release requirements](MEGA_CARD_GOLF_BACKEND.md)
+and [original prototype contract](MEGA_CARD_GOLF_LOCAL.md).
+
+# Golf rules/display follow-up — October 22 — publication approved
+
+Owner approved the six smoke observations and clarified that a threshold draw
+finishes normally before every player receives one final turn, including its
+actor. The candidate is isolated on `codex/golf-rules-display-v2`, based on
+published `bd6418ed884e2c517d095e4cde3b2846fc66fffe`. Owner subsequently approved
+publication of `756a41da843e046e3c39b5dd3391188af0e182fa` and its `/2` rule.
+All 25 hosted candidate rollback units, 2,764 application tests, 241 harness tests,
+TypeScript, build and both-money independent-connection `/2` races passed.
+Publish the compatible client first, then apply the guarded forward migration
+and rerun installed qualification. See [release package](SIX_CARD_GOLF_V2_RELEASE.md).
+See [candidate scope, exact rules and evidence](SIX_CARD_GOLF_RULES_V2_LOCAL.md).
+Existing `/1` matches retain their frozen rules. Canasta and unpublished
+`c8059c2ff4eab5f72b5906397f621b19177555f3` remain outside this candidate.
+
+# Golf smoke follow-up — October 22 — approved publication
+
+Owner-approved local corrections on published `8e7af0299`: explicit Discard pill,
+readable presentation pauses, automatic nine-hole pencil scorecard, tap-for-all
+helper, full counting/scorecard before winner and chip presentation, and canonical
+opponent face sizing. See [scope and evidence](SIX_CARD_GOLF_SMOKE_FOLLOWUP.md).
+55 focused tests, TypeScript and build pass; actual local hole/bot captures and
+labelled final-hole fixture are ready. Owner approved Golf publication first after
+removing only the redundant helper beneath discard. The separate action pill and
+digit-writing animation remain. Fresh release base is `8e7af0299`; unpublished
+Canasta `c8059c2ff` is excluded. No SQL or admission changes. Canasta and unrelated
+work are preserved; release verification is separate from owner production smoke.
+
+# Golf visual polish — October 22 — approved publication checkpoint
+
+Jeremy approved corrected candidate `98a1172b5e201d9d1e568930e482f435d3bfab38`.
+This integration starts from current published Canasta
+`dc894c3cfbd3da7a30c310271e90396ed93b25b8`, preserving its code, shared transport
+updates and all-user play-money admission. Golf's both-money admission, rule and
+financial authority, 1200 ms scoring and 5000 ms Results settings are unchanged.
+No migration is required or reapplied; installed Golf `20261022171731` remains.
+The release adds the reviewed flag, completed-hole standings, pencil scorecards,
+queued card motion and restored active-player dimensions. See
+[integration and release evidence](SIX_CARD_GOLF_POLISH_RELEASE.md).
+Automated publication verification is separate from Jeremy's production smoke.
+
+# Canasta / 1 — October 22 — hosted transition passes; final cleanup pending
+
+Published `cf759114f75e31b2d2541f13dd24dff5f15e64a3` is Vercel READY at
+`dpl_64wNHPwhyrJfYYW8KJtaBqyZhQzL` with an exact public manifest. The fresh
+scoped fixture passes real browser draw/discard/reconnect, frozen 180-second
+pacing, private projection, exact +5/-5 settlement/replay, connected Session
+Ended and cold-ended reconnect to lobby. The historical failed session is intact.
+Visual review found residual game winner/seat-score text in Session Ended;
+the small Canasta-only cleanup passes focused terminal tests and is being
+qualified for publication. A five-card whole-pile rendered transport check passes.
+General admission remains closed until final verification and CI publication.
+
+# Canasta / 1 — October 22 — forward installed, admission still closed
+
+Forward migration `20261022194338_canasta_beginner_expert_pacing` and recovery
+worker v3 are installed. The original Canasta `20261021235336` and Golf
+`20261022171731` migrations were not reapplied. Five installed rollback units
+pass: both-money financial settlement, injected failure, admission and scoped
+qualification, all with verified rollback and unrelated-history preservation.
+General admission remains false; combined client publication and hosted terminal/
+reconnect validation are pending. See `supabase/canasta/followup-release/`.
+
+# Canasta / 1 — October 22 — isolated forward proofs pass
+
+Docker is restored without recreating containers or volumes. The stale isolated
+Ante capture lacked the already released Golf branch; corrected local bootstrap
+preserves the original fingerprint guard and matches the deployed dispatcher.
+Rollback-contained forward financial/consent/admission checks, actual frozen
+pacing and Run Back admission, and independent-connection settlement/deadline/
+failure/reclaim races pass. See `supabase/canasta/qualification/README.md`.
+
+The owner lifted Canasta's hold for serialized release after remaining gates.
+Current main is Golf `568f8cc5d7eae5a8dac4097232860cad3132e570`; preserve it and
+installed migration `20261022171731`. Local integration retains both games'
+defaults/types and release histories. Validation covers 2,742 application tests
+(three stale contract expectations corrected and their 57-test suites rerun),
+241 harness tests, TypeScript, production build and 12 rendered mobile layouts.
+The exact guarded forward package passes isolated rollback proof. Required forward
+migration and hosted lifecycle qualification remain pending. General admission
+stays closed; the approved eventual scope is all users, play money only, with
+no expiration. No production action was taken in this local qualification step.
+
+# Canasta / 1 — October 22 — local terminal and Beginner/Expert follow-up
+
+The connected terminal defect is traced to missing durable chip-ledger
+registration. A local correction passes the real-ledger regression. Beginner
+180-second / Expert configured timing, independent persisted helpers, mobile
+guidance, private stacked-pile projection, and immutable Run Back pacing are
+implemented locally. Fake-money active matches continue when all humans are
+away, with eligibility reserved for between matches.
+
+Focused client/reducer checks and 12 rendered layouts pass. The new SQL remains
+an unexecuted candidate: the isolated Docker engine returned HTTP 500. Actual
+admission/Run Back SQL proof, financial gates and hosted terminal/reconnect
+qualification remain required. Golf owns production; no push, migration,
+deployment or activation occurred. Historical failed fixture evidence remains
+untouched. See `CANASTA_BEGINNER_CHECKPOINT.md` for the bounded handoff.
+
+# Canasta / 1 — October 22 — connected terminal gate blocks activation
+
+Closed production candidate `5188ba145a7b3f28267bfdf2da69805514ade316` is READY
+and matches the public manifest (`dpl_F2CrJwrnmvj5HgyyqPEK2V3Bnv2q`). Golf's
+published code is preserved; remote main remains `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`.
+API startup/host bodies, two observed independent connections, final action versus
+conflict, exact settlement/replay, browser draw/discard/reconnect, fresh Run Back,
+and actual restarted-worker zero-client deadline recovery pass. Recovery worker
+v2 uses unchanged bundled source; the installed migration was not reapplied.
+The connected browser did NOT show Session Ended within 30 seconds although the
+database settled once and finished. The client failure boundary remains unresolved;
+cold-reconnect verification was not reached. Activation stops at this material gate.
+General admission stays false, temporary grants are zero, and the ended fake-money
+fixture is preserved. Golf's two flags remain true; no unrelated records changed.
+No final main integration/push, required CI completion or general activation is claimed.
+See `CANASTA_HOSTED_QUALIFICATION.md` for exact evidence and the retained failure.
+
+# Golf timing and motion — October 22 — qualified publication checkpoint
+
+Jeremy approved candidate `714166fb5b2a7ea2b831cdb23bec484f70b2e9ce` for
+publication ahead of further Canasta work. Integration preserves deployed
+Canasta `5188ba145a7b3f28267bfdf2da69805514ade316` and its closed admission.
+Only Golf forward migration `20261022171731` was installed. Seventeen hosted
+candidate and seventeen installed rollback units pass with matching function
+fingerprints; both local independent-connection money-contract matrices pass.
+The five existing paused Golf matches and BOTH-money admission are unchanged.
+The approved 1200 ms scoring/reveal and 5000 ms Results settings apply to new
+matches; legacy admitted timing and immediate atomic settlement remain intact.
+See [release evidence and owner smoke](SIX_CARD_GOLF_TIMING_RELEASE.md).
+The integrated full Game-route run passed nine holes, immediate settlement,
+connected Session Ended for both clients and cold reconnect to lobby, with zero
+page errors. The exact deployment identity is recorded at delivery. Owner
+production smoke remains pending.
+
+# Canasta / 1 — October 22 — qualification resumed, activation conditional
+
+Jeremy authorized completion of hosted API, concurrency, recovery and lifecycle
+qualification. Only after all gates pass, Canasta may open to every user in play
+money, without an account allowlist or expiration. Real-money admission remains
+server-denied. Migration `20261021235336` is already installed and must not be
+reapplied. The native ESM correction and retained qualification work are preserved.
+General admission remains closed pending the actual hosted gates.
+Integration retains Golf's published `cb11f17d292ffbda8b067b2ee5bba5713a6ea8ce`
+and both-money availability; unpublished Golf work is excluded. Other releases
+remain held. See `CANASTA_HOSTED_QUALIFICATION.md` for evidence and prior checkpoints.
+
+# Golf timing and motion candidate - October 22 - local review, publication held
+
+Jeremy approved local implementation of configurable scoring/reveal timing and the smoke corrections. The candidate now freezes Scoring Delay (1200 ms) and Hole Results Duration (5000 ms) for new matches, preserves final-reveal masks, delays winner presentation until counting/results finish, and preserves immediate atomic settlement. Results has no close control. Golf uses stable Bot1-style aliases and a persistent FINAL TURN felt affordance. Selected piles enlarge; the displaced tableau card offsets; outgoing cards retain their prior face/back state, with only backs flipping at discard.
+
+Candidate and locally installed rollback proofs pass, including financial failure rollback, both money modes, shared ties, continuation, frozen offers, pauses and timing boundaries. 59 focused tests, TypeScript, build, 63 layouts and fresh 2/3/4-player browser sequences pass. The candidate SQL is installed ONLY in the existing loopback UI database. No production migration, publication, admission change or existing production-session mutation occurred. Owner review is pending; hosted authority/concurrency qualification remains required before any future release. See [scope, evidence and holds](SIX_CARD_GOLF_SMOKE_FLOW.md).
+
+# Golf interaction release — October 22 — approved, integrated qualification
+
+Jeremy approved candidate `5d2db057f3e15476c28a9a0274b16863b506e9c9` for publication.
+The integration preserves deployed closed Canasta checkpoint `7c43a27b854b754ef5fb0a5dd28a5f5a090a13da`
+and released main `52aa5528143fe031c4ddf8c3787eff85c0392aa9`. Later Canasta changes
+remain outside this release. Only Golf presentation and interaction change.
+
+Visible first-card selection, second-tap opening, centered MY/opponent grids,
+Info controls, discard-left/stock-right, stock count and proportional card corners
+are retained from the reviewed candidate. Rules, finances and SQL are unchanged.
+Migration `20261021230433` is already installed and is not reapplied. Read-only
+preflight confirms Golf enabled/admission enabled, Canasta admission closed with
+zero active grants, and the owner's paused opening at revision 4 with zero actions.
+
+Final validation passes: 2,706 application tests, 241 harness tests, TypeScript,
+production build, 63 rendered cases and isolated browser actions. The two stale
+Canasta source-contract assertions were corrected without runtime changes.
+
+See [release qualification](SIX_CARD_GOLF_UI_RELEASE.md). Historical holds below
+are superseded only for this approved Golf release. Owner production smoke remains
+acceptance truth.
+
+# Golf felt-card shape — October 21 — local review, release held
+
+The built candidate reproduced an 8px panel radius on 16–18px exposed cards,
+making them appear capsule-shaped. Golf's felt cards now use proportional 10%
+corners; the count chip remains circular. Opponent cards are slightly larger
+(about 7–8% in the owner's two captured viewports). MY and pile conventions remain.
+19 focused tests, 63 rendered geometry/shape cases, isolated actions and build pass.
+Final owner portrait/landscape screenshots were inspected directly. See
+[cause, comparison and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, deployment, migration, admission or live-session changes.
+
+# Golf pile refinement — October 21 — preceding local candidate
+
+Discard is now left and stock right. Opponent cards are 12% larger than pile
+cards; visible piles are 8px apart and MY gaps are 2px. Stock uses the reusable
+upper-left circular count with no visible Stock word. The future-game convention
+is recorded in `ARCHITECTURE.md`; other games are unchanged.
+19 focused tests, 63 rendered cases, isolated actions, typecheck and build pass.
+Fresh final owner-session portrait/landscape screenshots were inspected directly.
+See [refinement and evidence](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, publication, deployment, migration, admission or live-state changes.
+
+# Golf centered layout — October 21 — preceding local candidate
+
+Jeremy rejected the prior seat-attached opponent grids and split MY pane.
+The revised candidate centers opponents on the felt, centers the local grid in
+MY, moves ancillary controls into Info, and centers piles below opponents.
+18 focused tests, 63 rendered layout cases, isolated browser actions, typecheck
+and build pass; final owner-session images were visually inspected. See
+[centered layout and provenance](SIX_CARD_GOLF_CENTERED_LAYOUT.md).
+No push, merge, deployment or admission changes. Owner review remains pending.
+
+# Golf interaction/layout — October 21 — superseded layout proposal
+
+The owner-session investigation found invisible face-down selection feedback and
+an extra opening confirmation step. The candidate visibly marks the first card,
+submits the existing legal opening action on the second distinct tap, keeps the
+local grid in MY in both orientations, and centers piles at the bottom of the
+felt. Focused tests, typecheck/build, authenticated inspection and isolated action
+qualification pass. See [findings and evidence](SIX_CARD_GOLF_INTERACTION_POLISH.md).
+No push/deployment is authorized yet. The published Golf build remains
+`52aa5528143fe031c4ddf8c3787eff85c0392aa9`, with both-money general admission enabled
+by the owner on October 21 at 19:04 Central. The owner's paused session and all
+financial/history records are preserved.
+
+
+# Canasta / 1 — 2026-10-21 — closed hosted installation, transport gate pending
+
+Migration `20261021235336` and recovery worker v1 are installed. Actual scheduled
+heartbeats and three candidate/five installed rollback units pass. General
+admission is closed with zero grants; no client push/deployment or smoke activation.
+Reconciled against released main `52aa55281`; local build/typechecks and 135 focused
+tests pass. Real Auth/consent/Realtime/initial dealing and scheduled terminal
+continuation pass. A completed qualification fixture is paused with grants removed.
+The connector race did not prove overlapping connections; independent transport
+and deployed API/browser gates remain. Golf returned the production window unchanged.
+Stopped at the required execution-budget checkpoint; no writes are outstanding.
+See `CANASTA_HOSTED_QUALIFICATION.md` for exact state and gates.
+
+The earlier local-only release notes below are historical and superseded above.
+
+# Canasta / 1 — 2026-10-21 — local integration checkpoint, release blocked
+
+Reconciled locally with main `6b15f4eb0`, retaining Race/11 Up/Battle31 and the
+shared catalog. Current dispatcher guard, canonical stake-default registration,
+300 focused tests, combined local financial/control proofs and 12 rendered mobile
+cases pass. Hosted qualification and native acceptance remain. Golf retains the
+next production slot. See `CANASTA_RECONCILIATION.md`; no production action occurred.
+
+Initial admission is now explicitly fake-money-only at discovery, locked setup
+and consent completion. Closed defaults remain unchanged. The local correction
+and exact closed SQL/worker package pass rollback, concurrency and restart proofs.
+See `CANASTA_RELEASE_PACKAGE.md` and `supabase/canasta/release/README.md` for hashes,
+tester scope and remaining hosted gates. No main integration, push, production
+mutation, deployment or admission activation is authorized or performed.
+
+Local recovery follow-up fixes final revision visibility for frozen participants
+after Stand Up, aligns fake-money expiry with approved bot Auto-play and clears
+queued sit-out on reclaim. Real-money and all-human inactivity still pause.
+Terminal ownership and separate worker-process crash/restart proofs are included;
+installed Realtime/Edge delivery and native device acceptance remain unqualified.
+
+Approved contract: `CANASTA_CONTRACT.md`. Isolated review and affected-owner
+inventory: `CANASTA_MOBILE_CHECKPOINT.md`. Appearance accepted; local implementation
+authorized. See `CANASTA_AUTHORITY_CHECKPOINT.md` for completed reducer, server
+adapters, canonical integration, rollback/concurrency SQL evidence and remaining qualification. No production
+admission, database changes or deployment. Full financial qualification is incomplete.
+Bounded checkpoint correction: canonical configuration/header/identity, paged
+shared-dialog editor, legal 71-card witness and bound. Full reducer now reproduces
+the 71-card witness. Native mobile/gameplay acceptance remains pending.
+Appearance follow-up removes preview-only dark styling. Authenticated production
+comparison confirms the shared amber border, bridge felt and white page treatment;
+side-by-side evidence is in `CANASTA_MOBILE_CHECKPOINT.md`. Still local only.
+
+# Six-Card Golf / 1 — 2026-10-20 — isolated local candidate, not release qualified
+
+October 21 qualified publication checkpoint: candidate **22/22** and installed
+**22/22** hosted proofs pass. Unchanged Golf source is installed as migration
+`20261021230433`. Live Auth/privacy/Realtime, final-action competition, two
+observed independent PostgREST connections, Run Back consent/late replay,
+deliberate pause, genuine timeout/reclaim and actual zero-client bot settlement
+pass. General admission remains closed; temporary qualification grants were
+revoked, and admitted paused state is preserved. Matching client publication
+and the exact two-account fake-money smoke session follow the approved release
+workflow. Jeremy's physical-device acceptance is pending. See
+[current qualification evidence](SIX_CARD_GOLF_HOSTED_QUALIFICATION.md).
+The blocked checkpoints below are historical and superseded.
+
+October 21 connector retry against released 11 Up main
+`55a896b1f84fcd31d32a1a135622af99fca1a3c9`: 14/16 hosted candidate units
+passed. Mixed real 3 failed canonical Run Back admission because the visible
+scheduler heartbeat was 13.1 seconds old against a 10-second guard; mixed real 4
+was not run. Repeatable-read visibility and an overlapping 32-second canonical
+dispatcher call require bounded follow-up; neither is waived. Rollback is
+verified. Local 409-function preservation, 2,629 application tests, 241 harness
+tests and build pass. Migration bytes are unchanged. No Golf install, main
+integration, push, deployment or grants; both money modes remain closed.
+The connector works without new credentials, superseding the binding blocker
+below. See [current evidence and blocker](SIX_CARD_GOLF_CONNECTOR_RETRY.md).
+
+Local continuation corrected the qualification transport: original SQL statements
+now run through a dedicated PostgreSQL connection and preserve both evidence rows.
+A local 16.209-second unit passes while the old wrapper times out at 15.020 seconds;
+the original limits remain unchanged. Five runner tests and six package tests pass.
+No supported production PostgreSQL credential binding was found in documented
+project configuration. Hosted work awaits that binding and the production-slot
+decision. No hosted action occurred in this continuation. See
+[runner evidence and setup requirement](SIX_CARD_GOLF_DIRECT_RUNNER.md).
+
+October 21 hosted attempt: the owner promoted Golf to the next smoke candidate.
+Fresh main/READY production and all eight preimages match `6b15f4eb`. Six candidate
+rollback units pass; the four-human unit times out during final existing-record
+containment. Qualification is incomplete, so no Golf installation, main change,
+push, deployment or grant occurred. The migration hash is unchanged and the
+24-hour smoke window has not started. See [hosted results and exact blocker](SIX_CARD_GOLF_HOSTED_ATTEMPT.md).
+
+October 21 reconciliation now incorporates released main `6b15f4eb060df319df13d576948c343920a23b21` without changing main or publishing. Three stale preimages are updated to verified deployed authority; guarded additive ante/stake registration preserves Battle 31, Race Poker v2, 11 Up bots/Ready and other games. Combined local SQL/financial/control proofs, 408-function/permission preservation, both-mode Golf races, 2,626 application tests, 241 harness tests, TypeScript and production build pass. The later 24-hour fake-money smoke scope is reserved for the verified Hap and Happach Gmail accounts with bots; no grants exist and the window has not started. See [revised package and evidence](SIX_CARD_GOLF_RECONCILIATION.md). Hosted qualification and release remain held pending review of this revised candidate.
+
+October 21 local candidate incorporates main `0d9469ecc24345175b3cb07052d16283a1c4f42c`. The approved qualification gate is implemented for exact existing accounts and sessions with expiry, default closed. Frozen admitted access preserves existing liabilities after expiry; new admission and Run Back close. Canonical fake-money autoplay now exposes a self checkbox and peer score robot, survives reload and reclaims through the shared player-intent owner. Real-money human timeout and deliberate pauses remain preserved; deferred sit-out applies after the nine-hole match. Eleven bounded production proof units are prepared with eight authority guards. Local SQL, RLS, installed financial/Race Poker preservation, both-mode races, browser reclaim and offline containment checks pass. General admission remains closed; no production writes or publication occurred. See [explicit qualification procedure](SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md).
+
+Final reconciliation also includes main `3f3dfb3e199d31097646c349363b6b8d77486daa`'s isolated Box Drop contrast correction. The exact canonical Session Ended heading is preserved during terminal admission; 30 affected tests and the complete local browser match pass. No gameplay or financial rules changed.
+
+The local Golf candidate is reconciled with main `88c798396bd0202551e36dcf4cd9efa39c9ef555`, preserving Race Poker. Actual Game route tests pass with a simulated SDK, including cold terminal routing, sign-out and exact completion admission. The retained Golf browser now retires controls/cards and the lingering +5 label at Session Ended without changing settlement. The 63-case layout result remains intact. Both-mode local financial/race proofs, Race Poker preservation and installed Golf proofs pass. Migration source `20261021011905_six_card_golf_v1.sql` is registered through the existing CLI. Live Auth/PostgREST/Realtime, actual pg_cron execution and fresh deployed-authority qualification remain gates. Golf admission is closed in both modes. No merge to main, push, production access/migration, deployment or activation occurred. See [evidence](SIX_CARD_GOLF_IMPLEMENTATION.md) and [closed-admission production plan](SIX_CARD_GOLF_RELEASE_PLAN.md).
 # 11 Up smoke controls — installed and qualified for publication
 
 Jeremy directly authorized the release slot. Unchanged candidate `ef39ce022`

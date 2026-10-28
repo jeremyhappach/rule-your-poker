@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-25",
+  "baseSHA": "20e84efbcb208ed57c0347c7348db57c2909b047",
+  "hostedMigration": "20261025203139",
+  "sourceMigration": "20261025200500_battle31_canonical_table.sql",
+  "migrationSHA256": "5ada7f8c0a4584df673f7df42a68540e9f189e5e2de1887b6038a024c363410f",
+  "candidateHosted": {
+    "passed": true,
+    "financialCases": 3,
+    "autonomousTopologies": 2,
+    "residualUsers": 0
+  },
+  "installedHosted": {
+    "passed": true,
+    "financialCases": 3,
+    "autonomousTopologies": 2,
+    "residualUsers": 0
+  },
+  "sharedPauseMD5": "de9cd5aff13b4a04b9ad1a9ec69683e9",
+  "typecheck": true,
+  "sourceFullRun": {
+    "passed": 2910,
+    "timeouts": 3
+  },
+  "affectedAndFocusedRerun": {
+    "passed": 76
+  },
+  "finalFocused": {
+    "passed": 65,
+    "includesNewReconnectTests": 2
+  },
+  "harnessTests": 241,
+  "finalBundle": {
+    "passed": true,
+    "seconds": 21.51
+  },
+  "humanBrowser": true,
+  "botBrowser": true,
+  "terminalBrowser": true,
+  "viewports": 8,
+  "admission": "all-active-users-play-money-no-expiry",
+  "realMoney": false,
+  "ownerPhysicalSmoke": "pending"
+}

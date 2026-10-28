@@ -1484,6 +1484,10 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+          canasta_mode: 'beginner' | 'expert'
+            golf_holes: number
+            golf_scoring_delay_ms: number
+            golf_results_duration_ms: number
           allow_bot_dealers: boolean
           ante_amount: number
           bot_decision_delay_seconds: number
@@ -1526,6 +1530,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          canasta_mode?: 'beginner' | 'expert'
+            golf_holes?: number
+            golf_scoring_delay_ms?: number
+            golf_results_duration_ms?: number
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
@@ -1568,6 +1576,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          canasta_mode?: 'beginner' | 'expert'
+            golf_holes?: number
+            golf_scoring_delay_ms?: number
+            golf_results_duration_ms?: number
           allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
@@ -1749,6 +1761,8 @@ export type Database = {
       }
       gameplay_transfer_batches: {
         Row: {
+          source_round_id: string | null
+          successor_round_id: string | null
           closing_balances: Json
           created_at: string
           cursor: number
@@ -1761,6 +1775,8 @@ export type Database = {
           unmatched_deltas: Json
         }
         Insert: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balances?: Json
           created_at?: string
           cursor: number
@@ -1773,6 +1789,8 @@ export type Database = {
           unmatched_deltas?: Json
         }
         Update: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balances?: Json
           created_at?: string
           cursor?: number
@@ -1796,6 +1814,8 @@ export type Database = {
       }
       gameplay_transfer_pending_changes: {
         Row: {
+          source_round_id: string | null
+          successor_round_id: string | null
           closing_balance: number
           created_at: string
           endpoint_key: string
@@ -1806,6 +1826,8 @@ export type Database = {
           transaction_id: number
         }
         Insert: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balance: number
           created_at?: string
           endpoint_key: string
@@ -1816,6 +1838,8 @@ export type Database = {
           transaction_id: number
         }
         Update: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balance?: number
           created_at?: string
           endpoint_key?: string
@@ -2465,6 +2489,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          canasta_helpers: boolean
           aggression_level: string
           card_back_design: string
           created_at: string
@@ -2483,6 +2508,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          canasta_helpers?: boolean
           aggression_level?: string
           card_back_design?: string
           created_at?: string
@@ -2501,6 +2527,7 @@ export type Database = {
           username: string
         }
         Update: {
+          canasta_helpers?: boolean
           aggression_level?: string
           card_back_design?: string
           created_at?: string

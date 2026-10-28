@@ -7,6 +7,100 @@
 
 # Repository map
 
+Golf match-length local candidate: `src/lib/golf/matchLength.ts` owns client option
+validation; existing GameDefaultsConfig/DealerGameSetup own selection. Frozen SQL
+configuration and terminal checks are in `supabase/six-card-golf/match-length.candidate.sql`;
+`dev/six-card-golf/match-length-proof.mjs` and `match-length-review.mjs` reproduce
+local authority/UI evidence. See `SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md`.
+
+Ptown Words: `supabase/ptown-words` owns shared SQL rules, private dictionary/state,
+canonical multiplayer admission, settlement, recovery and proofs. `src/lib/ptownWords`,
+`src/hooks/usePtownWords*` and `src/components/ptownWords` own projected state and
+fullscreen interaction. `server/ptownWords` preserves pinned ENABLE2K artifacts and
+acquisition checks; `dev/ptown-words` owns isolated qualification harnesses.
+Approved /2 release packaging/proofs: `dev/ptown-words/prepare-banks-release.mjs`,
+`supabase/ptown-words/banks-release-proof.sql`, migration `20261027214928` and
+`docs/codex/PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`.
+`bots.sql` owns the private-view-only move policy; `bot-recovery.sql` adapts the
+canonical Boxdrop scheduled-bot owner with scoped recovery. `bot-registration.sql`
+guards fake-money admission. See `PTOWN_WORDS_RELEASE.md` and `PTOWN_WORDS_BOTS.md`.
+Local-only polish: `presentation.sql` prototypes the frozen, bounded handoff;
+`src/lib/ptownWords/presentation.ts` derives public reveal/gesture presentation.
+`PTOWN_WORDS_POLISH_LOCAL.md` records the preview and publication hold.
+Combined local polish: `server/ptownWords/bots/scowl-20` pins the licensed familiar
+bot subset; `bot-vocabulary.sql` plus `bots.sql` own its bounded casual policy.
+`rackPresentation.ts` owns only display shuffle and dictionary-error classification.
+`casual-bot-proof.mjs` / `polish-pass-browser.mjs` qualify the local candidate.
+Local /2 banks/pause: `banks-pause-local.sql` extends the shared reducer and Words
+command/snapshot adapters; canonical pause ownership remains unchanged.
+`useWordRevealTimeline.ts` owns the per-viewer presentation receipt, with fixed
+server handoff/deadline. `banks-proof.mjs` and `banks-browser.mjs` qualify this
+unpublished candidate. See `PTOWN_WORDS_BANKS_PAUSE_LOCAL.md`.
+`pause-request-cancel-local.sql` adds request-specific own withdrawal through the
+same Words command/revision owner; `pause-cancel-proof.mjs` and
+`pause-cancel-browser.mjs` qualify the local extension.
+
+Quintzee: supabase/quintzee owns frozen version-one rules, multiplayer/Arcade adapters, canonical settlement, recovery and qualification SQL; migration 20261026015637 installs closed admission. src/components/quintzee and SoloQuintzee render the shared projection. dev/quintzee contains isolated proof and main-route harnesses.
+
+Battle31 all-user play-money launch: migration
+`20261025192500_battle31_play_money_launch.sql` owns the real-money constraints and
+guarded continuation extension. `dev/battle31/launch-proof.mjs` prepares contained
+hosted proofs; `launch-concurrency.mjs` reuses local race qualification. Core
+Battle31 authority and its initial release package remain unchanged. See
+`BATTLE31_PLAY_MONEY_LAUNCH.md`.
+
+Canasta summary/fan presentation: `src/components/canasta/geometry.ts`
+owns the bounded `canasta_presentation` Geometry Lab domain and felt packing;
+`CardFan.tsx` owns hand/detail fans. `src/components/admin/CanastaGeometryPanel.tsx`
+uses the existing Lab draft pipeline. See `CANASTA_UI_RELEASE.md`.
+
+357 incident: `ChipPresentationLedger.ts` owns dealer-game presentation retirement;
+`sessionPlayerIntent.ts` reads one current 357 frame before automatic-play CAS.
+`MobileGameTable.tsx` owns the normal Sweep the Legs overlay; the legs flight
+component no longer mounts its own. Closed real-money admission and funded
+settlement are installed by migrations `20261024164227` and `20261024165504`.
+See `357_INCIDENT_20261024.md` for direct database proofs and preservation evidence.
+
+Mega gameplay presentation: `src/lib/megaCardGolf/presentation.ts` derives queued
+replacement/scoring frames from accepted views and committed hole results.
+`MegaArcade.tsx` retains authority transport/recovery; `MegaCardGolfGame.tsx`
+renders those frames and confirmations. Shared `PlayingCard` opts into
+`canonicalShell/MegatouchCardFace.tsx` with existing Small/Medium/Large tier names.
+`CanonicalCardBack` admits explicit souvenir artwork without changing ordinary
+preference-based callers. Local replay/scrub fixtures and capture tools live in
+`dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_GAMEPLAY_POLISH.md`.
+
+Mega Card Golf: `src/lib/megaCardGolf/` owns the versioned reducer and course config;
+`server/megaCardGolf/service.ts` adapts the existing authenticated Arcade API and
+recovery dispatcher. `supabase/mega-card-golf/candidate.sql` prepares private
+immutable configs and service-only RPCs over existing Arcade runs/results/receipts.
+`src/components/megaCardGolf/` owns selection, course Defaults, leaderboard and
+canonical-fullscreen presentation. The existing catalog/Arcade entry and Game
+Defaults embed these adapters. Loopback runners and evidence live in
+`dev/mega-card-golf/`; art in `public/mega-card-golf/`. `src/lib/golf/scoring.ts`
+holds the unchanged public Golf scorer shared with multiplayer presentation.
+Hosted migrations `20261023141036`, `20261023150632` and `20261023151456` install
+authority, preserve course-scoped low-score facts and clean only qualification
+fixtures. Production admission is enabled; see `MEGA_CARD_GOLF_RELEASE.md`.
+
+Canasta local Beginner/Expert follow-up: `src/lib/canasta/config.ts` owns frozen
+pacing; `guidance.ts` derives UI guidance from shared rules;
+`src/hooks/useCanastaHelpers.ts` owns the personal profile preference. Existing
+Game Defaults edits the typed mode/timer. `supabase/canasta/beginner.candidate.sql`
+and `beginner-proof.mjs` are uninstalled candidate/proof artifacts. The real-ledger
+terminal regression is `CanastaLedgerTerminal.test.tsx`; rendered follow-up is
+`dev/canasta/beginner-browser.mjs`. See `CANASTA_BEGINNER_CHECKPOINT.md`.
+
+Canasta now joins `src/lib/gameCatalog/games/canasta.ts` and versioned
+`src/components/rules/CanastaRules.tsx`. Its reconciled local baseline proof is
+`supabase/canasta/reconciled-baseline.mjs`; rendered regression driver is
+`dev/canasta/reconciliation-browser.mjs`. See `CANASTA_RECONCILIATION.md`.
+
+Canasta closed release preparation: `supabase/canasta/release/build.mjs` produces
+the hashed installation, rollback proofs and recovery-worker bundle from existing
+Canasta owners. `admission.proof.sql` owns fake-money admission regressions.
+`CANASTA_RELEASE_PACKAGE.md` links exact artifacts and remaining hosted gates.
+No production migration is registered by this package.
 11 Up smoke controls: `supabase/eleven-up/smoke-controls.sql` is the local forward
 candidate for post-expiry away state and next-Ready real-money pause.
 `src/hooks/useElevenBotSelection.ts` owns presentation-only automatic highlights;
@@ -210,6 +304,11 @@ retains commands, shared controls and terminal effects. The offline responsive
 browser proof is `dev/run21/fullscreen.preview.mjs`.
 
 Aggregate auto-fold pause:
+October 24 HOLM/357 real-money last-present-human policy:
+`supabase/migrations/20261024221401_real_money_poker_last_present_human.sql`
+supersedes installed first-timeout migration `20261024221035`. Composed proof
+runner: `.codex/scripts/build-real-money-poker-timeout-proof.mjs` (add
+`--installed` to test without replacing the installed function).
 `supabase/migrations/20261009231202_restore_all_human_auto_fold_pause.sql`
 adds the internal `private.pause_all_humans_auto_fold` policy/locking guard and
 hooks existing Holm, 3-5-7, automatic-intent, and canonical timer owners.
@@ -1137,12 +1236,75 @@ and shared chip ledger. `RoundTimeBar.tsx` is shared timer presentation.
 - dev/tri-towers/scene.*: candidate/installed proofs and both-mode browser checks.
 - docs/codex/TRITOWERS_SCENE.md: release evidence and owner smoke checklist.
 
+Canasta: src/lib/canasta/engine.ts owns full transitions over the frozen rules;
+engine.test.ts contains the complete 71-card legal replay. server/canasta contains
+unregistered authority/HTTP/store factories. supabase/canasta contains unapplied
+closed-admission SQL candidates and rollback-only proofs. src/components/canasta
+owns the shared paged editor and unregistered authoritative gameplay contents;
+dev/canasta reuses the editor for offline review. CanonicalTableHeader.tsx shares
+route header presentation. Live dispatcher/scheduler/route integration remains;
+see CANASTA_AUTHORITY_CHECKPOINT.md. No Canasta production admission.
+# Canasta local integration owners (2026-10-21; admission closed)
+
+- `supabase/canasta/terminal-control.proof.sql`: terminal revision RLS and canonical Auto-play/reclaim assertions.
+- `supabase/canasta/recovery.proof.mjs`, `recovery.process-proof.ts`: disposable SQL database and fresh worker-process crash/restart proof; HTTP dispatch delivery is stubbed locally.
+- `src/components/canasta/CanastaTerminal.test.tsx`, `src/lib/canasta/recoveryLifecycle.test.ts`: terminal retention, cold reconnect and timeout control qualification.
+
+- `api/canasta.ts`, `server/canasta/{production,recovery}.ts`: authenticated route and leased recovery orchestration.
+- `supabase/canasta/{registration,recovery,schedule}.candidate.sql`: guarded Ante Up insertion, immutable config, revision signal, disabled scheduler; unapplied.
+- `src/components/canasta/{CanastaTable,CanastaArtifacts,useCanastaCardPresentation}.tsx`: canonical table adapter, artifacts and observed card presentation (the hook is a `.ts` file).
+- `src/hooks/useCanastaAccess.ts`: closed capability discovery; `src/pages/Game.tsx`: retained terminal ownership.
+- `dev/canasta/authorityPlugin.ts`, `authorityReview.tsx`: loopback reducer-backed review without database writes.
+- `supabase/canasta/{proof,concurrency.proof}.mjs`: rollback and competing-session qualification in isolated local PostgreSQL.
+
 ## Battle 31 local candidate
 
 Rules/authority: `supabase/battle31/`; client: `src/lib/battle31/`,
 `src/hooks/useBattle31.ts`, `src/components/battle31/`; local proofs and evidence:
 `dev/battle31/`. Scope and release limits: `BATTLE31_LOCAL_CANDIDATE.md`.
 
+
+## Race Poker catalog integration
+
+`src/lib/gameCatalog/games/race-poker.ts` registers discovery/eligibility/defaults/help. `src/components/rules/RacePokerRules.tsx` is the shared frozen article. `dev/race-poker/catalog-*` supplies isolated UI integration checks. `docs/codex/RACE_POKER_RELEASE_PLAN.md` records the release sequence.
+
+## Six-Card Golf local candidate — 2026-10-21
+
+October 22 local `/2` follow-up: `supabase/six-card-golf/rules-v2.candidate.sql`
+contains the unapplied version-aware stock-threshold reducer/admission candidate;
+`dev/six-card-golf/rules-v2-proof.mjs` rehearses it with rollback only. The shared
+seat layer accepts an optional public exposure mask, used by Golf to render
+white exposed indicators without ranks. `golfPresentedScores` in
+`GolfScorecard.tsx` owns the presentation-only completed-hole projection.
+See `SIX_CARD_GOLF_RULES_V2_LOCAL.md` for exact scope and release gates.
+
+`supabase/six-card-golf/` owns versioned rules, redacted snapshots, multiplayer
+admission/consent, canonical settlement and durable recovery. `multiplayer.sql`
+owns private exact-session/user qualification grants and frozen admitted access;
+`recovery.sql` projects canonical player intent and delegates reclaim to
+`public.set_automatic_play`. `qualification-proof.sql` covers expiry, RLS and
+timeout/reclaim/next-match intent. The registered unpublished migration is
+`20261021011905_six_card_golf_v1.sql`.
+
+`src/components/golf/GolfTable.tsx` renders canonical Golf artifacts and autoplay
+controls; `src/hooks/useGolf.ts` reconciles authoritative revisions/receipts.
+The local centered-layout candidate places public grids in the canonical felt
+interaction slot; shared opponent seats retain identity/chips/totals only.
+MY owns the centered local grid and Info opens ancillary controls. See
+`SIX_CARD_GOLF_CENTERED_LAYOUT.md`; other games' seat artifacts are unchanged.
+`src/components/canonicalShell/CanonicalCardCountBadge.tsx` is the reusable
+nonfinancial stock-count circle; Golf is its first consumer. The default
+discard-left / stock-right convention is in `ARCHITECTURE.md`.
+`dev/six-card-golf/` contains local browser/SQL/race tools and separate offline
+production proof/evidence builders. The production qualification plan records
+the exact pinned hash, eleven rollback units and remaining live-service gates.
+
+Golf `registration.sql` makes guarded additive changes to the current shared
+ante/stake owners. `dev/six-card-golf/reconciliation-proof.mjs` compares existing
+definitions/permissions and runs released-game proofs against combined local
+authority. `SIX_CARD_GOLF_RECONCILIATION.md` records baseline and evidence.
+
+## Battle 31 qualification tools
 
 Battle 31 recovery/release qualification: `dev/battle31/recovery-contention.mjs`,
 `package-release.mjs`, `package-proof.mjs`, `recovery-regressions.mjs`; generated
@@ -1153,3 +1315,25 @@ Battle 31 release correction: `docs/codex/BATTLE31_RELEASE_CORRECTIONS.md`;
 shared rollback finance cases: `dev/battle31/financial-cases.mjs`; separately
 controlled hosted driver: `dev/battle31/hosted-qualification.mjs`; read-only
 preflight tests: `dev/battle31/hosted-qualification.test.mjs`.
+
+Mega Card Golf local navigation polish: `CourseSelection.tsx` owns selectable
+course tiles and exact-board all-time record reads; `CourseClubhouse.tsx` owns
+the intermediary artwork/start screen; `MegaLeaderboard.tsx` owns period reads.
+All live under `src/components/megaCardGolf/`. Existing GameLobby Defaults and
+MegaDefaultsConnected retain settings authorization/save ownership. Local fixture
+previews live in `dev/mega-card-golf/polish/`; see `MEGA_CARD_GOLF_POLISH.md`.
+
+Mega local smoke-polish presentation: `src/components/megaCardGolf/MegaResultScorecard.tsx` adapts Golf pencil strokes for Arcade; `src/lib/megaCardGolf/presentation.ts` owns the presentation-only hole/honors/final holds. `dev/mega-card-golf/polish/SequencePreview.tsx` and `smoke-sequences.html` provide local controller previews and sound samples. Multiplayer Golf owners are unchanged.
+
+
+### Battle31 canonical table presentation
+
+Battle31View/Table use actual shell slots; useBattle31Movement queues persisted public exchanges through canonical CardTransportProvider; lib/battle31/presentation.ts seeks persisted result timestamps. CanonicalLifeMarkers and CanonicalDealerTransition present committed life/dealer changes. supabase/battle31/canonical-table.sql is the guarded forward presentation/configuration migration. dev/battle31/canonical-* qualification runners and evidence/canonical-* retain financial, concurrency, actual-route rendering and terminal evidence.
+# Async Words ownership
+
+`supabase/delayed/` owns parent invitation, immutable child outcomes, canonical
+parent settlement, projections, notifications, incident holds and Words recovery.
+`src/pages/Delayed.tsx` and `src/components/delayed/` own the async routes and
+transport into shared Words presentation. `src/lib/delayed/drafts.ts` owns private
+device drafts. `dev/async-words/` contains qualification runners and preimages.
+Installed migration and release evidence: [ASYNC_WORDS_RELEASE.md](ASYNC_WORDS_RELEASE.md).

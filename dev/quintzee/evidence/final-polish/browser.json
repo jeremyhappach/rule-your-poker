@@ -1,0 +1,312 @@
+{
+  "passed": true,
+  "local": true,
+  "at": "2026-10-26T22:03:52.639Z",
+  "cases": [
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "manualRoll": true,
+      "doubleClickOnce": true,
+      "heldCleared": true,
+      "bonus": {
+        "id": "2:sixes",
+        "to": 98,
+        "from": 45,
+        "label": "Upper Bonus +35",
+        "endsAt": 1793052182747,
+        "countAt": 1793052182147,
+        "startedAt": 1793052180647
+      },
+      "deadline": 1793052357196,
+      "timerPaused": "175",
+      "audio": [
+        {
+          "id": "quintzee-bonus:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:2:sixes:0",
+          "at": 531.7000000476837,
+          "duration": 1500.0000976324081
+        },
+        {
+          "id": "quintzee-base:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:2:sixes",
+          "at": 2093.3000000715256,
+          "duration": 600.0000487565994
+        }
+      ],
+      "terminalAudio": [
+        {
+          "id": "quintzee-bonus:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:2:sixes:0",
+          "at": 610.6999999284744,
+          "duration": 1500.0000977516174
+        },
+        {
+          "id": "quintzee-base:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:2:sixes",
+          "at": 2156.7999999523163,
+          "duration": 600.0000488758087
+        },
+        {
+          "id": "quintzee-count:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:86e98ac8-320f-4da6-8a97-dea5c0ab5673:1:result",
+          "at": 4005.6999999284744,
+          "duration": 2799.9999512434006
+        }
+      ],
+      "result": {
+        "id": "86e98ac8-320f-4da6-8a97-dea5c0ab5673:1",
+        "score": 38836,
+        "stage": 1,
+        "reason": "all_categories",
+        "categories": {
+          "ones": 3,
+          "twos": 6,
+          "fives": 15,
+          "fours": 12,
+          "sixes": 18,
+          "chance": 0,
+          "threes": 9,
+          "yahtzee": 0,
+          "full_house": 0,
+          "four_of_a_kind": 0,
+          "large_straight": 0,
+          "three_of_a_kind": 0
+        },
+        "clearBonus": 35,
+        "multiplier": 292,
+        "stageScore": 38836,
+        "upperBonus": 35,
+        "completedAt": 1793052184246,
+        "rawSubtotal": 133,
+        "remainingMs": 172950,
+        "scoreBefore": 0,
+        "upperSubtotal": 63,
+        "categorySubtotal": 63
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "manualRoll": true,
+      "doubleClickOnce": true,
+      "heldCleared": true,
+      "bonus": {
+        "id": "2:sixes",
+        "to": 98,
+        "from": 45,
+        "label": "Upper Bonus +35",
+        "endsAt": 1793052196645,
+        "countAt": 1793052196045,
+        "startedAt": 1793052194545
+      },
+      "deadline": 1793052371029,
+      "timerPaused": "175",
+      "audio": [
+        {
+          "id": "quintzee-bonus:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:2:sixes:0",
+          "at": 525.7999999523163,
+          "duration": 1500.0000488758087
+        },
+        {
+          "id": "quintzee-base:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:2:sixes",
+          "at": 2036.1999999284744,
+          "duration": 600.0000976324081
+        }
+      ],
+      "terminalAudio": [
+        {
+          "id": "quintzee-bonus:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:2:sixes:0",
+          "at": 674.9000000953674,
+          "duration": 1499.9999022483826
+        },
+        {
+          "id": "quintzee-base:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:2:sixes",
+          "at": 2222.5,
+          "duration": 600
+        },
+        {
+          "id": "quintzee-count:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:d0e67df2-e49e-4aa0-b5c0-b368da9a48a6:5f8bd20b-8ff6-4434-a630-315854b4d619:1:0:result",
+          "at": 4022.2000000476837,
+          "duration": 2799.9999511241913
+        }
+      ],
+      "result": {
+        "score": 38836,
+        "reason": "all_categories",
+        "categories": {
+          "ones": 3,
+          "twos": 6,
+          "fives": 15,
+          "fours": 12,
+          "sixes": 18,
+          "chance": 0,
+          "threes": 9,
+          "yahtzee": 0,
+          "full_house": 0,
+          "four_of_a_kind": 0,
+          "large_straight": 0,
+          "three_of_a_kind": 0
+        },
+        "clearBonus": 35,
+        "multiplier": 292,
+        "stageScore": 38836,
+        "upperBonus": 35,
+        "completedAt": 1793052198071,
+        "rawSubtotal": 133,
+        "remainingMs": 172958,
+        "scoreBefore": 0,
+        "upperSubtotal": 63,
+        "categorySubtotal": 63
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "manualRoll": true,
+      "doubleClickOnce": true,
+      "heldCleared": true,
+      "bonus": {
+        "id": "2:sixes",
+        "to": 98,
+        "from": 45,
+        "label": "Upper Bonus +35",
+        "endsAt": 1793052210086,
+        "countAt": 1793052209486,
+        "startedAt": 1793052207986
+      },
+      "deadline": 1793052384573,
+      "timerPaused": "175",
+      "audio": [
+        {
+          "id": "quintzee-bonus:c88c8661-4df7-4d15-a510-a47778586290:1:2:sixes:0",
+          "at": 506.2000000476837,
+          "duration": 1499.9999511241913
+        },
+        {
+          "id": "quintzee-base:c88c8661-4df7-4d15-a510-a47778586290:1:2:sixes",
+          "at": 2086.899999976158,
+          "duration": 599.9999023675919
+        }
+      ],
+      "terminalAudio": [
+        {
+          "id": "quintzee-bonus:c88c8661-4df7-4d15-a510-a47778586290:1:2:sixes:0",
+          "at": 557.1000000238419,
+          "duration": 1500.0000976324081
+        },
+        {
+          "id": "quintzee-base:c88c8661-4df7-4d15-a510-a47778586290:1:2:sixes",
+          "at": 2067.600000023842,
+          "duration": 600.0000976324081
+        },
+        {
+          "id": "quintzee-count:c88c8661-4df7-4d15-a510-a47778586290:1:c88c8661-4df7-4d15-a510-a47778586290:1:result",
+          "at": 3917,
+          "duration": 2800
+        }
+      ],
+      "result": {
+        "id": "c88c8661-4df7-4d15-a510-a47778586290:1",
+        "score": 38836,
+        "stage": 1,
+        "reason": "all_categories",
+        "categories": {
+          "ones": 3,
+          "twos": 6,
+          "fives": 15,
+          "fours": 12,
+          "sixes": 18,
+          "chance": 0,
+          "threes": 9,
+          "yahtzee": 0,
+          "full_house": 0,
+          "four_of_a_kind": 0,
+          "large_straight": 0,
+          "three_of_a_kind": 0
+        },
+        "clearBonus": 35,
+        "multiplier": 292,
+        "stageScore": 38836,
+        "upperBonus": 35,
+        "completedAt": 1793052211406,
+        "rawSubtotal": 133,
+        "remainingMs": 173167,
+        "scoreBefore": 0,
+        "upperSubtotal": 63,
+        "categorySubtotal": 63
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "manualRoll": true,
+      "doubleClickOnce": true,
+      "heldCleared": true,
+      "bonus": {
+        "id": "2:sixes",
+        "to": 98,
+        "from": 45,
+        "label": "Upper Bonus +35",
+        "endsAt": 1793052226088,
+        "countAt": 1793052225488,
+        "startedAt": 1793052223988
+      },
+      "deadline": 1793052399922,
+      "timerPaused": "174",
+      "audio": [
+        {
+          "id": "quintzee-bonus:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:2:sixes:0",
+          "at": 1378.3999999761581,
+          "duration": 1499.9999023675919
+        },
+        {
+          "id": "quintzee-base:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:2:sixes",
+          "at": 2879.8000000715256,
+          "duration": 599.9999511241913
+        }
+      ],
+      "terminalAudio": [
+        {
+          "id": "quintzee-bonus:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:2:sixes:0",
+          "at": 1346.3999999761581,
+          "duration": 1500.0000488758087
+        },
+        {
+          "id": "quintzee-base:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:2:sixes",
+          "at": 2890.5,
+          "duration": 600
+        },
+        {
+          "id": "quintzee-count:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:156574cc-0feb-4b19-bf2f-09d224d552bf:c46a9878-0eac-4914-a284-16df08378ba4:1:0:result",
+          "at": 4740.5,
+          "duration": 2799.999902367592
+        }
+      ],
+      "result": {
+        "score": 38437,
+        "reason": "all_categories",
+        "categories": {
+          "ones": 3,
+          "twos": 6,
+          "fives": 15,
+          "fours": 12,
+          "sixes": 18,
+          "chance": 0,
+          "threes": 9,
+          "yahtzee": 0,
+          "full_house": 0,
+          "four_of_a_kind": 0,
+          "large_straight": 0,
+          "three_of_a_kind": 0
+        },
+        "clearBonus": 35,
+        "multiplier": 289,
+        "stageScore": 38437,
+        "upperBonus": 35,
+        "completedAt": 1793052229180,
+        "rawSubtotal": 133,
+        "remainingMs": 170742,
+        "scoreBefore": 0,
+        "upperSubtotal": 63,
+        "categorySubtotal": 63
+      }
+    }
+  ],
+  "errors": []
+}

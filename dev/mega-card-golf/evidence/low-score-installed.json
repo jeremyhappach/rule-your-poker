@@ -1,0 +1,20 @@
+[
+  {
+    "value": {
+      "passed": true,
+      "installed": true,
+      "existingGames": [
+        "boxdrop",
+        "eleven-up",
+        "royal-flash",
+        "run21",
+        "take-two",
+        "tri-towers",
+        "trip-flip"
+      ],
+      "lowScoreKinds": "first, matched, higher, broken",
+      "courseBoardIsolation": true,
+      "allFixtureRowsRolledBack": true
+    }
+  }
+]

@@ -1,3 +1,5 @@
+import { useDiceResultPresentation } from './useDiceResultPresentation';
+import {useNoQualifyPresentation} from './useNoQualifyPresentation';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -546,18 +548,12 @@ export function useHorsesMobileController({
   }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber, authIdentity?.handNumber, propHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
-  // This overrides any active freeze from dice animations or completedTurnHold timers.
+  // Authority may continue while the exact-roll presentation receipt stays live.
   useEffect(() => {
     const isTerminal = incomingHorsesState?.gamePhase === 'complete';
     if (!isTerminal) return;
 
 
-    // Clear any active turn-hold timer
-    if (completedTurnHoldTimerRef.current) {
-      window.clearTimeout(completedTurnHoldTimerRef.current);
-      completedTurnHoldTimerRef.current = null;
-    }
-    setCompletedTurnHold(null);
     syncHandle.unfreezePresentation();
   }, [incomingHorsesState?.gamePhase]);
 
@@ -597,11 +593,6 @@ export function useHorsesMobileController({
   
   // Track when we last reset local state for a new turn (prevents stale state blocking sync)
   const lastResetTurnKeyRef = useRef<string | null>(null);
-  
-  // Track when to show the "No Qualify" animation for SCC games (any player)
-  const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
-  const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
-  const noQualifyShownForRef = useRef<Set<string>>(new Set());
   
   // Track when to show the "Midnight" animation for SCC games (someone rolls 12)
   const [showMidnightAnimation, setShowMidnightAnimation] = useState(false);
@@ -668,20 +659,20 @@ export function useHorsesMobileController({
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
 
-  // TURN COMPLETION HOLD: When a player completes their turn, we hold their dice visible
-  // for 3 seconds before transitioning to the next player. This prevents flicker.
-  const [completedTurnHold, setCompletedTurnHold] = useState<{
-    playerId: string;
-    dice: (HorsesDieType | SCCDieType)[];
-    result: HorsesHandResult | SCCHandResult;
-    heldMaskBeforeComplete?: boolean[];
-    heldCountBeforeComplete?: number;
-    rollKey?: number;
-    expiresAt: number;
-  } | null>(null);
-  const completedTurnHoldTimerRef = useRef<number | null>(null);
-  const lastCompletedTurnKeyRef = useRef<string | null>(null);
-
+  const resultPresentation = useDiceResultPresentation(
+    enabled && currentRoundId && controllerDealerGameId ? `${controllerDealerGameId}:${currentRoundId}` : null,
+    incomingHorsesState?.playerStates,
+  );
+  const completedTurnHold = resultPresentation.hold;
+  useEffect(() => {
+    if (!resultPresentation.key) return;
+    persistSyncDebugEvent({
+      gameId: gameId ?? null, gameType: resolvedGameType, handNumber: monotonicHandNumber,
+      roundId: currentRoundId, eventType: 'invariant', severity: 'info',
+      eventName: 'horses-result-presentation',
+      payload: { identity: resultPresentation.key, phase: resultPresentation.announcement ? 'landed' : 'captured' },
+    });
+  }, [resultPresentation.key, resultPresentation.announcement?.description, gameId, resolvedGameType, monotonicHandNumber, currentRoundId]);
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
   const lastFeltDiceRef = useRef<{ roundId: string | null; playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
@@ -720,8 +711,6 @@ export function useHorsesMobileController({
   // is larger than the client-cached HORSES_TURN_TIMER_SECONDS.
   const [effectiveMaxTime, setEffectiveMaxTime] = useState<number>(HORSES_TURN_TIMER_SECONDS);
   const lastTurnDeadlineRef = useRef<string | null>(null);
-  const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
-  const clearAnnouncementTimerRef = useRef<number | null>(null);
 
 
   const activePlayers = useMemo(
@@ -1016,19 +1005,8 @@ export function useHorsesMobileController({
   // the hand can stall. Allow the turn-owner OR the deterministic "bot controller" client to advance.
   const stuckAdvanceKeyRef = useRef<string | null>(null);
 
-  // Results wait for this exact authoritative roll's presentation boundary.
-  const rawCurrentTurnState = currentTurnPlayerId ? horsesState?.playerStates?.[currentTurnPlayerId] : null;
-  const completionKey = `${presentationRoundId}:${currentTurnPlayerId}:${rawCurrentTurnState?.rollKey ?? 0}`;
-  const [readyCompletionKey, setReadyCompletionKey] = useState<string | null>(null);
-  const completionEndAt = rawCurrentTurnState?.isComplete
-    ? Date.parse(rawCurrentTurnState.rollAnimationMinEndAt ?? '') : NaN;
-  const completionPresentationReady = !Number.isFinite(completionEndAt) ||
-    completionEndAt <= Date.now() || readyCompletionKey === completionKey;
-  useEffect(() => {
-    if (completionPresentationReady) return;
-    const timer = window.setTimeout(() => setReadyCompletionKey(completionKey), Math.max(0, completionEndAt - Date.now()));
-    return () => window.clearTimeout(timer);
-  }, [completionKey, completionEndAt, completionPresentationReady]);
+  // Presentation follows the exact renderer receipt; server timing still owns legal actions.
+  const completionPresentationReady = !currentTurnPlayerId || resultPresentation.resultReady(currentTurnPlayerId);
 
   const currentTurnState = useMemo(() => {
     if (!currentTurnPlayerId) return null;
@@ -1036,20 +1014,9 @@ export function useHorsesMobileController({
     return state && !completionPresentationReady ? { ...state, isComplete: false, result: undefined } : state;
   }, [horsesState?.playerStates, currentTurnPlayerId, completionPresentationReady]);
 
-  // Announcement effect: when a player's turn completes, show a dealer-style banner (NOT a toast)
-  const announcedTurnsRef = useRef<Set<string>>(new Set());
-
-  // Always clear the pending announcement timer on unmount.
+  // Clear observer animation work on unmount. Result receipts own their timers.
   useEffect(() => {
     return () => {
-      if (clearAnnouncementTimerRef.current) {
-        window.clearTimeout(clearAnnouncementTimerRef.current);
-        clearAnnouncementTimerRef.current = null;
-      }
-      if (completedTurnHoldTimerRef.current) {
-        window.clearTimeout(completedTurnHoldTimerRef.current);
-        completedTurnHoldTimerRef.current = null;
-      }
       if (observerRollingTimerRef.current) {
         window.clearTimeout(observerRollingTimerRef.current);
         observerRollingTimerRef.current = null;
@@ -1079,10 +1046,8 @@ export function useHorsesMobileController({
     // Felt + announcement / advance latches.
     lastFeltDiceRef.current = null;
     lastFeltDiceAtRef.current = 0;
-    lastCompletedTurnKeyRef.current = null;
-    announcedTurnsRef.current = new Set();
     stuckAdvanceKeyRef.current = null;
-    noQualifyShownForRef.current = new Set();
+
     midnightShownForRef.current = new Set();
 
     // Roller-local roll bookkeeping (carrying prior held mask into a new round
@@ -1106,14 +1071,9 @@ export function useHorsesMobileController({
     // does not re-cache the previous round's terminal frame.
     setObserverDisplayState(null);
     setBotDisplayState(null);
-    setCompletedTurnHold(null);
     setBotTurnActiveId(null);
 
     // Animation timers tied to the previous round.
-    if (completedTurnHoldTimerRef.current) {
-      window.clearTimeout(completedTurnHoldTimerRef.current);
-      completedTurnHoldTimerRef.current = null;
-    }
     if (observerRollingTimerRef.current) {
       window.clearTimeout(observerRollingTimerRef.current);
       observerRollingTimerRef.current = null;
@@ -1139,116 +1099,6 @@ export function useHorsesMobileController({
     });
   }, [currentRoundId]);
 
-  // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
-  // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
-  useEffect(() => {
-    if (!enabled || gamePhase !== "playing") return;
-    if (!presentationRoundId || !currentTurnPlayerId) return;
-    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
-
-    const holdKey = `${presentationRoundId}:${currentTurnPlayerId}`;
-    if (lastCompletedTurnKeyRef.current === holdKey) return; // Already holding this turn
-    lastCompletedTurnKeyRef.current = holdKey;
-
-    // Capture the completed player's dice state for the hold period
-    const holdDuration = 3000; // 3 seconds to display dice before transition
-    const expiresAt = Date.now() + holdDuration;
-
-    // FIX #3: Derive heldCountBeforeComplete directly from the dice array
-    // Don't trust (currentTurnState as any).heldCountBeforeComplete which can be stale/mismatched
-    const derivedHeldCount = (currentTurnState.dice as any[]).filter((d: any) => !!d?.isHeld).length;
-
-    const holdPayload = {
-      playerId: currentTurnPlayerId,
-      dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
-      result: currentTurnState.result,
-      heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
-      heldCountBeforeComplete: derivedHeldCount,
-      // Pass the rollKey so DiceTableLayout maintains consistent state during the hold.
-      // The observer logic now correctly distinguishes roll-3 from bookkeeping bumps,
-      // so the fly-in won't refire during the hold period.
-      rollKey: (currentTurnState as any).rollKey,
-      expiresAt,
-    };
-
-
-    setCompletedTurnHold(holdPayload);
-
-    // NOTE: presentation is NOT frozen here. The completedTurnHold overlay is rendered
-    // above presentation and is scoped to (playerId, rollKey), so it masks only the
-    // completing player's dice area while authoritative turn-handoff snapshots (e.g.
-    // horses_advance_turn results) continue to propagate to presentation underneath.
-    // Freezing here previously stalled the next client's "Roll Now" handoff for 3s.
-    persistSyncDebugEvent({
-      gameId: gameId ?? null,
-      gameType: resolvedGameType,
-      handNumber: monotonicHandNumber,
-      roundId: presentationRoundId,
-      eventType: 'invariant', severity: 'info',
-      eventName: 'horses-completed-turn-hold-overlay-only',
-      payload: {
-        completingPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
-        rollKey: (currentTurnState as any).rollKey ?? null,
-        holdDurationMs: holdDuration,
-      },
-    });
-
-    // Clear the hold after the duration
-    if (completedTurnHoldTimerRef.current) {
-      window.clearTimeout(completedTurnHoldTimerRef.current);
-    }
-    completedTurnHoldTimerRef.current = window.setTimeout(() => {
-      setCompletedTurnHold(null);
-      // FIX: Also clear observerDisplayState for this player to prevent rawFeltDice from
-      // falling back to stale observer/DB state, which causes the result badge to flicker
-      // (badge → stale dice briefly → badge again).
-      setObserverDisplayState((prev) => {
-        if (prev?.playerId === currentTurnPlayerId) return null;
-        return prev;
-      });
-      completedTurnHoldTimerRef.current = null;
-    }, holdDuration);
-  }, [
-    enabled,
-    gamePhase,
-    presentationRoundId,
-    currentTurnPlayerId,
-    currentTurnState?.isComplete,
-    currentTurnState?.result,
-  ]);
-
-  useEffect(() => {
-    if (!enabled || gamePhase !== "playing") return;
-    if (!presentationRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
-    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
-
-
-    const announceKey = `${presentationRoundId}:${currentTurnPlayerId}`;
-    if (announcedTurnsRef.current.has(announceKey)) return;
-    announcedTurnsRef.current.add(announceKey);
-
-    const playerName = getPlayerUsername(currentTurnPlayer);
-    setTurnAnnouncement(`${playerName} rolled ${currentTurnState.result.description}!`);
-
-    // IMPORTANT: do NOT clear this timeout in the effect cleanup, otherwise the banner can persist
-    // forever when the turn advances (deps change triggers cleanup before the timeout fires).
-    if (clearAnnouncementTimerRef.current) {
-      window.clearTimeout(clearAnnouncementTimerRef.current);
-    }
-    clearAnnouncementTimerRef.current = window.setTimeout(() => {
-      setTurnAnnouncement(null);
-      clearAnnouncementTimerRef.current = null;
-    }, 2500);
-  }, [
-    enabled,
-    gamePhase,
-    presentationRoundId,
-    currentTurnPlayerId,
-    currentTurnPlayer,
-    currentTurnState?.isComplete,
-    currentTurnState?.result,
-    getPlayerUsername,
-  ]);
 
   // INVARIANT: Detect when ALL players are isComplete but gamePhase is still 'playing'.
   // This always persists (no debug flag) because it's a real stuck-state signal.
@@ -1289,50 +1139,14 @@ export function useHorsesMobileController({
     }).catch(() => {});
   }, [enabled, presentationRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
 
-  // Only show the overlay to the player who rolled no qualify, not to spectators.
-  //
-  // CRITICAL: read from `incomingHorsesState` (authoritative) — NOT presentationState.
-  // Presentation can briefly show stale `isComplete + !isQualified` from the previous round
-  // after a rollover advances currentRoundId, which previously caused the overlay to re-fire
-  // (loop) once per rollover. Authoritative state is fresh as soon as the new round is created.
-  useEffect(() => {
-    if (!enabled || !isSCC) return;
-    if (!currentRoundId) return;
-    if (!myPlayer) return;
-    if (myPlayer.id === currentTurnPlayerId && !completionPresentationReady) return;
-
-    const authState = incomingHorsesStateRef.current;
-    const myPlayerState = authState?.playerStates?.[myPlayer.id];
-    if (!myPlayerState?.isComplete || !myPlayerState?.result) return;
-
-    const result = myPlayerState.result as SCCHandResult;
-    if (!result.isQualified) {
-      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
-      if (noQualifyShownForRef.current.has(noQualifyKey)) return;
-
-      noQualifyShownForRef.current.add(noQualifyKey);
-
-      // Show animation for the current user (no need for player name since it's them)
-      setNoQualifyPlayerName(null);
-      setShowNoQualifyAnimation(true);
-    }
-  }, [
-    enabled,
-    isSCC,
-    currentRoundId,
-    myPlayer,
-    completionPresentationReady,
-    currentTurnPlayerId,
-    incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""]?.isComplete,
-    (incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""] as any)?.result?.isQualified,
-  ]);
-
-  // Handler to reset the no qualify animation
-  const handleNoQualifyAnimationComplete = useCallback(() => {
-    setShowNoQualifyAnimation(false);
-    setNoQualifyPlayerName(null);
-  }, []);
-
+  const noQualify = useNoQualifyPresentation(
+    enabled && isSCC && currentRoundId && myPlayer ? `${dealerGameId}:${currentRoundId}:${myPlayer.id}` : null,
+    myPlayer ? incomingHorsesState?.playerStates?.[myPlayer.id] : null,
+    !!myPlayer && resultPresentation.resultReady(myPlayer.id),
+  );
+  const showNoQualifyAnimation = noQualify.show;
+  const noQualifyPlayerName = null;
+  const handleNoQualifyAnimationComplete = noQualify.complete;
   // Detect when ANY player's SCC hand is complete and they rolled Midnight (cargo = 12)
   useEffect(() => {
     if (!enabled || !isSCC) return;
@@ -1622,7 +1436,7 @@ export function useHorsesMobileController({
         }
       }
       // Note: intermediate rolls already saved immediately above, no need to save again here
-    }, animationDuration);
+    }, Math.max(0, animationDuration - (Date.now() - rollStartTime)));
   }, [
     enabled,
     isPaused,
@@ -2228,7 +2042,7 @@ export function useHorsesMobileController({
         playerId: completedTurnHold.playerId,
         dice: completedTurnHold.dice,
         rollsRemaining: 0,
-        isRolling: false,
+        isRolling: completedTurnHold.isRolling,
         heldMaskBeforeComplete: completedTurnHold.heldMaskBeforeComplete,
         rollKey: completedTurnHold.rollKey,
         isCompletedHold: true,
@@ -2871,11 +2685,13 @@ export function useHorsesMobileController({
   // Get a player's completed hand result
   const getPlayerHandResult = useCallback(
     (playerId: string): HorsesHandResult | SCCHandResult | null => {
+      if (!resultPresentation.resultReady(playerId)) return null;
+      if (playerId === currentTurnPlayerId && !completionPresentationReady) return null;
       const state = horsesState?.playerStates?.[playerId];
       if (state?.isComplete && state.result) return state.result;
       return null;
     },
-    [horsesState?.playerStates],
+    [horsesState?.playerStates, currentTurnPlayerId, completionPresentationReady, resultPresentation],
   );
 
   // Get the current winning player's dice (for displaying "Beat:" badge)
@@ -2890,6 +2706,8 @@ export function useHorsesMobileController({
 
   // Check if the current best hand is tied (multiple players share it)
   const isCurrentWinningTied = currentlyWinningPlayerIds.length > 1;
+  const announcedPlayer = resultPresentation.announcement
+    ? players.find(player => player.id === resultPresentation.announcement!.playerId) : null;
 
   return {
     enabled,
@@ -2897,6 +2715,11 @@ export function useHorsesMobileController({
     currentRoundId,
     presentationRoundId,
     anteAmount,
+    terminalResultObserved: incomingHorsesState?.gamePhase === 'complete' &&
+      !!incomingHorsesState.turnOrder.length && incomingHorsesState.turnOrder.every(id => {
+        const state = incomingHorsesState.playerStates[id];
+        return state?.isComplete && !!state.result;
+      }),
     activePlayers,
     gamePhase,
     turnOrder,
@@ -2925,9 +2748,14 @@ export function useHorsesMobileController({
     timeLeft,
     maxTime: effectiveMaxTime,
     // Turn announcement
-    turnAnnouncement,
+    turnAnnouncement: resultPresentation.announcement ? `${announcedPlayer ? getPlayerUsername(announcedPlayer) : 'Player'} rolled ${resultPresentation.announcement.description}!` : null,
+    resultPresentationKey: resultPresentation.key,
+    resultPresentationPending: resultPresentation.pending,
+    onResultDiceLanded: resultPresentation.landed,
     // No Qualify animation state (SCC only)
     showNoQualifyAnimation,
+    noQualifyPresentationPending: noQualify.pending,
+    noQualifyPresentationKey: noQualify.key,
     noQualifyPlayerName,
     handleNoQualifyAnimationComplete,
     // Midnight animation state (SCC only)

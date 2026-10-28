@@ -1,0 +1,9 @@
+{
+  "local": true,
+  "database": "quintzee_1792965495665",
+  "dependencies": {
+    "scorer": "private.yahtzee_category_score(jsonb,jsonb,text)",
+    "randomness": "extensions.gen_random_bytes(integer)"
+  },
+  "admission": false
+}

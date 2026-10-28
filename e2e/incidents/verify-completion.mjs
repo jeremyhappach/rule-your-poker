@@ -1,0 +1,34 @@
+import {chromium,expect} from '@playwright/test';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({headless:true,channel:'msedge'});
+const context=await browser.newContext({viewport:{width:393,height:852},deviceScaleFactor:3});
+await context.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+const evidence=[];
+for(const game of ['horses','ship-captain-crew']){
+ const page=await context.newPage();
+ page.on('pageerror',error=>{throw error});
+ await page.goto(`http://127.0.0.1:5179/e2e/incidents/dice.html?mode=completion&game=${game}`);
+ const started=await page.evaluate(()=>Date.now());
+ await page.locator('#complete-roll').click();
+ await expect(page.locator('[data-actor]')).toHaveText('terminal');
+ await expect(page.locator('[data-roll-in-flight="true"]')).toBeVisible();
+ await expect(page.locator('[data-announcement]')).toHaveText('');
+ await expect(page.locator('[data-announcement]')).toHaveText('NQ');
+ const elapsed=Number(await page.locator('[data-announcement]').getAttribute('data-at'))-started;
+ await expect(page.locator('[data-roll-in-flight="true"]')).toHaveCount(0);
+ await expect(page.locator('[data-die-idx]')).toHaveCount(5);
+ evidence.push({game,elapsed,actor:'terminal',finalDiceVisible:5});
+ await page.screenshot({path:`../incident-visuals/completion-${game}.png`});
+ await page.close();
+ const interrupted=await context.newPage();
+ await interrupted.goto(`http://127.0.0.1:5179/e2e/incidents/dice.html?mode=completion&game=${game}`);
+ await interrupted.locator('#complete-roll').click();
+ await expect(interrupted.locator('[data-roll-in-flight="true"]')).toBeVisible();
+ await interrupted.locator('#hide-dice').click();
+ await expect(interrupted.locator('[data-announcement]')).toHaveText('NQ');
+ evidence.push({game,interrupted:true,rendererUnmounted:true,resultReconciled:true});
+ await interrupted.close();
+}
+await writeFile('../incident-visuals/completion.json',JSON.stringify(evidence,null,2));
+console.log(JSON.stringify(evidence));
+await browser.close();

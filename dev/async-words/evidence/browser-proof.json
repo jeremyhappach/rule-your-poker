@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "match": "58649dc1-6617-43c3-8d08-799b0e6b562c",
+  "errors": [],
+  "checks": [
+    "two identities create and explicitly accept",
+    "Words-only play-money offer",
+    "opening draw and saved turn",
+    "private draft survives offline/reload without submission",
+    "no banks/pause controls",
+    "mobile and desktop",
+    "pass hands off and returns home"
+  ]
+}

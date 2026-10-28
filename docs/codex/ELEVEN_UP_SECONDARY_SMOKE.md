@@ -1,8 +1,7 @@
-# 11 Up secondary smoke — locally qualified, unreleased
+# 11 Up secondary smoke — installed qualification PASS; publication pending
 
 Base: 55a896b1f84fcd31d32a1a135622af99fca1a3c9. Branch: codex/eleven-up-secondary-smoke.
-Release remains behind every currently queued game (including Golf, Canasta and
-Battle31). This candidate reserves no release slot and blocks no other game.
+Coordinator cleared the incident-first hold on October 28. Reconciled against incident main 99249d8bd70dea766d21bc33c626e11354a2f0b4. 11 Up owns the publication slot; Words work remains isolated and held.
 
 ## Corrections
 
@@ -46,12 +45,23 @@ Evidence: dev/eleven-up/secondary-smoke-evidence.json. Reproduction script retai
 the historical failing expectations; use secondary-ready-proof.mjs and
 secondary-ready-races.mjs to qualify the corrected candidate.
 
-## Release blockers
+## October 28 release qualification
 
-supabase/eleven-up/secondary-ready.sql is an UNREGISTERED local forward artifact.
-After the other queued releases, establish a release slot, reconcile current main,
-inspect hosted definition parity, register/qualify the forward migration and publish
-the matching client. Physical phone/audio and production owner smoke remain pending.
-Broader policy application to other games is separately queued, not implemented here.
-No production access, migration, main integration, push, deployment, admission/grant
-change or live-session repair occurred for this secondary candidate.
+Full reconciled build passed: 3119 source tests, 241 harness tests and typecheck.
+Local lifecycle/36 financial-case proof, independent-connection races, displayed-eleven
+audio and three phone Resume layouts passed again. Hosted baseline/installed proof
+uses only rollback-contained synthetic fixtures and targets their exact identities;
+it never calls global recovery or changes customer sessions. Six financial cases,
+both Ready modes, persistent flags/reclaim, late settlement replay and next-game
+waiting passed. Financial failure injection remains covered by local proof.
+
+Installed once as 20261028190237_eleven_up_active_completion_resume. Exact SQL SHA256:
+9887c4fc29729b9bd058814868c756552ef1a523d4e6a37efd8150a132bba7f1.
+All other public/private function definitions and ACLs retain hash
+f40a918846a82cafa92ea48bfbde8e93. Incident migration was not repeated.
+The supported migration connector generated the registration because the local CLI
+was unavailable; the repository migration records its actual hosted version/bytes.
+
+Publication requires final READY/manifest/publisher/signal agreement. Physical phone,
+audio and production owner smoke remain pending. No admission/grant changes or
+customer-session repairs are included. Broad cross-game policy review remains separate.

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "catalog",
+    "stake setup",
+    "ante consent",
+    "full route",
+    "live reconnect",
+    "concurrent terminal command",
+    "one canonical payout",
+    "Session Ended clears artifacts",
+    "fresh ended mount lobby"
+  ],
+  "financial": {
+    "results": "1",
+    "batches": "1",
+    "chips": "200"
+  },
+  "errors": []
+}

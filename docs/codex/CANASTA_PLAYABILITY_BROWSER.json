@@ -1,0 +1,109 @@
+{
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "count": 15,
+      "allCardsTogether": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "count": 30,
+      "allCardsTogether": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "count": 60,
+      "allCardsTogether": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "count": 71,
+      "allCardsTogether": false
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "count": 15,
+      "allCardsTogether": true
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "count": 30,
+      "allCardsTogether": false
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "count": 60,
+      "allCardsTogether": false
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "count": 71,
+      "allCardsTogether": false
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "count": 15,
+      "allCardsTogether": false
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "count": 30,
+      "allCardsTogether": false
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "count": 60,
+      "allCardsTogether": false
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "count": 71,
+      "allCardsTogether": false
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "count": 15,
+      "allCardsTogether": false
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "count": 30,
+      "allCardsTogether": false
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "count": 60,
+      "allCardsTogether": false
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "count": 71,
+      "allCardsTogether": false
+    }
+  ],
+  "checks": [
+    "duplicate identities, invalid draft blocked, multiple drafts, wild reassignment, cancel without commit",
+    "stock tap draws once despite repeated taps; deadline unchanged",
+    "frozen pickup Yes/No, opening qualification, committed pickup reconnect",
+    "existing meld extension and legal Done",
+    "Go Out with final discard and without discard"
+  ],
+  "errors": []
+}

@@ -33,6 +33,9 @@ describe('cross-game card face contract', () => {
       'components/HolmLonePlayerFan.tsx',
       'components/PlayingCard.tsx',
       'components/hand-history/MiniPlayingCard.tsx',
+      // Reviewed numeric leaderboard positions; neither surface renders card faces.
+      'components/megaCardGolf/CourseClubhouse.tsx',
+      'components/megaCardGolf/MegaLeaderboard.tsx',
       'lib/canonicalShell/cardTransport/CardTransportRuntime.tsx',
       // Developer-only evaluators create/parse valid cards locally.
       'pages/HandEvalDebug.tsx',
@@ -42,7 +45,9 @@ describe('cross-game card face contract', () => {
 
   it('keeps alternate face surfaces and deal adapters behind resolution checks', () => {
     expect(read('components/HolmLonePlayerFan.tsx')).toContain('if (!isCardFaceResolved(card)) return');
-    expect(read('lib/canonicalShell/cardTransport/CardTransportRuntime.tsx')).toContain("card.intent.face === 'hidden' || !isCardFaceResolved(card.intent.visibleFace)");
+    const transport = read('lib/canonicalShell/cardTransport/CardTransportRuntime.tsx');
+    expect(transport).toContain('const joker = isResolvedJoker(card.intent.jokerFace) && !card.intent.visibleFace;');
+    expect(transport).toMatch(/const isHidden = card\.intent\.face === 'hidden'\s*\|\| \(!!card\.intent\.jokerFace && !!card\.intent\.visibleFace\)\s*\|\| \(!joker && !isCardFaceResolved\(card\.intent\.visibleFace\)\);/);
     for (const game of ['Holm', 'GinRummy', 'Cribbage', 'ThreeFiveSeven']) {
       expect(read(`components/${game}DealOrchestrator.tsx`)).toContain('resolveTransportCardFace(');
     }

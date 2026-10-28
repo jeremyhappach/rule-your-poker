@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "one browser canonical setup, bot consent, autonomous legal word, turn handoff and reconnect",
+    "320×568 tile points in bottom-right corner without letter overlap",
+    "390×760 tile points in bottom-right corner without letter overlap",
+    "844×390 tile points in bottom-right corner without letter overlap",
+    "1024×760 tile points in bottom-right corner without letter overlap"
+  ],
+  "errors": []
+}

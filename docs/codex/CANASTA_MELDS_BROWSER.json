@@ -1,0 +1,99 @@
+{
+  "fixture": "Synthetic display state through actual Canasta table and shared reducer",
+  "passed": true,
+  "layouts": [
+    {
+      "width": 390,
+      "height": 844,
+      "labels": [
+        "A♠",
+        "4♣",
+        "J♣",
+        "Joker",
+        "Joker",
+        "2♥",
+        "2♠"
+      ],
+      "feltCards": 14,
+      "readableOpponentCards": 14,
+      "ownOrder": [
+        "RED THREES",
+        "8 mixed canasta",
+        "Q natural canasta",
+        "A",
+        "5",
+        "10"
+      ]
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "labels": [
+        "A♠",
+        "4♣",
+        "J♣",
+        "Joker",
+        "Joker",
+        "2♥",
+        "2♠"
+      ],
+      "feltCards": 14,
+      "readableOpponentCards": 14,
+      "ownOrder": [
+        "RED THREES",
+        "8 mixed canasta",
+        "Q natural canasta",
+        "A",
+        "5",
+        "10"
+      ]
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "labels": [
+        "A♠",
+        "4♣",
+        "J♣",
+        "Joker",
+        "Joker",
+        "2♥",
+        "2♠"
+      ],
+      "feltCards": 14,
+      "readableOpponentCards": 14,
+      "ownOrder": [
+        "RED THREES",
+        "8 mixed canasta",
+        "Q natural canasta",
+        "A",
+        "5",
+        "10"
+      ]
+    },
+    {
+      "width": 812,
+      "height": 375,
+      "labels": [
+        "A♠",
+        "4♣",
+        "J♣",
+        "Joker",
+        "Joker",
+        "2♥",
+        "2♠"
+      ],
+      "feltCards": 0,
+      "readableOpponentCards": 14,
+      "ownOrder": [
+        "RED THREES",
+        "8 mixed canasta",
+        "Q natural canasta",
+        "A",
+        "5",
+        "10"
+      ]
+    }
+  ],
+  "errors": []
+}

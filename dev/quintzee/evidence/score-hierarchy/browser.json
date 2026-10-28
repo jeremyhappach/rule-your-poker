@@ -1,0 +1,1483 @@
+{
+  "passed": true,
+  "at": "2026-10-27T22:13:15.346Z",
+  "cases": [
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 320,
+      "height": 568,
+      "playing": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 329.625,
+          "bottom": 393.625,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 55.265625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 499.9375
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 34,
+          "scroll": 34,
+          "font": 13,
+          "line": "19.5px",
+          "small": {
+            "left": 182.109375,
+            "right": 247.453125,
+            "top": 502.734375,
+            "bottom": 517.359375,
+            "width": 65.34375,
+            "height": 14.625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 329.625,
+          "bottom": 393.625,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 55.265625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 499.9375
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 34,
+          "scroll": 34,
+          "font": 13,
+          "line": "19.5px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 390,
+      "height": 844,
+      "playing": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 502.40625,
+          "bottom": 579.375,
+          "width": 358.15625,
+          "height": 76.96875
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 50.390625,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 780.8125
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          }
+        ],
+        "font": 20.7833,
+        "valueFont": 20.7833,
+        "bonusFont": 20.7833,
+        "baseFont": 13.8555,
+        "pillFont": 26.9412,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 52,
+          "scroll": 52,
+          "font": 19.2437,
+          "line": "28.8656px",
+          "small": {
+            "left": 227.75,
+            "right": 324.40625,
+            "top": 752.484375,
+            "bottom": 774.140625,
+            "width": 96.65625,
+            "height": 21.65625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 502.40625,
+          "bottom": 579.375,
+          "width": 358.15625,
+          "height": 76.96875
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 50.390625,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 780.8125
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          }
+        ],
+        "font": 20.7833,
+        "valueFont": 20.7833,
+        "bonusFont": 20.7833,
+        "baseFont": 13.8555,
+        "pillFont": 26.9412,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 52,
+          "scroll": 52,
+          "font": 19.2437,
+          "line": "28.8656px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "solo",
+      "width": 844,
+      "height": 390,
+      "playing": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 254.328125,
+          "bottom": 286.328125,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 50.390625,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 326.8125
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 41,
+          "scroll": 41,
+          "font": 14,
+          "line": "15.4px",
+          "small": {
+            "left": 690.546875,
+            "right": 760.90625,
+            "top": 323.53125,
+            "bottom": 335.078125,
+            "width": 70.359375,
+            "height": 11.546875
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 254.328125,
+          "bottom": 286.328125,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 50.390625,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 326.8125
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 41,
+          "scroll": 41,
+          "font": 14,
+          "line": "15.4px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 320,
+      "height": 568,
+      "playing": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 354.203125,
+          "bottom": 418.203125,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 132.0625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 423.140625
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 32,
+          "scroll": 32,
+          "font": 13,
+          "line": "19.5px",
+          "small": {
+            "left": 182.109375,
+            "right": 247.453125,
+            "top": 507.40625,
+            "bottom": 522.03125,
+            "width": 65.34375,
+            "height": 14.625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 354.203125,
+          "bottom": 418.203125,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 132.0625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 423.140625
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 32,
+          "scroll": 32,
+          "font": 13,
+          "line": "19.5px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 390,
+      "height": 844,
+      "playing": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 534.671875,
+          "bottom": 603.953125,
+          "width": 358.15625,
+          "height": 69.28125
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 127.1875,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 704.015625
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          }
+        ],
+        "font": 18.7097,
+        "valueFont": 18.7097,
+        "bonusFont": 18.7097,
+        "baseFont": 12.4732,
+        "pillFont": 24.2534,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 47,
+          "scroll": 47,
+          "font": 17.3238,
+          "line": "25.9857px",
+          "small": {
+            "left": 224.46875,
+            "right": 311.515625,
+            "top": 759.671875,
+            "bottom": 779.171875,
+            "width": 87.046875,
+            "height": 19.5
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 534.671875,
+          "bottom": 603.953125,
+          "width": 358.15625,
+          "height": 69.28125
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 127.1875,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 704.015625
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          }
+        ],
+        "font": 18.7097,
+        "valueFont": 18.7097,
+        "bonusFont": 18.7097,
+        "baseFont": 12.4732,
+        "pillFont": 24.2534,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 47,
+          "scroll": 47,
+          "font": 17.3238,
+          "line": "25.9857px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "classic",
+      "mode": "multi",
+      "width": 844,
+      "height": 390,
+      "playing": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 274.296875,
+          "bottom": 306.296875,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 127.1875,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 250.015625
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 26,
+          "scroll": 26,
+          "font": 14,
+          "line": "15.4px",
+          "small": {
+            "left": 690.546875,
+            "right": 760.90625,
+            "top": 334.671875,
+            "bottom": 346.21875,
+            "width": 70.359375,
+            "height": 11.546875
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 274.296875,
+          "bottom": 306.296875,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 127.1875,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 250.015625
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(209, 223, 215)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 26,
+          "scroll": 26,
+          "font": 14,
+          "line": "15.4px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 320,
+      "height": 568,
+      "playing": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 329.625,
+          "bottom": 393.625,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 55.265625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 499.9375
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 34,
+          "scroll": 34,
+          "font": 13,
+          "line": "19.5px",
+          "small": {
+            "left": 182.109375,
+            "right": 247.453125,
+            "top": 502.734375,
+            "bottom": 517.359375,
+            "width": 65.34375,
+            "height": 14.625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 329.625,
+          "bottom": 393.625,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 55.265625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 499.9375
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 339.59375,
+            "bottom": 383.65625,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 34,
+          "scroll": 34,
+          "font": 13,
+          "line": "19.5px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 390,
+      "height": 844,
+      "playing": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 502.40625,
+          "bottom": 579.375,
+          "width": 358.15625,
+          "height": 76.96875
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 50.390625,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 780.8125
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          }
+        ],
+        "font": 20.7833,
+        "valueFont": 20.7833,
+        "bonusFont": 20.7833,
+        "baseFont": 13.8555,
+        "pillFont": 26.9412,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 52,
+          "scroll": 52,
+          "font": 19.2437,
+          "line": "28.8656px",
+          "small": {
+            "left": 227.75,
+            "right": 324.40625,
+            "top": 752.484375,
+            "bottom": 774.140625,
+            "width": 96.65625,
+            "height": 21.65625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 502.40625,
+          "bottom": 579.375,
+          "width": 358.15625,
+          "height": 76.96875
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 50.390625,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 780.8125
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 515.4375,
+            "bottom": 566.328125,
+            "width": 168.484375,
+            "height": 50.890625
+          }
+        ],
+        "font": 20.7833,
+        "valueFont": 20.7833,
+        "bonusFont": 20.7833,
+        "baseFont": 13.8555,
+        "pillFont": 26.9412,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 52,
+          "scroll": 52,
+          "font": 19.2437,
+          "line": "28.8656px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "solo",
+      "width": 844,
+      "height": 390,
+      "playing": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 254.328125,
+          "bottom": 286.328125,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 50.390625,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 326.8125
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 41,
+          "scroll": 41,
+          "font": 14,
+          "line": "15.4px",
+          "small": {
+            "left": 690.546875,
+            "right": 760.90625,
+            "top": 323.53125,
+            "bottom": 335.078125,
+            "width": 70.359375,
+            "height": 11.546875
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 254.328125,
+          "bottom": 286.328125,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 50.390625,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 326.8125
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 259.984375,
+            "bottom": 280.671875,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 41,
+          "scroll": 41,
+          "font": 14,
+          "line": "15.4px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 320,
+      "height": 568,
+      "playing": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 354.203125,
+          "bottom": 418.203125,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 132.0625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 423.140625
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 32,
+          "scroll": 32,
+          "font": 13,
+          "line": "19.5px",
+          "small": {
+            "left": 182.109375,
+            "right": 247.453125,
+            "top": 507.40625,
+            "bottom": 522.03125,
+            "width": 65.34375,
+            "height": 14.625
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 14.875,
+          "right": 305.125,
+          "top": 354.203125,
+          "bottom": 418.203125,
+          "width": 290.25,
+          "height": 64
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 309.609375,
+          "top": 132.0625,
+          "bottom": 555.203125,
+          "width": 299.21875,
+          "height": 423.140625
+        },
+        "groups": [
+          {
+            "left": 17.765625,
+            "right": 154.3125,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          },
+          {
+            "left": 165.6875,
+            "right": 302.234375,
+            "top": 364.171875,
+            "bottom": 408.234375,
+            "width": 136.546875,
+            "height": 44.0625
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 32,
+          "scroll": 32,
+          "font": 13,
+          "line": "19.5px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 390,
+      "height": 844,
+      "playing": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 534.671875,
+          "bottom": 603.953125,
+          "width": 358.15625,
+          "height": 69.28125
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 127.1875,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 704.015625
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          }
+        ],
+        "font": 18.7097,
+        "valueFont": 18.7097,
+        "bonusFont": 18.7097,
+        "baseFont": 12.4732,
+        "pillFont": 24.2534,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 47,
+          "scroll": 47,
+          "font": 17.3238,
+          "line": "25.9857px",
+          "small": {
+            "left": 224.46875,
+            "right": 311.515625,
+            "top": 759.671875,
+            "bottom": 779.171875,
+            "width": 87.046875,
+            "height": 19.5
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 15.921875,
+          "right": 374.078125,
+          "top": 534.671875,
+          "bottom": 603.953125,
+          "width": 358.15625,
+          "height": 69.28125
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 379.609375,
+          "top": 127.1875,
+          "bottom": 831.203125,
+          "width": 369.21875,
+          "height": 704.015625
+        },
+        "groups": [
+          {
+            "left": 19.5,
+            "right": 187.984375,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          },
+          {
+            "left": 202.015625,
+            "right": 370.5,
+            "top": 546.40625,
+            "bottom": 592.203125,
+            "width": 168.484375,
+            "height": 45.796875
+          }
+        ],
+        "font": 18.7097,
+        "valueFont": 18.7097,
+        "bonusFont": 18.7097,
+        "baseFont": 12.4732,
+        "pillFont": 24.2534,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 47,
+          "scroll": 47,
+          "font": 17.3238,
+          "line": "25.9857px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    },
+    {
+      "theme": "modern",
+      "mode": "multi",
+      "width": 844,
+      "height": 390,
+      "playing": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 274.296875,
+          "bottom": 306.296875,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 127.1875,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 250.015625
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 26,
+          "scroll": 26,
+          "font": 14,
+          "line": "15.4px",
+          "small": {
+            "left": 690.546875,
+            "right": 760.90625,
+            "top": 334.671875,
+            "bottom": 346.21875,
+            "width": 70.359375,
+            "height": 11.546875
+          }
+        },
+        "nonOverlap": true,
+        "base": "0"
+      },
+      "scoring": {
+        "row": {
+          "left": 22.734375,
+          "right": 821.265625,
+          "top": 274.296875,
+          "bottom": 306.296875,
+          "width": 798.53125,
+          "height": 32
+        },
+        "field": {
+          "left": 10.390625,
+          "right": 833.609375,
+          "top": 127.1875,
+          "bottom": 377.203125,
+          "width": 823.21875,
+          "height": 250.015625
+        },
+        "groups": [
+          {
+            "left": 30.71875,
+            "right": 406.34375,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.625,
+            "height": 20.6875
+          },
+          {
+            "left": 437.640625,
+            "right": 813.28125,
+            "top": 279.953125,
+            "bottom": 300.640625,
+            "width": 375.640625,
+            "height": 20.6875
+          }
+        ],
+        "font": 18,
+        "valueFont": 18,
+        "bonusFont": 18,
+        "baseFont": 12,
+        "pillFont": 18,
+        "baseColor": "rgb(200, 212, 230)",
+        "pillColor": "rgb(255, 232, 130)",
+        "rowFits": true,
+        "categoryFits": true,
+        "rollFits": true,
+        "rollGeometry": {
+          "height": 26,
+          "scroll": 26,
+          "font": 14,
+          "line": "15.4px",
+          "small": null
+        },
+        "nonOverlap": true,
+        "base": "56"
+      }
+    }
+  ],
+  "errors": []
+}

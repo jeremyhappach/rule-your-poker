@@ -1,0 +1,26 @@
+DO $$ DECLARE s jsonb;t jsonb;v jsonb;r jsonb:=private.battle31_rules();BEGIN
+ s:=jsonb_build_object('rules',r,'players',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'name','A'),jsonb_build_object('id',gen_random_uuid(),'name','B')),'stage',1);
+ s:=private.battle31_deal(s,1000);
+ PERFORM pg_temp.b31_assert(s->>'phase'='intro' AND (s->>'deadline')::bigint=2800,'persisted 1800ms deal before actions');
+ PERFORM pg_temp.b31_assert(private.battle31_visible(s,(s#>>'{players,0,id}')::uuid)#>'{hands,1}'='[null,null,null]'::jsonb,'deal opponent remains hidden');
+ PERFORM pg_temp.b31_assert(private.battle31_scoring_cards('[0,1,10]')='[0,1]'::jsonb,'same-suit counted cards only');
+ PERFORM pg_temp.b31_assert(private.battle31_scoring_cards('[0,8,16]')='[0,8,16]'::jsonb AND private.battle31_score('[0,8,16]')=30.5,'ordinary triple all three');
+ PERFORM pg_temp.b31_assert(private.battle31_scoring_cards('[7,15,23]')='[7,15,23]'::jsonb AND private.battle31_score('[7,15,23]')=32,'three aces all three');
+ t:=s||'{"hands":[[7,4,3],[8,9,10]],"center":[12,13,14]}'::jsonb;
+ t:=private.battle31_reduce(t,'tick',NULL,2800);
+ PERFORM pg_temp.b31_assert(t->>'phase'='round_result' AND t#>>'{result,reason}'='initial_special','initial 31 receives full result phase');
+ PERFORM pg_temp.b31_assert((t#>>'{presentation,revealAt}')::bigint<(t#>>'{presentation,announceAt}')::bigint AND (t#>>'{presentation,announceAt}')::bigint<(t#>>'{presentation,lifeAt}')::bigint AND (t#>>'{presentation,lifeAt}')::bigint<(t#>>'{presentation,clearAt}')::bigint AND (t->>'deadline')::bigint=(t#>>'{presentation,finishAt}')::bigint,'persisted result ordering and next-deal boundary');
+ s:=s||'{"phase":"playing","turn":1,"turnIndex":0,"deadline":20000,"hands":[[0,1,10],[16,17,26]],"center":[2,11,20]}'::jsonb;
+ t:=private.battle31_reduce(s,'swap',ARRAY[0,2],3000);
+ PERFORM pg_temp.b31_assert(jsonb_array_length(t->'moves')=1 AND t#>>'{moves,0,pairs,0,out}'='0' AND t#>>'{moves,0,pairs,0,in}'='2','committed one-card flight identity');
+ t:=private.battle31_reduce(t,'take_pot',NULL,3100);
+ PERFORM pg_temp.b31_assert(jsonb_array_length(t->'moves')=2 AND jsonb_array_length(t#>'{moves,1,pairs}')=3,'rapid board swap retains both movement events');
+ t:=private.battle31_reduce(s,'pass',NULL,3000);v:=t->'knock';t:=private.battle31_reduce(t,'pass',NULL,3100);
+ PERFORM pg_temp.b31_assert(t->'knock'=v AND t->>'phase'='round_result','stand after knock never creates another response');
+ t:=private.battle31_resolve(s||'{"losses":[3,3],"hands":[[0,1,2],[8,17,26]]}'::jsonb,'proof',4000);
+ PERFORM pg_temp.b31_assert(t->>'phase'='complete' AND t?'presentation','fourth loss retains full result before terminal presentation');
+ t:=private.battle31_resolve(s||'{"hands":[[0,8,16],[1,9,17]],"losses":[1,1]}'::jsonb,'proof',4000);
+ PERFORM pg_temp.b31_assert(t->'losses'='[1,1]'::jsonb AND t#>'{result,loser}'='null'::jsonb,'tied round has no life loss');
+ t:=private.battle31_resolve(jsonb_set(s,'{rules}',r-'presentationVersion'||'{"holdMs":4000,"introMs":1200,"turnMs":15000}'::jsonb),'legacy',4000);
+ PERFORM pg_temp.b31_assert((t->>'deadline')::bigint=8000 AND t->'presentation'='null'::jsonb,'frozen legacy presentation stays supported');
+END $$;

@@ -1,0 +1,127 @@
+{
+  "passed": true,
+  "method": "Atomic migration resolved only three recorded fixture fingerprints, validated canonical scores, removed their result/receipt/revision/run rows, restored immutable trigger, and verified unrelated Arcade row/config hashes unchanged.",
+  "evidence": {
+    "rule": {
+      "id": "mega-card-golf/1",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/1",
+        "opening": "player-selected",
+        "finalDraw": "resolve"
+      },
+      "enabled": false
+    },
+    "health": {
+      "claimed": false,
+      "failure": null,
+      "singleton": true,
+      "expires_at": "2026-10-23T15:15:50.793556+00:00",
+      "last_completed_at": "2026-10-23T15:15:26.369235+00:00"
+    },
+    "catalog": {
+      "active": null,
+      "boards": [
+        {
+          "id": "sunny-meadows",
+          "rows": [],
+          "self": null,
+          "boardId": "76bf83a5-1188-47fd-954f-929bd53f14c8",
+          "personalBest": null
+        },
+        {
+          "id": "coastal-links",
+          "rows": [],
+          "self": null,
+          "boardId": "b09157ea-d454-4a67-b355-f71a59cd85dc",
+          "personalBest": null
+        },
+        {
+          "id": "devils-canyon",
+          "rows": [],
+          "self": null,
+          "boardId": "28021ecf-51fb-4447-b981-08aee6a32155",
+          "personalBest": null
+        }
+      ],
+      "courses": [
+        {
+          "id": "sunny-meadows",
+          "name": "Sunny Meadows",
+          "holes": 9,
+          "boardId": "76bf83a5-1188-47fd-954f-929bd53f14c8",
+          "enabled": true,
+          "configId": "f9fd92d6-f2f8-4155-a90f-a0962f63e526",
+          "revision": 1,
+          "difficulty": "Easy",
+          "initialExposed": 2,
+          "stockAllowance": 16,
+          "discardAllowance": 5,
+          "completionSeconds": 300
+        },
+        {
+          "id": "coastal-links",
+          "name": "Coastal Links",
+          "holes": 9,
+          "boardId": "b09157ea-d454-4a67-b355-f71a59cd85dc",
+          "enabled": true,
+          "configId": "a1694de2-862d-41df-bff5-ee620a912cf2",
+          "revision": 1,
+          "difficulty": "Medium",
+          "initialExposed": 2,
+          "stockAllowance": 12,
+          "discardAllowance": 3,
+          "completionSeconds": 300
+        },
+        {
+          "id": "devils-canyon",
+          "name": "Devil's Canyon",
+          "holes": 9,
+          "boardId": "28021ecf-51fb-4447-b981-08aee6a32155",
+          "enabled": true,
+          "configId": "db220fa8-d3a9-405c-9f8e-d58c3a3b40eb",
+          "revision": 1,
+          "difficulty": "Hard",
+          "initialExposed": 2,
+          "stockAllowance": 8,
+          "discardAllowance": 1,
+          "completionSeconds": 300
+        }
+      ],
+      "isAdmin": true,
+      "archives": [],
+      "admission": false
+    },
+    "release": {
+      "id": "27dc7b5d-d8df-4077-9099-d0d1c4dff7ab",
+      "key": "release_publication",
+      "value": {
+        "buildSha": "77ae80ad46793e7d80ae6eb89df6c776af85cf1c",
+        "publishedAt": "2026-10-23T14:31:31.722Z",
+        "deploymentId": "39970181746-1",
+        "schemaVersion": 1
+      },
+      "updated_at": "2026-10-23T14:31:31.722+00:00",
+      "updated_by": null
+    },
+    "mega_runs": 0,
+    "checked_at": "2026-10-23T15:15:28.47878+00:00",
+    "migrations": [
+      {
+        "name": "mega_card_golf_v1",
+        "version": "20261023141036"
+      },
+      {
+        "name": "mega_card_golf_low_score_facts",
+        "version": "20261023150632"
+      },
+      {
+        "name": "mega_card_golf_qualification_cleanup",
+        "version": "20261023151456"
+      }
+    ],
+    "mega_results": 0,
+    "immutable_trigger": "O"
+  }
+}

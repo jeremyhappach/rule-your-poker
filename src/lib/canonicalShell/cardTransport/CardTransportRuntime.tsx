@@ -1,3 +1,5 @@
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 /**
  * CardTransportRuntime — owns launch, travel, arrival, destroy.
@@ -347,6 +349,7 @@ export function CardTransportRuntime({
           const r = resolvedRef.current.get(intent.id);
           if (!r) return;
           r.launched = true;
+          if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
           if (isThreeFiveSevenSelfHandIntent(intent)) {
             const currentTo = resolveCardEndpoint(intent.to, container) ?? r.to;
             record357DealLandingTrace(intent.cardId, {
@@ -368,7 +371,7 @@ export function CardTransportRuntime({
             launchedAt: performance.now(),
             lifecycleState: 'launched',
           });
-          recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+        recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
             reason: 'delayed-launch-timer-fired',
             timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
             gameType: ctx.gameType ?? null,
@@ -378,6 +381,7 @@ export function CardTransportRuntime({
         }, delayMs);
         launchTimersRef.current.set(intent.id, tLaunch);
       } else {
+        if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
         if (isThreeFiveSevenSelfHandIntent(intent)) {
           const currentTo = resolveCardEndpoint(intent.to, container) ?? to;
           record357DealLandingTrace(intent.cardId, {
@@ -554,6 +558,9 @@ export function CardTransportRuntime({
 // the dbg panel can prove the flight is a single continuous animation.
 // ---------------------------------------------------------------------------
 
+import { isResolvedJoker } from '@/lib/cardGames/physicalCard';
+import { JokerCardFace } from '@/components/canonicalShell/JokerCardFace';
+
 interface FlyingCardProps {
   card: RuntimeCard;
   containerRef: RefObject<HTMLElement>;
@@ -568,7 +575,10 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const dx = card.to.x - card.from.x;
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const isHidden = card.intent.face === 'hidden' || !isCardFaceResolved(card.intent.visibleFace);
+  const joker = isResolvedJoker(card.intent.jokerFace) && !card.intent.visibleFace;
+  const isHidden = card.intent.face === 'hidden'
+    || (!!card.intent.jokerFace && !!card.intent.visibleFace)
+    || (!joker && !isCardFaceResolved(card.intent.visibleFace));
   // Hidden-card colors are owned by CanonicalCardBack (reads useVisualPreferences
   // directly). `card.intent.cardBackColors` is retained on the intent for debug
   // parity but no longer drives paint here.
@@ -585,7 +595,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   // the canonical constants when the destination is a 1×1 point anchor.
   const FINAL_SIZE_MIN_PX = 8;
   const useFinalRect =
-    Number.isFinite(card.to.w) &&
+    !card.intent.stackCount && Number.isFinite(card.to.w) &&
     Number.isFinite(card.to.h) &&
     card.to.w >= FINAL_SIZE_MIN_PX &&
     card.to.h >= FINAL_SIZE_MIN_PX;
@@ -817,13 +827,14 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           height: flyH,
           borderRadius: 2,
           border: isHidden ? 'none' : '1px solid rgba(255,255,255,0.2)',
-          boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
+          boxShadow: (card.intent.stackCount??1)>1 ? '2px 2px 0 #ddd, 4px 4px 0 #777, 0 6px 14px #0007' : '0 6px 14px rgba(0,0,0,0.45)',
           background: isHidden ? 'transparent' : '#ffffff',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: isHidden ? 'center' : 'space-between',
           padding: isHidden ? 0 : '2px 0',
+          ...(joker ? {fontSize: flyW * .4} : {}),
           overflow: 'hidden',
           opacity: 0,
           animation: `${kf} ${card.flightMs}ms ${easing} 0ms 1 forwards`,
@@ -832,6 +843,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         onAnimationStart={() => logActualLaunch('animationstart')}
         onAnimationEnd={() => logActualArrival('animationend')}
       >
+        {(card.intent.stackCount??1)>1&&<span data-card-stack-count style={{position:'absolute',right:0,bottom:0,zIndex:1,background:'#111',color:'#fff',fontSize:12,padding:'1px 3px'}}>{card.intent.stackCount}</span>}
         {isHidden ? (
           // CANONICAL hidden-card renderer. Gradient/border/accent owned
           // by shell; stamped cardBackColors on the intent are ignored
@@ -843,7 +855,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
             radiusPx={2}
             style={{ width: '100%', height: '100%' }}
           />
-        ) : vf ? (
+        ) : joker ? <JokerCardFace /> : vf ? (
           <>
             <span style={{ fontSize: `${flyW * 0.55}px`, fontWeight: 900, lineHeight: 1, color: suitColor }}>{vf.rank}</span>
             <span style={{ fontSize: `${flyW * 0.7}px`, lineHeight: 1, color: suitColor }}>{suitChar}</span>

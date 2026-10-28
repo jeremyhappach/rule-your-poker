@@ -8,6 +8,7 @@ import {
   getHolmShowdownDurablePresentationAction,
   getHolmShowdownPresentationCursors,
   isHolmPreHandRouteStatus,
+  hasPendingHolmPresentedResult,
   isSameHolmPresentationHand,
   latchHolmPresentationBarrier,
   reconcileHolmPresentationBarrierFromEvidence,
@@ -92,6 +93,24 @@ describe('Holm route-entry provenance', () => {
 });
 
 describe('Holm presented-hand barrier', () => {
+  it('admits the held showdown for either viewer when authority is already betting H2', () => {
+    const completed = { ...hand('round-1', 1, 70), roundStatus: 'completed', lastRoundResult: 'Hap won|||WINNER:hap|||LOSERS:lance|||POT:9|||MATCH:9' };
+    const successor = { ...hand('round-2', 2, 70), roundStatus: 'betting', lastRoundResult: null, awaitingNextRound: false };
+    const held = shouldHoldHolmAuthoritativeSuccessor({ barrier: completed, presentedRoundId: completed.roundId, incoming: successor });
+    expect(held).toBe(true);
+    expect(hasPendingHolmPresentedResult(held ? completed : successor)).toBe(true);
+    // Exact completion releases the predecessor, and its result admission
+    // disappears with it. H2 cannot inherit H1's result trigger.
+    expect(releaseHolmPresentationBarrier(completed, { ...completed, stage: 'showdown-replacement-pot' }).released).toBe(true);
+    expect(hasPendingHolmPresentedResult(successor)).toBe(false);
+  });
+
+  it('does not admit unresolved, missing, or result-less presented hands', () => {
+    expect(hasPendingHolmPresentedResult(null)).toBe(false);
+    expect(hasPendingHolmPresentedResult({ roundStatus: 'betting', lastRoundResult: 'stale result' })).toBe(false);
+    expect(hasPendingHolmPresentedResult({ roundStatus: 'completed', lastRoundResult: null })).toBe(false);
+  });
+
   it('derives the exact adjacent showdown cursors from the final transfer identity', () => {
     expect(getHolmShowdownPresentationCursors(hand('round-1', 1, 12))).toEqual({
       potAwardCursor: 11,

@@ -67,6 +67,10 @@ interface DiceTableLayoutProps {
   sccHand?: SCCHand;
   /** If true, this is the observer view (not my turn) */
   isObserver?: boolean;
+  /** Horses/SCC controller admission: historical snapshots must not fly again. */
+  observerRollLive?: boolean;
+  presentationKey?: string | null;
+  onPresentationLanded?: (key: string | null) => void;
   /** If true, show "You are rolling" message instead of dice (for active roller's own view) */
   showRollingMessage?: boolean;
   /** If true, hide dice that haven't been rolled yet (value === 0) */
@@ -271,6 +275,9 @@ export function DiceTableLayout({
   useSCCDisplayOrder = false,
   sccHand,
   isObserver = false,
+  observerRollLive,
+  presentationKey = null,
+  onPresentationLanded,
   showRollingMessage = false,
   hideUnrolledDice = false,
   heldMaskBeforeComplete,
@@ -796,11 +803,17 @@ export function DiceTableLayout({
     // Prevent "same rollKey" replays across remounts by persisting last-seen rollKey per cacheKey.
     const cacheKeyStr = String(cacheKey ?? "");
     const lastSeenGlobal = cacheKeyStr ? lastSeenRollKeyByCacheKey.get(cacheKeyStr) : undefined;
+    if(isObserver&&observerRollLive===false){
+      prevRollKeyRef.current=rollKey;
+      if(cacheKeyStr&&rollKey!==undefined)lastSeenRollKeyByCacheKey.set(cacheKeyStr,rollKey);
+      return;
+    }
 
     const isNewRollKey =
       rollKey !== undefined &&
-      rollKey !== prevRollKeyRef.current &&
-      (lastSeenGlobal === undefined || rollKey !== lastSeenGlobal);
+      ((rollKey !== prevRollKeyRef.current &&
+      (lastSeenGlobal === undefined || rollKey !== lastSeenGlobal)) ||
+      (isObserver&&observerRollLive===true&&rollKey!==(lastFlyInRollKeyByCacheKey.get(cacheKeyStr)??lastFlyInRollKeyRef.current)));
     if (!isNewRollKey) {
       // Not a new roll — but if we're mid-animation, don't interrupt
       return;
@@ -991,6 +1004,7 @@ export function DiceTableLayout({
     isTablet,
     isRolling,
     isObserver,
+    observerRollLive,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
@@ -1049,6 +1063,19 @@ export function DiceTableLayout({
     // This was previously set to false when the animation started.
     setShowUnheldDice(true);
   }, []);
+
+  // Report only after the final dice layer has painted. This also covers a
+  // completed snapshot whose fly-in was already consumed before actor handoff.
+  const landedCallback = useRef(onPresentationLanded);
+  landedCallback.current = onPresentationLanded;
+  useEffect(() => {
+    if (!presentationKey || isAnimatingFlyIn || !showUnheldDice) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => landedCallback.current?.(presentationKey));
+    });
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+  }, [presentationKey, isAnimatingFlyIn, showUnheldDice, rollKey]);
   
   // Get die dimensions based on size (reduced for less overlap)
   // TABLET: Larger container and adjusted positions with more spacing to prevent overlap
@@ -2041,7 +2068,7 @@ export function DiceTableLayout({
   }
 
   return (
-    <div ref={containerRef} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
+    <div ref={containerRef} data-roll-in-flight={isAnimatingFlyIn} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
       <div className="absolute inset-0 z-10 pointer-events-none" data-dice-layer="scatter" data-layer-z={10}>
         {orderedDice.map((item) => renderDieForLayer(item, "scatter"))}
       </div>

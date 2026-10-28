@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "database": "async_words_1793149749760",
+  "checks": [
+    "canonical financial owners unchanged",
+    "real money, other games, multiple children and invalid stakes rejected",
+    "acceptance freezes opening tile draw, 36h/24h and no financial effects; replay stable",
+    "private rack projection and participant/turn authority",
+    "banks/pause/autoplay forbidden; invalid move preserves deadline and draft authority",
+    "one successful move hands off once; duplicate/conflicting replay guarded",
+    "normal endgame, actual canonical chips/ledger, failure rollback, retry and exactly one parent settlement",
+    "normal tie keeps rack deductions, zero receipt, no needless transfer",
+    "independent connections racing terminal commands settle once",
+    "deadline beats late action and commits forfeiture despite rejection response",
+    "zero-client recovery settles forfeiture and reconnect reads immutable outcome",
+    "incident hold/resume shifts both persisted clocks and revisions",
+    "expired invitation cannot activate or move money",
+    "missed recovery heartbeat holds adjudication for operations review",
+    "browser cannot choose outcomes, private state or settlement"
+  ]
+}

@@ -1,3 +1,9 @@
+import {seatLegPlacement} from './canonicalLegPlacement';
+import './publicTableau.css';
+import {CanonicalLifeMarkers} from '@/components/canonicalShell/CanonicalLifeMarkers';
+import {CanonicalChipLives} from '@/components/canonicalShell/CanonicalChipLives';
+import {TableauCard} from '@/lib/canonicalShell/TableauCard';
+import type {Card} from '@/lib/cardUtils';
 /**
  * GameplayOpponentSeatLayer — shell-owned gameplay opponent seat
  * cluster set for canonical card-family game tables (cribbage, gin
@@ -85,9 +91,21 @@ export interface CardBacksPresentation {
   count: number;
   visible: boolean;
   variant: 'cribbage' | 'gin';
+  /** Public exposure only; never card rank/suit. Omitted preserves all backs. */
+  exposed?: readonly boolean[];
 }
 
 export interface GameplayOpponentSeatPresentation {
+  lives?: (p: GameplayOpponentSeatParticipant) => {losses:number;previous?:number;dissolve?:boolean;elapsed?:number};
+  /** Legacy coupled name/row placement. New callers keep the canonical nameplate. */
+  inwardSeatContent?: boolean;
+  /** Move only card content inward; retain canonical nameplate and seat placement. */
+  inwardCardContent?: boolean;
+  /** Opt-in inspection from the seat's public tableau or card-back indicator. */
+  onInspectTableau?: (p: GameplayOpponentSeatParticipant) => void;
+  hiddenTableauCards?: (p: GameplayOpponentSeatParticipant) => number[];
+  /** Public faces only; undefined renders a canonical back. Fixed 2×3 column relation. */
+  publicTableau?: (p: GameplayOpponentSeatParticipant) => (Card|undefined)[];
   /** A separately persisted local test ledger must not read the session money cursor. */
   isolatedBalance?: (p: GameplayOpponentSeatParticipant) => number;
   /** Public one-use pass availability; contains no private card evidence. */
@@ -98,6 +116,7 @@ export interface GameplayOpponentSeatPresentation {
   chipValue?: (p: GameplayOpponentSeatParticipant) => string | undefined;
   hideChipBubble?: (p: GameplayOpponentSeatParticipant) => boolean;
   scoreLine?: (p: GameplayOpponentSeatParticipant) => string | undefined;
+  scoreAutoPlay?: (p: GameplayOpponentSeatParticipant) => boolean;
   cardBacks?: (p: GameplayOpponentSeatParticipant) => CardBacksPresentation | null;
   /** Presentation-only marker for a fake-money human currently auto-rolling. */
   autoRoll?: (p: GameplayOpponentSeatParticipant) => boolean;
@@ -111,7 +130,7 @@ export interface GameplayOpponentSeatPresentation {
 
 export interface GameplayOpponentSeatLayerProps {
   /** Game family used in ownerLabel + diagnostics. */
-  family: 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
+  family: 'battle-31' | 'six-card-golf' | 'cribbage' | 'gin-rummy' | 'yahtzee' | 'farkle' | 'run21';
   /** Opponents to project (caller filters self / observers as needed). */
   participants: GameplayOpponentSeatParticipant[];
   /** Typed presentation accessors. All fields optional. */
@@ -125,6 +144,7 @@ function defaultChipValue(n: number): string {
 interface ShellOpponentCardBacksProps {
   count: number;
   variant: 'cribbage' | 'gin';
+  exposed?: readonly boolean[];
   /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
   color?: string;
   /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
@@ -132,9 +152,11 @@ interface ShellOpponentCardBacksProps {
   /** Seat position — stamped as [data-card-anchor="opp-stack-${position}"]
    *  so canonical card transport can terminate exactly on this stack. */
   position: number;
+  onInspect?: () => void;
+  inspectLabel?: string;
 }
 
-function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardBacksProps) {
+function ShellOpponentCardBacks({ count, variant, position, exposed, onInspect, inspectLabel }: ShellOpponentCardBacksProps) {
   // Subscribe to the global Shell / Opponent Card Backs config
   // (Geometry Lab → Seat Cluster → Opponent Card Backs). The authored
   // maxFanSpanPct is the source of truth; runtime pixels are derived
@@ -226,9 +248,12 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
       style={{
         width: totalWidth || cardWidth,
         minHeight: cardHeight,
+        position: onInspect ? 'relative' : undefined,
       }}
     >
-      {Array.from({ length: count }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => exposed?.[i] ? (
+        <div key={i} data-seat-card-exposed="true" aria-label="Exposed card" className="shrink-0" style={{width:cardWidth,height:cardHeight,marginLeft:i===0?0:-overlapPx,background:'#fff',border:'1px solid #cbd5e1',borderRadius:Math.max(3,cardWidth*.08)}}/>
+      ) : (
         <CanonicalCardBack
           key={i}
           widthPx={cardWidth}
@@ -237,6 +262,16 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
           style={{ marginLeft: i === 0 ? 0 : -overlapPx }}
         />
       ))}
+      {/* Extend the touch target upward without changing visible card geometry. */}
+      {onInspect && <button
+        type="button"
+        data-seat-card-inspect=""
+        aria-label={inspectLabel}
+        aria-haspopup="dialog"
+        onClick={onInspect}
+        className="absolute pointer-events-auto cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-400"
+        style={{left:'50%',bottom:0,transform:'translateX(-50%)',width:'max(100%, 44px)',height:'max(100%, 44px)',padding:0,border:0,background:'transparent',touchAction:'manipulation'}}
+      />}
     </div>
   );
 }
@@ -273,6 +308,7 @@ export function GameplayOpponentSeatLayer({
         // coordinate frame and pulled seats inward vs. the
         // MobileGameTable canonical clusters. --shell-felt-w stays
         // owned by ShellOwnedFeltHost for the ellipse paint only.
+        containerType:'size',containerName:'seat-frame',
         position: 'fixed',
         top: 'calc(var(--shell-header-h, 0px) + var(--play-top-safe-area, 0px))',
         left: 0,
@@ -311,9 +347,8 @@ export function GameplayOpponentSeatLayer({
             activePlayerId={activeTimer.activePlayerId ?? p.id}
           />
         ) : undefined;
-        const chipDiscChildren = autoRoll ? (
-          <AutoRollIndicator isRightSide={slot !== null && slot >= 3} />
-        ) : null;
+        const lives=presentation?.lives?.(p);
+        const chipDiscChildren = <>{autoRoll&&<AutoRollIndicator isRightSide={slot !== null && slot >= 3}/>} {lives&&(family==='battle-31'?<CanonicalChipLives {...lives}/>:<span data-canonical-leg-anchor="seat" style={{...seatLegPlacement(slot!==null&&slot>=3),color:'#facc15',textShadow:'0 1px 2px #000'}}><CanonicalLifeMarkers {...lives}/></span>)}</>;
         const renderCardBacks =
           !!cardBacks && cardBacks.visible && cardBacks.count > 0;
 
@@ -331,15 +366,22 @@ export function GameplayOpponentSeatLayer({
             chipHUD={chipHUD}
             chipDiscChildren={chipDiscChildren}
             scoreLine={scoreLine ?? null}
+            scoreAutoPlay={presentation?.scoreAutoPlay?.(p)??false}
             ownerLabel={`Shell:GameplayOpponentSeatLayer[${family}]`}
             playerId={p.id}
+            keepNameInward={!!presentation?.publicTableau||!!presentation?.inwardSeatContent}
+            opponentShowdownPlacement={presentation?.inwardCardContent||presentation?.inwardSeatContent?{attachment:'outer-edge',sprawlDirection:'inward',dxPx:0,dyPx:0}:undefined}
+            innerDecoration={presentation?.publicTableau ? <button type="button" className="canonical-public-tableau" data-public-seat-tableau={p.position} aria-label={'View '+p.name+' tableau'} onClick={()=>presentation.onInspectTableau?.(p)}>{presentation.publicTableau(p).map((card,i)=><div key={i} data-card-anchor={'tableau-'+p.id+'-'+i} style={{visibility:presentation.hiddenTableauCards?.(p).includes(i)?'hidden':'visible'}}><TableauCard card={card} isHidden={!card} tier="small" style={{width:'100%',height:'100%'}}/></div>)}</button> : undefined}
           >
             {presentation?.passAvailable?.(p) && <span className="text-xs font-semibold" aria-label="Pass available">P</span>}
             {renderCardBacks && cardBacks ? (
               <ShellOpponentCardBacks
                 count={cardBacks.count}
                 variant={cardBacks.variant}
+                exposed={cardBacks.exposed}
                 position={p.position}
+                onInspect={presentation?.onInspectTableau ? () => presentation.onInspectTableau?.(p) : undefined}
+                inspectLabel={'View '+p.name+' tableau'}
               />
             ) : (
               // Anchor-only placeholder so card transport endpoints

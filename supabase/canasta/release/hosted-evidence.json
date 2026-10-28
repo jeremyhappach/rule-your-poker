@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-21",
+  "referenceMain": "52aa5528143fe031c4ddf8c3787eff85c0392aa9",
+  "migration": "20261021235336",
+  "workerVersion": 1,
+  "productionWriteHold": "Golf coordination; no Canasta operations outstanding",
+  "candidate": [
+    [
+      {
+        "value": {
+          "unit": "financial-fake",
+          "passed": true,
+          "installed": false,
+          "namespace": "81c7a5d0-f1de-43b7",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "financial-real",
+          "passed": true,
+          "installed": false,
+          "namespace": "7739b1a3-a0b3-4fc5",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "failure",
+          "passed": true,
+          "installed": false,
+          "namespace": "037efe18-2eb0-4e45",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ]
+  ],
+  "installed": [
+    [
+      {
+        "value": {
+          "unit": "financial-fake",
+          "passed": true,
+          "installed": true,
+          "namespace": "d8c1b05a-3e14-4af9",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "financial-real",
+          "passed": true,
+          "installed": true,
+          "namespace": "41be4915-d6e5-4ed2",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "failure",
+          "passed": true,
+          "installed": true,
+          "namespace": "a9f5cddc-5c97-4f85",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "admission",
+          "passed": true,
+          "installed": true,
+          "namespace": "6f897a67-b623-4c6c",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ],
+    [
+      {
+        "value": {
+          "unit": "qualification",
+          "passed": true,
+          "installed": true,
+          "namespace": "4345e0cf-4ba2-4d16",
+          "rollback_verified": true,
+          "unscoped_history_preserved": true
+        }
+      }
+    ]
+  ]
+}

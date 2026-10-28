@@ -1,0 +1,8 @@
+html,body,#root{width:100%;height:100%;margin:0}
+.type-preview{padding:20px;background:#183e36;color:#fff9e8;min-height:100%;font-family:system-ui}
+.type-preview h1{font-size:20px;font-weight:700}.type-preview h2{margin-top:24px}
+.type-preview nav{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 24px}.type-preview a{text-decoration:underline}
+.type-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:16px;max-width:1100px}
+.type-slot{width:100%;max-width:130px}.shared-faces{display:flex;gap:24px;align-items:start;padding:12px}
+/* Exact baseline typography at f4b4f38a2, isolated to this local comparison. */
+html[data-comparison=before] .mega-canonical-face [data-megatouch-face=large]:has([data-megatouch-suit]) [data-megatouch-rank]{dominant-baseline:auto;transform:none}

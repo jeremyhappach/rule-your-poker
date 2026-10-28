@@ -6,6 +6,244 @@ candidate applies this narrowly, retaining canonical postgame waiting, real-mone
 pauses, unchanged scoring expiry and explicit resume after reclaim. Other games
 remain separately queued for review. See ELEVEN_UP_SECONDARY_SMOKE.md.
 
+## 2026-10-27 — Golf match length is frozen configuration (production approved)
+
+Approved local scope adds 3/6/9/18 holes, initially nine, through existing lobby
+defaults and a match-only dealer override. The admitted /2 rules JSON owns the
+length throughout progression and settlement; /1 and missing legacy values stay
+nine. Run Back retains the committed length. Eighteen-hole results use two
+nine-hole pencil sections. Jeremy subsequently approved the reviewed production
+release. Qualification uses temporary default storage for long candidate
+rehearsals to avoid retaining production DDL locks over the canonical timer scan;
+installed proofs use actual default storage. Admission and money eligibility
+remain unchanged. See `SIX_CARD_GOLF_MATCH_LENGTH_RELEASE.md`.
+
+## 2026-10-27 — Words time banks and pause are versioned /2 rules
+
+Jeremy subsequently approved candidate `d39328f` for fake-money-only production.
+Hosted /2 qualification and publication are recorded in
+`PTOWN_WORDS_BANKS_PAUSE_RELEASE.md`; this supersedes the original local hold.
+
+Owner authorized local /2 preparation: two 180-second slots per player/match,
+canonical host pause/resume, durable non-host pause request, concealed paused
+board/rack and corrected sequential opponent visibility. The existing reducer,
+request ledger and session pause owner remain authoritative. Receipt-based
+presentation catches up within the server's fixed handoff window without clock
+extensions; /1 rules and fake-only eligibility remain preserved. Publication and
+hosted changes require later explicit approval. See PTOWN_WORDS_BANKS_PAUSE_LOCAL.md.
+
+## 2026-10-27 — Ptown Words polish approved for indefinite fake-money release
+
+Owner smoke accepted the polish except rack taps incorrectly zooming the board.
+The rack handler now only selects; direct board gestures retain navigation.
+Explicit publication approval supersedes the local hold below. All active eligible
+users may play fake-money multiplayer without an allowlist or expiration. Catalog,
+capability version 3, configure and start all enforce fake-only admission. Existing
+matches retain their frozen rules. Hosted candidate and installed financial proofs
+pass; activation follows exact-SHA publication. See `PTOWN_WORDS_POLISH_RELEASE.md`.
+
+## 2026-10-27 — Ptown Words combined polish is local-only (superseded)
+
+Jeremy authorized all eight collected smoke refinements in one local pass, then
+owner review. The bot uses a pinned, licensed SCOWL common-word subset intersected
+with ENABLE2K and targets modest scores; human legality and core scoring remain
+unchanged. Shuffle is presentation-only, invalid feedback does not extend clocks,
+and the existing server reveal handoff remains authoritative. No push, hosted SQL,
+activation or publication is authorized. See `PTOWN_WORDS_POLISH_LOCAL.md`.
+
+## 2026-10-27 - Quintzee final polish and isolated installed proof approved
+
+Jeremy approved manual first rolls for every category and the bounded, blocking Upper Bonus +35 melody/count-up sequence, followed by Arcade/fake-money-only publication. Following the approval-loop incident, he approved narrowing hosted qualification to isolated fixtures without production function replacement or unscoped recovery, and preserving both Ptown Words and Quintzee release history. Global recovery/concurrency/fault scenarios retain local full-authority evidence; fresh /3 admission is verified after guarded activation. Default roll duration remains 1500 ms and Take Score remains unspecified. See QUINTZEE_FINAL_POLISH_RELEASE.md.
+
+## 2026-10-26 — Ptown Words polish requires local review before publication
+
+Jeremy requested safe double-tap zoom-out, one-row secondary controls and readable
+opponent word reveals. The local candidate freezes a separate presentation config
+at admission and reserves at most 3.97 seconds before the next full three-minute
+turn, using server timestamps rather than client acknowledgments. Core /1 rules,
+ENABLE2K and canonical settlement remain shared. Timings and visuals await owner
+preview review. No push, deployment or hosted SQL is authorized for this pass.
+See `PTOWN_WORDS_POLISH_LOCAL.md`.
+
+## 2026-10-26 — Ptown Words fake-money bots approved
+
+Jeremy approved one-device UI testing with bots, validation and deployment. Keep
+2–4 total players with at least one human; bots are fake-money only, with one
+bounded policy and no difficulty selector. The chooser receives public board and
+its own rack only. Existing /1 reducer, canonical ante consent, financial settlement
+and all-human pause safeguards remain authoritative. A 750ms eligibility delay is
+served by the existing five-second recovery job; human turn clocks stay three
+minutes. No opponent-rack or bag-order access, external AI, or dictionary changes.
+See `PTOWN_WORDS_BOTS.md`.
+
+## 2026-10-26 — Ptown Words full multiplayer delivery approved
+
+Jeremy approved implementing and deploying complete Ptown Words once release gates
+pass, superseding the foundation hold. Version 1 supports 2–4 humans, full ENABLE2K,
+one server-owned rules engine, canonical stake consent/settlement/recovery and original
+fullscreen presentation. No solo or bot mode is activated. See `PTOWN_WORDS_RELEASE.md`.
+
+## 2026-10-26 — Ptown Words identity and ENABLE2K approved
+
+Jeremy named the multiplayer word-tile game Ptown Words and approved the full
+public-domain ENABLE2K vocabulary, accepting differences from tournament lists.
+Preserve the original distribution notice, pin ID/hash per future match, and never
+supplement the list. Original navy/ivory visuals and teal/cyan/amber/violet premiums
+replace prior working branding. This is a local foundation: no existing word-game
+runtime was found, and full-game scope clarification precedes implementation of
+admission, gameplay and settlement. See `PTOWN_WORDS_FOUNDATION.md`.
+
+## 2026-10-26 — Battle31 smoke release approved
+
+Jeremy accepted the local Battle31 preview and approved publication of its smoke corrections. This supersedes the local production hold for Battle31 only. Other-game nameplate/seat audit findings remain read-only. Preserve current main releases, existing Battle31 matches, play-money admission and real-money exclusion. The approved default becomes 30 seconds for new matches.
+
+## 2026-10-25 — Battle31 all-user play-money access
+
+2026-10-26 Quintzee /1: freeze one SQL rule namespace for both modes. Admit only solo nonfinancial Arcade and canonical fake-money multiplayer; reject real money in server authority. Presentation theme freezes at admission; both themes share the 1500 ms rumble with stationary held dice. Installed financial/authorization proof and exact-SHA publication precede separate activation.
+
+Jeremy authorized all active users, no access expiry, play money only. The old
+two-account smoke proposal is superseded. Database constraints keep real-money
+qualification and Battle31 real-money sessions closed. Active play-money matches
+continue automatically with everyone away; canonical reclaim and between-game
+eligibility remain. The guarded shared pause patch retains the installed Golf,
+Eleven Up and HOLM/357 behavior. No rules or gameplay clocks are redesigned.
+See [launch evidence](BATTLE31_PLAY_MONEY_LAUNCH.md).
+
+## 2026-10-24 — Golf active-match continuation and shared pause reconciliation
+
+An admitted play-money Golf match continues via automatic play when humans are
+away; eligibility remains between dealer games. Real-money and deliberate pauses
+are preserved. Canonical admin Blast may atomically retire only its targeted
+play-money Golf liabilities before the normal cascade. No new permission or refund
+policy. Shared pause fingerprint after reconciliation is
+347ab39eadb7ae710292d01be7985161; later Eleven Up work must retain the Golf guards
+and the installed HOLM/357 last-present-human policy. See
+[release contract](SIX_CARD_GOLF_COMPLETION_RELEASE.md).
+
+# 2026-10-24 — 357 funded settlement and dealer-game presentation retirement
+
+Instant 357 returns purchased reserve only; it cannot create unpurchased winning
+legs. The existing ledger seals ante, reserve and pot stages atomically. A newer
+authoritative dealer-game identity retires the old committed presentation silently
+so its endpoint locks cannot block the successor ante/deal. The shared ledger owns
+that retirement; games do not invent a second transport or settlement owner.
+Real-money admission is separately closed until qualification is accepted.
+See [incident evidence and preserve contract](357_INCIDENT_20261024.md).
+
+# 2026-10-23 — Mega Card Golf production authority and low-score facts
+
+Production qualification and activation are complete; owner smoke remains pending.
+Mega reuses Arcade authority/recovery while its immutable record facts are scoped
+to course and frozen board identity, with lower scores winning. The generic
+high-score insert trigger now excludes only Mega; installed rollback proof preserves
+the trigger output for all seven existing Arcade games. See
+[release evidence](MEGA_CARD_GOLF_RELEASE.md). Course defaults remain nine holes,
+player-selected opening cards, final-draw resolution and five-minute hole recovery.
+
+# 2026-10-22 — Mega Card Golf local-only contract
+
+Owner-approved separate Arcade identity uses `mega-card-golf/1`, one engine for
+three course configurations, and canonical Golf scoring only. Owner selected
+completion of the final draw before scoring, a five-minute per-hole failsafe,
+and player-selected opening cards. Opening selection never resets the deadline.
+Course history is retained or explicitly archived, never automatically reset;
+active runs retain their admitted config and board. Sunny Meadows was revised
+without altering Coastal/Canyon art. The local persistent implementation reuses
+Arcade runs, command receipts, results, revisions and recovery; immutable course
+configs add a board identity. There is no multiplayer or financial lifecycle.
+Hosted proofs, final multiplayer Golf stability and separate publication approval
+remain required. See [local backend evidence](MEGA_CARD_GOLF_BACKEND.md).
+
+# 2026-10-22 — Golf /2 stock threshold; local candidate, publication held
+
+Owner replaces the no-reveal turn limit for future Golf matches with an exact
+stock-draw boundary. When the draw leaves one stock card per player with any
+concealed cards, its actor finishes normally; then every player gets one final
+turn, ending with that actor. If the triggering turn exposes all six, preserve
+the ordinary opponents-only queue. Existing final queues cannot restart.
+Freeze this as `six-card-golf/2`; preserve `/1`, including its bot urgency and
+progress warning. No elapsed pause time can advance either version.
+
+All score summaries withhold the just-resolved hole until counting finishes.
+Financial settlement remains immediate and authoritative. Keep pencil-written
+numerals, animate only the new hole, and use three seconds of the default
+five-second results hold. Details and publication gates:
+[Golf /2 local candidate](SIX_CARD_GOLF_RULES_V2_LOCAL.md).
+
+# 2026-10-22 — Canasta pacing and helper separation; active-match liveness
+
+The local follow-up freezes Beginner 180-second or Expert configured pacing
+through existing typed defaults and match admission. Personal helper visibility
+persists independently on the profile. Run Back reads the prior immutable
+snapshot through its dealer-game identity and still requires fresh consent.
+The card rules remain canasta-classic-two/1.
+
+The follow-up inactivity clarification supersedes the earlier fake-money
+all-human pause restriction: an admitted play-money match continues legally
+when everyone is away; next-match eligibility, canonical reclaim/sit-out and
+real-money pause remain. No timeout-created financial result is introduced.
+Canasta joins the existing durable chip-presentation ledger to unblock terminal
+completion. SQL/hosted proof remains pending; Golf retains the production lane.
+See `CANASTA_BEGINNER_CHECKPOINT.md`.
+
+# 2026-10-21 — Publish approved Golf interaction candidate
+
+Jeremy approved the final rectangular-card candidate for publication. Preserve
+the closed Canasta checkpoint already served by production while integrating
+Golf; later unreleased Canasta work remains held. This release does not alter
+rules, SQL, finances, both-money Golf admission or paused sessions.
+
+# 2026-10-21 — Right-handed stock/discard and public count convention
+
+Jeremy set the shared default: discard left, stock right; nearby pile cards;
+no visible Stock word; the existing circular count treatment on stock's
+upper-left. `CanonicalCardCountBadge` reuses the Take 2 / 11 Up styling as a
+nonfinancial card primitive. Golf adopts it locally; other games are unchanged.
+The convention is recorded under Geometry in `ARCHITECTURE.md` for future work.
+Golf's opponent cards are 12% larger than pile cards and MY gaps tighten to 2px.
+No release, migration, admission or live-game changes are authorized.
+
+# 2026-10-21 — Golf grids separate from seat identity
+
+Jeremy's revised local-only direction puts opponent grids in the middle of the
+felt, names/chips at canonical seats, and the local grid centered in MY without
+the side information column. Golf uses canonical card primitives and existing
+transport anchors inside the canonical interaction layer. Ancillary controls
+move into Info; no shared shell geometry, rules or authority changes. Release
+remains held for visual review. See `SIX_CARD_GOLF_CENTERED_LAYOUT.md`.
+
+
+# 2026-10-21 — Canasta restricted hosted qualification
+
+Jeremy authorized conditional release with exact Hap/Happach Gmail account and
+session grants lasting 24 hours, preserving existing admitted matches on expiry.
+The installed private qualification table follows the accepted Golf pattern;
+global and real-money admission remain closed. Migration `20261021235336` and
+worker v1 pass bounded hosted financial/admission proofs. A later coordination
+instruction briefly yielded production writes to Golf; that window returned
+unchanged. Auth/Realtime and scheduled continuation now pass, but independent
+transport concurrency remains unproved. No Canasta client publication or smoke
+activation yet. See `CANASTA_HOSTED_QUALIFICATION.md`.
+
+# 2026-10-21 — Canasta initial admission is fake money only
+
+The authorized local reconciliation incorporates main `6b15f4eb0`: use the released
+catalog and preserve all Race/11 Up/Battle31 owners. Add only Canasta's descriptor,
+versioned help, fake-money eligibility and canonical suggested stake (existing
+fallback 5, preserving prior administrator settings). Gameplay rules stay frozen.
+Golf retains the next production slot; no release or access grant is authorized.
+
+Jeremy authorized the local correction and exact hosted qualification/release
+package, with no production changes, merge, push, deployment or activation.
+Use the authoritative locked session mode at both configure and consent completion;
+filter session capabilities consistently. Existing admission defaults stay closed.
+No new allowlist or alternate gate infrastructure. The active-profile capability
+would allow all eligible active accounts if globally opened; restricted hosted
+qualification therefore needs explicitly approved identities/session provisioning.
+Accepted match execution, canonical money owners and real-money regression fixtures
+remain intact. Package/current-main reconciliation and hosted acceptance are still
+required before release. See `CANASTA_RELEASE_PACKAGE.md`.
+
 # 2026-10-21 — 11 Up expired humans retain their round schedule
 
 Jeremy superseded the earlier Ready-only control policy: gameplay expiry preserves
@@ -458,6 +696,22 @@ only the authoritative `run21` entry starts as `fullscreen`. This is metadata
 only: no frontend consumer, rendering, routing or game-rule change. New catalog
 entries inherit `table`; future fullscreen shell work must explicitly consume
 the field without adding another gameplay or settlement owner.
+
+## October 24 — real-money timeout policy is game-specific
+
+Jeremy clarified during the October 24 smoke investigation that real-money
+HOLM and 3-5-7 timeouts enable auto-fold. A real-money game pauses when only
+one eligible human remains outside auto-fold (also at zero), not after every
+first timeout. With three humans, one timeout continues and the second pauses;
+with two humans, the first timeout leaves one and pauses. Manual folds still
+count as present. Horses and Ship Captain Crew retain automatic play.
+The existing private guard owns the threshold; fake-money aggregate policy,
+other games, locking, deadlines and financial boundaries remain unchanged.
+Reclaim and authorized resume remain separate actions.
+Migration `20261024221401_real_money_poker_last_present_human` supersedes the
+earlier first-timeout interpretation in `20261024221035`; both are recorded
+because both were installed. Candidate and installed rollback proofs pass.
+See `SMOKE_INCIDENTS_20261024.md` for client release and smoke gates.
 
 ## October 9 — aggregate auto-fold is a database pause boundary
 
@@ -2602,10 +2856,83 @@ Multiplayer adds only consent, participant order, pause, bots, canonical chip
 settlement and postgame continuation; Arcade adds only solo persistence/results.
 Bots receive the redacted board/current card, never the hidden stock. Existing
 games' rules and score compatibility groups are unchanged.
+# 2026-10-21 — Canasta local canonical integration
+
+Follow-up approval aligns fake-money human expiry with Horses/SSC Auto-play:
+the existing private-information bot acts, canonical next-hand sit-out is queued,
+uncheck restores control and clears that intent, and opponents see the shared robot.
+Real-money expiry and all-human inactivity still pause. This explicitly supersedes
+the earlier mechanical-only timeout policy; game legality, scoring, stake and
+120-second deadline are unchanged. Mechanical completion remains a legal fallback.
+Settled frozen participants retain revision visibility after Stand Up. Canonical
+pause also freezes postgame continuation; workers retry after authorized resume.
+Installed Realtime/Edge delivery remains a separate release qualification gate.
+
+Preserve the exact deployed Ante Up dispatcher, including Race Poker, by a guarded
+single-branch insertion; do not install the stale local dispatcher. Freeze the
+two-seat roster with configuration, require fresh canonical consent and recovery
+health, and retain the authoritative first round for terminal presentation. Keep
+admission closed and all SQL candidates unapplied until full qualification.
+The loopback browser fixture shares the production reducer but is not evidence
+of authenticated Realtime, durable recovery or financial browser completion.
+No change to `canasta-classic-two/1`, the 120-second clock or accepted appearance.
+
 
 ## 2026-10-20 — Presentation catalog UI candidate
 
 Use typed per-game UI descriptors with existing server capabilities/version/defaults owners. A descriptor is not admission. Retain Cards/Dice/Other, compact two-column dealer choices, one-game Defaults editing, version-aware shared rules content and Geometry Lab's existing selector/keys. No server changes or publication are authorized by the UI implementation approval. See LOBBY_CATALOG_REDESIGN.md.
+
+## Race Poker catalog integration — 2026-10-20
+
+The isolated candidate incorporates catalog main 44dbd5a7d. Race Poker uses one multiplayer-only descriptor and the existing capability plus roster guards for selection, submission and Run Back. Its unchanged frozen help article is shared with gameplay; explicit fixedVersion metadata avoids querying Arcade for a multiplayer-only game. Existing games retain dynamic current/legacy resolution. No rules, SQL, financial authority or admission flags changed. Production remains on the coordinated release hold.
+
+## 2026-10-20 — Golf terminal presentation uses canonical phase ownership
+
+The canonical route's Session Ended admission retires positioned chip-delta
+labels and Golf controls without changing balances, settlement or ledger
+cursors. The shell's lobby announcement cleanup preserves the exact current
+Session Ended ambient only while that phase is active; stale gameplay and
+other-session announcements still clear. Actual-route tests use simulated SDK
+responses, and a complete local browser match verifies retained Results/HUD,
+the Session Ended heading and local Back to Lobby. This is local qualification,
+not live service or production acceptance. See SIX_CARD_GOLF_IMPLEMENTATION.md
+and SIX_CARD_GOLF_RELEASE_PLAN.md for evidence and closed-admission gates.
+
+## 2026-10-21 — Golf production proof preparation, live gate still proposed
+
+Production proof generation is offline and separate from local bootstrap tools.
+It pins the unchanged migration, removes fixture heartbeat writes, refuses stale
+live scheduler health, preserves integrity triggers and requires complete
+rollback/containment evidence. Installed proofs use reviewed candidate function
+and catalog fingerprints. Deliberate committed-corruption injection stays local.
+An exact-account/session qualification gate is recommended to resolve live
+browser/cron testing before general admission; it is not approved or implemented
+by this preparation. No global active-account opening is inferred. See
+SIX_CARD_GOLF_PRODUCTION_QUALIFICATION.md.
+
+## 2026-10-21 — Golf scoped qualification and canonical autoplay follow-up
+
+The later approved local implementation supersedes the proposed-gate status above.
+Private expiring grants bind exact existing users and sessions, while frozen
+admitted access preserves liabilities after expiry without admitting another match.
+General admission stays closed. Canonical player intent owns autoplay/reclaim;
+Golf publishes only its public controls with authoritative revisions. Real human
+timeout pauses; fake timeout marks autoplay and deferred next-match sit-out.
+Uncheck clears those flags without resuming pause or disposing of a pending draw.
+Opponent robots are an opt-in score decoration. Rules and finances are unchanged.
+Production qualification/publication remains a separate authorized phase with
+fresh authority checks and actual Auth/Realtime/cron/race evidence.
+
+## 2026-10-21 — Golf preserves released shared owners during reconciliation
+
+Reconcile against main `6b15f4eb060df319df13d576948c343920a23b21` using strict
+preimage guards and single-anchor additive ante/stake changes. Do not replace
+copied shared bodies or replay Battle 31's installed migration. Preserve Race
+Poker v2, 11 Up bots/Ready and other game definitions/permissions. Combined local
+qualification compares 408 existing functions and exercises released financial
+and control paths. The revised package returns for review before release; future
+smoke stays limited to the two verified owner accounts, exact fake sessions and
+24 hours after enablement, with admitted-match recovery preserved after expiry.
 
 ## 2026-10-20 — Battle 31 local rules and implementation
 
@@ -2640,3 +2967,17 @@ new-admission flags. Capability v3 and current-main client integration are local
 Hosted qualification requires actual successful scheduler health and rolls back
 fixtures; no production execution or activation occurred. See
 `BATTLE31_RELEASE_CORRECTIONS.md` for evidence and release limits.
+
+
+## 2026-10-25 — Battle31 canonical table and persisted presentation
+
+Owner approved replacing Megatouch fullscreen with the actual canonical table, moving the catalog to Card Games, and animating exchanges, results/lives, dealer rotation and deals. Gameplay remains battle-31/1; frozen configuration gains presentationVersion 2 for new matches and respects configured decision duration. Server result timestamps and public movement IDs drive presentation; canonical settlement remains immediate and exact-once, with its visual admission delayed until round-result completion. Existing play-money-only access and timeout/reclaim policies are preserved. See BATTLE31_CANONICAL_CHECKPOINT.md.
+# 2026-10-27 — Async Words uses one canonical parent settlement
+
+Approved first release is exactly two humans, one Words child, fake money only.
+Acceptance moves no funds. Immutable signed child outcomes feed one locked,
+atomic parent settlement through unchanged canonical financial functions; net
+zero closes with a receipt only. No funded wallet, reservations, balance gate or
+child payouts. Shared Words /3 freezes 36h turns and 24h Last Call while live /1
+and /2 remain intact. Future real-money/multi-child releases need separate proof.
+See [release and authority evidence](ASYNC_WORDS_RELEASE.md).

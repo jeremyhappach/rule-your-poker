@@ -82,7 +82,10 @@ DECLARE
   v_deadline timestamptz; v_reasons text[]; v_setting jsonb;
 BEGIN
   SELECT array_agg(id ORDER BY created_at,id) INTO v_users FROM (
-    SELECT id,created_at FROM public.profiles ORDER BY created_at,id LIMIT 2
+    SELECT p.id,p.created_at FROM public.profiles p
+    WHERE EXISTS(SELECT 1 FROM auth.users u WHERE u.id=p.id)
+      AND NOT public.has_role(p.id,'admin'::public.app_role)
+    ORDER BY p.created_at,p.id LIMIT 2
   ) profiles;
   IF coalesce(cardinality(v_users),0)<2 THEN RAISE EXCEPTION '357_authority_proof:requires_two_profiles'; END IF;
 
@@ -596,7 +599,8 @@ BEGIN
      WHERE (recovered->>'game_id')::uuid=v_terminal_game
        AND recovered#>>'{result,outcome}'='advanced'
   ) THEN
-    RAISE EXCEPTION '357_authority_proof:complete_terminal_recovery_failed:%',v_result;
+    RAISE EXCEPTION '357_authority_proof:complete_terminal_recovery_failed:%/%',v_result,
+      (SELECT jsonb_agg(to_jsonb(f)) FROM private.game_recovery_unit_failures f WHERE game_id=v_terminal_game);
   END IF;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_result;
   SELECT public.three_five_seven_advance_postgame(v_terminal_game,v_terminal_round,v_terminal_dealer,1) INTO v_replay;

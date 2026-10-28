@@ -1,0 +1,14 @@
+import {readFileSync as read,writeFileSync as write,mkdirSync,readdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const source='qualification.local/ptown-words/scowl-source/scowl-2020.12.07',target='server/ptownWords/bots/scowl-20';
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const enable=new Set(read('server/ptownWords/dictionaries/enable2k-1/words.txt','utf8').toUpperCase().trim().split(/\r?\n/));
+if(sha(read('qualification.local/ptown-words/scowl-source/scowl.tar.gz'))!=='5587667caa20c4891390c2d42dbb4d5c4c3f41bee77af1457ece3ba23fb859cc')throw Error('SCOWL archive hash mismatch');
+const files=readdirSync(`${source}/final`).filter(f=>/^(english|american)-words\.(10|20)$/.test(f)).sort();
+if(files.length!==4)throw Error('Expected four SCOWL source files');
+const words=[...new Set(files.flatMap(f=>read(`${source}/final/${f}`,'latin1').split(/\r?\n/)).filter(w=>/^[a-z]{2,5}$/.test(w)).map(w=>w.toUpperCase()).filter(w=>enable.has(w)))].sort();
+if(words.length<1000)throw Error('Unexpected vocabulary size');
+mkdirSync(target,{recursive:true});const output=words.join('\n')+'\n';if(sha(output)!=='4d90a2799257d4dce11057451d7ce4079a0969cd23b5b65df785f7c35b20d0a3')throw Error('Generated vocabulary hash mismatch');write(`${target}/words.txt`,output);write(`${target}/Copyright`,read(`${source}/Copyright`));
+write(`${target}/manifest.json`,JSON.stringify({id:'scowl-2020.12.07-us-20-enable2k-2to5/1',source:'https://downloads.sourceforge.net/wordlist/scowl-2020.12.07.tar.gz',sourceSha256:sha(read('qualification.local/ptown-words/scowl-source/scowl.tar.gz')),files:files.map(name=>({name,sha256:sha(read(`${source}/final/${name}`))})),modifications:'Combine English/American words levels 10/20; keep lowercase ASCII length 2–5; uppercase, deduplicate and intersect pinned ENABLE2K. Bot preference only; no change to player validity.',count:words.length,sha256:sha(output),license:'SCOWL permissive license and source notices; retained verbatim in Copyright.'},null,2)+'\n');
+write('supabase/ptown-words/bot-vocabulary.sql',`-- Copyright 2000-2018 by Kevin Atkinson; component notices retained alongside the source.\n-- LOCAL candidate. Derived SCOWL 2020.12.07 levels 10/20; see server/ptownWords/bots/scowl-20/Copyright and manifest.json.\nCREATE TABLE IF NOT EXISTS private.ptown_words_bot_vocabulary(word text COLLATE "C" PRIMARY KEY);\nALTER TABLE private.ptown_words_bot_vocabulary ENABLE ROW LEVEL SECURITY;\nREVOKE ALL ON private.ptown_words_bot_vocabulary FROM PUBLIC,anon,authenticated,service_role;\nINSERT INTO private.ptown_words_bot_vocabulary(word) VALUES\n${words.map(w=>`('${w}')`).join(',\n')}\nON CONFLICT(word) DO NOTHING;\n`);
+console.log({count:words.length,sha256:sha(output)});

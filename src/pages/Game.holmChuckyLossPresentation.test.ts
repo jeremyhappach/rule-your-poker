@@ -44,7 +44,7 @@ describe('Game Holm Chucky-loss presentation ownership', () => {
     expect(source).toContain('holmLiveRoundIdsObservedRef.current.add(handKey)');
     expect(source).not.toContain('holmLiveRoundIdsObservedRef.current.add(currentRound.id)');
     expect(source).toContain('? holmView.lastRoundResult');
-    expect(source).toContain("? (holmView.roundStatus === 'completed' && !!holmView.lastRoundResult)");
+    expect(source).toContain('? hasPendingHolmPresentedResult(holmView)');
     expect(source).toContain(
       'onChuckyLossEnded={isInProgress ? handleHolmChuckyLossPresentationComplete : undefined}',
     );

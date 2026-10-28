@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "draft privacy",
+    "invalid draft preserved",
+    "CAT scores 10",
+    "opponent realtime",
+    "reload committed board",
+    "duplicate request race",
+    "conflicting request race"
+  ],
+  "errors": []
+}

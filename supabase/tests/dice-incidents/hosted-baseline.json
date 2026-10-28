@@ -1,0 +1,83 @@
+[
+  {
+    "evidence": {
+      "cases": [
+        {
+          "pot": 0,
+          "tie": false,
+          "game": "horses",
+          "chips": [
+            12,
+            8
+          ],
+          "initial": true,
+          "session": "36cad86c-198a-4184-a93b-f4ac52fc6531",
+          "balanced": true,
+          "metadata": false,
+          "duplicate": true,
+          "continuation": false,
+          "atomicFailure": true,
+          "authorization": true
+        },
+        {
+          "pot": 8,
+          "tie": true,
+          "game": "horses",
+          "chips": [
+            6,
+            6
+          ],
+          "initial": true,
+          "session": "0e976033-4e6b-4f12-973b-f8d131c36a85",
+          "balanced": true,
+          "metadata": false,
+          "duplicate": true,
+          "continuation": true,
+          "atomicFailure": true,
+          "authorization": true
+        },
+        {
+          "pot": 0,
+          "tie": false,
+          "game": "ship-captain-crew",
+          "chips": [
+            12,
+            8
+          ],
+          "initial": true,
+          "session": "73b390a0-e292-4b84-93c2-ba74c1b93f99",
+          "balanced": true,
+          "metadata": false,
+          "duplicate": true,
+          "continuation": false,
+          "atomicFailure": true,
+          "authorization": true
+        },
+        {
+          "pot": 8,
+          "tie": true,
+          "game": "ship-captain-crew",
+          "chips": [
+            6,
+            6
+          ],
+          "initial": true,
+          "session": "75745d9a-80bf-4775-b40a-5339d32073f6",
+          "balanced": true,
+          "metadata": false,
+          "duplicate": true,
+          "continuation": true,
+          "atomicFailure": true,
+          "authorization": true
+        }
+      ],
+      "fixtureSessions": [
+        "36cad86c-198a-4184-a93b-f4ac52fc6531",
+        "0e976033-4e6b-4f12-973b-f8d131c36a85",
+        "73b390a0-e292-4b84-93c2-ba74c1b93f99",
+        "75745d9a-80bf-4775-b40a-5339d32073f6"
+      ],
+      "rollbackContained": true
+    }
+  }
+]

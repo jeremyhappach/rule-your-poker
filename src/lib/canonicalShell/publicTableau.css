@@ -1,0 +1,9 @@
+[data-canonical-seat-cluster] {--seat-public-width:76px;--seat-public-height:70px;--seat-public-margin:4px}
+.canonical-public-tableau {display:grid;grid-template-columns:repeat(3,24px);grid-template-rows:repeat(2,34px);gap:2px;margin-inline:var(--seat-public-margin);padding:0;border:0;background:transparent;pointer-events:auto;touch-action:manipulation}
+@container seat-frame (min-aspect-ratio:3/1) {
+ [data-canonical-seat-cluster] {--seat-public-width:46px;--seat-public-height:44px}
+ .canonical-public-tableau {grid-template-columns:repeat(3,14px);grid-template-rows:repeat(2,20px);padding-block:1px}
+ /* Middle chips sit at 1% while upper chips sit at 4%. Clear that
+    canonical inset difference plus one complete tableau and its gap. */
+ [data-seat-slot="1"],[data-seat-slot="4"] {--seat-public-margin:calc(46px + 3cqw + 8px)}
+}

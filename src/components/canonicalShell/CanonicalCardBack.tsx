@@ -32,7 +32,7 @@
  * community) MUST be wired through this component — never via a
  * bespoke gradient div.
  */
-import { CSSProperties } from 'react';
+import { CSSProperties, type ReactNode } from 'react';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
@@ -80,6 +80,8 @@ function variantGeometry(variant: CanonicalCardBackVariant) {
 }
 
 export interface CanonicalCardBackProps {
+  /** Explicit branded souvenir deck artwork; ordinary callers retain preferences. */
+  artwork?: ReactNode;
   /** Width in px. Required — caller owns geometry. */
   widthPx: number;
   /** Height in px. Defaults to widthPx * 1.5 (standard 2:3 card aspect). */
@@ -112,6 +114,7 @@ export function CanonicalCardBack({
   className,
   style,
   dataAttrs,
+  artwork,
 }: CanonicalCardBackProps) {
   const { getCardBackColors, getCardBackId } = useVisualPreferences();
   const { color, darkColor } = getCardBackColors();
@@ -134,7 +137,7 @@ export function CanonicalCardBack({
       data-playing-card-root=""
       data-canonical-card-back={variant}
       data-cb-pref-id={id}
-      data-cb-accent={teamLogo ? 'logo' : 'frame'}
+      data-cb-accent={artwork ? 'artwork' : teamLogo ? 'logo' : 'frame'}
       className={`relative overflow-hidden ${className ?? ''}`.trim()}
       style={{
         width: widthPx,
@@ -148,7 +151,7 @@ export function CanonicalCardBack({
         ...style,
       }}
     >
-      {teamLogo ? (
+      {artwork ?? (teamLogo ? (
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{ padding: `${accentInsetPct}%` }}
@@ -172,7 +175,7 @@ export function CanonicalCardBack({
           }}
           aria-hidden="true"
         />
-      )}
+      ))}
     </div>
   );
 }

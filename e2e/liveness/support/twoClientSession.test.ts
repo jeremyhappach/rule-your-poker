@@ -47,9 +47,9 @@ describe('two-client session chaos ownership', () => {
   });
 
   it('selects the target game family rather than inheriting the prior dealer setup tab', () => {
-    expect(dealerGameSetupTab('cribbage')).toBe('Card Games');
-    expect(dealerGameSetupTab('holm-game')).toBe('Card Games');
-    expect(dealerGameSetupTab('yahtzee')).toBe('Dice Games');
-    expect(dealerGameSetupTab('ship-captain-crew')).toBe('Dice Games');
+    expect(dealerGameSetupTab('cribbage')).toBe('Cards');
+    expect(dealerGameSetupTab('holm-game')).toBe('Cards');
+    expect(dealerGameSetupTab('yahtzee')).toBe('Dice');
+    expect(dealerGameSetupTab('ship-captain-crew')).toBe('Dice');
   });
 });
