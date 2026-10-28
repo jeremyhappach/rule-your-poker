@@ -7,6 +7,14 @@
 
 # Repository map
 
+Local Words polish: `src/lib/ptownWords/scorePresentation.ts` and
+`useWordScorePresentation.ts` own visual score timing/receipts;
+`draftDirection.ts` owns the draft-only auto-placement projection.
+`supabase/delayed/polish-local.sql` prepares local notification/discovery and
+presentation metadata changes, registered in installed migration
+`20261028224553_words_shared_polish.sql`. The bounded hosted proof composer is
+`dev/async-words/release-proof.mjs`. See `WORDS_POLISH_RELEASE.md`.
+
 Golf match-length local candidate: `src/lib/golf/matchLength.ts` owns client option
 validation; existing GameDefaultsConfig/DealerGameSetup own selection. Frozen SQL
 configuration and terminal checks are in `supabase/six-card-golf/match-length.candidate.sql`;

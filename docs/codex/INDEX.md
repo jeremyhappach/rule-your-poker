@@ -8,6 +8,8 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `WORDS_POLISH_RELEASE.md` | Approved shared Words polish/mobile match details, installed qualification and publication gates |
+| `WORDS_POLISH_LOCAL.md` | Earlier local shared Words polish evidence; publication hold superseded, async bank policy pending |
 | `PTOWN_WORDS_REAL_MONEY_PREPARATION.md` | Live human real-money installed qualification, guarded activation and publication evidence; bots/async stay fake-only |
 | `OCT27_GAMEPLAY_RELEASE.md` | SCC/Horses presentation, exact-round chip sequencing and Tri-Towers startup incident release |
 | `ASYNC_WORDS_RELEASE.md` | Approved single-child fake-money asynchronous Words, installed financial proof and publication/activation gates |
