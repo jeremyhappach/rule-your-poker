@@ -1,10 +1,12 @@
-# Words polish — local review only — 2026-10-28
+# Words polish — approved publication — 2026-10-28
 
-Isolated `codex/words-polish` extends shared Words score/reveal/gesture presentation
-and async invitations, notifications and opponent discovery. Existing accounting,
-admission and 36h/24h policy remain intact. Async bank quantity/duration await the
-owner answer. No hosted migration or publication is authorized. See
-[local scope and evidence](WORDS_POLISH_LOCAL.md).
+Jeremy approved the shared Words polish and mobile match-details correction for
+publication. Migration `20261028224553` is installed; candidate/installed hosted
+rollback proofs and hosted acceptance/move races passed. Accounting, live human
+real-money Words, fake-only async and 36h/24h policy remain intact. Async banks and
+multi-game activation are excluded. All 3,136 source tests, 241 harness tests,
+application typecheck and production bundle passed. Exact-SHA publication agreement
+must be recorded before claiming live. See [release evidence](WORDS_POLISH_RELEASE.md).
 
 # Live Words real money — installed qualification PASS — 2026-10-28
 

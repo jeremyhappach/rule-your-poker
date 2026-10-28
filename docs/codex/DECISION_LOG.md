@@ -5,7 +5,9 @@ scores again. New live deals reserve its bounded presentation interval before th
 normal gameplay clock; existing authored handoffs stay binding. Async reentry may
 replay its latest unseen move with a viewer/child/turn receipt, without extending
 36-hour availability or changing parent-only settlement. Async banks remain a
-pending owner policy choice. Scope and publication hold: `WORDS_POLISH_LOCAL.md`.
+pending owner policy choice. Jeremy subsequently approved publication with the
+mobile match-details correction; `WORDS_POLISH_RELEASE.md` supersedes the local
+publication hold. Multi-game async proceeds as design only after this release.
 
 ## October 21, 2026 — Active play-money completion and next-game eligibility
 

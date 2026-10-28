@@ -1,5 +1,8 @@
 # Words polish — local review candidate — 2026-10-28
 
+Historical local checkpoint. Publication was subsequently approved; see
+[WORDS_POLISH_RELEASE.md](WORDS_POLISH_RELEASE.md) for the current release scope.
+
 Owner-approved scope is implementation, tests and a local preview only. No hosted
 migration, production admission change, deployment, integration or push is authorized.
 Base: `39f5855202efcce6dc42473a5bfcd0b323c6afc9`; branch `codex/words-polish`.
