@@ -1,3 +1,11 @@
+# Words polish — local review only — 2026-10-28
+
+Isolated `codex/words-polish` extends shared Words score/reveal/gesture presentation
+and async invitations, notifications and opponent discovery. Existing accounting,
+admission and 36h/24h policy remain intact. Async bank quantity/duration await the
+owner answer. No hosted migration or publication is authorized. See
+[local scope and evidence](WORDS_POLISH_LOCAL.md).
+
 # Live Words real money — installed qualification PASS — 2026-10-28
 
 Coordinator explicitly cleared Words after incident and 11 Up. Reconciled with

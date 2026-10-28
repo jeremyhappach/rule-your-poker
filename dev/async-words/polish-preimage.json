@@ -1,0 +1,143 @@
+{
+  "indexes": [
+    "CREATE UNIQUE INDEX platform_notifications_pkey ON public.platform_notifications USING btree (id)",
+    "CREATE UNIQUE INDEX platform_notifications_user_id_match_id_kind_key ON public.platform_notifications USING btree (user_id, match_id, kind)",
+    "CREATE INDEX platform_notifications_user ON public.platform_notifications USING btree (user_id, actionable, updated_at DESC)"
+  ],
+  "functions": [
+    {
+      "hash": "ec1cab41bea767a53999265188edb293",
+      "signature": "private.ptown_words_rules_for(text)"
+    },
+    {
+      "hash": "b05cdd580147f0b8235296d1717387fb",
+      "signature": "private.ptown_words_deal(jsonb, bigint)"
+    },
+    {
+      "hash": "3c319dee938f4242d6174b27bc3ff260",
+      "signature": "private.delayed_finalize(uuid)"
+    },
+    {
+      "hash": "a55c503d6b47c5cbd65443f4c5d6293c",
+      "signature": "private.delayed_immutable()"
+    },
+    {
+      "hash": "56bd50fa3e466155d6a4a08758abe4fd",
+      "signature": "private.delayed_terms_guard()"
+    },
+    {
+      "hash": "367c7685397fa5bfe75adbcff7c3f1a9",
+      "signature": "private.delayed_actor(uuid)"
+    },
+    {
+      "hash": "3b5d5f610a1cff2ab4b65f1905dc477f",
+      "signature": "private.delayed_held(uuid)"
+    },
+    {
+      "hash": "eedaea0742e9ad1a861a0c1cc2fdb62f",
+      "signature": "private.delayed_notify(uuid)"
+    },
+    {
+      "hash": "e9df9e0d3b92e2ca1c97135055841511",
+      "signature": "private.delayed_record_outcome(uuid, bigint, text, uuid, jsonb)"
+    },
+    {
+      "hash": "6109cda2ec60da55605a723367e29033",
+      "signature": "private.delayed_expire(uuid, bigint, timestamp with time zone)"
+    },
+    {
+      "hash": "2b0fbdd1d65d8019af99e8979769927a",
+      "signature": "public.delayed_create(uuid, uuid, boolean, jsonb)"
+    },
+    {
+      "hash": "24dba77a684770f22600d9273301b14b",
+      "signature": "public.delayed_notification_read(uuid, bigint)"
+    },
+    {
+      "hash": "c70ca6bff17a2fdf0c09265301a0a192",
+      "signature": "private.delayed_signal()"
+    },
+    {
+      "hash": "19e462d8bcace499dd9aa65d311f4f85",
+      "signature": "public.delayed_capabilities()"
+    },
+    {
+      "hash": "4dafef74362a47ee946199f210538424",
+      "signature": "public.delayed_home(uuid)"
+    },
+    {
+      "hash": "0421e7352719124831017a8137ee95c2",
+      "signature": "public.delayed_opponents(text)"
+    },
+    {
+      "hash": "b956fd4beae9a3eeda16f54da8d10b40",
+      "signature": "public.delayed_list(timestamp with time zone, uuid)"
+    },
+    {
+      "hash": "0f5dc368e7b1a5e5a0ee6948d8989d9b",
+      "signature": "public.platform_notification_center()"
+    },
+    {
+      "hash": "84660a99f34cf59b23d35f89f91862b0",
+      "signature": "private.delayed_incident_close(uuid, text)"
+    },
+    {
+      "hash": "05745a97f385744e1f899f38b3e2670f",
+      "signature": "private.delayed_incident_open(uuid, text)"
+    },
+    {
+      "hash": "0d7bf331a8d61f638f61eaf093c07573",
+      "signature": "private.delayed_words_view(uuid, uuid)"
+    },
+    {
+      "hash": "8bc0763451b455523b9fede10fa64587",
+      "signature": "public.delayed_words_action(uuid, uuid, bigint, text, jsonb)"
+    },
+    {
+      "hash": "d07c5e932ae3664cc48b79c48d2db670",
+      "signature": "private.delayed_words_check_health()"
+    },
+    {
+      "hash": "3300adb557e38cf369d12df215a85b0b",
+      "signature": "public.delayed_words_snapshot(uuid)"
+    },
+    {
+      "hash": "0bea6d49a832306f8bf4ab16bd54ef31",
+      "signature": "private.delayed_words_recover()"
+    },
+    {
+      "hash": "5677cabaa5fe48c9081de01ce056f258",
+      "signature": "public.delayed_respond(uuid, uuid, text, text)"
+    },
+    {
+      "hash": "3f9fcba7523dca5c2bd8a927e84438f5",
+      "signature": "private.ptown_words_reduce(jsonb, text, jsonb, bigint)"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "platform_notifications_check",
+      "definition": "CHECK (((read_revision >= 0) AND (read_revision <= revision)))"
+    },
+    {
+      "name": "platform_notifications_kind_check",
+      "definition": "CHECK ((kind = ANY (ARRAY['invitation'::text, 'turn'::text, 'settled'::text, 'invitation_closed'::text])))"
+    },
+    {
+      "name": "platform_notifications_match_id_fkey",
+      "definition": "FOREIGN KEY (match_id) REFERENCES private.delayed_matches(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "platform_notifications_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "platform_notifications_user_id_fkey",
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "platform_notifications_user_id_match_id_kind_key",
+      "definition": "UNIQUE (user_id, match_id, kind)"
+    }
+  ]
+}

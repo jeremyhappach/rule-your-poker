@@ -15,7 +15,7 @@ export interface WordsSnapshot {
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
  moves:{turn:number;playerId:string;action:string;points:number;count:number;words:{word:string;points:number;square?:number;direction?:number}[]}[];
  movePresentation?:{version:1;turn:number;playerId:string;squares:number[];startedAt:number;announceAt:number;readyAt:number;flipMs:number;focusMs:number;noticeMs:number};
- event:{label:string;points:number};rackDeductions?:Record<string,number>;
+ event:{label:string;points:number};rackDeductions?:Record<string,number>;preAdjustmentScores?:Record<string,number>;
 }
 export function acceptWordsSnapshot(old:WordsSnapshot|null,next:WordsSnapshot,id:string){
  if(next.identity?.dealerGameId!==id||!Number.isSafeInteger(next.revision)||next.board?.length!==225||!Array.isArray(next.rack)||next.rack.length>7)throw Error('Invalid Ptown Words snapshot');

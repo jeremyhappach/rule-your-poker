@@ -9,6 +9,15 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function tap(cell:Element){fireEvent.click(cell,{detail:1,clientX:100,clientY:100});}
+it('auto-places a blank after two draft tiles, and removing to one resets direction without rack zoom',()=>{
+ const {container}=render(<PtownWordsView {...props}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);
+ fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ fireEvent.click(screen.getByRole('button',{name:'A, 1 points'}));fireEvent.click(container.querySelector('[data-square="113"]')!);
+ const zoom=container.querySelector('.words-board')?.className;
+ fireEvent.click(screen.getByRole('button',{name:'Blank, 0 points'}));expect(screen.getByRole('dialog')).not.toBeNull();fireEvent.click(screen.getByRole('button',{name:'T'}));
+ expect(container.querySelector('[data-square="114"]')?.textContent).toContain('T');expect(container.querySelectorAll('.is-staged')).toHaveLength(3);expect(container.querySelector('.words-board')?.className).toBe(zoom);expect(intent).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Undo'}));fireEvent.click(screen.getByRole('button',{name:'Undo'}));fireEvent.click(screen.getByRole('button',{name:'A, 1 points'}));expect(container.querySelectorAll('.is-staged')).toHaveLength(1);
+});
 const bankView={...view,rules:{...view.rules,version:'ptown-words/2',timeBankUses:2,timeBankMs:180000},hostUserId:'u1',pauseVersion:0,timeBankSpent:{}};
 it('keeps two match-scoped bank slots, preserves draft and displays added remaining time',()=>{
  const {container,rerender}=render(<PtownWordsView {...props} view={bankView}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);

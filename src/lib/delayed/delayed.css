@@ -8,3 +8,7 @@
 .delayed-turn-nav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.5rem .75rem;flex-shrink:0;font-size:.8rem}.delayed-turn-nav a{text-decoration:underline;min-height:2rem;display:flex;align-items:center}
 .delayed-terminal{padding:.5rem .75rem;background:#203930;font-size:.85rem;flex-shrink:0}.delayed-terminal a{text-decoration:underline}
 [data-shell-presentation-mode="fullscreen"] [data-canonical-shell-header] .delayed-bell{display:none}
+.delayed-invite{display:grid;gap:.5rem;max-width:34rem}.delayed-invite p{margin:0}.delayed-invite .delayed-terms{font-size:.85rem;line-height:1.4}.delayed-stake,.delayed-filter{display:flex;align-items:center;gap:.4rem}.delayed-stake input{width:6rem}.delayed-filter input{min-width:0;flex:1}.delayed-invite select{flex:1;min-width:0}.delayed-lineup li[data-turn="own"]{background:#163c2c;color:#edfbed;border-color:#3c8b59}.delayed-lineup li[data-turn="opponent"]{background:#4a401a;color:#fff6cd;border-color:#9e8534}
+.delayed-bell[data-pending]{background:#c92535;color:white;box-shadow:0 0 0 2px #ff9aa4}.delayed-bell[data-ring] svg{animation:delayed-bell-ring 10s ease-in-out infinite;transform-origin:50% 10%}
+@keyframes delayed-bell-ring{0%,6%,100%{transform:rotate(0)}1%,3%,5%{transform:rotate(15deg)}2%,4%{transform:rotate(-15deg)}}
+@media(prefers-reduced-motion:reduce){.delayed-bell[data-ring] svg{animation:none}}

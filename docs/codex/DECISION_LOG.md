@@ -1,3 +1,12 @@
+## October 28, 2026 — Words polish local presentation boundary
+
+Shared live/async Words score animation consumes committed move records and never
+scores again. New live deals reserve its bounded presentation interval before the
+normal gameplay clock; existing authored handoffs stay binding. Async reentry may
+replay its latest unseen move with a viewer/child/turn receipt, without extending
+36-hour availability or changing parent-only settlement. Async banks remain a
+pending owner policy choice. Scope and publication hold: `WORDS_POLISH_LOCAL.md`.
+
 ## October 21, 2026 — Active play-money completion and next-game eligibility
 
 Owner clarification: all-human inactivity must not strand an active play-money
