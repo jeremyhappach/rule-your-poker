@@ -80,7 +80,11 @@ The initial unrestricted parallel source run timed out; the bounded full rerun
 passed. Standalone node-tsconfig checking reports existing unrelated alias/Mega
 settings errors; API/worker bundles and local runtime proofs are separate evidence.
 Final review corrected Box Drop's completed-round label to its retained result
-round; focused final validation is recorded in local logs.
+round; final browser proof and application typecheck passed afterward. Following
+main reconciliation, the integrated source rerun was still running at the budget
+checkpoint (`qualification.local/async-combined/integrated-source-tests.log`,
+execution session 9979). Do not treat the earlier 3,136-test result as an integrated
+pass; inspect this rerun before continuing release qualification.
 
 ## Remaining release gates
 
