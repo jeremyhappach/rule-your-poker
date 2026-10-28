@@ -304,7 +304,7 @@ export function HorsesMobileCardsTab({
   // 2. OR we're in the hold badge phase (last 1.5s of hold)
   // 3. OR game is complete and we have a sticky result (for win animation)
   const isGameComplete = horses.gamePhase === "complete";
-  const showResultBadge = (
+  const showResultBadge = !horses.noQualifyPresentationPending && (
     (hasCompleted && effectiveResult && !showHoldDice) || // Completed, not showing dice
     showHoldResultBadge || // In hold badge phase
     (isGameComplete && effectiveResult) // Game over - keep showing result

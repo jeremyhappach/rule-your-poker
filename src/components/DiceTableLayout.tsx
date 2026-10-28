@@ -2088,7 +2088,7 @@ export function DiceTableLayout({
           isSCC={isSCC}
           scatterYOffset={unheldYOffset}
           showWildHighlight={showWildHighlight}
-
+          revealOnLanding={gameType === 'horses' || gameType === 'ship-captain-crew'}
         />
       )}
 

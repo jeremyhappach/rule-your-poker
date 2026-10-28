@@ -9,6 +9,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 | File | Read when |
 |---|---|
 | `ASYNC_COMBINED_LOCAL.md` | Approved five-game async, creator deletion, human admission, local evidence and remaining hosted release gates |
+| `OCT28_DICE_SMOKE_FOLLOWUP.md` | Approved SCC/Horses follow-up: terminal flight receipts, own NQ ordering, fresh observer rolls and release evidence |
 | `WORDS_POLISH_RELEASE.md` | Approved shared Words polish/mobile match details, installed qualification and publication gates |
 | `MULTI_GAME_ASYNC_REVIEW.md` | Review-only mixed Words/Run21/TriTowers proposal, approved debt accounting and migration boundaries |
 | `WORDS_POLISH_LOCAL.md` | Earlier local shared Words polish evidence; publication hold superseded, async bank policy pending |

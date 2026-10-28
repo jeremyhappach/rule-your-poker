@@ -6,6 +6,18 @@ import type {HorsesPlayerDiceState} from './useHorsesMobileController';
 afterEach(()=>{cleanup();vi.useRealTimers();});
 const playing:HorsesPlayerDiceState={dice:[{value:6,isHeld:false}],rollsRemaining:1,isComplete:false,rollKey:10};
 const complete:HorsesPlayerDiceState={...playing,isComplete:true,rollKey:11,result:{rank:1,description:'NQ',isQualified:false,cargoSum:0}};
+it('animates a live final roll despite late delivery, clock skew and immediate actor advancement',()=>{
+ const h=renderHook(({state})=>useDiceResultPresentation('d:r',{lance:state}),{initialProps:{state:playing}});
+ h.rerender({state:{...complete,rollStartedAt:new Date(Date.now()-10000).toISOString()}});
+ expect(h.result.current.hold?.isRolling).toBe(true);
+ expect(h.result.current.announcement).toBeNull();
+ const key=h.result.current.key;
+ h.rerender({state:{...complete,rollStartedAt:new Date(Date.now()-10000).toISOString()}});
+ expect(h.result.current.key).toBe(key);expect(h.result.current.hold?.isRolling).toBe(true);
+ h.unmount();
+ const history=renderHook(()=>useDiceResultPresentation('d:r',{lance:complete}));
+ expect(history.result.current.hold).toBeNull();
+});
 it('retains final actor dice from a terminal snapshot until that exact render lands',()=>{
  vi.useFakeTimers();
  const h=renderHook(({states})=>useDiceResultPresentation('dealer:round',states),{initialProps:{states:{lance:playing}}});
@@ -25,6 +37,10 @@ it('skips historical entry and rejects completion from another dealer/round',()=
  const old=h.result.current;
  h.rerender({scope:'new-d:r1',states:{lance:playing}});h.rerender({scope:'new-d:r1',states:{lance:complete}});
  act(()=>old.landed(old.key));expect(h.result.current.announcement).toBeNull();
+});
+it('does not replay completed history hydrated after an empty player map',()=>{
+ const h=renderHook(({states})=>useDiceResultPresentation('d:r',states),{initialProps:{states:{} as Record<string,HorsesPlayerDiceState>}});
+ h.rerender({states:{lance:complete}});expect(h.result.current.hold).toBeNull();
 });
 it('never replays consumed or regressive rolls after subsequent snapshots',()=>{
  vi.useFakeTimers();

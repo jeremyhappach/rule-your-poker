@@ -22,11 +22,14 @@ export function useDiceResultPresentation(scope:string|null, states:Record<strin
       latest[playerId]=state.rollKey??0;
       seen[playerId]=signature;
       const key=`${scope}:${playerId}:${state.rollKey??0}`;
-      if(!current.baseline&&state.isComplete&&state.result)consumed.add(key);
-      if(current.baseline&&current.seen[playerId]!==signature&&state.isComplete&&state.result){
+      const observedPlayer = current.seen[playerId] !== undefined;
+      if(!observedPlayer&&state.isComplete&&state.result)consumed.add(key);
+      if(observedPlayer&&current.seen[playerId]!==signature&&state.isComplete&&state.result){
         if(!consumed.has(key))added.push({key,playerId,
           state:{...state,dice:state.dice.map(die=>({...die})),result:{...state.result}},
-          animate:!!state.rollStartedAt && Date.now()-Date.parse(state.rollStartedAt)<2300,landedAt:null});
+          // A new key after this scope's baseline is live, even if delivery is
+          // late or the observer's clock differs. Only initial state is history.
+          animate:(state.rollKey??0)>(current.latest[playerId]??0),landedAt:null});
         consumed.add(key);
       }
     }

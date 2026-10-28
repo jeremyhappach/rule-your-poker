@@ -71,7 +71,7 @@ rollback proof. No hosted migration or production data mutation occurred.
 Browser proof used actual shared views and committed actions for the four new
 adapters, completed-round presentation, reload, five-game invitation/acceptance,
 both-viewer deletion updates, and 320/390/1440 layout checks. Latest passing match
-`07feefc9-375d-4a96-bc66-507607dbc1bb` is synthetic/local. Screenshots and outputs
+`07d2cdc5-809a-4936-9d46-85045e400a3b` is synthetic/local. Screenshots and outputs
 are in `qualification.local/async-combined`.
 
 Validation: 453 source files / 3,136 tests passed with four workers; 241 harness
@@ -84,9 +84,11 @@ round; focused final validation is recorded in local logs.
 
 ## Remaining release gates
 
-1. Reconcile latest main `a79c40497` and preserve its SCC/Horses incident changes.
-   This branch has not yet merged main. Coordination hold was cleared; no new
-   product approval is required for the existing scope.
+1. Latest main `a79c40497` is reconciled, preserving its SCC/Horses incident
+   changes. Only additive release/index documentation conflicted; both entries
+   were retained. Integrated source validation is recorded separately from the
+   earlier 3,136-test run. Coordination hold was cleared; no new product approval
+   is required for the existing scope.
 2. Build and run hosted rollback qualification against current authority,
    including actual canonical accounting triggers and deferred constraints.
    Install the guarded migration closed, then rerun installed proofs.
