@@ -1,12 +1,21 @@
-# Combined five-game async — local qualification checkpoint — 2026-10-28
+# Combined five-game async — controlled local qualification — 2026-10-28
 
 Approved combined scope is implemented locally: styled invitations, five games,
 active-human admission and creator-only fake-money deletion for both players.
 Parent-only canonical settlement and existing negative balances are preserved.
-Local financial/lifecycle/race/browser proofs, 3,136 source tests, 241 harness
-tests, typecheck and bundle pass. Migration is prepared closed, not installed;
-no combined code has been published. Main `a79c40497` is reconciled; remaining gates are hosted candidate/installed qualification and the
-combined publication/activation gates. Coordination hold is cleared.
+Existing local financial/lifecycle/race/browser proofs remain. The first integrated
+run had six Run21 simulation timeouts; controlled diagnosis and a complete rerun
+with unchanged assertions/timeouts passed all 3,149 source tests across 455 files.
+No product-code correction was justified. Main `a79c40497` is reconciled.
+Sequential integrated application typecheck, nine delayed-adapter tests, 241
+harness tests, production bundle and self-contained recovery-worker bundle pass.
+Migration is prepared closed, not installed; nothing combined is published.
+Automatic approval review rejected an earlier continuation routing prompt for
+lack of directly trusted owner authorization. A later delivered prompt omitted
+that owner evidence. No production action has been attempted or newly denied;
+the remaining hold is authorization assessment, which local tests do not resolve.
+Hosted candidate/installed proofs, worker deployment, serialized combined
+publication, exact release evidence and guarded activation remain pending.
 See [ASYNC_COMBINED_LOCAL.md](ASYNC_COMBINED_LOCAL.md).
 
 # SCC/Horses follow-up - integrated qualification PASS - 2026-10-28
