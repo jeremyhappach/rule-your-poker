@@ -1,0 +1,54 @@
+{
+  "database": "dice_incident_20261028_0402",
+  "localSyntheticFixturesCommittedAndRetained": true,
+  "evidence": [
+    {
+      "game": "horses",
+      "tie": false,
+      "fixture": "aed1ef8e-4216-45f4-8748-390f138e62ff",
+      "statuses": [
+        "already_settled",
+        "settled"
+      ],
+      "oneSettlement": true,
+      "balanced": true,
+      "immutable": true
+    },
+    {
+      "game": "horses",
+      "tie": true,
+      "fixture": "8ed6a818-c633-4fc1-8dd8-a9a4362f9904",
+      "statuses": [
+        "advanced",
+        "already_advanced"
+      ],
+      "oneSettlement": true,
+      "balanced": true,
+      "immutable": true
+    },
+    {
+      "game": "ship-captain-crew",
+      "tie": false,
+      "fixture": "46b69d98-1500-4041-a42e-071bfefa1327",
+      "statuses": [
+        "already_settled",
+        "settled"
+      ],
+      "oneSettlement": true,
+      "balanced": true,
+      "immutable": true
+    },
+    {
+      "game": "ship-captain-crew",
+      "tie": true,
+      "fixture": "135b81c7-5280-49ad-a6f3-81b12ec6d286",
+      "statuses": [
+        "advanced",
+        "already_advanced"
+      ],
+      "oneSettlement": true,
+      "balanced": true,
+      "immutable": true
+    }
+  ]
+}

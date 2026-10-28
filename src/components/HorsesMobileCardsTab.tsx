@@ -193,10 +193,19 @@ export function HorsesMobileCardsTab({
   }, [horses, startUiRollingMask]);
 
   const rolling = uiRolling || horses.isRolling;
+  useEffect(() => {
+    if (rolling || !horses.resultPresentationKey || horses.completedTurnHold?.playerId !== horses.myPlayer?.id) return;
+    const key = horses.resultPresentationKey;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => horses.onResultDiceLanded(key));
+    });
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+  }, [rolling, horses.resultPresentationKey, horses.completedTurnHold?.playerId, horses.myPlayer?.id, horses.onResultDiceLanded]);
 
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
-  const myResult = horses.myState?.result ?? null;
+  const myResult = horses.myPlayer ? horses.getPlayerHandResult(horses.myPlayer.id) : null;
 
   // Check if we're in a completed turn hold period for the current player
   const isInMyCompletedHold = horses.completedTurnHold && 
@@ -210,15 +219,15 @@ export function HorsesMobileCardsTab({
   // Show dice when it's my turn and I've rolled at least once, OR during hold period
   const showMyDice = (horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3);
   
-  // Show completed hold dice (after locking in, FIRST 1.5 seconds of hold - dice → badge transition)
+  // Keep the final dice until their paint receipt, then recognize the hand.
   const showHoldDice = isInMyCompletedHold && holdDice && holdDice.length > 0 && 
     horses.completedTurnHold && 
-    (horses.completedTurnHold.expiresAt - Date.now() >= 1500);
+    !Number.isFinite(horses.completedTurnHold.expiresAt);
   
-  // Show hold result badge (LAST 1.5 seconds of hold period - transition from dice to badge)
+  // Once the dice have painted, show the result for the remaining hold.
   const showHoldResultBadge = isInMyCompletedHold && holdResult && 
     horses.completedTurnHold && 
-    (horses.completedTurnHold.expiresAt - Date.now() < 1500);
+    Number.isFinite(horses.completedTurnHold.expiresAt);
 
   const isSCC = gameType === "ship-captain-crew";
   const canLockEarly =

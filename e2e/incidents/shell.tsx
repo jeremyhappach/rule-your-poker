@@ -1,0 +1,23 @@
+import {GameChatContextProvider} from '@/hooks/GameChatContext';
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {MobileGameTable} from '@/components/MobileGameTable';
+import {PersistentTableShell} from '@/lib/canonicalShell/PersistentTableShell';
+import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import {setGeometryOverrides} from '@/lib/geometryLab/store';
+import '@/index.css';
+const params=new URLSearchParams(location.search),game=params.get('game')==='horses'?'horses':'ship-captain-crew';
+const artifact=`${game==='horses'?'horses':'scc'}.opponentDiceStage`;
+setGeometryOverrides(new Map([[artifact,{artifact_id:artifact,game,anchor_x:.5,anchor_y:.42,anchor_origin:'center',size_mode:'widthDriven',width_pct:1,height_pct:null,aspect_ratio:3.409090909090909}]]));
+const players=['a','b'].map((id,i)=>({id,user_id:`u${i}`,position:i+1,chips:10,is_bot:false,sitting_out:false,status:'active',decision:null,legs:0,profiles:{username:id==='a'?'Hap':'Lance'}}));
+const held=Number(params.get('held')??2);
+const dice=(game==='horses'?[6,6,3,2,1]:[6,5,3,2,1]).map((value,i)=>({value,isHeld:i<held,isSCC:game!=='horses'&&i<Math.min(held,2),sccType:game!=='horses'&&i<Math.min(held,2)?['ship','captain'][i]:undefined}));
+const initial={gamePhase:'playing',currentTurnPlayerId:'b',turnOrder:['a','b'],actionSequence:3,playerStates:{a:{dice,rollsRemaining:0,isComplete:true,rollKey:0,result:{rank:0,description:'NQ',isQualified:false,cargoSum:0}},b:{dice,rollsRemaining:1,isComplete:false,rollKey:1}}};
+function App(){const [state,setState]=useState<any>(initial),[round,setRound]=useState(1),[mount,setMount]=useState(0);
+ (window as any).__shell={complete:()=>setState({...initial,gamePhase:'complete',currentTurnPlayerId:null,actionSequence:4,playerStates:{...initial.playerStates,a:{...initial.playerStates.a,isComplete:true,result:{rank:0,description:'NQ',isQualified:false,cargoSum:0}},b:{...initial.playerStates.b,dice:dice.map(d=>({...d,isHeld:true})),isComplete:true,rollKey:2,rollStartedAt:new Date().toISOString(),heldMaskBeforeComplete:dice.map(d=>d.isHeld),result:{rank:0,description:'NQ',isQualified:false,cargoSum:0}}}}),rollover:()=>{setRound(r=>r+1);setState(initial);},remount:()=>setMount(n=>n+1)};
+ const props:any={players,currentUserId:params.get('viewer')==='b'?'u1':'u0',pot:4,currentRound:round,allDecisionsIn:false,playerCards:[],timeLeft:30,lastRoundResult:null,dealerPosition:1,legValue:1,legsToWin:3,potMaxEnabled:false,potMaxValue:0,pendingSessionEnd:false,awaitingNextRound:false,gameType:game,anteAmount:2,gameStatus:'in_progress',horsesRoundId:`r${round}`,horsesDealerGameId:'dealer',horsesHandNumber:round,horsesState:state,onStay:()=>{},onFold:()=>{},isDealer:true};
+ return <GameChatContextProvider value={{chatBubbles:[],allMessages:[],sendMessage:async()=>{},isSending:false,getPositionForUserId:()=>undefined,latestRealtimeMessage:null,isChatHydrated:true,hydrationBaselineIds:new Set(),chatConversationKey:null} as any}><ResponsiveGeometryProvider><PersistentTableShell projectionMode="active-canonical" seats={players} gameType={game} anteAmount={2} viewerPosition={1} viewerUserId="u0"><MobileGameTable key={mount} {...props}/></PersistentTableShell></ResponsiveGeometryProvider></GameChatContextProvider>;
+}
+createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={new QueryClient()}><App/></QueryClientProvider></MemoryRouter>);

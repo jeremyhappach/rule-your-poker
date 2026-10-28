@@ -1,0 +1,3 @@
+import {chromium} from '@playwright/test';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try{const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:3});await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());page.on('pageerror',e=>console.error('PAGE ERROR',e.message));await page.goto('http://127.0.0.1:5180/e2e/incidents/shell.html');await page.waitForTimeout(2500);console.log((await page.locator('body').innerText()).slice(-2000));console.log('shell',await page.locator('[data-canonical-shell-root]').count());await page.screenshot({path:'../incident-visuals/full-shell-initial.png'});}finally{await browser.close();}

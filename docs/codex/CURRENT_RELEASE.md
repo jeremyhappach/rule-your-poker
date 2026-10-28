@@ -1,3 +1,13 @@
+# Oct27 SCC/Horses/Tri-Towers - installed qualification PASS - 2026-10-28
+
+Owner approved production after passing tests. Migration `20261028184338` is
+installed once; hosted baseline/installed rollback proofs pass with all synthetic
+sessions absent. Initial ante animation, exact-round NQ/transfer sequencing,
+dice geometry, final-roll presentation and Tri startup recovery are qualified.
+3110 source tests,241 harness tests and typecheck pass. Publication must verify
+exact-SHA READY/manifest/publisher/persisted-signal agreement. Existing releases
+are preserved. See [incident release](OCT27_GAMEPLAY_RELEASE.md).
+
 # Async Words — installed qualification PASS — 2026-10-27
 
 Owner approved production for two humans, one Words child and fake money only.

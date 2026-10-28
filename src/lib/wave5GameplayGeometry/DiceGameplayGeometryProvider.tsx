@@ -17,6 +17,7 @@ import {
 } from "react";
 import {
   resolveLayout,
+  deriveAvailableGameplayViewport,
   type LayoutFault,
   type ResolvedPlacement,
 } from "@/lib/wave4LayoutResolver";
@@ -32,6 +33,8 @@ import {
   type DiceDescriptorOptions,
 } from "@/lib/dice/diceArtifactDescriptors";
 import { useDraftedGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
+import { fitObserverPaintBounds } from '@/lib/dice/observerPaintBounds';
+import { useDicePotBottom } from '@/lib/dice/useDicePotBottom';
 
 export interface DiceGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -61,7 +64,8 @@ export function DiceGameplayGeometryProvider({
   beatBadgeVisible,
   children,
 }: DiceGameplayGeometryProviderProps) {
-  const { geometry } = useLiveGeometryConstraints();
+  const { geometry, vminInPx } = useLiveGeometryConstraints();
+  const potBottom = useDicePotBottom(gameType, vminInPx);
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
@@ -90,7 +94,9 @@ export function DiceGameplayGeometryProvider({
     }
     const layout = resolveLayout(descriptors, geometry);
     const byId = new Map<string, ResolvedPlacement>();
-    for (const p of layout.placements) byId.set(p.id, p);
+    const viewport = deriveAvailableGameplayViewport(geometry).viewport.rect;
+    for (const p of layout.placements) byId.set(p.id, p.id.endsWith('.opponentDiceStage')
+      ? {...p, rect:fitObserverPaintBounds(p.rect,viewport,potBottom)} : p);
     if (layout.faults.length === 0) {
       lastValidRef.current = byId;
     }
@@ -100,7 +106,7 @@ export function DiceGameplayGeometryProvider({
       faults: layout.faults,
       ready: true,
     };
-  }, [geometry, descriptors]);
+  }, [geometry, descriptors, potBottom]);
 
   useEffect(() => {
     if (!value.ready) return;

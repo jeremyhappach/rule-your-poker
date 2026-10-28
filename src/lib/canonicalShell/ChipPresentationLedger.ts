@@ -32,6 +32,8 @@ export interface ChipPresentationBatch {
   game_id: string;
   /** Authoritative owner, retained for exact game-specific completion checks. */
   dealer_game_id?: string | null;
+  source_round_id?: string | null;
+  successor_round_id?: string | null;
   cursor: number;
   reason: ChipTransportIntent['reason'];
   transfers: ChipPresentationTransfer[];
@@ -46,7 +48,7 @@ export interface ChipPresentationBatch {
  * ownership of each touched endpoint at its authoritative opening balance
  * while admission is closed; this never delays or changes settlement.
  */
-export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean;
+export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean | 'reconcile';
 
 /**
  * Presentation-only launch boundary. Fires exactly once after an admitted
@@ -248,6 +250,8 @@ function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch |
     id: row.id,
     game_id: gameId,
     dealer_game_id: typeof row.dealer_game_id === 'string' ? row.dealer_game_id : null,
+    source_round_id: typeof row.source_round_id === 'string' ? row.source_round_id : null,
+    successor_round_id: typeof row.successor_round_id === 'string' ? row.successor_round_id : null,
     cursor,
     reason,
     transfers,
@@ -496,8 +500,14 @@ export function useChipPresentationLedger(
         // A delayed visual sequence (for example, Holm community/Chucky
         // reveal) may defer the flight. The raw authoritative rows remain
         // ledger-owned at their opening values until this gate opens.
-        if (!canStartBatchRef.current(batch)) continue;
+        const admission = canStartBatchRef.current(batch);
+        if (!admission) continue;
         if (endpoints.some((key) => activeEndpointsRef.current.has(key))) continue;
+        if (admission === 'reconcile') {
+          retireBatch(batch);
+          progressed = true;
+          continue;
+        }
         // Player hydration and the immutable batch may arrive in either
         // order. Keep ownership queued until every logical endpoint can be
         // mapped; a later authoritative player row re-runs this function.
@@ -644,7 +654,7 @@ export function useChipPresentationLedger(
         break;
       }
     }
-  }, [emitBalanceDelta, finishBatch, transport, writeCursorState, writeVisible]);
+  }, [emitBalanceDelta, finishBatch, retireBatch, transport, writeCursorState, writeVisible]);
   startQueuedRef.current = startQueued;
 
   // Admission may open after the immutable batch is already queued. Recheck

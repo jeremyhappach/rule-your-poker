@@ -1761,6 +1761,8 @@ export type Database = {
       }
       gameplay_transfer_batches: {
         Row: {
+          source_round_id: string | null
+          successor_round_id: string | null
           closing_balances: Json
           created_at: string
           cursor: number
@@ -1773,6 +1775,8 @@ export type Database = {
           unmatched_deltas: Json
         }
         Insert: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balances?: Json
           created_at?: string
           cursor: number
@@ -1785,6 +1789,8 @@ export type Database = {
           unmatched_deltas?: Json
         }
         Update: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balances?: Json
           created_at?: string
           cursor?: number
@@ -1808,6 +1814,8 @@ export type Database = {
       }
       gameplay_transfer_pending_changes: {
         Row: {
+          source_round_id: string | null
+          successor_round_id: string | null
           closing_balance: number
           created_at: string
           endpoint_key: string
@@ -1818,6 +1826,8 @@ export type Database = {
           transaction_id: number
         }
         Insert: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balance: number
           created_at?: string
           endpoint_key: string
@@ -1828,6 +1838,8 @@ export type Database = {
           transaction_id: number
         }
         Update: {
+          source_round_id?: string | null
+          successor_round_id?: string | null
           closing_balance?: number
           created_at?: string
           endpoint_key?: string

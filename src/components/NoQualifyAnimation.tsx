@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import {createPortal} from 'react-dom';
+import {SHELL_Z} from '@/lib/canonicalShell/zLayers';
 import noQualifyBg from "@/assets/no-qualify-bg.jpg";
 
 interface NoQualifyAnimationProps {
@@ -10,7 +12,6 @@ interface NoQualifyAnimationProps {
 export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
-  const hasShownRef = useRef(false);
 
   // Keep ref updated
   onCompleteRef.current = onComplete;
@@ -18,21 +19,24 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
   useEffect(() => {
     let cancelled = false;
     let timer: number | null = null;
+    let imageWait: number | null = null;
+    let started = false;
 
     const finish = () => {
       setVisible(false);
       onCompleteRef.current?.();
     };
 
-    if (show && !hasShownRef.current) {
-      hasShownRef.current = true;
+    if (show) {
 
       // Ensure the background image is ready before we show anything
       const img = new Image();
       img.src = noQualifyBg;
 
       const start = () => {
-        if (cancelled) return;
+        if (cancelled || started) return;
+        started = true;
+        if (imageWait) window.clearTimeout(imageWait);
         setVisible(true);
         timer = window.setTimeout(finish, 2000);
       };
@@ -42,24 +46,26 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
       } else {
         img.onload = start;
         img.onerror = start;
+        // The result must remain presentable even if the image request stalls.
+        imageWait = window.setTimeout(start, 1000);
       }
 
       return () => {
         cancelled = true;
         if (timer) window.clearTimeout(timer);
+        if (imageWait) window.clearTimeout(imageWait);
       };
     }
 
     if (!show) {
-      hasShownRef.current = false;
       setVisible(false);
     }
   }, [show]);
 
   if (!visible) return null;
 
-  return (
-    <div className="fixed inset-0 z-[1000] pointer-events-none overflow-hidden">
+  return createPortal(
+    <div data-no-qualify-overlay className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex:SHELL_Z.CELEBRATION}}>
       {/* Single unified graphic: background + overlays + text all inside ONE SVG */}
       <svg
         className="absolute inset-0 h-full w-full animate-scale-in"
@@ -134,5 +140,5 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
         </g>
       </svg>
     </div>
-  );
+  , document.body);
 };
