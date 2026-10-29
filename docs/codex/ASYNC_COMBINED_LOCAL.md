@@ -5,17 +5,23 @@ from Ptown Words, Run21, TriTowers, Quintzee and Box Drop; active human opponent
 and creator-only Delete for both players at every fake-money match status.
 Ship these together. This checkpoint is not published or production-qualified.
 
-**Current authority boundary:** continuation is local diagnostic/qualification
-only. Automatic approval review rejected an earlier production-continuation
-routing prompt because it lacked directly trusted end-user authorization for
-consequential side effects. A later routing prompt was delivered, but did not
-include the verified owner transcript/provenance. No actual production action
-has been attempted or newly denied in this task. The remaining hold is this
-task's authorization assessment, not a newly rejected database/deployment action.
-The smallest resolution is directly trusted owner confirmation covering hosted
-qualification, the closed migration, worker deployment, combined publication
-and guarded five-game activation after checks pass. Do not test permission by
-attempting those actions. The release steps below remain pending that resolution.
+**Authorization reassessed:** the missing-owner-context hold is cleared for the
+existing combined fake-only release. The supplied authenticated owner history
+includes the request for all three additions to release together, plus Quintzee,
+Box Drop, creator-only deletion and human-only discovery. Root supplied its
+independent `user_message.read_messages` verification provenance for the initial
+scope/release requests: request `1a1573c1-413b-4499-a47a-9b36d04a9986`, verified
+October 28 at 23:44:56 UTC, complete/nondeleted records by the same authenticated
+user. This new evidence resolves the earlier routing prompt's missing context;
+acceptance of routing alone was not the basis for clearing the hold.
+
+The approved continuation covers hosted qualification, qualified closed migration,
+worker deployment, combined publication and guarded five-game activation after
+all release gates pass. No new owner approval is needed for that unchanged scope.
+No actual production action has been attempted or newly denied in this task.
+This informational reassessment executes none. Any actual future action denial
+must be stopped and reported, not bypassed. All financial, cleanup and exact-SHA
+release gates below remain mandatory.
 
 ## Financial and lifecycle contract
 
@@ -154,10 +160,10 @@ was attempted, and no customer state was touched.
    changes. Only additive release/index documentation conflicted; both entries
    were retained. Integrated source validation is recorded separately from the
    earlier 3,136-test run. Before any release, verify then-current main and
-   serialized publication ownership again. Production continuation awaits the
-   directly trusted owner confirmation described above.
-2. After that block is resolved, inspect deployed migration history and build/run
-   hosted rollback qualification against current authority,
+   serialized publication ownership again. The missing-owner-context hold is
+   resolved as documented above; qualification and publication gates remain.
+2. Inspect deployed migration history and build/run hosted rollback qualification
+   against current authority,
    including actual canonical accounting triggers and deferred constraints.
    Install `20261028232744` closed only if unapplied and qualified, then rerun
    installed proofs and verify all synthetic fixtures are removed.

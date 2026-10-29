@@ -10,10 +10,10 @@ No product-code correction was justified. Main `a79c40497` is reconciled.
 Sequential integrated application typecheck, nine delayed-adapter tests, 241
 harness tests, production bundle and self-contained recovery-worker bundle pass.
 Migration is prepared closed, not installed; nothing combined is published.
-Automatic approval review rejected an earlier continuation routing prompt for
-lack of directly trusted owner authorization. A later delivered prompt omitted
-that owner evidence. No production action has been attempted or newly denied;
-the remaining hold is authorization assessment, which local tests do not resolve.
+The earlier missing-owner-context hold is cleared: the supplied authenticated
+owner history and independent verification provenance establish approval for the
+combined fake-only release. No new scope approval is needed. This reassessment
+performs no production action; none has been attempted or newly denied here.
 Hosted candidate/installed proofs, worker deployment, serialized combined
 publication, exact release evidence and guarded activation remain pending.
 See [ASYNC_COMBINED_LOCAL.md](ASYNC_COMBINED_LOCAL.md).
