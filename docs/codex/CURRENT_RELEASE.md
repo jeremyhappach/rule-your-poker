@@ -1,3 +1,21 @@
+# Async Tri-Towers all-clear presentation incident — 2026-10-29
+
+Read-only production evidence confirms the latest Hap/Happach Gmail four-child
+match saved the Tri-Towers attempt at 45,780 points and handed play to Hap.
+The async adapter lost the presentation scope/result fields and had no return
+handoff when a saved result exists. Jeremy approved the adapter-only local
+correction. The initial reproduction had three failing regressions; the local
+correction now passes all 39 focused tests and the application typecheck. Local
+390px browser evidence confirms all-clear, count-up to 45,780, one action request,
+duplicate delivery, return after 8.055 seconds and direct fresh reentry. Transport
+is synthetic; production and physical-device acceptance remain unobserved.
+No production action, state repair or publication. See
+[exact identities, evidence and correction boundary](ASYNC_TRI_COMPLETION_INCIDENT.md).
+
+Coordinator independently confirmed publisher 40863667339 attempt 2 succeeded
+at 11:50:08 UTC with persisted signal 40863667339-2 matching current main
+10c467ea97f823fc80470db858b7bf098725bde8. Earlier pipeline hold below is historical.
+
 # Combined five-game async — published and activated — 2026-10-29
 
 Approved combined scope is published: styled invitations, five games,

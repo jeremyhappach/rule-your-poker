@@ -14,6 +14,7 @@ import {Run21PlayerPane,Run21Timer} from '@/components/run21/Run21PlayerPane';
 import {Run21ScoringReference} from '@/components/run21/Run21ScoringHelp';
 import {Run21SpaceScene} from '@/components/run21/Run21SpaceScene';
 import {TriTowersBoard,TriTowersRules} from '@/components/triTowers/TriTowersView';
+import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
 import type {project} from '../../../server/delayed/adapter';
 import '@/lib/arcade/arcade.css';
 type Snapshot=Awaited<ReturnType<typeof project>>;
@@ -21,15 +22,18 @@ type Snapshot=Awaited<ReturnType<typeof project>>;
 export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:string;userId:string}){
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(Date.now()),[tab,setTab]=useState<ShellTabId>('cards');
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(null),initialSegment=useRef<number|null>(null);
+ const initialRound=useRef<number|null>(null);
  const navigate=useNavigate(),latest=useRef<Snapshot|null>(null);
  const accept=useCallback((value:Snapshot)=>{
   if(value.id!==childId||value.matchId!==matchId)throw Error('Turn identity changed. Return to the match.');
   const old=latest.current;if(old&&old.revision>value.revision)return;
   if(old&&old.revision===value.revision&&JSON.stringify({...old,serverAt:0})!==JSON.stringify({...value,serverAt:0}))throw Error('Conflicting turn snapshot. Reconnect safely.');
   latest.current=value;
-  clock.current={at:value.serverAt,received:performance.now()};setNow(value.serverAt);
+  // A duplicate/recovery response cannot rewind an already-running result window.
+  const at=old?.game==='tri-towers'?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
+  clock.current={at,received:performance.now()};setNow(at);
   setSnapshot(old=>old&&old.revision>value.revision?old:value);
-  if(initialSegment.current===null){initialSegment.current=value.segment;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId,{replace:true});}
+  if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId,{replace:true});}
  },[childId,matchId,userId,navigate]);
  const refresh=useCallback(async()=>{const epoch=++generation.current;try{
   const value=await delayedRequest<Snapshot>(request.current??{op:'state',childId});
@@ -49,9 +53,14 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
  },[childId,userId,matchId,refresh]);
  useEffect(()=>{const timer=setInterval(()=>setNow(clock.current.at+performance.now()-clock.current.received),100);return()=>clearInterval(timer);},[]);
  const ended=!!snapshot&&(snapshot.terminal||snapshot.actor!==userId||snapshot.segment!==initialSegment.current);
- const result=snapshot?.ownResults.at(-1);
+ // Keep this route's attempt even if later turns arrive while its result plays.
+ const result=snapshot?.game==='tri-towers'?snapshot.ownResults.find(r=>r.round===initialRound.current):snapshot?.ownResults.at(-1);
  const board=(ended?result?.board:snapshot?.board) as any;
  const displayRound=ended&&result?result.round:snapshot?.round;
+ const triResult=snapshot?.game==='tri-towers'&&ended&&result&&board?.result?roundResultPresentation({
+  ...board.result,id:[childId,userId,result.round,result.at].join(':'),stage:result.round,
+ },board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0):null;
+ const triResultUntil=triResult?board.deadline as number:null;
  const due=snapshot&&!snapshot.terminal&&!ended?Math.min(board?.deadline??Infinity,Date.parse(snapshot.expiresAt)):null;
  useEffect(()=>{if(due===null||!Number.isFinite(due)||request.current)return;
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
@@ -60,6 +69,9 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
   request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};setPending(true);setError('');await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
+ // The saved shared-rule deadline includes celebration/count-up. This only
+ // finishes local presentation; authority already handed off the turn.
+ useEffect(()=>{if(triResultUntil!==null&&now>=triResultUntil)navigate('/delayed/'+matchId,{replace:true});},[triResultUntil,now,matchId,navigate]);
  const view:BoardProjection|undefined=snapshot?.game==='run21'&&board?{config:snapshot.config as BoardProjection['config'],
   roundId:childId+':'+snapshot.segment,roundNumber:displayRound!,viewerId:userId,boards:{[userId]:board},players:[{id:userId,name:'You'}],
   active_player_id:ended?null:userId,liveBoards:true,revealed:false,cumulative:snapshot.totals,scorePresentation:null,presentationKey:childId}:undefined;
@@ -86,8 +98,8 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
   actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div></div>}>
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
    {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></>:
-    <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard view={board} now={now} canAct={canAct} roundKey={childId+':'+snapshot.segment} result={ended?board.result:null}
-     userId={userId} connected={!error} roundLabel={'ROUND '+displayRound} scores={[{id:userId,score:board.score,active:true}]}
+    <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
+     userId={userId} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={[{id:userId,score:board.score,active:true}]}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}
      onIntent={i=>void act(i)}/></div>}
   </FullscreenGameShell></div>;
