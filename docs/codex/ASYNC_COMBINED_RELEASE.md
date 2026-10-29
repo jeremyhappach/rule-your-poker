@@ -43,8 +43,22 @@ Post-install normalized definition hashes match the preimage for
 settle_gameplay_chip_transfers, record_session_results,
 finalize_gameplay_transfer_batch and private.delayed_finalize.
 
-Publication and activation receipts remain pending. Physical-device owner smoke
-remains separate acceptance.
+Client commit `8c0898cc4def44a53ac9d31f8a357f72692b2e80` was pushed through the
+required main helper. Vercel deployment `dpl_2D27hhLq3hJ7M5H7XdGx596dcba3` is
+READY and the public manifest matches. Hosted GET/missing-auth/invalid-auth/
+cross-origin API guards return 405/401/401/403 respectively. The public mobile
+entry loads without page errors or failed script/style assets. Full authenticated
+production gameplay and physical-device owner smoke remain unobserved.
+
+Activation is blocked: publisher run 40794356161 passed its GitHub manifest check
+but the publish-release endpoint returned HTTP 503 `manifest_invalid` at
+2026-10-29 00:31:22 UTC. The stored release signal remains on a79c40497.
+Propagation/cache timing is a possible explanation, not an established cause.
+The attempted failed-job retry was refused by the GitHub integration with HTTP
+403 `Resource not accessible by integration`; no alternative retry path or manual
+release-signal write was attempted. Jeremy was asked to rerun that failed job.
+Multi-game admission remains false, ordinary Words admission true; fixtures are
+gone and the installed worker is healthy. No further approval of scope is needed.
 
 Rollback policy: close private.delayed_release.admission_enabled to stop new
 matches; preserve recovery and compatible client code for accepted mixed matches.

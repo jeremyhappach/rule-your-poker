@@ -1,4 +1,4 @@
-# Combined five-game async — installed qualification PASS — 2026-10-28
+# Combined five-game async — client published; activation blocked — 2026-10-28
 
 Approved combined scope is implemented locally: styled invitations, five games,
 active-human admission and creator-only fake-money deletion for both players.
@@ -18,8 +18,11 @@ The earlier missing-owner-context hold is cleared: the supplied authenticated
 owner history and independent verification provenance establish approval for the
 combined fake-only release. No new scope approval is needed. That informational
 reassessment preceded the authorized hosted qualification recorded above.
-Serialized combined publication, exact release evidence and guarded activation
-remain pending. See [release evidence](ASYNC_COMBINED_RELEASE.md) and
+Client `8c0898cc4` is on main, Vercel READY and public manifest verified. Publisher
+run 40794356161 failed with `503 manifest_invalid`; the stored signal remains on
+the preceding release. GitHub denied the failed-job retry with integration 403.
+Owner retry is requested; multi-game admission stays closed until exact release
+evidence agrees. See [release evidence](ASYNC_COMBINED_RELEASE.md) and
 [local qualification](ASYNC_COMBINED_LOCAL.md).
 
 # SCC/Horses follow-up - integrated qualification PASS - 2026-10-28
