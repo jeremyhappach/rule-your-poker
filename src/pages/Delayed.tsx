@@ -1,3 +1,5 @@
+import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
+import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
@@ -15,7 +17,7 @@ import '@/lib/delayed/delayed.css';
 
 export default function Delayed(){
  const {user,isReady}=useAuthGuard({pageLabel:'Delayed matches'}),{matchId,childId}=useParams(),[query]=useSearchParams();
- if(!isReady||!user)return <AsyncTurnStage matchId={matchId} title="Connecting…"/>;
+ if(!isReady||!user)return <AsyncTurnEntry/>;
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale matchId={matchId} userId={user.id}/>;
@@ -77,7 +79,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong></p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
-      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}</div>:<p>Waiting for acceptance</p>}</li>;})}</ol>
+      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}</div>:<p>Waiting for acceptance</p>}</li>;})}</ol>
   {home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>
    <p>{home.opponent===userId?'Accept the lineup and stakes shown above to begin.':'Waiting for your opponent to accept this lineup and its stakes.'}</p><p className="delayed-match-policy">Expires {new Date(home.invitationExpiresAt).toLocaleString()}.</p>
@@ -97,6 +99,6 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const refresh=useCallback(()=>{void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(v);}).catch(e=>setError(e.message));},[matchId,navigate]);
  useEffect(refresh,[refresh]);useUpdates(userId,refresh);
  const child=home?.lineup.find(c=>c.id===childId);
- if(!child)return <AsyncTurnStage matchId={matchId} title={error||'Preparing your turn…'}/>;
+ if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
  return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} autoStart/>}</ReviewGate>;
 }

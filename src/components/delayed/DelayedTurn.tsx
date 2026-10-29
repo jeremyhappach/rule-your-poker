@@ -124,12 +124,14 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
  const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
  const home=<Link to={'/delayed/'+matchId}>Match home</Link>;
- if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title={snapshot?gameName(snapshot.game):'Preparing your turn…'}>
+ if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title="Your turn!">
+  {autoStart&&!ended&&!error&&!snapshot?.held&&(!snapshot||now<Date.parse(snapshot.expiresAt))?null:<>
   {error&&<p role="alert">{error} <button onClick={()=>void refresh()}>Retry safely</button></p>}
   {!snapshot?null:ended?<><h2>{snapshot.terminal?'Game complete':'Turn complete'}</h2>{result&&<p>Your round {result.round} score: {result.score.toLocaleString()}.</p>}
    <p>The result is provisional until every game in the match finishes.</p>{home}</>:<><p>Availability deadline: {new Date(snapshot.expiresAt).toLocaleString()}. Starting now also starts the normal gameplay clock.</p>
     {snapshot.held&&<p role="status">This match is on hold during a platform incident.</p>}
     <button disabled={snapshot.held||pending||!!error||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt)} onClick={()=>void act({type:'start'})}>Begin round {snapshot.round}</button></>}
+ </>}
  </AsyncTurnStage>;
  if(snapshot.game==='quintzee'){
   const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(scores.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};

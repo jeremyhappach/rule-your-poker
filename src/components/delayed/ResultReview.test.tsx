@@ -38,7 +38,7 @@ it('draw finale has neither transfer nor confetti',async()=>{mock.home.net=0;con
 
 it('begin failure retries begin without acknowledging an unseen result',async()=>{const original=mock.rpc.getMockImplementation()!;let failed=true;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'&&failed?Promise.reject(Error('lost')):original(name,args));mount(gate());await flush();await advance(6000);expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);failed=false;fireEvent.click(screen.getByRole('button',{name:'Retry'}));await flush();await advance(13100);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();});
 
-it('reentry resumes the persisted review and displays the final score before one ACK',async()=>{const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:2500,seen:false}):original(name,args));mount(gate());await flush();expect(screen.getByText(/round 1 results/)).toBeTruthy();await advance(8700);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
+it('reentry resumes the persisted review and displays the final score before one ACK',async()=>{const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:2500,seen:false}):original(name,args));mount(gate());await flush();expect(screen.getByText(/Showing Other's results/)).toBeTruthy();await advance(8700);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
 it('winner and banked stake share one completion screen; history replay does not start a game',async()=>{mock.home.net=5;mock.state.terminal=true;mock.state.events=[{id:'final',kind:'child',receipt:{winner:'me'},seen:true}];const ui=mount(<ChildResults childId='child' matchId='match' userId='me'/>);await flush();expect(ui.container.querySelector('.async-confetti')).toBeTruthy();expect(screen.getByText('Hap banked the $5 stake')).toBeTruthy();await advance(3100);expect(screen.getByText('Hap banked the $5 stake')).toBeTruthy();expect(ui.container.querySelector('.async-confetti')).toBeNull();await advance(3000);expect(mock.rpc.mock.calls.every(c=>!['delayed_commit','delayed_finalize'].includes(c[0]))).toBe(true);});
 it.each([5,-12.5])('cash bag uses authoritative net %s and maps usernames to winner/loser poses',async net=>{
  mock.home.net=net;const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();
@@ -62,10 +62,10 @@ it('reduced-motion finale retains cash amount and one review ACK without confett
 });
 
 it('round introduction precedes the saved board and never starts or acknowledges gameplay early',async()=>{
- mock.state.events[0].actorName='Hap';mount(gate());await flush();expect(screen.getByText("Hap's round 1 results")).toBeTruthy();
+ mock.state.events[0].actorName='Hap';mount(gate());await flush();expect(screen.getByText("Showing Hap's results")).toBeTruthy();
  expect(screen.queryByText('Historic board replay is unavailable.')).toBeNull();await advance(2999);
- expect(screen.getByText("Hap's round 1 results")).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
- await advance(101);expect(screen.queryByText("Hap's round 1 results")).toBeNull();expect(screen.getByText('Historic board replay is unavailable.')).toBeTruthy();
+ expect(screen.getByText("Showing Hap's results")).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(101);expect(screen.queryByText("Showing Hap's results")).toBeNull();expect(screen.getByText('Historic board replay is unavailable.')).toBeTruthy();
 });
 
 it.each([false,true])('boxing holds for seven seconds after image load; balance copy realMoney=%s',async realMoney=>{

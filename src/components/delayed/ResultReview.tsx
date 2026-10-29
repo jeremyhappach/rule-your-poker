@@ -8,7 +8,7 @@ import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
 import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {Component,useCallback,useEffect,useMemo,useRef,useState,type ReactNode,type CSSProperties} from 'react';
-import {Link,useNavigate,useSearchParams} from 'react-router-dom';
+import {Link,useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import {delayedRpc,type Home} from '@/lib/delayed/client';
 import {money,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
@@ -44,6 +44,7 @@ class SnapshotBoundary extends Component<{children:ReactNode},{failed:boolean}>{
 
 export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home:Home;children:()=>ReactNode}){
  const [state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[ready,setReady]=useState(false),navigate=useNavigate();
+ const location=useLocation();
  const active=useVisible(),generation=useRef(0),released=useRef(false),reviewed=useRef(false),[handoff,setHandoff]=useState(false);
  const handoffPlay=usePlayback(2000,handoff?'your-turn:'+childId:'waiting');
  const load=useCallback(async(release=false)=>{if(released.current)return;const g=++generation.current;try{const value=await delayedRpc<Reviews>('delayed_reviews',{p_child:childId});if(g!==generation.current)return;
@@ -54,9 +55,10 @@ export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home
  useEffect(()=>{if(handoff&&handoffPlay.done&&!error)void load(true);},[handoff,handoffPlay.done,error,load]);
  useEffect(()=>{if(active)void load();return()=>{generation.current++;};},[active,load]);
  useEffect(()=>{const channel=supabase.channel('review-gate:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
+ useEffect(()=>{if(ready&&location.state?.asyncEntry)navigate(location.pathname+location.search,{replace:true,state:{...location.state,asyncEntry:undefined}});},[ready,location.state,location.pathname,location.search,navigate]);
  const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
  if(ready)return <>{children()}</>;
- return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title="Preparing your turn…"/>;
+ return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title={home.players.some(p=>p.id!==userId&&home.lineup.find(c=>c.id===childId)?.pendingResults?.[p.id])?'Showing '+home.players.find(p=>p.id!==userId)!.name+"'s results":undefined}/>;
 }
 
 function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>}){
@@ -65,8 +67,8 @@ function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identit
  useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
  const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{await delayedRpc('delayed_review_ack',{p_event:event.id});await onDone();}catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,onDone,prior]);
  useEffect(()=>{if(prior!==null&&done&&!error)void acknowledge();},[prior,done,error,acknowledge]);
- if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Preparing saved result…'}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
- if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={(event.actorName??'Opponent')+"'s round "+event.round+' results'}/>;
+ if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
+ if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}/>;
  const shown=Math.max(0,elapsed+prior-intro);
  return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}

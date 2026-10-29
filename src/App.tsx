@@ -1,3 +1,4 @@
+import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {NotificationProvider} from '@/components/delayed/NotificationBell';
 import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
 const LazyDelayed = lazy(() => import('./pages/Delayed'));
-const Delayed = () => <Suspense fallback={<p role="status">Loading Async Words…</p>}><LazyDelayed /></Suspense>;
+const Delayed = () => <Suspense fallback={<AsyncTurnEntry/>}><LazyDelayed /></Suspense>;
 const LazyArcade = lazy(() => import("./pages/Arcade"));
 const Arcade = () => <Suspense fallback={<p role="status">Loading Arcade…</p>}><LazyArcade /></Suspense>;
 import NotFound from "./pages/NotFound";
@@ -209,7 +210,7 @@ const App = () => {
                 <Route path="/arcade/:game/run/:runId" element={<ReleaseProtectedGameRoute><RouteErrorBoundary title="Arcade screen crashed"><Arcade /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route path="/delayed" element={<Delayed />} />
                 <Route path="/delayed/:matchId" element={<Delayed />} />
-                <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
+                <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route
                   path="/game/:gameId"

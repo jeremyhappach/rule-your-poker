@@ -86,12 +86,12 @@ function ReleaseCheckScreen({ unavailable = false }: { unavailable?: boolean }) 
  * publications cannot unmount a live table; they are deferred until the user
  * returns to a non-game route.
  */
-export function ReleaseProtectedGameRoute({ children }: { children: ReactNode }) {
+export function ReleaseProtectedGameRoute({ children, checkingFallback }: { children: ReactNode; checkingFallback?:ReactNode }) {
   const { status } = useReleaseVersionContext();
   const { gameId, runId, childId } = useParams();
 
   return (
-    <GameRouteEntryCheck key={gameId ?? runId ?? childId ?? "unknown-game"} ambientStatus={status}>
+    <GameRouteEntryCheck key={gameId ?? runId ?? childId ?? "unknown-game"} ambientStatus={status} checkingFallback={checkingFallback}>
       {children}
     </GameRouteEntryCheck>
   );
@@ -100,9 +100,11 @@ export function ReleaseProtectedGameRoute({ children }: { children: ReactNode })
 function GameRouteEntryCheck({
   ambientStatus,
   children,
+  checkingFallback,
 }: {
   ambientStatus: ReleaseCheckStatus;
   children: ReactNode;
+  checkingFallback?: ReactNode;
 }) {
   const admittedRef = useRef(false);
   const [entryStatus, setEntryStatus] = useState<ReleaseCheckStatus>(
@@ -129,7 +131,7 @@ function GameRouteEntryCheck({
 
   const decision = getGameEntryReleaseDecision(entryStatus, ambientStatus, admittedRef.current);
 
-  if (decision === "checking") return <ReleaseCheckScreen />;
+  if (decision === "checking") return <>{checkingFallback ?? <ReleaseCheckScreen />}</>;
   if (decision === "unavailable") return <ReleaseCheckScreen unavailable />;
   if (decision === "refresh-required") return <ReloadBuildDialog />;
 

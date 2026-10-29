@@ -148,3 +148,16 @@ it.each(['run21','quintzee','boxdrop'])('%s retains both players and only the di
  expect(ui.getByLabelText('Opponent score 125')).toBeTruthy();await receive({...mock.snapshot,reviewRevision:1,pendingResults:{other:0},totals:{me:0,other:250}});
  expect(ui.getByLabelText('Opponent score 250')).toBeTruthy();
 });
+
+for(const game of ['run21','boxdrop'])it(game+': slow state and Start retain the same handoff without an intermediate screen',async()=>{
+ let stateReply!:(v:any)=>void,startReply!:(v:any)=>void;
+ const state=new Promise(r=>stateReply=r),started=new Promise(r=>startReply=r);
+ mock.request.mockImplementation((body:any)=>body.op==='state'?state:started);
+ const ui=mount(false,true);await flush();expect(ui.getByText('Your turn!')).toBeTruthy();
+ expect(ui.queryByText(/Preparing|Begin round|Availability deadline/)).toBeNull();
+ await act(async()=>stateReply({...initial(game),board:null}));await flush();
+ expect(ui.getByText('Your turn!')).toBeTruthy();expect(mock.request.mock.calls.filter(([b])=>b.op==='action')).toHaveLength(1);
+ await tick(1000);expect(ui.queryByText(/Preparing|Begin round|Availability deadline/)).toBeNull();
+ await act(async()=>startReply({...initial(game),revision:2}));await flush();expect(ui.queryByText('Your turn!')).toBeNull();
+ expect(mock.request.mock.calls.filter(([b])=>b.op==='action')).toHaveLength(1);
+});
