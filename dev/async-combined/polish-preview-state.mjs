@@ -1,6 +1,7 @@
 // Loopback-only synthetic transport. No customer or hosted state is connected.
 import {initialSibling,completedSibling} from './sibling-completion-fixtures.mjs';
 import {readFileSync as read} from 'node:fs';
+let completeMatch=false;
 const entries=new Map(),seenChildren=new Set(),players=[{id:'me',name:'Hap'},{id:'other',name:'Jeremy'}];
 export const polishViewed=id=>seenChildren.has(id);
 function entry(id){
@@ -19,14 +20,16 @@ function entry(id){
 }
 export function polishResponse(body){
  const {name,args={}}=body;
- if(body.op==='fixture_reset'){entries.clear();seenChildren.clear();return {reset:true};}
+ if(body.op==='fixture_reset'){entries.clear();seenChildren.clear();completeMatch=false;return {reset:true};}
+ if(body.op==='fixture_terminal'){const e=entry(body.childId);e.finishTerminal=true;e.finishMatch=body.matchFinale===true;return {ready:true};}
+ if(name==='delayed_review_ack'&&args.p_event?.startsWith('finish-turn-')){seenChildren.add(args.p_event.slice(7));return null;}
  if(name==='delayed_reviews'&&args.p_child==='child1')return {events:[{id:'final-child1',kind:'child',actor:null,round:0,score:null,seen:seenChildren.has('child1'),receipt:{winner:'other',stake:5,game:'tri-towers'},board:null}],terminal:true,actor:'other',revision:2,segment:2,serverAt:Date.now()};
  if(name==='delayed_review_ack'&&args.p_event==='final-child1'){seenChildren.add('child1');return null;}
- if(name==='delayed_home'&&args.p_match==='turns'){
-  const lineup=['run21','tri-towers','quintzee','boxdrop'].map((game,i)=>{const e=entry('turn-'+game),s=e.snapshot;return {id:s.id,ordinal:i+1,game,stake:5,terminal:false,config:s.config,actor:'me',scores:s.totals,viewed:false,expiresAt:s.expiresAt,lastCallAt:new Date(Date.now()+86400000).toISOString(),startedAt:s.board?new Date(s.serverAt).toISOString():null};});
-  return {id:'turns',status:'active',players,organizer:'me',opponent:'other',lineup,net:0,revision:1,realMoney:false,serverAt:Date.now(),acceptedAt:new Date().toISOString(),createdAt:new Date().toISOString(),completed:0,exposure:20};
+ if(['delayed_home','delayed_history_detail'].includes(name)&&args.p_match==='turns'){
+  const lineup=['run21','tri-towers','quintzee','boxdrop'].map((game,i)=>{const e=entry('turn-'+game),s=e.snapshot;return {id:s.id,ordinal:i+1,game,stake:5,terminal:completeMatch||s.terminal,config:s.config,actor:s.actor,scores:s.totals,viewed:seenChildren.has(s.id),result:completeMatch||s.terminal?{winner:'me',delta:5,reason:'normal'}:null,expiresAt:s.expiresAt,lastCallAt:new Date(Date.now()+86400000).toISOString(),startedAt:s.board?new Date(s.serverAt).toISOString():null};});
+  return {id:'turns',status:completeMatch?'settled':'active',receipt:completeMatch?{match_id:'turns'}:null,players,organizer:'me',opponent:'other',lineup,net:completeMatch?20:0,revision:1,realMoney:false,serverAt:Date.now(),acceptedAt:new Date().toISOString(),createdAt:new Date().toISOString(),completed:0,exposure:20};
  }
- if(name==='delayed_reviews'&&args.p_child?.startsWith('turn-')){const e=entry(args.p_child);return {events:[{...e.event,id:'prior-'+args.p_child,round:1,score:19803,board:null,seen:true},{...e.event,seen:e.seen}],terminal:e.snapshot.terminal,actor:e.snapshot.actor,started:!!e.snapshot.board,segment:e.snapshot.segment,revision:e.snapshot.revision,expiresAt:e.snapshot.expiresAt,serverAt:Date.now()};}
+ if(name==='delayed_reviews'&&args.p_child?.startsWith('turn-')){const e=entry(args.p_child);return {events:[{...e.event,id:'prior-'+args.p_child,round:1,score:19803,board:null,seen:true},{...e.event,seen:e.seen},...(e.snapshot.terminal?[{id:'finish-'+args.p_child,kind:'child',actor:null,round:0,score:null,seen:seenChildren.has(args.p_child),receipt:{winner:'me',game:e.snapshot.game,stake:5},board:null}]:[])],terminal:e.snapshot.terminal,actor:e.snapshot.actor,started:!!e.snapshot.board,segment:e.snapshot.segment,revision:e.snapshot.revision,expiresAt:e.snapshot.expiresAt,serverAt:Date.now()};}
  if(['delayed_review_begin','delayed_review_ack'].includes(name)&&args.p_event?.startsWith('review-turn-')){
   const e=entry(args.p_event.slice(7));if(name==='delayed_review_begin'){e.begun??=Date.now();return {elapsed:Date.now()-e.begun,seen:e.seen};}
   e.seen=true;e.snapshot={...e.snapshot,reviewRevision:1,totals:{...e.snapshot.totals,other:19803+e.event.score},pendingResults:{me:0,other:0}};return null;
@@ -41,7 +44,7 @@ export function polishResponse(body){
    else {const previous=e.snapshot,finished=previous.game==='tri-towers'?{...previous,board:null,actor:'other',revision:previous.revision+1,segment:previous.segment+1,ownResults:[{round:2,score:45780,at,board:{...previous.board,phase:'stage_complete',deadline:at+5000,result:{reason:'take_score',scoreBefore:80000,score:125780,stageScore:45780,timeBonus:580,completedAt:at}}}]}:completedSibling(previous,at);
     const award=finished.ownResults[0].score,record=finished.ownResults[0];record.round=2;
     if(previous.game!=='run21'){record.board.score=80000+award;record.board.result.scoreBefore=80000;record.board.result.score=80000+award;}
-    e.snapshot={...finished,revision:previous.revision+1,segment:previous.segment+1,ownResults:[{round:1,score:80000,at:at-86400000},record],totals:{...previous.totals,me:80000+award}};}
+    completeMatch=e.finishMatch===true;e.snapshot={...finished,terminal:e.finishTerminal===true,revision:previous.revision+1,segment:previous.segment+1,ownResults:[{round:1,score:80000,at:at-86400000},record],totals:{...previous.totals,me:80000+award}};}
    e.snapshot={...e.snapshot,serverAt:at};e.commands.set(body.requestId,structuredClone(e.snapshot));
   }
   return {...e.snapshot,serverAt:at};

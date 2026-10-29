@@ -47,7 +47,7 @@ describe('actual async shell sibling audit',()=>{
   });
   it(`${game}: late terminal result returns without sending actions`,async()=>{
    mock.snapshot=initial(game);const ui=mount();await flush();const v={...finish(game,reasons[0]),terminal:true,serverAt:20000};
-   await receive(v);await tick(100);expect(ui.getByText('Match destination')).toBeTruthy();
+   await receive(v);await tick(2999);expect(ui.queryByText('Match destination')).toBeNull();await tick(101);expect(ui.getByText('Match destination')).toBeTruthy();
    expect(mock.request.mock.calls.every(([body])=>body.op==='state')).toBe(true);
   });
   it(`${game}: fresh completed reentry and forfeit without attempt return`,async()=>{
@@ -57,7 +57,7 @@ describe('actual async shell sibling audit',()=>{
   });
   it(`${game}: old duplicate does not restart the result window`,async()=>{
    mock.snapshot=initial(game);const ui=mount();await flush();await receive(finish(game,reasons[0]));await tick(4000);
-   await receive(finish(game,reasons[0]));await tick(game==='boxdrop'?4000:1000);expect(ui.getByText('Match destination')).toBeTruthy();
+   await receive(finish(game,reasons[0]));await tick((game==='boxdrop'?4000:1000)+3000);expect(ui.getByText('Match destination')).toBeTruthy();
   });
   it(`${game}: retains this attempt through later rounds and terminal child completion`,async()=>{
    mock.snapshot=initial(game);const ui=mount();await flush();const v=finish(game,reasons[0]);await receive(v);
@@ -76,7 +76,7 @@ describe('actual async shell sibling audit',()=>{
   mock.snapshot=initial('run21');const ui=mount();await flush();const v=finish('run21','collect');v.ownResults[0].board.result.aggregate=aggregate;
   await receive(v);expect(ui.getByText(aggregate===105?'PERFECT 105!':'INCREDIBLE 104!')).toBeTruthy();
   await receive(v);await tick(aggregate===105?3800:3000);expect(ui.queryByText(aggregate===105?'PERFECT 105!':'INCREDIBLE 104!')).toBeNull();
-  await tick(2500);expect(ui.container.querySelector('.async-score-pills [data-active=true] strong')?.textContent).toBe('10,000');await tick(2500);expect(ui.getByText('Match destination')).toBeTruthy();
+  await tick(2500);expect(ui.container.querySelector('.async-score-pills [data-active=true] strong')?.textContent).toBe('10,000');await tick(2500);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.audio.mock.calls.filter(([event]:any)=>event.id.startsWith('run21-fanfare:'))).toHaveLength(1);
  });
  for(const game of ['quintzee','boxdrop'])it(`${game}: canonical count-up starts from the prior total`,async()=>{
@@ -87,11 +87,11 @@ describe('actual async shell sibling audit',()=>{
  });
  it('Words: own word receipt counts then returns through actual async shell',async()=>{
   mock.snapshot=words();const ui=mount(true);await flush();expect(ui.container.querySelector('[data-fullscreen-game-shell]')).toBeTruthy();
-  await receive(wordFinish());expect(ui.queryByText('Match destination')).toBeNull();await tick(7000);expect(ui.getByText('Match destination')).toBeTruthy();
+  await receive(wordFinish());expect(ui.queryByText('Match destination')).toBeNull();await tick(7000);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
  });
  it('Words: duplicate and late receipt return without an action replay',async()=>{
-  mock.snapshot=words();const ui=mount(true);await flush();await receive(wordFinish());await receive({...wordFinish(),serverAt:20000});await tick(100);
+  mock.snapshot=words();const ui=mount(true);await flush();await receive(wordFinish());await receive({...wordFinish(),serverAt:20000});await tick(100);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);
   expect(ui.getByText('Match destination')).toBeTruthy();expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
  });
  it('Words: fresh terminal and timeout-forfeit reentry returns',async()=>{
@@ -103,7 +103,7 @@ describe('actual async shell sibling audit',()=>{
   mock.words.mockImplementation(async(name:string)=>{if(name==='delayed_words_action')mock.snapshot={...wordFinish(),phase:'complete',finished:true,outcome:{reason:'completed',winner:'me',delta:5}};return structuredClone(mock.snapshot);});
   fireEvent.click(ui.getByRole('button',{name:'C, 3 points'}));fireEvent.click(ui.container.querySelector('[data-square="112"]')!);
   fireEvent.click(ui.getByRole('button',{name:'A, 1 points'}));fireEvent.click(ui.container.querySelector('[data-square="113"]')!);
-  fireEvent.click(ui.getByRole('button',{name:'Submit Word'}));await flush();expect(ui.queryByText('Match destination')).toBeNull();await tick(7000);expect(ui.getByText('Match destination')).toBeTruthy();
+  fireEvent.click(ui.getByRole('button',{name:'Submit Word'}));await flush();expect(ui.queryByText('Match destination')).toBeNull();await tick(7000);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.words.mock.calls.filter(([name])=>name==='delayed_words_action')).toHaveLength(1);
  });
  it('Words: pass returns after the accepted action',async()=>{

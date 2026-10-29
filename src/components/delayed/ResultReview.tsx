@@ -2,7 +2,7 @@ import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
 import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
-import {reviewSchedule,rebaseReviewBoard,reviewScoreContext} from '@/lib/delayed/reviewPresentation';
+import {reviewSchedule,rebaseReviewBoard,reviewScoreContext,ASYNC_SCORE_HOLD_MS} from '@/lib/delayed/reviewPresentation';
 import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
@@ -32,7 +32,7 @@ function useVisible(){
 function usePlayback(duration:number,key:string){
  const active=useVisible(),[frame,setFrame]=useState({key,elapsed:0}),origin=useRef<number|null>(null);
  useEffect(()=>{origin.current=null;setFrame({key,elapsed:0});},[key]);
- useEffect(()=>{if(!active){origin.current=null;return;}origin.current=performance.now();const id=setInterval(()=>setFrame({key,elapsed:Math.min(duration,performance.now()-(origin.current??performance.now()))}),50);return()=>clearInterval(id);},[active,duration,key]);
+ useEffect(()=>{if(!active){origin.current=null;return;}if(frame.key===key&&frame.elapsed>=duration)return;origin.current=performance.now();const id=setInterval(()=>{const elapsed=Math.min(duration,performance.now()-(origin.current??performance.now()));setFrame({key,elapsed});if(elapsed>=duration)clearInterval(id);},50);return()=>clearInterval(id);},[active,duration,key]);
  const elapsed=frame.key===key?frame.elapsed:0;
  return {elapsed,active,done:active&&elapsed>=duration};
 }
@@ -61,7 +61,7 @@ export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home
 
 function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>}){
  const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId));
- const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?1000:schedule.duration),[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(600,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
+ const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?0:schedule.presentationEnd)+ASYNC_SCORE_HOLD_MS,[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(ASYNC_SCORE_HOLD_MS,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
  useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
  const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{await delayedRpc('delayed_review_ack',{p_event:event.id});await onDone();}catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,onDone,prior]);
  useEffect(()=>{if(prior!==null&&done&&!error)void acknowledge();},[prior,done,error,acknowledge]);
@@ -112,9 +112,10 @@ export function ChildResults({childId,matchId,userId}:Identity){
 
 function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
- const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(10500,home&&imageReady?matchId:'loading'),busy=useRef(false);
- useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!h.receipt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
- useEffect(()=>{if(!home||!imageReady||!play.done||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).then(()=>navigate('/delayed/'+matchId+'?history=1',{replace:true})).catch(()=>{busy.current=false;setError('Unable to confirm viewing. The result is still available.');});},[home,imageReady,play.done,matchId,navigate]);
+ const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
+ useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!h.receipt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
+ const acknowledgeFinale=useCallback(()=>{if(!home||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;setAckError('');void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).catch(()=>{busy.current=false;setAckError('Unable to confirm viewing. Your saved results remain available.');});},[home,matchId]);
+ useEffect(()=>{if(imageReady&&play.done)acknowledgeFinale();},[imageReady,play.done,acknowledgeFinale]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
@@ -127,5 +128,6 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
+  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<Link className="delayed-primary" to="/">Back to Lobby</Link></div>}
  </div></FullscreenGameShell></div>;
 }

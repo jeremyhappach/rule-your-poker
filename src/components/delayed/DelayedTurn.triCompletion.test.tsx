@@ -32,12 +32,12 @@ describe('async TriTowers attempt completion',()=>{
   expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();expect(ui.getByLabelText('You score 0')).toBeTruthy();
   await tick(5600);expect(ui.getByLabelText('You score 22890')).toBeTruthy();
   await tick(1700);expect(ui.getByLabelText('You score 45780')).toBeTruthy();expect(ui.queryByText('Match destination')).toBeNull();
-  await tick(700);expect(ui.getByText('Match destination')).toBeTruthy();
+  await tick(2999);expect(ui.queryByText('Match destination')).toBeNull();await tick(101);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.request.mock.calls.every(([body])=>body.op==='state')).toBe(true);
  });
  it('does not restart the sequence or replay audio for a duplicate result',async()=>{
   const ui=mount();await flush();await receive(finish());await tick(5000);
-  await receive(finish());await tick(3000);
+  await receive(finish());await tick(6000);
   expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.audio.mock.calls.filter(([event]:any)=>event.id.startsWith('tri-clear:'))).toHaveLength(1);
  });
@@ -46,7 +46,7 @@ describe('async TriTowers attempt completion',()=>{
   expect(mock.audio.mock.calls.filter(([event]:any)=>event.id.startsWith('tri-clear:'))).toHaveLength(0);
  });
  it('returns after an overdue completion recovered by the mounted route',async()=>{
-  const ui=mount();await flush();await receive({...finish(),serverAt:deadline+1});
+  const ui=mount();await flush();await receive({...finish(),serverAt:deadline+1});await tick(3000);
   expect(ui.getByText('Match destination')).toBeTruthy();
  });
  it('keeps the completed attempt when a later round arrives',async()=>{
@@ -55,11 +55,11 @@ describe('async TriTowers attempt completion',()=>{
    ownResults:[...next.ownResults,{...next.ownResults[0],round:2,at:15000,score:99999}]});
   expect(ui.container.querySelector('[data-round-key]')?.getAttribute('data-round-key')).toBe('child:1');
   expect(ui.container.querySelector('[data-stage-result]')?.getAttribute('data-stage-result')).toBe('child:me:1:10000');
-  await tick(3000);expect(ui.getByText('Match destination')).toBeTruthy();
+  await tick(6000);expect(ui.getByText('Match destination')).toBeTruthy();
  });
  it('presents a terminal child result before returning',async()=>{
   const ui=mount();await flush();await receive({...finish(),terminal:true});
-  expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();await tick(8000);expect(ui.getByText('Match destination')).toBeTruthy();
+  expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();await tick(11000);expect(ui.getByText('Match destination')).toBeTruthy();
  });
  it('returns immediately for a forfeit without a completed attempt',async()=>{
   const ui=mount();await flush();await receive({...finish(),terminal:true,ownResults:[]});expect(ui.getByText('Match destination')).toBeTruthy();

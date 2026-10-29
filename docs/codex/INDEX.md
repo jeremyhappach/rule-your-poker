@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `ASYNC_SMOKE_POLISH_RELEASE.md` | Approved score holds, persistent final results, full polish qualification and production receipt |
 | `ASYNC_SMOKE_POLISH_LOCAL.md` | Local 14-item smoke polish, explicit Start/review timing, archive behavior, mobile proof and publication hold |
 | `ASYNC_RESULTS_RELEASE.md` | Approved results/history publication, installed review migration, financial preservation and exact-SHA release evidence |
 | `ASYNC_RESULTS_LOCAL_CHECKPOINT.md` | Local results/history candidate, service/race/browser evidence, publication hold and remaining review gates |

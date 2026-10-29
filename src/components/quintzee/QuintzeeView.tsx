@@ -1,6 +1,6 @@
 import {useQuintzeeScorePresentation} from './useQuintzeeScorePresentation';
 import {TriScorePill,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
-import {triResultTimeline,triCountWindow} from '@/lib/triTowers/roundTimeline';
+import {triResultTimeline,triCountWindow,TRI_ROUND_TIMELINE} from '@/lib/triTowers/roundTimeline';
 import {celebrationCueAt} from '@/lib/audio/celebrationCue';
 import {QuintzeeDie} from './QuintzeeDie';
 import {type ReactNode,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
@@ -11,7 +11,7 @@ import {QUINTZEE_CATEGORIES,QUINTZEE_LABELS,quintzeeClock,quintzeeBasePreview,qu
 import './quintzee.css';
 import {useQuintzeeRumble} from './useQuintzeeRumble';
 import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogTitle} from '@/components/ui/alert-dialog';
-export function QuintzeeView({replay=false,awaitingStart=false,snapshot:v,actor,userId=actor,now,pending,error,onIntent,onReconnect,activeTab,setActiveTab,sessionEnded=false,panel,balance,navigation}:{replay?:boolean;awaitingStart?:boolean;navigation?:ReactNode;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(id:string)=>ReactNode;snapshot:QuintzeeSnapshot;actor:string;userId?:string;now:number;pending:boolean;error:string;onIntent:(i:QuintzeeIntent)=>void;onReconnect:()=>void}){
+export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineEnd,snapshot:v,actor,userId=actor,now,pending,error,onIntent,onReconnect,activeTab,setActiveTab,sessionEnded=false,panel,balance,navigation}:{replay?:boolean;awaitingStart?:boolean;onResultTimelineEnd?:(at:number)=>void;navigation?:ReactNode;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(id:string)=>ReactNode;snapshot:QuintzeeSnapshot;actor:string;userId?:string;now:number;pending:boolean;error:string;onIntent:(i:QuintzeeIntent)=>void;onReconnect:()=>void}){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),[held,setHeld]=useState<number[]>([]),[layer,setLayer]=useState<Element|null>(null),[abandon,setAbandon]=useState(false),root=useRef<HTMLDivElement>(null);
  const [zero,setZero]=useState<{category:number;revision:number;scope:string}|null>(null),confirming=useRef(false);
  const tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
@@ -23,6 +23,7 @@ export function QuintzeeView({replay=false,awaitingStart=false,snapshot:v,actor,
  const result=b.phase==='stage_complete'&&b.result?{...b.result,id:v.scope+':result',elapsed:Math.max(0,b.rules.resultMs-(b.deadline-at)),displayScore:b.result.score}:null;
  const resultSequence=useMemo(()=>({namespace:'quintzee',clearMs:0,clearCueAt:celebrationCueAt,seekOnRecovery:false,timeline:(elapsed:number)=>triResultTimeline(Math.max(0,elapsed-baseMotion.finalDelay)),countWindow:()=>{const w=triCountWindow();return {start:w.start+baseMotion.finalDelay,end:w.end+baseMotion.finalDelay};}}),[baseMotion.finalDelay]);
  const motion=useTriRoundPresentation({replay,scope:v.scope,phase:b.phase,connected:!error,paused:v.pausedAt!==null,now:at,deadline:b.deadline,userId,active:!sessionEnded&&tab==='cards',modern:true,liveEntry:false,recoveryEpoch:0,result,resultSequence});
+ useEffect(()=>{if(result)onResultTimelineEnd?.(at-result.elapsed+baseMotion.finalDelay+TRI_ROUND_TIMELINE.homeAt);},[result?.id,baseMotion.finalDelay,b.deadline,onResultTimelineEnd]);
  const canAct=!replay&&!sessionEnded&&!v.autoplay&&mine&&!pending&&!error&&!rumble&&!baseMotion.busy&&at>=(b.celebration?.endsAt??0)&&tab==='cards'&&(b.phase==='playing'||ready)&&!s.finished&&v.pausedAt===null&&at<b.deadline;
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{setHeld([...b.held]);},[v.scope,b.rollSerial,b.dice.length]);
