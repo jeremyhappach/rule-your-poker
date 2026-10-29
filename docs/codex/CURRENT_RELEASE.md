@@ -28,7 +28,7 @@ device owner smoke remains due. See [release evidence](ASYNC_COMBINED_RELEASE.md
 
 Documentation-only follow-up `10c467ea9` is also production READY and serves the
 matching public manifest. Its publisher run 40863667339 failed: the GitHub runner
-received HTTP 403 fetching that manifest through all 120 attempts. The persisted
+received HTTP 403 fetching that manifest on attempts 33–120 (88 requests). The persisted
 signal remains on the successfully verified gameplay/activation SHA `8c0898cc4`.
 Runtime code is identical between these commits; admission remains open and
 recovery healthy. Separate publisher-access investigation is queued. This final

@@ -4,7 +4,7 @@ Observed while closing the approved five-game async release. Gameplay SHA
 8c0898cc4 was verified through READY, public manifest, publisher attempt 2 and
 persisted signal before activation. Documentation-only follow-up 10c467ea9 is
 READY and publicly serves its manifest, but GitHub publisher run 40863667339,
-job 123412899612, received HTTP 403 fetching that URL on all 120 attempts and
+job 123412899612, received HTTP 403 fetching that URL on attempts 33–120 (88 requests) and
 failed at 11:23:19 UTC. Expected: the existing authorized publisher can read the
 public build manifest and publish the matching receipt. Actual: stored signal
 remains on 8c0898cc4. Five-game admission/recovery remain healthy; runtime code
@@ -12,6 +12,10 @@ is identical between those SHAs. Investigate the HTTP denial separately without
 changing access controls or credentials speculatively. Earlier integration 403
 also prevents this connector from rerunning jobs. No bypass or manual signal
 write was attempted. Evidence: ASYNC_COMBINED_RELEASE.md and the workflow logs.
+Read-only reconciliation at 11:43 UTC confirmed this mismatch. Response bodies
+and headers were not captured by the job; the exact denial cause remains unknown.
+Vercel firewall/observability evidence endpoints returned 404. Current-head owner
+rerun is the smallest next step; preserve the existing security/publication gates.
 
 ## Releasing — 11 Up secondary smoke — October 28, 2026
 

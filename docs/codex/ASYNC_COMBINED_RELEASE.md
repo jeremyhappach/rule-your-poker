@@ -75,7 +75,7 @@ recovery are enabled. Physical-device owner smoke remains due.
 Documentation-only follow-up 10c467ea97f823fc80470db858b7bf098725bde8 is READY in
 deployment dpl_HhHZmX2ZNb2SJpS6atzaEMkMWStg and matches the public manifest.
 Publisher run 40863667339 failed at 2026-10-29 11:23:19 UTC: job 123412899612
-received HTTP 403 fetching the public manifest on all 120 attempts, so it never
+received HTTP 403 fetching the public manifest on attempts 33–120 (88 requests), so it never
 called publish-release. This is distinct from the earlier manifest_invalid error;
 no cause beyond the HTTP denial is established. The persisted signal remains on
 the verified activation SHA 8c0898cc4. Only the two release documents differ
@@ -83,6 +83,24 @@ between those commits. No runtime rollback or recovery disable was performed.
 At 11:38 UTC multi-game admission and scheduler health remained enabled with a
 current minute tick. Publisher-access investigation is queued separately; final
 failure evidence is retained on the task branch without another main publication.
+
+Read-only reconciliation at 2026-10-29 11:43 UTC confirmed remote main and
+production still at 10c467ea97f823fc80470db858b7bf098725bde8, deployment READY,
+public manifest HTTP 200 with that buildId, publisher attempt 1 failed and
+persisted signal still at 8c0898cc4def44a53ac9d31f8a357f72692b2e80.
+Full log review corrects the earlier count: attempts 1–32 had no curl HTTP error;
+403 began at 11:15:55.3815025 UTC on attempt 33. The workflow's curl --fail
+discarded response bodies and did not capture headers/request IDs. It therefore
+cannot identify the denying layer or rule. Local curl with the same URL and
+Cache-Control header returns 200. Current project protection reports password
+and trusted-IP protection disabled and SSO all_except_custom_domains. Firewall
+configuration/attack endpoints returned Seawall Config not found (404), including
+with the verified team scope; observability schema also returned 404. This does
+not prove absence of platform mitigation or identify a WAF rule. No exact HTTP
+403 cause or code correction is established. The known integration rerun 403
+was not bypassed. Smallest owner action: rerun failed jobs on CURRENT-head run
+40863667339, then reverify its publisher receipt; do not rerun gameplay run
+40794356161. No production mutation, security change or new deployment was made.
 
 Rollback policy: close private.delayed_release.admission_enabled to stop new
 matches; preserve recovery and compatible client code for accepted mixed matches.
