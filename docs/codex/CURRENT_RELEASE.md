@@ -1,3 +1,17 @@
+# Async completion follow-up — 2026-10-29
+
+Tri-Towers correction `1b222a254` is on remote main, production READY and matches
+the public manifest. Publisher `40879563973` attempt 1 failed with 503
+`manifest_invalid`; the owner retry is pending. No direct receipt write was made.
+The actual async-shell audit reproduced sibling return/presentation defects in
+Run21, Quintzee and Box Drop. Jeremy approved their correction and separate
+release. The adapter-only candidate passes 58 focused cases, all 3,190 source
+tests, 241 harness tests, final typecheck/build and the three phone-sized browser
+sequences. The first publisher's receipt remains the publication blocker; the
+separate sibling candidate is otherwise qualified. Words' tested
+completion paths pass without a product change. See
+[audit, limits and release evidence](ASYNC_COMPLETION_AUDIT.md).
+
 # Async Tri-Towers all-clear presentation incident — 2026-10-29
 
 Read-only production evidence confirms the latest Hap/Happach Gmail four-child

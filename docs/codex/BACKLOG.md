@@ -1,5 +1,13 @@
 ## Queued — GitHub publisher cannot fetch public manifest — October 29, 2026
 
+Latest related failure, 13:12:28 UTC: Tri-Towers runtime SHA `1b222a254` is
+production READY and matches the public manifest, but publisher `40879563973`
+attempt 1 received 503 `manifest_invalid` from publish-release after its GitHub
+manifest step passed. The owner retry is pending. The earlier `10c467ea9` run
+below subsequently succeeded on owner attempt 2 and has a matching stored
+receipt. Keep the manifest/publication failure investigation separate from
+gameplay corrections; no credential or gate bypass is authorized.
+
 Observed while closing the approved five-game async release. Gameplay SHA
 8c0898cc4 was verified through READY, public manifest, publisher attempt 2 and
 persisted signal before activation. Documentation-only follow-up 10c467ea9 is

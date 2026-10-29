@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `ASYNC_COMPLETION_AUDIT.md` | Five-game async completion audit, approved sibling corrections and serialized release receipts |
 | `ASYNC_TRI_COMPLETION_INCIDENT.md` | Saved async Tri-Towers attempt stalls after all-clear; authority evidence and approved local presentation correction |
 | `ASYNC_COMBINED_RELEASE.md` | Five-game hosted qualification, recovery worker, combined publication and guarded activation |
 | `ASYNC_COMBINED_LOCAL.md` | Approved five-game async, creator deletion, human admission, local evidence and remaining hosted release gates |

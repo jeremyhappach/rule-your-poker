@@ -1,5 +1,9 @@
 # Async Tri-Towers completion presentation — October 29, 2026
 
+After the local checkpoint below, Jeremy approved production release.
+`1b222a254` is now on main and production READY; the publisher receipt retry
+and approved sibling follow-up are tracked in `ASYNC_COMPLETION_AUDIT.md`.
+
 Production investigation is read-only. No customer action/recovery RPC was called,
 and no customer session, state, score, balance or receipt was changed. The active
 game screen is not exposed on this computer; browser inventory/AX inspection

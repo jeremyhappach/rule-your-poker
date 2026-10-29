@@ -9,6 +9,13 @@ import {delayedRequest,DelayedRequestError,gameName} from '@/lib/delayed/client'
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {BoardProjection} from '@/lib/run21/model';
+import {SCORE_PRESENTATION_MS} from '@/lib/run21/model';
+import {medalDuration} from '@/lib/run21/rulesets';
+import {displayedScore} from '@/lib/run21/presentation';
+import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
+import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
+import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
+import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {Run21Felt} from '@/components/run21/Run21Felt';
 import {Run21PlayerPane,Run21Timer} from '@/components/run21/Run21PlayerPane';
 import {Run21ScoringReference} from '@/components/run21/Run21ScoringHelp';
@@ -23,6 +30,8 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(Date.now()),[tab,setTab]=useState<ShellTabId>('cards');
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(null),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
+ const [medal,setMedal]=useState<ScoreCelebrationReceipt|null>(null),seenMedal=useRef<string|null>(null);
+ const retireMedal=useCallback(()=>setMedal(null),[]);
  const navigate=useNavigate(),latest=useRef<Snapshot|null>(null);
  const accept=useCallback((value:Snapshot)=>{
   if(value.id!==childId||value.matchId!==matchId)throw Error('Turn identity changed. Return to the match.');
@@ -30,7 +39,7 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
   if(old&&old.revision===value.revision&&JSON.stringify({...old,serverAt:0})!==JSON.stringify({...value,serverAt:0}))throw Error('Conflicting turn snapshot. Reconnect safely.');
   latest.current=value;
   // A duplicate/recovery response cannot rewind an already-running result window.
-  const at=old?.game==='tri-towers'?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
+  const at=old?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
   clock.current={at,received:performance.now()};setNow(at);
   setSnapshot(old=>old&&old.revision>value.revision?old:value);
   if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId,{replace:true});}
@@ -54,13 +63,18 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
  useEffect(()=>{const timer=setInterval(()=>setNow(clock.current.at+performance.now()-clock.current.received),100);return()=>clearInterval(timer);},[]);
  const ended=!!snapshot&&(snapshot.terminal||snapshot.actor!==userId||snapshot.segment!==initialSegment.current);
  // Keep this route's attempt even if later turns arrive while its result plays.
- const result=snapshot?.game==='tri-towers'?snapshot.ownResults.find(r=>r.round===initialRound.current):snapshot?.ownResults.at(-1);
+ const result=snapshot?.ownResults.find(r=>r.round===initialRound.current);
  const board=(ended?result?.board:snapshot?.board) as any;
  const displayRound=ended&&result?result.round:snapshot?.round;
  const triResult=snapshot?.game==='tri-towers'&&ended&&result&&board?.result?roundResultPresentation({
   ...board.result,id:[childId,userId,result.round,result.at].join(':'),stage:result.round,
  },board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0):null;
- const triResultUntil=triResult?board.deadline as number:null;
+ const attemptKey=result?[childId,userId,result.round,result.at].join(':'):null;
+ const runResult=snapshot?.game==='run21'&&ended?board?.result:null;
+ const medalMs=runResult?.score>0&&(runResult.aggregate===104||runResult.aggregate===105)?medalDuration(snapshot!.config as BoardProjection['config'],runResult.aggregate):0;
+ const runTotal=runResult?snapshot!.ownResults.filter(r=>r.round<=result!.round).reduce((total,r)=>total+r.score,0):0;
+ const runPresentation=runResult?{playerId:userId,startedAt:runResult.at+medalMs,endsAt:runResult.at+medalMs+SCORE_PRESENTATION_MS,from:runTotal-result!.score,to:runTotal}:null;
+ const resultUntil=ended&&result?(runPresentation?.endsAt??board?.deadline??null):null;
  const due=snapshot&&!snapshot.terminal&&!ended?Math.min(board?.deadline??Infinity,Date.parse(snapshot.expiresAt)):null;
  useEffect(()=>{if(due===null||!Number.isFinite(due)||request.current)return;
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
@@ -71,10 +85,24 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // The saved shared-rule deadline includes celebration/count-up. This only
  // finishes local presentation; authority already handed off the turn.
- useEffect(()=>{if(triResultUntil!==null&&now>=triResultUntil)navigate('/delayed/'+matchId,{replace:true});},[triResultUntil,now,matchId,navigate]);
+ useEffect(()=>{if(resultUntil!==null&&now>=resultUntil)navigate('/delayed/'+matchId,{replace:true});},[resultUntil,now,matchId,navigate]);
  const view:BoardProjection|undefined=snapshot?.game==='run21'&&board?{config:snapshot.config as BoardProjection['config'],
-  roundId:childId+':'+snapshot.segment,roundNumber:displayRound!,viewerId:userId,boards:{[userId]:board},players:[{id:userId,name:'You'}],
-  active_player_id:ended?null:userId,liveBoards:true,revealed:false,cumulative:snapshot.totals,scorePresentation:null,presentationKey:childId}:undefined;
+  roundId:childId+':'+initialSegment.current,roundNumber:displayRound!,viewerId:userId,boards:{[userId]:board},players:[{id:userId,name:'You'}],
+  active_player_id:ended?null:userId,liveBoards:true,revealed:false,cumulative:runResult?{...snapshot.totals,[userId]:runTotal}:snapshot.totals,scorePresentation:runPresentation,presentationKey:childId,
+  pausedAt:snapshot.held?now:null}:undefined;
+ const presentationActive=!error&&!snapshot?.held&&tab==='cards';
+ useRun21ScoreAudio(userId,childId,view,now,presentationActive&&!medal);
+ useRun21FailureAudio(userId,childId,view,now,0,presentationActive&&!medal);
+ useEffect(()=>{
+  if(!runResult||!attemptKey)return;
+  if(seenMedal.current!==attemptKey){seenMedal.current=attemptKey;
+   if(medalMs&&now-runResult.at<1500&&presentationActive&&!document.hidden&&navigator.onLine)
+    setMedal({key:attemptKey,aggregate:runResult.aggregate,playerName:'You',durationMs:medalMs,startedAt:performance.now()-(now-runResult.at)});
+  }
+  if(!presentationActive||now>=runResult.at+medalMs)setMedal(null);
+ },[attemptKey,runResult,medalMs,now,presentationActive]);
+ useEffect(()=>{const hidden=()=>{if(document.hidden)retireMedal();};window.addEventListener('offline',retireMedal);document.addEventListener('visibilitychange',hidden);
+  return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
  const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
  const home=<Link to={'/delayed/'+matchId}>Match home</Link>;
  if(!snapshot||!board)return <main className="delayed-page"><header>{home}<h1>{snapshot?gameName(snapshot.game):'Your turn'}</h1></header>
@@ -85,22 +113,23 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
     <button disabled={snapshot.held||pending||!!error||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt)} onClick={()=>void act({type:'start'})}>Begin round {snapshot.round}</button></>}
  </main>;
  if(snapshot.game==='quintzee'){
-  const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+snapshot.segment,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(players.map(id=>[id,id===userId?'You':'Opponent'])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};
-  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>Play money · 36-hour turns</span></div><QuintzeeView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={!canAct} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+  const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(players.map(id=>[id,id===userId?'You':'Opponent'])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};
+  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>Play money · 36-hour turns</span></div><QuintzeeView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  if(snapshot.game==='boxdrop'){
-  const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+snapshot.segment,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:id===userId?'You':'Opponent',score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
-  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>Play money · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={!canAct} error={error} epoch={0} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+  const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:id===userId?'You':'Opponent',score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
+  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>Play money · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={0} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell className={view?'run21-space-theme':'tri-scene'} title={gameName(snapshot.game)} description={'Round '+displayRound}
   activeTab={tab} setActiveTab={setTab} panel={view?<Run21ScoringReference config={view.config}/>:<TriTowersRules rules={board.rules}/>}
   announcement={false} navigation={<nav>{home}<button onClick={()=>setTab('lobby')}>Rules</button></nav>}
+  scores={view&&<div className="arcade-run-score"><span>Total score</span><strong>{displayedScore(view,userId,now).toLocaleString()}</strong></div>}
   actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div></div>}>
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
-   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></>:
+   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} hideScoring={!!medal}/></>:
     <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
      userId={userId} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={[{id:userId,score:board.score,active:true}]}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}
      onIntent={i=>void act(i)}/></div>}
-  </FullscreenGameShell></div>;
+  </FullscreenGameShell>{medal&&<Run21ScoreCelebration userId={userId} receipt={medal} onRetire={retireMedal}/>}</div>;
 }
