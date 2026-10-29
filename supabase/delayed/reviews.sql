@@ -1,4 +1,4 @@
--- LOCAL CANDIDATE ONLY. No cleanup of authority/audit state and no financial writers.
+-- No cleanup of authority/audit state and no financial writers.
 -- Apply atomically: close the backfill/trigger gap against concurrent authority writers.
 LOCK TABLE private.delayed_matches,private.delayed_children IN SHARE ROW EXCLUSIVE MODE;
 ALTER TABLE public.platform_notifications DROP CONSTRAINT platform_notifications_kind_check;

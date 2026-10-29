@@ -1,4 +1,10 @@
-# Async results/history — local candidate, publication held — 2026-10-29
+# Async results/history — installed qualification PASS — 2026-10-29
+
+Owner approved the refreshed previews for production at 18:35:50 UTC. This supersedes the historical local/publication holds below for the complete results/history package and approved illustrated finale only. The separate platform transition audit remains held.
+
+Migration `20261029184517_async_results_review` is installed once. Candidate and installed hosted rollback proofs pass; synthetic profiles are absent, admission/recovery stay enabled and the worker remains recent. Canonical financial function hashes are unchanged. Final validation passes: 3,230 source/server tests, 241 harness tests, typecheck/build, 15 actual service/database checks and the independent-connection parent settlement race. Main integration and exact-SHA publication verification are next. Owner production smoke remains due. See [release qualification](ASYNC_RESULTS_RELEASE.md).
+
+## Historical local review checkpoints
 
 Latest artwork-only follow-up: owner approved the illustrated direction and requested both fictional boxers be white/light-skinned. The two existing assets were edited consistently, preserving the approved composition and poses. No application, gameplay, accounting or settlement code changed. All 18 phone/desktop/reduced-motion preview cases and the asset build pass again. Local preview remains available; publication and hosted changes remain held.
 

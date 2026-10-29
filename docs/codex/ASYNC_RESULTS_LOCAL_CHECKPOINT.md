@@ -1,6 +1,6 @@
 # Async results/history local checkpoint — October 29, 2026
 
-Status: implemented local candidate on `codex/async-combined`, continuing checkpoint `c4ead759b`. Publication, main integration, hosted migration, activation and customer-data changes remain on hold. Production remains the published sibling completion correction `43545662c08baf1e2e7b764c25048989a1d9721b`.
+Superseding status: owner approved the refreshed previews for production at October 29, 18:35:50 UTC. The package's publication and hosted-migration hold is lifted. See [release qualification and current gates](ASYNC_RESULTS_RELEASE.md). The local-only statements below retain their historical scope; they no longer block this approved release. Customer balance/session repair and the separate platform transition audit remain outside scope.
 
 ## Approved artwork-only refinement after `5fd4ac5a0`
 

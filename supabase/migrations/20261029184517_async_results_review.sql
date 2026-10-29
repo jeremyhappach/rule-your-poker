@@ -1,4 +1,4 @@
--- LOCAL REVIEW CANDIDATE: publication and hosted application are on hold.
+-- Approved results/history release: guarded, atomic review metadata migration.
 DO $$ BEGIN
  IF md5(replace(pg_get_functiondef('public.delayed_home(uuid)'::regprocedure),chr(13),''))<>'380f31ca8625abf413de1db5ea688f61' THEN RAISE EXCEPTION 'async_review:preimage_changed public.delayed_home(uuid)';END IF;
  IF md5(replace(pg_get_functiondef('public.platform_notification_center()'::regprocedure),chr(13),''))<>'d27d9dc9844f8bb8dfb675ded2acfba0' THEN RAISE EXCEPTION 'async_review:preimage_changed public.platform_notification_center()';END IF;
@@ -6,7 +6,7 @@ DO $$ BEGIN
  IF md5(replace(pg_get_functiondef('public.delayed_load(uuid,uuid,uuid)'::regprocedure),chr(13),''))<>'ff04043f645d91abcccafa7edf49f009' THEN RAISE EXCEPTION 'async_review:preimage_changed public.delayed_load(uuid,uuid,uuid)';END IF;
 END $$;
 
--- LOCAL CANDIDATE ONLY. No cleanup of authority/audit state and no financial writers.
+-- No cleanup of authority/audit state and no financial writers.
 -- Apply atomically: close the backfill/trigger gap against concurrent authority writers.
 LOCK TABLE private.delayed_matches,private.delayed_children IN SHARE ROW EXCLUSIVE MODE;
 ALTER TABLE public.platform_notifications DROP CONSTRAINT platform_notifications_kind_check;

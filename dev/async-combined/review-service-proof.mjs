@@ -12,7 +12,7 @@ const legacy=await fixture(),legacyState={players:[a,b],round:2,turn:0,totals:{[
 await db.query('UPDATE private.delayed_children SET state=$2,segment=3 WHERE id=$1',[legacy.child,legacyState]);await db.query("SELECT private.delayed_record_outcome($1,1,'normal',$2,'{}')",[legacy.child,a]);
 const oldActive=await fixture();await db.query('UPDATE private.delayed_children SET actor=$2,segment=2 WHERE id=$1',[oldActive.child,b]);
 const authorityBefore=await q('SELECT md5(state::text) v FROM private.delayed_children WHERE id=$1',[legacy.child]);
-await db.query('BEGIN');await db.query(read('supabase/migrations/20261029155233_async_results_review_local_candidate.sql','utf8'));await db.query('COMMIT');
+await db.query('BEGIN');await db.query(read('supabase/migrations/20261029184517_async_results_review.sql','utf8'));await db.query('COMMIT');
 await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[b]);
 let events=(await q('SELECT public.delayed_reviews($1) v',[legacy.child])).events;assert.equal(events.length,2);assert(events.every(e=>e.board===null));assert.equal(events.find(e=>e.kind==='attempt').score,125);
 await q('SELECT public.delayed_review_begin($1) v',[events[0].id]);for(const e of events)await q('SELECT public.delayed_review_ack($1) v',[e.id]);assert.equal((await q('SELECT public.delayed_home($1) v',[legacy.id])).lineup[0].scores[a],125);assert.equal(await q('SELECT md5(state::text) v FROM private.delayed_children WHERE id=$1',[legacy.child]),authorityBefore);
