@@ -39,3 +39,12 @@ Publisher run 40965854739 attempt 1 is still in progress at its production-alias
 Post-release health passes: admission/recovery enabled, minute health tick current, zero overdue unheld round-game children, zero worker leases/failures, zero real-money async matches, and review migration count remains exactly one. The worker's last success remains demand-driven, with no due work.
 
 The repository execution circuit breaker ends this run at the 35-minute boundary. The only remaining delivery step is to recheck the existing publisher and matching persisted receipt; investigate its bounded failure if it terminates unsuccessfully. Do not repeat the migration, product tests or deployment. The task-owned shared publication lock remains in place while this publisher is unresolved; release it after the terminal receipt check, verifying its owner first. This receipt checkpoint is a local documentation commit, so it does not trigger a second deployment. Owner production smoke remains acceptance truth.
+
+
+## Resumed publisher diagnosis — 22:38 UTC
+
+Run 40965854739 attempt 1 failed at 22:36:32 UTC. Job 123770044949 logs show HTTP 403 for all 120 manifest fetches; the alias-wait step exited 1 and the publish-signal step was skipped. This was an access failure, not evidence of an old deployed SHA. The persisted receipt still references the prior release at 22:37:38 UTC.
+
+A local curl request with the workflow's Cache-Control header returns HTTP 200 and c26cf799da0e539d31e304fc38c457f5dd3ea0f6. Vercel's project settings exclude custom domains from SSO protection; password and trusted-IP protection are disabled. The correctly team-scoped firewall configuration and attack-status reads return Seawall Config not found (404), so the specific rule/source behind the runner's 403 is unproven. No protection change, bypass, new deployment, direct receipt write or denied rerun retry was performed. A generic fetch rejected the job-log endpoint; the purpose-built decoded job-log tool succeeded.
+
+Owner action requested: Re-run failed jobs on the existing run, then reply retried. The integration's prior Actions-write 403 has no new permission evidence. If the runner's manifest 403 recurs, stop and investigate that access boundary rather than repeat retries. The matching publisher receipt remains the only release gate; preserve the task-owned lock until that gate is resolved. No additional product tests or migration are needed. This documentation remains local and unpublished.
