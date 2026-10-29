@@ -25,6 +25,10 @@ requests. No direct release-setting write or credential/control workaround was
 attempted. A workflow-specific listing URL was unsupported by the connector;
 its documented repository workflow-run listing supplied the run successfully.
 
+Owner retry succeeded on attempt 2 at 13:55:04 UTC. The stored receipt
+`40879563973-2`, published at 13:55:01.131 UTC, matched `1b222a254` before
+the separately approved sibling candidate advanced main.
+
 ## Findings and correction
 
 | Game | Actual async-shell evidence | Correction |
@@ -86,7 +90,20 @@ have source/related-hook coverage, not a new complete async browser campaign.
 Evidence is under `qualification.local/async-combined/`: `tri-release-*`,
 `sibling-*` and `{run21,quintzee,boxdrop}-completion-*`.
 
-The sibling candidate is qualified for its approved separate publication.
-Production main remains at the Tri-Towers checkpoint while its publisher retry
-is pending. Do not advance main to hide or work around the missing release
-receipt. Physical-device owner smoke remains due after publication.
+## Sibling publication receipt
+
+Candidate `43545662c08baf1e2e7b764c25048989a1d9721b` was already qualified and
+pushed to the task branch. After verifying the Tri-Towers retry and receipt,
+the clean main checkout fast-forwarded to this candidate and the unchanged
+required helper pushed main. Remote main matches. Production deployment
+`dpl_HDQ7mVFhhefkjhK1yEy4bicmn8HZ` is READY and the public manifest at
+`https://holm357.com/build-manifest.json` serves the exact candidate SHA.
+Publisher `40886764271` succeeded on attempt 1; stored release receipt
+`40886764271-1` matches the SHA, published at 13:59:09.323 UTC.
+
+All publication gates pass. Physical-device owner smoke remains due: complete
+an async attempt in Tri-Towers, Run21, Quintzee and Box Drop, confirm the shared
+celebration/count-up and automatic return to the parent match, then reopen the
+completed child and confirm no replay. Production acceptance is not inferred
+from synthetic transport tests. This receipt is recorded locally on the task
+branch without creating another documentation-only production deployment.

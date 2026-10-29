@@ -1,15 +1,18 @@
 # Async completion follow-up — 2026-10-29
 
-Tri-Towers correction `1b222a254` is on remote main, production READY and matches
-the public manifest. Publisher `40879563973` attempt 1 failed with 503
-`manifest_invalid`; the owner retry is pending. No direct receipt write was made.
+Tri-Towers correction `1b222a254` passed publication after owner retry:
+publisher `40879563973` attempt 2 succeeded and stored receipt matched.
+The approved sibling correction `43545662c08baf1e2e7b764c25048989a1d9721b`
+is now on remote main, production READY (`dpl_HDQ7mVFhhefkjhK1yEy4bicmn8HZ`)
+and matches the public manifest. Publisher `40886764271` attempt 1 succeeded;
+stored receipt `40886764271-1` matches at 13:59:09 UTC. No direct receipt write
+was made.
 The actual async-shell audit reproduced sibling return/presentation defects in
 Run21, Quintzee and Box Drop. Jeremy approved their correction and separate
 release. The adapter-only candidate passes 58 focused cases, all 3,190 source
 tests, 241 harness tests, final typecheck/build and the three phone-sized browser
-sequences. The first publisher's receipt remains the publication blocker; the
-separate sibling candidate is otherwise qualified. Words' tested
-completion paths pass without a product change. See
+sequences. Publication gates pass; physical-device owner smoke remains due.
+Words' tested completion paths pass without a product change. See
 [audit, limits and release evidence](ASYNC_COMPLETION_AUDIT.md).
 
 # Async Tri-Towers all-clear presentation incident — 2026-10-29

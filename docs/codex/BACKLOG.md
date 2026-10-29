@@ -3,7 +3,8 @@
 Latest related failure, 13:12:28 UTC: Tri-Towers runtime SHA `1b222a254` is
 production READY and matches the public manifest, but publisher `40879563973`
 attempt 1 received 503 `manifest_invalid` from publish-release after its GitHub
-manifest step passed. The owner retry is pending. The earlier `10c467ea9` run
+manifest step passed. Owner attempt 2 succeeded at 13:55:04 UTC; stored receipt
+`40879563973-2` matches `1b222a254`. The earlier `10c467ea9` run
 below subsequently succeeded on owner attempt 2 and has a matching stored
 receipt. Keep the manifest/publication failure investigation separate from
 gameplay corrections; no credential or gate bypass is authorized.
@@ -23,7 +24,8 @@ write was attempted. Evidence: ASYNC_COMBINED_RELEASE.md and the workflow logs.
 Read-only reconciliation at 11:43 UTC confirmed this mismatch. Response bodies
 and headers were not captured by the job; the exact denial cause remains unknown.
 Vercel firewall/observability evidence endpoints returned 404. Current-head owner
-rerun is the smallest next step; preserve the existing security/publication gates.
+rerun resolved that publication hold. The recurring first-attempt failure cause
+remains queued; preserve the existing security/publication gates.
 
 ## Releasing — 11 Up secondary smoke — October 28, 2026
 
