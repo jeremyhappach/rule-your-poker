@@ -1,4 +1,4 @@
-# Combined five-game async release — October 28, 2026
+# Combined five-game async release — activated October 29, 2026
 
 Approved scope: Words, Run21, TriTowers, Quintzee and Box Drop; 1–32 children,
 repeats, organizer display order, independent play after acceptance, styled
@@ -50,15 +50,27 @@ cross-origin API guards return 405/401/401/403 respectively. The public mobile
 entry loads without page errors or failed script/style assets. Full authenticated
 production gameplay and physical-device owner smoke remain unobserved.
 
-Activation is blocked: publisher run 40794356161 passed its GitHub manifest check
+The initial activation hold: publisher run 40794356161 passed its GitHub manifest check
 but the publish-release endpoint returned HTTP 503 `manifest_invalid` at
-2026-10-29 00:31:22 UTC. The stored release signal remains on a79c40497.
+2026-10-29 00:31:22 UTC. The stored release signal then remained on a79c40497.
 Propagation/cache timing is a possible explanation, not an established cause.
 The attempted failed-job retry was refused by the GitHub integration with HTTP
 403 `Resource not accessible by integration`; no alternative retry path or manual
 release-signal write was attempted. Jeremy was asked to rerun that failed job.
-Multi-game admission remains false, ordinary Words admission true; fixtures are
-gone and the installed worker is healthy. No further approval of scope is needed.
+Jeremy retried the job. Attempt 2 succeeded at 2026-10-29 11:11:51 UTC;
+the persisted release signal identifies 40794356161-2 and exact deployed SHA
+8c0898cc4def44a53ac9d31f8a357f72692b2e80. Remote main, production READY,
+public manifest and publisher agree. No workflow/credential change was needed.
+
+Guarded activation committed at 2026-10-29 11:12:37.827917 UTC (6:12 a.m.
+Chicago time). It checked the exact publication receipt, installed migration,
+healthy scheduler/worker, open ordinary admission and absence of active incidents
+or maintenance. A savepoint-contained proof used two synthetic active Auth/profile
+identities through ordinary create/accept RPCs: five games, ceiling 32, fake-only,
+independent randomized starters, exact 36h/24h deadlines and zero financial
+writes at acceptance. Every fixture rolled back before the activation transaction
+committed; zero activation proof profiles remain. Both admission and multi-game
+recovery are enabled. Physical-device owner smoke remains due.
 
 Rollback policy: close private.delayed_release.admission_enabled to stop new
 matches; preserve recovery and compatible client code for accepted mixed matches.
