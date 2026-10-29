@@ -37,3 +37,23 @@ it('begin failure retries begin without acknowledging an unseen result',async()=
 
 it('reentry resumes the persisted review and displays the final score before one ACK',async()=>{const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:2500,seen:false}):original(name,args));mount(gate());await flush();expect(screen.getByText(/Round 1 · 100/)).toBeTruthy();await advance(700);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
 it('winner celebration precedes the stake overlay and history replay does not start a game',async()=>{mock.home.net=5;mock.state.terminal=true;mock.state.events=[{id:'final',kind:'child',receipt:{winner:'me'},seen:true}];const ui=mount(<ChildResults childId='child' matchId='match' userId='me'/>);await flush();expect(ui.container.querySelector('.async-confetti')).toBeTruthy();expect(screen.queryByText('You banked the $5 stake!')).toBeNull();await advance(3100);expect(screen.getByText('You banked the $5 stake!')).toBeTruthy();expect(ui.container.querySelector('.async-confetti')).toBeNull();await advance(3000);expect(mock.rpc.mock.calls.every(c=>!['delayed_commit','delayed_finalize'].includes(c[0]))).toBe(true);});
+it.each([5,-12.5])('cash bag uses authoritative net %s and maps usernames to winner/loser poses',async net=>{
+ mock.home.net=net;const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();
+ const winner=net>0?'me':'other';expect(view.container.querySelector('.boxer-winner')?.getAttribute('data-player-id')).toBe(winner);
+ expect(view.container.querySelector('.boxer-loser')?.getAttribute('data-player-id')).not.toBe(winner);
+ expect(view.container.querySelector('.async-cash-label')?.textContent).toBe('$'+Math.abs(net).toLocaleString());
+ expect(view.container.querySelector('.async-chip-transfer')).toBeNull();
+ expect(view.container.querySelector('.async-boxing img')?.getAttribute('src')).toContain('boxing-winner-cash-v1');
+ expect(mock.rpc.mock.calls.every(c=>['delayed_history_detail','delayed_finale_ack'].includes(c[0]))).toBe(true);
+});
+it('draw illustration has two neutral names, no cash bag, and retains both participant identities',async()=>{
+ mock.home.net=0;const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();
+ expect(view.container.querySelector('.async-cash-label')).toBeNull();expect(view.container.querySelector('.async-boxing img')?.getAttribute('src')).toContain('boxing-draw-v1');
+ expect([...view.container.querySelectorAll('.boxer-neutral')].map(el=>el.getAttribute('data-player-id'))).toEqual(['me','other']);
+});
+it('reduced-motion finale retains cash amount and one review ACK without confetti',async()=>{
+ window.matchMedia=vi.fn().mockReturnValue({matches:true});mock.home.net=5;const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();
+ expect(view.container.querySelector('.async-cash-label')?.textContent).toBe('$5');expect(view.container.querySelector('.async-confetti')).toBeNull();
+ await advance(650);expect(view.container.querySelector('.async-finale')?.getAttribute('data-phase')).toBe('breakdown');await advance(1000);
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_finale_ack')).toHaveLength(1);
+});

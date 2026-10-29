@@ -1,3 +1,5 @@
+import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
+import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
 import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {reviewSchedule,rebaseReviewBoard} from '@/lib/delayed/reviewPresentation';
 import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
@@ -107,12 +109,12 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
  if(!home)return <p role="status">Loading match finale…</p>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved authoritative settlement</p>} announcement={false}><div className="async-finale" data-phase={play.elapsed>(reduced?600:6000)?'breakdown':'ring'}>
-  {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<svg viewBox="0 0 600 360" role="img" aria-label={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'}>
-   <path d="M45 270 L110 130 H490 L555 270Z" fill="#25465b" stroke="#e8d9af" strokeWidth="5"/>{[150,190,230].map(y=><path key={y} d={`M65 ${y+40} H535 M110 ${y-20} H490`} stroke="#d1b982" strokeWidth="4"/>)}
-   {home.players.map((p,i)=>{const wins=winner===p.id,neutral=winner===null,x=i===0?190:410;return <g key={p.id} transform={`translate(${x} 210)`} className={neutral?'boxer-neutral':wins?'boxer-winner':'boxer-loser'}><circle cx="0" cy={wins||neutral?-65:-48} r="20" fill="#c78c66"/><path d="M0 -40 V15 M0 15 L-20 55 M0 15 L20 55" stroke={i===0?'#59baca':'#d67c80'} strokeWidth="23" fill="none"/><path d={wins?`M0 -25 L${i===0?55:-55} -80`:'M0 -25 L25 10'} stroke="#c78c66" strokeWidth="13" fill="none"/><text x="0" y="88" textAnchor="middle" fill="white" fontSize="17">{p.name}</text></g>;})}
-   <g transform="translate(300 220)"><circle cy="-75" r="17" fill="#c9a07b"/><path d={`M0 -55 V10 M0 -45 L-55 ${winner===home.players[0].id?-90:0} M0 -45 L55 ${winner===home.players[1].id?-90:0} M0 10 L-18 45 M0 10 L18 45`} fill="none" stroke="#eee" strokeWidth="13"/></g>
-   {home.net!==0&&<g className={!reduced?'async-chip-transfer':''} style={{'--direction':winner===home.players[0].id?-1:1} as CSSProperties}><circle cx="300" cy="210" r="22" fill="#f9d45b"/><text x="300" y="216" textAnchor="middle" fontSize="16">${Math.abs(home.net)}</text></g>}
-  </svg><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
+  {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<figure className="async-boxing" data-outcome={winner?'decisive':'draw'}>
+   <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
+    {winner&&<span className="async-cash-label" aria-label={'Net winnings $'+Math.abs(home.net).toLocaleString()} style={{'--cash-chars':Math.max(4,('$'+Math.abs(home.net).toLocaleString()).length)} as CSSProperties}>{'$'+Math.abs(home.net).toLocaleString()}</span>}
+    <figcaption className="async-boxer-names">{(winner?[home.players.find(p=>p.id===winner)!,home.players.find(p=>p.id!==winner)!]:home.players).map(p=><span key={p.id} data-player-id={p.id} className={!winner?'boxer-neutral':p.id===winner?'boxer-winner':'boxer-loser'}>{p.name}</span>)}</figcaption>
+   </div>
+  </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   <p>One authoritative match settlement · {home.realMoney?'Real money':'Play money'}</p>
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
  </div></FullscreenGameShell></div>;

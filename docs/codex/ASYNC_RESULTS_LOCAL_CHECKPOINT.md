@@ -2,6 +2,18 @@
 
 Status: implemented local candidate on `codex/async-combined`, continuing checkpoint `c4ead759b`. Publication, main integration, hosted migration, activation and customer-data changes remain on hold. Production remains the published sibling completion correction `43545662c08baf1e2e7b764c25048989a1d9721b`.
 
+## October 29 illustrated finale revision — local only
+
+Owner rejected the schematic figures and selected polished original arcade illustration. The latest direction supersedes chip transfer: centered referee raises the winner's anatomical left arm; the winner holds a cash bag in their anatomical right hand. Runtime displays the absolute authoritative net amount on the bag and usernames beneath the corresponding boxers. The illustrated winning pose is on the left; UUID-based runtime names map the actual winner/loser to those poses. No persistent player-avatar identity is inferred from the generic fighters. A separate neutral draw scene has no bag, dejected fighter, transfer or confetti.
+
+Built-in image generation created original neutral and decisive scenes. No stock reference pixels were accessed or copied. The final 1254-square JPEG assets are approximately 466 KB and 415 KB, encoded from generated PNGs without composition edits. Full selected prompts and provenance are in `src/assets/async-finale/README.md`. Usernames and dollar amounts remain runtime text; confetti remains the existing winner-viewer-only effect. The chip-flight markup and its unused CSS were removed under the latest owner direction.
+
+Existing finale phase timing, reduced-motion timing, acknowledgement owner, net-based winner selection, history destination, child scores and settlement are unchanged. The technical phrase “One authoritative match settlement” is still retained and flagged for owner review.
+
+Validation on final JPEG assets: 20 focused result/history component tests, application typecheck and production build pass. Eighteen installed-Edge cases pass: winner/loser/draw at 320px, 390px and 1440px, each in normal and reduced motion. They verify decoded images, square uncropped geometry, readable name/amount bounds, correct player UUID-to-pose mapping, no chip transfer, winner-only confetti, neutral draw, exactly one review acknowledgement, return to actual read-only history and no gameplay/account requests. Zero page errors and zero external origins. Phone winner/loser, desktop winner and reduced-motion draw screenshots were visually inspected. Evidence: `boxing-focused-final.log`, `boxing-typecheck.log`, `boxing-build.log`, `boxing-browser-final.log`, `boxing-browser.json` and `boxing-*.png` under `qualification.local/async-combined/`.
+
+The running local preview at `http://127.0.0.1:15325/` now uses this revised artwork. Choose Winner finale, Loser finale and Neutral draw finale to review. Local owner visual acceptance remains pending. Nothing was published and no hosted or customer state changed.
+
 ## Implemented scope
 
 Accessible whole match cards show local start dates, named signed Current Net, outstanding-child Unsettled, player-specific progress, pending score contributions, clock layout, Words bag count and randomized-first-player disclosure. Own completed scores show immediately; opponent cumulative points include only attempts acknowledged by this viewer. Shared Words scores retain their public-board policy.
@@ -35,7 +47,7 @@ Evidence: `qualification.local/async-combined/review2-*.log`, `review-service-pr
 
 ## Verified local preview — JeremyLaptop
 
-Owner authorized remaining local checks and a preview, with publication still withheld. Product code remains exactly candidate `44ce20f12b7d8be659326b9a1e37f62c139a4991`; this follow-up changes only development fixtures, the local preview server, qualification and documentation.
+Owner authorized remaining local checks and a preview, with publication still withheld. At the 17:21 UTC checkpoint product code was exactly candidate `44ce20f12b7d8be659326b9a1e37f62c139a4991`; that follow-up changed only fixtures, preview, qualification and documentation. The later illustrated-finale revision above supersedes its artwork and chip-flight presentation only.
 
 Open `http://127.0.0.1:15325/` on JeremyLaptop. The independent background process serves actual candidate components with synthetic data and no sign-in. Menu links cover match home, paged history, winner/loser/draw finales and read-only draw history. Gameplay, invitations, deletion, customer data and hosted services are not connected. The server binds loopback only and has `envFile:false`; Supabase and delayed-client imports use the existing fixture transport.
 

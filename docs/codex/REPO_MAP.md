@@ -1,6 +1,8 @@
 ## Async result review (local candidate)
 
 - `src/components/delayed/ResultReview.tsx`: review-before-Start, child sequence and read-only parent finale.
+- `src/assets/async-finale/`: original illustrated neutral/winner cash-bag scenes and generation provenance; names, net amount and confetti remain runtime-owned by `ResultReview.tsx`.
+- `dev/async-combined/boxing-artwork-proof.mjs`: phone/desktop/reduced-motion finale geometry, player mapping, amount and acknowledgement checks against the isolated local preview.
 - `src/lib/delayed/reviewPresentation.ts`: frozen shared timing and timestamp-only replay projection.
 - `src/lib/delayed/turnSnapshot.ts`: independent gameplay/disclosure revision admission.
 - `src/components/delayed/AsyncHistory.tsx`: shared account/history route and bounded pagination.

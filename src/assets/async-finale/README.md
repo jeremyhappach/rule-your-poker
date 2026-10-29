@@ -1,0 +1,39 @@
+# Original boxing finale artwork — local review candidate
+
+Generated with the built-in `image_gen` tool on October 29, 2026. These are original illustrations, not stock-image edits. The two Library reference IDs supplied by the owner were not accessible as standalone images through this task's available tools; direction came from the owner's requirements and the parent task's inspected description. No stock pixels or watermarks were copied or removed.
+
+Selected project assets:
+
+- `boxing-draw-v1.jpg`: neutral red boxer, centered referee, neutral blue boxer; no cash bag.
+- `boxing-winner-cash-v1.jpg`: smiling red winner on the left, centered referee holding the winner's anatomical left arm aloft, winner's anatomical right hand holding an unmarked cash bag; dejected blue loser on the right.
+
+Runtime assigns the authoritative winner and loser names to the corresponding illustrated poses. The figures are generic role illustrations, not persistent player avatars. Draw retains participant order. Usernames, actual absolute net winnings and winner-viewer confetti are rendered by the application. No names, amounts, typography or confetti are baked into either asset. The latest owner direction replaced the chip flight with the right-hand cash bag.
+
+The source PNGs remain at their original generated-image locations and in the ignored local qualification folder. Final JPEG copies were encoded with the built-in Windows JPEG encoder at quality 92, without resizing, cropping or altering composition. They are 1254 × 1254; draw is 465,749 bytes and winner is 414,580 bytes. Only these delivery assets are used by the application.
+
+Source generations:
+
+- Neutral: `exec-bfa03ca2-2de4-4d12-a19b-084ce5f92586.png`.
+- Left winner pose: `exec-d6719813-f5e2-4fee-a648-f6cbd8a72091.png`.
+- Cash bag edit: `exec-2aa84f6e-0f99-4697-a453-758f03efa36a.png`.
+- Selected cash bag composition: `exec-db05247b-248f-43a0-86e6-f766d6d8363d.png`.
+
+## Prompt set for the selected assets
+
+### Neutral master
+
+Use case: original polished arcade game illustration. Asset: boxing match finale for a premium mobile game, square 1024x1024 composition, no text. Create an ORIGINAL richly rendered hand-painted cartoon illustration, expressive faces and convincing muscular human anatomy, dimensional cel-painted shading, warm gold rim light and cool teal arena shadows. A boxing ring with velvet-dark stadium crowd and dramatic overhead spotlights. Exactly three full-body figures occupy most of the image: on the LEFT a tall muscular boxer with warm tan skin, short dark curly hair, red boxing gloves and red trunks with cream trim, on the RIGHT an equally imposing boxer with medium brown skin, close cropped black hair, cobalt-blue gloves and blue trunks with cream trim. A smaller adult referee centered between them in a black-and-white striped shirt and black trousers. This is the NEUTRAL DRAW version: both boxers stand upright, dignified, tired but relaxed, small sportsmanlike smiles, eyes open, nobody victorious or dejected. Referee holds each fighter's inside glove at waist level; neither arm raised. Full bodies and gloves clearly inside frame; expressive faces large enough to read on a phone. Front three-quarter camera, centered balanced composition, figures centered at 25%,50%,75% across the canvas. Ring ropes and canvas have convincing perspective and rich painted texture; leave a narrow quiet area at bottom for runtime name labels. Original character designs, never resemble named celebrities or existing game characters. No typography, names, numbers, logos, watermarks, confetti, streamers, floating coins, HUD or interface. Not a diagram, not stick figures, not flat vector geometry. Do not copy any stock illustration. This will be the consistent master scene for left-winner and right-winner variants, so maintain strong readable silhouettes and clean separation.
+
+### Left winner pose edit
+
+Edit this original generated boxing game artwork into its LEFT FIGHTER WINS variant. Preserve the same original character identities, red boxer LEFT, blue boxer RIGHT, centered striped referee, full bodies, square canvas, arena/ring/background/camera, painterly illustrated finish, all colors and clothing. Change ONLY their result poses and expressions: the red boxer on the LEFT has a wide joyful confident smile, proud upright chest. The referee lifts and clearly holds the red boxer's INSIDE glove high above the red boxer's head, announcing his victory; make the connected hands and both arms anatomically convincing, unambiguous and entirely within the image bounds. The red boxer's other glove stays at his side. The blue boxer on the RIGHT is visibly disappointed, head hanging down, shoulders slumped and both gloves low, but dignified and uninjured. Referee smiles toward the winner. Keep every glove, head and foot in-frame with some breathing room. Painted game illustration, expressive faces, polished dimensional shading; no change of identity. NO CONFETTI, streamers, coins, text, names, typography, badges, logos or watermarks. No baked UI. Preserve clean bottom space for runtime labels. This variant is an asset for runtime winner selection, not a poster.
+
+### Cash bag edit
+
+Modify this original generated illustration with one precise prop/pose change. Keep red LEFT winner, blue RIGHT disappointed head-hanging loser, referee physically CENTERED between the boxers, same arena, square camera, same identities, polished colorful painted arcade illustration style. The referee is correctly raising the LEFT anatomical arm of the red winning boxer (the inside arm toward image center): preserve that pose and happy proud expression. Replace the red winner's lowered RIGHT glove/hand at the FAR LEFT of the picture with a bare RIGHT hand clearly gripping the gathered neck/handle of a substantial tan canvas CASH BAG, hanging beside his right hip and upper thigh at the far left. Bag must be fully inside the frame. Bag front faces camera, broad blank uninterrupted flat tan fabric panel for a runtime dollar amount. NO painted dollar sign, amount, letters, symbols or typography anywhere on bag or artwork. The bag should be visually recognizable as a tied money sack with a rope neck and rounded heavy base. Keep expressive anatomy, rich illustrative shading, clear silhouettes, and all three figures visible. No confetti, coins, flying chips, logos, watermarks, interface or usernames. Referee centered, never offset to the side. The loser has no bag. Preserve the original background/camera as closely as possible.
+
+### Final bag framing edit
+
+One targeted production-composition correction to this ORIGINAL illustration. The tan money bag at the far left is clipped by the canvas. Move the winning red boxer's bare RIGHT hand and cash bag slightly inward/right so the ENTIRE bag and hand are visible with at least 4% of canvas width clear margin to the left edge. The winner still naturally holds the bag at his anatomical right hip; slightly bend that elbow if needed. Give the front of the bag a broad clean blank central panel (for live text), with no dollar symbol or lettering. Keep EVERYTHING ELSE unchanged: same square image, same red winner smiling on left, referee physically centered raising winner's anatomical LEFT glove, blue disappointed head-down loser on right, exact original character identities, polished painted colorful arcade arena, camera, body proportions, rich lighting. No confetti, text, names, amounts, watermarks, chips or coins. Bag empty of markings, entirely inside frame.
+
+The final bag is fully visible with a narrow edge margin; the requested 4% margin was not exactly reproduced. Visual inspection accepted its complete silhouette and readable blank label area for this owner-review candidate. No claim of owner visual acceptance is made.

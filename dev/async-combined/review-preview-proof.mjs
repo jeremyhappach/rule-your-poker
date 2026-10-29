@@ -12,7 +12,7 @@ try{
  await page.goto(base+'/delayed');await page.locator('.delayed-history-card').first().waitFor();await page.getByRole('button',{name:'Load older async matches'}).click();await page.waitForFunction(()=>document.querySelectorAll('.delayed-history-card').length===32);checks.push('actual preview history pages 30+2');
  for(const result of ['draw','win','loss']){
   const prior=requests.length;await page.goto(base+'/delayed/'+result+'?finale=1');await page.locator('.async-finale').waitFor();
-  assert.equal(await page.locator('.async-confetti').count(),result==='win'?1:0);assert.equal(await page.locator('.async-chip-transfer').count(),result==='draw'?0:1);
+  assert.equal(await page.locator('.async-confetti').count(),result==='win'?1:0);assert.equal(await page.locator('.async-chip-transfer').count(),0);assert.equal(await page.locator('.async-cash-label').count(),result==='draw'?0:1);
   if(result==='draw'){assert.equal(await page.locator('.boxer-neutral').count(),2);assert.equal(await page.locator('.boxer-winner,.boxer-loser').count(),0);}
   await page.screenshot({path:'qualification.local/async-combined/preview-finale-'+result+'.png'});
   await page.waitForURL('**/delayed/'+result+'?history=1');await page.getByRole('heading',{name:'Hap vs. Jeremy Happach'}).waitFor();assert.equal(await page.getByRole('button',{name:'Delete play-money match',exact:true}).count(),0);assert.equal(await page.getByRole('link',{name:'Take Turn',exact:true}).count(),0);
