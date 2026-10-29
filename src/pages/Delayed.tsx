@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Clock} from 'lucide-react';
 import {money,turnTime} from '@/lib/delayed/reviews';
-import {AsyncHistory} from '@/components/delayed/AsyncHistory';
+import {AsyncTurnStage} from '@/components/delayed/AsyncTurnStage';
 import {ReviewGate,ChildResults,MatchFinale} from '@/components/delayed/ResultReview';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
 import {supabase} from '@/integrations/supabase/client';
@@ -15,7 +15,7 @@ import '@/lib/delayed/delayed.css';
 
 export default function Delayed(){
  const {user,isReady}=useAuthGuard({pageLabel:'Delayed matches'}),{matchId,childId}=useParams(),[query]=useSearchParams();
- if(!isReady||!user)return <main className="delayed-page"><p role="status">Connecting…</p></main>;
+ if(!isReady||!user)return <AsyncTurnStage matchId={matchId} title="Connecting…"/>;
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale matchId={matchId} userId={user.id}/>;
@@ -36,14 +36,14 @@ function MatchList({userId}:{userId:string}){
  useEffect(refresh,[refresh]);useUpdates(userId,refresh);
  return <><Link className="delayed-primary" to="/delayed/new">Set Up Asynchronous Match</Link>
   {error&&<p role="alert">{error}</p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
-  {loaded&&rows.length===0&&<p>No delayed matches yet.</p>}
+  {loaded&&!rows.some(r=>r.status!=='settled')&&<p>No active async matches.</p>}
   <ul className="delayed-lineup">{rows.filter(row=>row.status!=='settled').map(row=><li key={row.id} data-turn={row.status==='active'&&!row.held?(row.lineup.some(c=>!c.terminal&&c.actor===userId)?'own':'opponent'):undefined}><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong>vs. {row.players.find(p=>p.id!==userId)?.name}</strong> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></Link>
    <p>{row.status} · {row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
    {row.status==='active'&&!row.held&&<strong>{row.lineup.some(c=>!c.terminal&&c.actor===userId)?'Your turn':(row.players.find(p=>p.id!==userId)?.name??'Opponent')+'’s turn'}</strong>}{row.acceptedAt&&<p>Current Net: {money(row.net)}</p>}</li>)}</ul>
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
    void delayedRpc<Home[]>('delayed_list',{p_before:last.createdAt,p_before_id:last.id}).then(v=>{
     setRows(old=>[...old,...v.filter(item=>!old.some(existing=>existing.id===item.id))]);setOlder(v.length===30);
-   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<AsyncHistory/></>;
+   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Archived / Completed Sessions</Link></>;
 }
 function MatchHome({id,userId}:{id:string;userId:string}){
  const [query]=useSearchParams(),historical=query.has('history');
@@ -71,8 +71,8 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ol className="delayed-lineup">{home.lineup.map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
    return <li className="delayed-game-card" data-unviewed={c.terminal&&c.viewed===false||undefined} key={c.id}><div className="delayed-game-heading"><h3>{c.ordinal}. {gameName(c.game)}</h3><span>Stake <strong>${c.stake}</strong></span></div>
-    {home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}{!!c.pendingResults?.[p.id]&&<small>{c.pendingResults[p.id]} pending {c.pendingResults[p.id]===1?'result':'results'} · viewed points shown</small>}</span><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'Awaiting reveal':c.scores?.[p.id]?.toLocaleString()??'—'}</strong></div>)}</div>}
-    {c.terminal&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
+    {home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>}
+    {c.terminal&&c.viewed===false&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{c.result.reason==='timeout_forfeit'?' · Forfeit':''}</strong> · {money(c.result.delta)}</p>:c.terminal?<p>Result awaiting reveal</p>:
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong></p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
@@ -84,7 +84,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
    {home.opponent===userId?<div className="delayed-actions"><button className="delayed-primary" disabled={pending} onClick={()=>void respond('accept')}>{pending?'Working…':'Accept lineup and stakes'}</button><button className="delayed-secondary" disabled={pending} onClick={()=>void respond('decline')}>Decline</button></div>:
     <button className="delayed-secondary" disabled={pending} onClick={()=>void respond('cancel')}>Cancel invitation</button>}</section>}
   {!historical&&!home.realMoney&&home.organizer===userId&&<RemoveMatch id={id} refresh={refresh}/>}
-  {home.receipt&&<p>Settlement receipt: {home.receipt.match_id}. {home.net===0?'Net zero — no transfer.':'One net settlement recorded.'}</p>}</section>;
+  {home.receipt&&home.realMoney&&<p>Balances have been settled</p>}</section>;
 }
 function RemoveMatch({id,refresh}:{id:string;refresh:()=>void}){
  const [confirm,setConfirm]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');const request=useRef<string|null>(null);
@@ -97,6 +97,6 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const refresh=useCallback(()=>{void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(v);}).catch(e=>setError(e.message));},[matchId,navigate]);
  useEffect(refresh,[refresh]);useUpdates(userId,refresh);
  const child=home?.lineup.find(c=>c.id===childId);
- if(!child)return <main className="delayed-page"><Link to={'/delayed/'+matchId}>Match Home</Link><p role={error?'alert':'status'}>{error||'Restoring turn…'}</p></main>;
- return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId}/>:<ReviewGate childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} autoStart/>}</ReviewGate>;
+ if(!child)return <AsyncTurnStage matchId={matchId} title={error||'Preparing your turn…'}/>;
+ return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId}/>:<ReviewGate childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} autoStart/>}</ReviewGate>;
 }

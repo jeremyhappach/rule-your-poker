@@ -18,3 +18,9 @@ it('sounds for new pending revisions in the lobby, never unchanged refresh/read 
  mocks.items=[{...notice,revision:2}];await act(async()=>mocks.changed());expect(mocks.request).toHaveBeenCalledTimes(2);
 });
 it('does not ring or sound at the game table',async()=>{mocks.items=[notice];mount('/delayed/m/play/c');await screen.findByRole('button',{name:/1 pending/});expect(mocks.request).not.toHaveBeenCalled();expect(screen.getByRole('button',{name:/Notifications/}).hasAttribute('data-ring')).toBe(false);});
+
+it('names the inviter and keeps completed-match links independent of the active list',async()=>{
+ mocks.items=[{...notice,kind:'invitation',payload:{...notice.payload,opponentName:'Hap'}},{...notice,id:'done',kind:'settled'}];mount();
+ fireEvent.click(await screen.findByRole('button',{name:/2 pending/}));expect(await screen.findByText('New match invitation from Hap')).toBeTruthy();
+ expect(screen.getByRole('link',{name:/Match complete/}).getAttribute('href')).toBe('/delayed/m?finale=1');
+});

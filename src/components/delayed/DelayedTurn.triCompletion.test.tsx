@@ -29,9 +29,9 @@ describe('async TriTowers attempt completion',()=>{
   const ui=mount();await flush();const key=ui.container.querySelector('[data-round-key]')?.getAttribute('data-round-key');
   await receive(finish());
   expect(ui.container.querySelector('[data-round-key]')?.getAttribute('data-round-key')).toBe(key);
-  expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();expect(ui.getByLabelText('Score 0')).toBeTruthy();
-  await tick(5600);expect(ui.getByLabelText('Score 22890')).toBeTruthy();
-  await tick(1700);expect(ui.getByLabelText('Score 45780')).toBeTruthy();expect(ui.queryByText('Match destination')).toBeNull();
+  expect(ui.getByLabelText('All three towers cleared')).toBeTruthy();expect(ui.getByLabelText('You score 0')).toBeTruthy();
+  await tick(5600);expect(ui.getByLabelText('You score 22890')).toBeTruthy();
+  await tick(1700);expect(ui.getByLabelText('You score 45780')).toBeTruthy();expect(ui.queryByText('Match destination')).toBeNull();
   await tick(700);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.request.mock.calls.every(([body])=>body.op==='state')).toBe(true);
  });

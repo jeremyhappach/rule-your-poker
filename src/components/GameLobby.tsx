@@ -291,7 +291,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
         </div>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs defaultValue={new URLSearchParams(window.location.search).get('sessions')==='completed'?'historical':'active'} className="w-full">
         <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-amber-700/30">
           <TabsTrigger 
             value="active" 

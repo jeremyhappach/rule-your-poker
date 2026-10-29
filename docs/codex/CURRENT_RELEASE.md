@@ -1,3 +1,9 @@
+# Async smoke polish — local review only — 2026-10-29
+
+The authorized 14-item production-smoke pass is implemented locally. It covers round-result introductions/handoff, explicit Quintzee first Start and rumble, two-player score presentation, one child-completion announcement, durable viewed-result UI, a seven-second boxing hold, settlement copy and archive navigation/cards. Full validation passed 3,239 source/server tests and 241 harness tests; the latest focused run passed 115 cases. Typecheck/build and 15 local service/database checks pass. Mobile candidate evidence and a fixture-only preview are available at `http://127.0.0.1:15327/`. Owner Library-image comparison remains blocked by the supported Windows transfer helper; those pixels were not inspected. See [findings, evidence and preview](ASYNC_SMOKE_POLISH_LOCAL.md).
+
+Publication and hosted migrations remain held. Production baseline and migration below are unchanged; the migration was not repeated. The platform transition audit remains separate.
+
 # Async results/history — published, verification PASS — 2026-10-29
 
 Owner approved the refreshed previews for production at 18:35:50 UTC. This supersedes the historical local/publication holds below for the complete results/history package and approved illustrated finale only. The separate platform transition audit remains held.

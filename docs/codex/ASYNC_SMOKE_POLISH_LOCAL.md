@@ -1,0 +1,43 @@
+# Async production-smoke polish — local review checkpoint, October 29, 2026
+
+Owner authorized the 14-item pass for implementation, testing and local preview only. The base is published `8ee54ae9200f95b22024267514df077f408e001b` plus local receipt documentation `1621dcc66`. Publication, hosted migrations and customer-state changes remain held. Installed migration `20261029184517_async_results_review` was not repeated. The separate platform transition audit is excluded.
+
+## Findings and corrections
+
+| Item | Cause and local correction |
+|---|---|
+| 1. Invitation | Generic notification title omitted its existing opponent name. Now “New match invitation from [player]”. |
+| 2. Quintzee Saving flash | Shared roll button and status line swapped to pending copy. Pending still locks input, but the roll label stays stable through response handling. Arcade/live callers retain the same rules and lock. |
+| 3. White detour | Child admission, review restoration and board loading returned unstyled standalone pages. They now use the existing fullscreen shell/felt through `AsyncTurnStage`; checks and recovery remain in place. This does not claim to remove network latency. |
+| 4. Round result introduction | Saved boards previously mounted immediately. Round-game review now introduces the opponent and round for 3 seconds, preserves existing board/count-up timing, acknowledges that viewer, then shows “Your turn!” for 2 seconds and rechecks current authority before handoff. Words has no round introduction. Started attempts bypass review, and availability/actor changes are rechecked. |
+| 5. Quintzee first roll | The route auto-started every game; the existing trusted Quintzee Start operation already deals and rolls. The board therefore first mounted after the roll, and the recovery-safe rumble hook correctly skipped old dice. Quintzee now mounts an empty presentation in its normal board with the existing Start button. One explicit click invokes the unchanged server Start. The mounted hook observes roll serial 0→1 and rumbles before values appear. Resume retains the saved dice/deadline. No new ready/gameplay deadline is invented: the existing 36-hour admission boundary, private Start reducer and post-Start deadlines remain unchanged. |
+| 6. Pending | The verbose count/helper is replaced by bold italic “Pending” beside the displayed score. Hidden scores remain hidden. |
+| 7. Two score pills | Run21 and Tri-Towers adapters explicitly supplied a single score. They now use both authoritative participant UUIDs and disclosed totals. Quintzee and Box Drop already carried two players; they are verified, named consistently and dim the opponent while highlighting the current viewer through result presentation. Saved opponent replay remains a single-result view. |
+| 8. Child completion | A 6-second component switched between two announcements and helper lines. It now presents “Game Complete” and “[Winner] banked the $X stake” together. Tie is neutral, confetti is winner-only, and existing count-up precedes this screen. No child transfer or settlement call is added. |
+| 9. Repeated child CTA | The home link was unconditional for terminal children. It now requires `viewed === false`. The existing durable viewer acknowledgement remains the owner; after it succeeds, W/L/T and signed net remain without the CTA. |
+| 10. Boxing hold | Previous configured ring phase was 6 seconds normally and 0.6 seconds with reduced motion, starting before image readiness. It now waits for image load, holds for at least 7 seconds, fades for 0.5 seconds, and retains the breakdown before return at 10.5 seconds. Changing match identity resets image readiness and the presentation claim. |
+| 11. Settlement wording | Technical settlement helpers are removed from finale, history, match home and the async Words result. Confirmed real-money history/parent receipts say “Balances have been settled”; fake-money results omit this claim. No admission or accounting change. |
+| 12. Active/archive split | The active list already filtered settled rows but appended the completed-history component underneath. That embedded history is removed; its link opens the existing Completed tab. Notifications still deep-link to their exact match independently of active membership. |
+| 13. Archive cards | Generic “Async Match” title and context-dependent styling are replaced with both participant names, an Async badge and a consistent colored card. The viewer name is resolved once from the UUID-scoped profile read. |
+| 14. Historical access | Each archived card keeps “See Results”, opening the whole-match finale/results. This is independent of child acknowledgement, and only reads results or records the existing finale acknowledgement. |
+
+## Validation and evidence
+
+- Full source/server run: **3,239 tests / 461 files pass**. Harness: **241 tests / 12 files pass**. Application typecheck and production build pass; existing Browserslist/chunk-size warnings remain.
+- After the final identity/tie regression additions: **115 focused tests / 11 files pass**, followed by another application typecheck. The full suite count above is its actual earlier run, not an inflated count including later test-only additions.
+- **15 actual local HTTP/service/Postgres checks pass** using the existing isolated fixture setup. These cover durable ACK/disclosure, authorization, duplicate and distinct Start races, lost-response retry, review/playback locking, history pagination and raw-table/RPC access. No hosted database operation was made in this polish pass.
+- Mobile browser checks pass for all four round games: 3-second introduction, existing replay, Your turn handoff, two scores, no white intermediate page and no overflow. Quintzee separately proves no automatic Start, no dice before click, one request under double-click, first-roll rumble and refresh/reentry without another Start or rumble.
+- At 320px and 390px: Pending placement, active/archive separation, paired names, badge and persistent See Results pass. Child completion has one combined announcement; acknowledged CTA stays absent after reload and another fixture browser.
+- Exact image-load-to-fade browser measurements are **7012.8ms winner, 7020.0ms loser, 7006.4ms reduced-motion draw**. Unit boundaries also prove ring visibility at 6999ms, delayed image loading, neutral tie, no fake balance claim and no financial calls.
+- The first archive browser run exposed a missing SPA root route in the preview harness. That fixture-only route was corrected and both widths reran successfully; the navigation assertion was retained. Initial focused failures reflected the deliberately changed labels/timed phases and were replaced with explicit phase-boundary assertions, not discarded.
+- React review covered the affected hooks, identity resets, pending locks, effect cleanup, accessibility and the four `QuintzeeView` callers (Arcade, live, async and saved replay). No dependency/tool installation, rule copy, gameplay reducer change, ledger write, reservation or financial owner change.
+
+Logs, browser receipts and generated candidate screenshots are in `qualification.local/async-combined/polish-*`. Prior hosted financial qualification remains valid for unchanged SQL/server owners; no new hosted concurrency proof or production smoke is claimed.
+
+## Local preview and limits
+
+Open **http://127.0.0.1:15327/** on JeremyLaptop. This loopback-only preview uses actual candidate components and explicit synthetic transport. It offers four round-game review/turn flows, child completion, match home, completed sessions and winner/loser/draw finales. No account sign-in, customer data, hosted services or real financial writes are connected. Restart with `node dev/async-combined/polish-preview.mjs` in this worktree if needed.
+
+Candidate screenshots of Quintzee's empty Start board, first-roll rumble, archive cards, Pending, child completion and boxing were produced for local visual review. The owner's five Library screenshots are **not inspected**. This executor exposes no Library materialization skill/tool. The router resolved them as IMG_4276.png, IMG_4277.png, IMG_4278.png, IMG_4279.png and IMG_4281.png, but reported that the prescribed Windows helper failed while applying mandatory metadata with `AttributeError: module 'os' has no attribute 'setxattr'`. No metadata bypass or alternate download was attempted. Pixel comparison with those owner images remains outstanding, as does physical-device/production acceptance.
+
+Next owner step: review this local preview. Further approval is required for production publication; it is expressly withheld for this checkpoint.

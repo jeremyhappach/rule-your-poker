@@ -29,6 +29,8 @@
 
 # Repository map
 
+Async local smoke polish: `src/components/delayed/AsyncTurnStage.tsx` renders presentation-only loading/introduction inside `FullscreenGameShell`. `ResultReview.tsx` sequences saved review, handoff, child completion and image-ready match finale; `DelayedTurn.tsx` retains authoritative turn/action ownership. `AsyncHistory.tsx` owns archived async cards. The fixture-only local preview and mobile checks are `dev/async-combined/polish-preview.mjs` and `polish-browser.mjs`. Qualification and publication hold: `ASYNC_SMOKE_POLISH_LOCAL.md`.
+
 Local Words polish: `src/lib/ptownWords/scorePresentation.ts` and
 `useWordScorePresentation.ts` own visual score timing/receipts;
 `draftDirection.ts` owns the draft-only auto-placement projection.

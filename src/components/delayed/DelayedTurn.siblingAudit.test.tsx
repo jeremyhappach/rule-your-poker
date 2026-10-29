@@ -27,7 +27,7 @@ function finish(game:string,reason:string):any{
 }
 function words():any{return {identity:{sessionId:'match',dealerGameId:'child',roundId:'round'},revision:1,serverAt:1000,rules:{version:'ptown-words/2',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:129600000},players:[{id:'me',userId:'me',name:'You',seat:1,isBot:false},{id:'other',userId:'other',name:'Other',seat:2,isBot:false}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1}],scores:{me:0,other:0},turn:1,deadline:129600000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:2,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:0,other:0},resultId:null,batch:null},moves:[],event:{label:'Started',points:0}};}
 function wordFinish(){const v=words();return {...v,revision:2,serverAt:2000,turn:2,canAct:false,activePlayerId:'other',scores:{me:4,other:0},moves:[{turn:1,playerId:'me',action:'place',points:4,count:2,words:[{word:'CA',points:4}]}],movePresentation:{version:1,turn:1,playerId:'me',squares:[112,113],startedAt:2000,announceAt:2000,readyAt:5600,flipMs:100,focusMs:0,noticeMs:3600}};}
-function mount(wordsMode=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me"/>:<DelayedTurn childId="child" matchId="match" userId="me"/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
+function mount(wordsMode=false,autoStart=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me"/>:<DelayedTurn childId="child" matchId="match" userId="me" autoStart={autoStart}/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
 async function flush(){await act(async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();});}
 async function receive(v:any){mock.snapshot=v;await act(async()=>{mock.change?.({new:{match_id:'match'}});await Promise.resolve();await Promise.resolve();});}
 async function tick(ms:number){await act(async()=>{vi.advanceTimersByTime(ms);});}
@@ -76,7 +76,7 @@ describe('actual async shell sibling audit',()=>{
   mock.snapshot=initial('run21');const ui=mount();await flush();const v=finish('run21','collect');v.ownResults[0].board.result.aggregate=aggregate;
   await receive(v);expect(ui.getByText(aggregate===105?'PERFECT 105!':'INCREDIBLE 104!')).toBeTruthy();
   await receive(v);await tick(aggregate===105?3800:3000);expect(ui.queryByText(aggregate===105?'PERFECT 105!':'INCREDIBLE 104!')).toBeNull();
-  await tick(2500);expect(ui.container.querySelector('.arcade-run-score strong')?.textContent).toBe('10,000');await tick(2500);expect(ui.getByText('Match destination')).toBeTruthy();
+  await tick(2500);expect(ui.container.querySelector('.async-score-pills [data-active=true] strong')?.textContent).toBe('10,000');await tick(2500);expect(ui.getByText('Match destination')).toBeTruthy();
   expect(mock.audio.mock.calls.filter(([event]:any)=>event.id.startsWith('run21-fanfare:'))).toHaveLength(1);
  });
  for(const game of ['quintzee','boxdrop'])it(`${game}: canonical count-up starts from the prior total`,async()=>{
@@ -123,4 +123,28 @@ it('persists and replays the exact unconfirmed Start after reload',async()=>{
  const ready={...initial('run21'),board:null};let lost=true;mock.snapshot=ready;mock.request.mockImplementation(async(body:any)=>{if(body.op==='action'){if(lost)throw Error('lost response');return {...initial('run21'),revision:2};}return structuredClone(ready);});
  const first=mount();await flush();fireEvent.click(first.getByRole('button',{name:'Begin round 1'}));await flush();const sent=mock.request.mock.calls.find(([c])=>c.op==='action')![0];expect(JSON.parse(sessionStorage.getItem('ptown:async-turn:request:me:child')!)).toEqual(sent);
  first.unmount();lost=false;const second=mount();await flush();expect(mock.request.mock.calls.filter(([c])=>c.op==='action').at(-1)![0]).toEqual(sent);expect(second.container.querySelector('[data-fullscreen-board-slot]')).toBeTruthy();expect(sessionStorage.getItem('ptown:async-turn:request:me:child')).toBeNull();
+});
+
+it('Quintzee waits on the existing Start button, submits once and rumbles the first roll',async()=>{
+ const started=initial('quintzee');mock.snapshot={...started,board:null};let resolveStart:((v:any)=>void)|undefined;
+ mock.request.mockImplementation(async(body:any)=>body.op==='action'?new Promise(resolve=>{resolveStart=resolve;}):structuredClone(mock.snapshot));
+ const ui=mount(false,true);await flush();await tick(3000);
+ expect(ui.queryAllByRole('button',{name:/Die \d:/})).toHaveLength(0);expect(mock.request.mock.calls.filter(([c])=>c.op==='action')).toHaveLength(0);
+ const button=ui.getByRole('button',{name:'Start'});fireEvent.click(button);fireEvent.click(button);await flush();
+ expect(mock.request.mock.calls.filter(([c])=>c.op==='action')).toHaveLength(1);expect(ui.queryByText(/saving/i)).toBeNull();
+ await act(async()=>resolveStart?.({...started,revision:2}));await flush();
+ expect(ui.getAllByRole('button',{name:/Die \d: rolling/})).toHaveLength(5);expect(ui.getByLabelText('Opponent score 0')).toBeTruthy();
+ await tick(3000);expect(ui.getAllByRole('button',{name:/Die \d: [1-6]/})).toHaveLength(5);
+});
+
+it('resumed Quintzee keeps its dice and deadline without another Start or rumble',async()=>{
+ mock.snapshot=initial('quintzee');const ui=mount(false,true);await flush();
+ expect(ui.queryByRole('button',{name:'Start'})).toBeNull();expect(ui.queryAllByRole('button',{name:/rolling/})).toHaveLength(0);
+ expect(mock.request.mock.calls.every(([c])=>c.op==='state')).toBe(true);expect(mock.snapshot.board.deadline).toBe(180000);
+});
+
+it.each(['run21','quintzee','boxdrop'])('%s retains both players and only the disclosed opponent total',async game=>{
+ mock.snapshot={...initial(game),totals:{me:0,other:125},pendingResults:{other:1}};const ui=mount();await flush();
+ expect(ui.getByLabelText('Opponent score 125')).toBeTruthy();await receive({...mock.snapshot,reviewRevision:1,pendingResults:{other:0},totals:{me:0,other:250}});
+ expect(ui.getByLabelText('Opponent score 250')).toBeTruthy();
 });

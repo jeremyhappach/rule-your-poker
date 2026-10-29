@@ -55,7 +55,7 @@ function NotificationBellContent({context}:{context:NonNullable<React.ContextTyp
   <h2 className="font-semibold">Notifications</h2>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
    items.length===0?<p>No notifications.</p>:<ul className="space-y-3">{items.map(n=><li key={n.id}>
     <Link to={'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'')} onClick={()=>void markRead(n)}>
-     <strong>{n.kind==='invitation'?'Match invitation':n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
+     <strong>{n.kind==='invitation'?'New match invitation from '+(n.payload.opponentName??'your opponent'):n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
       n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
      {n.kind==='accepted'&&<small className="block">No turns yet available</small>}
      {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}

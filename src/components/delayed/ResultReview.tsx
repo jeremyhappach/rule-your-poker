@@ -1,4 +1,5 @@
 import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
+import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
 import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {reviewSchedule,rebaseReviewBoard} from '@/lib/delayed/reviewPresentation';
@@ -41,27 +42,32 @@ class SnapshotBoundary extends Component<{children:ReactNode},{failed:boolean}>{
 
 export function ReviewGate({childId,matchId,userId,children}:Identity&{children:()=>ReactNode}){
  const [state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[ready,setReady]=useState(false),navigate=useNavigate();
- const active=useVisible(),generation=useRef(0),released=useRef(false);
- const load=useCallback(async()=>{if(released.current)return;const g=++generation.current;try{const value=await delayedRpc<Reviews>('delayed_reviews',{p_child:childId});if(g!==generation.current)return;
+ const active=useVisible(),generation=useRef(0),released=useRef(false),reviewed=useRef(false),[handoff,setHandoff]=useState(false);
+ const handoffPlay=usePlayback(2000,handoff?'your-turn:'+childId:'waiting');
+ const load=useCallback(async(release=false)=>{if(released.current)return;const g=++generation.current;try{const value=await delayedRpc<Reviews>('delayed_reviews',{p_child:childId});if(g!==generation.current)return;
   if(value.terminal||value.actor!==userId||Date.parse(value.expiresAt)<=value.serverAt){navigate('/delayed/'+matchId,{replace:true});return;}
-  setState(value);setError('');released.current=value.started||!value.events.some(e=>!e.seen&&e.kind==='attempt');setReady(released.current);
+  setState(value);setError('');const pending=value.events.some(e=>!e.seen&&e.kind==='attempt');
+  released.current=value.started||!pending&&(!reviewed.current||release);setReady(released.current);setHandoff(!released.current&&!pending);
  }catch{if(g===generation.current)setError('Unable to verify this turn.');}},[childId,matchId,userId,navigate]);
+ useEffect(()=>{if(handoff&&handoffPlay.done&&!error)void load(true);},[handoff,handoffPlay.done,error,load]);
  useEffect(()=>{if(active)void load();return()=>{generation.current++;};},[active,load]);
  useEffect(()=>{const channel=supabase.channel('review-gate:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
  const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
  if(ready)return <>{children()}</>;
- return error?<main className="delayed-page"><p role="alert">{error}</p><button onClick={()=>void load()}>Retry</button><Link to={'/delayed/'+matchId}>Match home</Link></main>:event?<AttemptReview key={event.id} event={event} {...{childId,matchId,userId}} onDone={load}/>:<p role="status">Preparing your turn…</p>;
+ return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event?<AttemptReview key={event.id} event={event} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title="Preparing your turn…"/>;
 }
 
 function AttemptReview({event,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;onDone:()=>void|Promise<void>}){
- const schedule=reviewSchedule(event),reduced=useReduced(),total=reduced?1000:schedule.duration,[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(600,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
+ const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?1000:schedule.duration),[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(600,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
  useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
  const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{await delayedRpc('delayed_review_ack',{p_event:event.id});await onDone();}catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,onDone,prior]);
  useEffect(()=>{if(prior!==null&&done&&!error)void acknowledge();},[prior,done,error,acknowledge]);
- if(prior===null)return <main className="delayed-page">{error?<p role="alert">{error}<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button></p>:<p role="status">Restoring saved result…</p>}</main>;
- return <div className="async-result-review"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(elapsed+prior-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
+ if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Preparing saved result…'}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
+ if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={(event.actorName??'Opponent')+"'s round "+event.round+' results'}/>;
+ const shown=Math.max(0,elapsed+prior-intro);
+ return <div className="async-result-review"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
-  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,elapsed+prior)}/></SnapshotBoundary>
+  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
 }
 
@@ -91,31 +97,31 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay?'overlay:'+childId:'waiting'),busy=useRef(false);
  useEffect(()=>{if(!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve()).then(()=>navigate('/delayed/'+matchId+(home.receipt?'?finale=1':''),{replace:true})).catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
- if(!home||!state||!child)return <p role="status">Loading saved result…</p>;
+ if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  const event=state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} {...{childId,matchId,userId,event}} onDone={()=>{played.current=true;return load();}}/>;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved authoritative result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
-  {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>{!reduced&&play.elapsed<3000?(won?'You won!':winner?'Game complete':'Tie'):winner?(won?'You':home.players.find(p=>p.id===winner)?.name??'Opponent')+' banked the $'+child.stake+' stake!':'Tie · $0'}</strong>
-  <p>{!reduced&&play.elapsed<3000?'Saved final result':'Included in the single match settlement.'}</p>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
+  {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
+  <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
  </div></FullscreenGameShell></div>;
 }
 
 function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
- const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(reduced?1500:9000,home?matchId:'loading'),busy=useRef(false);
- useEffect(()=>{let alive=true;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!h.receipt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);}).catch(()=>setError('Unable to load match result.'));return()=>{alive=false;};},[matchId,navigate]);
- useEffect(()=>{if(!home||!play.done||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).then(()=>navigate('/delayed/'+matchId+'?history=1',{replace:true})).catch(()=>{busy.current=false;setError('Unable to confirm viewing. The result is still available.');});},[home,play.done,matchId,navigate]);
+ const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(10500,home&&imageReady?matchId:'loading'),busy=useRef(false);
+ useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!h.receipt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
+ useEffect(()=>{if(!home||!imageReady||!play.done||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).then(()=>navigate('/delayed/'+matchId+'?history=1',{replace:true})).catch(()=>{busy.current=false;setError('Unable to confirm viewing. The result is still available.');});},[home,imageReady,play.done,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
- if(!home)return <p role="status">Loading match finale…</p>;
+ if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved authoritative settlement</p>} announcement={false}><div className="async-finale" data-phase={play.elapsed>(reduced?600:6000)?'breakdown':'ring'}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
   {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<figure className="async-boxing" data-outcome={winner?'decisive':'draw'}>
-   <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
+   <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} onLoad={()=>setImageReady(true)} onError={()=>setError('Unable to load the match artwork. The saved results remain available.')} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
     {winner&&<span className="async-cash-label" aria-label={'Net winnings $'+Math.abs(home.net).toLocaleString()} style={{'--cash-chars':Math.max(4,('$'+Math.abs(home.net).toLocaleString()).length)} as CSSProperties}>{'$'+Math.abs(home.net).toLocaleString()}</span>}
     <figcaption className="async-boxer-names">{(winner?[home.players.find(p=>p.id===winner)!,home.players.find(p=>p.id!==winner)!]:home.players).map(p=><span key={p.id} data-player-id={p.id} className={!winner?'boxer-neutral':p.id===winner?'boxer-winner':'boxer-loser'}>{p.name}</span>)}</figcaption>
    </div>
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
-  <p>One authoritative match settlement · {home.realMoney?'Real money':'Play money'}</p>
+  {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
  </div></FullscreenGameShell></div>;
 }
