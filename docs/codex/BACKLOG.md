@@ -1,3 +1,31 @@
+## Queued — Async match score meaning is unclear — October 29, 2026
+
+Owner smoke reports Tri-Towers shows 0–0 despite a saved 45,780-point attempt.
+Read-only reconciliation of parent `5fc51132-1cfe-47b2-8b54-0d6520404a99` and
+child `4001c41d-45ab-40e9-bc15-391c536af999` confirms the score remains intact:
+Happach Gmail round 1, cleared, 45,780, completed at 11:47:25.560 UTC. Accepted
+command `90dc860c-bb77-4448-8d23-ddc480d4f0a0` still records revision 47/segment 1
+to revision 48. Child remains revision 48/segment 2, Hap to act, nonterminal,
+with one saved attempt and no child outcome. No data regression or repair needed.
+
+Deployed `private.delayed_child_scores` includes only rounds both players have
+completed while a non-Words child is active. Attempt counts are 1 and 0, so the
+shared projection is correctly 0–0. `public.delayed_home` uses that helper;
+`src/pages/Delayed.tsx` renders `c.scores[playerId]` under an unlabeled scoreboard.
+These are paired-round point totals, not wins, and not the financial net.
+The screenshot was inspected by the reporting coordinator, not this executor:
+it reported You 0 / Happach Gmail 0, Your turn, and Play turn. No supported direct
+Library lookup for the bare screenshot ID was available here.
+
+Local reproduction `qualification.local/async-combined/match-score-repro.test.tsx`
+passes against the actual MatchHome with mocked transport: 0–0, Your turn, no
+paired-round explanation. Recommended minimal correction: label non-Words active
+scores “Completed-round points” and explain “Scores appear after both players
+finish each round.” Preserve concealed unmatched opponent scores, Words scoring,
+terminal totals and all settlement behavior. Consider richer own-attempt status
+only as separately agreed scope. Await consolidated owner smoke and approval;
+no product code, customer state, migrations or publication changed.
+
 ## Queued — GitHub publisher cannot fetch public manifest — October 29, 2026
 
 Latest related failure, 13:12:28 UTC: Tri-Towers runtime SHA `1b222a254` is
