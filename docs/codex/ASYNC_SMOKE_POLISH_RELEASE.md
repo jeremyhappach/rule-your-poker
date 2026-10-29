@@ -30,4 +30,12 @@ Focused validation: 134 cases across 11 files pass. Harness: 241 cases across 12
 
 The task owns the shared local publication lock. Initial remote main and clean main integration worktree are at 8ee54ae9200f95b22024267514df077f408e001b, already an ancestor of the task branch. GitHub reports no required branch-protection contexts. The existing automatic Vercel validation/build and Publish release signal workflow remain the publication gates. No prior denied rerun is retried and no release signal is written directly.
 
-Production SHA, deployment, alias/manifest, publisher receipt and final operational health are pending. Owner production smoke remains acceptance truth.
+## Client publication PASS; publisher receipt pending at 22:35 UTC
+
+Remote main is c26cf799da0e539d31e304fc38c457f5dd3ea0f6, tagged locally async-smoke-polish-20261029. The task branch push, conflict-free main fast-forward and unchanged main push helper succeeded. Vercel production dpl_9mrAyfC9vQvBJaqjS7YrdY6JQ32Y is READY, with holm357.com and ptown-poker.vercel.app assigned. GitHub's Vercel status is success. The public manifest matches this SHA and assets/index-DPlct3JO.js. Remote main was independently verified.
+
+Publisher run 40965854739 attempt 1 is still in progress at its production-alias wait step as of 22:35:20 UTC. Its publish step has not run. The persisted release_publication remains the previous SHA 8ee54ae9200f95b22024267514df077f408e001b with receipt 40934076419-1. Client publication therefore passes, but the full publication receipt gate is NOT yet complete. No rerun, release-signal bypass or direct signal write was attempted.
+
+Post-release health passes: admission/recovery enabled, minute health tick current, zero overdue unheld round-game children, zero worker leases/failures, zero real-money async matches, and review migration count remains exactly one. The worker's last success remains demand-driven, with no due work.
+
+The repository execution circuit breaker ends this run at the 35-minute boundary. The only remaining delivery step is to recheck the existing publisher and matching persisted receipt; investigate its bounded failure if it terminates unsuccessfully. Do not repeat the migration, product tests or deployment. The task-owned shared publication lock remains in place while this publisher is unresolved; release it after the terminal receipt check, verifying its owner first. This receipt checkpoint is a local documentation commit, so it does not trigger a second deployment. Owner production smoke remains acceptance truth.

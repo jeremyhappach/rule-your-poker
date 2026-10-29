@@ -1,6 +1,6 @@
-# Async smoke polish — approved publication in progress — 2026-10-29
+# Async smoke polish — client published; publisher receipt pending — 2026-10-29
 
-Owner authorized final three-second score holds, persistent match results with Back to Lobby, and publication of the full reviewed polish package. Installed review migration is verified and unchanged; async remains fake-only. The final candidate passes 3,260 source/server tests, 241 harness tests, typecheck/build and eight timed phone flows. Publication checks are in progress. See [release evidence and gates](ASYNC_SMOKE_POLISH_RELEASE.md). The older local-only holds below are superseded for this package; the separate platform transition audit remains excluded.
+Owner authorized final three-second score holds, persistent match results with Back to Lobby, and publication of the full reviewed polish package. Installed review migration is verified and unchanged; async remains fake-only. The final candidate passes 3,260 source/server tests, 241 harness tests, typecheck/build and eight timed phone flows. Remote main c26cf799d, Vercel READY dpl_9mrAyfC9vQvBJaqjS7YrdY6JQ32Y, production aliases and public manifest agree. Publisher 40965854739 attempt 1 still waits for the alias as of 22:35 UTC; the stored receipt remains the prior release, so full publication verification remains pending. Execution stops at the repository budget boundary; the next step is that receipt check only. See [release evidence and gates](ASYNC_SMOKE_POLISH_RELEASE.md). The older local-only holds below are superseded for this package; the separate platform transition audit remains excluded.
 
 # Async smoke polish — local review only — 2026-10-29
 
