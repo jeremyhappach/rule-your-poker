@@ -72,6 +72,18 @@ writes at acceptance. Every fixture rolled back before the activation transactio
 committed; zero activation proof profiles remain. Both admission and multi-game
 recovery are enabled. Physical-device owner smoke remains due.
 
+Documentation-only follow-up 10c467ea97f823fc80470db858b7bf098725bde8 is READY in
+deployment dpl_HhHZmX2ZNb2SJpS6atzaEMkMWStg and matches the public manifest.
+Publisher run 40863667339 failed at 2026-10-29 11:23:19 UTC: job 123412899612
+received HTTP 403 fetching the public manifest on all 120 attempts, so it never
+called publish-release. This is distinct from the earlier manifest_invalid error;
+no cause beyond the HTTP denial is established. The persisted signal remains on
+the verified activation SHA 8c0898cc4. Only the two release documents differ
+between those commits. No runtime rollback or recovery disable was performed.
+At 11:38 UTC multi-game admission and scheduler health remained enabled with a
+current minute tick. Publisher-access investigation is queued separately; final
+failure evidence is retained on the task branch without another main publication.
+
 Rollback policy: close private.delayed_release.admission_enabled to stop new
 matches; preserve recovery and compatible client code for accepted mixed matches.
 Do not disable private.delayed_recovery_state.enabled with mixed matches active.
