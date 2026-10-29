@@ -11,9 +11,10 @@ function entry(id){
   initial={...initial,game,config,board:{rules:config,phase:'ready',cards:Array.from({length:28},(_,i)=>i),removed:[],waste:28,stockRemaining:23,run:0,highRun:0,score:0,deadline:at+30000,result:null}};
  }
  if(game==='quintzee')initial.board={...initial.board,scores:{},baseScore:0,rollsRemaining:2};
- initial={...initial,id,matchId:'turns',totals:{me:0,other:0},reviewRevision:0,pendingResults:{me:0,other:1}};
+ initial={...initial,id,round:2,matchId:'turns',board:{...initial.board,scoreBefore:80000,score:80000},totals:{me:80000,other:19803},reviewRevision:0,pendingResults:{me:0,other:1}};
  const saved=game==='tri-towers'?{...initial.board,phase:'stage_complete',removed:[0,1],score:45780,result:{score:45780,scoreBefore:0,stageScore:45780,timeBonus:580,stockBonus:6000,reason:'take_score',completedAt:at}}:completedSibling(initial,at).ownResults[0].board;
- const value={initial,snapshot:{...initial,board:null},seen:false,begun:null,commands:new Map(),event:{id:'review-'+id,kind:'attempt',actor:'other',actorName:'Jeremy',round:1,score:saved.result.score,at:new Date(at).toISOString(),receipt:{game,rules:initial.config},board:saved,seen:false}};
+ saved.score=39848;saved.result={...saved.result,scoreBefore:19803,score:game==='run21'?20045:39848,stageScore:20045,rawSubtotal:95,multiplier:211};
+ const value={initial,snapshot:{...initial,board:null},seen:false,begun:null,commands:new Map(),event:{id:'review-'+id,kind:'attempt',actor:'other',actorName:'Jeremy',round:2,score:20045,at:new Date(at).toISOString(),receipt:{game,rules:initial.config},board:saved,seen:false}};
  entries.set(id,value);return value;
 }
 export function polishResponse(body){
@@ -25,19 +26,22 @@ export function polishResponse(body){
   const lineup=['run21','tri-towers','quintzee','boxdrop'].map((game,i)=>{const e=entry('turn-'+game),s=e.snapshot;return {id:s.id,ordinal:i+1,game,stake:5,terminal:false,config:s.config,actor:'me',scores:s.totals,viewed:false,expiresAt:s.expiresAt,lastCallAt:new Date(Date.now()+86400000).toISOString(),startedAt:s.board?new Date(s.serverAt).toISOString():null};});
   return {id:'turns',status:'active',players,organizer:'me',opponent:'other',lineup,net:0,revision:1,realMoney:false,serverAt:Date.now(),acceptedAt:new Date().toISOString(),createdAt:new Date().toISOString(),completed:0,exposure:20};
  }
- if(name==='delayed_reviews'&&args.p_child?.startsWith('turn-')){const e=entry(args.p_child);return {events:[{...e.event,seen:e.seen}],terminal:e.snapshot.terminal,actor:e.snapshot.actor,started:!!e.snapshot.board,segment:e.snapshot.segment,revision:e.snapshot.revision,expiresAt:e.snapshot.expiresAt,serverAt:Date.now()};}
+ if(name==='delayed_reviews'&&args.p_child?.startsWith('turn-')){const e=entry(args.p_child);return {events:[{...e.event,id:'prior-'+args.p_child,round:1,score:19803,board:null,seen:true},{...e.event,seen:e.seen}],terminal:e.snapshot.terminal,actor:e.snapshot.actor,started:!!e.snapshot.board,segment:e.snapshot.segment,revision:e.snapshot.revision,expiresAt:e.snapshot.expiresAt,serverAt:Date.now()};}
  if(['delayed_review_begin','delayed_review_ack'].includes(name)&&args.p_event?.startsWith('review-turn-')){
   const e=entry(args.p_event.slice(7));if(name==='delayed_review_begin'){e.begun??=Date.now();return {elapsed:Date.now()-e.begun,seen:e.seen};}
-  e.seen=true;e.snapshot={...e.snapshot,reviewRevision:1,totals:{...e.snapshot.totals,other:e.event.score},pendingResults:{me:0,other:0}};return null;
+  e.seen=true;e.snapshot={...e.snapshot,reviewRevision:1,totals:{...e.snapshot.totals,other:19803+e.event.score},pendingResults:{me:0,other:0}};return null;
  }
  if(body.childId?.startsWith('turn-')){
   const e=entry(body.childId),at=Date.now();
   if(body.op==='action'){
    if(e.commands.has(body.requestId))return e.commands.get(body.requestId);
    const b=e.snapshot.board;
-   if(body.intent.type==='start')e.snapshot={...e.snapshot,board:{...e.initial.board,startedAt:at,deadline:at+(e.initial.game==='tri-towers'?30000:e.initial.config.durationMs??120000)},revision:e.snapshot.revision+1};
+   if(body.intent.type==='start')e.snapshot={...e.snapshot,board:{...e.initial.board,...(e.initial.game==='tri-towers'?{phase:'playing'}:{}),startedAt:at,deadline:at+(e.initial.game==='tri-towers'?30000:e.initial.config.durationMs??120000)},revision:e.snapshot.revision+1};
    else if(body.intent.type==='roll')e.snapshot={...e.snapshot,board:{...b,rollSerial:b.rollSerial+1,rollsRemaining:Math.max(0,b.rollsRemaining-1)},revision:e.snapshot.revision+1};
-   else if(e.snapshot.game!=='tri-towers')e.snapshot=completedSibling(e.snapshot,at);
+   else {const previous=e.snapshot,finished=previous.game==='tri-towers'?{...previous,board:null,actor:'other',revision:previous.revision+1,segment:previous.segment+1,ownResults:[{round:2,score:45780,at,board:{...previous.board,phase:'stage_complete',deadline:at+5000,result:{reason:'take_score',scoreBefore:80000,score:125780,stageScore:45780,timeBonus:580,completedAt:at}}}]}:completedSibling(previous,at);
+    const award=finished.ownResults[0].score,record=finished.ownResults[0];record.round=2;
+    if(previous.game!=='run21'){record.board.score=80000+award;record.board.result.scoreBefore=80000;record.board.result.score=80000+award;}
+    e.snapshot={...finished,revision:previous.revision+1,segment:previous.segment+1,ownResults:[{round:1,score:80000,at:at-86400000},record],totals:{...previous.totals,me:80000+award}};}
    e.snapshot={...e.snapshot,serverAt:at};e.commands.set(body.requestId,structuredClone(e.snapshot));
   }
   return {...e.snapshot,serverAt:at};

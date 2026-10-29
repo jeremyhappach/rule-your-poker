@@ -40,7 +40,7 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
  return <div ref={root} className="tri-shared-board" data-round-key={roundKey} data-stage-result={result?.id} data-dealing={dealing} data-result-elapsed={result?.elapsed}>
   <div className="tri-gameplay-top">
    <div className="tri-take-slot tri-actions">{takeScore}</div>
-   <div className="tri-score-group" aria-label="Game scores" data-players={scores.length}>{scores.map(item=><TriScorePill key={item.id} item={item} root={root} fraction={item.active?motion.fraction:0} value={item.active?(motion.displayScore??item.score):item.score}/>)}</div>
+   <div className="tri-score-group" aria-label="Game scores" data-players={scores.length}>{scores.map(item=><TriScorePill key={item.id} item={replay?{...item,active:item.id===userId}:item} root={root} fraction={item.active?motion.fraction:0} value={item.active?(motion.displayScore??item.score):item.score}/>)}</div>
    <div className="tri-high-run" aria-label={`Round highest streak ${highRun??'unavailable'}`}><svg viewBox="0 0 100 70" aria-hidden="true"><path d="M8 15 28 30 50 4 72 30 92 15 81 64H19Z" fill="#f5c32e" stroke="#a96d10" strokeWidth="4"/><path d="M19 56H81" stroke="#fff1a1" strokeWidth="3"/><text x="50" y="52" textAnchor="middle" fontSize="31" fontWeight="900" fill="#4c300a">{highRun??'—'}</text></svg><strong>HI-RUN</strong></div>
   </div>
   <div className="tri-tableau-space"><div className="tri-tableau" aria-label="Three towers">

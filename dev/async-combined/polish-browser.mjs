@@ -10,7 +10,7 @@ try{
  for(const game of process.argv.includes('--remaining')||process.argv.includes('--finale-only')?[]:['quintzee','run21','tri-towers','boxdrop']){
   const page=await browser.newPage({viewport:{width:390,height:844}}),requests=[],errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')requests.push(r.postDataJSON());});
   await page.goto(base+'/delayed/turns/play/turn-'+game,{waitUntil:'domcontentloaded'});
-  await page.getByText("Jeremy's round 1 results",{exact:true}).waitFor();assert.equal(requests.filter(r=>r.op==='action').length,0);
+  await page.getByText("Jeremy's round 2 results",{exact:true}).waitFor();assert.equal(requests.filter(r=>r.op==='action').length,0);
   await page.screenshot({path:`${out}/polish-${game}-intro.png`});
   await page.getByText('Your turn!',{exact:true}).waitFor({timeout:30000});assert.equal(requests.filter(r=>r.op==='action').length,0);
   const pills=game==='quintzee'?'.q-players .tri-score-cell':game==='run21'?'.async-score-pills .tri-score-cell':game==='tri-towers'?'.tri-score-group .tri-score-cell':'.box-scores .box-score';
@@ -24,7 +24,7 @@ try{
    await page.screenshot({path:`${out}/polish-quintzee-rumble.png`});
    await page.waitForFunction(()=>document.querySelectorAll('.q-dice [data-rolling=true]').length===0);
    const count=requests.filter(r=>r.op==='action').length;await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.q-dice button').length===5);
-   assert.equal(requests.filter(r=>r.op==='action').length,count);assert.equal(await page.locator('.q-dice [data-rolling=true]').count(),0);assert.equal(await page.getByText("Jeremy's round 1 results",{exact:true}).count(),0);
+   assert.equal(requests.filter(r=>r.op==='action').length,count);assert.equal(await page.locator('.q-dice [data-rolling=true]').count(),0);assert.equal(await page.getByText("Jeremy's round 2 results",{exact:true}).count(),0);
   }
   assert.deepEqual(errors,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:`${out}/polish-${game}-play.png`});pass(game+' intro → review → handoff, private scores, two pills and mobile shell'+(game==='quintzee'?', explicit first roll, rumble, double-click and resumed reload':''));await page.close();

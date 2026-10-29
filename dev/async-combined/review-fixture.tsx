@@ -1,3 +1,5 @@
+import {useEffect,useState} from 'react';
+import {delayedRpc,type Home} from '@/lib/delayed/client';
 import Delayed from '@/pages/Delayed';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Routes,Route} from 'react-router-dom';
@@ -10,8 +12,9 @@ import '@/index.css';
 import '@/lib/delayed/delayed.css';
 const mode=new URLSearchParams(location.search).get('mode'),preview=!!(window as any).__REVIEW_PREVIEW__;
 const props={childId:'child',matchId:'match',userId:'me'};
+function ReviewTurn(){const [home,setHome]=useState<Home|null>(null);useEffect(()=>{void delayedRpc<Home>('delayed_home',{p_match:props.matchId}).then(setHome);},[]);return home?<ReviewGate home={home} {...props}>{()=> <DelayedTurn {...props} autoStart/>}</ReviewGate>:<p>Preparing review fixture…</p>;}
 createRoot(document.getElementById('root')!).render(<TooltipProvider><ResponsiveGeometryProvider><BrowserRouter><Routes>
- <Route path='/review' element={mode==='finale'?<MatchFinale matchId='match' userId='me'/>:mode==='child'?<ChildResults {...props}/>:<ReviewGate {...props}>{()=> <DelayedTurn {...props} autoStart/>}</ReviewGate>}/>
+ <Route path='/review' element={mode==='finale'?<MatchFinale matchId='match' userId='me'/>:mode==='child'?<ChildResults {...props}/>:<ReviewTurn/>}/>
  <Route path='/delayed' element={<Delayed/>}/><Route path='/delayed/:matchId' element={preview||mode==='home'||mode==='list'?<Delayed/>:<h1>Match home destination</h1>}/>
  <Route path='/delayed/:matchId/play/:childId' element={<Delayed/>}/>
  <Route path='/completed' element={<main className="delayed-page delayed-match-page"><h1>Completed Sessions</h1><AsyncHistory viewerName="Hap"/></main>}/>

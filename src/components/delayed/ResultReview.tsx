@@ -2,7 +2,7 @@ import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
 import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
-import {reviewSchedule,rebaseReviewBoard} from '@/lib/delayed/reviewPresentation';
+import {reviewSchedule,rebaseReviewBoard,reviewScoreContext} from '@/lib/delayed/reviewPresentation';
 import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
@@ -13,6 +13,8 @@ import {delayedRpc,type Home} from '@/lib/delayed/client';
 import {money,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import {Run21Felt} from '@/components/run21/Run21Felt';
+import {TriScorePill} from '@/components/triTowers/TriTowersPresentation';
+import {displayedScore} from '@/lib/run21/presentation';
 import {TriTowersBoard} from '@/components/triTowers/TriTowersView';
 import {QuintzeeView} from '@/components/quintzee/QuintzeeView';
 import {BoxdropView} from '@/components/boxdrop/BoxdropView';
@@ -40,7 +42,7 @@ class SnapshotBoundary extends Component<{children:ReactNode},{failed:boolean}>{
  render(){return this.state.failed?<p role="status">Board preview unavailable. The saved score is shown above.</p>:this.props.children;}
 }
 
-export function ReviewGate({childId,matchId,userId,children}:Identity&{children:()=>ReactNode}){
+export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home:Home;children:()=>ReactNode}){
  const [state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[ready,setReady]=useState(false),navigate=useNavigate();
  const active=useVisible(),generation=useRef(0),released=useRef(false),reviewed=useRef(false),[handoff,setHandoff]=useState(false);
  const handoffPlay=usePlayback(2000,handoff?'your-turn:'+childId:'waiting');
@@ -54,10 +56,11 @@ export function ReviewGate({childId,matchId,userId,children}:Identity&{children:
  useEffect(()=>{const channel=supabase.channel('review-gate:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
  const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
  if(ready)return <>{children()}</>;
- return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event?<AttemptReview key={event.id} event={event} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title="Preparing your turn…"/>;
+ return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title="Preparing your turn…"/>;
 }
 
-function AttemptReview({event,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;onDone:()=>void|Promise<void>}){
+function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>}){
+ const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId));
  const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?1000:schedule.duration),[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(600,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
  useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
  const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{await delayedRpc('delayed_review_ack',{p_event:event.id});await onDone();}catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,onDone,prior]);
@@ -65,26 +68,27 @@ function AttemptReview({event,onDone,childId,matchId,userId}:Identity&{event:Rev
  if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Preparing saved result…'}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
  if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={(event.actorName??'Opponent')+"'s round "+event.round+' results'}/>;
  const shown=Math.max(0,elapsed+prior-intro);
- return <div className="async-result-review"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
+ return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
-  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
+  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} scores={scores} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
 }
 
-function SavedBoard({event,childId,userId,elapsed}:{event:ReviewEvent;childId:string;userId:string;elapsed:number}){
+function SavedBoard({event,scores,childId,userId,elapsed}:{event:ReviewEvent;scores:ReturnType<typeof reviewScoreContext>;childId:string;userId:string;elapsed:number}){
+ const scoreRoot=useRef<HTMLDivElement>(null);
  const [tab,setTab]=useState<ShellTabId>('cards'),[playId]=useState(()=>crypto.randomUUID()),actor=event.actor??userId,name=event.actorName??'Opponent',scope='review:'+event.id+':'+playId,schedule=reviewSchedule(event),active=useVisible();
  const origin=1_000_000,now=origin+elapsed;
- const board=useMemo(()=>rebaseReviewBoard(event,origin),[event]);
- const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:[{id:actor,name}],active_player_id:null,liveBoards:true,revealed:true,cumulative:{[actor]:event.score??0},scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:0,to:event.score??0},presentationKey:scope}:undefined;
+ const board=useMemo(()=>rebaseReviewBoard(event,origin,scores.before),[event,scores.before]);
+ const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:scores.players,active_player_id:null,liveBoards:true,revealed:true,cumulative:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:scores.before,to:scores.after},presentationKey:scope}:undefined;
  useRun21ScoreAudio(userId,scope,runView as any,now,active&&tab==='cards');
  useRun21FailureAudio(userId,scope,runView as any,now,0,active&&tab==='cards',true);
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
- const players=[actor],base={navigation:<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>,activeTab:tab,setActiveTab:setTab,pending:false,error:'',onReconnect:noop,onIntent:noop};
- if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:{[actor]:name},state:{rules:board.rules,players,scores:Object.fromEntries(players.map(p=>[p,p===actor?board.score:0])),round:event.round,turnIndex:0,qualified:[],results:[],finished:false,board}} as any}/>;
- if(event.receipt.game==='boxdrop')return <BoxdropView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,pausedAt:null,finished:false,settled:false,solo:false,players:[{id:actor,name,score:board.score,active:true}]} as any}/>;
+ const players=scores.players.map(p=>p.id),base={navigation:<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>,activeTab:tab,setActiveTab:setTab,pending:false,error:'',onReconnect:noop,onIntent:noop};
+ if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:Object.fromEntries(scores.players.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),round:event.round,turnIndex:players.indexOf(actor),qualified:[],results:[],finished:false,board}} as any}/>;
+ if(event.receipt.game==='boxdrop')return <BoxdropView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,pausedAt:null,finished:false,settled:false,solo:false,players:scores.players} as any}/>;
  if(event.receipt.game==='ptown-words')return <PtownWordsView view={{...board,identity:{sessionId:childId,dealerGameId:childId,roundId:scope},revision:1,viewerId:userId,serverAt:origin,canAct:false,paused:false,finished:true,phase:'complete',rack:[],rackCounts:{},terminal:null,financial:{balances:{}}} as any} now={now} pending={false} connected={true} error="" activeTab={tab} setActiveTab={setTab} panel={<p>Saved public board. Private racks are not included.</p>} sessionEnded={false} onIntent={async()=>false} onReconnect={noop}/>;
- return <FullscreenGameShell className={event.receipt.game==='tri-towers'?'tri-scene':'run21-space-theme'} title="Saved result" description={'Round '+event.round} activeTab={tab} setActiveTab={setTab} panel={<p>Saved result · controls disabled</p>} announcement={false}>
-  {runView?<><Run21Felt solo layout="fullscreen" playerId={actor} now={now} view={runView as any} hideScoring={elapsed<schedule.medal}/>{active&&elapsed<schedule.medal&&<Run21ScoreCelebration userId={userId} onRetire={noop} receipt={{key:scope,aggregate:board.result.aggregate,playerName:name,durationMs:schedule.medal,startedAt:performance.now()-elapsed}}/>}</>:<div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard replay view={board} canAct={false} onIntent={noop} now={now} roundKey={scope} userId={userId} result={roundResultPresentation({...board.result,id:scope,stage:event.round},board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0)} scores={[{id:actor,name,score:board.score,active:true}]}/></div>}
+ return <FullscreenGameShell className={event.receipt.game==='tri-towers'?'tri-scene':'run21-space-theme'} title="Saved result" description={'Round '+event.round} activeTab={tab} setActiveTab={setTab} panel={<p>Saved result · controls disabled</p>} announcement={false} scores={runView&&<div ref={scoreRoot} className="async-score-pills" aria-label="Game scores">{scores.players.map(p=><TriScorePill key={p.id} root={scoreRoot} item={{...p,active:p.id===userId}} value={p.id===actor?displayedScore(runView as any,actor,now):p.score}/>)}</div>}>
+  {runView?<><Run21Felt solo layout="fullscreen" playerId={actor} now={now} view={runView as any} hideScoring={elapsed<schedule.medal}/>{active&&elapsed<schedule.medal&&<Run21ScoreCelebration userId={userId} onRetire={noop} receipt={{key:scope,aggregate:board.result.aggregate,playerName:name,durationMs:schedule.medal,startedAt:performance.now()-elapsed}}/>}</>:<div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard replay view={board} canAct={false} onIntent={noop} now={now} roundKey={scope} userId={userId} result={roundResultPresentation({...board.result,id:scope,stage:event.round},board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0)} scores={scores.players}/></div>}
  </FullscreenGameShell>;
 }
 
@@ -99,7 +103,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  const event=state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
- if(!overlay&&event)return <AttemptReview key={event.id} {...{childId,matchId,userId,event}} onDone={()=>{played.current=true;return load();}}/>;
+ if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} onDone={()=>{played.current=true;return load();}}/>;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>

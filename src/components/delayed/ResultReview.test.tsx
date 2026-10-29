@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import {initialSibling,completedSibling} from '../../../dev/async-combined/sibling-completion-fixtures.mjs';
+import triRules from '@/lib/triTowers/rules-v2.json';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {useState} from 'react';
@@ -21,7 +23,7 @@ beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-29T15:00:0
 afterEach(()=>{cleanup();vi.useRealTimers();});
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
-const gate=()=> <ReviewGate childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;
+const gate=()=> <ReviewGate home={mock.home} childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;
 it('shows pending result and automatically hands off only after ACK; no Continue',async()=>{mount(gate());await flush();expect(screen.queryByText('Gameplay owner')).toBeNull();expect(screen.queryByRole('button',{name:/continue/i})).toBeNull();await advance(10100);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
 it('resumes an already-started attempt immediately without covering its clock',async()=>{mock.state.started=true;mount(gate());await flush();expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_begin')).toBe(false);});
 it('another device starting ends the reveal and hands off to the existing owner',async()=>{mount(gate());await flush();mock.state.started=true;await act(async()=>mock.change());expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});
@@ -83,3 +85,29 @@ it('changing match identity waits for the new image before starting its seven-se
  const ui=mount(<SwitchMatch/>);await flush();fireEvent.load(screen.getByRole('img'));await advance(5000);fireEvent.click(screen.getByText('Next match'));await flush();await advance(8000);
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);fireEvent.load(screen.getByRole('img'));await advance(6999);expect(ui.container.querySelector('.async-finale')?.getAttribute('data-phase')).toBe('ring');
 });
+
+for(const game of ['quintzee','run21','tri-towers','boxdrop']){
+ function replayFixture(){
+  const initial=initialSibling(game,Date.now()),config=game==='tri-towers'?{...triRules,version:'tri-towers/5',clearCelebrationMs:3000}:initial.config;
+  const board=game==='tri-towers'?{rules:config,phase:'stage_complete',cards:Array.from({length:28},(_,i)=>i),removed:[0,1],waste:28,stockRemaining:23,run:0,highRun:0,deadline:Date.now()+5000,result:{reason:'take_score',scoreBefore:979954,score:999999,stageScore:20045,timeBonus:0}}:completedSibling(initial,Date.now()).ownResults[0].board;
+  board.score=999999;board.result={...board.result,aggregate:100,score:game==='run21'?20045:999999,scoreBefore:979954,stageScore:20045};
+  const current={...event,actorName:'Other',round:2,score:20045,receipt:{game,rules:config},board};
+  mock.state.events=[{...current,id:'prior',round:1,score:19803,board:null,seen:true},current];
+  mock.home.lineup[0].scores={me:80000,other:19803};
+ }
+ it(game+': saved replay keeps viewer highlighted, animates only the opponent cumulative award and ignores duplicate refresh totals',async()=>{
+  replayFixture();const ui=mount(gate());await flush();await advance(3100);
+  const cells=()=>ui.container.querySelectorAll(game==='boxdrop'?'.box-score':'.tri-score-cell');
+  expect(cells()).toHaveLength(2);expect(cells()[0].getAttribute('data-active')).toBe('true');expect(cells()[1].getAttribute('data-active')).toBe('false');
+  expect(cells()[0].textContent).toContain('80,000');expect(cells()[1].textContent).toContain(game==='run21'?'20,204':'19,803');
+  await advance(2400);const value=cells()[1].textContent!;expect(value).not.toContain('19,803');expect(value).not.toContain('999,999');expect(cells()[0].textContent).toContain('80,000');
+  mock.home.lineup[0].scores.other=999999;await act(async()=>mock.change());expect(cells()[1].textContent).toBe(value);
+  await advance(10000);await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
+ });
+ it(game+': resumed review seeks the same disclosed cumulative range',async()=>{
+  replayFixture();const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:5500,seen:false}):original(name,args));
+  const ui=mount(gate());await flush();await advance(100);
+  const cells=ui.container.querySelectorAll(game==='boxdrop'?'.box-score':'.tri-score-cell');expect(cells).toHaveLength(2);expect(cells[0].textContent).toContain('80,000');expect(cells[1].textContent).not.toMatch(/999,999|19,803/);
+  await advance(10000);await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
+ });
+}
