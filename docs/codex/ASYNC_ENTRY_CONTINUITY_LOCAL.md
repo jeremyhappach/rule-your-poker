@@ -28,6 +28,18 @@ This is the real application entry with synthetic HTTP authority, not live backe
 
 Local evidence is in `qualification.local/async-combined/`: `entry-focused-final.log`, `entry-all-tests.log`, `entry-typecheck-final.log`, `entry-production-build.log`, `entry-app-browser.json`, and eight `entry-app-*.png` screenshots. Evidence is local/ignored; the reproducible browser script is versioned.
 
-## Owner acceptance
+## Client publication verified; publisher pending — 23:49 UTC
+
+Commit `360382198ca9a41dc3f113ac7980d7a24a01ee16`, tagged `async-entry-continuity-20261029`, was pushed to the task branch and fast-forwarded into main using the unchanged push helper. Remote main, Vercel READY deployment `dpl_9qPQX7Z9LjeQH6sYG5vCNyGP9WmA`, both production aliases, successful Vercel commit status and the public manifest agree. Manifest bundle: `assets/index-CVL5dBwL.js`. Publisher `40975079661` attempt 1 remains in progress; its persisted receipt still refers to the previous release. The task retains its publication lock until terminal verification. No direct receipt write or denied rerun attempt occurred.
+
+Post-deploy operational evidence at 23:47 UTC: admission/recovery enabled, current health tick, no overdue unheld round children, no worker lease/failure, zero real-money async matches, fake-only create guard present and review migration count exactly one. Canonical accounting hashes match the prior qualification when using its CR-normalized comparison. The transfer function's raw hash is `de14ab5df0a703cfd8c1ed43aa5a819c`; CR-normalized it is the prior `86c0feb55524f14ab9f58a06cdee2ef6`. The initial raw-hash mismatch was a comparison-method discrepancy, not a deployed change.
+
+## Publisher failure — 23:54 UTC
+
+Publisher `40975079661` attempt 1 terminated with failure. Job `123801015860` received HTTP 403 for all 120 production-manifest fetches; the alias wait failed and the publish-signal step was skipped. This is runner access failure, not evidence that the production alias serves an old build: the independently fetched public manifest matches `360382198ca9a41dc3f113ac7980d7a24a01ee16`. The precise blocking gate is the missing matching publication receipt. At 23:54:24 UTC, the stored receipt still references previous SHA `c26cf799da0e539d31e304fc38c457f5dd3ea0f6` and receipt `40965854739-2`. Operational checks remain healthy and fake-only; normalized canonical hashes still match.
+
+The owner was asked to open https://github.com/jeremyhappach/rule-your-poker/actions/runs/40975079661 and select **Re-run failed jobs**, then reply **retried**. The integration's previously denied rerun capability was not retried or bypassed. No access-setting change, direct receipt write, redeployment or migration was attempted. If the manual retry repeats the 403, investigate the runner access boundary in a separately scoped follow-up rather than repeatedly retrying. Retain the verified task-owned lock until the successful matching receipt is observed. This terminal checkpoint is a local documentation commit only; do not push a second documentation-only release.
+
+## Owner acceptance after complete publication
 
 After verified publication, open a pending invitation and confirm the inviter name. Enter an available round with an unseen opponent result from the notification/match screen. Confirm the named intro, saved board/count-up, three-second settled hold, Your turn, then the own board without another loading screen. For Quintzee, wait and refresh before pressing Start: no dice should appear until Start. Refresh an active attempt and confirm the same board/deadline with no repeated result review. Owner production smoke remains acceptance truth.
