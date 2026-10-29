@@ -1,5 +1,21 @@
 # Original boxing finale artwork — local review candidate
 
+## Approved narrow complexion revision — October 29, 2026
+
+After approving the illustrated direction, the owner requested that both fictional boxers be white/light-skinned. The existing winner and draw assets were inspected and edited with the built-in image-generation tool; they were not redesigned. The red boxer's existing light complexion was retained and the blue boxer's complexion was made light consistently in both scenes. Visual inspection confirms the original composition, expressions/poses, wardrobe, centered referee, winner's raised left arm, right-hand cash bag and neutral draw are preserved. Runtime names, amounts, confetti and all logic are unchanged.
+
+The current JPEG files replace the prior versions under the same approved asset paths. Source edits: `exec-7281b1d1-0130-474e-b2c9-58b5886fed26.png` (winner) and `exec-2ecd4fe9-3967-42dd-86bd-d237a51964a0.png` (draw). Both were encoded at JPEG quality 92 with no resizing or composition edits. Original and edited source PNGs remain preserved outside the production bundle.
+
+### Winner edit prompt
+
+Make a very narrow edit to this EXISTING original fictional arcade boxing illustration. The owner wants BOTH fictional boxers to be white/light-skinned. The red winner on the left already has a light warm tan complexion: preserve him unchanged. Change ONLY the exposed skin complexion of the blue boxer on the RIGHT to a natural light-skinned white complexion, warm light beige/peach with subtle pink undertones, harmonized with the same warm arena lighting. Apply consistently to face, ears, neck, torso, arms, hands and legs. Preserve his exact facial features as far as possible, short dark hair, beard, downcast expression, head angle, musculature, sweat and shading details. Do NOT redesign either person. Preserve the exact original composition and pixel alignment, the ring and crowd, lights, red and blue wardrobes, physically centered striped referee, winner's anatomical LEFT arm raised by referee, winner's bare anatomical RIGHT hand holding the blank cash bag, and every prop's size and location. No other changes. Do not add any names, amount, dollar sign, text, confetti, chips, watermark or logo. Keep square size and full framing. This is a skin-complexion-only edit, not a new scene.
+
+### Neutral draw edit prompt
+
+Image 1 is the EXISTING neutral draw illustration to edit. Image 2 is ONLY a complexion consistency reference from the already-edited decisive version. Make a narrow skin-complexion-only edit to Image 1: both fictional boxers should be white/light-skinned. Keep the red LEFT boxer unchanged. Change the blue RIGHT boxer's exposed skin to the same natural light beige/peach white complexion with warm pink undertones seen on the blue boxer in Image 2. Apply consistently to face, ears, neck, torso, arms, hands and legs under the existing arena light. Preserve Image 1's exact layout, faces as far as possible, short dark hair/beard, small sportsmanlike smiles, upright neutral postures, gloves at waist level, muscular anatomy, clothing, lighting, ring, centered striped referee, and all background details. DO NOT transfer the winner/loser poses or cash bag from Image 2: this remains the NEUTRAL DRAW, neither boxer victorious or dejected, neither arm raised, no bag. No other redesign or changes. Preserve full square framing and pixel alignment. No names, text, numbers, dollar signs, cash bag, confetti, chips, logos or watermark.
+
+## Original generation history
+
 Generated with the built-in `image_gen` tool on October 29, 2026. These are original illustrations, not stock-image edits. The two Library reference IDs supplied by the owner were not accessible as standalone images through this task's available tools; direction came from the owner's requirements and the parent task's inspected description. No stock pixels or watermarks were copied or removed.
 
 Selected project assets:
@@ -9,7 +25,7 @@ Selected project assets:
 
 Runtime assigns the authoritative winner and loser names to the corresponding illustrated poses. The figures are generic role illustrations, not persistent player avatars. Draw retains participant order. Usernames, actual absolute net winnings and winner-viewer confetti are rendered by the application. No names, amounts, typography or confetti are baked into either asset. The latest owner direction replaced the chip flight with the right-hand cash bag.
 
-The source PNGs remain at their original generated-image locations and in the ignored local qualification folder. Final JPEG copies were encoded with the built-in Windows JPEG encoder at quality 92, without resizing, cropping or altering composition. They are 1254 × 1254; draw is 465,749 bytes and winner is 414,580 bytes. Only these delivery assets are used by the application.
+The source PNGs remain at their original generated-image locations and in the ignored local qualification folder. Final JPEG copies were encoded with the built-in Windows JPEG encoder at quality 92, without resizing, cropping or altering composition. Current edited assets are 1254 × 1254; draw is 416,973 bytes and winner is 394,805 bytes. Only these delivery assets are used by the application.
 
 Source generations:
 

@@ -2,6 +2,14 @@
 
 Status: implemented local candidate on `codex/async-combined`, continuing checkpoint `c4ead759b`. Publication, main integration, hosted migration, activation and customer-data changes remain on hold. Production remains the published sibling completion correction `43545662c08baf1e2e7b764c25048989a1d9721b`.
 
+## Approved artwork-only refinement after `5fd4ac5a0`
+
+Owner approved the illustrated direction with one requested change: both fictional boxers should be white/light-skinned. The existing assets were inspected and edited through built-in image generation, with the decisive version used as a complexion reference for the draw. Composition, wardrobe, expressions/poses, centered referee, winner's raised left arm, right-hand cash bag and neutral draw are visually preserved. Only the two JPEG assets and documentation changed; all runtime mapping, amount, confetti, timing, acknowledgement and financial code remains identical to `5fd4ac5a0`.
+
+Updated assets keep their existing paths under `src/assets/async-finale/`: `boxing-winner-cash-v1.jpg` (394,805 bytes) and `boxing-draw-v1.jpg` (416,973 bytes), both 1254 square. Source edit IDs, exact prompts and original generation history are preserved in that directory's README.
+
+All 18 installed-Edge winner/loser/draw checks pass again at 320px, 390px and 1440px, each with normal/reduced motion. Fresh phone loser and neutral-draw screenshots were visually inspected. Asset build passes with the existing chunk-size warning. No application-code test rerun was needed for the binary-only change. Evidence: `boxing-light-browser.log`, `boxing-light-browser.json`, `boxing-light-build.log` and fresh `boxing-*.png` screenshots in `qualification.local/async-combined/`. The existing local preview health check passes at `http://127.0.0.1:15325/`. No publication, hosted migration or customer-state change occurred.
+
 ## October 29 illustrated finale revision — local only
 
 Owner rejected the schematic figures and selected polished original arcade illustration. The latest direction supersedes chip transfer: centered referee raises the winner's anatomical left arm; the winner holds a cash bag in their anatomical right hand. Runtime displays the absolute authoritative net amount on the bag and usernames beneath the corresponding boxers. The illustrated winning pose is on the left; UUID-based runtime names map the actual winner/loser to those poses. No persistent player-avatar identity is inferred from the generic fighters. A separate neutral draw scene has no bag, dejected fighter, transfer or confetti.
