@@ -1,5 +1,9 @@
 # Combined async release — local checkpoint, October 28, 2026
 
+Historical local checkpoint. Hosted installation and subsequent release receipts
+are tracked in [ASYNC_COMBINED_RELEASE.md](ASYNC_COMBINED_RELEASE.md); its later
+evidence supersedes pending-production statements below.
+
 Approved scope: styled invitation configuration/acceptance; repeated children
 from Ptown Words, Run21, TriTowers, Quintzee and Box Drop; active human opponents;
 and creator-only Delete for both players at every fake-money match status.
@@ -63,7 +67,7 @@ live Words real money and ordinary synchronous accounting remain unchanged.
   service-only core/commit, coordinated recovery and safe projections.
 - `supabase/functions/delayed-recovery`: single-use dispatcher claim, bounded
   recovery and completion acknowledgement. Existing Words recovery remains.
-- Migration `20261028232744_async_combined_five_games.sql`: 18 exact deployed
+- Migration `20261029002655_async_combined_five_games.sql`: 18 exact deployed
   preimage guards; multi-game activation defaults closed. Not installed.
 
 Human eligibility uses active profile plus canonical Auth UUID. Current bot
@@ -165,7 +169,7 @@ was attempted, and no customer state was touched.
 2. Inspect deployed migration history and build/run hosted rollback qualification
    against current authority,
    including actual canonical accounting triggers and deferred constraints.
-   Install `20261028232744` closed only if unapplied and qualified, then rerun
+   Install `20261029002655` closed only if unapplied and qualified, then rerun
    installed proofs and verify all synthetic fixtures are removed.
 3. Deploy/verify the bundled recovery worker and complete the full combined
    code release through serialized main publication; verify exact SHA READY,

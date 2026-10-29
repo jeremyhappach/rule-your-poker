@@ -9,7 +9,8 @@ tombstone, and create no new financial settlement. The parent lock serializes
 deletion against final completion. Real-money removal is denied. Interim child
 results remain provisional; existing debt accounting settles once per parent.
 No wallet, reservation, balance gate or synchronous accounting change is added.
-Implementation is local; see `ASYNC_COMBINED_LOCAL.md` for release boundaries.
+See `ASYNC_COMBINED_RELEASE.md` for hosted qualification and release boundaries;
+`ASYNC_COMBINED_LOCAL.md` retains the earlier local evidence.
 
 ## October 28, 2026 — Words polish local presentation boundary
 

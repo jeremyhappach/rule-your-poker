@@ -1,4 +1,4 @@
-## Combined async local candidate
+## Combined async
 
 - `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup and review.
 - `src/components/delayed/DelayedTurn.tsx`: shared game presentation adapters.
@@ -7,6 +7,7 @@
 - `supabase/functions/delayed-recovery`: single-use dispatch worker.
 - `dev/async-combined`: disposable local fixture/proofs and worker bundler.
 - `docs/codex/ASYNC_COMBINED_LOCAL.md`: approved scope, evidence and remaining release gates.
+- `docs/codex/ASYNC_COMBINED_RELEASE.md`: hosted qualification and publication receipts.
 
 ## 11 Up secondary smoke qualification
 

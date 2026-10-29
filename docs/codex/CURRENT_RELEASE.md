@@ -1,4 +1,4 @@
-# Combined five-game async — controlled local qualification — 2026-10-28
+# Combined five-game async — installed qualification PASS — 2026-10-28
 
 Approved combined scope is implemented locally: styled invitations, five games,
 active-human admission and creator-only fake-money deletion for both players.
@@ -9,14 +9,18 @@ with unchanged assertions/timeouts passed all 3,149 source tests across 455 file
 No product-code correction was justified. Main `a79c40497` is reconciled.
 Sequential integrated application typecheck, nine delayed-adapter tests, 241
 harness tests, production bundle and self-contained recovery-worker bundle pass.
-Migration is prepared closed, not installed; nothing combined is published.
+Migration `20261029002655` is installed closed. Hosted candidate and installed
+rollback proofs pass. Deployed recovery worker v1 passed the real minute-schedule
+test: a synthetic Quintzee attempt advanced with zero financial writes, dispatch
+token cleared, and all fixtures removed. Ordinary Words admission is restored;
+multi-game admission remains closed until verified combined client publication.
 The earlier missing-owner-context hold is cleared: the supplied authenticated
 owner history and independent verification provenance establish approval for the
-combined fake-only release. No new scope approval is needed. This reassessment
-performs no production action; none has been attempted or newly denied here.
-Hosted candidate/installed proofs, worker deployment, serialized combined
-publication, exact release evidence and guarded activation remain pending.
-See [ASYNC_COMBINED_LOCAL.md](ASYNC_COMBINED_LOCAL.md).
+combined fake-only release. No new scope approval is needed. That informational
+reassessment preceded the authorized hosted qualification recorded above.
+Serialized combined publication, exact release evidence and guarded activation
+remain pending. See [release evidence](ASYNC_COMBINED_RELEASE.md) and
+[local qualification](ASYNC_COMBINED_LOCAL.md).
 
 # SCC/Horses follow-up - integrated qualification PASS - 2026-10-28
 
