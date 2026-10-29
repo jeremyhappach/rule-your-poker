@@ -1,8 +1,8 @@
-# Async results/history — installed qualification PASS — 2026-10-29
+# Async results/history — published, verification PASS — 2026-10-29
 
 Owner approved the refreshed previews for production at 18:35:50 UTC. This supersedes the historical local/publication holds below for the complete results/history package and approved illustrated finale only. The separate platform transition audit remains held.
 
-Migration `20261029184517_async_results_review` is installed once. Candidate and installed hosted rollback proofs pass; synthetic profiles are absent, admission/recovery stay enabled and the worker remains recent. Canonical financial function hashes are unchanged. Final validation passes: 3,230 source/server tests, 241 harness tests, typecheck/build, 15 actual service/database checks and the independent-connection parent settlement race. Main integration and exact-SHA publication verification are next. Owner production smoke remains due. See [release qualification](ASYNC_RESULTS_RELEASE.md).
+Migration `20261029184517_async_results_review` is installed once. Candidate and installed hosted rollback proofs pass; synthetic profiles are absent, admission/recovery stay enabled and the worker remains recent. Canonical financial function hashes are unchanged. Final validation passes: 3,230 source/server tests, 241 harness tests, typecheck/build, 15 actual service/database checks and the independent-connection parent settlement race. Remote main `8ee54ae9200f95b22024267514df077f408e001b`, production READY `dpl_EdR4jmbcE3L1dEuntu9YPaoH5kRY`, the public manifest and successful publisher `40934076419` attempt 1 all agree. Persisted receipt `40934076419-1` matches at 18:49:33 UTC. No release signal was written directly. Owner production smoke remains due. See [release qualification and receipt](ASYNC_RESULTS_RELEASE.md).
 
 ## Historical local review checkpoints
 

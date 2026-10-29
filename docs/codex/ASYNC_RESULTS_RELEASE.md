@@ -27,6 +27,10 @@ Security-advisor baseline and post-install results are retained locally. The exi
 
 Evidence is under `qualification.local/async-combined/`: `release-review-*.log`, `review-hosted-candidate-result.json`, `review-hosted-installed-result.json`, `review-hosted-inspection.json`, `review-parent-proof.json` and `review-service-proof.json`. Proof composition is `dev/async-combined/review-release-proof.mjs`.
 
-## Publication gate
+## Publication gate — PASS at 18:49 UTC
 
-Pending main integration and agreement among remote main SHA, Vercel production READY, public build manifest, successful current-head GitHub publisher and persisted Supabase release receipt. No release signal is written directly. Production smoke remains Jeremy's acceptance step.
+Remote main is `8ee54ae9200f95b22024267514df077f408e001b`, tagged locally `async-results-review-20261029`. Task branch push, conflict-free main fast-forward and the unchanged main push helper succeeded. Vercel production `dpl_EdR4jmbcE3L1dEuntu9YPaoH5kRY` is READY and assigned to `holm357.com` and `ptown-poker.vercel.app`. The public manifest serves that same SHA with bundle `assets/index-qlmYlGvW.js`.
+
+[Publisher run 40934076419](https://github.com/jeremyhappach/rule-your-poker/actions/runs/40934076419) attempt 1 succeeded. Supabase `system_settings.release_publication` contains that SHA, receipt `40934076419-1` and publication time `2026-10-29T18:49:33.146Z`. A subsequent GitHub main-ref read confirms the same SHA. No direct signal write, rerun bypass or protection change occurred. Receipt artifacts are retained as `review-production-*.json` in the qualification folder. This final receipt documentation is retained in a local task-branch documentation commit without triggering another production build.
+
+Production smoke remains Jeremy's acceptance step: open an existing fake-money match from its notification; review an opponent result and verify their displayed total updates after acknowledgement; start/resume the next attempt; confirm the completed match's winner/loser or draw finale, runtime net amount and return to read-only history. Verify child details sum to the one parent result. No stable-checkpoint claim is made before that smoke passes.
