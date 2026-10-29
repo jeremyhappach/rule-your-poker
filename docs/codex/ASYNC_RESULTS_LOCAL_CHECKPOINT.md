@@ -1,34 +1,38 @@
 # Async results/history local checkpoint — October 29, 2026
 
-Status: incomplete local candidate on codex/async-combined. Publication, main integration, hosted migration, activation and customer-data changes remain on hold. This checkpoint does not replace the released sibling completion fix at 43545662c08baf1e2e7b764c25048989a1d9721b.
+Status: implemented local candidate on `codex/async-combined`, continuing checkpoint `c4ead759b`. Publication, main integration, hosted migration, activation and customer-data changes remain on hold. Production remains the published sibling completion correction `43545662c08baf1e2e7b764c25048989a1d9721b`.
 
-## Implemented candidate
+## Implemented scope
 
-Match cards, local start timestamps, named signed Current Net, outstanding-child Unsettled, player-specific progress, pending score contributions, clock layout, Words bag count and randomized-first-player disclosure. Own completed scores show immediately; opponent cumulative points include only attempts acknowledged by this viewer. Shared Words scores retain their public-board policy.
+Accessible whole match cards show local start dates, named signed Current Net, outstanding-child Unsettled, player-specific progress, pending score contributions, clock layout, Words bag count and randomized-first-player disclosure. Own completed scores show immediately; opponent cumulative points include only attempts acknowledged by this viewer. Shared Words scores retain their public-board policy.
 
-Private immutable review events and per-viewer acknowledgements are separate from temporary sanitized board snapshots. Read-only review/history RPCs feed existing shared game renderers. Take Turn reviews pending opponent results before automatic Start; a started attempt resumes directly. Child result and net-based boxing-ring finale routes never own settlement. Persistent acceptance, completion and match notices use existing per-match notification rows. Async history is informational for play money, without real-account transaction writes.
+Private immutable review events and per-viewer acknowledgements are separate from temporary sanitized board snapshots. Existing completed attempts receive derived compatibility receipts without changing authority or copying historical private boards; unavailable boards have an explicit fallback. Prior organizer turns retire obsolete acceptance notices. Capture and backfill install under table locks in one transaction.
 
-The parent settlement implementation, canonical ledger/player-chip ownership, negative balances, ordinary synchronous rules, 36-hour deadline and 24-hour Last Call are unchanged. The candidate migration was created with the installed Supabase CLI and contains exact deployed-function preimage guards. It has NOT been applied to hosted Supabase.
+Take Turn reviews pending opponent results before automatic Start; a started attempt resumes directly. Saved boards use frozen shared-game celebration/count schedules and shared presentation/audio owners. Explicit replay admission defaults off for existing live callers. Child results progress through count, winner-only confetti and stake presentation. The net-based parent finale supports winner, loser and neutral draw, then the authoritative breakdown. The boxing-ring SVG remains a visual review candidate, not owner-approved artwork.
 
-Temporary non-Words board cleanup is private and unscheduled. Playback begin and cleanup take the parent lock; pruning rechecks eligibility after locking. Pending final viewers and active playback leases retain boards. Immutable receipts, child authority and audit state are never pruned. No customer cleanup has run.
+Gameplay and viewer-disclosure revisions are independent. A second-device acknowledgement updates totals without creating a conflicting equal-revision gameplay snapshot. Unconfirmed requests survive same-tab reload with their exact UUID, revision and segment; success or definitive rejection clears the stored copy. Sign-out clears pending requests.
 
-## Evidence and limits
+Persistent acceptance, grouped child completion and final-match notices use existing per-match notification rows. Account and game history share a read-only match detail route. History uses indexed 30-row keyset pages. Play-money history is informational and never posts to real accounts. Removed settled matches retain read-only history; child replay actions remain unavailable.
 
-Local rollback proof covers sanitized capture, own/unseen/partially viewed scores, viewer independence, duplicate ACK, authorization, immutable receipts, accepted-to-turn retirement, final masking, authoritative history outcomes, negative-chip canonical parent settlement, zero play-money account posting, stable notices, pending-final/active-lease retention and receipt survival after synthetic board pruning.
+Temporary non-Words board cleanup is private and unscheduled. Playback begin and cleanup take the parent lock; pruning rechecks eligibility after locking. Pending final viewers and active leases retain boards. Immutable receipts, child authority and audit state are never pruned. No customer cleanup has run.
 
-The unchanged parent financial proof passes provisional zero-write checks, net settlement and negative chips, net-zero receipt, independent-connection simultaneous last-child completion, injected rollback/retry, child forfeiture, 32 obligations and browser financial-owner denial. These run only in disposable local PostgreSQL clones.
+## Preserved contract
 
-Eight synthetic 390x844 browser cases pass: five real shared saved-board renderers and winner/loser/draw finales. Each of the four round-based games sends one Start after review; Words sends no gameplay action. Finale checks assert winner-only confetti, no draw transfer, breakdown transition, one ACK and no financial action. The Run21, Tri-Towers and winner-finale screenshots were visually inspected. Synthetic transport is not hosted or physical-device acceptance.
+Parent settlement, canonical ledger/player-chip ownership, existing negative balances, ordinary synchronous rules, child stakes and forfeitures, 36-hour deadline and 24-hour Last Call are unchanged. There is no funded wallet, ring fence, reservation, available-balance gate or child transfer. Review acknowledgements do not change financial authority or extend turn availability.
 
-Final application typecheck, 3,211 source/server tests across 459 files (including the begin-failure retry regression), all 241 harness tests and the production bundle pass. The bundle retains the existing chunk-size warning. Packaged migration preimage guards and SQL compile pass inside a local rollback; the current candidate also passes the canonical parent proof. Logs are in qualification.local/async-combined/review-*.log. These checks do not waive the remaining flow qualifications below.
+Candidate migration `20261029155233_async_results_review_local_candidate.sql` retains exact deployed-function preimage guards and mirrors `supabase/delayed/reviews.sql`. It has NOT been applied to hosted Supabase.
 
-## Required completion before release review
+## Local evidence
 
-1. Handle existing matches whose completed attempts predate review-event capture: missing event rows currently leave opponent contributions pending with no corresponding review/ACK path. Establish acceptance-notice retirement for pre-existing active matches without replaying an obsolete acceptance notice. Preserve authority and show explicit unavailable-board fallback.
-2. Reconcile a second device's review acknowledgement with an already-mounted turn's equal-revision snapshot guard. Review metadata must not create a false conflicting-gameplay snapshot; test the actual transport boundary.
-3. Replace generic five-second saved-result playback with each shared game's canonical celebration/count timing and audio; finish child count → winner-only confetti → stake-overlay sequencing. Review interrupted playback, reduced motion and historical replay.
-4. Prove competing Start/retry/reload request identities against the actual service and database, plus a simultaneous playback-begin/prune race. Current parent-settlement race proof does not prove these separate races.
-5. Finish match-home/history phone and accessibility checks, bounded history pagination, and final integrated validation. The current finale artwork is a local SVG candidate, not owner-approved visual acceptance.
-6. After the above passes, perform a final scope/security/ACL review and request release review under the existing publication hold. No additional product-direction decision is needed to continue this approved local scope.
+- SQL rollback proof covers sanitized capture, own/unseen/partially viewed scores, viewer independence, duplicate ACK, authorization, immutability, notification retirement, final masking, history and board retention.
+- Fifteen loopback HTTP/service/PostgreSQL checks pass: legacy compatibility with unchanged authority; same-ID duplicate/reload Start; distinct-ID competing Start in all four round games; fingerprint rejection; cross-device ACK at equal gameplay revision; playback-begin/prune lock race; 30+2 history pagination; participant checks and table/RPC ACLs. Real service code and role-scoped SQL run in disposable local databases, with fixture authentication at the HTTP boundary.
+- Canonical parent proof passes: provisional zero writes, balanced net settlement with negative chips, net-zero receipt without transfer, independent-connection simultaneous last-child completion, atomic rollback/retry, child forfeiture, 32 obligations and browser denial of financial authority.
+- Ten synthetic browser cases pass: five shared saved-board renderers, winner/loser/draw finales, and home/history at 320px and 390px. Four round games issue one Start after review; Words issues none. Checks cover winner-only confetti, no draw transfer, breakdown, one finale ACK, keyboard navigation, pagination and overflow. Corrected phone scores and single-player Quintzee replay were visually inspected.
+- An additional read-only history-detail browser run timed out during cold Vite navigation before its assertions. It is not counted as passing. Database/component tests cover that route; hosted and physical-device acceptance remain unobserved. The final neutral-draw SVG adjustment is component-tested without a new visual smoke.
+- Application typecheck, all 3,226 source/server tests across 461 files and 241 harness tests pass. The production build passes, retaining the existing chunk-size and stale Browserslist warnings. The final pending-request cleanup adjustment separately passes all 36 mounted async-shell cases.
 
-The execution-budget checkpoint preserves this incomplete candidate rather than claiming that a passing renderer or settlement proof qualifies the whole flow.
+Evidence: `qualification.local/async-combined/review2-*.log`, `review-service-proof.json` and `review-browser.json`. No hosted state or release receipt was changed.
+
+## Remaining gates
+
+Integrated local validation is complete. Review the local candidate and finale artwork. Hosted migration qualification, coordinated publication and production smoke remain withheld under the explicit publication hold. Local evidence does not claim production acceptance.

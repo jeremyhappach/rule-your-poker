@@ -113,3 +113,14 @@ describe('actual async shell sibling audit',()=>{
   expect(mock.words.mock.calls.filter(([name])=>name==='delayed_words_action')).toHaveLength(1);
  });
 });
+
+it('accepts a second-device ACK at the same gameplay revision but rejects a gameplay conflict',async()=>{
+ mock.snapshot={...initial('run21'),reviewRevision:0,pendingResults:{me:0,other:1}};const ui=mount();await flush();
+ await receive({...mock.snapshot,reviewRevision:1,pendingResults:{me:0,other:0},totals:{me:0,other:125}});expect(ui.queryByRole('alert')).toBeNull();
+ await receive({...mock.snapshot,board:{...mock.snapshot.board,cardIndex:9}});expect(ui.getByRole('alert').textContent).toContain('Conflicting turn snapshot');
+});
+it('persists and replays the exact unconfirmed Start after reload',async()=>{
+ const ready={...initial('run21'),board:null};let lost=true;mock.snapshot=ready;mock.request.mockImplementation(async(body:any)=>{if(body.op==='action'){if(lost)throw Error('lost response');return {...initial('run21'),revision:2};}return structuredClone(ready);});
+ const first=mount();await flush();fireEvent.click(first.getByRole('button',{name:'Begin round 1'}));await flush();const sent=mock.request.mock.calls.find(([c])=>c.op==='action')![0];expect(JSON.parse(sessionStorage.getItem('ptown:async-turn:request:me:child')!)).toEqual(sent);
+ first.unmount();lost=false;const second=mount();await flush();expect(mock.request.mock.calls.filter(([c])=>c.op==='action').at(-1)![0]).toEqual(sent);expect(second.container.querySelector('[data-fullscreen-board-slot]')).toBeTruthy();expect(sessionStorage.getItem('ptown:async-turn:request:me:child')).toBeNull();
+});

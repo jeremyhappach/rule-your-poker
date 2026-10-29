@@ -1,6 +1,6 @@
-# Async results/history — incomplete local candidate — 2026-10-29
+# Async results/history — local candidate, publication held — 2026-10-29
 
-Local implementation and evidence are preserved on codex/async-combined. Publication and hosted migrations remain on hold. Existing-match review recovery, cross-device acknowledgement snapshots, shared presentation timing/audio and Start/cleanup concurrency qualification remain. See [local checkpoint and exact remaining work](ASYNC_RESULTS_LOCAL_CHECKPOINT.md). The previously published completion corrections below remain the production baseline.
+Local implementation on codex/async-combined now includes existing-match review recovery, independent viewer acknowledgements, shared replay timing/audio, durable Start retries and paged history. Fifteen service/database checks, ten synthetic browser cases, 3,226 source/server tests, 241 harness tests, application typecheck and production build pass. Publication and hosted migrations remain on hold. Finale artwork awaits owner review. See [local checkpoint, evidence and limits](ASYNC_RESULTS_LOCAL_CHECKPOINT.md). The published completion corrections below remain the production baseline.
 
 # Async completion follow-up — 2026-10-29
 

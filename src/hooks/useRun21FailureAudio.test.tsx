@@ -60,3 +60,5 @@ it('does not admit audio without sufficient authoritative hold remaining',()=>{
   const failed=view('bust');failed.scorePresentation!.endsAt=5500;
   h.rerender({...initial(),view:failed,now:5050});expect(audio.follow).not.toHaveBeenCalled();
 });
+
+it('explicit saved-result replay admits the shared failure cue without enabling ordinary fresh entry',()=>{renderHook(()=>useRun21FailureAudio('user','review', {...view('bust'),revealed:true},5050,0,true,true));expect(audio.follow).toHaveBeenCalledTimes(1);});

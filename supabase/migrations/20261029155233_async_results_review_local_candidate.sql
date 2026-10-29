@@ -7,6 +7,8 @@ DO $$ BEGIN
 END $$;
 
 -- LOCAL CANDIDATE ONLY. No cleanup of authority/audit state and no financial writers.
+-- Apply atomically: close the backfill/trigger gap against concurrent authority writers.
+LOCK TABLE private.delayed_matches,private.delayed_children IN SHARE ROW EXCLUSIVE MODE;
 ALTER TABLE public.platform_notifications DROP CONSTRAINT platform_notifications_kind_check;
 ALTER TABLE public.platform_notifications ADD CONSTRAINT platform_notifications_kind_check CHECK(kind IN('invitation','turn','settled','invitation_closed','accepted','results'));
 CREATE TABLE private.delayed_review_events (
@@ -43,12 +45,30 @@ ALTER TABLE private.delayed_acceptance_retired ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.delayed_review_events,private.delayed_review_boards,private.delayed_review_seen,
  private.delayed_finale_seen,private.delayed_acceptance_retired FROM PUBLIC,anon,authenticated,service_role;
 CREATE INDEX delayed_review_match ON private.delayed_review_events(match_id,child_id,round);
+CREATE INDEX delayed_review_child ON private.delayed_review_events(child_id,actor,round);
+CREATE INDEX delayed_history_organizer ON private.delayed_matches(organizer,settled_at DESC,id DESC) WHERE status='settled';
+CREATE INDEX delayed_history_opponent ON private.delayed_matches(opponent,settled_at DESC,id DESC) WHERE status='settled';
 CREATE TRIGGER delayed_review_events_immutable BEFORE UPDATE OR DELETE ON private.delayed_review_events FOR EACH ROW EXECUTE FUNCTION private.delayed_immutable();
 CREATE TRIGGER delayed_review_seen_immutable BEFORE UPDATE OR DELETE ON private.delayed_review_seen FOR EACH ROW EXECUTE FUNCTION private.delayed_immutable();
 CREATE TRIGGER delayed_finale_seen_immutable BEFORE UPDATE OR DELETE ON private.delayed_finale_seen FOR EACH ROW EXECUTE FUNCTION private.delayed_immutable();
 
+-- Derived compatibility receipts only: never rewrite historical authority or copy private boards.
+INSERT INTO private.delayed_review_events(child_id,match_id,event_key,kind,actor,round,score,completed_at,receipt)
+ SELECT c.id,c.match_id,c.id||':'||(a->>'actor')||':'||(a->>'round'),'attempt',(a->>'actor')::uuid,
+ (a->>'round')::int,(a->>'score')::bigint,to_timestamp((a->>'at')::numeric/1000),
+ jsonb_build_object('game',c.game_type,'rules',c.config,'result',a#>'{board,result}','legacy',true)
+ FROM private.delayed_children c CROSS JOIN LATERAL jsonb_array_elements(coalesce(c.state->'attempts','[]')) a
+ WHERE c.game_type<>'ptown-words' ON CONFLICT(event_key) DO NOTHING;
+INSERT INTO private.delayed_review_events(child_id,match_id,event_key,kind,actor,round,score,completed_at,receipt)
+ SELECT c.id,c.match_id,c.id||':final','child',NULL,0,NULL,o.completed_at,
+ jsonb_build_object('game',c.game_type,'rules',c.config,'reason',o.reason,'winner',o.winner,'organizerDelta',o.organizer_delta,'opponentDelta',o.opponent_delta,'stake',c.stake,'legacy',true)
+ FROM private.delayed_children c JOIN private.delayed_outcomes o ON o.child_id=c.id ON CONFLICT(event_key) DO NOTHING;
+INSERT INTO private.delayed_acceptance_retired(match_id)
+ SELECT m.id FROM private.delayed_matches m WHERE m.accepted_at IS NOT NULL AND (m.status<>'active' OR EXISTS(
+ SELECT FROM private.delayed_children c WHERE c.match_id=m.id AND (c.starter=m.organizer OR c.actor=m.organizer OR c.segment>1))) ON CONFLICT DO NOTHING;
+
 CREATE FUNCTION private.delayed_review_board(game text,b jsonb) RETURNS jsonb LANGUAGE sql STABLE SET search_path='' AS $$
- SELECT CASE game WHEN 'run21' THEN b-'evidence'
+ SELECT CASE game WHEN 'run21' THEN (SELECT jsonb_object_agg(key,value) FROM jsonb_each(b) WHERE key=ANY(ARRAY['playerId','columns','passesUsed','presented','current','cardIndex','revision','startedAt','deadline','result']))
  WHEN 'tri-towers' THEN private.tri_towers_visible(b)
  WHEN 'quintzee' THEN private.quintzee_present_board(b)
  WHEN 'boxdrop' THEN private.boxdrop_visible(b)
@@ -126,7 +146,7 @@ BEGIN
  SELECT * INTO m FROM private.delayed_matches WHERE id=c.match_id AND who IN(organizer,opponent);
  IF NOT FOUND OR EXISTS(SELECT FROM private.delayed_removals WHERE match_id=m.id) THEN RAISE EXCEPTION 'delayed:not_found' USING ERRCODE='42501';END IF;
  SELECT coalesce(jsonb_agg(jsonb_build_object('id',e.id,'kind',e.kind,'actor',e.actor,'round',e.round,'score',e.score,
-  'at',e.completed_at,'receipt',e.receipt,'board',b.board,'seen',EXISTS(SELECT FROM private.delayed_review_seen s WHERE s.event_id=e.id AND s.viewer=who)) ORDER BY e.completed_at,e.kind DESC),'[]') INTO answer
+  'at',e.completed_at,'receipt',e.receipt,'actorName',(SELECT username FROM public.profiles WHERE id=e.actor),'board',b.board,'seen',EXISTS(SELECT FROM private.delayed_review_seen s WHERE s.event_id=e.id AND s.viewer=who)) ORDER BY e.completed_at,e.kind DESC),'[]') INTO answer
  FROM private.delayed_review_events e LEFT JOIN private.delayed_review_boards b ON b.event_id=e.id WHERE e.child_id=c.id AND (e.actor IS DISTINCT FROM who OR e.kind='child');
  RETURN jsonb_build_object('events',answer,'terminal',c.terminal,'actor',c.actor,'segment',c.segment,'revision',c.revision,'started',c.started_at IS NOT NULL,'expiresAt',c.expires_at,'held',private.delayed_held(m.id),'serverAt',floor(extract(epoch FROM clock_timestamp())*1000));
 END $$;
@@ -138,6 +158,7 @@ BEGIN
  IF NOT FOUND OR NOT EXISTS(SELECT FROM private.delayed_matches WHERE id=e.match_id AND who IN(organizer,opponent)) OR EXISTS(SELECT FROM private.delayed_removals WHERE match_id=e.match_id)
  THEN RAISE EXCEPTION 'delayed:not_found' USING ERRCODE='42501';END IF;
  PERFORM 1 FROM private.delayed_matches WHERE id=e.match_id FOR UPDATE;
+ IF EXISTS(SELECT FROM private.delayed_removals WHERE match_id=e.match_id) THEN RAISE EXCEPTION 'delayed:not_found' USING ERRCODE='42501';END IF;
  INSERT INTO private.delayed_review_playback(event_id,viewer) VALUES(e.id,who)
  ON CONFLICT(event_id,viewer) DO UPDATE SET lease_until=clock_timestamp()+interval '5 minutes'
  RETURNING started_at INTO started;
@@ -246,10 +267,10 @@ CREATE OR REPLACE FUNCTION public.platform_notification_center() RETURNS jsonb L
  'items',(SELECT coalesce(jsonb_agg(to_jsonb(n) ORDER BY updated_at DESC),'[]') FROM (SELECT * FROM public.platform_notifications WHERE user_id=auth.uid() AND NOT EXISTS(SELECT FROM private.delayed_removals r WHERE r.match_id=platform_notifications.match_id) AND (actionable OR kind='invitation_closed' AND read_revision<revision) ORDER BY updated_at DESC,id LIMIT 50)n))
 $$;
 
-CREATE FUNCTION public.delayed_history(p_profile uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+CREATE FUNCTION public.delayed_history(p_profile uuid DEFAULT NULL,p_before timestamptz DEFAULT NULL,p_before_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT coalesce(jsonb_agg(jsonb_build_object('id',m.id,'opponent',(SELECT username FROM public.profiles WHERE id=CASE WHEN auth.uid()=m.organizer THEN m.opponent ELSE m.organizer END),
- 'startedAt',m.accepted_at,'completedAt',m.settled_at,'count',s.child_count,'net',CASE WHEN auth.uid()=m.organizer THEN s.organizer_delta ELSE s.opponent_delta END,'realMoney',m.real_money) ORDER BY m.settled_at DESC),'[]')
- FROM private.delayed_matches m JOIN private.delayed_settlements s ON s.match_id=m.id WHERE auth.uid() IN(m.organizer,m.opponent) AND (p_profile IS NULL OR p_profile=auth.uid())
+ 'startedAt',m.accepted_at,'completedAt',m.settled_at,'count',s.child_count,'net',CASE WHEN auth.uid()=m.organizer THEN s.organizer_delta ELSE s.opponent_delta END,'realMoney',m.real_money) ORDER BY m.settled_at DESC,m.id DESC),'[]')
+ FROM (SELECT candidate.* FROM private.delayed_matches candidate WHERE auth.uid() IN(candidate.organizer,candidate.opponent) AND candidate.status='settled' AND (p_profile IS NULL OR p_profile=auth.uid()) AND (p_before IS NULL OR (candidate.settled_at,candidate.id)<(p_before,p_before_id)) ORDER BY candidate.settled_at DESC,candidate.id DESC LIMIT 30) m JOIN private.delayed_settlements s ON s.match_id=m.id
 $$;
 CREATE FUNCTION public.delayed_history_detail(p_match uuid) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 DECLARE h jsonb;original jsonb;
@@ -260,5 +281,5 @@ BEGIN
  RETURN h||jsonb_build_object('lineup',(SELECT jsonb_agg(item||jsonb_build_object('result',saved->'result') ORDER BY (item->>'ordinal')::int) FROM jsonb_array_elements(h->'lineup') item JOIN jsonb_array_elements(original->'lineup') saved ON item->>'id'=saved->>'id'),'unsettled',0,'finaleViewed',EXISTS(SELECT FROM private.delayed_finale_seen WHERE match_id=p_match AND viewer=auth.uid()));
 END $$;
 REVOKE ALL ON FUNCTION private.delayed_review_board(text,jsonb),private.delayed_capture_reviews(),private.delayed_review_cleanup_eligible(private.delayed_review_events),private.delayed_prune_review_boards(),private.delayed_notify(uuid) FROM PUBLIC,anon,authenticated,service_role;
-REVOKE ALL ON FUNCTION public.delayed_reviews(uuid),public.delayed_review_begin(uuid),public.delayed_review_ack(uuid),public.delayed_finale_ack(uuid),public.delayed_home(uuid),public.delayed_history(uuid),public.delayed_history_detail(uuid) FROM PUBLIC,anon,service_role;
-GRANT EXECUTE ON FUNCTION public.delayed_reviews(uuid),public.delayed_review_begin(uuid),public.delayed_review_ack(uuid),public.delayed_finale_ack(uuid),public.delayed_home(uuid),public.delayed_history(uuid),public.delayed_history_detail(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.delayed_reviews(uuid),public.delayed_review_begin(uuid),public.delayed_review_ack(uuid),public.delayed_finale_ack(uuid),public.delayed_home(uuid),public.delayed_history(uuid,timestamptz,uuid),public.delayed_history_detail(uuid) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.delayed_reviews(uuid),public.delayed_review_begin(uuid),public.delayed_review_ack(uuid),public.delayed_finale_ack(uuid),public.delayed_home(uuid),public.delayed_history(uuid,timestamptz,uuid),public.delayed_history_detail(uuid) TO authenticated;

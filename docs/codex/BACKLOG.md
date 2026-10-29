@@ -1,4 +1,6 @@
-## Queued — Async match score meaning is unclear — October 29, 2026
+## Implemented locally — Async match score disclosure — October 29, 2026
+
+The approved consolidated brief supersedes the original paired-round-label proposal below. The local candidate shows own points immediately and opponent totals only for individually acknowledged attempts, with pending markers. See ASYNC_RESULTS_LOCAL_CHECKPOINT.md for qualification. Publication and owner device acceptance remain held; the production observation below is preserved.
 
 Owner smoke reports Tri-Towers shows 0–0 despite a saved 45,780-point attempt.
 Read-only reconciliation of parent `5fc51132-1cfe-47b2-8b54-0d6520404a99` and

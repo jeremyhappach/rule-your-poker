@@ -20,15 +20,15 @@ function TowerCard({card,tableau=false,badge}:{card:number|null;tableau?:boolean
  return <span ref={ref} className="tri-card-art"><span style={{position:'relative',display:'block',width,height:width*1.5}}><PlayingCard frontStyle="cartoon" cartoonLayout={tableau?'tableau':'standard'} card={card===null?undefined:{rank:ranks[card%13],suit:suits[Math.floor(card/13)]}} isHidden={card===null} faceFillPx={width} size="sm" style={{width,height:width*1.5}}/>{badge}</span></span>;
 }
 export type TriTowersBoardView=Pick<Projection,'rules'|'phase'|'cards'|'removed'|'waste'|'stockRemaining'|'run'|'deadline'|'highRun'>;
-interface Props {view:TriTowersBoardView;canAct:boolean;onIntent:(intent:Intent)=>void;result:Parameters<typeof TriTowersStageResult>[0]['result']|null;roundKey:string;now?:number;paused?:boolean;highRun?:number;scores?:TriScore[];takeScore?:ReactNode;userId?:string;connected?:boolean;presentationActive?:boolean;roundLabel?:string;turnLabel?:string;liveEntry?:boolean;recoveryEpoch?:number;input?:TriIntentBuffer;diagnosticRevision?:number}
-export function TriTowersBoard({view:v,canAct,onIntent,result,roundKey,now=0,paused=false,highRun=v.highRun,scores=[],takeScore,userId='',connected=true,presentationActive=true,roundLabel='ROUND 1',turnLabel,liveEntry=false,recoveryEpoch=0,input,diagnosticRevision}:Props){
+interface Props {replay?:boolean;view:TriTowersBoardView;canAct:boolean;onIntent:(intent:Intent)=>void;result:Parameters<typeof TriTowersStageResult>[0]['result']|null;roundKey:string;now?:number;paused?:boolean;highRun?:number;scores?:TriScore[];takeScore?:ReactNode;userId?:string;connected?:boolean;presentationActive?:boolean;roundLabel?:string;turnLabel?:string;liveEntry?:boolean;recoveryEpoch?:number;input?:TriIntentBuffer;diagnosticRevision?:number}
+export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,roundKey,now=0,paused=false,highRun=v.highRun,scores=[],takeScore,userId='',connected=true,presentationActive=true,roundLabel='ROUND 1',turnLabel,liveEntry=false,recoveryEpoch=0,input,diagnosticRevision}:Props){
  const root=useRef<HTMLDivElement>(null),v2=isV2(v.rules),awards=towerAwards(v.removed,v.rules);
  const previous=useRef({roundKey,cleared:v.removed.filter(i=>i<3)});
  const fresh=previous.current.roundKey===roundKey?awards.filter(a=>!previous.current.cleared.includes(a.tower)).map(a=>a.tower):[];
  const [animated,setAnimated]=useState<number[]>([]);
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
  const modern=['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules.version);
- const motion=useTriRoundPresentation({scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
+ const motion=useTriRoundPresentation({replay,scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
  const {flight,node}=useTriCardFlight(root,v,roundKey,recoveryEpoch,modern&&connected&&presentationActive&&!paused,motion.reduced,userId);
  useLayoutEffect(()=>{if(!presentationActive||!connected||paused)input?.interrupt();},[input,presentationActive,connected,paused]);
  const remaining=Math.max(0,v.deadline-now),full=modern?v.rules.stageMs:v.phase==='intro'?v.rules.roundIntroMs??2500:v.phase==='ready'?v.rules.readyMs:v.phase==='stage_complete'?v.rules.holdMs:v.rules.stageMs;

@@ -1,5 +1,5 @@
 export interface ReviewEvent {
- id:string;kind:'attempt'|'child';actor:string|null;round:number;score:number|null;at:string;
+ id:string;kind:'attempt'|'child';actor:string|null;actorName?:string;round:number;score:number|null;at:string;
  receipt:{game:string;rules:any;result?:any;move?:any;reason?:string;winner?:string|null;stake?:number;organizerDelta?:number;opponentDelta?:number};
  board:any;seen:boolean;
 }

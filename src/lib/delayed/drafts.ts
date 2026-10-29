@@ -8,4 +8,4 @@ export function restoreDraft(raw:string|null,v:WordsSnapshot):Placement[]{
  return saved.placements;
  }catch{return [];}
 }
-export function clearPrivateDrafts(){try{for(const key of Object.keys(localStorage))if(key.startsWith(draftPrefix))localStorage.removeItem(key);for(const key of Object.keys(sessionStorage))if(key.startsWith('ptown:async-words:request:'))sessionStorage.removeItem(key);}catch{/* Storage may be unavailable. */}}
+export function clearPrivateDrafts(){try{for(const key of Object.keys(localStorage))if(key.startsWith(draftPrefix))localStorage.removeItem(key);for(const key of Object.keys(sessionStorage))if((key.startsWith('ptown:async-words:request:')||key.startsWith('ptown:async-turn:request:')))sessionStorage.removeItem(key);}catch{/* Storage may be unavailable. */}}

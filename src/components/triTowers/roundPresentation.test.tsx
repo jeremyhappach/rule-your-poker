@@ -111,3 +111,10 @@ describe('shared v3 round presentation in both adapters',()=>{
   expect(hook.result.current).toBe(false);hook.rerender({dealer:'new',status:'playing'});expect(hook.result.current).toBe(true);
  });
 });
+
+it('explicit saved replay admits the existing count/audio while fresh live entry stays silent',()=>{
+ const end={...base,phase:'stage_complete' as const,deadline:7000},saved={...result,reason:'take_score',elapsed:2600};
+ const live=render(<TriTowersBoard {...props} view={end} result={saved}/>);expect(calls('tri-count:')).toHaveLength(0);live.unmount();
+ const review=render(<TriTowersBoard {...props} view={end} result={saved} replay/>);expect(calls('tri-count:')).toHaveLength(1);expect(review.getByLabelText('Score 550')).toBeTruthy();
+ act(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});review.rerender(<TriTowersBoard {...props} view={end} result={{...saved,elapsed:2800}} replay/>);expect(calls('tri-count:')).toHaveLength(1);
+});

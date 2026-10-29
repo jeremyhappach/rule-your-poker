@@ -1,3 +1,12 @@
+## Async result review (local candidate)
+
+- `src/components/delayed/ResultReview.tsx`: review-before-Start, child sequence and read-only parent finale.
+- `src/lib/delayed/reviewPresentation.ts`: frozen shared timing and timestamp-only replay projection.
+- `src/lib/delayed/turnSnapshot.ts`: independent gameplay/disclosure revision admission.
+- `src/components/delayed/AsyncHistory.tsx`: shared account/history route and bounded pagination.
+- `supabase/delayed/reviews.sql`: immutable review metadata, compatibility receipts, membership/ACL checks, leases and unscheduled board pruning.
+- `dev/async-combined/review-service-proof.mjs`: isolated HTTP/service/SQL races, compatibility and history/ACL proofs.
+
 ## Combined async
 
 - `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup and review.

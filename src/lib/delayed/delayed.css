@@ -33,3 +33,5 @@
 .async-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}.async-confetti i{position:absolute;top:-5%;width:.5rem;height:.9rem;animation:async-confetti 3s ease-in both}.async-chip-transfer{animation:async-chips 2s ease-in-out 2s both}
 @keyframes async-confetti{to{top:110%;transform:rotate(600deg)}}@keyframes async-chips{from{transform:translateX(calc(var(--direction) * -110px));opacity:0}20%,80%{opacity:1}to{transform:translateX(calc(var(--direction) * 110px));opacity:0}}@keyframes async-fade{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.async-confetti{display:none}.async-chip-transfer,.async-finale-breakdown{animation:none}}
+
+.delayed-scoreboard>div{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:.4rem}.delayed-scoreboard strong{white-space:nowrap;overflow-wrap:normal;font-size:1.05rem}.delayed-scoreboard strong[data-pending]{white-space:normal;font-size:.85rem}.delayed-net>span:first-child,.delayed-net>span:last-child{flex-basis:100%}.delayed-net>strong{flex:1 1 11rem}.delayed-page .delayed-history-card{text-decoration:none;color:#f4f0df}

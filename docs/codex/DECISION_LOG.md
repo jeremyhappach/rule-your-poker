@@ -1,3 +1,11 @@
+## October 29, 2026 — Async viewer-specific result review (local candidate)
+
+Owner-approved disclosure is per viewer and per saved attempt: own points are immediate; opponent cumulative points include only acknowledged contributions, with explicit pending counts. Words keeps shared-board scores. Review revisions are independent of gameplay revisions; equal-gameplay conflicts remain rejected. Existing attempts receive derived immutable receipts with unavailable-board fallback, never rewritten authority or invented replay boards. Acceptance retirement includes prior organizer availability.
+
+Saved boards reuse frozen canonical presentation timing and explicit read-only replay admission. Live/Arcade fresh-entry suppression remains the default. Exact unconfirmed Start requests survive reload in account/child-scoped session storage and clear on sign-out. Parent-only accounting, negative balances and 36h/24h deadlines are unchanged.
+
+History is read-only apart from viewing acknowledgements, uses bounded keyset pages, and never adds play-money rows to real-account transactions. Temporary board pruning shares the parent lock with playback leases and acknowledgements; immutable result/audit receipts remain. Migration backfill and trigger installation are serialized against gameplay writers. All qualification is local; publication, hosted migration and customer cleanup remain held. See ASYNC_RESULTS_LOCAL_CHECKPOINT.md.
+
 ## October 28, 2026 — Approved combined async contract
 
 The five-game async release combines Words, Run21, TriTowers, Quintzee and Box

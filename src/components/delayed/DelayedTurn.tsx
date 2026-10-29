@@ -1,3 +1,4 @@
+import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
 import {QuintzeeView} from '@/components/quintzee/QuintzeeView';
 import type {QuintzeeSnapshot} from '@/lib/quintzee/model';
 import {BoxdropView} from '@/components/boxdrop/BoxdropView';
@@ -28,15 +29,15 @@ type Snapshot=Awaited<ReturnType<typeof project>>;
 
 export function DelayedTurn({childId,matchId,userId,autoStart=false}:{childId:string;matchId:string;userId:string;autoStart?:boolean}){
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(Date.now()),[tab,setTab]=useState<ShellTabId>('cards');
- const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(null),initialSegment=useRef<number|null>(null);
+ const requestKey='ptown:async-turn:request:'+userId+':'+childId;
+ const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(readPendingTurn(requestKey)),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
  const [medal,setMedal]=useState<ScoreCelebrationReceipt|null>(null),seenMedal=useRef<string|null>(null);
  const retireMedal=useCallback(()=>setMedal(null),[]);
  const navigate=useNavigate(),latest=useRef<Snapshot|null>(null);
  const accept=useCallback((value:Snapshot)=>{
   if(value.id!==childId||value.matchId!==matchId)throw Error('Turn identity changed. Return to the match.');
-  const old=latest.current;if(old&&old.revision>value.revision)return;
-  if(old&&old.revision===value.revision&&JSON.stringify({...old,serverAt:0})!==JSON.stringify({...value,serverAt:0}))throw Error('Conflicting turn snapshot. Reconnect safely.');
+  const old=latest.current;if(!admitTurnSnapshot(old,value)){if(old&&(value.reviewRevision??0)<(old.reviewRevision??0))throw Error('delayed:review_stale');return;}
   latest.current=value;
   // A duplicate/recovery response cannot rewind an already-running result window.
   const at=old?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
@@ -46,11 +47,11 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false}:{childId:st
  },[childId,matchId,userId,navigate]);
  const refresh=useCallback(async()=>{const epoch=++generation.current;try{
   const value=await delayedRequest<Snapshot>(request.current??{op:'state',childId});
-  if(epoch!==generation.current)return;accept(value);request.current=null;setPending(false);setError('');
+  if(epoch!==generation.current)return;accept(value);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
  }catch(e){if(epoch===generation.current){
   const message=e instanceof Error?e.message:'Unable to reconnect.';
-  if(message==='delayed:stale_action'||e instanceof DelayedRequestError&&e.status<500){
-   request.current=null;setPending(false);
+  if(message==='delayed:stale_action'||message==='delayed:review_stale'||e instanceof DelayedRequestError&&e.status<500){
+   request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);
    try{accept(await delayedRequest<Snapshot>({op:'state',childId}));setError('');}catch{setError('Unable to restore the latest turn.');}
   }else setError(message);
  }}},[childId,accept]);
@@ -80,7 +81,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false}:{childId:st
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
  },[due,snapshot?.revision,refresh]);
  async function act(intent:Record<string,unknown>){if(!snapshot||pending||request.current)return;
-  request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};setPending(true);setError('');await refresh();}
+  request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // The saved shared-rule deadline includes celebration/count-up. This only
@@ -138,3 +139,5 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false}:{childId:st
      onIntent={i=>void act(i)}/></div>}
   </FullscreenGameShell>{medal&&<Run21ScoreCelebration userId={userId} receipt={medal} onRetire={retireMedal}/>}</div>;
 }
+
+function readPendingTurn(key:string):Record<string,unknown>|null{try{const value=JSON.parse(sessionStorage.getItem(key)??'null');return value?.op==='action'&&typeof value.requestId==='string'?value:null;}catch{return null;}}

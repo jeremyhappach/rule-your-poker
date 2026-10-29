@@ -23,13 +23,15 @@ export function TriScorePill({item,root,fraction=0,value=item.score}:{item:TriSc
  </div>;
 }
 interface RoundPresentationProps {
+ /** Explicit read-only history/review admission; live callers retain recovery suppression. */
+ replay?:boolean;
  scope:string;phase:string;connected:boolean;paused:boolean;now:number;deadline:number;userId:string;active:boolean;
  celebrationMs?:number;modern:boolean;liveEntry:boolean;recoveryEpoch:number;
  resultSequence?:{namespace:string;clearMs:number;clearCueAt:AudioTimeline['cueAt'];seekOnRecovery:boolean;
   timeline:(elapsed:number,cleared:boolean)=>ReturnType<typeof triResultTimeline>;countWindow:(cleared:boolean)=>{start:number;end:number}};
  result:{id:string;elapsed:number;scoreBefore:number;score:number;displayScore:number;reason:string;completedAt?:number}|null;
 }
-export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch,celebrationMs=0,resultSequence}:RoundPresentationProps){
+export function useTriRoundPresentation({scope,phase,connected,paused,result,now,deadline,userId,active,modern,liveEntry,recoveryEpoch,celebrationMs=0,resultSequence,replay=false}:RoundPresentationProps){
  const prior=useRef<{scope:string;phase:string;connected:boolean;active:boolean;epoch:number}|null>(null);
  const initial=useRef(liveEntry&&recoveryEpoch===0&&phase==='intro'?scope:null),seen=useRef(new Set<string>());
  const clock=useRef<{scope:string;deadline:number}|null>(null),[drainFrom,setDrainFrom]=useState(0);
@@ -48,7 +50,7 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
    if(modern&&phase==='intro'&&!seen.current.has(scope)&&(initial.current===scope||!!p&&p.scope!==scope&&p.connected&&p.active)){
     seen.current.add(scope);setIntro(scope);initial.current=null;
    }
-   if(result&&p?.scope===scope&&p.phase!=='stage_complete'&&p.connected&&p.active){
+   if(result&&(replay&&p?.scope!==scope||p?.scope===scope&&p.phase!=='stage_complete'&&p.connected&&p.active)){
     setLive(result.id);
     setDrainFrom(clock.current?.scope===scope?Math.max(0,clock.current.deadline-(result.completedAt??now-result.elapsed)):0);
    }
@@ -56,7 +58,7 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
   if(phase==='playing')clock.current={scope,deadline};
   if(phase!=='intro')setIntro(null);
   prior.current={scope,phase,connected,active,epoch:recoveryEpoch};
- },[scope,phase,connected,active,paused,result?.id,recoveryEpoch,deadline,modern]);
+ },[scope,phase,connected,active,paused,result?.id,recoveryEpoch,deadline,modern,replay]);
  useEffect(()=>{
   const retire=()=>{setLive(null);setIntro(null);seen.current.add(scope);initial.current=null;};
   const visible=()=>{if(document.hidden)retire();};

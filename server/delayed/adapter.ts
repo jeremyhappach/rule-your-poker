@@ -136,7 +136,7 @@ export async function project(row:Child,viewer:string,rpc:Rpc){
  let board:unknown=null;
  if(viewer===row.actor&&s.board)board=s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
  return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,
-  actor:row.actor,round:s.round,board,totals,pendingResults,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
+  actor:row.actor,round:s.round,board,totals,pendingResults,reviewRevision:row.reviewed?.length??0,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
   ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async a=>({round:a.round,score:a.score,at:a.at,result:a.board.result,
    board:s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
   winner:row.terminal?row.outcome?.winner??null:null,

@@ -1,3 +1,4 @@
+import Delayed from '@/pages/Delayed';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Routes,Route} from 'react-router-dom';
 import {TooltipProvider} from '@/components/ui/tooltip';
@@ -10,5 +11,5 @@ const mode=new URLSearchParams(location.search).get('mode');
 const props={childId:'child',matchId:'match',userId:'me'};
 createRoot(document.getElementById('root')!).render(<TooltipProvider><ResponsiveGeometryProvider><BrowserRouter><Routes>
  <Route path='/review' element={mode==='finale'?<MatchFinale matchId='match' userId='me'/>:mode==='child'?<ChildResults {...props}/>:<ReviewGate {...props}>{()=> <DelayedTurn {...props} autoStart/>}</ReviewGate>}/>
- <Route path='/delayed/match' element={<h1>Match home destination</h1>}/>
+ <Route path='/delayed' element={<Delayed/>}/><Route path='/delayed/:matchId' element={mode==='home'||mode==='list'?<Delayed/>:<h1>Match home destination</h1>}/>
 </Routes></BrowserRouter></ResponsiveGeometryProvider></TooltipProvider>);
