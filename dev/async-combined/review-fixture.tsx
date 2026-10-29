@@ -7,9 +7,9 @@ import {ReviewGate,ChildResults,MatchFinale} from '@/components/delayed/ResultRe
 import {DelayedTurn} from '@/components/delayed/DelayedTurn';
 import '@/index.css';
 import '@/lib/delayed/delayed.css';
-const mode=new URLSearchParams(location.search).get('mode');
+const mode=new URLSearchParams(location.search).get('mode'),preview=!!(window as any).__REVIEW_PREVIEW__;
 const props={childId:'child',matchId:'match',userId:'me'};
 createRoot(document.getElementById('root')!).render(<TooltipProvider><ResponsiveGeometryProvider><BrowserRouter><Routes>
  <Route path='/review' element={mode==='finale'?<MatchFinale matchId='match' userId='me'/>:mode==='child'?<ChildResults {...props}/>:<ReviewGate {...props}>{()=> <DelayedTurn {...props} autoStart/>}</ReviewGate>}/>
- <Route path='/delayed' element={<Delayed/>}/><Route path='/delayed/:matchId' element={mode==='home'||mode==='list'?<Delayed/>:<h1>Match home destination</h1>}/>
-</Routes></BrowserRouter></ResponsiveGeometryProvider></TooltipProvider>);
+ <Route path='/delayed' element={<Delayed/>}/><Route path='/delayed/:matchId' element={preview||mode==='home'||mode==='list'?<Delayed/>:<h1>Match home destination</h1>}/>
+{preview&&<Route path='*' element={<main className='delayed-page'><h1>Local review preview</h1><p>This preview covers match home, history and finales. Gameplay and account changes are not connected.</p><a href='/'>Back to preview menu</a></main>}/>}</Routes></BrowserRouter></ResponsiveGeometryProvider></TooltipProvider>);

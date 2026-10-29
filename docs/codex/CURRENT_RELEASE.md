@@ -2,6 +2,8 @@
 
 Local implementation on codex/async-combined now includes existing-match review recovery, independent viewer acknowledgements, shared replay timing/audio, durable Start retries and paged history. Fifteen service/database checks, ten synthetic browser cases, 3,226 source/server tests, 241 harness tests, application typecheck and production build pass. Publication and hosted migrations remain on hold. Finale artwork awaits owner review. See [local checkpoint, evidence and limits](ASYNC_RESULTS_LOCAL_CHECKPOINT.md). The published completion corrections below remain the production baseline.
 
+October 29 17:21 UTC follow-up: fresh neutral-draw visual smoke and warm-server read-only history checks pass at 320px/390px. Product candidate `44ce20f12` is unchanged. A verified fixture-only preview is available on JeremyLaptop at `http://127.0.0.1:15325/`; actual preview navigation, pagination and all three finale returns pass without external requests. The technical finale phrase remains flagged for review. No publication, hosted migration or customer-state changes.
+
 # Async completion follow-up — 2026-10-29
 
 Tri-Towers correction `1b222a254` passed publication after owner retry:
