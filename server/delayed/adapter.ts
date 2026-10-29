@@ -21,6 +21,7 @@ export interface Child {
  starter:string; actor:string; segment:number; revision:number; terminal:boolean;
  available_at:string; expires_at:string; state:State|null; server_at:number;
  organizer:string; opponent:string;held?:boolean;
+ reviewed?:string[];
  outcome?:{winner:string|null;reason:string;organizer_delta:number;opponent_delta:number}|null;
 }
 export type Intent={type:'start'|'tick'|'collect'|'pass'|'draw'|'take_score'}|
@@ -125,15 +126,17 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
  return {state:s,advanced,at,forfeit:false};
 }
 
-/** Completed own attempts and paired scores are public. No future deck, salt,
+/** Own attempts and acknowledged opponent contributions are public. No future deck, salt,
  * opponent board or unpaired opponent score crosses this boundary. */
 export async function project(row:Child,viewer:string,rpc:Rpc){
  const s=row.state??initial(row),paired=Math.min(...s.players.map(p=>s.attempts.filter(a=>a.actor===p).length));
- const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&(row.terminal||a.round<=paired)).reduce((n,a)=>n+a.score,0)]));
+ const disclosed=(p:string,a:Attempt)=>p===viewer||(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired);
+ const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&disclosed(p,a)).reduce((n,a)=>n+a.score,0)]));
+ const pendingResults=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&!disclosed(p,a)).length]));
  let board:unknown=null;
  if(viewer===row.actor&&s.board)board=s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
  return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,
-  actor:row.actor,round:s.round,board,totals,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
+  actor:row.actor,round:s.round,board,totals,pendingResults,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
   ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async a=>({round:a.round,score:a.score,at:a.at,result:a.board.result,
    board:s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
   winner:row.terminal?row.outcome?.winner??null:null,

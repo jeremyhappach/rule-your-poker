@@ -10,7 +10,7 @@ import {NotificationProvider,NotificationBell} from './NotificationBell';
 const notice={id:'n',match_id:'m',kind:'turn',revision:1,read_revision:0,actionable:true,payload:{availableCount:1,lastCall:false}};
 beforeEach(()=>{sessionStorage.clear();mocks.items=[];mocks.request.mockClear();mocks.rpc.mockImplementation(async()=>({items:mocks.items,actionable:mocks.items.length}));});afterEach(cleanup);
 function mount(path='/delayed'){return render(<MemoryRouter initialEntries={[path]}><NotificationProvider><NotificationBell/></NotificationProvider></MemoryRouter>);}
-it('keeps match access in the empty bell',async()=>{mount();const bell=await screen.findByRole('button',{name:'Notifications'});fireEvent.click(bell);expect(await screen.findByRole('link',{name:'My Async Words matches'})).not.toBeNull();expect(mocks.request).not.toHaveBeenCalled();});
+it('keeps match access in the empty bell',async()=>{mount();const bell=await screen.findByRole('button',{name:'Notifications'});fireEvent.click(bell);expect(await screen.findByRole('link',{name:'My Async matches'})).not.toBeNull();expect(mocks.request).not.toHaveBeenCalled();});
 it('sounds for new pending revisions in the lobby, never unchanged refresh/read updates',async()=>{
  mocks.items=[notice];mount();await waitFor(()=>expect(mocks.request).toHaveBeenCalledTimes(1));expect(screen.getByRole('button',{name:/Notifications/}).getAttribute('data-pending')).toBe('true');
  await act(async()=>mocks.changed());expect(mocks.request).toHaveBeenCalledTimes(1);

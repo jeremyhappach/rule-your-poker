@@ -1,10 +1,10 @@
 import {supabase} from '@/integrations/supabase/client';
 export interface ChildSummary {id:string;ordinal:number;game:'run21'|'tri-towers'|'ptown-words'|'quintzee'|'boxdrop';stake:number;config:any;starter:string|null;actor:string|null;
- segment:number;revision:number;terminal:boolean;availableAt:string|null;lastCallAt:string|null;expiresAt:string|null;startedAt:string|null;scores?:Record<string,number>;lastMove?:{action:string;points:number};
+ segment:number;revision:number;terminal:boolean;availableAt:string|null;lastCallAt:string|null;expiresAt:string|null;startedAt:string|null;scores?:Record<string,number|null>;pendingResults?:Record<string,number>;progress?:Record<string,string>;bagCount?:number;reviewId?:string;viewed?:boolean;lastMove?:{action:string;points:number};
  result:{reason:string;winner:string|null;delta:number;at:string}|null}
 export interface Home {id:string;status:string;revision:number;realMoney:boolean;offerHash:string;organizer:string;opponent:string;
  players:{id:string;name:string}[];createdAt:string;invitationExpiresAt:string;acceptedAt:string|null;settledAt:string|null;held:boolean;
- removedAt?:string|null;lineup:ChildSummary[];net:number;completed:number;exposure:number;receipt:any;serverAt:number}
+ removedAt?:string|null;lineup:ChildSummary[];net:number;completed:number;exposure:number;unsettled?:number;finaleViewed?:boolean;receipt:any;serverAt:number}
 export async function delayedRpc<T>(name:string,args:Record<string,unknown>={}):Promise<T>{
  const {data,error}=await (supabase.rpc as any)(name,args);if(error)throw Error(error.message);return data;
 }

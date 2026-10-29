@@ -10,7 +10,7 @@ import {delayedRpc} from '@/lib/delayed/client';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {clearPrivateDrafts} from '@/lib/delayed/drafts';
 import '@/lib/delayed/delayed.css';
-type Notice={id:string;match_id:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{opponentId:string;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
+type Notice={id:string;match_id:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{opponentId:string;opponentName?:string;completionCount?:number;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
 const NotificationContext=createContext<{userId:string;items:Notice[];count:number;error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
 export function NotificationProvider({children}:{children:ReactNode}){
  const [userId,setUserId]=useState<string|null>(null),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
@@ -54,12 +54,13 @@ function NotificationBellContent({context}:{context:NonNullable<React.ContextTyp
   <Bell size={19}/>{count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full" align="end">
   <h2 className="font-semibold">Notifications</h2>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
    items.length===0?<p>No notifications.</p>:<ul className="space-y-3">{items.map(n=><li key={n.id}>
-    <Link to={'/delayed/'+n.match_id} onClick={()=>void markRead(n)}>
+    <Link to={'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'')} onClick={()=>void markRead(n)}>
      <strong>{n.kind==='invitation'?'Match invitation':n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
-      n.kind==='accepted'?'Invitation accepted':n.kind==='settled'?'Match settled':'Invitation '+n.payload.status}</strong>
+      n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
+     {n.kind==='accepted'&&<small className="block">No turns yet available</small>}
      {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}
      {!n.actionable&&<small className="block">For your records</small>}
     </Link>{n.kind==='turn'&&n.actionable&&<button className="block underline" onClick={()=>void openTurn(n)}>{n.payload.availableCount} available {n.payload.availableCount===1?'turn':'turns'}</button>}</li>)}</ul>}
-  <Link className="block mt-3 underline" to="/delayed">My Async Words matches</Link>
+  <Link className="block mt-3 underline" to="/delayed">My Async matches</Link>
  </PopoverContent></Popover>;
 }

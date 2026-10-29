@@ -1,3 +1,7 @@
+# Async results/history — incomplete local candidate — 2026-10-29
+
+Local implementation and evidence are preserved on codex/async-combined. Publication and hosted migrations remain on hold. Existing-match review recovery, cross-device acknowledgement snapshots, shared presentation timing/audio and Start/cleanup concurrency qualification remain. See [local checkpoint and exact remaining work](ASYNC_RESULTS_LOCAL_CHECKPOINT.md). The previously published completion corrections below remain the production baseline.
+
 # Async completion follow-up — 2026-10-29
 
 Tri-Towers correction `1b222a254` passed publication after owner retry:

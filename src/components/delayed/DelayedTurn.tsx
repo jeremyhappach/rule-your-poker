@@ -26,7 +26,7 @@ import type {project} from '../../../server/delayed/adapter';
 import '@/lib/arcade/arcade.css';
 type Snapshot=Awaited<ReturnType<typeof project>>;
 
-export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:string;userId:string}){
+export function DelayedTurn({childId,matchId,userId,autoStart=false}:{childId:string;matchId:string;userId:string;autoStart?:boolean}){
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(Date.now()),[tab,setTab]=useState<ShellTabId>('cards');
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(null),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
@@ -42,7 +42,7 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
   const at=old?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
   clock.current={at,received:performance.now()};setNow(at);
   setSnapshot(old=>old&&old.revision>value.revision?old:value);
-  if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId,{replace:true});}
+  if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId+(value.terminal?'?review='+childId:''),{replace:true});}
  },[childId,matchId,userId,navigate]);
  const refresh=useCallback(async()=>{const epoch=++generation.current;try{
   const value=await delayedRequest<Snapshot>(request.current??{op:'state',childId});
@@ -85,7 +85,12 @@ export function DelayedTurn({childId,matchId,userId}:{childId:string;matchId:str
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // The saved shared-rule deadline includes celebration/count-up. This only
  // finishes local presentation; authority already handed off the turn.
- useEffect(()=>{if(resultUntil!==null&&now>=resultUntil)navigate('/delayed/'+matchId,{replace:true});},[resultUntil,now,matchId,navigate]);
+ useEffect(()=>{if(resultUntil!==null&&now>=resultUntil)navigate('/delayed/'+matchId+(snapshot?.terminal?'?review='+childId+'&finished=1':''),{replace:true});},[resultUntil,now,matchId,childId,snapshot?.terminal,navigate]);
+ useEffect(()=>{
+  if(!autoStart||!snapshot||snapshot.board||ended||pending||request.current||error||snapshot.held||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt))return;
+  if(document.hidden||!navigator.onLine)return;
+  void act({type:'start'});
+ },[autoStart,snapshot,ended,pending,error,now,userId]);
  const view:BoardProjection|undefined=snapshot?.game==='run21'&&board?{config:snapshot.config as BoardProjection['config'],
   roundId:childId+':'+initialSegment.current,roundNumber:displayRound!,viewerId:userId,boards:{[userId]:board},players:[{id:userId,name:'You'}],
   active_player_id:ended?null:userId,liveBoards:true,revealed:false,cumulative:runResult?{...snapshot.totals,[userId]:runTotal}:snapshot.totals,scorePresentation:runPresentation,presentationKey:childId,

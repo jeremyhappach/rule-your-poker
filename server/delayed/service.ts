@@ -9,7 +9,7 @@ export async function synchronize(rpc:Rpc,input:RecordRow,actor:string|null):Pro
   const next=await transition(row,{type:'tick'},rpc);
   const result=await rpc('delayed_commit',{p_child:row.id,p_actor:actor,p_revision:row.revision,p_state:next.state,
    p_event:'tick',p_at:next.at,p_advanced:next.advanced});
-  row=result.record;
+  row={...result.record,reviewed:row.reviewed};
  }
  throw Error('delayed:recovery_incomplete');
 }
@@ -41,7 +41,7 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
   if(!['committed','duplicate'].includes(result.outcome)){
    await synchronize(rpc,result.record,userId);throw Error('delayed:stale_action');
   }
-  row=result.record;
+  row={...result.record,reviewed:row.reviewed};
  }
  return project(row,userId,rpc);
 }

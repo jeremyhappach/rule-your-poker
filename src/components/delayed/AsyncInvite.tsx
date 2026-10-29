@@ -46,6 +46,7 @@ export function AsyncInvite(){
    {loading&&<small role="status">Loading players…</small>}{more&&<button disabled={loading} onClick={()=>loadPeople(cursor)}>Load more players</button>}{!loading&&!people.length&&<small>No matching active human players.</small>}
   </fieldset>
   <div className="delayed-offer-summary"><span>Maximum loss per player</span><strong>{stake}</strong></div>
+  <p className="delayed-terms">The first player in each game is selected randomly.</p>
   <p className="delayed-terms">Last Call at 24 hours. A missed 36-hour deadline forfeits that game. No funds are reserved; real balances are unaffected. Invitations expire in 72 hours.</p>
   {!review?<button className="delayed-primary" disabled={!opponent||!enabled||!valid} onClick={()=>setReview(true)}>Review invitation</button>:<div className="delayed-review-card"><p>Invite <strong>{opponent?.name}</strong> for <strong>{lineup.length}</strong> games with a maximum play-money loss of <strong>{stake}</strong>.</p><div className="delayed-actions"><button className="delayed-primary" disabled={!opponent||pending||!enabled||!valid} onClick={()=>void invite()}>{pending?'Sending…':'Send invitation'}</button><button className="delayed-secondary" disabled={pending} onClick={()=>{setReview(false);request.current=null;}}>Edit invitation</button></div></div>}
   {error&&<p role="alert">{error}</p>}

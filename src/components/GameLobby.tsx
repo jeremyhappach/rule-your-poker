@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { SessionResults } from "@/components/SessionResults";
+import {AsyncHistory} from './delayed/AsyncHistory';
 import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
@@ -499,6 +500,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
         </TabsContent>
         
         <TabsContent value="historical" className="space-y-2 mt-4">
+          <AsyncHistory profileId={userId}/>
           {historicalGames.length === 0 ? (
             <Card className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/30">
               <CardContent className="pt-8 pb-8">
@@ -511,7 +513,7 @@ export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
               </CardContent>
             </Card>
           ) : (
-            historicalGames.map((game) => (
+            historicalGames.filter(game=>game.game_type!=='delayed-head-to-head').map((game) => (
               <Card 
                 key={game.id} 
                 className="bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 border border-amber-700/30 hover:border-amber-600/50 transition-all"

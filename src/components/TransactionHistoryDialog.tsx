@@ -10,6 +10,7 @@ import { usePlayerBalance, reverseAccountEntry, type AccountTransaction } from "
 import { useEffect, useRef, useState } from "react";
 import { AddTransactionDialog } from "./AddTransactionDialog";
 import { accountAmountIsNegative, formatAccountAmount } from "@/lib/accountMoney";
+import {AsyncHistory} from './delayed/AsyncHistory';
 
 interface TransactionHistoryDialogProps {
   open: boolean; onOpenChange: (open: boolean) => void; profileId: string;
@@ -64,6 +65,7 @@ export const TransactionHistoryDialog = ({ open, onOpenChange, profileId, player
           </div>
           {error && <div role="alert" className="space-y-2 text-sm text-destructive"><p>{error}</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>}
           <ScrollArea className="max-h-[350px] pr-2">
+            <AsyncHistory profileId={profileId} balance/>
             {loading ? <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>
               : transactions.length === 0 && !error ? <div className="text-center py-8 text-muted-foreground">No transactions yet</div>
               : <div className="space-y-2">{transactions.map(txn => (
