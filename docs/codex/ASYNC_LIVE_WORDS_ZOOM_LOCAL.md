@@ -201,6 +201,26 @@ clock, manual Start/roll, review admission, result hold or bonus accumulation ch
 Existing score-presentation tests retain replay/reentry deduplication. React review
 confirmed no new effect, state owner, event handler or fetch in the label component.
 
+Row/pace refinement: `x/63` stays on the UPPER BONUS label row, right-aligned in
+its column in every objective state. Content-sized bonus columns prevent phone
+overlap. A white signed pace value occupies the row beneath the counter while
+Upper Bonus is pending or achieved; it disappears on definitive failure and stays
+hidden in unrevealed opponent views. The component directly reuses
+`getUpperBonusProgress(scores).pace` from `src/lib/yahtzeeScoring.ts`, including
+Yahtzee's positive-plus/negative/zero formatting. Its `isAchievable` flag is not
+used: Quintzee retains the approved all-upper-committed failure boundary.
+Only committed, permitted scores feed the helper. Configured thresholds/amounts,
+Classic/modern styles and score/celebration owners are unchanged.
+
+Focused pace/bonus/score-presentation/Yahtzee regression passes 59 tests and
+application typecheck passes. All 27 browser scenarios pass, including a 320px
+phone check. Geometry checks in `quintzee-early-browser.mjs` assert label/counter row alignment, right
+edges, non-overlap, white pace beneath the counter and failure omission through
+mid-game states, reloads and final own/replay states. Current evidence uses
+`quintzee-pace-tests.log`, `quintzee-pace-typecheck.log` and the existing
+`quintzee-early-browser.json`/screenshots. Same direct preview URLs remain active;
+Words/pulse and production state were not changed.
+
 Direct mid-game fixtures at `http://127.0.0.1:15403/quintzee`:
 `?mid=pending`, `?mid=upper_achieved`, `?mid=upper_failed`, `?mid=fill_failed`.
 These freeze committed-score examples and do not send gameplay commands. Append

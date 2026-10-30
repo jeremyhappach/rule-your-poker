@@ -12,6 +12,15 @@ afterEach(cleanup);
 it('preserves the existing permitted upper subtotal without resolving unrevealed opponent objectives',()=>{
  const {container}=render(<QuintzeeBonuses rules={rules} scores={{fours:20,fives:25,sixes:18,ones:0}} result={null} showOutcomes={false}/>);
  expect(container.querySelector('[data-upper-progress]')?.textContent).toBe('63/63');expect(state(container,'upper')).toBeNull();expect(state(container,'filled')).toBeNull();
+ expect(container.querySelector('[data-upper-pace]')).toBeNull();
+});
+it.each([{scores:{fives:20},pace:'+5'},{scores:{fives:20,threes:6,ones:0},pace:'-1'},{scores:{ones:3,twos:6},pace:'0'},{scores:{fours:20,fives:25,sixes:18},pace:'+18'}])('uses the shared Yahtzee pace for committed scores: $pace',({scores,pace})=>{
+ const {container}=render(<QuintzeeBonuses rules={rules} scores={scores} result={null}/>);expect(container.querySelector('[data-upper-pace]')?.textContent).toBe(pace);
+});
+it('keeps pace pending when Yahtzee would infer impossibility, then hides on actual Quintzee upper failure',()=>{
+ const scores={twos:3,threes:9,fours:12,fives:15,sixes:18};const h=render(<QuintzeeBonuses rules={rules} scores={scores} result={null}/>);
+ expect(state(h.container,'upper')).toBeNull();expect(h.container.querySelector('[data-upper-pace]')?.textContent).toBe('-3');
+ h.rerender(<QuintzeeBonuses rules={rules} scores={{...scores,ones:0}} result={null}/>);expect(state(h.container,'upper')).toBe('false');expect(h.container.querySelector('[data-upper-pace]')).toBeNull();
 });
 it('pending does not confuse missing categories with committed zeros or infer early failure',()=>{
  const {container}=render(<QuintzeeBonuses rules={rules} scores={{ones:1,twos:2,threes:3,fours:4,fives:5}} result={null}/>);

@@ -1,5 +1,13 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Quintzee row/pace follow-up: `x/63` aligns with UPPER BONUS, with white signed pace
+right-aligned beneath it. Pace directly reuses Yahtzee's existing calculation and
+hides on upper failure or unrevealed opponent views; no early-failure heuristic
+was imported. Focused 59-test regression, typecheck and 27 browser scenarios pass.
+Existing preview URLs, objective
+styles, scoring and publication hold are preserved; geometry/typecheck evidence
+is recorded in the local checkpoint.
+
 Quintzee refinement: committed category scores now resolve Upper Bonus and Fill All
 independently during play, without waiting for the final count. Achieved label and
 configured helper are green; failures strike the label and remove the helper.
